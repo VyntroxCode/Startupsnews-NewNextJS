@@ -1,0 +1,9 @@
+# Run RSS feed cron every 10 minutes
+# 1) Add CRON_SECRET to .env.local and use it in the URL below.
+# 2) Either call the API (if app is running) or run the script directly:
+#
+# Option A: HTTP (app must be running)
+# */10 * * * * curl -s "https://your-domain.com/api/cron/rss-feeds?secret=YOUR_CRON_SECRET"
+#
+# Option B: Run script directly (no server needed). Log in project so cron user can write.
+# */10 * * * * cd /path/to/zox-nextjs && /usr/bin/npx tsx scripts/cron-fetch-rss-feeds.ts >> /path/to/zox-nextjs/logs/rss-cron.log 2>&1

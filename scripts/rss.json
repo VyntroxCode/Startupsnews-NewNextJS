@@ -1,0 +1,877 @@
+[
+    {
+        "name": "9to5Mac - Tech",
+        "url": "https://9to5mac.com/feed/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Business Standard - Technology",
+        "url": "https://www.business-standard.com/rss/technology/tech-news-10817.rss",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "CNBCTV - Tech",
+        "url": "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/technology.xml",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Coinpedia - Blockchain",
+        "url": "https://coinpedia.org/feed/",
+        "category_slug": "blockchain",
+        "auto_publish": 0,
+        "enabled": 0
+    },
+    {
+        "name": "Cointelegraph-blockchain",
+        "url": "https://cointelegraph.com/rss/tag/blockchain",
+        "category_slug": "blockchain",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Entracker - Tech",
+        "url": "https://entrackr.com/rss",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Gadget360 - Blockchain",
+        "url": "https://www.gadgets360.com/rss/cryptocurrency/feeds",
+        "category_slug": "blockchain",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Gadget360 \u2013 AI",
+        "url": "https://www.gadgets360.com/rss/ai/feeds",
+        "category_slug": "ai",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Gadget360 \u2013 Games",
+        "url": "https://www.gadgets360.com/rss/games/feeds",
+        "category_slug": "gaming",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "GlobalNewWire - Tech",
+        "url": "https://rss.globenewswire.com/RssFeed/Content/Photo/language/en/Industry/9000/max/100/showlogo/true",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "HindustanTimes - Gaming",
+        "url": "https://tech.hindustantimes.com/rss/gaming",
+        "category_slug": "gaming",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "HindustanTimes - Tech",
+        "url": "https://tech.hindustantimes.com/rss/tech",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Inc24-Startups",
+        "url": "https://inc42.com/industry/startup-ecosystem/feed/",
+        "category_slug": "startups",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - AgriTech",
+        "url": "https://inc42.com/industry/agritech/feed/",
+        "category_slug": "agritech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - ConsumerServices",
+        "url": "https://inc42.com/industry/consumer-services/feed/",
+        "category_slug": "consumer-service",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - Ecommerce",
+        "url": "https://inc42.com/industry/ecommerce/feed/",
+        "category_slug": "e-commerce",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - Edtech",
+        "url": "https://inc42.com/industry/edtech/feed/",
+        "category_slug": "edtech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - EnterpriseTech",
+        "url": "https://inc42.com/industry/enterprisetech/feed/",
+        "category_slug": "enterprisetech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - Fintech",
+        "url": "https://inc42.com/industry/fintech/feed/",
+        "category_slug": "fintech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - HealthTech",
+        "url": "https://inc42.com/industry/healthtech/feed/",
+        "category_slug": "healthtech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - LogisticsTech",
+        "url": "https://inc42.com/industry/logistics/feed/",
+        "category_slug": "logistictech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - Mobility",
+        "url": "https://inc42.com/industry/electric-vehicles/feed/",
+        "category_slug": "mobility",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - Retail",
+        "url": "https://inc42.com/industry/retail/feed/",
+        "category_slug": "retailtech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 - TravelTech",
+        "url": "https://inc42.com/industry/travel-tech/feed/",
+        "category_slug": "travel",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 \u2013 CleanTech",
+        "url": "https://inc42.com/industry/cleantech/feed/",
+        "category_slug": "cleantech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42 \u2013 RealEstateTech",
+        "url": "https://inc42.com/industry/real-estate-tech/feed/",
+        "category_slug": "realestate",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42- Tech",
+        "url": "https://inc42.com/buzz/feed/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "INC42-LogisticsTech",
+        "url": "https://inc42.com/industry/logistics/feed",
+        "category_slug": "logistictech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "IndiaTImes (ET) - ArtificialIntelligence",
+        "url": "https://economictimes.indiatimes.com/tech/artificial-intelligence/rssfeeds/110870909.cms",
+        "category_slug": "ai",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "IndiaTImes (ET) - CleanTech",
+        "url": "https://economictimes.indiatimes.com/small-biz/sustainability/rssfeeds/102105290.cms",
+        "category_slug": "cleantech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "IndiaTimes (ET) - Fintech",
+        "url": "https://economictimes.indiatimes.com/prime/fintech-and-bfsi/rssfeeds/60187373.cms",
+        "category_slug": "fintech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "IndiaTImes (ET) - Funding",
+        "url": "https://economictimes.indiatimes.com/tech/funding/rssfeeds/78570550.cms",
+        "category_slug": "funding",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "IndiaTImes (ET) - Technology",
+        "url": "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "IndiaTimes (TOI) - Technology",
+        "url": "https://timesofindia.indiatimes.com/rssfeeds/66949542.cms",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "InsideEVs - Mobility",
+        "url": "https://insideevs.com/rss/news/all/",
+        "category_slug": "mobility",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Livemint - Tech",
+        "url": "https://www.livemint.com/rss/technology",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "PNN - Business",
+        "url": "https://pnndigital.com/category/business/feed/",
+        "category_slug": "business",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "PNN - Education",
+        "url": "https://pnndigital.com/category/education/feed/",
+        "category_slug": "edtech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "PNN - Health",
+        "url": "https://pnndigital.com/category/health/feed/",
+        "category_slug": "healthtech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "PNN - Technology",
+        "url": "https://pnndigital.com/category/technology/feed/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "PNN -Business",
+        "url": "https://pnndigital.com/category/business/feed/",
+        "category_slug": "business",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "PNN (Digital) - Business",
+        "url": "https://pnn.digital/category/business-buzz/feed/",
+        "category_slug": "business",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "PNN (Digital) - Tech",
+        "url": "https://pnn.digital/category/startup-buzz/feed/\nhttps://pnn.digital/category/tech-buzz/feed/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "SearchEngineJournal - Tech",
+        "url": "https://rss.searchenginejournal.com/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Siliconluxembourg \u2013 Tech",
+        "url": "https://www.siliconluxembourg.lu/feed/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "StartupStoryMedia - Funding",
+        "url": "https://startupstorymedia.com/tag/funding-alert/feed/",
+        "category_slug": "funding",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "StartupStoryMedia - HealthTech",
+        "url": "https://startupstorymedia.com/tag/health-care/feed",
+        "category_slug": "healthtech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "StartupStoryMedia - SocialMedia",
+        "url": "https://startupstorymedia.com/tag/social-media/feed",
+        "category_slug": "social-media",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "StartupStoryMedia - Tech",
+        "url": "https://startupstorymedia.com/tag/news-update/feed\nhttps://startupstorymedia.com/tag/deeptech/feed",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "StartupStoryMedia \u2013 Fintech",
+        "url": "https://startupstorymedia.com/tag/fintech/feed/",
+        "category_slug": "fintech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "StartupStoryMedia \u2013 Funding",
+        "url": "https://startupstorymedia.com/tag/funding-alert/feed/",
+        "category_slug": "funding",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "StartupStoryMedia \u2013 Mobility",
+        "url": "https://startupstorymedia.com/tag/electric-vehicle/feed/",
+        "category_slug": "mobility",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "StartupStoryMedia \u2013 Tech",
+        "url": "https://startupstorymedia.com/tag/news/feed/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Tech In Asia \u2013 Blockchain",
+        "url": "https://www.techinasia.com/category/crypto/feed",
+        "category_slug": "blockchain",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Tech In Asia \u2013 Ecommerce",
+        "url": "https://www.techinasia.com/category/e-commerce-social-commerce/feed",
+        "category_slug": "e-commerce",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Tech In Asia \u2013 Fintech",
+        "url": "https://www.techinasia.com/category/fintech/feed",
+        "category_slug": "fintech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "Tech In Asia \u2013 Startups",
+        "url": "https://www.techinasia.com/category/startups/feed",
+        "category_slug": "startups",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch - AI",
+        "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "category_slug": "ai",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch - CyberSecurity",
+        "url": "https://techcrunch.com/category/security/feed/",
+        "category_slug": "cyber-security",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch - Funding",
+        "url": "https://techcrunch.com/category/fundraising/feed/",
+        "category_slug": "funding",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch - Startups",
+        "url": "https://techcrunch.com/category/startups/feed/",
+        "category_slug": "startups",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch \u2013  Fintech",
+        "url": "https://techcrunch.com/category/fintech/feed/",
+        "category_slug": "fintech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch \u2013  Mobility",
+        "url": "https://techcrunch.com/tag/evs/feed/",
+        "category_slug": "apple",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch \u2013  SocialMedia",
+        "url": "https://techcrunch.com/category/social/feed/",
+        "category_slug": "social-media",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch \u2013 Apple",
+        "url": "https://techcrunch.com/tag/apple/feed/",
+        "category_slug": "apple",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch \u2013 Ecommerce",
+        "url": "https://techcrunch.com/category/commerce/feed/",
+        "category_slug": "e-commerce",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch \u2013 Government",
+        "url": "https://techcrunch.com/government-policy/feed/",
+        "category_slug": "government",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TechCrunch \u2013 HealthTech",
+        "url": "https://techcrunch.com/category/biotech-health/feed/",
+        "category_slug": "apple",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TelecomTalk - ArtificialIntelligence",
+        "url": "https://telecomtalk.info/category/ai/feed/",
+        "category_slug": "ai",
+        "auto_publish": 0,
+        "enabled": 0
+    },
+    {
+        "name": "TelecomTalk - OTT",
+        "url": "https://telecomtalk.info/category/ott/feed/",
+        "category_slug": "ott",
+        "auto_publish": 0,
+        "enabled": 0
+    },
+    {
+        "name": "TelecomTalk - Tech",
+        "url": "https://telecomtalk.info/category/news/technology-news/feed",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "The Economic Times \u2013 IT",
+        "url": "https://economictimes.indiatimes.com/tech/information-tech/rssfeeds/78570530.cms",
+        "category_slug": "it",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TheNewStack \u2013 Tech",
+        "url": "https://thenewstack.io/feed",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TheStartupLab - Funding",
+        "url": "https://thestartuplab.in/news/feed/",
+        "category_slug": "funding",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TheVerge - Tech",
+        "url": "https://www.theverge.com/tech/rss/index.xml",
+        "category_slug": "tech",
+        "auto_publish": 0,
+        "enabled": 0
+    },
+    {
+        "name": "TheVerge \u2013 Crypto",
+        "url": "https://www.theverge.com/rss/cryptocurrency/index.xml",
+        "category_slug": "blockchain",
+        "auto_publish": 0,
+        "enabled": 0
+    },
+    {
+        "name": "TheVerge \u2013 Cybersecurity",
+        "url": "https://www.theverge.com/rss/cyber-security/index.xml",
+        "category_slug": "cyber-security",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TheVerge \u2013 Meta",
+        "url": "https://www.theverge.com/rss/meta/index.xml",
+        "category_slug": "metaverse",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "TheVerge \u2013 SocialMedia",
+        "url": "https://www.theverge.com/rss/twitter/index.xml\nhttps://www.theverge.com/rss/facebook/index.xml",
+        "category_slug": "social-media",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "WABetaInfo - SocialMedia",
+        "url": "https://wabetainfo.com/feed/",
+        "category_slug": "social-media",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "YourStory - Tech",
+        "url": "https://yourstory.com/tag/technology/feed",
+        "category_slug": "tech",
+        "auto_publish": 0,
+        "enabled": 0
+    },
+    {
+        "name": "YourStory- Tech",
+        "url": "https://yourstory.com/category/edtech/feed",
+        "category_slug": "edtech",
+        "auto_publish": 0,
+        "enabled": 0
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.wired.com/feed/rss",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://feeds.arstechnica.com/arstechnica/index",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.cnet.com/rss/all/",
+        "category_slug": "gadgets",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.engadget.com/rss.xml",
+        "category_slug": "gadgets",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://gizmodo.com/rss",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.theinformation.com/subscriber_feed.atom",
+        "category_slug": "business",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.digitaltrends.com/feed/",
+        "category_slug": "gadgets",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.pcmag.com/feeds/all",
+        "category_slug": "it",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.tomshardware.com/feeds/all",
+        "category_slug": "hardware",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.tomsguide.com/feeds/all",
+        "category_slug": "consumer",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.zdnet.com/news/rss.xml",
+        "category_slug": "it",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "http://rss.slashdot.org/Slashdot/slashdotMain",
+        "category_slug": "community",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.androidauthority.com/feed/",
+        "category_slug": "mobile",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://9to5google.com/feed/",
+        "category_slug": "googleandroid",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.macrumors.com/macrumors.xml",
+        "category_slug": "apple",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.windowscentral.com/rss",
+        "category_slug": "microsoft",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://themarkup.org/feeds/latest",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.technologyreview.com/feed/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://spectrum.ieee.org/feed",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://restofworld.org/feed/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://feeds.a.dj.com/rss/RSSWSJD.xml",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://feeds.bloomberg.com/technology/news.rss",
+        "category_slug": "business",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.cnbc.com/id/19854910/device/rss/rss.xml",
+        "category_slug": "business",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://feeds.washingtonpost.com/rss/business/technology",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.latimes.com/business/technology/rss2.xml",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://rssfeeds.usatoday.com/usatoday-TechTopStories",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.theatlantic.com/feed/channel/technology/",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.bleepingcomputer.com/feed/",
+        "category_slug": "security",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.howtogeek.com/feed/",
+        "category_slug": "consumer",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.makeuseof.com/feed/",
+        "category_slug": "consumer",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.pcworld.com/index.rss",
+        "category_slug": "it",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "NOT FOUND",
+        "category_slug": "it",
+        "auto_publish": 0,
+        "enabled": 0
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.extremetech.com/feed",
+        "category_slug": "it",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://mashable.com/feeds/rss/tech",
+        "category_slug": "tech",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.techrepublic.com/rssfeeds/articles/",
+        "category_slug": "it",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.techdirt.com/feed/",
+        "category_slug": "policy",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://thehackernews.com/feeds/posts/default",
+        "category_slug": "security",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://krebsonsecurity.com/feed/",
+        "category_slug": "security",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.darkreading.com/rss.xml",
+        "category_slug": "security",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.schneier.com/blog/atom.xml",
+        "category_slug": "security",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.semianalysis.com/feed",
+        "category_slug": "semiconductors",
+        "auto_publish": 1,
+        "enabled": 1
+    },
+    {
+        "name": "NaN",
+        "url": "https://www.theregister.com/headlines.rss",
+        "category_slug": "it",
+        "auto_publish": 1,
+        "enabled": 1
+    }
+]

@@ -1,0 +1,30 @@
+# Systemd unit for StartupNews RSS cron (fetches RSS feeds every 10 minutes)
+# Install: sudo cp /home/ubuntu/zox-nextjs/scripts/startupnews-cron.service /etc/systemd/system/
+#         sudo systemctl daemon-reload
+# Start:  sudo systemctl start startupnews-cron
+# Enable on boot: sudo systemctl enable startupnews-cron
+# Status: sudo systemctl status startupnews-cron
+# Logs:   journalctl -u startupnews-cron -f
+
+[Unit]
+Description=StartupNews RSS Feed Cron
+After=network.target mariadb.service redis-server.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/zox-nextjs
+Environment=NODE_ENV=production
+Environment=ENABLE_CRON=true
+Environment=ENABLE_RSS_PROCESSING=true
+Environment=ENABLE_IMAGE_DOWNLOAD=true
+Environment=RUN_AS_CRON=1
+EnvironmentFile=-/home/ubuntu/zox-nextjs/.env.local
+ExecStart=/usr/bin/npm run cron:start
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

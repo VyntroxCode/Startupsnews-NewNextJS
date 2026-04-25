@@ -1,0 +1,7 @@
+# System cron entry for RSS feed fetch (runs every 10 min as user ubuntu).
+# Install with: sudo cp /home/ubuntu/zox-nextjs/scripts/cron.d-zox-rss.txt /etc/cron.d/zox-rss && sudo chmod 644 /etc/cron.d/zox-rss
+# Remove user crontab entry to avoid duplicate: crontab -e and delete the rss line.
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+*/10 * * * * ubuntu /home/ubuntu/zox-nextjs/scripts/run-rss-cron.sh >> /home/ubuntu/zox-nextjs/logs/rss-cron.log 2>&1

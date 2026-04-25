@@ -1,0 +1,27 @@
+# Systemd unit for Next.js (StartupNews) on port 3000
+# Install: sudo cp /home/ubuntu/zox-nextjs/scripts/startupnews.service /etc/systemd/system/
+#         sudo systemctl daemon-reload
+# Start:  sudo systemctl start startupnews
+# Enable on boot: sudo systemctl enable startupnews
+# Status: sudo systemctl status startupnews
+# Logs:   journalctl -u startupnews -f
+
+[Unit]
+Description=StartupNews Next.js App
+After=network.target mariadb.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/zox-nextjs
+Environment=NODE_ENV=production
+Environment=PORT=3000
+EnvironmentFile=-/home/ubuntu/zox-nextjs/.env.local
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

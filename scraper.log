@@ -1,0 +1,11 @@
+
+> zox-nextjs@0.1.0 scrape:startupnews
+> tsx scripts/scrape-startupnews-posts.ts
+
+[INFO] Starting StartupNews scraper {"source":"https://startupnews.fyi","startDate":"February 2026","endDate":"2026-04-03"}
+[INFO] Database connected 
+[INFO] Found admin user {"email":"admin@startupnews.fyi","id":1}
+✓ Categories loaded (12)
+[INFO] Scraping posts... 
+[INFO] Starting scrape from {"urls":14}
+[INFO] Listing posts found {"count":311}
