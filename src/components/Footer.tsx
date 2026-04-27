@@ -110,11 +110,11 @@ export function Footer() {
           <div>
             <h3>Topics</h3>
             <ul>
-              <li><Link href="/ai">AI</Link></li>
-              <li><Link href="/fintech">Fintech</Link></li>
+              <li><Link href="/ai-deeptech">AI & Deeptech</Link></li>
+              <li><Link href="/ev-mobility">Ev & Mobility</Link></li>
               <li><Link href="/social-media">Social Media</Link></li>
-              <li><Link href="/robotics">Robotics</Link></li>
-              <li><Link href="/healthtech">HealthTech</Link></li>
+              <li><Link href="/ecommerce">Ecommerce</Link></li>
+              <li><Link href="/gaming">Gaming</Link></li>
             </ul>
           </div>
 
