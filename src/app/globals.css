@@ -3550,11 +3550,26 @@ footer.footer {
 }
 
 .footer-top-left {
-  text-align: center;
-  margin: 0 auto;
+  /* text-align: left; */
+  /* margin: 0 auto; */
   display: flex;
   flex-direction: column;
   gap: 12px;
+  align-items: flex-start;
+}
+
+.footer-top-right {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.footer-social-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .footer-brand a img {
@@ -3670,11 +3685,11 @@ footer.footer {
   line-height: 1;
 }
 
-.footer-bottom-bar .footer-top-right {
+/* .footer-bottom-bar .footer-top-right {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-}
+} */
 
 .footer-bottom-bar .footer-social-links {
   display: flex;
@@ -3684,7 +3699,7 @@ footer.footer {
 }
 
 .footer-social-links a {
-  width: 40px;
+  /* width: 40px; */
   height: 40px;
   display: flex;
   align-items: center;
@@ -3692,7 +3707,7 @@ footer.footer {
   border-radius: 50%;
   transition: transform 0.2s ease, opacity 0.2s ease;
   opacity: 0.8;
-  background: rgba(255, 255, 255, 0.1);
+  /* background: rgba(255, 255, 255, 0.1); */
 }
 
 .footer-social-links a:hover {
@@ -3703,6 +3718,8 @@ footer.footer {
 .footer-social-links svg {
   width: 24px;
   height: 24px;
+  max-width: 24px;
+  max-height: 24px;
   fill: #ffffff;
 }
 
@@ -3860,7 +3877,24 @@ footer.footer {
 }
 
 .startupnews-mobile-featured:not(:last-of-type) {
-  border-bottom: 1px dotted #000;
+  border-bottom: none;
+  position: relative;
+}
+
+.startupnews-mobile-featured:not(:last-of-type)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    #000 0px,
+    #000 2px,
+    transparent 2px,
+    transparent 8px
+  );
 }
 
 .startupnews-mobile-featured-link {
@@ -3974,6 +4008,7 @@ footer.footer {
   left: 16px;
   width: 80px;
   height: 3px;
+  margin-bottom: 10px;
   background: #0066cc;
 }
 
@@ -4027,7 +4062,7 @@ footer.footer {
 /* Mobile Category View More Link - Right Aligned */
 .startupnews-mobile-category-view-more {
   width: 100%;
-  padding: 22px 24px;
+  padding: 15px 24px;
   text-align: right;
   box-sizing: border-box;
   position: relative;
@@ -4069,7 +4104,24 @@ footer.footer {
 
 .startupnews-article-card {
   width: 100%;
-  border-bottom: 1px dotted #000;
+  border-bottom: none;
+  position: relative;
+}
+
+.startupnews-article-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    #000 0px,
+    #000 2px,
+    transparent 2px,
+    transparent 8px
+  );
 }
 
 .startupnews-article-card:last-child {
@@ -4200,7 +4252,24 @@ footer.footer {
 
 .startupnews-popular-card {
   width: 100%;
-  border-bottom: 1px dotted #000;
+  border-bottom: none;
+  position: relative;
+}
+
+.startupnews-popular-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    #000 0px,
+    #000 2px,
+    transparent 2px,
+    transparent 8px
+  );
 }
 
 .startupnews-popular-card:last-child {

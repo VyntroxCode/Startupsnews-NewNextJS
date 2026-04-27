@@ -44,6 +44,8 @@ export const siteConfig = {
     tiktok: "",
     linkedin: "https://www.linkedin.com/company/startupnewsfyi",
     tumblr: "",
+    googleplay: "/images/Google_Play-Logo.png",
+    appstore: "/images/App_Store-Logo.png",
   },
   /** Fly-out (toggle) menu: expandable sections + simple links. id used for accordion state. */
   flyMenu: [
