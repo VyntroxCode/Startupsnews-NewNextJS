@@ -76,14 +76,15 @@ export function Footer() {
                   </svg>
                 </a>
               )}
+              <div className="footer-social-mobile-view">
               {siteConfig.social.appstore && (
                 <Link href="">
                   <Image
                   src={siteConfig.social.appstore}
                   alt="App Store"
-                  width={150}
-                  height={40}
-                  style={{ maxWidth: "150px", height: "auto", display: "block", margin: "0 auto" }}
+                  width={140}
+                  height={45}
+                  style={{ maxWidth: "140px", height: "auto", display: "block", margin: "0 auto" }}
                 />  
                 </Link>   
               )}
@@ -93,12 +94,13 @@ export function Footer() {
                   src={siteConfig.social.googleplay}
                   alt="Google Play"
                   width={160}
-                  height={40}
+                  height={45}
                   style={{ maxWidth: "160px", height: "auto", display: "block", margin: "0 auto" }}
                 />  
                 </Link>           
               
               )}
+              </div>
             </div>
           </div>
         </div>
