@@ -440,12 +440,18 @@ export default function EditPostPage() {
             style={{
               width: '100%',
               padding: '0.75rem',
-              border: '1px solid #e2e8f0',
+              border: `1px solid ${formData.slug.length > 75 ? '#e53e3e' : '#e2e8f0'}`,
               borderRadius: '4px',
               fontSize: '1rem',
               boxSizing: 'border-box',
+              color: formData.slug.length > 75 ? '#e53e3e' : 'inherit',
             }}
           />
+          {formData.slug.length > 75 && (
+            <span style={{ fontSize: '0.75rem', color: '#e53e3e', marginTop: '0.25rem', display: 'block' }}>
+              {formData.slug.length}/75 characters — slug is too long
+            </span>
+          )}
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>

@@ -106,6 +106,7 @@ export class PostsRepository {
   async findAll(filters?: {
     categoryId?: number;
     categorySlug?: string;
+    authorId?: number;
     status?: string;
     featured?: boolean;
     limit?: number;
@@ -124,6 +125,11 @@ export class PostsRepository {
     if (filters?.categoryId) {
       sql += ' AND category_id = ?';
       params.push(filters.categoryId);
+    }
+
+    if (filters?.authorId) {
+      sql += ' AND author_id = ?';
+      params.push(filters.authorId);
     }
 
     if (filters?.status) {
@@ -191,6 +197,7 @@ export class PostsRepository {
    */
   async count(filters?: {
     categoryId?: number;
+    authorId?: number;
     status?: string;
     featured?: boolean;
     search?: string;
@@ -204,6 +211,11 @@ export class PostsRepository {
     if (filters?.categoryId) {
       sql += ' AND category_id = ?';
       params.push(filters.categoryId);
+    }
+
+    if (filters?.authorId) {
+      sql += ' AND author_id = ?';
+      params.push(filters.authorId);
     }
 
     if (filters?.status) {

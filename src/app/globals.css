@@ -908,7 +908,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   z-index: 1;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  /* object-fit: contain; */
   object-position: center;
 }
 
@@ -1349,7 +1349,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 .home-trending-pop-img {
   position: relative !important;
   width: 100% !important;
-  height: 145px !important;
+  height: 159px !important;
   max-height: none !important;
   overflow: hidden !important;
   background: #eee;
@@ -4024,6 +4024,8 @@ footer.footer {
   position: relative;
   letter-spacing: -0.02em;
   line-height: 1.2;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .startupnews-mobile-section-title::after {
@@ -4043,8 +4045,9 @@ footer.footer {
 
 .startupnews-mobile-section-flex {
   display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 /* Desktop sections - Hide on mobile */
@@ -4086,8 +4089,8 @@ footer.footer {
 
 /* Mobile Category View More Link - Right Aligned */
 .startupnews-mobile-category-view-more {
-  width: 100%;
-  padding: 15px 24px;
+  width: auto;
+  padding: 15px 16px ;
   text-align: right;
   box-sizing: border-box;
   position: relative;
@@ -4237,7 +4240,7 @@ footer.footer {
   padding: 20px 12px 12px;
   color: #111;
   background: #fff;
-  border-bottom: 1px solid #eee;
+  /* border-bottom: 1px solid #eee; */
   position: relative;
 }
 
@@ -4248,7 +4251,7 @@ footer.footer {
   left: 12px;
   width: 60px;
   height: 3px;
-  background: #0066cc;
+  background: #E62E69;
 }
 
 .startupnews-popular-list {
@@ -5883,6 +5886,33 @@ footer.footer {
   text-align: justify !important;
 }
 
+/* Blockquote: override theme's pull-quote style to standard bordered blockquote */
+#mvp-content-main blockquote {
+  border-left: 4px solid #e62e69;
+  padding: 12px 20px;
+  margin: 24px 0 !important;
+  background: #fafafa;
+  width: 100% !important;
+}
+
+#mvp-content-main blockquote p,
+#mvp-content-main blockquote p cite {
+  font-family: 'Roboto', sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  font-style: italic !important;
+  line-height: 1.7 !important;
+  color: #444 !important;
+  width: 100% !important;
+  margin: 0 0 8px !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+}
+
+#mvp-content-main blockquote p:last-child {
+  margin-bottom: 0 !important;
+}
+
 /* Source link button on single post */
 a.mvp-source-button,
 #mvp-content-main .mvp-post-content-body a {
@@ -6891,5 +6921,54 @@ body .banner-carousel-container,
   .advertise-custom-page .sn-advertise-form .form-row {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+}
+
+/* Mobile: reduce excessive whitespace on single post page */
+@media screen and (max-width: 767px) {
+  #mvp-post-main {
+    margin-bottom: 20px !important;
+  }
+
+  #mvp-post-head {
+    margin-bottom: 16px !important;
+  }
+
+  .mvp-author-info-wrap {
+    margin-bottom: 14px !important;
+  }
+
+  #mvp-post-feat-img {
+    margin-bottom: 14px !important;
+  }
+
+  /* Tags section inline margin override */
+  .mvp-post-tags {
+    padding-bottom: 10px !important;
+    margin-bottom: 16px !important;
+    margin-top: 10px !important;
+  }
+
+  /* Disclaimer inline padding/margin override */
+  #mvp-disclaimer-wrap {
+    padding-top: 16px !important;
+    margin-top: 16px !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Prev/next nav */
+  #mvp-prev-next-wrap {
+    padding: 12px 0 !important;
+  }
+
+  .mvp-next-post-wrap {
+    margin-top: 12px !important;
+    padding-top: 12px !important;
+  }
+
+  /* Blockquote on mobile */
+  #mvp-content-main blockquote {
+    margin: 14px 0 !important;
+    padding: 10px 14px !important;
   }
 }

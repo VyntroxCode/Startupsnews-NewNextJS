@@ -48,6 +48,7 @@ export class PostsService {
     offset?: number;
     search?: string;
     source?: 'manual' | 'rss';
+    authorId?: number;
     orderByLatestDate?: boolean;
     forAdmin?: boolean;
   }): Promise<PostEntity[]> {

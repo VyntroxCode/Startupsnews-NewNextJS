@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const source = searchParams.get('source') as 'manual' | 'rss' | null;
     const categoryId = searchParams.get('categoryId');
+    const authorId = searchParams.get('authorId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
       search?: string;
       source?: 'manual' | 'rss';
       categoryId?: number;
+      authorId?: number;
       orderByLatestDate?: boolean;
       forAdmin?: boolean;
       restrictThumbnail?: boolean;
@@ -97,6 +99,10 @@ export async function GET(request: NextRequest) {
     if (categoryId) {
       const catId = parseInt(categoryId, 10);
       if (!isNaN(catId)) filters.categoryId = catId;
+    }
+    if (authorId) {
+      const aId = parseInt(authorId, 10);
+      if (!isNaN(aId)) filters.authorId = aId;
     }
 
     // Run count and list in parallel for lower latency

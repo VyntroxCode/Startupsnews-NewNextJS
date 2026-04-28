@@ -16,6 +16,11 @@ interface Category {
   slug: string;
 }
 
+interface Author {
+  id: number;
+  name: string;
+}
+
 interface Post {
   id: string;
   title: string;
@@ -35,6 +40,7 @@ type TargetHttpCode = '200' | '404' | '410';
 
 export default function PostsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [authors, setAuthors] = useState<Author[]>([]);
   const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkScope, setBulkScope] = useState<BulkScope>('selected');
@@ -59,7 +65,7 @@ export default function PostsPage() {
     disableCache: true,
   });
 
-  // Load categories on mount (filtered to sectors only via API)
+  // Load categories and authors on mount
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -70,7 +76,17 @@ export default function PostsPage() {
         console.error('Failed to load categories:', err);
       }
     };
+    const loadAuthors = async () => {
+      try {
+        const res = await fetch('/api/admin/authors', { headers: getAuthHeaders() });
+        const data = await res.json();
+        if (data.success) setAuthors(data.data);
+      } catch (err) {
+        console.error('Failed to load authors:', err);
+      }
+    };
     loadCategories();
+    loadAuthors();
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
@@ -118,6 +134,14 @@ export default function PostsPage() {
     setFilters((prev) => {
       if (categoryId) return { ...prev, categoryId };
       const { categoryId: _, ...rest } = prev;
+      return rest;
+    });
+  }, [setFilters]);
+
+  const handleAuthorFilter = useCallback((authorId: string | null) => {
+    setFilters((prev) => {
+      if (authorId) return { ...prev, authorId };
+      const { authorId: _, ...rest } = prev;
       return rest;
     });
   }, [setFilters]);
@@ -408,6 +432,35 @@ export default function PostsPage() {
             {categories.map((cat) => (
               <option key={cat.id} value={String(cat.id)}>
                 {cat.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={String(filters.authorId ?? '')}
+            onChange={(e) => handleAuthorFilter(e.target.value || null)}
+            style={{
+              padding: '0.75rem 1rem',
+              border: '2px solid #e2e8f0',
+              borderRadius: '8px',
+              fontSize: '0.9375rem',
+              background: 'white',
+              cursor: 'pointer',
+              color: '#475569',
+              minWidth: '150px',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#6366f1';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            <option value="">All Authors</option>
+            {authors.map((author) => (
+              <option key={author.id} value={String(author.id)}>
+                {author.name}
               </option>
             ))}
           </select>

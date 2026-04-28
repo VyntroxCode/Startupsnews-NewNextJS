@@ -2022,6 +2022,7 @@ span.mvp-cd-date:before {
 	margin-bottom: 20px;
 	text-align: center;
 	width: 100%;
+	padding-top: 13px;
 }
 
 .mvp-ad-label {
@@ -4146,7 +4147,7 @@ ul.mvp-author-info-list {
 }
 
 .mvp-author-info-thumb img {
-	border: 2px solid #ddd;
+	/* border: 2px solid #ddd; */
 	-webkit-border-radius: 50%;
 	-moz-border-radius: 50%;
 	-ms-border-radius: 50%;

@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     "venture capital",
     "innovation",
   ],
-  authors: [{ name: "StartupNews.fyi", url: SITE_URL }],
+  authors: [{ }], // Aditya
   creator: "StartupNews.fyi",
   publisher: "StartupNews.fyi",
   robots: {
