@@ -39,7 +39,7 @@ export function HomeWidgetSection({ title, categorySlug, featured, right, list, 
                   {featured && featured.image && (
                     <Link href={getPostPath(featured)} rel="bookmark">
                       <div className="mvp-widget-feat2-left-cont left relative">
-                        <div className="mvp-feat1-feat-img left relative" style={{ position: "relative", height: 600 }}>
+                        <div className="mvp-feat1-feat-img left relative" style={{ position: "relative", height: 557 }}>
                           <PostImage
                             src={featured.image || ''}
                             alt={featured.title}

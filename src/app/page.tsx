@@ -61,8 +61,8 @@ export default async function HomePage() {
     getCategorySectionPosts("social-media"),
     getDarkSectionPosts("ecommerce"),
     getCategorySectionPosts("gaming"),
-    getDarkSectionPosts("web3-blockchain"),
-    getDarkSectionPosts("fintech"),
+    getFeat1SectionPosts("web3-blockchain"),
+    getCategorySectionPosts("fintech"),
     getLatestNewsPosts(25),
     ...categorySlugs.map((slug) => getCategoryDisplayName(slug, HOME_WIDGET_CATEGORY_MAP[slug] ?? slug)),
   ]);
@@ -75,8 +75,8 @@ export default async function HomePage() {
   const socialMediaSection = batch1[5] as Awaited<ReturnType<typeof getCategorySectionPosts>>;
   const ecommerceSection = batch1[6] as Awaited<ReturnType<typeof getDarkSectionPosts>>;
   const gamingSection = batch1[7] as Awaited<ReturnType<typeof getCategorySectionPosts>>;
-  const web3BlockchainSection = batch1[8] as Awaited<ReturnType<typeof getDarkSectionPosts>>;
-  const fintechSection = batch1[9] as Awaited<ReturnType<typeof getDarkSectionPosts>>;
+  const web3BlockchainSection = batch1[8] as Awaited<ReturnType<typeof getFeat1SectionPosts>>;
+  const fintechSection = batch1[9] as Awaited<ReturnType<typeof getCategorySectionPosts>>;
   const latestFromListing = batch1[10] as Post[];
   const categoryTitlesMap = batch1.slice(11, 18) as string[];
 
@@ -99,8 +99,8 @@ export default async function HomePage() {
     ) as Post[],
     ecommerce: [ecommerceSection.featured, ...ecommerceSection.list].filter(Boolean) as Post[],
     gaming: [gamingSection.featured, ...gamingSection.right, ...gamingSection.list].filter(Boolean) as Post[],
-    "web3-blockchain": [web3BlockchainSection.featured, ...web3BlockchainSection.list].filter(Boolean) as Post[],
-    fintech: [fintechSection.featured, ...fintechSection.list].filter(Boolean) as Post[],
+    "web3-blockchain": [web3BlockchainSection.top, ...web3BlockchainSection.bottom].filter(Boolean) as Post[],
+    fintech: [fintechSection.featured, ...fintechSection.right, ...fintechSection.list].filter(Boolean) as Post[],
   };
 
   const titles: Record<string, string> = {};
@@ -477,19 +477,21 @@ export default async function HomePage() {
           list={gamingSection.list}
           url={`/${categorySlugs}`}
         />
-        <HomeDarkSection
+        <HomeFeat1Section
           title={titleWeb3Blockchain}
           categorySlug="web3-blockchain"
-          featured={web3BlockchainSection.featured}
-          list={web3BlockchainSection.list}
+          top={web3BlockchainSection.top}
+          bottom={web3BlockchainSection.bottom}
           url={`/${categorySlugs}`}
         />
-        <HomeDarkSection
+        <HomeWidgetSection
           title={titleFintech}
           categorySlug="fintech"
           featured={fintechSection.featured}
+          right={fintechSection.right}
           list={fintechSection.list}
           url={`/${categorySlugs}`}
+          mainpos="middle"
         />
       </div>
 

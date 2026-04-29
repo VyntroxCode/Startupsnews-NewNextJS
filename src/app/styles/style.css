@@ -2765,11 +2765,11 @@ ul.mvp-feat1-list-buts li.active span.mvp-feat1-list-but {
 
 #mvp-home-widget-wrap,
 .mvp-home-widget-block {
-	margin-bottom: 60px;
+	margin-bottom: 20px;
 }
 
 .mvp-widget-home {
-	margin-top: 60px;
+	margin-top: 30px;
 }
 
 .mvp-widget-home:first-child {
