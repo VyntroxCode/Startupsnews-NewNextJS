@@ -172,15 +172,26 @@ export async function PUT(
       }
     };
 
+    // Decode a base64 field but preserve empty string (so clearing a field works)
+    const decodeBase64Utf8Nullable = (value: unknown): string | null | undefined => {
+      if (typeof value !== 'string') return undefined; // key not present
+      if (!value.trim()) return ''; // key present but empty → clear the field
+      try {
+        return Buffer.from(value, 'base64').toString('utf8');
+      } catch {
+        return '';
+      }
+    };
+
     const decodedTitle = decodeBase64Utf8(body.titleBase64);
     const decodedSlug = decodeBase64Utf8(body.slugBase64);
     const decodedExcerpt = decodeBase64Utf8(body.excerptBase64);
     const decodedDescription = decodeBase64Utf8(body.descriptionBase64);
     const decodedLocation = decodeBase64Utf8(body.locationBase64);
     const decodedEventDate = decodeBase64Utf8(body.eventDateBase64);
-    const decodedEventEndDate = decodeBase64Utf8(body.eventEndDateBase64);
-    const decodedEventTime = decodeBase64Utf8(body.eventTimeBase64);
-    const decodedEventEndTime = decodeBase64Utf8(body.eventEndTimeBase64);
+    const decodedEventEndDate = decodeBase64Utf8Nullable(body.eventEndDateBase64);
+    const decodedEventTime = decodeBase64Utf8Nullable(body.eventTimeBase64);
+    const decodedEventEndTime = decodeBase64Utf8Nullable(body.eventEndTimeBase64);
     const decodedExternalUrl = decodeBase64Utf8(body.externalUrlBase64);
 
     if (decodedTitle !== null) body.title = decodedTitle;
@@ -189,9 +200,9 @@ export async function PUT(
     if (decodedDescription !== null) body.description = decodedDescription;
     if (decodedLocation !== null) body.location = decodedLocation;
     if (decodedEventDate !== null) body.eventDate = decodedEventDate;
-    if (decodedEventEndDate !== null) body.eventEndDate = decodedEventEndDate;
-    if (decodedEventTime !== null) body.eventTime = decodedEventTime;
-    if (decodedEventEndTime !== null) body.eventEndTime = decodedEventEndTime;
+    if (decodedEventEndDate !== undefined) body.eventEndDate = decodedEventEndDate;
+    if (decodedEventTime !== undefined) body.eventTime = decodedEventTime;
+    if (decodedEventEndTime !== undefined) body.eventEndTime = decodedEventEndTime;
     if (decodedExternalUrl !== null) body.externalUrl = decodedExternalUrl;
 
     const updateData: Partial<{
@@ -215,9 +226,9 @@ export async function PUT(
     if (body.description !== undefined) updateData.description = String(body.description);
     if (body.location !== undefined) updateData.location = String(body.location);
     if (body.eventDate !== undefined) updateData.eventDate = body.eventDate as Date | string;
-    if (body.eventEndDate !== undefined) updateData.eventEndDate = body.eventEndDate ? body.eventEndDate as Date | string : null;
-    if (body.eventTime !== undefined) updateData.eventTime = body.eventTime ? String(body.eventTime).trim() : null;
-    if (body.eventEndTime !== undefined) updateData.eventEndTime = body.eventEndTime ? String(body.eventEndTime).trim() : null;
+    if (body.eventEndDate !== undefined) updateData.eventEndDate = (body.eventEndDate && String(body.eventEndDate).trim()) ? body.eventEndDate as Date | string : null;
+    if (body.eventTime !== undefined) updateData.eventTime = (body.eventTime && String(body.eventTime).trim()) ? String(body.eventTime).trim() : null;
+    if (body.eventEndTime !== undefined) updateData.eventEndTime = (body.eventEndTime && String(body.eventEndTime).trim()) ? String(body.eventEndTime).trim() : null;
 
     if (imageFile && isS3Configured()) {
       try {

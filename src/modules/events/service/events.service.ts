@@ -89,14 +89,11 @@ export class EventsService {
       counter++;
     }
 
-    // Convert eventDate string to Date if needed
-    const eventDate = typeof data.eventDate === 'string' ? new Date(data.eventDate) : data.eventDate;
-
+    // Convert eventDate string to Date if needed — pass as plain YYYY-MM-DD string to avoid timezone shift
     const entity = await this.repository.create({
       ...data,
       slug: currentSlug,
-      eventDate,
-      // Coerce null → undefined so the repo signature (string | undefined) is satisfied
+      eventDate: data.eventDate,
       eventTime: data.eventTime ?? undefined,
     });
 
@@ -135,12 +132,10 @@ export class EventsService {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.location !== undefined) updateData.location = data.location;
     if (data.eventDate !== undefined) {
-      updateData.event_date = typeof data.eventDate === 'string' ? new Date(data.eventDate) : data.eventDate;
+      updateData.event_date = data.eventDate;
     }
     if (data.eventEndDate !== undefined) {
-      updateData.event_end_date = data.eventEndDate
-        ? (typeof data.eventEndDate === 'string' ? new Date(data.eventEndDate) : data.eventEndDate)
-        : null;
+      updateData.event_end_date = data.eventEndDate || null;
     }
     if (data.eventTime !== undefined) updateData.event_time = data.eventTime;
     if (data.eventEndTime !== undefined) updateData.event_end_time = data.eventEndTime ?? null;

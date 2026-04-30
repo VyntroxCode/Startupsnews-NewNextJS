@@ -32,33 +32,30 @@ function normalizeEventDescription(value?: string | null): string | undefined {
  * Convert EventEntity to StartupEvent (backward compatible format)
  */
 export function entityToEvent(entity: EventEntity): StartupEvent {
-  const eventDate = new Date(entity.event_date);
-  const formattedDate = eventDate.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  // Parse YYYY-MM-DD directly to avoid timezone shift (new Date('YYYY-MM-DD') is UTC midnight)
+  const formatDateString = (d: Date | string): string => {
+    const str = typeof d === 'string' ? d : d.toISOString();
+    const [year, month, day] = str.slice(0, 10).split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
 
   return {
     id: entity.id.toString(),
     slug: entity.slug,
     location: entity.location,
-    date: formattedDate,
+    date: formatDateString(entity.event_date),
     title: entity.title,
     url: entity.external_url || `${EVENTS_BASE}/${entity.slug}/`,
     excerpt: normalizeEventText(entity.excerpt),
-    // Keep admin-authored rich HTML so frontend event page renders formatting.
     description: normalizeEventDescription(entity.description),
     image: entity.image_url || DEFAULT_EVENT_IMAGE,
     status: entity.status,
     eventTime: entity.event_time,
-    eventEndDate: entity.event_end_date
-      ? new Date(entity.event_end_date).toLocaleDateString('en-US', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        })
-      : null,
+    eventEndDate: entity.event_end_date ? formatDateString(entity.event_end_date) : null,
     eventEndTime: entity.event_end_time ?? null,
   };
 }

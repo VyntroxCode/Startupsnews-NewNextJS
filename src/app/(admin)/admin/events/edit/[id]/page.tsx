@@ -54,8 +54,8 @@ export default function EditEventPage() {
       }
 
       const event = data.data;
-      // Format date for input field (YYYY-MM-DD)
-      const eventDate = event.date ? new Date(event.date).toISOString().split('T')[0] : '';
+      // Format date for input field (YYYY-MM-DD) — slice directly to avoid timezone shift
+      const eventDate = event.date ? String(event.date).slice(0, 10) : '';
 
       setFormData({
         title: event.title || '',
