@@ -48,6 +48,8 @@ export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps)
           <span className="event-by-country-date">
             {event.date}
             {event.eventTime ? ` - ${event.eventTime}` : ""}
+            {event.eventEndDate ? ` to ${event.eventEndDate}` : ""}
+            {event.eventEndTime ? ` - ${event.eventEndTime}` : ""}
           </span>
           {event.location && (
             <span className="event-by-country-venue">{event.location}</span>

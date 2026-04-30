@@ -52,6 +52,14 @@ export function entityToEvent(entity: EventEntity): StartupEvent {
     image: entity.image_url || DEFAULT_EVENT_IMAGE,
     status: entity.status,
     eventTime: entity.event_time,
+    eventEndDate: entity.event_end_date
+      ? new Date(entity.event_end_date).toLocaleDateString('en-US', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : null,
+    eventEndTime: entity.event_end_time ?? null,
   };
 }
 

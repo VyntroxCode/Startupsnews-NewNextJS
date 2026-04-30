@@ -164,7 +164,9 @@ export async function POST(request: NextRequest) {
     const decodedDescription = decodeBase64Utf8(body.descriptionBase64);
     const decodedLocation = decodeBase64Utf8(body.locationBase64);
     const decodedEventDate = decodeBase64Utf8(body.eventDateBase64);
+    const decodedEventEndDate = decodeBase64Utf8(body.eventEndDateBase64);
     const decodedEventTime = decodeBase64Utf8(body.eventTimeBase64);
+    const decodedEventEndTime = decodeBase64Utf8(body.eventEndTimeBase64);
     const decodedExternalUrl = decodeBase64Utf8(body.externalUrlBase64);
 
     if (decodedTitle !== null) body.title = decodedTitle;
@@ -173,7 +175,9 @@ export async function POST(request: NextRequest) {
     if (decodedDescription !== null) body.description = decodedDescription;
     if (decodedLocation !== null) body.location = decodedLocation;
     if (decodedEventDate !== null) body.eventDate = decodedEventDate;
+    if (decodedEventEndDate !== null) body.eventEndDate = decodedEventEndDate;
     if (decodedEventTime !== null) body.eventTime = decodedEventTime;
+    if (decodedEventEndTime !== null) body.eventEndTime = decodedEventEndTime;
     if (decodedExternalUrl !== null) body.externalUrl = decodedExternalUrl;
 
     // Validation
@@ -272,7 +276,9 @@ export async function POST(request: NextRequest) {
       description: processedDescription,
       location: String(body.location),
       eventDate: String(body.eventDate),
+      eventEndDate: body.eventEndDate ? String(body.eventEndDate) : null,
       eventTime: body.eventTime ? String(body.eventTime).trim() : undefined,
+      eventEndTime: body.eventEndTime ? String(body.eventEndTime).trim() : null,
       imageUrl,
       externalUrl: body.externalUrl != null ? String(body.externalUrl) : undefined,
       status: (body.status as 'upcoming' | 'ongoing' | 'past' | 'cancelled') || 'upcoming',

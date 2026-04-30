@@ -131,16 +131,19 @@ export function Footer() {
             <h3>For Events</h3>
             <ul>
               <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Submit your Event</a></li>
-              <li><Link href="/advertise-with-us">Advertise with us</Link></li>
+              <li><Link href="/advertise-with-us/pagee">Advertise with us</Link></li>
             </ul>
           </div>
 
           <div>
             <h3>For Investors</h3>
             <ul>
-              <li><Link href="/dealflow-newsletter">Dealflow Newsletter</Link></li>
+              {/* <li><Link href="/dealflow-newsletter">Dealflow Newsletter</Link></li>
               <li><Link href="/regional-reports">Regional Reports</Link></li>
-              <li><Link href="/speak-sponsor">Speak / Sponsor Opportunities</Link></li>
+              <li><Link href="/speak-sponsor">Speak / Sponsor Opportunities</Link></li> */}
+              <li>Dealflow Newsletter</li>
+              <li>Regional Reports</li>
+              <li>Speak / Sponsor Opportunities</li>
             </ul>
           </div>
 

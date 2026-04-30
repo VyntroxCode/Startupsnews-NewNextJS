@@ -14,6 +14,8 @@ export interface StartupEvent {
   image?: string;
   status?: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
   eventTime?: string | null;
+  eventEndDate?: string | null;
+  eventEndTime?: string | null;
 }
 
 /**
@@ -28,7 +30,9 @@ export interface EventEntity {
   location: string;
   // Dates from MariaDB are returned as strings, but we type them as Date | string for flexibility
   event_date: Date | string;
+  event_end_date?: Date | string | null;
   event_time?: string | null;
+  event_end_time?: string | null;
   image_url?: string;
   external_url?: string;
   status: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
@@ -46,7 +50,9 @@ export interface CreateEventDto {
   description?: string;
   location: string;
   eventDate: Date | string;
+  eventEndDate?: Date | string | null;
   eventTime?: string | null;
+  eventEndTime?: string | null;
   imageUrl?: string;
   externalUrl?: string;
   status?: 'upcoming' | 'ongoing' | 'past' | 'cancelled';

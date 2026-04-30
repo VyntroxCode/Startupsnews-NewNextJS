@@ -25,7 +25,9 @@ export default function EditEventPage() {
     description: '',
     location: '',
     eventDate: '',
+    eventEndDate: '',
     eventTime: '',
+    eventEndTime: '',
     imageUrl: '',
     externalUrl: '',
     status: 'upcoming' as 'upcoming' | 'ongoing' | 'past' | 'cancelled',
@@ -62,7 +64,9 @@ export default function EditEventPage() {
         description: event.description || '',
         location: event.location || '',
         eventDate: eventDate,
+        eventEndDate: event.eventEndDate || '',
         eventTime: event.eventTime || '',
+        eventEndTime: event.eventEndTime || '',
         imageUrl: event.image || '',
         externalUrl: event.url || '',
         status: event.status || 'upcoming',
@@ -165,7 +169,9 @@ export default function EditEventPage() {
           descriptionBase64: encodeBase64Utf8(formData.description || ''),
           locationBase64: encodeBase64Utf8(formData.location || ''),
           eventDateBase64: encodeBase64Utf8(formData.eventDate || ''),
+          eventEndDateBase64: encodeBase64Utf8(formData.eventEndDate || ''),
           eventTimeBase64: encodeBase64Utf8(formData.eventTime || ''),
+          eventEndTimeBase64: encodeBase64Utf8(formData.eventEndTime || ''),
           externalUrlBase64: encodeBase64Utf8(formData.externalUrl || ''),
           _token: token,
         }),
@@ -378,6 +384,31 @@ export default function EditEventPage() {
                 fontSize: '1rem',
                 boxSizing: 'border-box',
               }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
+              Event End Date
+            </label>
+            <input
+              type="date"
+              value={formData.eventEndDate}
+              onChange={(e) => setFormData({ ...formData, eventEndDate: e.target.value })}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
+              Event End Time
+            </label>
+            <input
+              type="time"
+              value={formData.eventEndTime}
+              onChange={(e) => setFormData({ ...formData, eventEndTime: e.target.value })}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
             />
           </div>
         </div>

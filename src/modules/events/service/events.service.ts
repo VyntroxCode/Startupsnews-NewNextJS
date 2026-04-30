@@ -137,7 +137,13 @@ export class EventsService {
     if (data.eventDate !== undefined) {
       updateData.event_date = typeof data.eventDate === 'string' ? new Date(data.eventDate) : data.eventDate;
     }
+    if (data.eventEndDate !== undefined) {
+      updateData.event_end_date = data.eventEndDate
+        ? (typeof data.eventEndDate === 'string' ? new Date(data.eventEndDate) : data.eventEndDate)
+        : null;
+    }
     if (data.eventTime !== undefined) updateData.event_time = data.eventTime;
+    if (data.eventEndTime !== undefined) updateData.event_end_time = data.eventEndTime ?? null;
     if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
     if (data.externalUrl !== undefined) updateData.external_url = data.externalUrl;
     if (data.status !== undefined) updateData.status = data.status;

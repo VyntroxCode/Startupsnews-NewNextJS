@@ -28,6 +28,7 @@ const eventsService = new EventsService(eventsRepository);
 
 function entityToAdminEvent(entity: EventEntity) {
   const eventDate = entity.event_date ? new Date(entity.event_date).toISOString().split('T')[0] : '';
+  const eventEndDate = entity.event_end_date ? new Date(entity.event_end_date).toISOString().split('T')[0] : '';
   return {
     id: entity.id.toString(),
     slug: entity.slug,
@@ -36,7 +37,9 @@ function entityToAdminEvent(entity: EventEntity) {
     description: entity.description || '',
     location: entity.location,
     date: eventDate,
+    eventEndDate,
     eventTime: entity.event_time || '',
+    eventEndTime: entity.event_end_time || '',
     image: entity.image_url || '',
     url: entity.external_url || '',
     status: entity.status,
@@ -175,7 +178,9 @@ export async function PUT(
     const decodedDescription = decodeBase64Utf8(body.descriptionBase64);
     const decodedLocation = decodeBase64Utf8(body.locationBase64);
     const decodedEventDate = decodeBase64Utf8(body.eventDateBase64);
+    const decodedEventEndDate = decodeBase64Utf8(body.eventEndDateBase64);
     const decodedEventTime = decodeBase64Utf8(body.eventTimeBase64);
+    const decodedEventEndTime = decodeBase64Utf8(body.eventEndTimeBase64);
     const decodedExternalUrl = decodeBase64Utf8(body.externalUrlBase64);
 
     if (decodedTitle !== null) body.title = decodedTitle;
@@ -184,7 +189,9 @@ export async function PUT(
     if (decodedDescription !== null) body.description = decodedDescription;
     if (decodedLocation !== null) body.location = decodedLocation;
     if (decodedEventDate !== null) body.eventDate = decodedEventDate;
+    if (decodedEventEndDate !== null) body.eventEndDate = decodedEventEndDate;
     if (decodedEventTime !== null) body.eventTime = decodedEventTime;
+    if (decodedEventEndTime !== null) body.eventEndTime = decodedEventEndTime;
     if (decodedExternalUrl !== null) body.externalUrl = decodedExternalUrl;
 
     const updateData: Partial<{
@@ -194,8 +201,10 @@ export async function PUT(
       description: string;
       location: string;
       eventDate: Date | string;
+      eventEndDate: Date | string | null;
       eventTime: string | null;
-      imageUrl: string;
+      eventEndTime: string | null;
+      imageUrl: string | undefined;
       externalUrl: string;
       status: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
     }> = {};
@@ -206,7 +215,9 @@ export async function PUT(
     if (body.description !== undefined) updateData.description = String(body.description);
     if (body.location !== undefined) updateData.location = String(body.location);
     if (body.eventDate !== undefined) updateData.eventDate = body.eventDate as Date | string;
+    if (body.eventEndDate !== undefined) updateData.eventEndDate = body.eventEndDate ? body.eventEndDate as Date | string : null;
     if (body.eventTime !== undefined) updateData.eventTime = body.eventTime ? String(body.eventTime).trim() : null;
+    if (body.eventEndTime !== undefined) updateData.eventEndTime = body.eventEndTime ? String(body.eventEndTime).trim() : null;
 
     if (imageFile && isS3Configured()) {
       try {

@@ -65,6 +65,17 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     <div className="mvp-main-blog-wrap left relative">
       <div className="mvp-main-box">
         <div className="mvp-main-blog-cont left relative">
+          <nav className="event-by-country-breadcrumb" aria-label="Breadcrumb">
+            <Link href="/" className="event-by-country-breadcrumb-link">
+              Home
+            </Link>
+            <span className="event-by-country-breadcrumb-separator" aria-hidden="true">
+              /
+            </span>
+            <span className="event-by-country-breadcrumb-current" aria-current="page">
+              Funding Tracker
+            </span>
+          </nav>
           <h1 className="mvp-feat1-pop-head sector-page-theme-title">
             <span className="mvp-feat1-pop-head">{title}</span>
           </h1>

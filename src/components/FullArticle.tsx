@@ -56,10 +56,28 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
             <meta itemProp="mainEntityOfPage" itemType="https://schema.org/WebPage" itemID={postPath} />
             <div id="mvp-article-cont" className="left relative">
                 <div className="mvp-main-box">
+                    <nav className="event-by-country-breadcrumb" aria-label="Breadcrumb">
+                                <Link href="/" className="event-by-country-breadcrumb-link">
+                                  Home
+                                </Link>
+                                <span className="event-by-country-breadcrumb-separator" aria-hidden="true">
+                                  /
+                                </span>
+                                <Link href={`/${post.categorySlug}`} className="event-by-country-breadcrumb-link">
+                                  {post.category}
+                                </Link>
+                                <span className="event-by-country-breadcrumb-separator" aria-hidden="true">
+                                  /
+                                </span>
+                                <span className="event-by-country-breadcrumb-current" aria-current="page">
+                                  {post.title}
+                                </span>
+                              </nav>
                     <div id="mvp-post-main" className="left relative">
                         <div id="mvp-post-main-out" className="left relative">
                             <div id="mvp-post-main-in" className="left relative">
                                 <div id="mvp-post-content" className="left relative">
+                                    
                                     <header id="mvp-post-head" className="left relative">
                                         <h3 className="mvp-post-cat left relative">
                                             <Link className="mvp-post-cat-link" href={`/${post.categorySlug}`}>
