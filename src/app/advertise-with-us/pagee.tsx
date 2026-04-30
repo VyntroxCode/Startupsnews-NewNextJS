@@ -79,11 +79,11 @@ export default function AdvertiseWithUsPagee() {
 ];
 
 const geoData = [
-  { label: "India", value: 70 },
+
   { label: "USA", value: 70 },
-  { label: "UAE / MENA", value: 7 },
+  { label: "UAE / MENA", value: 10 },
   { label: "UK", value: 10 },
-  { label: "SEA & others", value: 15 },
+  { label: "SEA & others", value: 10 },
 ];
 
 const ProgressBar = ({ value }: { value: number }) => {
