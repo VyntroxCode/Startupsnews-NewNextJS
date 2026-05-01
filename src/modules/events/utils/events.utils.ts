@@ -34,8 +34,16 @@ function normalizeEventDescription(value?: string | null): string | undefined {
 export function entityToEvent(entity: EventEntity): StartupEvent {
   // Parse YYYY-MM-DD directly to avoid timezone shift (new Date('YYYY-MM-DD') is UTC midnight)
   const formatDateString = (d: Date | string): string => {
-    const str = typeof d === 'string' ? d : d.toISOString();
-    const [year, month, day] = str.slice(0, 10).split('-').map(Number);
+    let year: number, month: number, day: number;
+    if (d instanceof Date) {
+      // Use local date parts to avoid UTC shift
+      year = d.getFullYear();
+      month = d.getMonth() + 1;
+      day = d.getDate();
+    } else {
+      // Parse YYYY-MM-DD string directly
+      [year, month, day] = d.slice(0, 10).split('-').map(Number);
+    }
     return new Date(year, month - 1, day).toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'long',

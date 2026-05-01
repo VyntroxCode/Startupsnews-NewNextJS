@@ -50,13 +50,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(contentType)) {
-            return NextResponse.json(
-                { success: false, error: `Invalid file type: ${contentType}` },
-                { status: 400 }
-            );
-        }
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml'];
+        const resolvedContentType = allowedTypes.includes(contentType) ? contentType : 'image/jpeg';
 
         const key = s3KeyForAdminUpload(filename);
         const bucket = getS3Bucket();
@@ -84,7 +79,7 @@ export async function POST(request: NextRequest) {
         const command = new PutObjectCommand({
             Bucket: bucket,
             Key: key,
-            ContentType: contentType,
+            ContentType: resolvedContentType,
         });
 
         const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });

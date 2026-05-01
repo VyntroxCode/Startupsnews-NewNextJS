@@ -71,7 +71,8 @@ export default function CreateEventPage() {
       });
 
       if (!presignResponse.ok) {
-        throw new Error(`Failed to get upload URL (${presignResponse.status})`);
+        const errData = await presignResponse.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to get upload URL (${presignResponse.status})`);
       }
 
       const presignData = await presignResponse.json();

@@ -137,11 +137,13 @@ export class EventsRepository {
     if (typeof eventDate === 'string') {
       const trimmed = eventDate.trim();
       if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-      const d = new Date(trimmed);
-      if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
     }
+    // For Date objects, use local date parts to avoid UTC shift
     const d = eventDate instanceof Date ? eventDate : new Date(eventDate);
-    return d.toISOString().slice(0, 10);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   /**
@@ -211,7 +213,7 @@ export class EventsRepository {
         const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
         fields.push(`${dbKey} = ?`);
         // Normalize event_date to YYYY-MM-DD for MySQL DATE
-        if (key === 'event_date' && (value instanceof Date || typeof value === 'string')) {
+        if ((key === 'event_date' || key === 'event_end_date') && value !== null && (value instanceof Date || typeof value === 'string')) {
           params.push(this.normalizeEventDate(value as Date | string));
         } else {
           params.push(value as string | number | Date | null);
