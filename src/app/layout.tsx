@@ -16,7 +16,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "StartupNews.fyi – Startup News, Funding & Tech Innovation",
+    default: "Startup News | News from Startups India and across the globe",
     template: "%s | StartupNews.fyi",
   },
   description:
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: "StartupNews.fyi",
-    title: "StartupNews.fyi – Startup News, Funding & Tech Innovation",
+    title: "Startup News | News from Startups India and across the globe",
     description:
       "Your trusted source for startup news, funding rounds, and tech innovation across AI, fintech, ecommerce, healthtech, and more.",
     images: [
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "StartupNews.fyi – Startup News, Funding & Tech Innovation",
+    title: "Startup News | News from Startups India and across the globe",
     description:
       "Your trusted source for startup news, funding rounds, and tech innovation.",
     images: ["/logo.png"],
