@@ -465,7 +465,7 @@ span.mvp-woo-cart-num,
 	width: 100%;
 }
 
-h1.mvp-logo-title,
+h2.mvp-logo-title,
 h2.mvp-logo-title {
 	display: block;
 	font-size: 0px;
@@ -1859,7 +1859,7 @@ ul.mvp-fly-soc-list li a:hover {
 }
 
 h3.mvp-feat1-pop-head,
-h1.mvp-feat1-pop-head {
+h2.mvp-feat1-pop-head {
 	float: left;
 	margin-bottom: 15px;
 	position: relative;
@@ -1868,7 +1868,7 @@ h1.mvp-feat1-pop-head {
 }
 
 h3.mvp-feat1-pop-head:before,
-h1.mvp-feat1-pop-head:before {
+h2.mvp-feat1-pop-head:before {
 	content: '';
 	background: #555;
 	display: inline-block;
@@ -4087,7 +4087,7 @@ span.mvp-post-cat {
 	transform: skewX(-15deg);
 }
 
-h1.mvp-post-title {
+h2.mvp-post-title {
 	color: #000;
 	font-family: 'Oswald', sans-serif;
 	font-size: 3.5rem;
@@ -4098,21 +4098,21 @@ h1.mvp-post-title {
 	width: 80%;
 }
 
-.mvp-auto-post-grid h1.mvp-post-title {
+.mvp-auto-post-grid h2.mvp-post-title {
 	margin: 0;
 	width: 100%;
 }
 
-#mvp-post-content h1.mvp-post-title {
+#mvp-post-content h2.mvp-post-title {
 	font-size: 2.9rem;
 	margin-right: 0;
 	width: 100%;
 }
 
-.page h1.mvp-post-title,
-.attachment h1.mvp-post-title,
-.archive h1.mvp-post-title,
-.search h1.mvp-post-title {
+.page h2.mvp-post-title,
+.attachment h2.mvp-post-title,
+.archive h2.mvp-post-title,
+.search h2.mvp-post-title {
 	font-size: 2.5rem;
 	margin-right: 0;
 	text-align: center;
@@ -4249,7 +4249,7 @@ a.mvp-twit-but {
 	width: 37%;
 }
 
-h1.mvp-post-title-wide {
+h2.mvp-post-title-wide {
 	color: #fff;
 	font-size: 3.5rem;
 	font-weight: 700;
@@ -4407,7 +4407,7 @@ span.embed-youtube embed,
 	font-size: .75rem;
 }
 
-.mvp-vid-wide-text h1.mvp-vid-wide-title {
+.mvp-vid-wide-text h2.mvp-vid-wide-title {
 	color: #fff;
 	font-size: 2.1rem;
 	margin-right: 0;
@@ -5414,13 +5414,13 @@ ul.mvp-soc-mob-list li i {
 	padding: 5px 0px;
 }
 
-#mvp-content-main h1,
+#mvp-content-main h2,
 #mvp-content-main h2,
 #mvp-content-main h3,
 #mvp-content-main h4,
 #mvp-content-main h5,
 #mvp-content-main h6,
-.mvp-post-add-main h1,
+.mvp-post-add-main h2,
 .mvp-post-add-main h2,
 .mvp-post-add-main h3,
 .mvp-post-add-main h4,
@@ -5435,7 +5435,7 @@ ul.mvp-soc-mob-list li i {
 	width: 100%;
 }
 
-#mvp-content-main h1,
+#mvp-content-main h2,
 .mvp-post-add-main hi {
 	font-size: 2rem;
 }
@@ -6113,7 +6113,7 @@ p.form-allowed-tags {
 	12. Archives
 ************************************************/
 
-h1.mvp-page-head {
+h2.mvp-page-head {
 	float: left;
 	margin: 10px 0 30px;
 	width: 100%;
@@ -6213,7 +6213,7 @@ span.mvp-page-head {
 	width: 100%;
 }
 
-h1.mvp-author-top-head {
+h2.mvp-author-top-head {
 	color: #000;
 	font-size: 3.3rem;
 	font-weight: 900;
@@ -7352,8 +7352,8 @@ h2.mvp-authors-latest a,
 
 .mvp-feat2-top-text h2,
 .mvp-feat1-feat-text h2,
-h1.mvp-post-title,
-h1.mvp-post-title-wide,
+h2.mvp-post-title,
+h2.mvp-post-title-wide,
 .mvp-drop-nav-title h4,
 #mvp-content-main blockquote p,
 .mvp-post-add-main blockquote p,
@@ -7373,9 +7373,9 @@ span.mvp-widget-home-title,
 .mvp-widget-feat2-side-more,
 span.mvp-post-cat,
 span.mvp-page-head,
-h1.mvp-author-top-head,
+h2.mvp-author-top-head,
 .mvp-authors-name,
-#mvp-content-main h1,
+#mvp-content-main h2,
 #mvp-content-main h2,
 #mvp-content-main h3,
 #mvp-content-main h4,

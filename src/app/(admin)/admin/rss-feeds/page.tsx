@@ -461,7 +461,7 @@ export default function RssFeedsPage() {
       <div style={styles.container}>
         <div style={styles.header}>
           <div style={styles.headerText}>
-            <h1 style={styles.title}>RSS Feeds</h1>
+            <h2 style={styles.title}>RSS Feeds</h2>
             <p style={styles.subtitle}>Manage feeds; fetch or test from dashboard.</p>
           </div>
           <Link href="/admin/rss-feeds/create" style={styles.addButton}>

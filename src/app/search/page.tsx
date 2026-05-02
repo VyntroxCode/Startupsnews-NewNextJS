@@ -18,7 +18,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <div className="mvp-main-box">
         <div className="mvp-main-blog-cont left relative">
           <header id="mvp-post-head" className="left relative">
-            <h1 className="mvp-post-title left entry-title" itemProp="headline">
+            <h2 className="mvp-post-title left entry-title" itemProp="headline">
               {q ? (
                 <>
                   Search results for &quot;{q}&quot;
@@ -26,7 +26,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               ) : (
                 "Search"
               )}
-            </h1>
+            </h2>
           </header>
           <div className="mvp-main-blog-out left relative">
             <div className="mvp-main-blog-in">

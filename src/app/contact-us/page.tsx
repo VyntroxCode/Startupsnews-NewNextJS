@@ -9,9 +9,9 @@ export default function ContactUsPage() {
       className="left relative contact-us-custom-page">
       <div className="kt-row-column-wrap">
         <header className="contact-us-header">
-          <h1 className="contact-us-title">
+          <h2 className="contact-us-title">
             Contact Us
-          </h1>
+          </h2>
         </header>
 
         <section className="contact-us-section">

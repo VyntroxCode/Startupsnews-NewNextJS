@@ -145,7 +145,7 @@ export default function EditAuthorPage() {
         <Link href="/admin/authors" style={{ color: '#0ea5e9', textDecoration: 'none', display: 'inline-block', marginBottom: '0.75rem' }}>
           ← Back to Authors
         </Link>
-        <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#0f172a' }}>Edit Author</h1>
+        <h2 style={{ fontSize: '2rem', fontWeight: 700, color: '#0f172a' }}>Edit Author</h2>
       </div>
 
       {error && (

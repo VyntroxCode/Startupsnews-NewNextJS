@@ -130,7 +130,7 @@ export default function EditRssFeedPage() {
     <div style={{ width: '100%', maxWidth: '100%', padding: 'clamp(1rem, 2vw, 2rem)', boxSizing: 'border-box' }}>
       <div style={{ marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
         <Link href="/admin/rss-feeds" style={{ color: '#ed8936', textDecoration: 'none', display: 'inline-block', marginBottom: '0.5rem', fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>← Back to RSS Feeds</Link>
-        <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: 'bold', color: '#1a202c', marginTop: '0.5rem' }}>Edit RSS Feed</h1>
+        <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: 'bold', color: '#1a202c', marginTop: '0.5rem' }}>Edit RSS Feed</h2>
       </div>
       {error && <div style={{ background: '#fed7d7', color: '#c53030', padding: 'clamp(0.75rem, 2vw, 1rem)', borderRadius: '4px', marginBottom: '1rem', fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>{error}</div>}
       <form onSubmit={handleSubmit} style={{ background: 'white', padding: 'clamp(1.25rem, 3vw, 2rem)', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', maxWidth: '100%', width: '100%', boxSizing: 'border-box' }}>

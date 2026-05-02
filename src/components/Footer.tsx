@@ -132,6 +132,7 @@ export function Footer() {
             <ul>
               <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Submit your Event</a></li>
               <li><Link href="/advertise-with-us/pagee">Advertise with us</Link></li>
+              <li><Link href="/editorial-policy">Editorial Policy</Link></li>
             </ul>
           </div>
 

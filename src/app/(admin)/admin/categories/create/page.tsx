@@ -169,9 +169,9 @@ export default function CreateCategoryPage() {
                 >
                     ← Back to Categories
                 </Link>
-                <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#1a202c', marginTop: '0.5rem' }}>
+                <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#1a202c', marginTop: '0.5rem' }}>
                     Create New Category
-                </h1>
+                </h2>
             </div>
 
             {error && (

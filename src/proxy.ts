@@ -40,7 +40,7 @@ function renderGoneHtml(slug: string): string {
   <main class="wrap">
     <section class="card">
       <div class="code">410 Gone</div>
-      <h1>This post is no longer available</h1>
+      <h2>This post is no longer available</h2>
       <p>The requested article has been intentionally removed and is no longer accessible.</p>
       <p class="slug">Slug: ${safeSlug}</p>
     </section>

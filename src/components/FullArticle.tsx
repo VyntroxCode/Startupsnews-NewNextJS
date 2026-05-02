@@ -84,9 +84,9 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                 <span className="mvp-post-cat left">{post.category}</span>
                                             </Link>
                                         </h3>
-                                        <h1 className="mvp-post-title left entry-title post-heading-max-3-lines" itemProp="headline">
+                                        <h2 className="mvp-post-title left entry-title post-heading-max-3-lines" itemProp="headline">
                                             {post.title}
-                                        </h1>
+                                        </h2>
                                         <div className="mvp-author-info-wrap left relative">
                                             {(post.sourceName || post.sourceAuthor || post.sourceLogoUrl) ? (
                                                 <>

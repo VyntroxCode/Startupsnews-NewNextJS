@@ -29,9 +29,9 @@ export default function Error({
         fontFamily: 'system-ui, sans-serif',
       }}
     >
-      <h1 style={{ fontSize: '1.5rem', color: '#b91c1c', marginBottom: '1rem' }}>
+      <h2 style={{ fontSize: '1.5rem', color: '#b91c1c', marginBottom: '1rem' }}>
         Internal Server Error
-      </h1>
+      </h2>
       {isDev && (
         <pre
           style={{

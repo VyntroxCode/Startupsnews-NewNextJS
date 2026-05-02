@@ -28,7 +28,7 @@ export default function TermsPage() {
             <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
 
                 <header style={{ marginBottom: "60px", textAlign: "center" }}>
-                    <h1 style={{
+                    <h2 style={{
                         fontSize: "42px",
                         fontWeight: 900,
                         color: "#000",
@@ -38,7 +38,7 @@ export default function TermsPage() {
                         letterSpacing: "1px"
                     }}>
                         Terms and Conditions
-                    </h1>
+                    </h2>
                     <div style={{ width: "60px", height: "4px", background: "#ee1761", margin: "0 auto" }}></div>
                 </header>
 

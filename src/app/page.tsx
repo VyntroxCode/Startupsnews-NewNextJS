@@ -177,7 +177,7 @@ export default async function HomePage() {
                 {/* srishti */}
                 {/* <span className="startupnews-mobile-featured-time">{main.timeAgo}</span> */}
               </div>
-              <h1 className="startupnews-mobile-featured-title post-heading-max-3-lines">{main.title}</h1>
+              <h2 className="startupnews-mobile-featured-title post-heading-max-3-lines">{main.title}</h2>
             </div>
           </Link>
         </div>

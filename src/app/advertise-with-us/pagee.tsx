@@ -101,12 +101,12 @@ const ProgressBar = ({ value }: { value: number }) => {
             <section className="advertise-with-us-section" style={{ padding: "80px 20px", background: "#fff" }}>
                 <div className="advertise-with-us-main" style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
                     
-                    <h1 className="heading" style={{ fontSize: "38px", fontWeight: 700, color: "#111" }}>
+                    <h2 className="heading" style={{ fontSize: "38px", fontWeight: 700, color: "#111" }}>
                         Reach India's Most Engaged Startup & Tech Audience
-                    </h1>
-                    {/* <h1 style={{ fontSize: "22px", lineHeight: "1.05", fontWeight: 500, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
+                    </h2>
+                    {/* <h2 style={{ fontSize: "22px", lineHeight: "1.05", fontWeight: 500, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
                         StartupNews.fyi connects your brand with 10M+ monthly readers — founders, investors, and tech decision-makers across India and 24 countries. AI-curated, founder-first, globally distributed.
-                    </h1> */}
+                    </h2> */}
                     <p style={{ fontSize: "18px", lineHeight: "1.8", maxWidth: "760px", margin: "0 auto 30px", color: "#444" }}>
                         StartupNews.fyi connects your brand with 10M+ monthly readers — founders, investors, and tech decision-makers across India and 24 countries. AI-curated, founder-first, globally distributed.
                     </p>
@@ -119,9 +119,9 @@ const ProgressBar = ({ value }: { value: number }) => {
                         <p style={{ fontSize: "22px", fontWeight: 600, color: "#111", marginBottom: "16px" }}>
                         Ready to Advertise with StartupNews?
                     </p>
-                    {/* <h1 style={{ fontSize: "18px", lineHeight: "1.5", fontWeight: 400, margin: "0 auto 24px", maxWidth: "800px", color: "#000" }}>
+                    {/* <h2 style={{ fontSize: "18px", lineHeight: "1.5", fontWeight: 400, margin: "0 auto 24px", maxWidth: "800px", color: "#000" }}>
                         Connect with our advertising specialists to launch your brand across India's most trusted media network. Submit your enquiry and we'll create the perfect media strategy for your business goals.
-                    </h1>
+                    </h2>
 
                     <div className="benefits" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "15px", justifyContent: "center" }}>
                         
@@ -161,9 +161,9 @@ const ProgressBar = ({ value }: { value: number }) => {
                     <p style={{ fontSize: "30px", fontWeight: 600, color: "#111", marginBottom: "16px" }}>
                         Reach That Matters
                     </p>
-                    <h1 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
+                    <h2 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
                        StartupNews's unparalleled scale across India's most trusted media platforms
-                    </h1>
+                    </h2>
                 </div>
                 <div style={{ maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "18px" }}>
                     {[
@@ -192,9 +192,9 @@ const ProgressBar = ({ value }: { value: number }) => {
                     <p style={{ fontSize: "30px", fontWeight: 600, color: "#111", marginBottom: "16px" }}>
                         Leading brands across India
                     </p>
-                    <h1 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
+                    <h2 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
                        Join 10,000+ advertisers who trust StartupNews for their media campaigns
-                    </h1>
+                    </h2>
 
                     {/* <div style={{ overflow: "hidden", marginTop: "40px", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "18px"}}> */}
                     {/* <div className="marquee marquee-right-to-left" style={{ display: "flex", alignItems: "center" }}>

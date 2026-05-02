@@ -307,14 +307,14 @@ export default function CreatePostPage() {
         >
           ← Back to Posts
         </Link>
-        <h1 style={{
+        <h2 style={{
           fontSize: '2rem',
           fontWeight: 'bold',
           color: '#1a202c',
           marginTop: '0.5rem',
         }}>
           Create New Post
-        </h1>
+        </h2>
       </div>
 
       {error && (

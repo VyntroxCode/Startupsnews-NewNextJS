@@ -17,7 +17,7 @@ export default function OurPartnersPage() {
         style={{ maxWidth: "800px", margin: "0 auto", padding: "60px 24px 80px" }}
       >
         <header style={{ textAlign: "center", marginBottom: "40px" }}>
-          <h1
+          <h2
             style={{
               fontSize: "28px",
               fontWeight: 800,
@@ -27,7 +27,7 @@ export default function OurPartnersPage() {
             }}
           >
             Our Partners
-          </h1>
+          </h2>
         </header>
         <section style={{ textAlign: "center" }}>
           <p style={{ fontSize: "15px", lineHeight: "1.6", color: "#666" }}>

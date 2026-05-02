@@ -62,7 +62,7 @@ export function MobileCategorySection({ title, posts, slug }: MobileCategorySect
                             {/* srishti */}
                             {/* <span className="startupnews-mobile-featured-time">{featured1.timeAgo}</span> */}
                         </div>
-                        <h1 className="startupnews-mobile-featured-title post-heading-max-3-lines">{featured1.title}</h1>
+                        <h2 className="startupnews-mobile-featured-title post-heading-max-3-lines">{featured1.title}</h2>
                     </div>
                 </Link>
             </div>
@@ -95,7 +95,7 @@ export function MobileCategorySection({ title, posts, slug }: MobileCategorySect
                                 {/* srishti */}
                                 {/* <span className="startupnews-mobile-featured-time">{featured2.timeAgo}</span> */}
                             </div>
-                            <h1 className="startupnews-mobile-featured-title post-heading-max-3-lines">{featured2.title}</h1>
+                            <h2 className="startupnews-mobile-featured-title post-heading-max-3-lines">{featured2.title}</h2>
                         </div>
                     </Link>
                 </div>

@@ -104,7 +104,7 @@ export default function EventsPage() {
           gap: '1rem',
         }}>
           <div>
-            <h1 style={{
+            <h2 style={{
               fontSize: '2.25rem',
               fontWeight: '700',
               marginBottom: '0.5rem',
@@ -112,7 +112,7 @@ export default function EventsPage() {
               letterSpacing: '-0.02em',
             }}>
               Events
-            </h1>
+            </h2>
             <p style={{
               color: '#64748b',
               fontSize: '1rem',

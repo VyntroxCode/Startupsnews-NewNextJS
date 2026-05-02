@@ -151,14 +151,14 @@ export default function EditBannerPage() {
         >
           ← Back to Banners
         </Link>
-        <h1 style={{
+        <h2 style={{
           fontSize: '2rem',
           fontWeight: 'bold',
           color: '#1a202c',
           marginTop: '0.5rem',
         }}>
           Edit Banner
-        </h1>
+        </h2>
       </div>
 
       {error && (

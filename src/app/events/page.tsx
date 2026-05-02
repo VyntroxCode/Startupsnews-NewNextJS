@@ -43,7 +43,7 @@ export default async function EventsPage() {
             </span>
           </nav>
           <header className="event-by-country-header">
-            <h1 className="event-by-country-title">Events</h1>
+            <h2 className="event-by-country-title">Events</h2>
             <p className="event-by-country-subtitle">Discover startup and technology events by region.</p>
           </header>
           <div className="mvp-main-blog-out left relative event-by-country-out">

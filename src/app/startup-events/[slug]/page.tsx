@@ -95,7 +95,7 @@ export default async function StartupEventPage({
                   style={{ objectFit: "contain" }}
                 />
               </div>
-              <h1 className="event-detail-title">{event.title}</h1>
+              <h2 className="event-detail-title">{event.title}</h2>
               <div className="event-detail-meta">
                 <span className="event-detail-date">{event.date}</span>
                 {event.eventTime && (

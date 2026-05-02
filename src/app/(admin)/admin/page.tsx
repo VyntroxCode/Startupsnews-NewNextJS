@@ -213,7 +213,7 @@ export default function AdminDashboard() {
     <AdminErrorBoundary>
       <div>
         <div style={{ marginBottom: '2.5rem' }}>
-          <h1 style={{
+          <h2 style={{
             fontSize: '2.25rem',
             fontWeight: '700',
             marginBottom: '0.5rem',
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
             letterSpacing: '-0.02em',
           }}>
             Dashboard
-          </h1>
+          </h2>
           <p style={{
             color: '#64748b',
             fontSize: '1rem',

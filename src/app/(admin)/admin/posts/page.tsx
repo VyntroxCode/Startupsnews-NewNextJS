@@ -255,7 +255,7 @@ export default function PostsPage() {
           gap: '1rem',
         }}>
           <div>
-            <h1 style={{
+            <h2 style={{
               fontSize: '2.25rem',
               fontWeight: '700',
               marginBottom: '0.5rem',
@@ -263,7 +263,7 @@ export default function PostsPage() {
               letterSpacing: '-0.02em',
             }}>
               Posts
-            </h1>
+            </h2>
             <p style={{
               color: '#64748b',
               fontSize: '1rem',

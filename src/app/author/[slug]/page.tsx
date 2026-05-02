@@ -63,7 +63,7 @@ export default async function AuthorPage(
           <div className="author-header-inner">
             <AuthorProfileAvatar name={data.name} avatarUrl={data.avatarUrl} />
             <div className="author-page-info">
-              <h1>{data.name}</h1>
+              <h2 style={{ fontSize: '2em' }}>{data.name}</h2>
               {bio && (
                 <p className="author-page-bio">
                   {bio}

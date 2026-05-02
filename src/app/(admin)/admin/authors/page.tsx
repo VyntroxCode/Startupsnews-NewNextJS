@@ -94,7 +94,7 @@ export default function AuthorsPage() {
           }}
         >
           <div>
-            <h1
+            <h2
               style={{
                 fontSize: '2.25rem',
                 fontWeight: '700',
@@ -104,7 +104,7 @@ export default function AuthorsPage() {
               }}
             >
               Authors
-            </h1>
+            </h2>
             <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>
               Manage authors used for manual news posts.
             </p>

@@ -29,7 +29,7 @@ export default function DeleteYourAccountPage() {
 
       <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
         <header style={{ marginBottom: "60px", textAlign: "center" }}>
-          <h1
+          <h2
             className="delete-account-title"
             style={{
               fontSize: "42px",
@@ -43,7 +43,7 @@ export default function DeleteYourAccountPage() {
             }}
           >
             Delete Your Account
-          </h1>
+          </h2>
           <p className="delete-account-subtitle" style={{ fontSize: "18px", color: "#444", lineHeight: "1.7", marginBottom: "20px" }}>
             Are you sure you want to delete your account? This action cannot be undone.
           </p>

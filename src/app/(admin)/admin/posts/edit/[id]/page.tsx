@@ -370,14 +370,14 @@ export default function EditPostPage() {
         >
           ← Back to Posts
         </Link>
-        <h1 style={{
+        <h2 style={{
           fontSize: '2rem',
           fontWeight: 'bold',
           color: '#1a202c',
           marginTop: '0.5rem',
         }}>
           Edit Post
-        </h1>
+        </h2>
       </div>
 
       {error && (

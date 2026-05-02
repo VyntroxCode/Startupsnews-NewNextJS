@@ -74,7 +74,7 @@ export default function CategoriesPage() {
           gap: '1rem',
         }}>
           <div>
-            <h1 style={{
+            <h2 style={{
               fontSize: '2.25rem',
               fontWeight: '700',
               marginBottom: '0.5rem',
@@ -82,7 +82,7 @@ export default function CategoriesPage() {
               letterSpacing: '-0.02em',
             }}>
               Categories
-            </h1>
+            </h2>
             <p style={{
               color: '#64748b',
               fontSize: '1rem',

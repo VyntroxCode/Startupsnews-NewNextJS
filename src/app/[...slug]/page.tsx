@@ -69,9 +69,9 @@ async function renderCategoryPage(slug: string) {
               {title}
             </span>
           </nav>
-          <h1 className="mvp-feat1-pop-head sector-page-theme-title">
+          <h2 className="mvp-feat1-pop-head sector-page-theme-title">
             <span className="mvp-feat1-pop-head">{title}</span>
-          </h1>
+          </h2>
 
           {heroPost && (
             <div className="sector-hero-wrap left relative">
@@ -90,7 +90,7 @@ async function renderCategoryPage(slug: string) {
                 </div>
                 <div className="sector-hero-overlay" />
                 <div className="sector-hero-content">
-                  <h1 className="sector-hero-title">{heroPost.title}</h1>
+                  <h2 className="sector-hero-title">{heroPost.title}</h2>
                 </div>
               </Link>
             </div>

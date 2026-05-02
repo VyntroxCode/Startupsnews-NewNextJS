@@ -28,7 +28,7 @@ export default function ReturnRefundPolicyPage() {
             <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
 
                 <header style={{ marginBottom: "60px", textAlign: "center" }}>
-                    <h1 style={{
+                    <h2 style={{
                         fontSize: "42px",
                         fontWeight: 900,
                         color: "#000",
@@ -38,7 +38,7 @@ export default function ReturnRefundPolicyPage() {
                         letterSpacing: "1px"
                     }}>
                         Cancellation / Refund Policy
-                    </h1>
+                    </h2>
                     <p style={{ fontSize: "14px", color: "#666", marginBottom: "20px" }}>Last updated: January 16, 2023</p>
                     <div style={{ width: "60px", height: "4px", background: "#ee1761", margin: "0 auto" }}></div>
                 </header>

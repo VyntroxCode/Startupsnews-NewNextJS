@@ -91,7 +91,7 @@ export default function AdminHeader({ user, sidebarOpen, onToggleSidebar }: Admi
           </svg>
         </button>
         <div>
-          <h1
+          <h2
             style={{
               fontSize: '1.125rem',
               fontWeight: '600',
@@ -101,7 +101,7 @@ export default function AdminHeader({ user, sidebarOpen, onToggleSidebar }: Admi
             }}
           >
             Welcome back, {user?.name || user?.email?.split('@')[0] || 'Admin'}
-          </h1>
+          </h2>
           <p
             style={{
               fontSize: '0.75rem',

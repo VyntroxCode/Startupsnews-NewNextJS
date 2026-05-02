@@ -159,7 +159,7 @@
 		left: 20px;
 		}
 		
-	h1.mvp-post-title-wide {
+	h2.mvp-post-title-wide {
 		font-size: 3.3rem;
 		}
 		
@@ -440,7 +440,7 @@
 		font-size: 1.4rem;
 		}
 		
-	h1.mvp-post-title {
+	h2.mvp-post-title {
 		margin-right: 0;
 		width: 100%;
 		}
@@ -509,7 +509,7 @@
 		font-size: 1rem;
 		}
 		
-	#mvp-post-content h1.mvp-post-title {
+	#mvp-post-content h2.mvp-post-title {
 		font-size: 2.5rem;
 		}
 		
@@ -546,7 +546,7 @@
 		left: 20px;
 		}
 		
-	h1.mvp-post-title-wide {
+	h2.mvp-post-title-wide {
 		font-size: 3rem;
 		}
 		
@@ -986,7 +986,7 @@
 		font-size: 1.3rem;
 		}
 		
-	h1.mvp-post-title {
+	h2.mvp-post-title {
 		margin-right: 0;
 		width: 100%;
 		}
@@ -1107,7 +1107,7 @@
 		width: 100%;
 		}
 		
-	#mvp-post-content h1.mvp-post-title {
+	#mvp-post-content h2.mvp-post-title {
 		font-size: 2.3rem;
 		}
 		
@@ -1148,7 +1148,7 @@
 		left: 20px;
 		}
 		
-	h1.mvp-post-title-wide {
+	h2.mvp-post-title-wide {
 		font-size: 2.7rem;
 		}
 		
@@ -1177,10 +1177,10 @@
 		font-size: 1.1rem;
 		}
 		
-	.page h1.mvp-post-title,
-	.attachment h1.mvp-post-title,
-	.archive h1.mvp-post-title,
-	.search h1.mvp-post-title {
+	.page h2.mvp-post-title,
+	.attachment h2.mvp-post-title,
+	.archive h2.mvp-post-title,
+	.search h2.mvp-post-title {
 		font-size: 2.1rem;
 		}
 		
@@ -1201,7 +1201,7 @@
 		width: 150px;
 		}
 		
-	h1.mvp-author-top-head {
+	h2.mvp-author-top-head {
 		font-size: 2.5rem;
 		}
 		
@@ -1725,7 +1725,7 @@
 		font-size: .9rem;
 		}
 		
-	h1.mvp-post-title {
+	h2.mvp-post-title {
 		font-size: 2.9rem;
 		margin-right: 0;
 		width: 100%;
@@ -1859,7 +1859,7 @@
 		left: 20px;
 		}
 		
-	h1.mvp-post-title-wide {
+	h2.mvp-post-title-wide {
 		font-size: 2.3rem;
 		}
 		
@@ -1911,10 +1911,10 @@
 		font-size: 1rem;
 		}
 		
-	.page h1.mvp-post-title,
-	.attachment h1.mvp-post-title,
-	.archive h1.mvp-post-title,
-	.search h1.mvp-post-title {
+	.page h2.mvp-post-title,
+	.attachment h2.mvp-post-title,
+	.archive h2.mvp-post-title,
+	.search h2.mvp-post-title {
 		font-size: 2.1rem;
 		}
 		
@@ -1935,7 +1935,7 @@
 		width: 150px;
 		}
 		
-	h1.mvp-author-top-head {
+	h2.mvp-author-top-head {
 		font-size: 2.5rem;
 		}
 		
@@ -2606,8 +2606,8 @@
 		font-size: .9rem;
 		}
 		
-	h1.mvp-post-title,
-	#mvp-post-content h1.mvp-post-title {
+	h2.mvp-post-title,
+	#mvp-post-content h2.mvp-post-title {
 		font-size: 2.6rem;
 		margin-right: 0;
 		width: 100%;
@@ -2766,7 +2766,7 @@
 		width: 40%;
 		}
 		
-	h1.mvp-post-title-wide {
+	h2.mvp-post-title-wide {
 		font-size: 2rem;
 		}
 		
@@ -2829,10 +2829,10 @@
 		font-size: 2.3rem;
 		}
 		
-	.page h1.mvp-post-title,
-	.attachment h1.mvp-post-title,
-	.archive h1.mvp-post-title,
-	.search h1.mvp-post-title {
+	.page h2.mvp-post-title,
+	.attachment h2.mvp-post-title,
+	.archive h2.mvp-post-title,
+	.search h2.mvp-post-title {
 		font-size: 1.8rem;
 		}
 		
@@ -2854,7 +2854,7 @@
 		width: 130px;
 		}
 		
-	h1.mvp-author-top-head {
+	h2.mvp-author-top-head {
 		font-size: 2.5rem;
 		}
 		
@@ -3600,8 +3600,8 @@
 		font-size: .9rem;
 		}
 		
-	h1.mvp-post-title,
-	#mvp-post-content h1.mvp-post-title {
+	h2.mvp-post-title,
+	#mvp-post-content h2.mvp-post-title {
 		font-size: 2.5rem;
 		margin-right: 0;
 		width: 100%;
@@ -3793,7 +3793,7 @@
 		width: 40%;
 		}
 		
-	h1.mvp-post-title-wide {
+	h2.mvp-post-title-wide {
 		font-size: 1.9rem;
 		}
 		
@@ -3860,10 +3860,10 @@
 		font-size: 1.9rem;
 		}
 		
-	.page h1.mvp-post-title,
-	.attachment h1.mvp-post-title,
-	.archive h1.mvp-post-title,
-	.search h1.mvp-post-title {
+	.page h2.mvp-post-title,
+	.attachment h2.mvp-post-title,
+	.archive h2.mvp-post-title,
+	.search h2.mvp-post-title {
 		font-size: 1.7rem;
 		}
 		
@@ -3885,7 +3885,7 @@
 		width: 130px;
 		}
 		
-	h1.mvp-author-top-head {
+	h2.mvp-author-top-head {
 		font-size: 2.5rem;
 		}
 		
@@ -4690,8 +4690,8 @@
 		font-size: .8rem;
 		}
 		
-	h1.mvp-post-title,
-	#mvp-post-content h1.mvp-post-title {
+	h2.mvp-post-title,
+	#mvp-post-content h2.mvp-post-title {
 		font-size: 1.9rem;
 		margin-right: 0;
 		width: 100%;
@@ -4921,7 +4921,7 @@
 		width: 44%;
 		}
 		
-	h1.mvp-post-title-wide {
+	h2.mvp-post-title-wide {
 		font-size: 1.5rem;
 		}
 		
@@ -4954,7 +4954,7 @@
 		width: 100%;
 		}
 		
-	.mvp-vid-wide-text h1.mvp-vid-wide-title {
+	.mvp-vid-wide-text h2.mvp-vid-wide-title {
 		font-size: 1.5rem;
 		}
 		
@@ -4995,10 +4995,10 @@
 		font-size: 2.4rem;
 		}
 		
-	.page h1.mvp-post-title,
-	.attachment h1.mvp-post-title,
-	.archive h1.mvp-post-title,
-	.search h1.mvp-post-title {
+	.page h2.mvp-post-title,
+	.attachment h2.mvp-post-title,
+	.archive h2.mvp-post-title,
+	.search h2.mvp-post-title {
 		font-size: 1.5rem;
 		}
 		
@@ -5027,7 +5027,7 @@
 		width: 150px;
 		}
 		
-	h1.mvp-author-top-head {
+	h2.mvp-author-top-head {
 		font-size: 2.3rem;
 		}
 		
@@ -5974,8 +5974,8 @@
 		font-size: .8rem;
 		}
 		
-	h1.mvp-post-title,
-	#mvp-post-content h1.mvp-post-title {
+	h2.mvp-post-title,
+	#mvp-post-content h2.mvp-post-title {
 		font-size: 1.8rem;
 		margin-right: 0;
 		width: 100%;
@@ -6205,7 +6205,7 @@
 		width: 60%;
 		}
 		
-	h1.mvp-post-title-wide {
+	h2.mvp-post-title-wide {
 		font-size: 1.5rem;
 		}
 		
@@ -6247,7 +6247,7 @@
 		width: 100%;
 		}
 		
-	.mvp-vid-wide-text h1.mvp-vid-wide-title {
+	.mvp-vid-wide-text h2.mvp-vid-wide-title {
 		font-size: 1.5rem;
 		}
 		
@@ -6296,10 +6296,10 @@
 		font-size: 1.9rem;
 		}
 		
-	.page h1.mvp-post-title,
-	.attachment h1.mvp-post-title,
-	.archive h1.mvp-post-title,
-	.search h1.mvp-post-title {
+	.page h2.mvp-post-title,
+	.attachment h2.mvp-post-title,
+	.archive h2.mvp-post-title,
+	.search h2.mvp-post-title {
 		font-size: 1.3rem;
 		}
 		
@@ -6329,7 +6329,7 @@
 		width: 120px;
 		}
 		
-	h1.mvp-author-top-head {
+	h2.mvp-author-top-head {
 		font-size: 2.1rem;
 		}
 		
