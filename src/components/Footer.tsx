@@ -134,9 +134,9 @@ export function Footer() {
             <h3>Events</h3>
             <ul>
                <li><Link href="/events">Upcoming Events</Link></li>
-               <li><Link href="/events">Tech Events in Dubai</Link></li>
+               <li><Link href="/events/dubai">Tech Events in Dubai</Link></li>
                <li><Link href="/events">Tech Events in Singapore</Link></li>
-               <li><Link href="/events">Startup Events in Bengaluru </Link></li>
+               <li><Link href="/events/bengaluru">Startup Events in Bengaluru </Link></li>
               <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Partner / Sponsor an Event</a></li>
               <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Submit Your Event</a></li>
             </ul>
