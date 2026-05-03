@@ -21,8 +21,7 @@ export const siteConfig = {
     },
     { label: "FUNDING TRACKER", href: "/funding" },
     { label: "EVENTS", href: "/events" },
-    { label: "REPORTS" },
-    { label: "AI", href: "/ai-deeptech" },
+    { label: "AI SPOTLIGHT ", href: "/ai-deeptech" },
     { label: "ADVERTISE", href: "advertise-with-us/pagee" },
   ],
   footerMenu: [

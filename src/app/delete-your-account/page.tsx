@@ -9,24 +9,6 @@ export default function DeleteYourAccountPage() {
       className="left relative delete-account-custom-page"
       style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}
     >
-      <div
-        className="sn-social-vertical"
-        style={{
-          position: "fixed",
-          left: "40px",
-          top: "150px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-          zIndex: 100,
-        }}
-      >
-        <div style={socialIconStyle("#3b5998")}><i className="fa-brands fa-facebook-f"></i></div>
-        <div style={socialIconStyle("#000")}><i className="fa-brands fa-x-twitter"></i></div>
-        <div style={socialIconStyle("#bd081c")}><i className="fa-brands fa-pinterest-p"></i></div>
-        <div style={socialIconStyle("#ccc")}><i className="fa-solid fa-envelope"></i></div>
-      </div>
-
       <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
         <header style={{ marginBottom: "60px", textAlign: "center" }}>
           <h2
@@ -87,12 +69,6 @@ export default function DeleteYourAccountPage() {
       <style jsx>{`
         .delete-account-title {
           text-wrap: balance;
-        }
-
-        @media (max-width: 1024px) {
-          .sn-social-vertical {
-            display: none !important;
-          }
         }
 
         @media (max-width: 600px) {

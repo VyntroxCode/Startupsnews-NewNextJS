@@ -415,7 +415,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                         <div className="form-row">
                             <div className="form-group">
                                 <label>Budget Rate *</label>
-                                <input type="text" name="budgetRate" required placeholder="Under ₹25,000" value={formData.budgetRate} onChange={handleChange} />
+                                <input type="text" name="budgetRate" required placeholder="Under $ 500" value={formData.budgetRate} onChange={handleChange} />
                                 {/* <select name="jobLevel" required value={formData.jobLevel} onChange={handleChange}>
                                     <option value="">Under ₹25,000</option>
                                     <option value="C-Level">C-Level</option>

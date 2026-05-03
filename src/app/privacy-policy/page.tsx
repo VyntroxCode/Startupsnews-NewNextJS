@@ -9,22 +9,6 @@ export default function PrivacyPolicyPage() {
     return (
         <div id="mvp-article-cont" className="left relative privacy-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}>
 
-            {/* STICKY SOCIAL SIDEBAR (CONSISTENCY WITH ABOUT PAGE) */}
-            <div className="sn-social-vertical" style={{
-                position: "fixed",
-                left: "40px",
-                top: "150px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-                zIndex: 100
-            }}>
-                <div style={{ width: "32px", height: "32px", background: "#3b5998", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px" }}><i className="fa-brands fa-facebook-f"></i></div>
-                <div style={{ width: "32px", height: "32px", background: "#000", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px" }}><i className="fa-brands fa-x-twitter"></i></div>
-                <div style={{ width: "32px", height: "32px", background: "#bd081c", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px" }}><i className="fa-brands fa-pinterest-p"></i></div>
-                <div style={{ width: "32px", height: "32px", background: "#ccc", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px" }}><i className="fa-solid fa-envelope"></i></div>
-            </div>
-
             <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
 
                 <header style={{ marginBottom: "60px", textAlign: "center" }}>
@@ -155,13 +139,6 @@ export default function PrivacyPolicyPage() {
 
             </div>
 
-            <style jsx>{`
-                @media (max-width: 1024px) {
-                    .sn-social-vertical {
-                        display: none !important;
-                    }
-                }
-            `}</style>
         </div>
     );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/config";
+import Mail from "nodemailer/lib/mailer";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -89,7 +90,7 @@ export function Footer() {
                 </Link>   
               )}
               {siteConfig.social.googleplay && (
-                   <Link href="">
+                   <Link href="https://play.google.com/store/apps/details?id=com.startupnews.fyi&hl=en_IN">
                   <Image
                   src={siteConfig.social.googleplay}
                   alt="Google Play"
@@ -119,20 +120,25 @@ export function Footer() {
           </div>
 
           <div>
-            <h3>For Startup</h3>
+            <h3>For Founders</h3>
             <ul>
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Feature your Startup</a></li>
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Submit your Funding Round</a></li>
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Submit your press release</a></li>
+              <li><Link href="/advertise-with-us/pagee">Get Media Coverage</Link></li>
+              <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Sponsor an Event</a></li>
             </ul>
           </div>
 
           <div>
-            <h3>For Events</h3>
+            <h3>Events</h3>
             <ul>
-              <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Submit your Event</a></li>
-              <li><Link href="/advertise-with-us/pagee">Advertise with us</Link></li>
-              <li><Link href="/editorial-policy">Editorial Policy</Link></li>
+               <li><Link href="/events">Upcoming Events</Link></li>
+               <li><Link href="/events">Tech Events in Dubai</Link></li>
+               <li><Link href="/events">Tech Events in Singapore</Link></li>
+               <li><Link href="/events">Startup Events in Bengaluru </Link></li>
+              <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Partner / Sponsor an Event</a></li>
+              <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Submit Your Event</a></li>
             </ul>
           </div>
 
@@ -142,8 +148,8 @@ export function Footer() {
               {/* <li><Link href="/dealflow-newsletter">Dealflow Newsletter</Link></li>
               <li><Link href="/regional-reports">Regional Reports</Link></li>
               <li><Link href="/speak-sponsor">Speak / Sponsor Opportunities</Link></li> */}
-              <li>Dealflow Newsletter</li>
-              <li>Regional Reports</li>
+              <li><Link href="/funding"> Funding Tracker</Link></li>
+              <li>Indian Startup Funding Report</li>
               <li>Speak / Sponsor Opportunities</li>
             </ul>
           </div>
@@ -152,8 +158,11 @@ export function Footer() {
             <h3>About Us</h3>
             <ul>
               <li><Link href="/about">About us</Link></li>
-              <li><Link href="">Our Partners</Link></li>
-              <li><Link href="/contact-us">Contact us</Link></li>
+              <li><Link href="/advertise-with-us/pagee">Advertise with Us</Link></li>
+              <li><Link href="/editorial-policy">Editorial Policy</Link></li>
+              <li>Our Partners</li>
+              <li> <a href="mailto:office@startupnews.fyi">Careers</a></li>
+              <li><Link href="/contact-us">Contact Us</Link></li>
             </ul>
           </div>
         </div>

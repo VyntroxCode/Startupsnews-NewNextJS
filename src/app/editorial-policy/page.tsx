@@ -173,14 +173,9 @@ export default function EditorialPolicy() {
             </div>
 
             <style jsx>{`
-                @media (max-width: 1024px) {
-                    .sn-social-vertical {
-                        display: none !important;
-                    }
-                }
                     .editorial-purpose th, td{
                     width: 50%;
-                    textAlign: "left";
+                    text-align: left;
                     }
             `}</style>
         </div>
