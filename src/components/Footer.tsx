@@ -160,7 +160,7 @@ export function Footer() {
               <li><Link href="/about">About us</Link></li>
               <li><Link href="/advertise-with-us/pagee">Advertise with Us</Link></li>
               <li><Link href="/editorial-policy">Editorial Policy</Link></li>
-              <li>Our Partners</li>
+              <li><Link href="/our-partners">Our Partners</Link></li>
               <li> <a href="mailto:office@startupnews.fyi">Careers</a></li>
               <li><Link href="/contact-us">Contact Us</Link></li>
             </ul>

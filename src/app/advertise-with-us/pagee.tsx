@@ -45,30 +45,6 @@ export default function AdvertiseWithUsPagee() {
                 objective: '',
             });
         };
-    const brandLogosRow1 = [
-        { alt: "Asian Paints", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756050325113-edy8al7ebg4.webp" },
-        { alt: "Ambuja Cement", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756184858288-j473r4oo2n.webp" },
-        { alt: "Pepsi", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756186381927-5336jij4k0q.webp" },
-        { alt: "Berger", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051724989-ngqc5j2n7pj.webp" },
-        { alt: "Jio", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756185273540-5pun3kq2kec.webp" },
-        { alt: "UltraTech", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756184929887-hsbiqphpwc8.webp" },
-        { alt: "Emami", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051739371-omx6m9lhah.webp" },
-        { alt: "Kansai Nerolac", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051815302-v1v6wfbyge.webp" },
-        { alt: "ICICI Bank", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756185233848-65u9b2zjwda.webp" },
-        { alt: "Skoda", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756184897356-12huosl8odeb.webp" },
-    ];
-    const brandLogosRow2 = [
-        { alt: "Myntra", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051904062-qxzviebxbz9.webp" },
-        { alt: "Kotak", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051867847-3114agspzp.webp" },
-        { alt: "Dabur", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051732367-xqplv5e78n.webp" },
-        { alt: "Pidilite", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051922921-9dgu9iokmz.webp" },
-        { alt: "Xiaomi", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756186026719-8x5rhwmmtcl.webp" },
-        { alt: "Reckitt", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756184858288-j473r4oo2n.webp" },
-        { alt: "Mankind", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051867847-3114agspzp.webp" },
-        { alt: "Hindustan Unilever", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756050325113-edy8al7ebg4.webp" },
-        { alt: "Yes Bank", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756187079216-zej4myhrj3k.webp" },
-        { alt: "Mahindra", src: "https://kpbvnnqrlchqierazara.supabase.co/storage/v1/object/public/brand-logos/client_brands/1756051859989-9eobrbryjka.webp" },
-    ];
 
     const audienceData = [
   { label: "Startup founders & co-founders", value: 38 },
