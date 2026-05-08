@@ -223,6 +223,7 @@ export class PostsService {
     slug: string;
     excerpt: string;
     metaDescription?: string;
+    robots?: string;
     content: string;
     categoryId: number;
     authorId: number;
@@ -268,6 +269,7 @@ export class PostsService {
     slug: string;
     excerpt: string;
     metaDescription: string;
+    robots: string;
     content: string;
     categoryId: number;
     authorId: number;
@@ -304,6 +306,7 @@ export class PostsService {
     if (data.slug !== undefined) updateData.slug = data.slug;
     if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
     if (data.metaDescription !== undefined) updateData.meta_description = data.metaDescription;
+    if ((data as { robots?: string }).robots !== undefined) (updateData as Record<string, unknown>)['robots'] = (data as { robots?: string }).robots;
     if (data.content !== undefined) updateData.content = data.content;
     if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
     if (data.authorId !== undefined) updateData.author_id = data.authorId;

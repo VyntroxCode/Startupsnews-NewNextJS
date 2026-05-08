@@ -15,6 +15,7 @@ const FULLTEXT_BOOLEAN_STOPWORDS = new Set([
 
 export class PostsRepository {
   private metaDescriptionColumnExists: boolean | null = null;
+  private robotsColumnExists: boolean | null = null;
 
   /** Escape %, _, and \\ for SQL LIKE … ESCAPE '\\'. */
   private escapeLikePattern(value: string): string {
@@ -98,6 +99,19 @@ export class PostsRepository {
     );
     this.metaDescriptionColumnExists = Boolean(row?.cnt);
     return this.metaDescriptionColumnExists;
+  }
+
+  private async hasRobotsColumn(): Promise<boolean> {
+    if (this.robotsColumnExists !== null) return this.robotsColumnExists;
+    const row = await queryOne<{ cnt: number }>(
+      `SELECT COUNT(*) AS cnt
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'posts'
+         AND COLUMN_NAME = 'robots'`
+    );
+    this.robotsColumnExists = Boolean(row?.cnt);
+    return this.robotsColumnExists;
   }
 
   /**
@@ -581,6 +595,7 @@ export class PostsRepository {
     slug: string;
     excerpt: string;
     metaDescription?: string;
+    robots?: string;
     content: string;
     categoryId: number;
     authorId: number;
@@ -591,59 +606,43 @@ export class PostsRepository {
     featured?: boolean;
   }): Promise<PostEntity> {
     const status = data.status || 'draft';
-    const hasMetaDescription = await this.hasMetaDescriptionColumn();
-    const sql = hasMetaDescription
-      ? `
-      INSERT INTO posts (
-        title, slug, excerpt, meta_description, content, category_id, author_id,
-        featured_image_url, featured_image_small_url, format, status, featured, published_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `
-      : `
-      INSERT INTO posts (
-        title, slug, excerpt, content, category_id, author_id,
-        featured_image_url, featured_image_small_url, format, status, featured, published_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    const params = hasMetaDescription
-      ? [
-        data.title,
-        data.slug,
-        data.excerpt,
-        data.metaDescription || null,
-        data.content,
-        data.categoryId,
-        data.authorId,
-        data.featuredImageUrl || null,
-        data.featuredImageSmallUrl || null,
-        data.format || 'standard',
-        status,
-        data.featured ? 1 : 0,
-        status === 'published' ? new Date() : null,
-      ]
-      : [
-        data.title,
-        data.slug,
-        data.excerpt,
-        data.content,
-        data.categoryId,
-        data.authorId,
-        data.featuredImageUrl || null,
-        data.featuredImageSmallUrl || null,
-        data.format || 'standard',
-        status,
-        data.featured ? 1 : 0,
-        status === 'published' ? new Date() : null,
-      ];
+    const [hasMetaDescription, hasRobots] = await Promise.all([
+      this.hasMetaDescriptionColumn(),
+      this.hasRobotsColumn(),
+    ]);
+
+    const columns = [
+      'title', 'slug', 'excerpt',
+      ...(hasMetaDescription ? ['meta_description'] : []),
+      ...(hasRobots ? ['robots'] : []),
+      'content', 'category_id', 'author_id',
+      'featured_image_url', 'featured_image_small_url', 'format', 'status', 'featured', 'published_at',
+    ];
+    const params = [
+      data.title,
+      data.slug,
+      data.excerpt,
+      ...(hasMetaDescription ? [data.metaDescription || null] : []),
+      ...(hasRobots ? [data.robots || 'index,follow'] : []),
+      data.content,
+      data.categoryId,
+      data.authorId,
+      data.featuredImageUrl || null,
+      data.featuredImageSmallUrl || null,
+      data.format || 'standard',
+      status,
+      data.featured ? 1 : 0,
+      status === 'published' ? new Date() : null,
+    ];
+
+    const sql = `INSERT INTO posts (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
 
     const conn = await getDbConnection();
     const connection = await conn.getConnection();
     try {
       const result = await connection.query(sql, params) as { insertId?: number };
       const insertId = result.insertId;
-      if (!insertId) {
-        throw new Error('Failed to get insert ID');
-      }
+      if (!insertId) throw new Error('Failed to get insert ID');
       return this.findById(insertId) as Promise<PostEntity>;
     } finally {
       connection.release();
@@ -654,9 +653,15 @@ export class PostsRepository {
    * Update post
    */
   async update(id: number, data: Partial<PostEntity>): Promise<PostEntity> {
-    const hasMetaDescription = await this.hasMetaDescriptionColumn();
+    const [hasMetaDescription, hasRobots] = await Promise.all([
+      this.hasMetaDescriptionColumn(),
+      this.hasRobotsColumn(),
+    ]);
     if (!hasMetaDescription && Object.prototype.hasOwnProperty.call(data, 'meta_description')) {
       delete (data as Partial<PostEntity>).meta_description;
+    }
+    if (!hasRobots && Object.prototype.hasOwnProperty.call(data, 'robots')) {
+      delete (data as Partial<PostEntity> & { robots?: string }).robots;
     }
 
     const fields: string[] = [];

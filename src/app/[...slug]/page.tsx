@@ -247,10 +247,12 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     const description = (post.metaDescription || post.excerpt || "").slice(0, 160);
     const image = post.image && !post.image.includes("unsplash.com/photo-1504711434969") ? post.image : undefined;
     const postUrl = `${SITE_BASE}/${post.categorySlug}/${normalizePostSlugForCategory(post.categorySlug, post.slug)}`;
+    const robotsValue = (post as { robots?: string | null }).robots || 'index,nofollow';
 
     return {
       title,
       description: description || undefined,
+      robots: robotsValue,
       alternates: { canonical: postUrl },
       openGraph: {
         type: "article",

@@ -151,6 +151,7 @@ async function handleUpdateRequest(
         slug: formData.get('slug'),
         excerpt: formData.get('excerpt'),
         metaDescription: formData.get('metaDescription'),
+        robots: formData.get('robots'),
         content: formData.get('content'),
         categoryId: formData.get('categoryId'),
         authorId: formData.get('authorId'),
@@ -206,6 +207,7 @@ async function handleUpdateRequest(
       slug: string;
       excerpt: string;
       metaDescription: string;
+      robots: string;
       content: string;
       categoryId: number;
       authorId: number;
@@ -217,11 +219,10 @@ async function handleUpdateRequest(
     }> = {};
 
     if (body.title !== undefined) updateData.title = String(body.title);
-    // Normalize slug: strip leading/trailing slashes + whitespace so the
-    // frontend URL resolver can always find the post.
     if (body.slug !== undefined) updateData.slug = String(body.slug).trim().replace(/^\/+|\/+$/g, '');
     if (body.excerpt !== undefined) updateData.excerpt = String(body.excerpt);
     if (body.metaDescription !== undefined) updateData.metaDescription = String(body.metaDescription).trim().slice(0, 160);
+    if (body.robots !== undefined) updateData.robots = String(body.robots).trim() || 'index,follow';
     if (body.content !== undefined) updateData.content = String(body.content);
     if (body.categoryId !== undefined) updateData.categoryId = parseInt(String(body.categoryId), 10);
     if (body.authorId !== undefined) updateData.authorId = parseInt(String(body.authorId), 10);

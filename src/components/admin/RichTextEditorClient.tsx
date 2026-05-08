@@ -4,23 +4,290 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
-import { Color } from '@tiptap/extension-text-style';
-import { TextStyle } from '@tiptap/extension-text-style';
-import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
+import { Color, FontSize, TextStyle } from '@tiptap/extension-text-style';
+import { TableKit } from '@tiptap/extension-table';
+import Underline from '@tiptap/extension-underline';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import Youtube from '@tiptap/extension-youtube';
 import CharacterCount from '@tiptap/extension-character-count';
-import Typography from '@tiptap/extension-typography';
+import { Extension } from '@tiptap/core';
 import { normalizeEditorHtml } from '@/shared/utils/editor-html';
+import { getAdminToken } from '@/lib/admin-auth';
+
+/* ─── HTML sanitizer + structural converter for paste/upload ───
+   1. Strips dangerous content (scripts, event handlers)
+   2. Uses DOMParser to convert <div>/<section>/etc. into proper
+      block elements TipTap understands, so card/grid layouts from
+      tools like Content Studio don't collapse into a single line.
+   3. CSS grid/card patterns (e.g. backlinks: multiple <a> siblings
+      inside one <div>) get split into individual paragraphs.       ─── */
+function sanitizeHtmlForPaste(raw: string): string {
+  const bodyMatch = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  let html = bodyMatch ? bodyMatch[1] : raw;
+
+  html = html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '')
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    .replace(/href\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi, '')
+    .trim();
+
+  if (typeof window === 'undefined') return html;
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // Convert special semantic sections to TipTap-native equivalents
+  // MUST run before attribute stripping (while class names are still present)
+
+  // Callout / stat boxes → blockquote; class is transferred so injected CSS still targets it
+  doc.body.querySelectorAll('[class*="callout"],[class*="data-box"],[class*="stat-box"],[class*="highlight-box"]').forEach((el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    const bq = doc.createElement('blockquote');
+    if ((el as HTMLElement).className) bq.className = (el as HTMLElement).className;
+    while (el.firstChild) bq.appendChild(el.firstChild);
+    parent.replaceChild(bq, el);
+  });
+
+  // Key-takeaways / summary boxes → blockquote; class transferred, preserves inner <ul>
+  doc.body.querySelectorAll('[class*="key-takeaway"],[class*="takeaway"],[class*="summary-box"]').forEach((el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    const bq = doc.createElement('blockquote');
+    if ((el as HTMLElement).className) bq.className = (el as HTMLElement).className;
+    while (el.firstChild) bq.appendChild(el.firstChild);
+    parent.replaceChild(bq, el);
+  });
+
+  // <cite> inside blockquotes → <p><em>…</em></p> so TipTap can render it cleanly
+  doc.body.querySelectorAll('blockquote cite').forEach((cite) => {
+    const parent = cite.parentNode;
+    if (!parent) return;
+    const p = doc.createElement('p');
+    const em = doc.createElement('em');
+    while (cite.firstChild) em.appendChild(cite.firstChild);
+    p.appendChild(em);
+    parent.insertBefore(p, cite);
+    parent.removeChild(cite);
+  });
+
+  // Strip junk attributes — keep only what TipTap cares about.
+  // 'class' is preserved on semantic block/inline elements so that injected
+  // CSS (e.g. from Content Studio's <style>) can still target them by class name.
+  const KEEP_ATTRS: Record<string, Set<string>> = {
+    A:          new Set(['href', 'title', 'class']),
+    IMG:        new Set(['src', 'alt', 'title', 'width', 'height']),
+    TD:         new Set(['colspan', 'rowspan']),
+    TH:         new Set(['colspan', 'rowspan']),
+    P:          new Set(['class']),
+    H1:         new Set(['class']),
+    H2:         new Set(['class']),
+    H3:         new Set(['class']),
+    H4:         new Set(['class']),
+    H5:         new Set(['class']),
+    H6:         new Set(['class']),
+    BLOCKQUOTE: new Set(['class']),
+    UL:         new Set(['class']),
+    OL:         new Set(['class']),
+    LI:         new Set(['class']),
+  };
+  doc.body.querySelectorAll('*').forEach((el) => {
+    const allowed = KEEP_ATTRS[el.tagName] ?? new Set<string>();
+    Array.from(el.attributes)
+      .map(a => a.name)
+      .filter(name => !allowed.has(name))
+      .forEach(name => el.removeAttribute(name));
+  });
+
+  // Layout tags TipTap / ProseMirror treats as unknown blocks — must convert or unwrap
+  const LAYOUT_TAGS = new Set(['DIV', 'SECTION', 'ARTICLE', 'ASIDE', 'MAIN', 'HEADER', 'FOOTER', 'FIGURE', 'FIGCAPTION', 'NAV']);
+  // Tags that ARE real block nodes in TipTap's schema
+  const TIPTAP_BLOCK = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'PRE', 'HR', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD']);
+
+  function convertLayoutNode(el: Element) {
+    // Recurse children first so inner divs are resolved before outer ones
+    Array.from(el.children).forEach(convertLayoutNode);
+
+    if (!LAYOUT_TAGS.has(el.tagName)) return;
+
+    const parent = el.parentNode;
+    if (!parent) return;
+
+    // If any direct child is already a TipTap block node → just unwrap
+    const hasBlockChild = Array.from(el.childNodes).some(
+      n => n.nodeType === Node.ELEMENT_NODE && TIPTAP_BLOCK.has((n as Element).tagName)
+    );
+
+    if (hasBlockChild) {
+      while (el.firstChild) parent.insertBefore(el.firstChild, el);
+      parent.removeChild(el);
+      return;
+    }
+
+    // Leaf layout element — get significant (non-blank) children
+    const sigChildren = Array.from(el.childNodes).filter(
+      n => !(n.nodeType === Node.TEXT_NODE && (n.textContent?.trim() ?? '') === '')
+    );
+
+    // CSS grid / card pattern: all significant children are the SAME element tag
+    const allSameElementTag =
+      sigChildren.length > 1 &&
+      sigChildren.every(n => n.nodeType === Node.ELEMENT_NODE) &&
+      new Set(sigChildren.map(n => (n as Element).tagName)).size === 1;
+
+    if (allSameElementTag) {
+      const firstTag = (sigChildren[0] as Element).tagName;
+      if (firstTag === 'A') {
+        // Link grid (e.g. backlink tiles) → bullet list so each link is on its own line
+        const ul = doc.createElement('ul');
+        for (const child of sigChildren) {
+          const li = doc.createElement('li');
+          li.appendChild(child as ChildNode);
+          ul.appendChild(li);
+        }
+        parent.insertBefore(ul, el);
+      } else {
+        // Other same-tag grid → each child in its own <p>
+        for (const child of sigChildren) {
+          const p = doc.createElement('p');
+          p.appendChild(child as ChildNode);
+          parent.insertBefore(p, el);
+        }
+      }
+      parent.removeChild(el);
+    } else {
+      // Mixed inline content (e.g. <strong>Source:</strong> <a>…</a>) → one <p>
+      // Transfer the original class so CSS can still target it (e.g. .source-footer)
+      const p = doc.createElement('p');
+      if ((el as HTMLElement).className) p.className = (el as HTMLElement).className;
+      while (el.firstChild) p.appendChild(el.firstChild);
+      parent.replaceChild(p, el);
+    }
+  }
+
+  convertLayoutNode(doc.body);
+  return doc.body.innerHTML;
+}
+
+/* ─── CSS extractor: pulls class-based rules from a Content Studio <style> block,
+   scopes them to the editor container so they don't leak to the rest of the page.
+   Element-only selectors (h1, p, blockquote …) are intentionally skipped — we let
+   TipTap's own typographic CSS handle those; only class selectors are injected so
+   that .data-callout, .deck, .faq-q, .key-takeaways etc. render as intended.    ─── */
+function extractContentCss(raw: string): string {
+  const styleMatch = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  if (!styleMatch) return '';
+  const css = styleMatch[1].replace(/\/\*[\s\S]*?\*\//g, '');
+  const scope = '.tiptap-editor .ProseMirror';
+  const result: string[] = [];
+  const ruleRe = /([^{}@]+)\{([^}]*)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = ruleRe.exec(css)) !== null) {
+    const selectors = m[1].trim().split(',').map(s => s.trim()).filter(Boolean);
+    if (selectors.length > 0 && selectors.every(s => s.includes('.'))) {
+      const scoped = selectors.map(s => `${scope} ${s}`).join(', ');
+      result.push(`${scoped} { ${m[2].trim()} }`);
+    }
+  }
+  return result.join('\n');
+}
+
+/* ─── Custom Indent Extension ─── */
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    customIndent: { indent: () => ReturnType; outdent: () => ReturnType };
+  }
+}
+const INDENT_TYPES = ['paragraph', 'heading', 'blockquote'] as const;
+const MAX_INDENT = 7;
+
+const IndentExtension = Extension.create({
+  name: 'customIndent',
+  addGlobalAttributes() {
+    return [{
+      types: INDENT_TYPES as unknown as string[],
+      attributes: {
+        indent: {
+          default: 0,
+          parseHTML: (el) => parseInt(el.getAttribute('data-indent') || '0') || 0,
+          renderHTML: (attrs) => {
+            if (!attrs.indent) return {};
+            return { 'data-indent': String(attrs.indent), style: `margin-left:${attrs.indent * 2}em` };
+          },
+        },
+      },
+    }];
+  },
+  addCommands() {
+    return {
+      indent: () => ({ editor, state, tr, dispatch }) => {
+        // Lists: sink the list item one level deeper
+        if (editor.can().sinkListItem('listItem')) return editor.chain().sinkListItem('listItem').run();
+        if (editor.can().sinkListItem('taskItem')) return editor.chain().sinkListItem('taskItem').run();
+        // Blocks: increase margin-left indent attribute
+        const { from, to } = state.selection;
+        let changed = false;
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          if ((INDENT_TYPES as readonly string[]).includes(node.type.name)) {
+            const next = Math.min(MAX_INDENT, (node.attrs.indent || 0) + 1);
+            tr.setNodeMarkup(pos, undefined, { ...node.attrs, indent: next });
+            changed = true;
+          }
+        });
+        if (changed && dispatch) dispatch(tr);
+        return changed;
+      },
+      outdent: () => ({ editor, state, tr, dispatch }) => {
+        if (editor.can().liftListItem('listItem')) return editor.chain().liftListItem('listItem').run();
+        if (editor.can().liftListItem('taskItem')) return editor.chain().liftListItem('taskItem').run();
+        const { from, to } = state.selection;
+        let changed = false;
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          if ((INDENT_TYPES as readonly string[]).includes(node.type.name) && node.attrs.indent > 0) {
+            tr.setNodeMarkup(pos, undefined, { ...node.attrs, indent: node.attrs.indent - 1 });
+            changed = true;
+          }
+        });
+        if (changed && dispatch) dispatch(tr);
+        return changed;
+      },
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => this.editor.commands.indent(),
+      'Shift-Tab': () => this.editor.commands.outdent(),
+    };
+  },
+});
+
+/* ─── ClassPreserve Extension ───
+   Makes TipTap keep the `class` attribute when parsing block elements so that
+   injected Content Studio CSS (e.g. .data-callout, .deck, .faq-q) still applies. */
+const ClassPreserveExtension = Extension.create({
+  name: 'classPreserve',
+  addGlobalAttributes() {
+    return [{
+      types: ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'listItem'],
+      attributes: {
+        class: {
+          default: null,
+          parseHTML: (el) => el.getAttribute('class') || null,
+          renderHTML: (attrs) => attrs.class ? { class: attrs.class as string } : {},
+        },
+      },
+    }];
+  },
+});
 
 /* ═══════════════════════════════════════════════════════════════════
    Props
@@ -136,30 +403,68 @@ function ColorPicker({ currentColor, onSelect, label }: {
 /* ═══════════════════════════════════════════════════════════════════
    Toolbar
    ═══════════════════════════════════════════════════════════════════ */
-function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
-  if (!editor) return null;
+const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '36px', '48px'];
 
+function FontSizePicker({ editor }: { editor: ReturnType<typeof useEditor> }) {
+  if (!editor) return null;
+  const current = editor.getAttributes('textStyle').fontSize || '';
+  return (
+    <select
+      className="tiptap-select"
+      title="Font Size"
+      value={current}
+      onMouseDown={(e) => e.preventDefault()}
+      onChange={(e) => {
+        const val = e.target.value;
+        if (val) {
+          editor.chain().focus().setFontSize(val).run();
+        } else {
+          editor.chain().focus().unsetFontSize().run();
+        }
+      }}
+    >
+      <option value="">Size</option>
+      {FONT_SIZES.map((s) => (
+        <option key={s} value={s}>{s}</option>
+      ))}
+    </select>
+  );
+}
+
+function MenuBar({ editor, onImageUpload, onHtmlUpload, onPasteHtml }: { editor: ReturnType<typeof useEditor> | null; onImageUpload: (file: File) => void; onHtmlUpload: (file: File) => void; onPasteHtml: () => void }) {
+  // Hooks MUST come before any conditional return (Rules of Hooks)
   const addLink = useCallback(() => {
+    if (!editor) return;
     const prev = editor.getAttributes('link').href || '';
     const url = window.prompt('Enter URL:', prev);
     if (url === null) return;
     if (url === '') { editor.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    
+    // Ask if link should be nofollow (default yes for external links)
+    const isNofollow = window.confirm('Make this link nofollow? (Recommended for external/third-party links)\n\nClick OK for nofollow, Cancel for dofollow');
+    const rel = isNofollow ? 'noopener noreferrer nofollow' : 'noopener noreferrer';
+    
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url, rel }).run();
   }, [editor]);
 
-  const addImage = useCallback(() => {
+  const addImageUrl = useCallback(() => {
+    if (!editor) return;
     const url = window.prompt('Enter image URL:');
     if (url) editor.chain().focus().setImage({ src: url }).run();
   }, [editor]);
 
   const addYoutube = useCallback(() => {
+    if (!editor) return;
     const url = window.prompt('Enter YouTube URL:');
     if (url) editor.chain().focus().setYoutubeVideo({ src: url }).run();
   }, [editor]);
 
   const insertTable = useCallback(() => {
+    if (!editor) return;
     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   }, [editor]);
+
+  if (!editor) return null;
 
   return (
     <div className="tiptap-toolbar">
@@ -191,6 +496,11 @@ function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 
         <Sep />
 
+        {/* Font Size */}
+        <FontSizePicker editor={editor} />
+
+        <Sep />
+
         {/* Colors */}
         <ColorPicker
           label="Text Color"
@@ -213,11 +523,25 @@ function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 
         <Sep />
 
+        {/* Indent / Outdent */}
+        <Btn onClick={() => editor.chain().focus().indent().run()} title="Indent (Tab)">⇥ Indent</Btn>
+        <Btn onClick={() => editor.chain().focus().outdent().run()} title="Outdent (Shift+Tab)">⇤ Outdent</Btn>
+
+        <Sep />
+
         {/* Alignment */}
-        <Btn active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()} title="Align Left">⬛◽◽</Btn>
-        <Btn active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} title="Align Center">◽⬛◽</Btn>
-        <Btn active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="Align Right">◽◽⬛</Btn>
-        <Btn active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="Justify">⬛⬛⬛</Btn>
+        <Btn active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()} title="Align Left">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2" rx="1"/><rect x="0" y="5" width="10" height="2" rx="1"/><rect x="0" y="9" width="14" height="2" rx="1"/><rect x="0" y="11" width="8" height="2" rx="1"/></svg>
+        </Btn>
+        <Btn active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} title="Align Center">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2" rx="1"/><rect x="2" y="5" width="10" height="2" rx="1"/><rect x="0" y="9" width="14" height="2" rx="1"/><rect x="3" y="11" width="8" height="2" rx="1"/></svg>
+        </Btn>
+        <Btn active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="Align Right">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2" rx="1"/><rect x="4" y="5" width="10" height="2" rx="1"/><rect x="0" y="9" width="14" height="2" rx="1"/><rect x="6" y="11" width="8" height="2" rx="1"/></svg>
+        </Btn>
+        <Btn active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="Justify">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2" rx="1"/><rect x="0" y="5" width="14" height="2" rx="1"/><rect x="0" y="9" width="14" height="2" rx="1"/><rect x="0" y="11" width="14" height="2" rx="1"/></svg>
+        </Btn>
 
         <Sep />
 
@@ -230,7 +554,23 @@ function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 
         {/* Media & Table */}
         <Btn active={editor.isActive('link')} onClick={addLink} title="Insert Link">🔗 Link</Btn>
-        <Btn onClick={addImage} title="Insert Image">🖼 Image</Btn>
+        {/* Image: file upload takes priority, URL prompt as fallback */}
+        <label className="tiptap-btn" title="Upload Image" style={{ cursor: 'pointer', margin: 0 }}>
+          🖼 Image
+          <input
+            type="file"
+            accept="image/*,.webp"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onImageUpload(file);
+                e.target.value = '';
+              }
+            }}
+          />
+        </label>
+        <Btn onClick={addImageUrl} title="Insert Image by URL">🔗 Img URL</Btn>
         <Btn onClick={addYoutube} title="Embed YouTube">▶ YouTube</Btn>
         <Btn onClick={insertTable} title="Insert Table">⊞ Table</Btn>
 
@@ -238,6 +578,26 @@ function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 
         {/* Clear */}
         <Btn onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} title="Clear Formatting">✕ Clear</Btn>
+
+        <Sep />
+
+        {/* HTML Upload */}
+        <label className="tiptap-btn" title="Upload HTML file — replaces editor content" style={{ cursor: 'pointer', margin: 0 }}>
+          ⬆ HTML
+          <input
+            type="file"
+            accept=".html,.htm"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onHtmlUpload(file);
+                e.target.value = '';
+              }
+            }}
+          />
+        </label>
+        <Btn onClick={onPasteHtml} title="Paste HTML — opens a text area to paste raw HTML">📋 Paste HTML</Btn>
       </div>
 
       {/* ── Table sub-toolbar (only when cursor is inside a table) ── */}
@@ -272,37 +632,40 @@ export default function RichTextEditorClient({
   minHeight = 200,
 }: RichTextEditorClientProps) {
   const safeInitialContent = normalizeEditorHtml(value);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [htmlModalOpen, setHtmlModalOpen] = useState(false);
+  const [htmlModalText, setHtmlModalText] = useState('');
+  const [htmlModalPreview, setHtmlModalPreview] = useState<string | null>(null);
+  const [injectedCss, setInjectedCss] = useState('');
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
-        // Disable built-ins because we register custom Link/Underline below.
         link: false,
-        underline: false,
       }),
       Underline,
+      IndentExtension,
+      ClassPreserveExtension,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' },
       }),
       Image.configure({ inline: false, allowBase64: true }),
       Placeholder.configure({ placeholder }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextAlign.configure({ types: ['heading', 'paragraph', 'listItem', 'bulletList', 'orderedList'] }),
       Highlight.configure({ multicolor: true }),
-      Color,
       TextStyle,
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableCell,
-      TableHeader,
+      Color,
+      FontSize,
+      TableKit.configure({ table: { resizable: true } }),
       TaskList,
       TaskItem.configure({ nested: true }),
       Subscript,
       Superscript,
       Youtube.configure({ width: 640, height: 360 }),
       CharacterCount,
-      Typography,
     ],
     content: safeInitialContent,
     onUpdate: ({ editor: e }) => {
@@ -313,6 +676,7 @@ export default function RichTextEditorClient({
         class: 'tiptap-content',
         style: `min-height:${minHeight}px;`,
       },
+      transformPastedHTML: (html: string) => sanitizeHtmlForPaste(html),
     },
   });
 
@@ -329,12 +693,100 @@ export default function RichTextEditorClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
+  const handleImageUpload = useCallback(async (file: File) => {
+    if (imageUploading) return;
+    setImageUploading(true);
+    try {
+      // Try presign upload; fall back to base64 data URL if unavailable
+      const token = getAdminToken();
+
+      if (token) {
+        const presignRes = await fetch('/api/admin/presign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            filename: file.name.replace(/[^a-zA-Z0-9.-]/g, '_'),
+            contentType: file.type || 'image/jpeg',
+            _token: token,
+          }),
+        });
+        if (presignRes.ok) {
+          const presignData = await presignRes.json();
+          if (presignData.success && presignData.data?.uploadUrl && presignData.data?.fileUrl) {
+            const uploadRes = await fetch(presignData.data.uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': file.type || 'image/jpeg' },
+              body: file,
+            });
+            if (uploadRes.ok) {
+              editor?.chain().focus().setImage({ src: presignData.data.fileUrl }).run();
+              return;
+            }
+          }
+        }
+      }
+
+      // Fallback: base64 data URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const src = e.target?.result as string;
+        if (src) editor?.chain().focus().setImage({ src }).run();
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const src = e.target?.result as string;
+        if (src) editor?.chain().focus().setImage({ src }).run();
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setImageUploading(false);
+    }
+  }, [editor, imageUploading]);
+
+  const handleHtmlUpload = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const raw = e.target?.result as string;
+      if (!raw || !editor) return;
+      const sanitized = sanitizeHtmlForPaste(raw);
+      const css = extractContentCss(raw);
+      if (css) setInjectedCss(css);
+      // setContent displays the HTML in TipTap; onChange saves it directly so
+      // class names (data-callout, faq-q, etc.) are not lost through TipTap's
+      // schema serialisation.
+      editor.commands.setContent(sanitized, { emitUpdate: false });
+      onChange(sanitized);
+    };
+    reader.readAsText(file);
+  }, [editor, onChange]);
+
+  const applyPastedHtml = useCallback(() => {
+    if (!editor || !htmlModalText.trim()) return;
+    const sanitized = sanitizeHtmlForPaste(htmlModalText);
+    const css = extractContentCss(htmlModalText);
+    if (css) setInjectedCss(css);
+    // Same rationale as handleHtmlUpload: save sanitized HTML directly so
+    // Content Studio class names survive into the database unchanged.
+    editor.commands.setContent(sanitized, { emitUpdate: false });
+    onChange(sanitized);
+    setHtmlModalOpen(false);
+    setHtmlModalText('');
+  }, [editor, htmlModalText, onChange]);
+
   const charCount = editor?.storage.characterCount;
 
   return (
     <div className="tiptap-wrapper">
       <style>{EDITOR_STYLES}</style>
-      <MenuBar editor={editor} />
+      {injectedCss && <style>{injectedCss}</style>}
+      {imageUploading && (
+        <div style={{ padding: '4px 12px', background: '#fef9c3', fontSize: 12, color: '#92400e', borderBottom: '1px solid #fde68a' }}>
+          Uploading image…
+        </div>
+      )}
+      <MenuBar editor={editor} onImageUpload={handleImageUpload} onHtmlUpload={handleHtmlUpload} onPasteHtml={() => setHtmlModalOpen(true)} />
 
       {/* Bubble menu for quick formatting on selection */}
       {editor && (
@@ -348,7 +800,12 @@ export default function RichTextEditorClient({
               const url = window.prompt('URL', prev);
               if (url === null) return;
               if (url === '') { editor.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
-              editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+              
+              // Ask if link should be nofollow
+              const isNofollow = window.confirm('Make this link nofollow? (Recommended for external links)\n\nOK = nofollow, Cancel = dofollow');
+              const rel = isNofollow ? 'noopener noreferrer nofollow' : 'noopener noreferrer';
+              
+              editor.chain().focus().extendMarkRange('link').setLink({ href: url, rel }).run();
             }} title="Link">🔗</Btn>
           </div>
         </BubbleMenu>
@@ -362,6 +819,39 @@ export default function RichTextEditorClient({
       {charCount && (
         <div className="tiptap-statusbar">
           {charCount.characters()} characters · {charCount.words()} words
+        </div>
+      )}
+
+      {/* Paste HTML modal */}
+      {htmlModalOpen && (
+        <div className="tiptap-html-overlay" onMouseDown={() => { setHtmlModalOpen(false); setHtmlModalPreview(null); }}>
+          <div className="tiptap-html-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="tiptap-html-modal-header">
+              <span>Paste HTML</span>
+              <button type="button" className="tiptap-html-modal-close" onClick={() => { setHtmlModalOpen(false); setHtmlModalPreview(null); }}>✕</button>
+            </div>
+            <textarea
+              className="tiptap-html-modal-textarea"
+              placeholder="Paste your HTML here…"
+              value={htmlModalText}
+              autoFocus
+              onChange={(e) => { setHtmlModalText(e.target.value); setHtmlModalPreview(null); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setHtmlModalOpen(false); setHtmlModalPreview(null); }
+              }}
+            />
+            {htmlModalPreview !== null && (
+              <div className="tiptap-html-modal-preview">
+                <div className="tiptap-html-modal-preview-label">Converted HTML (what will be applied):</div>
+                <textarea className="tiptap-html-modal-textarea tiptap-html-modal-preview-area" readOnly value={htmlModalPreview} />
+              </div>
+            )}
+            <div className="tiptap-html-modal-footer">
+              <button type="button" className="tiptap-html-modal-cancel" onClick={() => { setHtmlModalOpen(false); setHtmlModalPreview(null); }}>Cancel</button>
+              <button type="button" className="tiptap-html-modal-preview-btn" onClick={() => setHtmlModalPreview(sanitizeHtmlForPaste(htmlModalText))} disabled={!htmlModalText.trim()}>Preview</button>
+              <button type="button" className="tiptap-html-modal-apply" onClick={applyPastedHtml} disabled={!htmlModalText.trim()}>Apply</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -445,6 +935,24 @@ const EDITOR_STYLES = `
   vertical-align: middle;
 }
 
+/* Font size / select dropdown */
+.tiptap-select {
+  padding: 3px 5px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: white;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  height: 28px;
+}
+.tiptap-select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
 /* Bubble menu */
 .tiptap-bubble {
   display: flex;
@@ -491,9 +999,9 @@ const EDITOR_STYLES = `
 
 /* Headings */
 .tiptap-editor .ProseMirror h1 { font-size: 1.8em; font-weight: 700; line-height: 1.2; margin: 0.8em 0 0.4em; color: #0f172a; }
-.tiptap-editor .ProseMirror h2 { font-size: 1.45em; font-weight: 650; line-height: 1.25; margin: 0.7em 0 0.35em; color: #0f172a; }
-.tiptap-editor .ProseMirror h3 { font-size: 1.2em; font-weight: 600; line-height: 1.3; margin: 0.6em 0 0.3em; color: #1e293b; }
-.tiptap-editor .ProseMirror h4 { font-size: 1.05em; font-weight: 600; line-height: 1.35; margin: 0.5em 0 0.25em; color: #1e293b; }
+.tiptap-editor .ProseMirror h2 { font-size: 1.45em; font-weight: 700; line-height: 1.25; margin: 0.7em 0 0.35em; color: #0f172a; }
+.tiptap-editor .ProseMirror h3 { font-size: 1.3em; font-weight: 700; line-height: 1.3; margin: 0.8em 0 0.25em; color: #0f172a; }
+.tiptap-editor .ProseMirror h4 { font-size: 1.15em; font-weight: 600; line-height: 1.35; margin: 0.6em 0 0.2em; color: #1e293b; }
 
 /* Paragraphs */
 .tiptap-editor .ProseMirror p { margin: 0.4em 0; }
@@ -540,12 +1048,18 @@ const EDITOR_STYLES = `
 /* Blockquote */
 .tiptap-editor .ProseMirror blockquote {
   border-left: 4px solid #667eea;
-  padding: 0.5em 1em;
-  margin: 0.6em 0;
-  background: #f8fafc;
+  padding: 0.6em 1em;
+  margin: 0.8em 0;
+  background: #eef2ff;
   border-radius: 0 6px 6px 0;
-  color: #475569;
+  color: #312e81;
+}
+.tiptap-editor .ProseMirror blockquote p em {
   font-style: italic;
+  color: #6366f1;
+  font-size: 0.88em;
+  display: block;
+  margin-top: 0.4em;
 }
 
 /* Code */
@@ -658,5 +1172,120 @@ const EDITOR_STYLES = `
 /* Selection */
 .tiptap-editor .ProseMirror ::selection {
   background: rgba(102,126,234,0.25);
+}
+
+/* Paste HTML modal */
+.tiptap-html-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tiptap-html-modal {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+  width: min(680px, 95vw);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tiptap-html-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.tiptap-html-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #94a3b8;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.tiptap-html-modal-close:hover { background: #f1f5f9; color: #475569; }
+.tiptap-html-modal-textarea {
+  width: 100%;
+  height: 320px;
+  padding: 14px 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #1e293b;
+  border: none;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  background: #f8fafc;
+}
+.tiptap-html-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.tiptap-html-modal-cancel {
+  padding: 6px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #475569;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tiptap-html-modal-cancel:hover { background: #f1f5f9; }
+.tiptap-html-modal-apply {
+  padding: 6px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #667eea;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tiptap-html-modal-apply:hover:not(:disabled) { background: #4f46e5; }
+.tiptap-html-modal-apply:disabled { opacity: 0.45; cursor: default; }
+.tiptap-html-modal-preview-btn {
+  padding: 6px 16px;
+  border: 1px solid #667eea;
+  border-radius: 6px;
+  background: white;
+  color: #667eea;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.tiptap-html-modal-preview-btn:hover:not(:disabled) { background: #eef2ff; }
+.tiptap-html-modal-preview-btn:disabled { opacity: 0.45; cursor: default; }
+.tiptap-html-modal-preview {
+  border-top: 1px dashed #e2e8f0;
+  background: #fffbeb;
+}
+.tiptap-html-modal-preview-label {
+  padding: 6px 16px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.tiptap-html-modal-preview-area {
+  height: 200px;
+  background: #fffbeb;
+  color: #78350f;
+  border-top: none;
 }
 `;

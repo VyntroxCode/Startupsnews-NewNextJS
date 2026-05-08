@@ -40,6 +40,7 @@ export interface PostEntity {
   format: "standard" | "video" | "gallery";
   status: "draft" | "published" | "archived";
   is_gone_410?: boolean | number;
+  robots?: string | null;
   featured: boolean;
   trending_score: number;
   view_count: number;
@@ -57,6 +58,7 @@ export interface CreatePostDto {
   slug: string;
   excerpt: string;
   metaDescription?: string;
+  robots?: string;
   content: string;
   categoryId: number;
   authorId: number;

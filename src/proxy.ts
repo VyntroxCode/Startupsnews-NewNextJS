@@ -7,6 +7,27 @@ function getSlugFromPath(pathname: string): string | null {
   return slug || null;
 }
 
+// Lightweight in-process cache for robots values (5 min TTL)
+const robotsCache = new Map<string, { value: string; expiresAt: number }>();
+const ROBOTS_TTL_MS = 5 * 60 * 1000;
+
+async function getRobotsForSlug(slug: string, origin: string): Promise<string> {
+  const now = Date.now();
+  const cached = robotsCache.get(slug);
+  if (cached && cached.expiresAt > now) return cached.value;
+  try {
+    const url = `${origin}/api/posts/robots?slug=${encodeURIComponent(slug)}`;
+    const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
+    if (!res.ok) return 'index,follow';
+    const data = await res.json();
+    const robots: string = data?.robots || 'index,follow';
+    robotsCache.set(slug, { value: robots, expiresAt: now + ROBOTS_TTL_MS });
+    return robots;
+  } catch {
+    return 'index,follow';
+  }
+}
+
 function renderGoneHtml(slug: string): string {
   const safeSlug = slug.replace(/[&<>"']/g, (ch) => {
     switch (ch) {
@@ -53,52 +74,76 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const slug = getSlugFromPath(pathname);
 
-  if (!slug) return NextResponse.next();
+  // --- Handle /post/:slug (410 Gone) ---
+  if (slug) {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return NextResponse.next();
+    }
 
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    return NextResponse.next();
-  }
+    try {
+      const apiUrl = new URL(`/api/posts/${encodeURIComponent(slug)}`, request.nextUrl.origin);
+      apiUrl.searchParams.set('__proxy', Date.now().toString());
+      const apiResp = await fetch(apiUrl.toString(), {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          'cache-control': 'no-cache',
+          pragma: 'no-cache',
+        },
+        cache: 'no-store',
+      });
 
-  try {
-    const apiUrl = new URL(`/api/posts/${encodeURIComponent(slug)}`, request.nextUrl.origin);
-    apiUrl.searchParams.set('__proxy', Date.now().toString());
-    const apiResp = await fetch(apiUrl.toString(), {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-        'cache-control': 'no-cache',
-        pragma: 'no-cache',
-      },
-      cache: 'no-store',
-    });
+      if (apiResp.status === 410) {
+        if (request.method === 'HEAD') {
+          return new NextResponse(null, {
+            status: 410,
+            headers: {
+              'Cache-Control': 'public, max-age=60',
+              'X-Robots-Tag': 'noindex, nofollow',
+            },
+          });
+        }
 
-    if (apiResp.status === 410) {
-      if (request.method === 'HEAD') {
-        return new NextResponse(null, {
+        return new NextResponse(renderGoneHtml(slug), {
           status: 410,
           headers: {
+            'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'public, max-age=60',
             'X-Robots-Tag': 'noindex, nofollow',
           },
         });
       }
 
-      return new NextResponse(renderGoneHtml(slug), {
-        status: 410,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'public, max-age=60',
-          'X-Robots-Tag': 'noindex, nofollow',
-        },
-      });
+      return NextResponse.next();
+    } catch {
+      return NextResponse.next();
     }
-
-    return NextResponse.next();
-  } catch {
-    return NextResponse.next();
   }
+
+  // --- Handle post pages: /category/post-slug — inject X-Robots-Tag header ---
+  const segments = pathname.split('/').filter(Boolean);
+  if (
+    segments.length >= 2 &&
+    !pathname.startsWith('/admin') &&
+    !pathname.startsWith('/api') &&
+    !pathname.startsWith('/_next')
+  ) {
+    const postSlug = segments[segments.length - 1];
+    const origin = request.nextUrl.origin;
+    const robots = await getRobotsForSlug(postSlug, origin);
+    if (robots && robots !== 'index,follow') {
+      const response = NextResponse.next();
+      response.headers.set('X-Robots-Tag', robots);
+      return response;
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/post/:path*'],
+  matcher: [
+    '/post/:path*',
+    '/((?!admin|api|_next/static|_next/image|images|favicon\.ico|robots\.txt|sitemap\.xml).*)',
+  ],
 };

@@ -1198,7 +1198,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 }
 
 .event-by-country-breadcrumb-link {
-  color: #e62e69;
+  color: #666;
   text-decoration: none;
   font-weight: 600;
 }
@@ -1212,7 +1212,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 }
 
 .event-by-country-breadcrumb-current {
-  color: #111;
+  color: #666;
   font-weight: 600;
 }
 
@@ -2010,6 +2010,51 @@ img.mvp-big-img {
   overflow-wrap: break-word;
   word-break: break-all;
 }
+
+/* Rich-text headings and lists inside event description */
+.event-detail-description h1,
+.event-detail-description h2,
+.event-detail-description h3,
+.event-detail-description h4,
+.event-detail-description h5,
+.event-detail-description h6 {
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1em 0 0.4em;
+  color: #111;
+}
+.event-detail-description h1 { font-size: 1.7em; }
+.event-detail-description h2 { font-size: 1.4em; }
+.event-detail-description h3 { font-size: 1.15em; }
+.event-detail-description h4 { font-size: 1em; }
+
+.event-detail-description ul,
+.event-detail-description ol {
+  padding-left: 1.6em;
+  margin: 0.5em 0;
+}
+.event-detail-description li { margin: 0.2em 0; }
+
+.event-detail-description blockquote {
+  border-left: 4px solid #e91e63;
+  padding: 0.5em 1em;
+  margin: 0.8em 0;
+  background: #fafafa;
+  border-radius: 0 6px 6px 0;
+  color: #555;
+  font-style: italic;
+}
+
+.event-detail-description u { text-decoration: underline; }
+.event-detail-description s { text-decoration: line-through; }
+.event-detail-description mark { border-radius: 2px; padding: 1px 2px; }
+.event-detail-description [data-indent="1"] { margin-left: 2em; }
+.event-detail-description [data-indent="2"] { margin-left: 4em; }
+.event-detail-description [data-indent="3"] { margin-left: 6em; }
+.event-detail-description [data-indent="4"] { margin-left: 8em; }
+.event-detail-description [data-indent="5"] { margin-left: 10em; }
+.event-detail-description [data-indent="6"] { margin-left: 12em; }
+.event-detail-description [data-indent="7"] { margin-left: 14em; }
 
 .event-detail-actions {
   display: flex;
@@ -3166,6 +3211,13 @@ img.mvp-big-img {
 
 /* You May Like: mobile view – single column, thumb + headline row, stylized header */
 @media screen and (max-width: 767px) {
+  .event-by-country-breadcrumb {
+    font-size: 0.72rem;
+    gap: 4px;
+    padding-top: 8px;
+    margin-bottom: 18px;
+  }
+
   #mvp-related-posts h4.mvp-widget-home-title {
     text-align: center;
     position: relative;
@@ -3590,7 +3642,7 @@ footer.footer {
 }
 
 .footer-tagline {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--footer-text-muted);
   max-width: 400px;
@@ -3676,7 +3728,7 @@ footer.footer {
 }
 
 .footer-policy-links a {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--footer-text-muted);
   text-decoration: none;
@@ -3737,7 +3789,7 @@ footer.footer {
 }
 
 .footer-copyright p {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--footer-text-muted);
   text-decoration: none;
@@ -3854,7 +3906,7 @@ footer.footer {
   }
 
   .footer-tagline {
-    font-size: 13px;
+    font-size: 16px;
     text-align: center;
   }
 
@@ -5880,10 +5932,17 @@ footer.footer {
   vertical-align: middle;
 }
 
-/* Single post: justified text for article body */
+/* Single post: left-aligned text for article body */
 #mvp-content-main,
 #mvp-content-main p {
-  text-align: justify !important;
+  text-align: left !important;
+}
+
+@media (max-width: 768px) {
+  #mvp-content-main,
+  #mvp-content-main p {
+    text-align: left !important;
+  }
 }
 
 /* Blockquote: override theme's pull-quote style to standard bordered blockquote */
@@ -7129,4 +7188,254 @@ body .banner-carousel-container,
     margin: 14px 0 !important;
     padding: 10px 14px !important;
   }
+}
+
+/* ── Rich-text content formatting (Tiptap output) ── */
+.mvp-post-content-body h1,
+.mvp-post-content-body h2,
+.mvp-post-content-body h3,
+.mvp-post-content-body h4,
+.mvp-post-content-body h5,
+.mvp-post-content-body h6 {
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1em 0 0.4em;
+  color: #111;
+}
+.mvp-post-content-body h1 { font-size: 1.8em; }
+.mvp-post-content-body h2 { font-size: 1.45em; }
+.mvp-post-content-body h3 { font-size: 1.2em; }
+.mvp-post-content-body h4 { font-size: 1.05em; }
+
+.mvp-post-content-body p { margin: 0.5em 0; }
+
+.mvp-post-content-body ul,
+.mvp-post-content-body ol {
+  padding-left: 1.6em;
+  margin: 0.6em 0;
+}
+.mvp-post-content-body li { margin: 0.2em 0; }
+
+.mvp-post-content-body blockquote {
+  border-left: 4px solid #e91e63;
+  padding: 0.5em 1em;
+  margin: 0.8em 0;
+  background: #fafafa;
+  border-radius: 0 6px 6px 0;
+  color: #555;
+  font-style: italic;
+}
+
+.mvp-post-content-body code {
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #c026d3;
+}
+.mvp-post-content-body pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 16px 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.8em 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.88em;
+  line-height: 1.6;
+}
+.mvp-post-content-body pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+.mvp-post-content-body hr {
+  border: none;
+  border-top: 2px solid #e2e8f0;
+  margin: 1.4em 0;
+}
+
+.mvp-post-content-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.6em 0;
+}
+
+.mvp-post-content-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mvp-post-content-body th,
+.mvp-post-content-body td {
+  border: 1px solid #e2e8f0;
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.mvp-post-content-body th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+.mvp-post-content-body mark {
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+.mvp-post-content-body u { text-decoration: underline; }
+.mvp-post-content-body s { text-decoration: line-through; }
+
+/* Tiptap indent levels via data-indent attribute */
+.mvp-post-content-body [data-indent="1"] { margin-left: 2em; }
+.mvp-post-content-body [data-indent="2"] { margin-left: 4em; }
+.mvp-post-content-body [data-indent="3"] { margin-left: 6em; }
+.mvp-post-content-body [data-indent="4"] { margin-left: 8em; }
+.mvp-post-content-body [data-indent="5"] { margin-left: 10em; }
+.mvp-post-content-body [data-indent="6"] { margin-left: 12em; }
+.mvp-post-content-body [data-indent="7"] { margin-left: 14em; }
+
+/* ── Content Studio class-based components ─────────────────────────────────
+   Selectors use #mvp-content-main so their specificity (1,1,x) beats the
+   theme's "#mvp-content-main blockquote" (1,0,1) and its !important rules.  */
+
+/* Lead / deck paragraph */
+#mvp-content-main .deck,
+.mvp-post-content-body .deck {
+  font-size: 1.1em !important;
+  color: #555 !important;
+  font-style: italic !important;
+  padding-left: 16px !important;
+  border-left: 3px solid #ccc !important;
+  background: none !important;
+  border-radius: 0 !important;
+}
+
+/* Stat / callout box */
+#mvp-content-main .data-callout,
+.mvp-post-content-body .data-callout {
+  margin: 1.4em 0 !important;
+  padding: 1.2em 1.4em !important;
+  background: linear-gradient(135deg, #4361ee, #2d4bca) !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+  font-style: normal !important;
+  border-left: none !important;
+  width: auto !important;
+}
+#mvp-content-main .data-callout p,
+.mvp-post-content-body .data-callout p {
+  color: #fff !important;
+  font-style: normal !important;
+  margin: 0 !important;
+  letter-spacing: normal !important;
+  font-size: 1rem !important;
+  line-height: 1.6 !important;
+}
+#mvp-content-main .data-callout strong,
+.mvp-post-content-body .data-callout strong {
+  font-size: 1.5em !important;
+  display: block !important;
+  margin-bottom: 4px !important;
+  color: #fff !important;
+}
+
+/* Key takeaways box */
+#mvp-content-main .key-takeaways,
+.mvp-post-content-body .key-takeaways {
+  margin: 1.4em 0 !important;
+  padding: 1.1em 1.4em !important;
+  background: #f5f4f0 !important;
+  border: 1px solid #e2e1da !important;
+  border-radius: 10px !important;
+  font-style: normal !important;
+  border-left: none !important;
+  color: #222 !important;
+  width: auto !important;
+}
+#mvp-content-main .key-takeaways p,
+.mvp-post-content-body .key-takeaways p {
+  font-style: normal !important;
+  color: #222 !important;
+}
+#mvp-content-main .key-takeaways ul,
+.mvp-post-content-body .key-takeaways ul {
+  padding-left: 1.4em !important;
+  margin: 0.3em 0 0 !important;
+}
+#mvp-content-main .key-takeaways li,
+.mvp-post-content-body .key-takeaways li {
+  margin-bottom: 6px !important;
+  font-size: 0.95em !important;
+}
+
+/* FAQ question heading */
+#mvp-content-main .faq-q,
+.mvp-post-content-body .faq-q {
+  font-size: 1.05em !important;
+  font-weight: 700 !important;
+  margin-bottom: 4px !important;
+  margin-top: 1.2em !important;
+  color: #111 !important;
+}
+
+/* FAQ answer */
+#mvp-content-main .faq-a,
+.mvp-post-content-body .faq-a {
+  font-size: 0.95em !important;
+  color: #444 !important;
+  line-height: 1.7 !important;
+  font-style: normal !important;
+}
+
+/* Backlink anchor cards */
+#mvp-content-main .bl-link,
+.mvp-post-content-body .bl-link {
+  display: inline-block !important;
+  padding: 6px 12px !important;
+  background: #f0f2f8 !important;
+  color: #4361ee !important;
+  border-radius: 8px !important;
+  font-size: 0.85em !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  border: 1px solid #e4e6ef !important;
+  margin: 3px 0 !important;
+}
+
+/* Source footer */
+#mvp-content-main .source-footer,
+.mvp-post-content-body .source-footer {
+  margin-top: 1.4em !important;
+  padding-top: 1em !important;
+  border-top: 1px solid #e5e5e5 !important;
+  font-size: 0.88em !important;
+  color: #777 !important;
+  background: none !important;
+  border-left: none !important;
+  font-style: normal !important;
+}
+#mvp-content-main .source-footer a,
+.mvp-post-content-body .source-footer a {
+  color: #4361ee !important;
+  text-decoration: none !important;
+}
+
+/* Blockquote citation line (converted from <cite>) */
+#mvp-content-main blockquote p em,
+.mvp-post-content-body blockquote p em {
+  display: block !important;
+  font-size: 0.85em !important;
+  color: #888 !important;
+  margin-top: 0.5em !important;
+  font-style: italic !important;
+  letter-spacing: normal !important;
 }

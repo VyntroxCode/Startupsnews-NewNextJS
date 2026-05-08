@@ -478,6 +478,7 @@ export async function getPostBySlug(slug: string): Promise<Post | undefined> {
     const entity = await postsService.getPostBySlug(slug);
     if (!entity) return undefined;
     if (Boolean(entity.is_gone_410)) return undefined;
+    if (entity.status !== 'published') return undefined;
     const post = await entityToPost(entity);
     const postId = Number(entity.id);
 

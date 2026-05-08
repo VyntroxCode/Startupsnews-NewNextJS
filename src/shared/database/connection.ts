@@ -1,3 +1,5 @@
+process.env.TZ = 'Asia/Kolkata';
+
 /**
  * Database connection for zox_db (MariaDB).
  * Uses env: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD,
@@ -32,6 +34,8 @@ function getPool(): mariadb.Pool {
       acquireTimeout,
       idleTimeout,
       ssl: process.env.DB_SSL === 'true' ? true : undefined,
+      timezone: '+05:30',
+      dateStrings: true,
     });
   }
   return pool;

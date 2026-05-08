@@ -53,5 +53,10 @@ next-env.d.ts
 # logs
 build.log
 start.log
+deploy.log
 logs/
 large.img
+
+# server-specific config & scripts
+ecosystem.config.js
+scripts/deploy.sh
