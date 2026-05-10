@@ -398,7 +398,7 @@ export async function POST(request: NextRequest) {
       slug: String(body.slug).trim().replace(/^\/+|\/+$/g, ''),
       excerpt: String(body.excerpt),
       metaDescription: body.metaDescription != null ? String(body.metaDescription).trim().slice(0, 160) : '',
-      robots: body.robots != null ? String(body.robots).trim() || 'index,follow' : 'index,follow',
+      robots: body.robots != null ? String(body.robots).trim() || 'index,nofollow' : 'index,nofollow',
       content: processedContent,
       categoryId,
       authorId,

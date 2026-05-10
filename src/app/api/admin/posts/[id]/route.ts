@@ -222,7 +222,7 @@ async function handleUpdateRequest(
     if (body.slug !== undefined) updateData.slug = String(body.slug).trim().replace(/^\/+|\/+$/g, '');
     if (body.excerpt !== undefined) updateData.excerpt = String(body.excerpt);
     if (body.metaDescription !== undefined) updateData.metaDescription = String(body.metaDescription).trim().slice(0, 160);
-    if (body.robots !== undefined) updateData.robots = String(body.robots).trim() || 'index,follow';
+    if (body.robots !== undefined) updateData.robots = String(body.robots).trim() || 'index,nofollow';
     if (body.content !== undefined) updateData.content = String(body.content);
     if (body.categoryId !== undefined) updateData.categoryId = parseInt(String(body.categoryId), 10);
     if (body.authorId !== undefined) updateData.authorId = parseInt(String(body.authorId), 10);

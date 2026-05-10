@@ -623,7 +623,7 @@ export class PostsRepository {
       data.slug,
       data.excerpt,
       ...(hasMetaDescription ? [data.metaDescription || null] : []),
-      ...(hasRobots ? [data.robots || 'index,follow'] : []),
+      ...(hasRobots ? [data.robots || 'index,nofollow'] : []),
       data.content,
       data.categoryId,
       data.authorId,

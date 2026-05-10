@@ -9,7 +9,7 @@ import { queryOne } from '@/shared/database/connection';
 export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug')?.trim();
   if (!slug) {
-    return NextResponse.json({ robots: 'index,follow' });
+    return NextResponse.json({ robots: 'index,nofollow' });
   }
 
   try {
@@ -17,11 +17,11 @@ export async function GET(request: NextRequest) {
       `SELECT robots FROM posts WHERE slug = ? AND status = 'published' LIMIT 1`,
       [slug]
     );
-    const robots = row?.robots || 'index,follow';
+    const robots = row?.robots || 'index,nofollow';
     return NextResponse.json({ robots }, {
       headers: { 'Cache-Control': 'private, max-age=300' },
     });
   } catch {
-    return NextResponse.json({ robots: 'index,follow' });
+    return NextResponse.json({ robots: 'index,nofollow' });
   }
 }
