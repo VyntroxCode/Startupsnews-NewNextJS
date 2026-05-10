@@ -47,8 +47,20 @@ function getAuthorHref(post: Post): string {
     return `/author/${slug}?type=staff`;
 }
 
+function stripNoFollowFromLinks(html: string): string {
+    return html.replace(
+        /(<a\b[^>]*\brel\s*=\s*(["']))(.*?)(\2[^>]*>)/gi,
+        (_m, before, _q, relVal, after) => {
+            const cleaned = relVal.split(/\s+/).filter((r: string) => r.toLowerCase() !== 'nofollow').join(' ');
+            return `${before}${cleaned}${after}`;
+        }
+    );
+}
+
 export function FullArticle({ post, related = [], prev, next }: FullArticleProps) {
-    const contentWithoutDuplicateFeatured = stripFeaturedImageFromContent(post.content || "", post.image || "");
+    const rawContent = stripFeaturedImageFromContent(post.content || "", post.image || "");
+    const robotsIsFollow = typeof post.robots === 'string' && post.robots.includes('follow') && !post.robots.includes('nofollow');
+    const contentWithoutDuplicateFeatured = robotsIsFollow ? stripNoFollowFromLinks(rawContent) : rawContent;
     const postPath = `/${post.slug}`;
 
     return (

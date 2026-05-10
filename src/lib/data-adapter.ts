@@ -25,6 +25,7 @@ export interface Post {
   title: string;
   excerpt: string;
   metaDescription?: string;
+  robots?: string | null;
   content: string;
   category: string;
   categorySlug: string;
