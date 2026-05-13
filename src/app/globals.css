@@ -7291,6 +7291,10 @@ body .banner-carousel-container,
   padding: 1px 2px;
 }
 
+.mvp-post-content-body strong,
+.mvp-post-content-body b { font-weight: 700; }
+.mvp-post-content-body em,
+.mvp-post-content-body i { font-style: italic; }
 .mvp-post-content-body u { text-decoration: underline; }
 .mvp-post-content-body s { text-decoration: line-through; }
 
@@ -7324,16 +7328,16 @@ body .banner-carousel-container,
 .mvp-post-content-body .data-callout {
   margin: 1.4em 0 !important;
   padding: 1.2em 1.4em !important;
-  background: linear-gradient(135deg, #4361ee, #2d4bca) !important;
-  color: #fff !important;
+  background: #FFF4F3 !important;
+  color: #111 !important;
   border-radius: 10px !important;
   font-style: normal !important;
-  border-left: none !important;
+  border-left: 4px solid #FFF4F3 !important;
   width: auto !important;
 }
 #mvp-content-main .data-callout p,
 .mvp-post-content-body .data-callout p {
-  color: #fff !important;
+  color: #111 !important;
   font-style: normal !important;
   margin: 0 !important;
   letter-spacing: normal !important;
@@ -7345,7 +7349,7 @@ body .banner-carousel-container,
   font-size: 1.5em !important;
   display: block !important;
   margin-bottom: 4px !important;
-  color: #fff !important;
+  color: #e8186d !important;
 }
 
 /* Key takeaways box */

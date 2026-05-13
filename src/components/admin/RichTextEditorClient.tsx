@@ -187,15 +187,49 @@ function extractContentCss(raw: string): string {
   const styleMatch = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
   if (!styleMatch) return '';
   const css = styleMatch[1].replace(/\/\*[\s\S]*?\*\//g, '');
-  const scope = '.tiptap-editor .ProseMirror';
+  // Scope to both the editor and the article page content wrapper
+  const scopes = ['.tiptap-editor .ProseMirror', '.mvp-post-content-body'];
   const result: string[] = [];
   const ruleRe = /([^{}@]+)\{([^}]*)\}/g;
   let m: RegExpExecArray | null;
   while ((m = ruleRe.exec(css)) !== null) {
     const selectors = m[1].trim().split(',').map(s => s.trim()).filter(Boolean);
     if (selectors.length > 0 && selectors.every(s => s.includes('.'))) {
-      const scoped = selectors.map(s => `${scope} ${s}`).join(', ');
-      result.push(`${scoped} { ${m[2].trim()} }`);
+      // Normalize declarations: scale down px font-sizes and large px spacing
+      // so they fit the article page's base font (1.1rem ~17.6px) instead of
+      // the source HTML's body font (17px). Also cap oversized margins/paddings.
+      const decls = m[2].trim()
+        .split(';')
+        .map(d => d.trim())
+        .filter(Boolean)
+        .map(d => {
+          const [prop, ...rest] = d.split(':');
+          if (!prop || !rest.length) return d;
+          const propName = prop.trim().toLowerCase();
+          const val = rest.join(':').trim();
+          // Convert absolute px font-sizes to rem (base 16px)
+          if (propName === 'font-size') {
+            const px = parseFloat(val);
+            if (!isNaN(px) && val.endsWith('px')) {
+              return `${propName}: ${(px / 16).toFixed(3)}rem`;
+            }
+          }
+          // Cap large px margins/paddings to reasonable values
+          if (['margin', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
+               'padding', 'padding-top', 'padding-bottom', 'padding-left', 'padding-right'].includes(propName)) {
+            // Replace each px value in shorthand, capping at 24px
+            return `${propName}: ${val.replace(/(\d+(?:\.\d+)?)px/g, (_, n) => {
+              const num = parseFloat(n);
+              return `${Math.min(num, 24)}px`;
+            })}`;
+          }
+          return d;
+        })
+        .join('; ');
+      const scoped = scopes.flatMap(scope =>
+        selectors.map(s => `${scope} ${s}`)
+      ).join(', ');
+      result.push(`${scoped} { ${decls} }`);
     }
   }
   return result.join('\n');
@@ -403,31 +437,62 @@ function ColorPicker({ currentColor, onSelect, label }: {
 /* ═══════════════════════════════════════════════════════════════════
    Toolbar
    ═══════════════════════════════════════════════════════════════════ */
-const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '36px', '48px'];
+const FONT_SIZES = ['10px', '11px', '12px', '13px', '14px', '15px', '16px', '17px', '18px', '20px', '22px', '24px', '26px', '28px', '32px', '36px', '40px', '48px', '56px', '64px'];
 
 function FontSizePicker({ editor }: { editor: ReturnType<typeof useEditor> }) {
   if (!editor) return null;
   const current = editor.getAttributes('textStyle').fontSize || '';
+  const currentPx = current ? parseFloat(current) : 16;
+
+  const decrease = () => {
+    const idx = FONT_SIZES.indexOf(current);
+    const next = idx > 0 ? FONT_SIZES[idx - 1] : FONT_SIZES[0];
+    editor.chain().focus().setFontSize(next).run();
+  };
+
+  const increase = () => {
+    const idx = FONT_SIZES.indexOf(current);
+    const next = idx < FONT_SIZES.length - 1 ? FONT_SIZES[idx + 1] : FONT_SIZES[FONT_SIZES.length - 1];
+    editor.chain().focus().setFontSize(next).run();
+  };
+
   return (
-    <select
-      className="tiptap-select"
-      title="Font Size"
-      value={current}
-      onMouseDown={(e) => e.preventDefault()}
-      onChange={(e) => {
-        const val = e.target.value;
-        if (val) {
-          editor.chain().focus().setFontSize(val).run();
-        } else {
-          editor.chain().focus().unsetFontSize().run();
-        }
-      }}
-    >
-      <option value="">Size</option>
-      {FONT_SIZES.map((s) => (
-        <option key={s} value={s}>{s}</option>
-      ))}
-    </select>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+      <button
+        type="button"
+        className="tiptap-btn"
+        title="Decrease font size"
+        onMouseDown={(e) => { e.preventDefault(); decrease(); }}
+        style={{ padding: '4px 6px', fontWeight: 700, fontSize: 14 }}
+      >−</button>
+      <select
+        className="tiptap-select"
+        title="Font Size"
+        value={current}
+        onMouseDown={(e) => e.preventDefault()}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val) {
+            editor.chain().focus().setFontSize(val).run();
+          } else {
+            editor.chain().focus().unsetFontSize().run();
+          }
+        }}
+        style={{ width: 72 }}
+      >
+        <option value="">Default</option>
+        {FONT_SIZES.map((s) => (
+          <option key={s} value={s}>{s}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        className="tiptap-btn"
+        title="Increase font size"
+        onMouseDown={(e) => { e.preventDefault(); increase(); }}
+        style={{ padding: '4px 6px', fontWeight: 700, fontSize: 14 }}
+      >+</button>
+    </div>
   );
 }
 
@@ -674,7 +739,7 @@ export default function RichTextEditorClient({
     editorProps: {
       attributes: {
         class: 'tiptap-content',
-        style: `min-height:${minHeight}px;`,
+        style: `min-height:${minHeight}px; font-family: 'Roboto', sans-serif;`,
       },
       transformPastedHTML: (html: string) => sanitizeHtmlForPaste(html),
     },
@@ -753,9 +818,8 @@ export default function RichTextEditorClient({
       const sanitized = sanitizeHtmlForPaste(raw);
       const css = extractContentCss(raw);
       if (css) setInjectedCss(css);
-      // setContent displays the HTML in TipTap; onChange saves it directly so
-      // class names (data-callout, faq-q, etc.) are not lost through TipTap's
-      // schema serialisation.
+      // Don't save extracted CSS — globals.css already defines all design element
+      // classes (.deck, .data-callout, .key-takeaways, .faq-q, etc.) with correct sizing.
       editor.commands.setContent(sanitized, { emitUpdate: false });
       onChange(sanitized);
     };
@@ -767,8 +831,8 @@ export default function RichTextEditorClient({
     const sanitized = sanitizeHtmlForPaste(htmlModalText);
     const css = extractContentCss(htmlModalText);
     if (css) setInjectedCss(css);
-    // Same rationale as handleHtmlUpload: save sanitized HTML directly so
-    // Content Studio class names survive into the database unchanged.
+    // Don't save extracted CSS — globals.css already defines all design element
+    // classes (.deck, .data-callout, .key-takeaways, .faq-q, etc.) with correct sizing.
     editor.commands.setContent(sanitized, { emitUpdate: false });
     onChange(sanitized);
     setHtmlModalOpen(false);
@@ -985,57 +1049,94 @@ const EDITOR_STYLES = `
   text-align: right;
 }
 
-/* ─── Editor content area ─── */
+/* ─── Editor content area — mirrors #mvp-content-main article styles ─── */
 .tiptap-editor .ProseMirror {
   outline: none;
   padding: 16px;
-  font-size: 15px;
-  line-height: 1.7;
-  color: #1e293b;
+  font-family: 'Roboto', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.55;
+  color: #000;
 }
 .tiptap-editor .ProseMirror > * + * {
-  margin-top: 0.6em;
+  margin-top: 0;
 }
 
-/* Headings */
-.tiptap-editor .ProseMirror h1 { font-size: 1.8em; font-weight: 700; line-height: 1.2; margin: 0.8em 0 0.4em; color: #0f172a; }
-.tiptap-editor .ProseMirror h2 { font-size: 1.45em; font-weight: 700; line-height: 1.25; margin: 0.7em 0 0.35em; color: #0f172a; }
-.tiptap-editor .ProseMirror h3 { font-size: 1.3em; font-weight: 700; line-height: 1.3; margin: 0.8em 0 0.25em; color: #0f172a; }
-.tiptap-editor .ProseMirror h4 { font-size: 1.15em; font-weight: 600; line-height: 1.35; margin: 0.6em 0 0.2em; color: #1e293b; }
+/* Headings — matches #mvp-content-main h2/h3/h4/h5/h6 */
+.tiptap-editor .ProseMirror h1,
+.tiptap-editor .ProseMirror h2,
+.tiptap-editor .ProseMirror h3,
+.tiptap-editor .ProseMirror h4,
+.tiptap-editor .ProseMirror h5,
+.tiptap-editor .ProseMirror h6 {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+  margin: 10px 0;
+  overflow: hidden;
+  width: 100%;
+  color: #000;
+}
+.tiptap-editor .ProseMirror h1 { font-size: 2rem; }
+.tiptap-editor .ProseMirror h2 { font-size: 1.8rem; }
+.tiptap-editor .ProseMirror h3 { font-size: 1.6rem; }
+.tiptap-editor .ProseMirror h4 { font-size: 1.4rem; }
+.tiptap-editor .ProseMirror h5 { font-size: 1.2rem; }
+.tiptap-editor .ProseMirror h6 { font-size: 1rem; }
 
-/* Paragraphs */
-.tiptap-editor .ProseMirror p { margin: 0.4em 0; }
+/* Paragraphs — matches #mvp-content-main p */
+.tiptap-editor .ProseMirror p {
+  color: #000;
+  display: block;
+  font-family: 'Roboto', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: 1.55;
+  margin-bottom: 20px;
+}
 
-/* Links */
+/* Links — matches #mvp-content-main p a */
 .tiptap-editor .ProseMirror a {
-  color: #4338ca;
-  text-decoration: underline;
-  text-decoration-color: rgba(67,56,202,0.3);
+  color: #E62E69;
+  text-decoration: none;
   cursor: pointer;
-  transition: text-decoration-color 0.2s;
+  transition: text-decoration 0.2s;
 }
 .tiptap-editor .ProseMirror a:hover {
-  text-decoration-color: rgba(67,56,202,0.8);
+  text-decoration: underline;
 }
 
-/* Lists */
-.tiptap-editor .ProseMirror ul,
-.tiptap-editor .ProseMirror ol {
-  padding-left: 1.5em;
-  margin: 0.5em 0;
+/* Lists — matches #mvp-content-main ul/ol */
+.tiptap-editor .ProseMirror ul {
+  list-style: disc outside;
+  margin: 10px 0;
 }
-.tiptap-editor .ProseMirror li { margin: 0.15em 0; }
-.tiptap-editor .ProseMirror li p { margin: 0.1em 0; }
+.tiptap-editor .ProseMirror ol {
+  list-style: decimal outside;
+  margin: 10px 0;
+}
+.tiptap-editor .ProseMirror ul li,
+.tiptap-editor .ProseMirror ol li {
+  margin-left: 50px;
+  padding: 5px 0;
+  font-family: 'Roboto', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.55;
+}
+.tiptap-editor .ProseMirror li p { margin: 0; }
 
 /* Task list */
 .tiptap-editor .ProseMirror ul[data-type="taskList"] {
   list-style: none;
   padding-left: 0;
+  margin-left: 0;
 }
 .tiptap-editor .ProseMirror ul[data-type="taskList"] li {
   display: flex;
   align-items: flex-start;
   gap: 6px;
+  margin-left: 0;
 }
 .tiptap-editor .ProseMirror ul[data-type="taskList"] li label {
   margin-top: 3px;
@@ -1045,31 +1146,35 @@ const EDITOR_STYLES = `
   color: #94a3b8;
 }
 
-/* Blockquote */
+/* Blockquote — matches #mvp-content-main blockquote p */
 .tiptap-editor .ProseMirror blockquote {
-  border-left: 4px solid #667eea;
-  padding: 0.6em 1em;
-  margin: 0.8em 0;
-  background: #eef2ff;
-  border-radius: 0 6px 6px 0;
-  color: #312e81;
+  margin: 10px 0;
+}
+.tiptap-editor .ProseMirror blockquote p {
+  color: #000;
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 30px 10%;
+  width: 80%;
 }
 .tiptap-editor .ProseMirror blockquote p em {
-  font-style: italic;
-  color: #6366f1;
-  font-size: 0.88em;
-  display: block;
-  margin-top: 0.4em;
+  color: #555;
+  display: inline-block;
+  font-size: 1rem;
+  font-weight: 400;
+  font-style: normal;
 }
 
 /* Code */
 .tiptap-editor .ProseMirror code {
+  font-size: 1rem;
   background: #f1f5f9;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 0.88em;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  color: #c026d3;
 }
 .tiptap-editor .ProseMirror pre {
   background: #1e293b;
@@ -1093,13 +1198,11 @@ const EDITOR_STYLES = `
   margin: 1.2em 0;
 }
 
-/* Images */
+/* Images — matches article img */
 .tiptap-editor .ProseMirror img {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
   margin: 0.6em 0;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 .tiptap-editor .ProseMirror img.ProseMirror-selectednode {
   outline: 3px solid #667eea;
@@ -1111,32 +1214,33 @@ const EDITOR_STYLES = `
   margin: 0.8em 0;
 }
 .tiptap-editor .ProseMirror div[data-youtube-video] iframe {
-  border-radius: 8px;
   max-width: 100%;
 }
 
-/* Table */
+/* Table — matches #mvp-content-main table */
 .tiptap-editor .ProseMirror table {
-  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 0 0 20px;
   width: 100%;
-  margin: 0.8em 0;
-  overflow: hidden;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  border-collapse: collapse;
+}
+.tiptap-editor .ProseMirror thead {
+  background: #ccc;
+}
+.tiptap-editor .ProseMirror tbody tr {
+  background: #eee;
+}
+.tiptap-editor .ProseMirror tbody tr:nth-child(2n+2) {
+  background: none;
 }
 .tiptap-editor .ProseMirror th,
 .tiptap-editor .ProseMirror td {
+  padding: 5px 1.5%;
   border: 1px solid #e2e8f0;
-  padding: 8px 12px;
   text-align: left;
   min-width: 80px;
   vertical-align: top;
   position: relative;
-}
-.tiptap-editor .ProseMirror th {
-  background: #f1f5f9;
-  font-weight: 600;
-  color: #374151;
 }
 .tiptap-editor .ProseMirror td p,
 .tiptap-editor .ProseMirror th p { margin: 0; }
@@ -1172,6 +1276,99 @@ const EDITOR_STYLES = `
 /* Selection */
 .tiptap-editor .ProseMirror ::selection {
   background: rgba(102,126,234,0.25);
+}
+
+/* Restore bold/italic/underline overridden by theme CSS reset */
+.tiptap-editor .ProseMirror strong,
+.tiptap-editor .ProseMirror b { font-weight: 700; }
+.tiptap-editor .ProseMirror em,
+.tiptap-editor .ProseMirror i { font-style: italic; }
+.tiptap-editor .ProseMirror u { text-decoration: underline; }
+.tiptap-editor .ProseMirror s { text-decoration: line-through; }
+
+/* ── Design elements: deck, data-callout, key-takeaways, faq ── */
+.tiptap-editor .ProseMirror .deck {
+  font-size: 1rem;
+  color: #555;
+  margin-bottom: 16px;
+  font-style: italic;
+  padding-left: 12px;
+  border-left: 3px solid #ccc;
+  line-height: 1.6;
+}
+.tiptap-editor .ProseMirror .data-callout {
+  margin: 16px 0;
+  padding: 14px 16px;
+  background: #FFF4F3;
+  color: #111;
+  border-radius: 8px;
+  border-left: 4px solid #FFF4F3;
+}
+.tiptap-editor .ProseMirror .data-callout p {
+  color: #111;
+  font-size: 0.95rem;
+  margin-bottom: 0;
+}
+.tiptap-editor .ProseMirror .data-callout strong {
+  font-size: 1rem;
+  display: block;
+  margin-bottom: 4px;
+  color: #e8186d;
+}
+.tiptap-editor .ProseMirror .key-takeaways {
+  margin: 16px 0;
+  padding: 14px 16px;
+  background: #f5f4f0;
+  border: 1px solid #e2e1da;
+  border-radius: 8px;
+}
+.tiptap-editor .ProseMirror .key-takeaways ul {
+  padding-left: 20px;
+  margin: 6px 0 0;
+}
+.tiptap-editor .ProseMirror .key-takeaways li {
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+  margin-left: 0;
+  padding: 0;
+}
+.tiptap-editor .ProseMirror .faq-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 2px solid #e5e5e5;
+}
+.tiptap-editor .ProseMirror .faq-item {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0ee;
+}
+.tiptap-editor .ProseMirror .faq-q {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.tiptap-editor .ProseMirror .faq-a {
+  font-size: 0.95rem;
+  color: #444;
+  line-height: 1.6;
+}
+.tiptap-editor .ProseMirror .source-footer {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e5e5;
+  font-size: 0.875rem;
+  color: #777;
+}
+.tiptap-editor .ProseMirror .bl-link {
+  display: block;
+  padding: 8px 12px;
+  background: #f0f2f8;
+  color: #4361ee;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid #e4e6ef;
 }
 
 /* Paste HTML modal */

@@ -5,7 +5,6 @@ function stripHtmlComments(html: string): string {
 function stripDangerousBlocks(html: string): string {
   return html
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
     .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, ' ')
     .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, ' ')
     .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, ' ')
