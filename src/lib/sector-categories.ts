@@ -21,6 +21,7 @@ export const SECTOR_CATEGORY_SLUGS = [
   'climate-energy',
   // Also include cyber-security (existing DB slug) which maps to cybersecurity
   'cyber-security',
+  'press-release',
 ] as const;
 
 /**

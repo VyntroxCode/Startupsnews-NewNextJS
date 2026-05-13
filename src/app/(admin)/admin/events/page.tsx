@@ -225,9 +225,9 @@ export default function EventsPage() {
             }}
           >
             <option value="">All Status</option>
+            <option value="draft">Draft</option>
             <option value="upcoming">Upcoming</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="past">Past</option>
+            <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
           <input
@@ -463,24 +463,24 @@ export default function EventsPage() {
                             borderRadius: '6px',
                             fontSize: '0.8125rem',
                             fontWeight: '600',
-                            background: event.status === 'upcoming' 
-                              ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' 
-                              : event.status === 'past'
-                              ? 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)'
-                              : event.status === 'ongoing'
+                            background: event.status === 'upcoming'
+                              ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)'
+                              : event.status === 'completed'
                               ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)'
+                              : event.status === 'draft'
+                              ? 'linear-gradient(135deg, #fef9c3 0%, #fef08a 100%)'
                               : 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
-                            color: event.status === 'upcoming' 
-                              ? '#1e40af' 
-                              : event.status === 'past'
-                              ? '#991b1b'
-                              : event.status === 'ongoing'
+                            color: event.status === 'upcoming'
+                              ? '#1e40af'
+                              : event.status === 'completed'
                               ? '#065f46'
+                              : event.status === 'draft'
+                              ? '#854d0e'
                               : '#475569',
                             border: `1px solid ${
-                              event.status === 'upcoming' ? '#bfdbfe' : 
-                              event.status === 'past' ? '#fca5a5' :
-                              event.status === 'ongoing' ? '#a7f3d0' : '#cbd5e1'
+                              event.status === 'upcoming' ? '#bfdbfe' :
+                              event.status === 'completed' ? '#a7f3d0' :
+                              event.status === 'draft' ? '#fef08a' : '#cbd5e1'
                             }`,
                           }}>
                             {event.status || 'upcoming'}

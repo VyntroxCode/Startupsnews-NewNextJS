@@ -25,6 +25,8 @@ export async function GET(
   { params }: RouteParams
 ) {
   try {
+    await postsRepository.publishScheduledPosts();
+
     const { slug } = await params;
     const cacheKey = `api:post:${slug}`;
     const cached = await getCache<{ success: boolean; data: unknown }>(cacheKey);

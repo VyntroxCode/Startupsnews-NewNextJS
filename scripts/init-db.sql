@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS posts (
     featured_image_url VARCHAR(500),
     featured_image_small_url VARCHAR(500),
     format ENUM('standard', 'video', 'gallery') DEFAULT 'standard',
-    status ENUM('draft', 'published', 'archived') DEFAULT 'draft',
+    status ENUM('draft', 'published', 'archived', 'scheduled') DEFAULT 'draft',
     featured BOOLEAN DEFAULT FALSE,
     trending_score DECIMAL(10, 2) DEFAULT 0,
     view_count INT DEFAULT 0,

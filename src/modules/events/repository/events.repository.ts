@@ -20,13 +20,10 @@ export class EventsRepository {
     if (filters?.status) {
       sql += ' AND status = ?';
       params.push(filters.status);
-      // Expire by date: upcoming = future or today; past = before today; ongoing = today only
       if (filters.status === 'upcoming') {
         sql += ' AND event_date >= CURDATE()';
-      } else if (filters.status === 'past') {
+      } else if (filters.status === 'completed') {
         sql += ' AND event_date < CURDATE()';
-      } else if (filters.status === 'ongoing') {
-        sql += ' AND event_date = CURDATE()';
       }
     }
 
@@ -58,7 +55,7 @@ export class EventsRepository {
    */
   async findForPublicUpcoming(): Promise<EventEntity[]> {
     const sql = `SELECT * FROM events
-      WHERE event_date >= CURDATE() AND status IN ('upcoming', 'ongoing')
+      WHERE status = 'upcoming' AND event_date >= CURDATE()
       ORDER BY event_date ASC`;
     return query<EventEntity>(sql, []);
   }
@@ -67,7 +64,7 @@ export class EventsRepository {
    * Fallback: events with event_date >= today, any status (so we show events even if status was mis-set to 'past').
    */
   async findForPublicUpcomingByDateOnly(): Promise<EventEntity[]> {
-    const sql = `SELECT * FROM events WHERE event_date >= CURDATE() ORDER BY event_date ASC`;
+    const sql = `SELECT * FROM events WHERE status = 'upcoming' AND event_date >= CURDATE() ORDER BY event_date ASC`;
     return query<EventEntity>(sql, []);
   }
 
@@ -92,10 +89,8 @@ export class EventsRepository {
       params.push(filters.status);
       if (filters.status === 'upcoming') {
         sql += ' AND event_date >= CURDATE()';
-      } else if (filters.status === 'past') {
+      } else if (filters.status === 'completed') {
         sql += ' AND event_date < CURDATE()';
-      } else if (filters.status === 'ongoing') {
-        sql += ' AND event_date = CURDATE()';
       }
     }
 
@@ -116,9 +111,11 @@ export class EventsRepository {
    * Call this so the DB status stays in sync and admin/APIs see correct status.
    */
   async markPastEventsAsExpired(): Promise<void> {
+    // Mark completed using event_end_date if set, otherwise event_date
     await query(
-      `UPDATE events SET status = 'past'
-       WHERE status IN ('upcoming', 'ongoing') AND event_date < CURDATE()`
+      `UPDATE events SET status = 'completed'
+       WHERE status = 'upcoming'
+       AND COALESCE(event_end_date, event_date) < CURDATE()`
     );
   }
 
@@ -161,7 +158,7 @@ export class EventsRepository {
     eventEndTime?: string | null;
     imageUrl?: string;
     externalUrl?: string;
-    status?: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
+    status?: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   }): Promise<EventEntity> {
     const sql = `
       INSERT INTO events (
@@ -183,7 +180,7 @@ export class EventsRepository {
       data.eventEndTime || null,
       data.imageUrl || null,
       data.externalUrl || null,
-      data.status || 'upcoming',
+      data.status || 'draft',
     ];
 
     const conn = await getDbConnection();

@@ -12,7 +12,7 @@ export interface StartupEvent {
   excerpt?: string;
   description?: string;
   image?: string;
-  status?: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
+  status?: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   eventTime?: string | null;
   eventEndDate?: string | null;
   eventEndTime?: string | null;
@@ -35,7 +35,7 @@ export interface EventEntity {
   event_end_time?: string | null;
   image_url?: string;
   external_url?: string;
-  status: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
+  status: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -55,7 +55,7 @@ export interface CreateEventDto {
   eventEndTime?: string | null;
   imageUrl?: string;
   externalUrl?: string;
-  status?: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
+  status?: 'draft' | 'upcoming' | 'completed' | 'cancelled';
 }
 
 export interface UpdateEventDto extends Partial<CreateEventDto> {

@@ -38,8 +38,9 @@ export default function CreatePostPage() {
     featuredImageUrl: '',
     featuredImageSmallUrl: '',
     format: 'standard' as 'standard' | 'video' | 'gallery',
-    status: 'draft' as 'draft' | 'published' | 'archived',
+    status: 'draft' as 'draft' | 'published' | 'scheduled' | 'archived',
     featured: false,
+    scheduledAt: '',
   });
 
   useEffect(() => {
@@ -221,12 +222,21 @@ export default function CreatePostPage() {
         return;
       }
 
+      if (formData.status === 'scheduled' && !formData.scheduledAt) {
+        setError('Please select a scheduled date and time.');
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         ...formData,
         content: sanitizedContent,
         categoryId,
         authorId,
         featuredImageSmallUrl: formData.featuredImageSmallUrl || formData.featuredImageUrl,
+        ...(formData.status === 'scheduled' && formData.scheduledAt
+          ? { publishedAt: new Date(formData.scheduledAt).toISOString() }
+          : {}),
       };
 
       const isCloudFrontEdgeBlock = async (res: Response): Promise<boolean> => {
@@ -560,9 +570,25 @@ export default function CreatePostPage() {
           >
             <option value="draft">Draft</option>
             <option value="published">Published</option>
+            <option value="scheduled">Scheduled</option>
             <option value="archived">Archived</option>
           </select>
         </div>
+
+        {formData.status === 'scheduled' && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
+              Scheduled Date &amp; Time *
+            </label>
+            <input
+              type="datetime-local"
+              value={formData.scheduledAt}
+              onChange={(e) => setFormData((prev) => ({ ...prev, scheduledAt: e.target.value }))}
+              required
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
+            />
+          </div>
+        )}
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>

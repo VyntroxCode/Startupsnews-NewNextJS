@@ -49,7 +49,7 @@ export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps)
             {event.date}
             {event.eventTime && !event.eventTime.startsWith('00:00') ? ` - ${event.eventTime}` : ""}
             {event.eventEndDate ? ` to ${event.eventEndDate}` : ""}
-            {event.eventEndTime && !event.eventEndTime.startsWith('00:00') ? ` - ${event.eventEndTime}` : ""}
+            {event.eventTime && !event.eventTime.startsWith('00:00') && event.eventEndTime && !event.eventEndTime.startsWith('00:00') ? ` - ${event.eventEndTime}` : ""}
           </span>
           {event.location && (
             <span className="event-by-country-venue">{event.location}</span>

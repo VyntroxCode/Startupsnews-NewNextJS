@@ -15,7 +15,7 @@ interface CategoryPageProps {
 const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
 // Enable ISR - regenerate pages every hour
-export const revalidate = 3600; // 1 hour
+export const revalidate = 60;
 
 // Allow dynamic params for categories not pre-generated
 export const dynamicParams = true;

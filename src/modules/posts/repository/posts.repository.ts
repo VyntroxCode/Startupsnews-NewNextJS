@@ -1,9 +1,14 @@
 import { query, queryOne, getDbConnection } from '@/shared/database/connection';
 import { PostEntity } from '../domain/types';
+import { invalidatePostsListCache } from '@/shared/cache/redis.client';
+import { revalidatePath } from 'next/cache';
 
 /** Only show published posts that have body (content) and at least one image (featured or <img> in content). */
 const HAS_BODY_AND_IMAGE =
   " AND (TRIM(COALESCE(content, '')) != '' AND (TRIM(COALESCE(featured_image_url, '')) != '' OR content LIKE '%<img%'))";
+
+/** Exclude press-release category from all public feeds */
+const EXCLUDE_PRESS_RELEASE = " AND category_id != (SELECT id FROM categories WHERE slug = 'press-release' LIMIT 1)";
 
 /** InnoDB / MySQL default full-text min token length is often 3; boolean +short* on stopwords yields zero rows. */
 const FULLTEXT_BOOLEAN_STOPWORDS = new Set([
@@ -115,6 +120,23 @@ export class PostsRepository {
   }
 
   /**
+   * Publish scheduled posts whose published_at <= NOW()
+   */
+  async publishScheduledPosts(): Promise<void> {
+    const result = await query(
+      `UPDATE posts SET status = 'published' WHERE status = 'scheduled' AND published_at <= NOW()`,
+      []
+    ) as { affectedRows?: number };
+    if (result.affectedRows && result.affectedRows > 0) {
+      await invalidatePostsListCache();
+      // Bust Next.js ISR page cache so new posts appear immediately on refresh
+      revalidatePath('/', 'page');
+      revalidatePath('/news', 'page');
+      revalidatePath('/category/[slug]', 'page');
+    }
+  }
+
+  /**
    * Find all posts with optional filters
    */
   async findAll(filters?: {
@@ -131,10 +153,19 @@ export class PostsRepository {
     orderByLatestDate?: boolean;
     /** When false, do not restrict published posts to those with S3 thumbnail (e.g. for admin list) */
     restrictThumbnail?: boolean;
+    /** Filter scheduled posts by published_at >= this ISO datetime */
+    scheduledFrom?: string;
+    /** Filter scheduled posts by published_at <= this ISO datetime */
+    scheduledTo?: string;
   }): Promise<PostEntity[]> {
     let sql = 'SELECT * FROM posts WHERE 1=1';
     const params: (string | number | boolean | null)[] = [];
     const restrictThumbnail = filters?.restrictThumbnail !== false;
+
+    // Default to published-only for public (non-admin) queries
+    if (!filters?.status && restrictThumbnail) {
+      sql += " AND status = 'published'";
+    }
 
     if (filters?.categoryId) {
       sql += ' AND category_id = ?';
@@ -150,6 +181,16 @@ export class PostsRepository {
       sql += ' AND status = ?';
       params.push(filters.status);
       if (filters.status === 'published' && restrictThumbnail) sql += HAS_BODY_AND_IMAGE;
+      if (filters.status === 'scheduled') {
+        if (filters.scheduledFrom) {
+          sql += ' AND published_at >= ?';
+          params.push(filters.scheduledFrom);
+        }
+        if (filters.scheduledTo) {
+          sql += ' AND published_at <= ?';
+          params.push(filters.scheduledTo);
+        }
+      }
     }
 
     if (filters?.source === 'rss') {
@@ -217,10 +258,17 @@ export class PostsRepository {
     search?: string;
     source?: 'manual' | 'rss';
     restrictThumbnail?: boolean;
+    scheduledFrom?: string;
+    scheduledTo?: string;
   }): Promise<number> {
     let sql = 'SELECT COUNT(*) as count FROM posts WHERE 1=1';
     const params: (string | number | boolean | null)[] = [];
     const restrictThumbnail = filters?.restrictThumbnail !== false;
+
+    // Default to published-only for public (non-admin) queries
+    if (!filters?.status && restrictThumbnail) {
+      sql += " AND status = 'published'";
+    }
 
     if (filters?.categoryId) {
       sql += ' AND category_id = ?';
@@ -236,6 +284,16 @@ export class PostsRepository {
       sql += ' AND status = ?';
       params.push(filters.status);
       if (filters.status === 'published' && restrictThumbnail) sql += HAS_BODY_AND_IMAGE;
+      if (filters.status === 'scheduled') {
+        if (filters.scheduledFrom) {
+          sql += ' AND published_at >= ?';
+          params.push(filters.scheduledFrom);
+        }
+        if (filters.scheduledTo) {
+          sql += ' AND published_at <= ?';
+          params.push(filters.scheduledTo);
+        }
+      }
     }
 
     if (filters?.source === 'rss') {
@@ -338,7 +396,7 @@ export class PostsRepository {
   async findLatest(limit: number): Promise<PostEntity[]> {
     return query<PostEntity>(
       `SELECT * FROM posts 
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
        LIMIT ?`,
       [limit]
@@ -353,7 +411,7 @@ export class PostsRepository {
   async findLatestForListing(limit: number): Promise<PostEntity[]> {
     return query<PostEntity>(
       `SELECT * FROM posts 
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
        LIMIT ?`,
       [limit]
@@ -366,7 +424,7 @@ export class PostsRepository {
   async findLatestByAuthorId(authorId: number, limit: number = 20): Promise<PostEntity[]> {
     return query<PostEntity>(
       `SELECT * FROM posts
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
          AND author_id = ?
        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
        LIMIT ?`,
@@ -425,7 +483,7 @@ export class PostsRepository {
     const placeholders = excludeIds.map(() => '?').join(',');
     return query<PostEntity>(
       `SELECT * FROM posts 
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE} AND id NOT IN (${placeholders})
+       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE} AND id NOT IN (${placeholders})
        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
        LIMIT ?`,
       [...excludeIds, limit]
@@ -440,7 +498,7 @@ export class PostsRepository {
     if (excludeIds.length === 0) {
       return query<{ slug: string }>(
         `SELECT slug FROM posts 
-         WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+         WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
          ORDER BY COALESCE(published_at, created_at) DESC, id DESC
          LIMIT ?`,
         [limit]
@@ -449,7 +507,7 @@ export class PostsRepository {
     const placeholders = excludeIds.map(() => '?').join(',');
     return query<{ slug: string }>(
       `SELECT slug FROM posts 
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE} AND id NOT IN (${placeholders})
+       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE} AND id NOT IN (${placeholders})
        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
        LIMIT ?`,
       [...excludeIds, limit]
@@ -466,11 +524,11 @@ export class PostsRepository {
     }
 
     const prev = await queryOne<PostEntity>(
-      `SELECT * FROM posts WHERE status = 'published'${HAS_BODY_AND_IMAGE} AND id < ? ORDER BY id DESC LIMIT 1`,
+      `SELECT * FROM posts WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE} AND id < ? ORDER BY id DESC LIMIT 1`,
       [current.id]
     );
     const next = await queryOne<PostEntity>(
-      `SELECT * FROM posts WHERE status = 'published'${HAS_BODY_AND_IMAGE} AND id > ? ORDER BY id ASC LIMIT 1`,
+      `SELECT * FROM posts WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE} AND id > ? ORDER BY id ASC LIMIT 1`,
       [current.id]
     );
 
@@ -483,7 +541,7 @@ export class PostsRepository {
   async findTrending(limit: number = 5, excludeIds: number[] = []): Promise<PostEntity[]> {
     let sql = `
       SELECT * FROM posts 
-      WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+      WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
     `;
     const params: number[] = [];
 
@@ -512,7 +570,7 @@ export class PostsRepository {
     // 1) Substring match — fixes pasted full titles; BOOLEAN +short* / stopwords often return zero rows.
     const direct = await query<PostEntity>(
       `SELECT * FROM posts
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
          AND (title LIKE ? ESCAPE '\\\\' OR slug LIKE ? ESCAPE '\\\\' OR excerpt LIKE ? ESCAPE '\\\\')
        ORDER BY
          CASE WHEN title LIKE ? ESCAPE '\\\\' THEN 0 ELSE 1 END,
@@ -530,7 +588,7 @@ export class PostsRepository {
       try {
         const nl = await query<PostEntity>(
           `SELECT * FROM posts
-           WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+           WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
              AND MATCH(title, excerpt, content) AGAINST (? IN NATURAL LANGUAGE MODE)
            ORDER BY MATCH(title, excerpt, content) AGAINST (? IN NATURAL LANGUAGE MODE) DESC,
                     COALESCE(published_at, created_at) DESC, id DESC
@@ -549,7 +607,7 @@ export class PostsRepository {
       try {
         const fulltext = await query<PostEntity>(
           `SELECT * FROM posts
-           WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+           WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
              AND MATCH(title, excerpt, content) AGAINST (? IN BOOLEAN MODE)
            ORDER BY MATCH(title, excerpt, content) AGAINST (? IN BOOLEAN MODE) DESC,
                     COALESCE(published_at, created_at) DESC, id DESC
@@ -567,7 +625,7 @@ export class PostsRepository {
       const rank = this.buildSearchRankSql(tokens, { title: 'title', excerpt: 'excerpt', slug: 'slug' });
       const tokenRows = await query<PostEntity>(
         `SELECT * FROM posts
-         WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+         WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
            ${where.sql}
          ORDER BY (${rank.sql}) DESC, COALESCE(published_at, created_at) DESC, id DESC
          LIMIT ?`,
@@ -579,7 +637,7 @@ export class PostsRepository {
     // Last resort: body substring (title/excerpt already tried in step 1).
     return query<PostEntity>(
       `SELECT * FROM posts
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE}
+       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
          AND content LIKE ? ESCAPE '\\\\'
        ORDER BY COALESCE(published_at, created_at) DESC, id DESC
        LIMIT ?`,
@@ -604,6 +662,7 @@ export class PostsRepository {
     format?: string;
     status?: string;
     featured?: boolean;
+    publishedAt?: string;
   }): Promise<PostEntity> {
     const status = data.status || 'draft';
     const [hasMetaDescription, hasRobots] = await Promise.all([
@@ -618,6 +677,15 @@ export class PostsRepository {
       'content', 'category_id', 'author_id',
       'featured_image_url', 'featured_image_small_url', 'format', 'status', 'featured', 'published_at',
     ];
+
+    let publishedAt: string | null = null;
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    if (status === 'published') {
+      publishedAt = new Date(Date.now() + IST_OFFSET).toISOString().slice(0, 19).replace('T', ' ');
+    } else if (status === 'scheduled' && data.publishedAt) {
+      publishedAt = new Date(new Date(data.publishedAt).getTime() + IST_OFFSET).toISOString().slice(0, 19).replace('T', ' ');
+    }
+
     const params = [
       data.title,
       data.slug,
@@ -632,7 +700,7 @@ export class PostsRepository {
       data.format || 'standard',
       status,
       data.featured ? 1 : 0,
-      status === 'published' ? new Date() : null,
+      publishedAt,
     ];
 
     const sql = `INSERT INTO posts (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;

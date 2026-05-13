@@ -217,7 +217,7 @@ export async function PUT(
       eventEndTime: string | null;
       imageUrl: string | undefined;
       externalUrl: string;
-      status: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
+      status: 'draft' | 'upcoming' | 'completed' | 'cancelled';
     }> = {};
 
     if (body.title !== undefined) updateData.title = String(body.title);
@@ -275,7 +275,7 @@ export async function PUT(
       updateData.imageUrl = imageUrl;
     }
     if (body.externalUrl !== undefined) updateData.externalUrl = String(body.externalUrl);
-    if (body.status !== undefined) updateData.status = body.status as 'upcoming' | 'ongoing' | 'past' | 'cancelled';
+    if (body.status !== undefined) updateData.status = body.status as 'draft' | 'upcoming' | 'completed' | 'cancelled';
 
     const entity = await eventsService.updateEvent(eventId, updateData);
     const event = entityToEvent(entity);

@@ -42,8 +42,9 @@ export default function EditPostPage() {
     featuredImageUrl: '',
     featuredImageSmallUrl: '',
     format: 'standard' as 'standard' | 'video' | 'gallery',
-    status: 'draft' as 'draft' | 'published' | 'archived',
+    status: 'draft' as 'draft' | 'published' | 'scheduled' | 'archived',
     featured: false,
+    scheduledAt: '',
   });
 
   useEffect(() => {
@@ -105,6 +106,13 @@ export default function EditPostPage() {
         ? normalizeRssHtmlForEditor(post.content || '')
         : post.content || '';
 
+      // Format publishedAt for datetime-local input if post is scheduled
+      let scheduledAt = '';
+      if (post.status === 'scheduled' && post.publishedAt) {
+        const d = new Date(post.publishedAt);
+        scheduledAt = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      }
+
       setFormData({
         title: post.title || '',
         slug: post.slug || '',
@@ -119,6 +127,7 @@ export default function EditPostPage() {
         format: post.format || 'standard',
         status: post.status || 'draft',
         featured: post.featured || false,
+        scheduledAt,
       });
     } catch {
       setError('An error occurred while fetching the post');
@@ -152,6 +161,12 @@ export default function EditPostPage() {
       const authorId = formData.authorId ? parseInt(formData.authorId, 10) : NaN;
       if (isNaN(categoryId) || isNaN(authorId)) {
         setError('Please select both category and author.');
+        setSaving(false);
+        return;
+      }
+
+      if (formData.status === 'scheduled' && !formData.scheduledAt) {
+        setError('Please select a scheduled date and time.');
         setSaving(false);
         return;
       }
@@ -199,6 +214,9 @@ export default function EditPostPage() {
           form.append('format', formData.format);
           form.append('status', formData.status);
           form.append('featured', String(formData.featured));
+          if (formData.status === 'scheduled' && formData.scheduledAt) {
+            form.append('publishedAt', new Date(formData.scheduledAt).toISOString());
+          }
           form.append('featuredImageFile', featuredImageFile);
           // Token in body helps when edge strips auth headers on multipart requests.
           if (token) form.append('_token', token);
@@ -242,6 +260,9 @@ export default function EditPostPage() {
           content: sanitizedContent,
           categoryId,
           authorId,
+          ...(formData.status === 'scheduled' && formData.scheduledAt
+            ? { publishedAt: new Date(formData.scheduledAt).toISOString() }
+            : {}),
         };
         const headersJson = getAuthHeaders();
         response = await fetch(postUrl, {
@@ -285,6 +306,9 @@ export default function EditPostPage() {
           multipart.append('featured', String(formData.featured));
           multipart.append('featuredImageUrl', formData.featuredImageUrl || '');
           multipart.append('featuredImageSmallUrl', formData.featuredImageSmallUrl || '');
+          if (formData.status === 'scheduled' && formData.scheduledAt) {
+            multipart.append('publishedAt', new Date(formData.scheduledAt).toISOString());
+          }
 
           const headersMultipart: HeadersInit = {
             Authorization: `Bearer ${token}`,
@@ -727,7 +751,7 @@ export default function EditPostPage() {
           </label>
           <select
             value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value as 'draft' | 'published' | 'archived' })}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value as 'draft' | 'published' | 'scheduled' | 'archived' })}
             style={{
               width: '100%',
               padding: '0.75rem',
@@ -739,9 +763,25 @@ export default function EditPostPage() {
           >
             <option value="draft">Draft</option>
             <option value="published">Published</option>
+            <option value="scheduled">Scheduled</option>
             <option value="archived">Archived</option>
           </select>
         </div>
+
+        {formData.status === 'scheduled' && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
+              Scheduled Date &amp; Time *
+            </label>
+            <input
+              type="datetime-local"
+              value={formData.scheduledAt}
+              onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+              required
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
+            />
+          </div>
+        )}
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{

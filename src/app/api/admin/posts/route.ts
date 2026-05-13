@@ -64,12 +64,17 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
+    // Publish any scheduled posts whose published_at time has passed
+    await postsRepository.publishScheduledPosts();
+
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
     const search = searchParams.get('search');
     const source = searchParams.get('source') as 'manual' | 'rss' | null;
     const categoryId = searchParams.get('categoryId');
     const authorId = searchParams.get('authorId');
+    const scheduledFrom = searchParams.get('scheduledFrom');
+    const scheduledTo = searchParams.get('scheduledTo');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
@@ -85,6 +90,8 @@ export async function GET(request: NextRequest) {
       orderByLatestDate?: boolean;
       forAdmin?: boolean;
       restrictThumbnail?: boolean;
+      scheduledFrom?: string;
+      scheduledTo?: string;
     } = {
       limit: Math.min(limit, 100), // Max 100 items per page
       offset,
@@ -94,6 +101,10 @@ export async function GET(request: NextRequest) {
     };
 
     if (status) filters.status = status;
+    if (status === 'scheduled') {
+      if (scheduledFrom) filters.scheduledFrom = scheduledFrom;
+      if (scheduledTo) filters.scheduledTo = scheduledTo;
+    }
     if (search) filters.search = search;
     if (source === 'manual' || source === 'rss') filters.source = source;
     if (categoryId) {
@@ -346,7 +357,7 @@ export async function POST(request: NextRequest) {
     featuredImageUrl = normalizeImageUrlForDb(featuredImageUrl);
     featuredImageSmallUrl = normalizeImageUrlForDb(featuredImageSmallUrl) || featuredImageUrl;
 
-    const status = body.status === 'archived' ? 'archived' : body.status === 'published' ? 'published' : 'draft';
+    const status = body.status === 'archived' ? 'archived' : body.status === 'published' ? 'published' : body.status === 'scheduled' ? 'scheduled' : 'draft';
     // Require featured image for publishing; news with no image will not be posted as published
     const hasValidFeatured = Boolean(
       featuredImageUrl && String(featuredImageUrl).trim() && !String(featuredImageUrl).trim().startsWith('https://images.unsplash.com/')
@@ -407,6 +418,7 @@ export async function POST(request: NextRequest) {
       format: (body.format as 'standard' | 'video' | 'gallery') || 'standard',
       status,
       featured: String(body.featured) === 'true' || body.featured === true,
+      ...(status === 'scheduled' && body.publishedAt ? { publishedAt: String(body.publishedAt) } : {}),
     });
 
     if (!entity) {

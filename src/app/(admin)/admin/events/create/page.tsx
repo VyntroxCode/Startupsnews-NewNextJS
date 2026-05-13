@@ -25,14 +25,16 @@ export default function CreateEventPage() {
     eventEndTime: '00:00',
     imageUrl: '',
     externalUrl: '',
-    status: 'upcoming' as 'upcoming' | 'ongoing' | 'past' | 'cancelled',
+    status: 'draft' as 'draft' | 'upcoming' | 'completed' | 'cancelled',
   });
 
   const generateSlug = (title: string) => {
     return title
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
+      .replace(/['''"]/g, '')                            // remove apostrophes/quotes
+      .replace(/[^a-z0-9]+/g, '-')                       // replace non-alphanumeric with -
+      .replace(/(^-|-$)/g, '');                          // trim leading/trailing -
   };
 
   const handleTitleChange = (title: string) => {
@@ -314,11 +316,11 @@ export default function CreateEventPage() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Status</label>
-          <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as 'upcoming' | 'ongoing' | 'past' | 'cancelled' })}
+          <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as 'draft' | 'upcoming' | 'completed' | 'cancelled' })}
             style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}>
+            <option value="draft">Draft</option>
             <option value="upcoming">Upcoming</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="past">Past</option>
+            <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>

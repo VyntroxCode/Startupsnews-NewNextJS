@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     // Auto-generate slug if missing
     if (!body.slug || typeof body.slug !== 'string' || !body.slug.trim()) {
-      body.slug = String(body.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      body.slug = String(body.title).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['''"]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
 
     let imageUrl: string | undefined = body.imageUrl ? String(body.imageUrl).trim() : undefined;
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
       eventEndTime: body.eventEndTime ? String(body.eventEndTime).trim() : null,
       imageUrl,
       externalUrl: body.externalUrl != null ? String(body.externalUrl) : undefined,
-      status: (body.status as 'upcoming' | 'ongoing' | 'past' | 'cancelled') || 'upcoming',
+      status: (body.status as 'draft' | 'upcoming' | 'completed' | 'cancelled') || 'draft',
     });
 
     const event = entityToEvent(entity);

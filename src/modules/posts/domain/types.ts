@@ -38,7 +38,7 @@ export interface PostEntity {
   featured_image_url?: string;
   featured_image_small_url?: string;
   format: "standard" | "video" | "gallery";
-  status: "draft" | "published" | "archived";
+  status: "draft" | "published" | "scheduled" | "archived";
   is_gone_410?: boolean | number;
   robots?: string | null;
   featured: boolean;
@@ -65,7 +65,7 @@ export interface CreatePostDto {
   featuredImageUrl?: string;
   featuredImageSmallUrl?: string;
   format?: "standard" | "video" | "gallery";
-  status?: "draft" | "published";
+  status?: "draft" | "published" | "scheduled" | "archived";
   featured?: boolean;
 }
 

@@ -68,7 +68,6 @@ export const siteConfig = {
         { label: "Social Media", href: "/social-media" },
         { label: "Tech", href: "/tech" },
         { label: "Web3 & Blockchain", href: "/web3-blockchain" },
-
       ],
     },
     {
@@ -88,8 +87,11 @@ export const siteConfig = {
     {
       id: "press",
       label: "PRESS RELEASE",
-      href: "/press",
-      children: [{ label: "Submit", href: "https://forms.gle/FrCjzLGAs1gNaVyG7" }],
+      href: "/press-release",
+      children: [
+        { label: "View All", href: "/press-release" },
+        { label: "Submit", href: "https://forms.gle/FrCjzLGAs1gNaVyG7" },
+      ],
     },
     { label: "ADVERTISE WITH US", href: "advertise-with-us/pagee", dividerBefore: true },
     { label: "ABOUT US", href: "/about" },

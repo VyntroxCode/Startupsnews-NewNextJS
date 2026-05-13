@@ -66,6 +66,8 @@ export async function GET(
   if (auth instanceof NextResponse) return auth;
 
   try {
+    await postsRepository.publishScheduledPosts();
+
     const { id } = await params;
     const postId = parseInt(id);
 
@@ -160,6 +162,7 @@ async function handleUpdateRequest(
         featured: formData.get('featured'),
         featuredImageUrl: formData.get('featuredImageUrl'),
         featuredImageSmallUrl: formData.get('featuredImageSmallUrl'),
+        publishedAt: formData.get('publishedAt'),
       };
     } else {
       formToken = null;
@@ -214,8 +217,9 @@ async function handleUpdateRequest(
       featuredImageUrl: string;
       featuredImageSmallUrl: string;
       format: "standard" | "video" | "gallery";
-      status: "draft" | "published" | "archived";
+      status: "draft" | "published" | "archived" | "scheduled";
       featured: boolean;
+      publishedAt: string;
     }> = {};
 
     if (body.title !== undefined) updateData.title = String(body.title);
@@ -286,8 +290,9 @@ async function handleUpdateRequest(
     }
 
     if (body.format !== undefined) updateData.format = body.format as "standard" | "video" | "gallery";
-    if (body.status !== undefined) updateData.status = body.status as "draft" | "published" | "archived";
+    if (body.status !== undefined) updateData.status = body.status as "draft" | "published" | "archived" | "scheduled";
     if (body.featured !== undefined) updateData.featured = String(body.featured) === 'true' || body.featured === true;
+    if (body.publishedAt !== undefined && body.publishedAt) updateData.publishedAt = String(body.publishedAt);
 
     const entity = await postsService.updatePost(postId, updateData);
     const post = await entityToPost(entity);

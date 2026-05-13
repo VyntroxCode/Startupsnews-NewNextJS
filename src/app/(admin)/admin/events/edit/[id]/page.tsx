@@ -30,7 +30,7 @@ export default function EditEventPage() {
     eventEndTime: '',
     imageUrl: '',
     externalUrl: '',
-    status: 'upcoming' as 'upcoming' | 'ongoing' | 'past' | 'cancelled',
+    status: 'draft' as 'draft' | 'upcoming' | 'completed' | 'cancelled',
   });
 
   useEffect(() => {
@@ -569,7 +569,7 @@ export default function EditEventPage() {
           </label>
           <select
             value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value as 'upcoming' | 'ongoing' | 'past' | 'cancelled' })}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value as 'draft' | 'upcoming' | 'completed' | 'cancelled' })}
             style={{
               width: '100%',
               padding: '0.75rem',
@@ -579,9 +579,9 @@ export default function EditEventPage() {
               boxSizing: 'border-box',
             }}
           >
+            <option value="draft">Draft</option>
             <option value="upcoming">Upcoming</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="past">Past</option>
+            <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>

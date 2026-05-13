@@ -41,6 +41,7 @@ export class PostsService {
    * When forAdmin is true, returns all posts (no thumbnail restriction, no cache) for admin list.
    */
   async getAllPosts(filters?: {
+    categoryId?: number;
     categorySlug?: string;
     status?: string;
     featured?: boolean;
@@ -51,6 +52,8 @@ export class PostsService {
     authorId?: number;
     orderByLatestDate?: boolean;
     forAdmin?: boolean;
+    scheduledFrom?: string;
+    scheduledTo?: string;
   }): Promise<PostEntity[]> {
     const forAdmin = filters?.forAdmin === true;
     const cacheKey = forAdmin ? `posts:admin:${JSON.stringify(filters)}` : `posts:all:${JSON.stringify(filters)}`;
@@ -75,7 +78,7 @@ export class PostsService {
 
     const posts = await this.repository.findAll({
       ...filters,
-      categoryId,
+      categoryId: categoryId !== undefined ? categoryId : filters?.categoryId,
       search: filters?.search,
       restrictThumbnail: !forAdmin,
     });
@@ -230,8 +233,9 @@ export class PostsService {
     featuredImageUrl?: string;
     featuredImageSmallUrl?: string;
     format?: "standard" | "video" | "gallery";
-    status?: "draft" | "published" | "archived";
+    status?: "draft" | "published" | "scheduled" | "archived";
     featured?: boolean;
+    publishedAt?: string;
   }): Promise<PostEntity> {
     // Check if slug exists
     const existingPost = await this.repository.findBySlug(data.slug);
@@ -251,6 +255,14 @@ export class PostsService {
     const createData = { ...data };
     if (createData.status === 'published' && !canPublishPost(createData.content, createData.featuredImageUrl)) {
       createData.status = 'draft';
+    }
+
+    // If scheduled date is in the past, publish immediately
+    if (createData.status === 'scheduled' && createData.publishedAt) {
+      const scheduledDate = new Date(createData.publishedAt);
+      if (scheduledDate <= new Date()) {
+        createData.status = 'published';
+      }
     }
 
     const entity = await this.repository.create(createData);
@@ -276,8 +288,9 @@ export class PostsService {
     featuredImageUrl: string;
     featuredImageSmallUrl: string;
     format: "standard" | "video" | "gallery";
-    status: "draft" | "published" | "archived";
+    status: "draft" | "published" | "archived" | "scheduled";
     featured: boolean;
+    publishedAt: string;
   }>): Promise<PostEntity> {
     const existingPost = await this.repository.findById(id);
     if (!existingPost) {
@@ -315,6 +328,19 @@ export class PostsService {
     if (data.format !== undefined) updateData.format = data.format;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.featured !== undefined) updateData.featured = data.featured;
+    if ((data as { publishedAt?: string }).publishedAt) {
+      const scheduledStr = (data as { publishedAt?: string }).publishedAt!;
+      const scheduledDate = new Date(scheduledStr);
+      // Store as IST datetime string to match MySQL NOW() which runs at +05:30
+      const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+      const istDate = new Date(scheduledDate.getTime() + IST_OFFSET);
+      const mysqlDatetime = istDate.toISOString().slice(0, 19).replace('T', ' ');
+      (updateData as Record<string, unknown>)['published_at'] = mysqlDatetime;
+      // Only auto-publish if the scheduled time is actually in the past
+      if (scheduledDate.getTime() <= Date.now()) {
+        updateData.status = 'published';
+      }
+    }
 
     // Require image to publish; reject instead of forcing draft
     const effectiveContent = updateData.content !== undefined ? updateData.content : existingPost.content;
@@ -326,9 +352,13 @@ export class PostsService {
 
     // Handle published_at based on status
     if (updateData.status === 'published' && existingPost.status !== 'published') {
-      updateData.published_at = new Date();
-    } else if (updateData.status && updateData.status !== 'published' && existingPost.published_at) {
-      updateData.published_at = null as unknown as Date; // Allow null for unpublished posts
+      if (!(updateData as Record<string, unknown>)['published_at']) {
+        updateData.published_at = new Date();
+      }
+    } else if (updateData.status === 'scheduled' && (updateData as Record<string, unknown>)['published_at']) {
+      // Keep the scheduled published_at set above
+    } else if (updateData.status && updateData.status !== 'published' && updateData.status !== 'scheduled' && existingPost.published_at) {
+      updateData.published_at = null as unknown as Date;
     }
 
     const entity = await this.repository.update(id, updateData);

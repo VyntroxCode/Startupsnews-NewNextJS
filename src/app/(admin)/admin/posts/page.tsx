@@ -116,9 +116,32 @@ export default function PostsPage() {
 
   const handleStatusFilter = useCallback((status: string | null) => {
     setFilters((prev) => {
-      if (status) return { ...prev, status };
-      const { status: _, ...rest } = prev;
-      return rest;
+      const next = { ...prev };
+      if (status) {
+        next.status = status;
+      } else {
+        delete next.status;
+      }
+      // Clear scheduled date filters when changing away from scheduled
+      if (status !== 'scheduled') {
+        delete next.scheduledFrom;
+        delete next.scheduledTo;
+      }
+      return next;
+    });
+  }, [setFilters]);
+
+  const handleScheduledFromChange = useCallback((value: string) => {
+    setFilters((prev) => {
+      if (!value) { const { scheduledFrom: _, ...rest } = prev; return rest; }
+      return { ...prev, scheduledFrom: value };
+    });
+  }, [setFilters]);
+
+  const handleScheduledToChange = useCallback((value: string) => {
+    setFilters((prev) => {
+      if (!value) { const { scheduledTo: _, ...rest } = prev; return rest; }
+      return { ...prev, scheduledTo: value };
     });
   }, [setFilters]);
 
@@ -353,33 +376,89 @@ export default function PostsPage() {
             onChange={setSearch}
             placeholder="Search posts by title, excerpt, or slug..."
           />
-          <select
-            value={String(filters.status ?? '')}
-            onChange={(e) => handleStatusFilter(e.target.value || null)}
-            style={{
-              padding: '0.75rem 1rem',
-              border: '2px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '0.9375rem',
-              background: 'white',
-              cursor: 'pointer',
-              color: '#475569',
-              minWidth: '150px',
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#6366f1';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#e2e8f0';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <option value="">All Status</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-            <option value="archived">Archived</option>
-          </select>
+          {/* Status filter buttons */}
+          <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {([
+              { value: '', label: 'All' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'published', label: 'Published' },
+              { value: 'scheduled', label: 'Scheduled' },
+              { value: 'archived', label: 'Archived' },
+            ] as const).map(({ value, label }) => {
+              const active = (filters.status ?? '') === value;
+              const colorMap: Record<string, { bg: string; color: string; border: string; activeBg: string; activeColor: string; activeBorder: string }> = {
+                '':          { bg: 'white',    color: '#475569', border: '#e2e8f0', activeBg: '#0f172a',  activeColor: 'white',   activeBorder: '#0f172a' },
+                draft:       { bg: 'white',    color: '#991b1b', border: '#fca5a5', activeBg: '#ef4444',  activeColor: 'white',   activeBorder: '#ef4444' },
+                published:   { bg: 'white',    color: '#065f46', border: '#a7f3d0', activeBg: '#10b981',  activeColor: 'white',   activeBorder: '#10b981' },
+                scheduled:   { bg: 'white',    color: '#1e40af', border: '#bfdbfe', activeBg: '#3b82f6',  activeColor: 'white',   activeBorder: '#3b82f6' },
+                archived:    { bg: 'white',    color: '#475569', border: '#cbd5e1', activeBg: '#64748b',  activeColor: 'white',   activeBorder: '#64748b' },
+              };
+              const c = colorMap[value];
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => handleStatusFilter(value || null)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '20px',
+                    border: `2px solid ${active ? c.activeBorder : c.border}`,
+                    background: active ? c.activeBg : c.bg,
+                    color: active ? c.activeColor : c.color,
+                    fontWeight: '600',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Scheduled date/time range picker */}
+          {filters.status === 'scheduled' && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <input
+                type="datetime-local"
+                value={String(filters.scheduledFrom ?? '')}
+                onChange={(e) => handleScheduledFromChange(e.target.value)}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  border: '2px solid #bfdbfe',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  background: 'white',
+                  color: '#1e40af',
+                  cursor: 'pointer',
+                }}
+                placeholder="From"
+              />
+              <span style={{ color: '#64748b', fontSize: '0.8125rem', fontWeight: '500' }}>to</span>
+              <input
+                type="datetime-local"
+                value={String(filters.scheduledTo ?? '')}
+                onChange={(e) => handleScheduledToChange(e.target.value)}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  border: '2px solid #bfdbfe',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  background: 'white',
+                  color: '#1e40af',
+                  cursor: 'pointer',
+                }}
+                placeholder="To"
+              />
+            </div>
+          )}
           <select
             value={String(filters.source ?? '')}
             onChange={(e) => handleSourceFilter(e.target.value || null)}
@@ -895,7 +974,9 @@ export default function PostsPage() {
                               ? { background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', color: '#065f46', border: '1px solid #a7f3d0' }
                               : post.status === 'archived'
                                 ? { background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', color: '#475569', border: '1px solid #cbd5e1' }
-                                : { background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)', color: '#991b1b', border: '1px solid #fca5a5' }
+                                : post.status === 'scheduled'
+                                  ? { background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', color: '#1e40af', border: '1px solid #bfdbfe' }
+                                  : { background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)', color: '#991b1b', border: '1px solid #fca5a5' }
                             ),
                           }}>
                             {post.status || 'draft'}

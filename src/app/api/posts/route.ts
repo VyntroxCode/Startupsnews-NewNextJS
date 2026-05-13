@@ -18,6 +18,8 @@ const postsService = new PostsService(postsRepository, categoriesService);
  */
 export async function GET(request: NextRequest) {
   try {
+    await postsRepository.publishScheduledPosts();
+
     const searchParams = request.nextUrl.searchParams;
     const categorySlug = searchParams.get('category');
     const status = searchParams.get('status') || 'published';
