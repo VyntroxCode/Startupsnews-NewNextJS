@@ -7,8 +7,8 @@ import { revalidatePath } from 'next/cache';
 const HAS_BODY_AND_IMAGE =
   " AND (TRIM(COALESCE(content, '')) != '' AND (TRIM(COALESCE(featured_image_url, '')) != '' OR content LIKE '%<img%'))";
 
-/** Exclude press-release category from all public feeds */
-const EXCLUDE_PRESS_RELEASE = " AND category_id != (SELECT id FROM categories WHERE slug = 'press-release' LIMIT 1)";
+/** Exclude press-release category from all public feeds. Uses NOT EXISTS so the condition is true when the category doesn't exist in DB. */
+const EXCLUDE_PRESS_RELEASE = " AND NOT EXISTS (SELECT 1 FROM categories WHERE slug = 'press-release' AND id = category_id)";
 
 /** InnoDB / MySQL default full-text min token length is often 3; boolean +short* on stopwords yields zero rows. */
 const FULLTEXT_BOOLEAN_STOPWORDS = new Set([

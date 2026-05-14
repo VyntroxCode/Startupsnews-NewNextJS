@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   },
   // Allow external images from DB (S3 bucket) and CDN
   images: {
+    qualities: [90],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
       { protocol: "https", hostname: "*.unsplash.com", pathname: "/**" },

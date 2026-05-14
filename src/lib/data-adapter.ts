@@ -189,9 +189,16 @@ export async function getFeat1LeftPosts(): Promise<{ main: Post; sub: [Post, Pos
 
   try {
     const entities = await postsService.getFeaturedPosts(10);
-    const posts = toListPosts(onlyPostsWithImage(await entitiesToPosts(entities)));
+    let posts = toListPosts(onlyPostsWithImage(await entitiesToPosts(entities)));
     if (posts.length < 3) {
-      throw new Error('Not enough featured posts with images in database (need at least 3)');
+      // Fall back to latest posts if not enough featured posts with images
+      const latestEntities = await postsService.getLatestPostsForListing(10);
+      const latestPosts = toListPosts(onlyPostsWithImage(await entitiesToPosts(latestEntities)));
+      const existingIds = new Set(posts.map((p) => p.id));
+      posts = [...posts, ...latestPosts.filter((p) => !existingIds.has(p.id))].slice(0, 3);
+    }
+    if (posts.length < 3) {
+      throw new Error('Not enough posts with images in database (need at least 3)');
     }
     const result = { main: posts[0], sub: [posts[1], posts[2]] as [Post, Post] };
     await setCache(cacheKey, result, 300);
