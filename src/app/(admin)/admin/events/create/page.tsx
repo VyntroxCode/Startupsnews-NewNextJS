@@ -22,7 +22,7 @@ export default function CreateEventPage() {
     eventDate: '',
     eventEndDate: '',
     eventTime: '00:00',
-    eventEndTime: '00:00',
+    eventEndTime: '23:59',
     imageUrl: '',
     externalUrl: '',
     status: 'draft' as 'draft' | 'upcoming' | 'completed' | 'cancelled',
