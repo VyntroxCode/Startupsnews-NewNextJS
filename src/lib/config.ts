@@ -88,10 +88,9 @@ export const siteConfig = {
       id: "press",
       label: "PRESS RELEASE",
       href: "/press-release",
-      children: [
-        { label: "View All", href: "/press-release" },
-        { label: "Submit", href: "https://forms.gle/FrCjzLGAs1gNaVyG7" },
-      ],
+      // children: [
+      //   { label: "Submit", href: "https://forms.gle/FrCjzLGAs1gNaVyG7" },
+      // ],
     },
     { label: "ADVERTISE WITH US", href: "advertise-with-us/pagee", dividerBefore: true },
     { label: "ABOUT US", href: "/about" },
