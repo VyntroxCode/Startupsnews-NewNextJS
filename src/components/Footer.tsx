@@ -4,8 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/config";
-import Mail from "nodemailer/lib/mailer";
-
 export function Footer() {
   const year = new Date().getFullYear();
   const defaultCopyright = `© ${year} Dotfyi Media Ventures Pvt Ltd`;
@@ -46,7 +44,7 @@ export function Footer() {
                   alt={siteConfig.name}
                   width={250}
                   height={60}
-                  style={{ maxWidth: "250px", height: "auto", display: "block", margin: "0 auto" }}
+                  className="max-w-[250px] h-auto block mx-auto"
                 />
               </Link>
             </div>
@@ -85,7 +83,7 @@ export function Footer() {
                   alt="App Store"
                   width={140}
                   height={45}
-                  style={{ maxWidth: "140px", height: "auto", display: "block", margin: "0 auto" }}
+                  className="max-w-[140px] h-auto block mx-auto"
                 />  
                 </Link>   
               )}
@@ -96,7 +94,7 @@ export function Footer() {
                   alt="Google Play"
                   width={160}
                   height={45}
-                  style={{ maxWidth: "160px", height: "auto", display: "block", margin: "0 auto" }}
+                  className="max-w-[160px] h-auto block mx-auto"
                 />  
                 </Link>           
               
@@ -125,7 +123,7 @@ export function Footer() {
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Feature your Startup</a></li>
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Submit your Funding Round</a></li>
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Submit your press release</a></li>
-              <li><Link href="/advertise-with-us/pagee">Get Media Coverage</Link></li>
+              <li><Link href="/advertise-with-us">Get Media Coverage</Link></li>
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Sponsor an Event</a></li>
             </ul>
           </div>
@@ -150,7 +148,6 @@ export function Footer() {
               <li><Link href="/speak-sponsor">Speak / Sponsor Opportunities</Link></li> */}
               <li><Link href="/funding"> Funding Tracker</Link></li>
               <li>Indian Startup Funding Report</li>
-              <li>Speak / Sponsor Opportunities</li>
             </ul>
           </div>
 
@@ -158,7 +155,7 @@ export function Footer() {
             <h3>About Us</h3>
             <ul>
               <li><Link href="/about">About us</Link></li>
-              <li><Link href="/advertise-with-us/pagee">Advertise with Us</Link></li>
+              <li><Link href="/advertise-with-us">Advertise with Us</Link></li>
               <li><Link href="/editorial-policy">Editorial Policy</Link></li>
               <li><Link href="/our-partners">Our Partners</Link></li>
               <li> <a href="mailto:office@startupnews.fyi">Careers</a></li>

@@ -36,8 +36,6 @@ export function EventsCarousel({ events, maxEvents = 10 }: EventsCarouselProps) 
       const windowWidth = window.innerWidth;
       const effectiveWidth = containerWidth > 0 ? containerWidth : windowWidth;
       
-      console.log('[EventsCarousel] updateCardsPerView - containerWidth:', containerWidth, 'windowWidth:', windowWidth, 'effectiveWidth:', effectiveWidth);
-      
       // Mobile: 1 card, Tablet: 2 cards, Desktop: 3 cards
       let newCardsPerView = 1;
       if (effectiveWidth >= 1024) {
@@ -48,7 +46,6 @@ export function EventsCarousel({ events, maxEvents = 10 }: EventsCarouselProps) 
         newCardsPerView = 1;
       }
 
-      console.log('[EventsCarousel] newCardsPerView:', newCardsPerView, 'isMobile:', newCardsPerView === 1);
       isMobileRef.current = newCardsPerView === 1;
       setCardsPerView(newCardsPerView);
     };
@@ -76,18 +73,14 @@ export function EventsCarousel({ events, maxEvents = 10 }: EventsCarouselProps) 
   useEffect(() => {
     // Only set up autoplay if we have multiple events
     if (totalEvents <= 1) {
-      console.log('[EventsCarousel] Skipping autoplay - totalEvents <= 1');
       return;
     }
 
     // Clean up any existing interval before creating a new one
     if (intervalRef.current) {
-      console.log('[EventsCarousel] Clearing existing interval');
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-
-    console.log('[EventsCarousel] Setting up autoplay interval - totalEvents:', totalEvents, 'isMobile:', isMobileRef.current);
 
     // Set up autoplay interval
     const intervalId = window.setInterval(() => {
@@ -98,26 +91,21 @@ export function EventsCarousel({ events, maxEvents = 10 }: EventsCarouselProps) 
 
       // Skip if paused due to user interaction
       if (Date.now() < autoPauseUntilRef.current) {
-        console.log('[EventsCarousel] Skipping advance - paused');
         return;
       }
-      
-      console.log('[EventsCarousel] Auto-advancing carousel, maxIndex:', maxIndex);
+
       setCurrentIndex((prev) => {
         const nextIndex = prev >= maxIndex ? 0 : prev + 1;
-        console.log('[EventsCarousel] Advancing: ' + prev + ' -> ' + nextIndex);
         return nextIndex;
       });
     }, 4000);
 
     intervalRef.current = intervalId as any;
-    console.log('[EventsCarousel] Autoplay interval started with ID:', intervalId);
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
-        console.log('[EventsCarousel] Autoplay interval cleaned up');
       }
     };
   }, [totalEvents, maxIndex]);

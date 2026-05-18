@@ -35,26 +35,6 @@ export async function Sidebar({ excludeIds = [] }: SidebarProps) {
       <section className="mvp-side-widget">
         <SidebarTabber latest={latest} trending={trending} videos={videos} />
       </section>
-      <section className="mvp-side-widget">
-        <div className="mvp-widget-home-head">
-          <h4 className="mvp-widget-home-title2">
-            <span className="mvp-widget-home-title2">Advertisement</span>
-          </h4>
-        </div>
-        <a
-          href="https://www.hostinger.com/in?REFERRALCODE=JXNSTARTUPGK"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Visit Hostinger"
-          style={{ display: "block" }}
-        >
-          <img
-            src="/images/ads/Hostinger_Ads.jpeg"
-            alt="Hostinger advertisement"
-            style={{ width: "100%", height: "auto", display: "block" }}
-          />
-        </a>
-      </section>
     </>
   );
 }

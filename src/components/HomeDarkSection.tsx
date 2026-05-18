@@ -41,8 +41,6 @@ export function HomeDarkSection({ title, categorySlug, featured, list,url }: Hom
                     <div className="mvp-widget-dark-feat-text left relative">
                       <div className="mvp-cat-date-wrap left relative">
                         <span className="mvp-cd-cat left relative">{featured.category}</span>
-                        {/* srishti */}
-                        {/* <span className="mvp-cd-date left relative">{featured.timeAgo}</span> */}
                       </div>
                       <h2 className="post-heading-max-3-lines">{featured.title}</h2>
                     </div>
@@ -69,8 +67,6 @@ export function HomeDarkSection({ title, categorySlug, featured, list,url }: Hom
                         <div className="mvp-widget-dark-sub-text left relative">
                           <div className="mvp-cat-date-wrap left relative">
                             <span className="mvp-cd-cat left relative">{post.category}</span>
-                            {/* srishti */}
-                            {/* <span className="mvp-cd-date left relative">{post.timeAgo}</span> */}
                           </div>
                           <h2 className="post-heading-max-3-lines">{post.title}</h2>
                         </div>

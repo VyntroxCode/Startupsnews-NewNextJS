@@ -3652,7 +3652,7 @@ footer.footer {
 .footer-bottom {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 64px;
+  gap: 32px;
   align-items: flex-start;
   margin-top: 20px;
   padding-bottom: 20px;
@@ -3661,9 +3661,9 @@ footer.footer {
 }
 
 .footer-bottom h3 {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
   letter-spacing: -0.02em;
   color: var(--footer-text-primary);
   position: relative;
@@ -3693,11 +3693,13 @@ footer.footer {
 }
 
 .footer-bottom li {
+  font-size: 14px;
   margin-bottom: 14px;
+  color: var(--footer-text-secondary);
 }
 
 .footer-bottom a {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--footer-text-secondary);
   text-decoration: none;
@@ -3711,7 +3713,7 @@ footer.footer {
 
 .footer-bottom-bar {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
@@ -3728,7 +3730,7 @@ footer.footer {
 }
 
 .footer-policy-links a {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--footer-text-muted);
   text-decoration: none;
@@ -3789,7 +3791,7 @@ footer.footer {
 }
 
 .footer-copyright p {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--footer-text-muted);
   text-decoration: none;

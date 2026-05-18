@@ -22,7 +22,7 @@ export const siteConfig = {
     { label: "FUNDING TRACKER", href: "/funding" },
     { label: "EVENTS", href: "/events" },
     { label: "AI SPOTLIGHT ", href: "/ai-deeptech" },
-    { label: "ADVERTISE", href: "advertise-with-us/pagee" },
+    { label: "ADVERTISE", href: "/advertise-with-us" },
   ],
   footerMenu: [
     { label: "FUNDING TRACKER", href: "/funding" },
@@ -36,7 +36,7 @@ export const siteConfig = {
   ],
   social: {
     facebook: "https://www.facebook.com/startupnews.fyi",
-    twitter: "https://x.com",
+    twitter: "https://x.com/StartupNewsFyi",
     instagram: "https://www.instagram.com/startupnews.fyi/",
     youtube: "https://youtube.com",
     pinterest: "",
@@ -92,7 +92,7 @@ export const siteConfig = {
       //   { label: "Submit", href: "https://forms.gle/FrCjzLGAs1gNaVyG7" },
       // ],
     },
-    { label: "ADVERTISE WITH US", href: "advertise-with-us/pagee", dividerBefore: true },
+    { label: "ADVERTISE WITH US", href: "/advertise-with-us", dividerBefore: true },
     { label: "ABOUT US", href: "/about" },
     { label: "CONTACT US", href: "/contact-us" },
   ],

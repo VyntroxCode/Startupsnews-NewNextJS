@@ -59,8 +59,6 @@ export function MobileCategorySection({ title, posts, slug }: MobileCategorySect
                     <div className="startupnews-mobile-featured-content">
                         <div className="startupnews-mobile-featured-meta">
                             <span className="startupnews-mobile-featured-category">{featured1.category}</span>
-                            {/* srishti */}
-                            {/* <span className="startupnews-mobile-featured-time">{featured1.timeAgo}</span> */}
                         </div>
                         <h2 className="startupnews-mobile-featured-title post-heading-max-3-lines">{featured1.title}</h2>
                     </div>
@@ -92,8 +90,6 @@ export function MobileCategorySection({ title, posts, slug }: MobileCategorySect
                         <div className="startupnews-mobile-featured-content">
                             <div className="startupnews-mobile-featured-meta">
                                 <span className="startupnews-mobile-featured-category">{featured2.category}</span>
-                                {/* srishti */}
-                                {/* <span className="startupnews-mobile-featured-time">{featured2.timeAgo}</span> */}
                             </div>
                             <h2 className="startupnews-mobile-featured-title post-heading-max-3-lines">{featured2.title}</h2>
                         </div>
@@ -110,8 +106,6 @@ export function MobileCategorySection({ title, posts, slug }: MobileCategorySect
                                 <div className="startupnews-article-content">
                                     <div className="startupnews-article-meta">
                                         <span className="startupnews-category">{post.category}</span>
-                                        {/* srishti */}
-                                        {/* <span className="startupnews-date">{post.timeAgo}</span> */}
                                     </div>
                                     <h2 className="startupnews-article-title post-heading-max-3-lines">{post.title}</h2>
                                     {/* <p className="startupnews-article-excerpt">{post.excerpt}</p> */}

@@ -121,8 +121,6 @@ async function renderCategoryPage(slug: string) {
                           <div className="mvp-blog-story-in">
                             <div className="mvp-blog-story-text left relative">
                               <div className="mvp-cat-date-wrap left relative">
-                                {/* srishti */}
-                                {/* <span className="mvp-cd-date left relative">{post.timeAgo}</span> */}
                               </div>
                               <h2 className="post-heading-max-3-lines">{post.title}</h2>
                               <p className="post-card-excerpt-max-3-lines">{post.excerpt}</p>
@@ -138,8 +136,6 @@ async function renderCategoryPage(slug: string) {
                     More Posts
                   </Link>
                   <div className="mvp-nav-links">
-                    {/* srishti */}
-                    {/* <Link href="/news">Page 1 of 1</Link> */}
                   </div>
                 </div>
               </div>

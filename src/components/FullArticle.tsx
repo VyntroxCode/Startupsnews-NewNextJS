@@ -57,10 +57,54 @@ function stripNoFollowFromLinks(html: string): string {
     );
 }
 
+function addNoFollowToLinks(html: string): string {
+    // Add nofollow to external links that don't already have it
+    return html.replace(
+        /<a\b([^>]*)>/gi,
+        (match, attrs) => {
+            // Skip if already has nofollow
+            if (/\brel\s*=\s*["'][^"']*nofollow[^"']*["']/i.test(match)) {
+                return match;
+            }
+            // Skip internal links (relative or same domain)
+            const hrefMatch = /\bhref\s*=\s*["']([^"']*)["']/i.exec(attrs);
+            if (hrefMatch) {
+                const href = hrefMatch[1];
+                // Internal links (relative or same domain) - skip
+                if (href.startsWith('/') || href.startsWith('#') || href.startsWith('https://startupnews.fyi') || href.startsWith('http://startupnews.fyi')) {
+                    return match;
+                }
+            }
+            // Add nofollow to the rel attribute
+            const relMatch = /\brel\s*=\s*(["'])([^"']*)\1/i.exec(attrs);
+            if (relMatch) {
+                // Has rel but no nofollow - add it
+                const quote = relMatch[1];
+                const existingRel = relMatch[2];
+                const newRel = existingRel ? `${existingRel} nofollow` : 'nofollow';
+                return match.replace(/\brel\s*=\s*["'][^"']*["']/i, `rel=${quote}${newRel}${quote}`);
+            } else {
+                // No rel attribute - add one
+                return `<a${attrs} rel="noopener noreferrer nofollow">`;
+            }
+        }
+    );
+}
+
 export function FullArticle({ post, related = [], prev, next }: FullArticleProps) {
     const rawContent = stripFeaturedImageFromContent(post.content || "", post.image || "");
-    const robotsIsFollow = typeof post.robots === 'string' && post.robots.includes('follow') && !post.robots.includes('nofollow');
-    const contentWithoutDuplicateFeatured = robotsIsFollow ? stripNoFollowFromLinks(rawContent) : rawContent;
+    const robotsValue = typeof post.robots === 'string' ? post.robots.toLowerCase() : 'index,nofollow';
+    const robotsIsFollow = robotsValue.includes('follow') && !robotsValue.includes('nofollow');
+    const robotsIsNoFollow = robotsValue.includes('nofollow');
+    
+    let processedContent = rawContent;
+    if (robotsIsFollow) {
+        // Remove nofollow from links when robots is set to follow
+        processedContent = stripNoFollowFromLinks(rawContent);
+    } else if (robotsIsNoFollow) {
+        // Add nofollow to external links when robots is set to nofollow
+        processedContent = addNoFollowToLinks(rawContent);
+    }
     const postPath = `/${post.slug}`;
 
     return (
@@ -200,7 +244,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                             <div 
                                                                 className="mvp-post-content-body" 
                                                                 style={{ fontSize: "1rem", lineHeight: 1.8, color: "#333" }}
-                                                                dangerouslySetInnerHTML={{ __html: contentWithoutDuplicateFeatured }}
+                                                                dangerouslySetInnerHTML={{ __html: processedContent }}
                                                             />
                                                         ) : toNewsBrief(post.excerpt) ? (
                                                             <p className="mvp-post-brief" style={{ fontSize: "1.1rem", lineHeight: 1.6, color: "#333", textAlign: 'justify' }}>{toNewsBrief(post.excerpt)}</p>

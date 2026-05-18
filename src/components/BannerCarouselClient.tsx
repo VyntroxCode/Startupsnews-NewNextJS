@@ -20,9 +20,6 @@ export function BannerCarouselClient() {
         const data = await response.json();
         if (data.success) {
           setBanners(data.data || []);
-          if (data.data && data.data.length === 0) {
-            console.log("No active banners found. Create banners in admin panel at /admin/banners");
-          }
         } else {
           console.error("Banner API returned error:", data.error);
         }
