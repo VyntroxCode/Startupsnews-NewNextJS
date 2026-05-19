@@ -22,7 +22,7 @@ export const siteConfig = {
     { label: "FUNDING TRACKER", href: "/funding" },
     { label: "EVENTS", href: "/events" },
     { label: "AI SPOTLIGHT ", href: "/ai-deeptech" },
-    { label: "ADVERTISE", href: "/advertise-with-us" },
+    { label: "PRESS RELEASE", href: "/press-release" },
   ],
   footerMenu: [
     { label: "FUNDING TRACKER", href: "/funding" },
