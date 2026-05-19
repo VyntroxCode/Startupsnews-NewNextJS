@@ -230,7 +230,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                             alt={post.title}
                                             width={1200}
                                             height={630}
-                                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                                            style={{ width: "100%", height: "auto", objectFit: "contain" }}
                                         />
                                         <meta itemProp="url" content={post.image} />
                                     </div>
@@ -271,9 +271,9 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                             <p style={{ fontSize: "0.95rem", lineHeight: 1.8, color: "#555", fontStyle: "italic", marginBottom: "15px", textAlign: "justify" }}>
                                                                 We strive to uphold the highest ethical standards in all of our reporting and coverage. We StartupNews.fyi want to be transparent with our readers about any potential conflicts of interest that may arise in our work. It's possible that some of the investors we feature may have connections to other businesses, including competitors or companies we write about. However, we want to assure our readers that this will not have any impact on the integrity or impartiality of our reporting. We are committed to delivering accurate, unbiased news and information to our audience, and we will continue to uphold our ethics and principles in all of our work. Thank you for your trust and support.
                                                             </p>
-                                                            <p style={{ fontSize: "0.95rem", lineHeight: 1.8, color: "#555", marginBottom: "0" }}>
+                                                            {/* <p style={{ fontSize: "0.95rem", lineHeight: 1.8, color: "#555", marginBottom: "0" }}>
                                                                 Website Upgradation is going on for any glitch kindly connect at <Link href="mailto:office@startupnews.fyi" style={{ color: "#ea5455", textDecoration: "none", fontWeight: 600 }}>office@startupnews.fyi</Link>
-                                                            </p>
+                                                            </p> */}
                                                         </div>
 
                                                         <div id="mvp-prev-next-wrap" className="left relative">

@@ -114,6 +114,7 @@ export function Footer() {
               <li><Link href="/social-media">Social Media</Link></li>
               <li><Link href="/ecommerce">Ecommerce</Link></li>
               <li><Link href="/gaming">Gaming</Link></li>
+              <li><Link href="/press-release">Press Release</Link></li>
             </ul>
           </div>
 
