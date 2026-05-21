@@ -505,8 +505,8 @@ function MenuBar({ editor, onImageUpload, onHtmlUpload, onPasteHtml }: { editor:
     if (url === null) return;
     if (url === '') { editor.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
     
-    // Ask if link should be nofollow (default yes for external links)
-    const isNofollow = window.confirm('Make this link nofollow? (Recommended for external/third-party links)\n\nClick OK for nofollow, Cancel for dofollow');
+    // Ask if link should be nofollow (default: dofollow)
+    const isNofollow = window.confirm('Make this link nofollow?\n\nOK = nofollow, Cancel = dofollow (default)');
     const rel = isNofollow ? 'noopener noreferrer nofollow' : 'noopener noreferrer';
     
     editor.chain().focus().extendMarkRange('link').setLink({ href: url, rel }).run();
@@ -715,7 +715,7 @@ export default function RichTextEditorClient({
       ClassPreserveExtension,
       Link.configure({
         openOnClick: false,
-        HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' },
+        HTMLAttributes: { target: '_blank' },
       }),
       Image.configure({ inline: false, allowBase64: true }),
       Placeholder.configure({ placeholder }),
@@ -865,8 +865,8 @@ export default function RichTextEditorClient({
               if (url === null) return;
               if (url === '') { editor.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
               
-              // Ask if link should be nofollow
-              const isNofollow = window.confirm('Make this link nofollow? (Recommended for external links)\n\nOK = nofollow, Cancel = dofollow');
+              // Ask if link should be nofollow (default: dofollow)
+              const isNofollow = window.confirm('Make this link nofollow?\n\nOK = nofollow, Cancel = dofollow (default)');
               const rel = isNofollow ? 'noopener noreferrer nofollow' : 'noopener noreferrer';
               
               editor.chain().focus().extendMarkRange('link').setLink({ href: url, rel }).run();
