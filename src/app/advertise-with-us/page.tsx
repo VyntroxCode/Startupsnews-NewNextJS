@@ -78,7 +78,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                 <div className="advertise-with-us-main" style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
 
                     <h2 className="heading" style={{ fontSize: "38px", fontWeight: 700, color: "#111" }}>
-                        Reach India's Most Engaged Startup & Tech Audience
+                        Reach The Most Engaged Startup & Tech Audience
                     </h2>
                     <p style={{ fontSize: "18px", lineHeight: "1.8", maxWidth: "760px", margin: "0 auto 30px", color: "#444" }}>
                         StartupNews.fyi connects your brand with 10M+ monthly readers — founders, investors, and tech decision-makers across India and 24 countries. AI-curated, founder-first, globally distributed.
@@ -145,7 +145,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                         Leading brands across India
                     </p>
                     <h2 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
-                       Join 10,000+ advertisers who trust StartupNews for their media campaigns
+                       Join 100’s advertisers who trust StartupNews for their media campaigns
                     </h2>
 
                     <div style={{ maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "10px" }}>
@@ -180,36 +180,10 @@ const ProgressBar = ({ value }: { value: number }) => {
                 </div>
 
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "70px", marginBottom: "32px", marginTop: "32px", justifyContent: "center", color: "#5c5959", fontSize: "13px", fontWeight: 600 }}>
-                        <p>10,000+ Advertisers</p>
-                        <p>Pan-India Coverage</p>
-                        <p>Multi-Language Content</p>
+                        <p>100’s Advertisers</p>
+                        <p>Multi-Continent Coverage</p>
+                        <p>Multi-Language</p>
                     </div>
-                </div>
-            </section>
-
-            <section style={{ padding: "60px 20px"}}>
-                <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center",marginBottom: "20px" }}>
-                    <p style={{ fontSize: "30px", fontWeight: 600, color: "#111", marginBottom: "20px" }}>
-                        Ad Formats
-                    </p>
-                </div>
-                <div style={{ maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "18px" }}>
-                    {[
-                        { icon: "📰", heading: "Sponsored article", label: "Long-form brand story published on SNFYI editorial with full SEO value" },
-                        { icon: "📣",  heading: "Display banner", label: "Homepage, section & article-level banner placements(desktop + mobile)" },
-                        { icon: "✉️",  heading: "Newsletter sponsorship", label: "Dedicated placement in weekly startup funding & news digest" },
-                        { icon: "📱", heading: "Social media posts", label: "Instagram, LinkedIn & WhatsApp broadcast to 15M+ combined reach" },
-                        { icon: "🎤", heading: "Events sponorship", label: "Brand presence at Founders Meet, Seed Summit, Dubai Konnect & more" },
-                        { icon: "🤖", heading: "AI-powered native ads", label: "Contextually placed ads using SNFYI's AI personalisation engine" },
-                        { icon: "📢", heading: "Press release distribution", label: "Publish & distribute your PR to 250+ global media patners" },
-                        { icon: "🌎", heading: "International delegation", label: "Co-brand with SNFYI delegations to GITEX, Slush, Step & other global events" },
-                    ].map((item, idx) => (
-                        <div key={idx} style={{ background: "#fff", borderRadius: "16px", padding: "30px 24px", boxShadow: "0 16px 45px rgba(0,0,0,0.08)", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
-                            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "20px", borderRadius: "50%" }}>{item.icon}</div>
-                            <div style={{ color: "#e91e63", fontSize: "18px", fontWeight: 300, marginBottom: "10px" }}>{item.heading}</div>
-                            <div style={{ color: "#333", fontSize: "14px", fontWeight: 200, letterSpacing: "0.05em" }}>{item.label}</div>
-                        </div>
-                    ))}
                 </div>
             </section>
 
@@ -292,7 +266,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                     <div style={{ textAlign: "center", marginBottom: "40px" }}>
                         <h2 style={{ fontSize: "32px", fontWeight: 800, marginBottom: "12px", color: "#000" }}>Ready to Start Your Advertising Journey?</h2>
                         <p style={{ fontSize: "18px", lineHeight: "1.7", color: "#555", maxWidth: "760px", margin: "0 auto" }}>
-                            Join 10,000+ advertisers who trust StartupNews for expert media guidance across India.
+                          Join 100’s of advertisers who trust StartupNews for expert media guidance across India.
                         </p>
                     </div>
 
@@ -357,7 +331,7 @@ const ProgressBar = ({ value }: { value: number }) => {
             </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "24px", marginTop: "30px" }}>
                         <div style={{ background: "#fff", borderRadius: "18px", padding: "40px", boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}>
-                            <h3 style={{ fontSize: "24px", fontWeight: 800, color: "#000", marginBottom: "16px" }}>Speak to an expert</h3>
+                            <h3 style={{ fontSize: "24px", fontWeight: 800, color: "#000", marginBottom: "16px" }}>Connect directly with an expert</h3>
                             <p style={{ fontSize: "15px", color: "#666", marginBottom: "32px" }}>
                                 Enquiries are sent to <a href="mailto:office@StartupNews.fyi" style={{ color: "#0077b5", fontWeight: 600 }}>office@StartupNews.fyi</a>.
                             </p>
