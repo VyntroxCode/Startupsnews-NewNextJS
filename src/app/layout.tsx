@@ -76,40 +76,119 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
-/* ── JSON-LD: Organization + WebSite (global, rendered once) ── */
-const organizationJsonLd = {
+/* ── JSON-LD: @graph (Organization + Persons + WebSite + WebPage + Breadcrumb) ── */
+const graphJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "StartupNews.fyi",
-  url: SITE_URL,
-  logo: `${SITE_URL}/logo.png`,
-  sameAs: [
-    siteConfig.social.facebook,
-    siteConfig.social.twitter,
-    siteConfig.social.instagram,
-    siteConfig.social.youtube,
-    siteConfig.social.linkedin,
-  ].filter(Boolean),
-  contactPoint: {
-    "@type": "ContactPoint",
-    email: "office@startupnews.fyi",
-    contactType: "customer service",
-  },
-};
-
-const websiteJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "StartupNews.fyi",
-  url: SITE_URL,
-  potentialAction: {
-    "@type": "SearchAction",
-    target: {
-      "@type": "EntryPoint",
-      urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+  "@graph": [
+    {
+      "@type": ["Organization", "NewsMediaOrganization"],
+      "@id": "https://www.startupnews.fyi/#organization",
+      name: "StartupNews.fyi",
+      alternateName: ["StartupNews", "SNFYI"],
+      url: "https://www.startupnews.fyi/",
+      logo: {
+        "@type": "ImageObject",
+        "@id": "https://www.startupnews.fyi/#logo",
+        url: "https://www.startupnews.fyi/wp-content/uploads/2024/01/logo.png",
+        contentUrl: "https://www.startupnews.fyi/wp-content/uploads/2024/01/logo.png",
+        caption: "StartupNews.fyi",
+        inLanguage: "en",
+        width: 512,
+        height: 512,
+      },
+      image: { "@id": "https://www.startupnews.fyi/#logo" },
+      description:
+        "StartupNews.fyi is one of India's leading startup media and news platforms covering startup news, funding updates, founder stories, venture capital, technology, entrepreneurship, startup ecosystem trends, and global innovation.",
+      email: "office@startupnews.fyi",
+      foundingDate: "2019",
+      founders: [
+        { "@id": "https://www.startupnews.fyi/#kapil-suri" },
+        { "@id": "https://www.startupnews.fyi/#madhur-mohan-malik" },
+      ],
+      knowsAbout: [
+        "Startup News", "Indian Startups", "Startup Funding", "Venture Capital",
+        "Entrepreneurship", "Technology", "Business News", "Startup Ecosystem",
+        "Founder Stories", "Artificial Intelligence", "SaaS", "Fintech",
+        "Web3", "Ecommerce", "D2C Brands", "Tech Innovation",
+      ],
+      sameAs: [
+        "https://www.linkedin.com/company/startupnewsfyi",
+        "https://www.instagram.com/startupnews.fyi/",
+        "https://www.facebook.com/startupnews.fyi/",
+        "https://play.google.com/store/apps/details?id=com.startupnews.fyi",
+        "https://apps.apple.com/in/app/startupnews-fyi/id6473291055",
+      ],
+      publishingPrinciples: "https://www.startupnews.fyi/editorial-policy",
+      aboutus: "https://www.startupnews.fyi/about-us",
+      ownershipFundingInfo: "https://www.startupnews.fyi/about-us",
+      contactPoint: [
+        {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          email: "office@startupnews.fyi",
+          availableLanguage: ["English"],
+        },
+      ],
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "New Delhi",
+        addressRegion: "Delhi",
+        addressCountry: "India",
+      },
+      areaServed: { "@type": "Country", name: "India" },
     },
-    "query-input": "required name=search_term_string",
-  },
+    {
+      "@type": "Person",
+      "@id": "https://www.startupnews.fyi/#kapil-suri",
+      name: "Kapil Suri",
+      jobTitle: "Co-Founder",
+      worksFor: { "@id": "https://www.startupnews.fyi/#organization" },
+    },
+    {
+      "@type": "Person",
+      "@id": "https://www.startupnews.fyi/#madhur-mohan-malik",
+      name: "Madhur Mohan Malik",
+      jobTitle: "Co-Founder",
+      worksFor: { "@id": "https://www.startupnews.fyi/#organization" },
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://www.startupnews.fyi/#website",
+      url: "https://www.startupnews.fyi/",
+      name: "StartupNews.fyi",
+      description:
+        "Latest startup news, funding updates, founder stories, venture capital news, and startup ecosystem insights.",
+      publisher: { "@id": "https://www.startupnews.fyi/#organization" },
+      inLanguage: "en",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: "https://www.startupnews.fyi/search?q={search_term_string}",
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://www.startupnews.fyi/#webpage",
+      url: "https://www.startupnews.fyi/",
+      name: "StartupNews.fyi - Startup News, Funding News & Founder Stories",
+      isPartOf: { "@id": "https://www.startupnews.fyi/#website" },
+      about: { "@id": "https://www.startupnews.fyi/#organization" },
+      primaryImageOfPage: { "@id": "https://www.startupnews.fyi/#logo" },
+      datePublished: "2019-01-01",
+      dateModified: "2026-05-25",
+      description:
+        "Read the latest startup news, funding announcements, founder journeys, venture capital updates, and startup ecosystem insights from India and around the world.",
+      breadcrumb: { "@id": "https://www.startupnews.fyi/#breadcrumb" },
+      inLanguage: "en",
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://www.startupnews.fyi/#breadcrumb",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://www.startupnews.fyi/" },
+      ],
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -122,11 +201,7 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(graphJsonLd) }}
         />
       </head>
       <body>
