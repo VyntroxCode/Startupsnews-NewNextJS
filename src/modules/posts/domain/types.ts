@@ -41,6 +41,7 @@ export interface PostEntity {
   status: "draft" | "published" | "scheduled" | "archived";
   is_gone_410?: boolean | number;
   robots?: string | null;
+  content_follow?: string | null;
   featured: boolean;
   trending_score: number;
   view_count: number;
@@ -59,6 +60,7 @@ export interface CreatePostDto {
   excerpt: string;
   metaDescription?: string;
   robots?: string;
+  contentFollow?: string;
   content: string;
   categoryId: number;
   authorId: number;

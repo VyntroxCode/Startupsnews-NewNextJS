@@ -365,6 +365,7 @@ export interface Post {
   excerpt: string;
   metaDescription?: string;
   robots?: string | null;
+  contentFollow?: string | null;
   content: string;
   category: string;
   categorySlug: string;
@@ -584,6 +585,7 @@ export async function entityToPost(entity: PostEntity): Promise<Post> {
     excerpt: entity.excerpt,
     metaDescription: entity.meta_description ?? entity.excerpt ?? '',
     robots: (entity as PostEntity & Record<string, unknown>)['robots'] as string | null ?? 'index,nofollow',
+    contentFollow: (entity as PostEntity & Record<string, unknown>)['content_follow'] as string | null ?? 'nofollow',
     content: fullContent,
     category: category?.name || 'Uncategorized',
     categorySlug: category?.slug || 'uncategorized',
@@ -697,6 +699,7 @@ export async function entitiesToPosts(entities: PostEntity[]): Promise<Post[]> {
         excerpt: entity.excerpt,
         metaDescription: entity.meta_description ?? entity.excerpt ?? '',
         robots: (entity as PostEntity & Record<string, unknown>)['robots'] as string | null ?? 'index,nofollow',
+        contentFollow: (entity as PostEntity & Record<string, unknown>)['content_follow'] as string | null ?? 'nofollow',
         content: fullContent,
         category: category?.name || 'Uncategorized',
         categorySlug: category?.slug || 'uncategorized',
@@ -748,6 +751,7 @@ export function entitiesToAdminListPosts(
       excerpt: entity.excerpt ?? '',
       metaDescription: entity.meta_description ?? entity.excerpt ?? '',
       robots: (entity as PostEntity & Record<string, unknown>)['robots'] as string | null ?? 'index,nofollow',
+      contentFollow: (entity as PostEntity & Record<string, unknown>)['content_follow'] as string | null ?? 'nofollow',
       content: '', // Omit full content for list
       category: cat.name,
       categorySlug: cat.slug,

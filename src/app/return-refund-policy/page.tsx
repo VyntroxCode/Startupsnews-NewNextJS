@@ -41,7 +41,7 @@ export default function ReturnRefundPolicyPage() {
                         <li><strong>D2C Partner Product</strong> — an early-access or sample product from a third-party consumer brand sold or distributed through the Website, akin to a crowdfunding pre-order.</li>
                         <li><strong>Order</strong> — a confirmed purchase transaction.</li>
                         <li><strong>Service / Website</strong> — StartupNews.fyi, accessible at <a href="https://www.startupnews.fyi" style={{ color: "#ee1761" }}>https://www.startupnews.fyi</a>.</li>
-                        <li><strong>Payment Gateway</strong> — Razorpay, Stripe, PayPal, or any other processor used at checkout.</li>
+                        <li><strong>Payment Gateway</strong> — Cashfree, Razorpay, Stripe, PayPal, or any other processor used at checkout.</li>
                     </ul>
 
                     {/* 3. Event Tickets */}

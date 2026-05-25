@@ -32,6 +32,24 @@ export function Footer() {
   }, [year]);
 
   return (
+    <>
+      {/* Google Preferred Source Badge — above the black footer */}
+      <div style={{ textAlign: "center", padding: "24px 0" }}>
+        <a
+          href="https://www.google.com/preferences/source?q=https://startupnews.fyi/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            src="https://www.residentialsystems.com/wp-content/uploads/2025/09/google_preferred_source_badge_dark@2x.png"
+            alt="Google Preferred Source"
+            width={200}
+            height={60}
+            style={{ display: "inline-block", height: "auto" }}
+          />
+        </a>
+      </div>
+
     <footer className="footer">
       <div className="footer-container">
         {/* Top Section: Brand and Tagline */}
@@ -211,5 +229,6 @@ export function Footer() {
           </div>
       </div>
     </footer>
+    </>
   );
 }

@@ -6,14 +6,11 @@ export const runtime = 'nodejs';
 
 type AdvertisePayload = {
   firstName?: string;
-  lastName?: string;
+  companyName?: string;
   email?: string;
   phone?: string;
-  jobTitle?: string;
-  jobLevel?: string;
-  industry?: string;
-  company?: string;
-  country?: string;
+  budgetRate?: string;
+  campaignGoal?: string;
   objective?: string;
 };
 
@@ -29,12 +26,11 @@ export async function POST(request: NextRequest) {
   if (bodyError) return bodyError;
 
   const firstName = body?.firstName?.trim();
-  const lastName = body?.lastName?.trim();
+  const companyName = body?.companyName?.trim();
   const email = body?.email?.trim();
-  const company = body?.company?.trim();
   const objective = body?.objective?.trim();
 
-  if (!firstName || !lastName || !email || !company || !objective) {
+  if (!firstName || !companyName || !email || !objective) {
     return NextResponse.json(
       {
         success: false,
@@ -44,35 +40,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const subject = `Advertise with us - ${company}`;
+  const subject = `Advertise with us - ${companyName}`;
   const text = [
-    `First Name: ${firstName}`,
-    `Last Name: ${lastName}`,
-    `Work Email: ${email}`,
-    `Business Phone: ${body?.phone || ''}`,
-    `Job Title: ${body?.jobTitle || ''}`,
-    `Job Level: ${body?.jobLevel || ''}`,
-    `Industry: ${body?.industry || ''}`,
-    `Company: ${company}`,
-    `Country: ${body?.country || ''}`,
+    `Name: ${firstName}`,
+    `Company: ${companyName}`,
+    `Email: ${email}`,
+    `Phone: ${body?.phone || ''}`,
+    `Budget Rate: ${body?.budgetRate || ''}`,
+    `Campaign Goal: ${body?.campaignGoal || ''}`,
     '',
-    'Campaign objective / additional details:',
+    'Tell us more:',
     objective,
   ].join('\n');
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111;">
       <h2>Advertise with us enquiry</h2>
-      <p><strong>First Name:</strong> ${firstName}</p>
-      <p><strong>Last Name:</strong> ${lastName}</p>
-      <p><strong>Work Email:</strong> ${email}</p>
-      <p><strong>Business Phone:</strong> ${body?.phone || ''}</p>
-      <p><strong>Job Title:</strong> ${body?.jobTitle || ''}</p>
-      <p><strong>Job Level:</strong> ${body?.jobLevel || ''}</p>
-      <p><strong>Industry:</strong> ${body?.industry || ''}</p>
-      <p><strong>Company:</strong> ${company}</p>
-      <p><strong>Country:</strong> ${body?.country || ''}</p>
-      <h3>Campaign objective / additional details</h3>
+      <p><strong>Name:</strong> ${firstName}</p>
+      <p><strong>Company:</strong> ${companyName}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Phone:</strong> ${body?.phone || ''}</p>
+      <p><strong>Budget Rate:</strong> ${body?.budgetRate || ''}</p>
+      <p><strong>Campaign Goal:</strong> ${body?.campaignGoal || ''}</p>
+      <h3>Tell us more</h3>
       <p>${objective.replace(/\n/g, '<br />')}</p>
     </div>
   `;

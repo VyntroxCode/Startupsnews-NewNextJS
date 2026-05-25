@@ -154,6 +154,7 @@ async function handleUpdateRequest(
         excerpt: formData.get('excerpt'),
         metaDescription: formData.get('metaDescription'),
         robots: formData.get('robots'),
+        contentFollow: formData.get('contentFollow'),
         content: formData.get('content'),
         categoryId: formData.get('categoryId'),
         authorId: formData.get('authorId'),
@@ -211,6 +212,7 @@ async function handleUpdateRequest(
       excerpt: string;
       metaDescription: string;
       robots: string;
+      contentFollow: string;
       content: string;
       categoryId: number;
       authorId: number;
@@ -227,6 +229,7 @@ async function handleUpdateRequest(
     if (body.excerpt !== undefined) updateData.excerpt = String(body.excerpt);
     if (body.metaDescription !== undefined) updateData.metaDescription = String(body.metaDescription).trim().slice(0, 160);
     if (body.robots !== undefined) updateData.robots = String(body.robots).trim() || 'index,nofollow';
+    if (body.contentFollow !== undefined) updateData.contentFollow = String(body.contentFollow).trim() || 'nofollow';
     if (body.content !== undefined) updateData.content = String(body.content);
     if (body.categoryId !== undefined) updateData.categoryId = parseInt(String(body.categoryId), 10);
     if (body.authorId !== undefined) updateData.authorId = parseInt(String(body.authorId), 10);

@@ -21,6 +21,7 @@ const FULLTEXT_BOOLEAN_STOPWORDS = new Set([
 export class PostsRepository {
   private metaDescriptionColumnExists: boolean | null = null;
   private robotsColumnExists: boolean | null = null;
+  private contentFollowColumnExists: boolean | null = null;
 
   /** Escape %, _, and \\ for SQL LIKE … ESCAPE '\\'. */
   private escapeLikePattern(value: string): string {
@@ -117,6 +118,27 @@ export class PostsRepository {
     );
     this.robotsColumnExists = Boolean(row?.cnt);
     return this.robotsColumnExists;
+  }
+
+  private async hasContentFollowColumn(): Promise<boolean> {
+    if (this.contentFollowColumnExists !== null) return this.contentFollowColumnExists;
+    const row = await queryOne<{ cnt: number }>(
+      `SELECT COUNT(*) AS cnt
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'posts'
+         AND COLUMN_NAME = 'content_follow'`
+    );
+    if (!row?.cnt) {
+      await query(
+        `ALTER TABLE posts ADD COLUMN content_follow VARCHAR(20) NOT NULL DEFAULT 'nofollow'`,
+        []
+      );
+      this.contentFollowColumnExists = true;
+    } else {
+      this.contentFollowColumnExists = true;
+    }
+    return this.contentFollowColumnExists;
   }
 
   /**
@@ -669,11 +691,13 @@ export class PostsRepository {
       this.hasMetaDescriptionColumn(),
       this.hasRobotsColumn(),
     ]);
+    await this.hasContentFollowColumn();
 
     const columns = [
       'title', 'slug', 'excerpt',
       ...(hasMetaDescription ? ['meta_description'] : []),
       ...(hasRobots ? ['robots'] : []),
+      'content_follow',
       'content', 'category_id', 'author_id',
       'featured_image_url', 'featured_image_small_url', 'format', 'status', 'featured', 'published_at',
     ];
@@ -691,7 +715,8 @@ export class PostsRepository {
       data.slug,
       data.excerpt,
       ...(hasMetaDescription ? [data.metaDescription || null] : []),
-      ...(hasRobots ? [data.robots || 'index,nofollow'] : []),
+      ...(hasRobots ? [data.robots || 'index,follow'] : []),
+      (data as { contentFollow?: string }).contentFollow || 'nofollow',
       data.content,
       data.categoryId,
       data.authorId,
@@ -725,6 +750,7 @@ export class PostsRepository {
       this.hasMetaDescriptionColumn(),
       this.hasRobotsColumn(),
     ]);
+    await this.hasContentFollowColumn();
     if (!hasMetaDescription && Object.prototype.hasOwnProperty.call(data, 'meta_description')) {
       delete (data as Partial<PostEntity>).meta_description;
     }

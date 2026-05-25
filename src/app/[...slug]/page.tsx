@@ -212,6 +212,9 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
 
   if (segments.length === 1) {
     const [categorySlug] = segments;
+    const posts = await getPostsByCategory(categorySlug, 1);
+    if (posts.length === 0) notFound();
+
     const displayName = formatTitle(categorySlug);
     const title = `${displayName} News & Updates`;
     const description = `Latest ${displayName} startup news, funding rounds, and industry analysis on StartupNews.fyi.`;
@@ -235,9 +238,7 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     const [categorySlug, ...postParts] = segments;
     const postPath = postParts.join('/');
     const post = await resolvePostByCategoryAndPath(categorySlug, postPath);
-    if (!post) {
-      return { title: "Post not found" };
-    }
+    if (!post) notFound();
 
     const title = post.title || "StartupNews.fyi";
     const description = (post.metaDescription || post.excerpt || "").slice(0, 160);

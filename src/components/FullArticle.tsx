@@ -32,6 +32,18 @@ function toAuthorSlug(name: string): string {
         .replace(/^-+|-+$/g, "") || "author";
 }
 
+const LINKED_AUTHORS = new Set([
+    "StartupNews.fyi Editorial Team",
+    "Madhur Mohan Malik",
+    "Kapil Suri",
+    "Kanak Aggarwal",
+    "Sreejit Kumar",
+]);
+
+function isLinkedAuthor(name: string | null | undefined): boolean {
+    return !!name && LINKED_AUTHORS.has(name.trim());
+}
+
 function getAuthorHref(post: Post): string {
     const displayName = (post.authorName || post.sourceAuthor || post.sourceName || "Zox News Staff").trim();
     const slug = post.authorSlug || toAuthorSlug(displayName);
@@ -93,16 +105,12 @@ function addNoFollowToLinks(html: string): string {
 
 export function FullArticle({ post, related = [], prev, next }: FullArticleProps) {
     const rawContent = stripFeaturedImageFromContent(post.content || "", post.image || "");
-    const robotsValue = typeof post.robots === 'string' ? post.robots.toLowerCase() : 'index,nofollow';
-    const robotsIsFollow = robotsValue.includes('follow') && !robotsValue.includes('nofollow');
-    const robotsIsNoFollow = robotsValue.includes('nofollow');
-    
+    const contentFollow = typeof post.contentFollow === 'string' ? post.contentFollow.toLowerCase() : 'nofollow';
+
     let processedContent = rawContent;
-    if (robotsIsFollow) {
-        // Remove nofollow from links when robots is set to follow
+    if (contentFollow === 'dofollow') {
         processedContent = stripNoFollowFromLinks(rawContent);
-    } else if (robotsIsNoFollow) {
-        // Add nofollow to external links when robots is set to nofollow
+    } else {
         processedContent = addNoFollowToLinks(rawContent);
     }
     const postPath = `/${post.slug}`;
@@ -180,9 +188,15 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                                     Via {post.sourceName}
                                                                 </span>
                                                             )}
-                                                            <Link href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="name">
-                                                                {post.authorName || post.sourceAuthor || post.sourceName || "Source"}
-                                                            </Link>
+                                                            {isLinkedAuthor(post.authorName || post.sourceAuthor || post.sourceName) ? (
+                                                                <Link href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="name">
+                                                                    {post.authorName || post.sourceAuthor || post.sourceName || "Source"}
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="author-name vcard fn author" itemProp="name">
+                                                                    {post.authorName || post.sourceAuthor || post.sourceName || "Source"}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </>
@@ -215,9 +229,15 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                         </div>
                                                         <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
                                                             <p>By</p>{" "}
-                                                            <Link href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="name">
-                                                                {post.authorName}
-                                                            </Link>
+                                                            {isLinkedAuthor(post.authorName) ? (
+                                                                <Link href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="name">
+                                                                    {post.authorName}
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="author-name vcard fn author" itemProp="name">
+                                                                    {post.authorName}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </>

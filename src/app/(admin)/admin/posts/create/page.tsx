@@ -31,7 +31,8 @@ export default function CreatePostPage() {
     slug: '',
     excerpt: '',
     metaDescription: '',
-    robots: 'index,nofollow',
+    robots: 'index,follow',
+    contentFollow: 'nofollow',
     content: '',
     categoryId: '',
     authorId: '',
@@ -450,10 +451,24 @@ export default function CreatePostPage() {
             onChange={(e) => setFormData((prev) => ({ ...prev, robots: e.target.value }))}
             style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
           >
-            <option value="index,nofollow">index, nofollow (index, don&apos;t follow links)</option>
             <option value="index,follow">index, follow (crawl &amp; index)</option>
+            <option value="index,nofollow">index, nofollow (index, don&apos;t follow links)</option>
             <option value="noindex,follow">noindex, follow (don&apos;t index, follow links)</option>
             <option value="noindex,nofollow">noindex, nofollow (block completely)</option>
+          </select>
+        </div>
+
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
+            Content Links
+          </label>
+          <select
+            value={formData.contentFollow}
+            onChange={(e) => setFormData((prev) => ({ ...prev, contentFollow: e.target.value }))}
+            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
+          >
+            <option value="nofollow">nofollow — external links in content won&apos;t pass authority</option>
+            <option value="dofollow">dofollow — external links in content pass authority</option>
           </select>
         </div>
 

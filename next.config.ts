@@ -48,10 +48,17 @@ const nextConfig: NextConfig = {
       { protocol: "http", hostname: "www.siliconluxe.com", pathname: "/**" },
       { protocol: "http", hostname: "localhost", pathname: "/**" },
       { protocol: "http", hostname: "127.0.0.1", pathname: "/**" },
+      { protocol: "https", hostname: "www.residentialsystems.com", pathname: "/**" },
     ],
   },
   async redirects() {
     return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.startupnews.fyi" }],
+        destination: "https://startupnews.fyi/:path*",
+        permanent: true,
+      },
       {
         source: "/category/:slug",
         destination: "/:slug",

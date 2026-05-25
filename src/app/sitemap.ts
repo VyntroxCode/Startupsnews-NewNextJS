@@ -3,6 +3,9 @@ import { query } from "@/shared/database/connection";
 import { normalizePostSlugForCategory } from "@/lib/post-utils";
 import { slugify } from "@/shared/utils/string.utils";
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
 type PostSitemapRow = {
