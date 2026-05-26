@@ -119,7 +119,7 @@ export default function EditPostPage() {
         slug: post.slug || '',
         excerpt: post.excerpt || '',
         metaDescription: post.metaDescription || '',
-        robots: (post as { robots?: string }).robots || 'index,nofollow',
+        robots: (post as { robots?: string }).robots || 'index,follow',
         contentFollow: (post as { contentFollow?: string }).contentFollow || 'nofollow',
         content: normalizedContent,
         categoryId: post.categoryId ? String(post.categoryId) : '',

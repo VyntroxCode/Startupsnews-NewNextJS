@@ -27,6 +27,14 @@ const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 export const revalidate = 60;
 export const dynamicParams = true;
 
+function parseRobots(value: string | null | undefined): Metadata["robots"] {
+  if (!value) return undefined;
+  const str = value.toLowerCase().replace(/\s/g, "");
+  const index = !str.includes("noindex");
+  const follow = !str.includes("nofollow");
+  return { index, follow, googleBot: { index, follow } };
+}
+
 function formatTitle(slug: string): string {
   return slug
     .split("-")
@@ -244,12 +252,10 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     const description = (post.metaDescription || post.excerpt || "").slice(0, 160);
     const image = post.image && !post.image.includes("unsplash.com/photo-1504711434969") ? post.image : undefined;
     const postUrl = `${SITE_BASE}/${post.categorySlug}/${normalizePostSlugForCategory(post.categorySlug, post.slug)}`;
-    const robotsValue = (post as { robots?: string | null }).robots || 'index,nofollow';
-
     return {
       title,
       description: description || undefined,
-      robots: robotsValue,
+      robots: parseRobots(post.robots),
       alternates: { canonical: postUrl },
       openGraph: {
         type: "article",
