@@ -10,6 +10,7 @@ import { ThemeScript } from "@/components/ThemeScript";
 import { TopLoader } from "@/components/TopLoader";
 import { siteConfig } from "@/lib/config";
 import ConditionalLayout from "@/components/ConditionalLayout";
+import Script from "next/script";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -210,6 +211,13 @@ export default function RootLayout({
           {children}
         </ConditionalLayout>
         <ThemeScript />
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-WNYV9VGC9N" strategy="afterInteractive" />
+        <Script id="gtag-init" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-WNYV9VGC9N');
+        `}</Script>
       </body>
     </html>
   );
