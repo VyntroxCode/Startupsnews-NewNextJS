@@ -116,7 +116,13 @@ export class PostsRepository {
          AND TABLE_NAME = 'posts'
          AND COLUMN_NAME = 'robots'`
     );
-    this.robotsColumnExists = Boolean(row?.cnt);
+    if (!row?.cnt) {
+      await query(
+        `ALTER TABLE posts ADD COLUMN robots VARCHAR(50) NOT NULL DEFAULT 'index,follow'`,
+        []
+      );
+    }
+    this.robotsColumnExists = true;
     return this.robotsColumnExists;
   }
 

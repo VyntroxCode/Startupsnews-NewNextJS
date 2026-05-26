@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(redis-cli FLUSHALL)",
+      "Bash(redis-cli DBSIZE)",
+      "Bash(redis-cli INFO keyspace)",
+      "Bash(mysql -u zox_user -p'ZoxPr0d_S3cur3_2026' zox_db -e \"SELECT status, COUNT\\(*\\) as cnt FROM posts GROUP BY status ORDER BY cnt DESC;\")",
+      "Bash(mysql -u zox_user -p'ZoxPr0d_S3cur3_2026' zox_db -e \"SELECT id, slug, status, published_at, created_at FROM posts WHERE slug = 'your-complete-solution-for-neet-pg-exam-syllabus';\")",
+      "Bash(mysql -u zox_user -p'ZoxPr0d_S3cur3_2026' zox_db -e \"SELECT id, slug, status, published_at, created_at FROM posts WHERE slug LIKE '%neet-pg%';\")",
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e ' *)",
+      "Bash(mysql -u zox_user -p'ZoxPr0d_S3cur3_2026' zox_db -e \"SELECT id, slug, status FROM posts WHERE slug LIKE '%neet-pg%';\")",
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT COUNT\\(*\\) AS col_exists FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'zox_db' AND TABLE_NAME = 'posts' AND COLUMN_NAME = 'robots';\")",
+      "Bash(mariadb -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT COUNT\\(*\\) AS col_exists FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'zox_db' AND TABLE_NAME = 'posts' AND COLUMN_NAME = 'robots';\")",
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT id, slug, robots, content_follow FROM posts WHERE id = 609326;\")",
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SHOW COLUMNS FROM posts LIKE 'robots';\")",
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT id, HEX\\(robots\\), robots IS NULL, LENGTH\\(robots\\) FROM posts WHERE id = 609326;\")",
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT COUNT\\(*\\) as bad_rows FROM posts WHERE robots = 'null';\")",
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"UPDATE posts SET robots = 'index,nofollow' WHERE robots = 'null'; SELECT ROW_COUNT\\(\\) as rows_fixed;\")",
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT id, slug, robots FROM posts WHERE id = 609326;\")"
+    ]
+  }
+}
