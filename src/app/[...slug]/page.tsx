@@ -28,8 +28,7 @@ export const revalidate = 60;
 export const dynamicParams = true;
 
 function parseRobots(value: string | null | undefined): Metadata["robots"] {
-  if (!value) return undefined;
-  const str = value.toLowerCase().replace(/\s/g, "");
+  const str = (value || "index,follow").toLowerCase().replace(/\s/g, "");
   const index = !str.includes("noindex");
   const follow = !str.includes("nofollow");
   return { index, follow, googleBot: { index, follow } };
