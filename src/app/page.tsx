@@ -173,6 +173,7 @@ export default async function HomePage() {
             <div className="startupnews-mobile-featured-content">
               <div className="startupnews-mobile-featured-meta">
                 <span className="startupnews-mobile-featured-category">{main.category}</span>
+                <span className="startupnews-mobile-featured-time">{main.timeAgo}</span>
               </div>
               <h2 className="startupnews-mobile-featured-title post-heading-max-3-lines">{main.title}</h2>
             </div>
@@ -188,6 +189,7 @@ export default async function HomePage() {
                   <div className="startupnews-article-content">
                     <div className="startupnews-article-meta">
                       <span className="startupnews-category">{post.category}</span>
+                      <span className="startupnews-date">{post.timeAgo}</span>
                     </div>
                     <h2 className="startupnews-article-title post-heading-max-3-lines">{post.title}</h2>
                     {/* <p className="startupnews-article-excerpt">{post.excerpt}</p> */}
@@ -298,6 +300,7 @@ export default async function HomePage() {
                       <div className="mvp-feat1-feat-text left relative">
                         <div className="mvp-cat-date-wrap left relative">
                           <span className="mvp-cd-cat left relative">{main.category}</span>
+                          <span className="mvp-cd-date left relative">{main.timeAgo}</span>
                         </div>
                         <h2 className="mvp-stand-title post-heading-max-3-lines">{main.title}</h2>
                         {/* <p>{main.excerpt}</p> */}
@@ -328,6 +331,7 @@ export default async function HomePage() {
                         <div className="mvp-feat1-sub-text">
                           <div className="mvp-cat-date-wrap left relative">
                             <span className="mvp-cd-cat left relative">{sub[0].category}</span>
+                            <span className="mvp-cd-date left relative">{sub[0].timeAgo}</span>
                           </div>
                           <h2 className="post-heading-max-3-lines">{sub[0].title}</h2>
                         </div>
@@ -356,6 +360,7 @@ export default async function HomePage() {
                         <div className="mvp-feat1-sub-text">
                           <div className="mvp-cat-date-wrap left relative">
                             <span className="mvp-cd-cat left relative">{sub[1].category}</span>
+                            <span className="mvp-cd-date left relative">{sub[1].timeAgo}</span>
                           </div>
                           <h2 className="post-heading-max-3-lines">{sub[1].title}</h2>
                         </div>
@@ -401,6 +406,7 @@ export default async function HomePage() {
                           <div className="mvp-feat1-pop-text left relative">
                             <div className="mvp-cat-date-wrap left relative">
                               <span className="mvp-cd-cat left relative">{post.category}</span>
+                              <span className="mvp-cd-date left relative">{post.timeAgo}</span>
                             </div>
                             <h2 className="post-heading-max-3-lines">{post.title}</h2>
                           </div>

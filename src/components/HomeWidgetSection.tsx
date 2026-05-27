@@ -51,6 +51,7 @@ export function HomeWidgetSection({ title, categorySlug, featured, right, list, 
                         <div className="mvp-feat1-feat-text left relative">
                           <div className="mvp-cat-date-wrap left relative">
                             <span className="mvp-cd-cat left relative">{featured.category}</span>
+                            <span className="mvp-cd-date left relative">{featured.timeAgo}</span>
                           </div>
                           <h2 className="mvp-stand-title post-heading-max-3-lines">{featured.title}</h2>
                         </div>
@@ -75,6 +76,7 @@ export function HomeWidgetSection({ title, categorySlug, featured, right, list, 
                         <div className="mvp-widget-feat2-right-text left relative">
                           <div className="mvp-cat-date-wrap left relative">
                             <span className="mvp-cd-cat left relative">{right[0].category}</span>
+                            <span className="mvp-cd-date left relative">{right[0].timeAgo}</span>
                           </div>
                           <h2 className="post-heading-max-3-lines">{right[0].title}</h2>
                         </div>
@@ -97,6 +99,7 @@ export function HomeWidgetSection({ title, categorySlug, featured, right, list, 
                         <div className="mvp-widget-feat2-right-text left relative">
                           <div className="mvp-cat-date-wrap left relative">
                             <span className="mvp-cd-cat left relative">{right[1].category}</span>
+                            <span className="mvp-cd-date left relative">{right[1].timeAgo}</span>
                           </div>
                           <h2 className="post-heading-max-3-lines">{right[1].title}</h2>
                         </div>
@@ -127,6 +130,7 @@ export function HomeWidgetSection({ title, categorySlug, featured, right, list, 
                             <div className="mvp-feat1-list-text">
                               <div className="mvp-cat-date-wrap left relative">
                                 <span className="mvp-cd-cat left relative">{post.category}</span>
+                                <span className="mvp-cd-date left relative">{post.timeAgo}</span>
                               </div>
                               <h2 className="post-heading-max-3-lines">{post.title}</h2>
                             </div>

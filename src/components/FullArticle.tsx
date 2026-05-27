@@ -175,12 +175,11 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                     <div className="mvp-author-info-text left relative">
                                                         <div className="mvp-author-info-date left relative">
                                                             <p>Published</p>{" "}
-                                                            {/* Srishti  */}
-                                                            {/* <span className="mvp-post-date">{post.timeAgo}</span>{" "}
+                                                            <span className="mvp-post-date">{post.timeAgo}</span>{" "}
                                                             <p>on</p>{" "}
                                                             <time className="mvp-post-date updated" itemProp="datePublished" dateTime={post.date}>
                                                                 {formatDate(post.date)}
-                                                            </time> */}
+                                                            </time>
                                                         </div>
                                                         <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
                                                             {post.sourceName && (
@@ -220,12 +219,11 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                     <div className="mvp-author-info-text left relative">
                                                         <div className="mvp-author-info-date left relative">
                                                             <p>Published</p>{" "}
-                                                            {/* srishti */}
-                                                            {/* <span className="mvp-post-date">{post.timeAgo}</span>{" "}
+                                                            <span className="mvp-post-date">{post.timeAgo}</span>{" "}
                                                             <p>on</p>{" "}
                                                             <time className="mvp-post-date updated" itemProp="datePublished" dateTime={post.date}>
                                                                 {formatDate(post.date)}
-                                                            </time> */}
+                                                            </time>
                                                         </div>
                                                         <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
                                                             <p>By</p>{" "}

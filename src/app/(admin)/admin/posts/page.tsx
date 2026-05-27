@@ -9,6 +9,7 @@ import SearchBar from '@/components/admin/SearchBar';
 import LoadingSkeleton from '@/components/admin/LoadingSkeleton';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import { fetchAndDownloadCsv } from '@/shared/utils/csv-utils';
+import { getPostPath } from '@/lib/post-utils';
 
 interface Category {
   id: number;
@@ -25,6 +26,7 @@ interface Post {
   id: string;
   title: string;
   slug: string;
+  categorySlug: string;
   status?: string;
   httpStatus?: number;
   isGone410?: boolean;
@@ -987,6 +989,41 @@ export default function PostsPage() {
                         </td>
                         <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <a
+                              href={getPostPath(post)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View on website"
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                color: 'white',
+                                borderRadius: '6px',
+                                textDecoration: 'none',
+                                fontSize: '0.8125rem',
+                                fontWeight: '600',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(59, 130, 246, 0.3)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.2)';
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                              </svg>
+                              View
+                            </a>
                             <Link
                               href={`/admin/posts/edit/${post.id}`}
                               style={{

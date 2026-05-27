@@ -97,6 +97,7 @@ export function MoreNewsSection({
                     <div className="mvp-blog-story-text left relative">
                       <div className="mvp-cat-date-wrap left relative">
                         <span className="mvp-cd-cat left relative">{post.category}</span>
+                        <span className="mvp-cd-date left relative">{post.timeAgo}</span>
                       </div>
                       <h2 className="post-heading-max-3-lines">{post.title}</h2>
                       <p className="post-card-excerpt-max-3-lines">{post.excerpt}</p>

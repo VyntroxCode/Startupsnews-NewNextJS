@@ -144,7 +144,7 @@ export default function CreateEventPage() {
           descriptionBase64: encodeBase64Utf8(formData.description || ''),
           locationBase64: encodeBase64Utf8(formData.location || ''),
           eventDateBase64: encodeBase64Utf8(formData.eventDate || ''),
-          eventEndDateBase64: encodeBase64Utf8(formData.eventEndDate === formData.eventDate ? '' : (formData.eventEndDate || '')),
+          eventEndDateBase64: encodeBase64Utf8(formData.eventEndDate || formData.eventDate),
           eventTimeBase64: encodeBase64Utf8(formData.eventTime || ''),
           eventEndTimeBase64: encodeBase64Utf8(formData.eventEndTime || ''),
           externalUrlBase64: encodeBase64Utf8(formData.externalUrl || ''),
@@ -249,8 +249,8 @@ export default function CreateEventPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Event End Date *</label>
-            <input type="date" value={formData.eventEndDate} onChange={(e) => setFormData({ ...formData, eventEndDate: e.target.value })} required
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Event End Date</label>
+            <input type="date" value={formData.eventEndDate} onChange={(e) => setFormData({ ...formData, eventEndDate: e.target.value })} placeholder={formData.eventDate || 'Same as start date'}
               style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }} />
           </div>
           <div>

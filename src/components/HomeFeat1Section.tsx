@@ -40,6 +40,7 @@ export function HomeFeat1Section({ title, categorySlug, top, bottom,url }: HomeF
                   <div className="mvp-widget-feat1-top-text left relative">
                     <div className="mvp-cat-date-wrap left relative">
                       <span className="mvp-cd-cat left relative">{top[0].category}</span>
+                      <span className="mvp-cd-date left relative">{top[0].timeAgo}</span>
                     </div>
                     <h2 className="post-heading-max-3-lines">{top[0].title}</h2>
                   </div>
@@ -61,6 +62,7 @@ export function HomeFeat1Section({ title, categorySlug, top, bottom,url }: HomeF
                   <div className="mvp-widget-feat1-top-text left relative">
                     <div className="mvp-cat-date-wrap left relative">
                       <span className="mvp-cd-cat left relative">{top[1].category}</span>
+                      <span className="mvp-cd-date left relative">{top[1].timeAgo}</span>
                     </div>
                     <h2 className="post-heading-max-3-lines">{top[1].title}</h2>
                   </div>
@@ -84,6 +86,7 @@ export function HomeFeat1Section({ title, categorySlug, top, bottom,url }: HomeF
                   <div className="mvp-widget-feat1-bot-text left relative">
                     <div className="mvp-cat-date-wrap left relative">
                       <span className="mvp-cd-cat left relative">{post.category}</span>
+                      <span className="mvp-cd-date left relative">{post.timeAgo}</span>
                     </div>
                     <h2 className="post-heading-max-3-lines">{post.title}</h2>
                   </div>

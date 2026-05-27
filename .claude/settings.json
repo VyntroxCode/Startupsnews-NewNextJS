@@ -17,7 +17,17 @@
       "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT id, HEX\\(robots\\), robots IS NULL, LENGTH\\(robots\\) FROM posts WHERE id = 609326;\")",
       "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT COUNT\\(*\\) as bad_rows FROM posts WHERE robots = 'null';\")",
       "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"UPDATE posts SET robots = 'index,nofollow' WHERE robots = 'null'; SELECT ROW_COUNT\\(\\) as rows_fixed;\")",
-      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT id, slug, robots FROM posts WHERE id = 609326;\")"
+      "Bash(mysql -u zox_user -pZoxPr0d_S3cur3_2026 zox_db -e \"SELECT id, slug, robots FROM posts WHERE id = 609326;\")",
+      "Bash(git log *)",
+      "Bash(awk '/^diff/{file=$0} /srishti/{print file; print NR\": \"$0}')",
+      "Bash(curl -s http://8.231.82.107/funding)",
+      "Bash(python3 -c ' *)",
+      "Bash(npx playwright *)",
+      "Bash(python3 -)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://8.231.82.107/funding\")",
+      "Bash(curl -s http://8.231.82.107/ai-deeptech)",
+      "Bash(awk '{print $1,$2,$9,$10,$11}')",
+      "Bash(grep -o '\"mvp-cat-date-wrap[^\"]*\".\\\\{0,300\\\\}' /home/tech/Startupsnews-NewNextJS-main/.next/server/chunks/ssr/\\\\[root-of-the-server\\\\]__7a7f6a50._.js)"
     ]
   }
 }
