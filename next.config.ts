@@ -64,6 +64,16 @@ const nextConfig: NextConfig = {
         destination: "/:slug",
         permanent: true,
       },
+      {
+        source: "/cybersecurity",
+        destination: "/cyber-security",
+        permanent: true,
+      },
+      {
+        source: "/cybersecurity/:path*",
+        destination: "/cyber-security/:path*",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {
