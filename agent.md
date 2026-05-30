@@ -508,4 +508,5 @@ Public pages, public components, and admin UI are authored with **Tailwind utili
 | 145 | 2026-05-27 | Fixed View button in admin posts using wrong slug. Post URLs are `/{categorySlug}/{normalizedSlug}`, not `/[slug]`. Added `categorySlug` to Post interface, imported `getPostPath()` from `@/lib/post-utils`, and changed View link from `/${post.slug}` → `getPostPath(post)`. |
 | 146 | 2026-05-27 | Bulk deleted 12,602 posts with `created_at < '2026-05-25'` from dev database via direct MariaDB query. |
 | 147 | 2026-05-28 | Fixed `/cybersecurity` returning 404. Root cause: DB category slug is `cyber-security` (with hyphen), but URL used `cybersecurity` (no hyphen). Added two permanent redirects in `next.config.ts`: `/cybersecurity` → `/cyber-security` and `/cybersecurity/:path*` → `/cyber-security/:path*`. |
+| 148 | 2026-05-30 | Added Bahrain to events country list in `src/lib/events-constants.ts`. Added `"Bahrain"` to `EVENTS_REGION_ORDER` array and mapped `bahrain` and `manama` (capital city) to `'Bahrain'` in `LOCATION_TO_REGION`. |
 
