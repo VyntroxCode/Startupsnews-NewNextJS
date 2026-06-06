@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getEventsByRegion, EVENTS_REGION_ORDER, getEventImage } from "@/lib/data-adapter";
+import { getEventsByRegion, getEventImage } from "@/lib/data-adapter";
 import { EventByCountryCard } from "@/components/EventByCountryCard";
 
 import type { Metadata } from "next";
@@ -49,7 +49,7 @@ export default async function EventsPage() {
           <div className="mvp-main-blog-out left relative event-by-country-out">
             <div className="mvp-main-blog-in event-by-country-in">
               <div className="mvp-main-blog-body left relative event-by-country-body">
-                {EVENTS_REGION_ORDER.map((region) => {
+                {Object.keys(eventsByRegion).map((region) => {
                   const events = eventsByRegion[region];
                   if (!events || events.length === 0) return null;
 

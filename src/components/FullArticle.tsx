@@ -60,13 +60,22 @@ function getAuthorHref(post: Post): string {
 }
 
 function stripNoFollowFromLinks(html: string): string {
-    return html.replace(
+    // Normalize links that already have a rel attribute: remove nofollow, ensure noopener + noreferrer
+    let result = html.replace(
         /(<a\b[^>]*\brel\s*=\s*(["']))(.*?)(\2[^>]*>)/gi,
         (_m, before, _q, relVal, after) => {
-            const cleaned = relVal.split(/\s+/).filter((r: string) => r.toLowerCase() !== 'nofollow').join(' ');
-            return `${before}${cleaned}${after}`;
+            const parts = relVal.split(/\s+/).filter((r: string) => r.toLowerCase() !== 'nofollow');
+            if (!parts.includes('noopener')) parts.push('noopener');
+            if (!parts.includes('noreferrer')) parts.push('noreferrer');
+            return `${before}${parts.join(' ')}${after}`;
         }
     );
+    // Add rel to links that have no rel attribute at all
+    result = result.replace(/<a\b([^>]*)>/gi, (match, attrs) => {
+        if (/\brel\s*=/i.test(attrs)) return match;
+        return `<a${attrs} rel="noopener noreferrer">`;
+    });
+    return result;
 }
 
 function addNoFollowToLinks(html: string): string {

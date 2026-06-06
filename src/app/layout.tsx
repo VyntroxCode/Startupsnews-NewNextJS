@@ -66,6 +66,11 @@ export const metadata: Metadata = {
       "Your trusted source for startup news, funding rounds, and tech innovation.",
     images: ["/logo.png"],
   },
+  verification: {
+    other: {
+      "msvalidate.01": ["7AA71D3ABAB34C6C1C8E9654A46C1EE7"],
+    },
+  },
 };
 
 export const viewport: Viewport = {

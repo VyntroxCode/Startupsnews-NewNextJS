@@ -68,10 +68,19 @@ const BannersIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
+const RegionsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="2" y1="12" x2="22" y2="12"></line>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+  </svg>
+);
+
 const menuItems = [
   { href: '/admin', label: 'Dashboard', icon: DashboardIcon },
   { href: '/admin/posts', label: 'Posts', icon: PostsIcon },
   { href: '/admin/events', label: 'Events', icon: EventsIcon },
+  { href: '/admin/event-regions', label: 'Event Regions', icon: RegionsIcon },
   { href: '/admin/categories', label: 'Categories', icon: CategoriesIcon },
   { href: '/admin/authors', label: 'Authors', icon: AuthorsIcon },
   { href: '/admin/banners', label: 'Banners', icon: BannersIcon },

@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getAuthHeaders, getAdminToken } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
-import { EVENTS_REGION_ORDER } from '@/lib/events-constants';
+
+interface EventRegion { id: number; name: string; sort_order: number; }
 
 export default function CreateEventPage() {
   const router = useRouter();
+  const [regions, setRegions] = useState<EventRegion[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +29,13 @@ export default function CreateEventPage() {
     externalUrl: '',
     status: 'draft' as 'draft' | 'upcoming' | 'completed' | 'cancelled',
   });
+
+  useEffect(() => {
+    fetch('/api/admin/event-regions', { headers: getAuthHeaders() })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setRegions(d.data); })
+      .catch(() => {});
+  }, []);
 
   const generateSlug = (title: string) => {
     return title
@@ -228,10 +237,16 @@ export default function CreateEventPage() {
           <select value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} required
             style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}>
             <option value="">Select region</option>
-            {EVENTS_REGION_ORDER.map((region) => (
-              <option key={region} value={region}>{region}</option>
+            {regions.map((region) => (
+              <option key={region.id} value={region.name}>{region.name}</option>
             ))}
           </select>
+          <p style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: '#64748b' }}>
+            Region not listed?{' '}
+            <a href="/admin/event-regions" target="_blank" style={{ color: '#48bb78', textDecoration: 'none' }}>
+              Add it in Event Regions →
+            </a>
+          </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>

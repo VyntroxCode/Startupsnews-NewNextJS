@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/shared/middleware/auth.middleware';
 import { CategoriesService } from '@/modules/categories/service/categories.service';
 import { CategoriesRepository } from '@/modules/categories/repository/categories.repository';
-import { filterSectorCategories } from '@/lib/sector-categories';
-
 export const maxDuration = 60;
 
 // Initialize services
@@ -51,11 +49,8 @@ export async function GET(request: NextRequest) {
     }
 
     const categories = await categoriesService.getAllCategories(filters);
-
-    // Filter to only sector categories for admin panel
-    const filteredCategories = filterSectorCategories(categories);
-    const pagedCategories = filteredCategories.slice(offset, offset + limit);
-    const total = filteredCategories.length;
+    const total = categories.length;
+    const pagedCategories = categories.slice(offset, offset + limit);
 
     return NextResponse.json({
       success: true,

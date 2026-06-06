@@ -98,7 +98,7 @@ export default async function HomePage() {
     ) as Post[],
     ecommerce: [ecommerceSection.featured, ...ecommerceSection.list].filter(Boolean) as Post[],
     gaming: [gamingSection.featured, ...gamingSection.right, ...gamingSection.list].filter(Boolean) as Post[],
-    "web3-blockchain": [web3BlockchainSection.top, ...web3BlockchainSection.bottom].filter(Boolean) as Post[],
+    "web3-blockchain": [...web3BlockchainSection.top, ...web3BlockchainSection.bottom].filter(Boolean) as Post[],
     fintech: [fintechSection.featured, ...fintechSection.right, ...fintechSection.list].filter(Boolean) as Post[],
   };
 

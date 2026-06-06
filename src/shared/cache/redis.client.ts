@@ -105,6 +105,8 @@ export async function invalidatePostsListCache(): Promise<void> {
     deleteCacheByPrefix('search:posts:'),
     deleteCacheByPrefix('api:posts:'),
     deleteCacheByPrefix('api:post:'),
+    deleteCacheByPrefix('post:slug:'),
+    deleteCache('gone:slugs:all'),
   ]);
 }
 

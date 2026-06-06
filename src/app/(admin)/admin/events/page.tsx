@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { useAdminData } from '@/hooks/useAdminData';
@@ -9,6 +9,8 @@ import SearchBar from '@/components/admin/SearchBar';
 import LoadingSkeleton from '@/components/admin/LoadingSkeleton';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import { fetchAndDownloadCsv } from '@/shared/utils/csv-utils';
+
+interface EventRegion { id: number; name: string; }
 
 interface Event {
   id: string;
@@ -21,6 +23,15 @@ interface Event {
 }
 
 export default function EventsPage() {
+  const [regions, setRegions] = useState<EventRegion[]>([]);
+
+  useEffect(() => {
+    fetch('/api/admin/event-regions', { headers: getAuthHeaders() })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setRegions(d.data); })
+      .catch(() => {});
+  }, []);
+
   const {
     data: events,
     loading,
@@ -230,9 +241,7 @@ export default function EventsPage() {
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
-          <input
-            type="text"
-            placeholder="Filter by location..."
+          <select
             value={String(filters.location ?? '')}
             onChange={(e) => handleLocationFilter(e.target.value || null)}
             style={{
@@ -241,8 +250,9 @@ export default function EventsPage() {
               borderRadius: '8px',
               fontSize: '0.9375rem',
               background: 'white',
+              cursor: 'pointer',
               color: '#475569',
-              minWidth: '150px',
+              minWidth: '160px',
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = '#10b981';
@@ -252,7 +262,12 @@ export default function EventsPage() {
               e.currentTarget.style.borderColor = '#e2e8f0';
               e.currentTarget.style.boxShadow = 'none';
             }}
-          />
+          >
+            <option value="">All Locations</option>
+            {regions.map((r) => (
+              <option key={r.id} value={r.name}>{r.name}</option>
+            ))}
+          </select>
         </div>
 
         {error && (

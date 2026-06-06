@@ -5,14 +5,16 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { getAuthHeaders, getAdminToken } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
-import { EVENTS_REGION_ORDER } from '@/lib/events-constants';
 import { getPresignedUploadUrl } from '@/app/actions/upload-image';
+
+interface EventRegion { id: number; name: string; sort_order: number; }
 
 export default function EditEventPage() {
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
 
+  const [regions, setRegions] = useState<EventRegion[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -32,6 +34,13 @@ export default function EditEventPage() {
     externalUrl: '',
     status: 'draft' as 'draft' | 'upcoming' | 'completed' | 'cancelled',
   });
+
+  useEffect(() => {
+    fetch('/api/admin/event-regions', { headers: getAuthHeaders() })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setRegions(d.data); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (eventId) {
@@ -329,13 +338,19 @@ export default function EditEventPage() {
             }}
           >
             <option value="">Select region</option>
-            {EVENTS_REGION_ORDER.map((region) => (
-              <option key={region} value={region}>{region}</option>
+            {regions.map((region) => (
+              <option key={region.id} value={region.name}>{region.name}</option>
             ))}
-            {formData.location && !(EVENTS_REGION_ORDER as readonly string[]).includes(formData.location) && (
-              <option value={formData.location}>{formData.location} (current – change to a region above to show on site)</option>
+            {formData.location && !regions.some((r) => r.name === formData.location) && (
+              <option value={formData.location}>{formData.location} (current – not in region list)</option>
             )}
           </select>
+          <p style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: '#64748b' }}>
+            Region not listed?{' '}
+            <a href="/admin/event-regions" target="_blank" style={{ color: '#48bb78', textDecoration: 'none' }}>
+              Add it in Event Regions →
+            </a>
+          </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>

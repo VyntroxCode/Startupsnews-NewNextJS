@@ -63,8 +63,8 @@ const usersRepository = new UsersRepository();
 const eventsRepository = new EventsRepository();
 const eventsService = new EventsService(eventsRepository);
 
-import { EVENTS_REGION_ORDER, normalizeEventLocation } from './events-constants';
-export { EVENTS_REGION_ORDER };
+import { EventRegionsRepository } from '@/modules/events/repository/event-regions.repository';
+const eventRegionsRepository = new EventRegionsRepository();
 
 // Default event image
 const DEFAULT_EVENT_IMAGE = "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&q=80";
@@ -693,24 +693,30 @@ export async function getEventsByRegion(): Promise<Record<string, StartupEvent[]
   if (cached) return cached;
 
   try {
-    const entities = await eventsService.getUpcomingForPublic();
+    const [entities, dbRegions] = await Promise.all([
+      eventsService.getUpcomingForPublic(),
+      eventRegionsRepository.findAll(),
+    ]);
 
-    const eventsByRegion: Record<string, StartupEvent[]> = {};
-    for (const region of EVENTS_REGION_ORDER) {
-      eventsByRegion[region] = [];
-    }
+    const regionNames = dbRegions.map((r) => r.name);
+    const eventsByRegion: Record<string, StartupEvent[]> = Object.fromEntries(
+      regionNames.map((n) => [n, []])
+    );
+
     for (const e of entities) {
-      const region = normalizeEventLocation(e.location);
-      if (!eventsByRegion[region]) eventsByRegion[region] = [];
-      eventsByRegion[region].push(entityToEvent(e));
+      const loc = (e.location || '').trim();
+      // Case-insensitive match against DB region names
+      const matched = regionNames.find((n) => n.toLowerCase() === loc.toLowerCase());
+      const key = matched ?? loc; // fall back to raw location if not in DB
+      if (!eventsByRegion[key]) eventsByRegion[key] = [];
+      eventsByRegion[key].push(entityToEvent(e));
     }
+
     await setCache(cacheKey, eventsByRegion, 300);
     return eventsByRegion;
   } catch (error) {
     console.error('Error fetching events by region:', error);
-    const empty = Object.fromEntries(EVENTS_REGION_ORDER.map((r) => [r, []]));
-    await setCache(cacheKey, empty, 60);
-    return empty;
+    return {};
   }
 }
 

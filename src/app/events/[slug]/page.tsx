@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getEventsByRegion, getEventImage, EVENTS_REGION_ORDER } from "@/lib/data-adapter";
+import { getEventsByRegion, getEventImage } from "@/lib/data-adapter";
 import { EventByCountryCard } from "@/components/EventByCountryCard";
 
 // Helper to convert region name to slug (e.g. "Delhi NCR" -> "delhi-ncr")
@@ -7,9 +7,9 @@ function slugify(text: string) {
     return text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
 }
 
-// Helper to find region from slug
-function getRegionFromSlug(slug: string) {
-    return EVENTS_REGION_ORDER.find((r) => slugify(r) === slug);
+// Helper to find region from slug against live region keys
+function getRegionFromSlug(slug: string, regionKeys: string[]) {
+    return regionKeys.find((r) => slugify(r) === slug);
 }
 
 // Make pages dynamic to avoid connection pool exhaustion during build
@@ -23,12 +23,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
-    const region = getRegionFromSlug(slug);
+    const eventsByRegion = await getEventsByRegion();
+    const region = getRegionFromSlug(slug, Object.keys(eventsByRegion));
 
     if (!region) {
-        return {
-            title: "Event Not Found",
-        };
+        return { title: "Event Not Found" };
     }
 
     return {
@@ -48,13 +47,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function RegionEventsPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
-    const region = getRegionFromSlug(slug);
+    const eventsByRegion = await getEventsByRegion();
+    const region = getRegionFromSlug(slug, Object.keys(eventsByRegion));
 
     if (!region) {
         notFound();
     }
 
-    const eventsByRegion = await getEventsByRegion();
     const upcomingEvents = eventsByRegion[region] || [];
 
     return (
