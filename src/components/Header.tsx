@@ -6,11 +6,23 @@ import Image from "next/image";
 import { siteConfig } from "@/lib/config";
 import { FlyMenuButton } from "@/components/FlyMenuButton";
 
+interface AuthUser { id: number; name: string; email: string; }
+
+const AVATAR_COLORS = [
+  '#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4',
+];
+function avatarColor(name: string) {
+  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+}
+
 export function Header() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
 
   // Handle search icon click - on mobile expand input first; do not open overlay
@@ -75,15 +87,48 @@ export function Header() {
       const scrollY = window.scrollY || window.pageYOffset;
       setIsScrolled(scrollY > 10);
     };
-
-    // Check initial scroll position
     handleScroll();
-
     window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", handleScroll); };
+  }, []);
+
+  // Read auth user from localStorage + listen for changes
+  useEffect(() => {
+    const readAuth = () => {
+      try {
+        const raw = localStorage.getItem('pub_auth_user');
+        setAuthUser(raw ? JSON.parse(raw) : null);
+      } catch { setAuthUser(null); }
+    };
+    readAuth();
+    window.addEventListener('storage', readAuth);
+    // Also listen for login/logout events fired by AuthModal
+    window.addEventListener('pub-auth-changed', readAuth);
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener('storage', readAuth);
+      window.removeEventListener('pub-auth-changed', readAuth);
     };
   }, []);
+
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [userMenuOpen]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('pub_auth_token');
+    localStorage.removeItem('pub_auth_user');
+    setAuthUser(null);
+    setUserMenuOpen(false);
+    window.dispatchEvent(new Event('pub-auth-changed'));
+  };
 
   return (
     <header 
@@ -126,6 +171,18 @@ export function Header() {
                                     )}
                                   </>
                                 );
+
+                                const handleProtectedClick = (e: React.MouseEvent) => {
+                                  const token = typeof window !== 'undefined' ? localStorage.getItem('pub_auth_token') : null;
+                                  if (!token) {
+                                    e.preventDefault();
+                                    window.dispatchEvent(new CustomEvent('open-auth-modal'));
+                                  } else {
+                                    e.preventDefault();
+                                    window.location.href = '/dashboard/reports';
+                                  }
+                                };
+
                                 return (
                                 <li key={item.label} className={item.children ? "startupnews-menu-item-has-children" : ""}>
                                   {item.href ? (
@@ -133,6 +190,8 @@ export function Header() {
                                       <a href={item.href} target="_blank" rel="noopener noreferrer">
                                         {linkContent}
                                       </a>
+                                    ) : "requiresAuth" in item && item.requiresAuth ? (
+                                      <Link href={item.href} onClick={handleProtectedClick}>{linkContent}</Link>
                                     ) : (
                                       <Link href={item.href}>{linkContent}</Link>
                                     )
@@ -165,7 +224,7 @@ export function Header() {
                     </div>
                   </div>
                 </div>
-                <div className="mvp-nav-bot-right left relative startupnews-search-wrap" ref={searchWrapRef}>
+                <div className="mvp-nav-bot-right left relative startupnews-search-wrap" ref={searchWrapRef} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <form
                     className={`startupnews-search ${isSearchExpanded ? "startupnews-search-expanded" : ""}`}
                     onSubmit={handleSearchSubmit}
@@ -186,6 +245,86 @@ export function Header() {
                       <i className="fa fa-search" aria-hidden></i>
                     </button>
                   </form>
+
+                  {/* User avatar / login button */}
+                  <div ref={userMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
+                    {authUser ? (
+                      <>
+                        <button
+                          onClick={() => setUserMenuOpen(prev => !prev)}
+                          title={authUser.name}
+                          style={{
+                            width: 34, height: 34, borderRadius: '50%',
+                            background: avatarColor(authUser.name),
+                            border: '2px solid #fff',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+                            color: '#fff', fontWeight: 800, fontSize: 14,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            letterSpacing: 0, lineHeight: 1, flexShrink: 0,
+                          }}
+                        >
+                          {authUser.name.charAt(0).toUpperCase()}
+                        </button>
+                        {userMenuOpen && (
+                          <div style={{
+                            position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+                            background: '#fff', borderRadius: 12, padding: '6px 0',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.16)', border: '1px solid #e5e7eb',
+                            minWidth: 200, zIndex: 99999,
+                          }}>
+                            {/* User info */}
+                            <div style={{ padding: '10px 16px 10px', borderBottom: '1px solid #f3f4f6' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor(authUser.name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
+                                  {authUser.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div style={{ overflow: 'hidden' }}>
+                                  <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser.name}</p>
+                                  <p style={{ margin: 0, fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser.email}</p>
+                                </div>
+                              </div>
+                            </div>
+                            {/* Dashboard link */}
+                            <button
+                              onClick={() => { setUserMenuOpen(false); window.location.href = '/dashboard'; }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 600, textAlign: 'left' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                              My Dashboard
+                            </button>
+                            {/* Sign out */}
+                            <button
+                              onClick={handleLogout}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: '#dc2626', fontWeight: 600, textAlign: 'left' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                              Sign Out
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal'))}
+                        title="Sign in"
+                        style={{
+                          width: 34, height: 34, borderRadius: '50%',
+                          background: '#f3f4f6', border: '2px solid #e5e7eb',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#6b7280', flexShrink: 0,
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#ee1761'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#ee1761'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#f3f4f6'; (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#e5e7eb'; }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      </button>
+                    )}
+                  </div>
+
                   {/* Hamburger menu for mobile - right side */}
                   <div className="mvp-nav-bot-right-mobile-hamburger">
                     <FlyMenuButton />

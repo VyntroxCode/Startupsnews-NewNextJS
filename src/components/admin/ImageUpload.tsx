@@ -121,7 +121,7 @@ export default function ImageUpload({
         fontWeight: '500',
         color: '#4a5568',
       }}>
-        {label} {required && '*'}
+        {label} {required && <span style={{ color: '#ef4444' }}>*</span>}
       </label>
 
       {preview && (
@@ -136,8 +136,9 @@ export default function ImageUpload({
             style={{
               maxWidth: '300px',
               maxHeight: '200px',
-              borderRadius: '4px',
+              borderRadius: '8px',
               border: '1px solid #e2e8f0',
+              objectFit: 'cover',
             }}
             onError={() => setPreview(null)}
           />
@@ -148,7 +149,7 @@ export default function ImageUpload({
               position: 'absolute',
               top: '0.5rem',
               right: '0.5rem',
-              background: '#e53e3e',
+              background: '#dc2626',
               color: 'white',
               border: 'none',
               borderRadius: '50%',
@@ -159,26 +160,33 @@ export default function ImageUpload({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transition: 'background-color 0.2s',
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ef4444'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#dc2626'; }}
           >
             ×
           </button>
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <label
           style={{
-            padding: '0.75rem 1.5rem',
-            background: uploading ? '#a0aec0' : '#667eea',
+            padding: '0.75rem 1.25rem',
+            background: uploading ? '#a0aec0' : '#6366f1',
             color: 'white',
-            borderRadius: '4px',
+            borderRadius: '8px',
             cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: '0.875rem',
-            fontWeight: '500',
+            fontWeight: '600',
             display: 'inline-block',
             textAlign: 'center',
+            transition: 'background-color 0.2s, opacity 0.2s',
+            boxShadow: '0 4px 10px rgba(99,102,241,0.2)',
           }}
+          onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.backgroundColor = '#4f46e5'; }}
+          onMouseLeave={(e) => { if (!uploading) e.currentTarget.style.backgroundColor = '#6366f1'; }}
         >
           {uploading ? 'Uploading...' : 'Upload Image'}
           <input
@@ -190,7 +198,7 @@ export default function ImageUpload({
           />
         </label>
 
-        <div style={{ flex: 1 }}>
+        <div>
           <input
             type="url"
             value={value}
@@ -200,36 +208,41 @@ export default function ImageUpload({
               width: '100%',
               padding: '0.75rem',
               border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
+              borderRadius: '8px',
+              fontSize: '0.9375rem',
               boxSizing: 'border-box',
+              color: '#0f172a',
+              outline: 'none',
+              transition: 'border-color 0.2s, box-shadow 0.2s',
             }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
           />
         </div>
       </div>
 
       {error && (
         <div style={{
-          marginTop: '0.5rem',
-          padding: '0.75rem',
-          background: '#fed7d7',
-          color: '#c53030',
+          marginTop: '0.75rem',
+          padding: '0.75rem 1.25rem',
+          background: '#fef2f2',
+          color: '#991b1b',
           fontSize: '0.875rem',
-          borderRadius: '4px',
+          borderRadius: '8px',
           border: '1px solid #fca5a5',
         }}>
           <strong>Upload Error:</strong> {error}
         </div>
       )}
 
-      {value && (
-        <div style={{
+      {value && !error && (
+        <p style={{
           marginTop: '0.5rem',
           fontSize: '0.75rem',
-          color: '#718096',
+          color: '#64748b',
         }}>
-          Current: {value}
-        </div>
+          Current: <a href={value} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1', textDecoration: 'underline' }}>{value}</a>
+        </p>
       )}
     </div>
   );

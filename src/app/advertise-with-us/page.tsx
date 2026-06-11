@@ -1,6 +1,8 @@
 "use client";
 
-import React , {useState} from "react";
+import React, { useState, useRef } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
 
 export default function AdvertisePage() {
     const [formData, setFormData] = useState({
@@ -12,6 +14,9 @@ export default function AdvertisePage() {
             campaignGoal: "",
             objective: "",
         });
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+    const turnstileRef = useRef<TurnstileInstance>(null);
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
             const { name, value } = e.target;
@@ -20,17 +25,27 @@ export default function AdvertisePage() {
 
         const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
+
+            if (!turnstileToken) {
+                alert('Please complete the CAPTCHA verification.');
+                return;
+            }
+
+            setSubmitting(true);
             const response = await fetch('/api/advertise', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ ...formData, turnstileToken }),
             });
 
             const result = await response.json().catch(() => null);
+            setSubmitting(false);
 
             if (!response.ok || !result?.success) {
                 const errorMessage = result?.error || 'Failed to send your enquiry. Please try again.';
                 alert(errorMessage);
+                turnstileRef.current?.reset();
+                setTurnstileToken(null);
                 return;
             }
 
@@ -44,6 +59,8 @@ export default function AdvertisePage() {
                 campaignGoal: '',
                 objective: '',
             });
+            turnstileRef.current?.reset();
+            setTurnstileToken(null);
         };
 
     const audienceData = [
@@ -317,10 +334,21 @@ const ProgressBar = ({ value }: { value: number }) => {
                             <textarea name="objective" required value={formData.objective} onChange={handleChange} rows={5} placeholder="Describe your campaign, target audience, goals, or any specific requirements..." />
                         </div>
 
-                        <div style={{ paddingTop: "10px", textAlign: "center" }}>
-                            <button type="submit" style={{ display: "inline-block", width: "100%", maxWidth: "320px", margin: "0 auto", padding: "18px 24px", background: "#000", color: "#fff", textDecoration: "none", textAlign: "center", fontWeight: 700, borderRadius: "6px" }}>
-                            Submit Your Enquiry Today
-                        </button>
+                        <div style={{ paddingTop: "10px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+                            <Turnstile
+                                ref={turnstileRef}
+                                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                                onSuccess={(token) => setTurnstileToken(token)}
+                                onExpire={() => setTurnstileToken(null)}
+                                onError={() => setTurnstileToken(null)}
+                            />
+                            <button
+                                type="submit"
+                                disabled={submitting || !turnstileToken}
+                                style={{ display: "inline-block", width: "100%", maxWidth: "320px", margin: "0 auto", padding: "18px 24px", background: submitting || !turnstileToken ? "#666" : "#000", color: "#fff", textDecoration: "none", textAlign: "center", fontWeight: 700, borderRadius: "6px", cursor: submitting || !turnstileToken ? "not-allowed" : "pointer", border: "none" }}
+                            >
+                                {submitting ? "Sending..." : "Submit Your Enquiry Today"}
+                            </button>
                         </div>
 
                         <p style={{ fontSize: "11px", color: "#000", marginTop: "40px", lineHeight: "1.5", maxWidth: "800px" }}>

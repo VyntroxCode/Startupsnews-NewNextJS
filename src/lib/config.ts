@@ -23,6 +23,7 @@ export const siteConfig = {
     { label: "EVENTS", href: "/events" },
     { label: "AI SPOTLIGHT ", href: "/ai-deeptech" },
     { label: "PRESS RELEASE", href: "/press-release" },
+    { label: "REPORTS", href: "/report", requiresAuth: true },
   ],
   footerMenu: [
     { label: "FUNDING TRACKER", href: "/funding" },

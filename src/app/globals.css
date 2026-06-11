@@ -2,8 +2,7 @@
 @import "./styles/style.css";
 @import "./styles/media-queries.css";
 
-/* Font Awesome for theme icons (CDN – may be blocked by ad blockers) */
-@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css");
+/* Font Awesome loaded via <link> in layout.tsx to avoid CDN URL resolution issues */
 
 /* Minimal overrides - theme handles body/layout */
 /* CRITICAL: html and body must be the scrolling containers for sticky to work */
@@ -349,9 +348,9 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .startupnews-menu ul {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px 24px;
+  gap: 8px 16px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -359,11 +358,12 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .startupnews-menu ul li a {
   color: #111 !important;
-  text-transform: capitalize;
+  text-transform: uppercase;
   font-weight: 600;
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
   position: relative;
+  white-space: nowrap;
 }
 
 /* No underline on menu items - override theme and any ::after */
@@ -373,7 +373,8 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   text-decoration: none !important;
   border-bottom: none !important;
   box-shadow: none !important;
-  text-transform: capitalize !important;
+  text-transform: uppercase !important;
+  white-space: nowrap;
 }
 
 .startupnews-menu ul li a::after,
@@ -419,6 +420,8 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 /* Hide dropdown by default */
 .startupnews-dropdown-menu {
+  display: block !important;
+  flex-direction: unset !important;
   position: absolute;
   top: 100%;
   left: 0;
@@ -434,7 +437,6 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   transform: translateY(10px);
   transition: all 0.2s ease;
   pointer-events: none;
-  /* Prevent interaction when hidden */
 }
 
 /* Show dropdown on hover */
@@ -455,7 +457,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .startupnews-dropdown-menu li a {
   display: block;
-  padding: 8px 20px !important;
+  padding: 12px 24px !important;
   /* Standard comfortable padding */
   color: #333 !important;
   font-size: 0.9rem;
@@ -505,10 +507,10 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 /* Menu item without click (e.g., SECTORS with dropdown only) */
 .startupnews-menu-item-no-click {
   color: #111 !important;
-  text-transform: capitalize !important;
+  text-transform: uppercase !important;
   font-weight: 600;
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
   position: relative;
   display: inline-block;
   cursor: pointer;
@@ -516,6 +518,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   border-bottom: none !important;
   box-shadow: none !important;
   line-height: inherit;
+  white-space: nowrap;
 }
 
 .startupnews-menu-item-no-click:hover {
@@ -546,8 +549,8 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   border: none;
   border-radius: 0;
   font-size: 0.9rem;
-  width: 160px;
-  min-width: 120px;
+  width: 100px;
+  min-width: 80px;
   outline: none;
   height: 100%;
   box-sizing: border-box;

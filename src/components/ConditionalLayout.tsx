@@ -15,9 +15,10 @@ export default function ConditionalLayout({
 }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
+  const isDashboardRoute = pathname?.startsWith('/dashboard');
 
-  // For admin routes, render only the children (admin layout will handle its own structure)
-  if (isAdminRoute) {
+  // For admin/dashboard routes, render only the children (their layouts handle structure)
+  if (isAdminRoute || isDashboardRoute) {
     return <>{children}</>;
   }
 

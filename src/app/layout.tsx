@@ -10,6 +10,7 @@ import { ThemeScript } from "@/components/ThemeScript";
 import { TopLoader } from "@/components/TopLoader";
 import { siteConfig } from "@/lib/config";
 import ConditionalLayout from "@/components/ConditionalLayout";
+import AuthModal from "@/components/AuthModal";
 import Script from "next/script";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
@@ -37,11 +38,9 @@ export const metadata: Metadata = {
   authors: [{ }], // Aditya
   creator: "StartupNews.fyi",
   publisher: "StartupNews.fyi",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 },
-  },
+  robots: process.env.ROBOTS_NOINDEX === "true"
+    ? { index: false, follow: false, googleBot: { index: false, follow: false } }
+    : { index: true, follow: true, googleBot: { index: true, follow: true, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 } },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -205,6 +204,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(graphJsonLd) }}
@@ -215,6 +215,7 @@ export default function RootLayout({
         <ConditionalLayout>
           {children}
         </ConditionalLayout>
+        <AuthModal />
         <ThemeScript />
         <Script src="https://www.googletagmanager.com/gtag/js?id=G-WNYV9VGC9N" strategy="afterInteractive" />
         <Script id="gtag-init" strategy="afterInteractive">{`

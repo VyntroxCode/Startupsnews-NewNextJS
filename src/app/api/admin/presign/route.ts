@@ -50,8 +50,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml'];
-        const resolvedContentType = allowedTypes.includes(contentType) ? contentType : 'image/jpeg';
+        const resolvedContentType = typeof contentType === 'string' && contentType.trim()
+            ? contentType.trim()
+            : 'application/octet-stream';
 
         const key = s3KeyForAdminUpload(filename);
         const bucket = getS3Bucket();

@@ -8,6 +8,8 @@ interface PostImageProps extends Omit<ImageProps, "style"> {
   style?: React.CSSProperties;
   /** Real <img> style passed to next/image */
   imageStyle?: React.CSSProperties;
+  /** Whether to render a blurred background copy of the image behind a contained foreground image */
+  containWithBackdrop?: boolean;
 }
 
 /**
@@ -48,9 +50,13 @@ export function PostImage({
   const isFill = fill === true;
   const numericWidth = typeof width === "number" ? width : undefined;
   const numericHeight = typeof height === "number" ? height : undefined;
+  const hasBackdrop = !!rest.containWithBackdrop;
+  
+  // Remove containWithBackdrop before spreading to Next/Image
+  const { containWithBackdrop, ...imageProps } = rest;
 
   const wrapperStyle: React.CSSProperties = isFill
-    ? { position: "relative", width: "100%", height: "100%", minHeight: 0, display: "block" }
+    ? { position: "relative", width: "100%", height: "100%", minHeight: 0, display: "block", overflow: "hidden" }
     : {
         position: "relative",
         display: "block",
@@ -75,28 +81,50 @@ export function PostImage({
       data-post-image-wrapper
     >
       {showImage ? (
-        <Image
-          {...rest}
-          src={imgSrc!}
-          alt={alt}
-          width={width}
-          height={height}
-          fill={fill}
-          className={className}
-          unoptimized
-          onError={() => {
-            if (imgSrc !== FALLBACK_POST_IMAGE) {
-              setImgSrc(FALLBACK_POST_IMAGE);
-              return;
-            }
-            setErrored(true);
-          }}
-          style={{
-            objectFit: imageStyle?.objectFit ?? "cover",
-            objectPosition: "center",
-            ...imageStyle,
-          }}
-        />
+        <>
+          {hasBackdrop && (
+            <Image
+              {...imageProps}
+              src={imgSrc!}
+              alt=""
+              width={width}
+              height={height}
+              fill={fill}
+              className={className}
+              unoptimized
+              style={{
+                objectFit: "cover",
+                objectPosition: "center",
+                filter: "blur(28px) saturate(1.5)",
+                opacity: 0.6,
+                transform: "scale(1.2)",
+              }}
+            />
+          )}
+          <Image
+            {...imageProps}
+            src={imgSrc!}
+            alt={alt}
+            width={width}
+            height={height}
+            fill={fill}
+            className={className}
+            unoptimized
+            onError={() => {
+              if (imgSrc !== FALLBACK_POST_IMAGE) {
+                setImgSrc(FALLBACK_POST_IMAGE);
+                return;
+              }
+              setErrored(true);
+            }}
+            style={{
+              objectFit: hasBackdrop ? "contain" : (imageStyle?.objectFit ?? "cover"),
+              objectPosition: "center",
+              zIndex: hasBackdrop ? 1 : undefined,
+              ...imageStyle,
+            }}
+          />
+        </>
       ) : (
         <span
           className={`post-image-placeholder ${className ?? ""}`.trim()}
