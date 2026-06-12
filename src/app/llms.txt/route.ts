@@ -169,7 +169,7 @@ ${SITE_URL}/contact-us
 
 ### About
 
-${SITE_URL}/about
+${SITE_URL}/about-us
 
 ### Editorial Policy
 

@@ -112,6 +112,8 @@ function addNoFollowToLinks(html: string): string {
     );
 }
 
+const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || 'https://startupnews.fyi';
+
 export function FullArticle({ post, related = [], prev, next }: FullArticleProps) {
     const rawContent = stripFeaturedImageFromContent(post.content || "", post.image || "");
     const contentFollow = typeof post.contentFollow === 'string' ? post.contentFollow.toLowerCase() : 'nofollow';
@@ -183,10 +185,8 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                     </div>
                                                     <div className="mvp-author-info-text left relative">
                                                         <div className="mvp-author-info-date left relative">
-                                                            <p>Published</p>{" "}
-                                                            <span className="mvp-post-date">{post.timeAgo}</span>{" "}
-                                                            <p>on</p>{" "}
-                                                            <time className="mvp-post-date updated" itemProp="datePublished" dateTime={post.date}>
+                                                            <p>Published on</p>{" "}
+                                                            <time className="mvp-post-date updated" itemProp="datePublished" dateTime={post.publishedAt || (post.date + 'T00:00:00+05:30')}>
                                                                 {formatDate(post.date)}
                                                             </time>
                                                         </div>
@@ -197,9 +197,13 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                                 </span>
                                                             )}
                                                             {isLinkedAuthor(post.authorName || post.sourceAuthor || post.sourceName) ? (
-                                                                <Link href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="name">
-                                                                    {post.authorName || post.sourceAuthor || post.sourceName || "Source"}
-                                                                </Link>
+                                                                <>
+                                                                    {/* Author URL in structured data only — not a visible link */}
+                                                                    <link itemProp="url" href={`${SITE_BASE}${getAuthorHref(post)}`} />
+                                                                    <span className="author-name vcard fn author" itemProp="name">
+                                                                        {post.authorName || post.sourceAuthor || post.sourceName || "Source"}
+                                                                    </span>
+                                                                </>
                                                             ) : (
                                                                 <span className="author-name vcard fn author" itemProp="name">
                                                                     {post.authorName || post.sourceAuthor || post.sourceName || "Source"}
@@ -227,19 +231,21 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                     </div>
                                                     <div className="mvp-author-info-text left relative">
                                                         <div className="mvp-author-info-date left relative">
-                                                            <p>Published</p>{" "}
-                                                            <span className="mvp-post-date">{post.timeAgo}</span>{" "}
-                                                            <p>on</p>{" "}
-                                                            <time className="mvp-post-date updated" itemProp="datePublished" dateTime={post.date}>
+                                                            <p>Published on</p>{" "}
+                                                            <time className="mvp-post-date updated" itemProp="datePublished" dateTime={post.publishedAt || (post.date + 'T00:00:00+05:30')}>
                                                                 {formatDate(post.date)}
                                                             </time>
                                                         </div>
                                                         <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
                                                             <p>By</p>{" "}
                                                             {isLinkedAuthor(post.authorName) ? (
-                                                                <Link href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="name">
-                                                                    {post.authorName}
-                                                                </Link>
+                                                                <>
+                                                                    {/* Author URL in structured data only — not a visible link */}
+                                                                    <link itemProp="url" href={`${SITE_BASE}${getAuthorHref(post)}`} />
+                                                                    <span className="author-name vcard fn author" itemProp="name">
+                                                                        {post.authorName}
+                                                                    </span>
+                                                                </>
                                                             ) : (
                                                                 <span className="author-name vcard fn author" itemProp="name">
                                                                     {post.authorName}
@@ -251,7 +257,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                             )}
                                         </div>
                                     </header>
-                                    <div id="mvp-post-feat-img" className="left relative" itemScope itemType="https://schema.org/ImageObject">
+                                    <div id="mvp-post-feat-img" className="left relative" itemProp="image" itemScope itemType="https://schema.org/ImageObject">
                                         <PostImage
                                             src={post.image}
                                             alt={post.title}

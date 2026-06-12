@@ -173,7 +173,7 @@ export function Footer() {
           <div>
             <h3>About Us</h3>
             <ul>
-              <li><Link href="/about">About us</Link></li>
+              <li><Link href="/about-us">About us</Link></li>
               <li><Link href="/advertise-with-us">Advertise with Us</Link></li>
               <li><Link href="/editorial-policy">Editorial Policy</Link></li>
               <li><Link href="/our-partners">Our Partners</Link></li>

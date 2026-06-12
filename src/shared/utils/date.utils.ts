@@ -34,8 +34,9 @@ export function formatTimeAgo(date: Date | string): string {
   if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
   if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`;
-  if (diffMonths < 12) return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
+  if (diffWeeks < 3) return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`;
+  const displayMonths = Math.max(1, diffMonths);
+  if (diffMonths < 12) return `${displayMonths} month${displayMonths > 1 ? 's' : ''} ago`;
   return `${diffYears} year${diffYears > 1 ? 's' : ''} ago`;
 }
 

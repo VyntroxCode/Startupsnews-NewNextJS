@@ -216,13 +216,21 @@ async function renderPostPage(categorySlug: string, postPath: string) {
   );
 }
 
+const NOT_FOUND_META: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
+  },
+};
+
 export async function generateMetadata({ params }: { params: Promise<CatchAllParams> }): Promise<Metadata> {
   const { slug: segments = [] } = await params;
 
   if (segments.length === 1) {
     const [categorySlug] = segments;
     const posts = await getPostsByCategory(categorySlug, 1);
-    if (posts.length === 0) notFound();
+    if (posts.length === 0) return NOT_FOUND_META;
 
     const displayName = formatTitle(categorySlug);
     const title = `${displayName} News & Updates`;
@@ -247,7 +255,7 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     const [categorySlug, ...postParts] = segments;
     const postPath = postParts.join('/');
     const post = await resolvePostByCategoryAndPath(categorySlug, postPath);
-    if (!post) notFound();
+    if (!post) return NOT_FOUND_META;
 
     const title = post.title || "StartupNews.fyi";
     const description = (post.metaDescription || post.excerpt || "").slice(0, 160);
@@ -278,7 +286,7 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     };
   }
 
-  return { title: "StartupNews.fyi" };
+  return NOT_FOUND_META;
 }
 
 export default async function CatchAllPage({ params }: { params: Promise<CatchAllParams> }) {

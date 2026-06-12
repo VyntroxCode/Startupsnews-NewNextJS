@@ -24,13 +24,11 @@ export async function GET(
     const entity = await eventsService.getEventBySlug(slug);
 
     if (!entity) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Event not found',
-        },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Event not found' }, { status: 404 });
+    }
+
+    if (entity.status === 'draft') {
+      return NextResponse.json({ success: false, error: 'Event not available' }, { status: 410 });
     }
 
     const event = entityToEvent(entity);

@@ -9,18 +9,26 @@ export default function TermsPage() {
     return (
         <div id="mvp-article-cont" className="left relative terms-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}>
 
-            <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
+            <style>{`
+                .terms-wrap { max-width: 800px; margin: 0 auto; padding: 80px 20px; }
+                .terms-title { font-size: 42px; font-weight: 900; color: #000; text-transform: uppercase; font-family: Inter, sans-serif; margin-bottom: 20px; letter-spacing: 1px; }
+                .terms-section-title { font-size: 24px; font-weight: 800; color: #000; margin-top: 50px; margin-bottom: 20px; font-family: Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
+                @media (max-width: 768px) {
+                    .terms-wrap { padding: 40px 16px 60px; }
+                    .terms-title { font-size: 26px; letter-spacing: 0.5px; }
+                    .terms-section-title { font-size: 18px; margin-top: 36px; }
+                }
+                @media (max-width: 480px) {
+                    .terms-wrap { padding: 28px 14px 48px; }
+                    .terms-title { font-size: 22px; }
+                    .terms-section-title { font-size: 16px; }
+                }
+            `}</style>
+
+            <div className="kt-row-column-wrap terms-wrap">
 
                 <header style={{ marginBottom: "60px", textAlign: "center" }}>
-                    <h2 style={{
-                        fontSize: "42px",
-                        fontWeight: 900,
-                        color: "#000",
-                        textTransform: "uppercase",
-                        fontFamily: "Inter, sans-serif",
-                        marginBottom: "20px",
-                        letterSpacing: "1px"
-                    }}>
+                    <h2 className="terms-title">
                         Terms and Conditions
                     </h2>
                     <div style={{ width: "60px", height: "4px", background: "#ee1761", margin: "0 auto" }}></div>
@@ -43,7 +51,7 @@ export default function TermsPage() {
                         The following terminology applies to these Terms and Conditions, Privacy Statement and Disclaimer Notice and all Agreements: “Client”, “You” and “Your” refers to you, the person who logs on to this website and is compliant with the Company’s terms and conditions. “The Company”, “Ourselves”, “We”, “Our” and “Us”, refers to our Company. “Party”, “Parties”, or “Us”, refers to both the Client and ourselves. All terms refer to the offer, acceptance and consideration of payment necessary to undertake the process of our assistance to the Client in the most appropriate manner for the express purpose of meeting the Client’s needs in respect of the provision of the Company’s stated services, in accordance with and subject to, prevailing law of Netherlands. Any use of the above terminology or other words in the singular, plural, capitalization and/or he/she or they, are taken as interchangeable and therefore as referring to the same.
                     </p>
 
-                    <h2 style={sectionTitleStyle}>Cookies</h2>
+                    <h2 className="terms-section-title">Cookies</h2>
                     <p style={{ marginBottom: "25px" }}>
                         We employ the use of cookies. By accessing StartupNews.fyi, you agreed to use cookies in agreement with DOTFYI Media Ventures Private Limited’s Privacy Policy.
                     </p>
@@ -51,7 +59,7 @@ export default function TermsPage() {
                         Most interactive websites use cookies to let us retrieve the user’s details for each visit. Cookies are used by our website to enable the functionality of certain areas to make it easier for people visiting our website. Some of our affiliate/advertising partners may also use cookies.
                     </p>
 
-                    <h2 style={sectionTitleStyle}>License</h2>
+                    <h2 className="terms-section-title">License</h2>
                     <p style={{ marginBottom: "25px" }}>
                         Unless otherwise stated, DOTFYI Media Ventures Private Limited and/or its licensors own the intellectual property rights for all material on StartupNews.fyi. All intellectual property rights are reserved. You may access this from StartupNews.fyi for your personal use subject to restrictions set in these terms and conditions.
                     </p>
@@ -72,7 +80,7 @@ export default function TermsPage() {
                         DOTFYI Media Ventures Private Limited reserves the right to monitor all Comments and to remove any Comments which can be considered inappropriate, offensive or causes a breach of these Terms and Conditions.
                     </p>
 
-                    <h2 style={sectionTitleStyle}>Hyperlinking to our content</h2>
+                    <h2 className="terms-section-title">Hyperlinking to our content</h2>
                     <p style={{ marginBottom: "15px" }}>The following organizations may link to our Website without prior written approval:</p>
                     <ul style={listStyle}>
                         <li>Government agencies;</li>
@@ -82,22 +90,22 @@ export default function TermsPage() {
                         <li>System-wide Accredited Businesses except soliciting non-profit organizations, charity shopping malls, and charity fundraising groups which may not hyperlink to our Web site.</li>
                     </ul>
 
-                    <h2 style={sectionTitleStyle}>iFrames</h2>
+                    <h2 className="terms-section-title">iFrames</h2>
                     <p style={{ marginBottom: "40px" }}>
                         Without prior approval and written permission, you may not create frames around our Webpages that alter in any way the visual presentation or appearance of our Website.
                     </p>
 
-                    <h2 style={sectionTitleStyle}>Content Liability</h2>
+                    <h2 className="terms-section-title">Content Liability</h2>
                     <p style={{ marginBottom: "40px" }}>
                         We shall not be held responsible for any content that appears on your Website. You agree to protect and defend us against all claims that are rising on your Website. No link(s) should appear on any Website that may be interpreted as libellous, obscene or criminal, or which infringes, otherwise violates, or advocates the infringement or other violation of, any third-party rights.
                     </p>
 
-                    <h2 style={sectionTitleStyle}>Reservation of rights</h2>
+                    <h2 className="terms-section-title">Reservation of rights</h2>
                     <p style={{ marginBottom: "40px" }}>
                         We reserve the right to request that you remove all links or any particular link to our Website. You approve to immediately remove all links to our Website upon request. We also reserve the right to amen these terms and conditions and it’s linking policy at any time. By continuously linking to our Website, you agree to be bound to and follow these linking terms and conditions.
                     </p>
 
-                    <h2 style={sectionTitleStyle}>Disclaimer</h2>
+                    <h2 className="terms-section-title">Disclaimer</h2>
                     <p style={{ marginBottom: "25px" }}>
                         To the maximum extent permitted by applicable law, we exclude all representations, warranties and conditions relating to our website and the use of this website. Nothing in this disclaimer will:
                     </p>
@@ -121,17 +129,6 @@ export default function TermsPage() {
         </div>
     );
 }
-
-const sectionTitleStyle: React.CSSProperties = {
-    fontSize: "24px",
-    fontWeight: 800,
-    color: "#000",
-    marginTop: "50px",
-    marginBottom: "20px",
-    fontFamily: "Inter, sans-serif",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px"
-};
 
 const listStyle: React.CSSProperties = {
     paddingLeft: "20px",

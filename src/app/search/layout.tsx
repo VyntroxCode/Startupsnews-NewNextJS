@@ -6,7 +6,7 @@ export const metadata: Metadata = {
     title: "Search",
     description: "Search for startup news, articles, and stories on StartupNews.fyi.",
     alternates: { canonical: `${SITE_URL}/search` },
-    robots: { index: true, follow: true },
+    robots: { index: false, follow: false },
 };
 
 export default function SearchLayout({ children }: { children: React.ReactNode }) {

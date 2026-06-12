@@ -8,6 +8,16 @@ export const runtime = 'nodejs';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
+// Staff authors hardcoded in FullArticle — added to sitemap so search engines
+// can discover their author pages. Not rendered as clickable links in articles.
+const STAFF_AUTHOR_SLUGS = [
+  { name: "StartupNews.fyi Editorial Team", slug: "startupnewsfyi-editorial-team" },
+  { name: "Madhur Mohan Malik",             slug: "madhur-mohan-malik"            },
+  { name: "Kapil Suri",                     slug: "kapil-suri"                    },
+  { name: "Kanak Aggarwal",                 slug: "kanak-aggarwal"                },
+  { name: "Sreejit Kumar",                  slug: "sreejit-kumar"                 },
+];
+
 type PostSitemapRow = {
   slug: string;
   category_slug: string;
@@ -43,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/news`, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE_URL}/press-release`, changeFrequency: "daily", priority: 0.8 },
     { url: `${SITE_URL}/startup-events`, changeFrequency: "daily", priority: 0.7 },
-    { url: `${SITE_URL}/about`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE_URL}/about-us`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/contact-us`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/advertise-with-us`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${SITE_URL}/our-partners`, changeFrequency: "monthly", priority: 0.4 },
@@ -119,7 +129,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.5,
       }));
 
-    return [...staticRoutes, ...categoryRoutes, ...postRoutes, ...eventRoutes, ...authorRoutes];
+    const staffAuthorRoutes: MetadataRoute.Sitemap = STAFF_AUTHOR_SLUGS.map((a) => ({
+      url: `${SITE_URL}/author/${a.slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    }));
+
+    return [...staticRoutes, ...categoryRoutes, ...postRoutes, ...eventRoutes, ...authorRoutes, ...staffAuthorRoutes];
   } catch (error) {
     console.error("Failed to generate sitemap from database:", error);
     return staticRoutes;

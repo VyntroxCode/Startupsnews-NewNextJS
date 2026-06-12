@@ -109,7 +109,7 @@ export async function GET(
         categoryId: postEntity.category_id,
         source: rssItem ? 'rss' : 'manual',
         isGone410: Boolean(postEntity.is_gone_410),
-        httpStatus: Boolean(postEntity.is_gone_410) ? 410 : (postEntity.status === 'published' ? 200 : 404),
+        httpStatus: Boolean(postEntity.is_gone_410) ? 410 : (postEntity.status === 'published' ? 200 : 410),
       },
     });
   } catch (error) {

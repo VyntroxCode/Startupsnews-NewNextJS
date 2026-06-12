@@ -13,15 +13,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const row = await queryOne<{ robots: string | null }>(
-      `SELECT robots FROM posts WHERE slug = ? AND status = 'published' LIMIT 1`,
+    const row = await queryOne<{ robots: string | null; status: string; is_gone_410: number }>(
+      `SELECT robots, status, is_gone_410 FROM posts WHERE slug = ? LIMIT 1`,
       [slug]
     );
-    const robots = row?.robots || 'index,nofollow';
-    return NextResponse.json({ robots }, {
+    if (!row) return NextResponse.json({ robots: 'index,follow', httpStatus: 200 });
+    const httpStatus = (Boolean(row.is_gone_410) || row.status !== 'published') ? 410 : 200;
+    const robots = row.robots || (httpStatus === 410 ? 'noindex,nofollow' : 'index,follow');
+    return NextResponse.json({ robots, httpStatus }, {
       headers: { 'Cache-Control': 'private, max-age=300' },
     });
   } catch {
-    return NextResponse.json({ robots: 'index,nofollow' });
+    return NextResponse.json({ robots: 'index,follow', httpStatus: 200 });
   }
 }

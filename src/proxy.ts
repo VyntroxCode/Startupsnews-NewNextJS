@@ -7,24 +7,31 @@ function getSlugFromPath(pathname: string): string | null {
   return slug || null;
 }
 
-// Lightweight in-process cache for robots values (5 min TTL)
-const robotsCache = new Map<string, { value: string; expiresAt: number }>();
+// Rewrite https://localhost → http://localhost so internal API fetches work
+// behind nginx which sets X-Forwarded-Proto: https on the forwarded request.
+function toInternalOrigin(origin: string): string {
+  return origin.replace(/^https:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, (_, host, port) => `http://${host}${port || ''}`);
+}
+
+// Lightweight in-process cache for robots + httpStatus (5 min TTL)
+const robotsCache = new Map<string, { robots: string; httpStatus: number; expiresAt: number }>();
 const ROBOTS_TTL_MS = 5 * 60 * 1000;
 
-async function getRobotsForSlug(slug: string, origin: string): Promise<string> {
+async function getPostMeta(slug: string, origin: string): Promise<{ robots: string; httpStatus: number }> {
   const now = Date.now();
   const cached = robotsCache.get(slug);
-  if (cached && cached.expiresAt > now) return cached.value;
+  if (cached && cached.expiresAt > now) return { robots: cached.robots, httpStatus: cached.httpStatus };
   try {
-    const url = `${origin}/api/posts/robots?slug=${encodeURIComponent(slug)}`;
+    const url = `${toInternalOrigin(origin)}/api/posts/robots?slug=${encodeURIComponent(slug)}`;
     const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
-    if (!res.ok) return 'index,follow';
-    const data = await res.json();
-    const robots: string = data?.robots || 'index,follow';
-    robotsCache.set(slug, { value: robots, expiresAt: now + ROBOTS_TTL_MS });
-    return robots;
+    if (!res.ok) return { robots: 'index,follow', httpStatus: 200 };
+    const data = await res.json() as { robots?: string; httpStatus?: number };
+    const robots = data?.robots || 'index,follow';
+    const httpStatus = data?.httpStatus || 200;
+    robotsCache.set(slug, { robots, httpStatus, expiresAt: now + ROBOTS_TTL_MS });
+    return { robots, httpStatus };
   } catch {
-    return 'index,follow';
+    return { robots: 'index,follow', httpStatus: 200 };
   }
 }
 
@@ -81,7 +88,7 @@ export async function proxy(request: NextRequest) {
     }
 
     try {
-      const apiUrl = new URL(`/api/posts/${encodeURIComponent(slug)}`, request.nextUrl.origin);
+      const apiUrl = new URL(`/api/posts/${encodeURIComponent(slug)}`, toInternalOrigin(request.nextUrl.origin));
       apiUrl.searchParams.set('__proxy', Date.now().toString());
       const apiResp = await fetch(apiUrl.toString(), {
         method: 'GET',
@@ -120,17 +127,67 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // --- Handle post pages: /category/post-slug — inject X-Robots-Tag header ---
+  // --- Handle /startup-events/:slug — 410 for draft events ---
   const segments = pathname.split('/').filter(Boolean);
+  if (pathname.startsWith('/startup-events/') && segments.length === 2) {
+    const eventSlug = segments[1];
+    const origin = toInternalOrigin(request.nextUrl.origin);
+    try {
+      const url = `${origin}/api/events/robots?slug=${encodeURIComponent(eventSlug)}`;
+      const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json() as { httpStatus?: number };
+        if (data?.httpStatus === 410) {
+          if (request.method === 'HEAD') {
+            return new NextResponse(null, {
+              status: 410,
+              headers: { 'Cache-Control': 'public, max-age=60', 'X-Robots-Tag': 'noindex, nofollow' },
+            });
+          }
+          return new NextResponse(renderGoneHtml(eventSlug), {
+            status: 410,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'public, max-age=60',
+              'X-Robots-Tag': 'noindex, nofollow',
+            },
+          });
+        }
+      }
+    } catch { /* fall through */ }
+  }
+
+  // --- Handle post pages: /category/post-slug — 410 for drafts, X-Robots-Tag for others ---
   if (
     segments.length >= 2 &&
     !pathname.startsWith('/admin') &&
     !pathname.startsWith('/api') &&
-    !pathname.startsWith('/_next')
+    !pathname.startsWith('/_next') &&
+    !pathname.startsWith('/startup-events') &&
+    !pathname.startsWith('/events') &&
+    !pathname.startsWith('/dashboard')
   ) {
     const postSlug = segments[segments.length - 1];
-    const origin = request.nextUrl.origin;
-    const robots = await getRobotsForSlug(postSlug, origin);
+    const origin = toInternalOrigin(request.nextUrl.origin);
+    const { robots, httpStatus } = await getPostMeta(postSlug, origin);
+
+    if (httpStatus === 410) {
+      if (request.method === 'HEAD') {
+        return new NextResponse(null, {
+          status: 410,
+          headers: { 'Cache-Control': 'public, max-age=60', 'X-Robots-Tag': 'noindex, nofollow' },
+        });
+      }
+      return new NextResponse(renderGoneHtml(postSlug), {
+        status: 410,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=60',
+          'X-Robots-Tag': 'noindex, nofollow',
+        },
+      });
+    }
+
     if (robots && robots !== 'index,follow') {
       const response = NextResponse.next();
       response.headers.set('X-Robots-Tag', robots);

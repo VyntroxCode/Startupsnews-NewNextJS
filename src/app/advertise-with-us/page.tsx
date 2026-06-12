@@ -91,10 +91,59 @@ const ProgressBar = ({ value }: { value: number }) => {
 };
     return (
         <div className="advertise-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", fontFamily: "Arial, sans-serif", color: "#111" }}>
-            <section className="advertise-with-us-section" style={{ padding: "80px 20px", background: "#fff" }}>
+            <style>{`
+                .adv-main-heading { font-size: 38px; font-weight: 700; color: #111; padding-bottom: 20px; }
+                .adv-cta-heading { font-size: 22px; font-weight: 600; color: #111; margin-bottom: 16px; }
+                .adv-stats-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+                .adv-logos-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+                .adv-why-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+                .adv-cta-row { display: flex; flex-direction: row; align-items: center; gap: 70px; margin-bottom: 32px; margin-top: 32px; justify-content: center; color: #5c5959; font-size: 13px; font-weight: 600; }
+                .adv-hero-sec { padding: 80px 20px; background: #fff; }
+                .adv-stats-sec { padding: 60px 20px; }
+                .adv-logos-sec { padding: 60px 20px; }
+                .adv-who-inner { margin: 48px; text-align: center; }
+                .adv-form-sec { padding: 80px 20px; background: #f7f7f7; }
+                .adv-form-box { padding: 100px 0; background: #fff; }
+                .adv-sec-title { font-size: 30px; font-weight: 600; color: #111; margin-bottom: 16px; }
+                .adv-why-title { font-size: 36px; font-weight: 800; margin-bottom: 16px; color: #000; }
+                .adv-form-title { font-size: 32px; font-weight: 800; margin-bottom: 12px; color: #000; }
+                .adv-logo-tile { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+                .adv-stat-tile { background: #fff; border-radius: 16px; padding: 30px 24px; box-shadow: 0 16px 45px rgba(0,0,0,0.08); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+                @media (max-width: 768px) {
+                    .adv-main-heading { font-size: 20px; }
+                    .adv-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                    .adv-logos-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+                    .adv-why-grid { grid-template-columns: 1fr; }
+                    .adv-cta-row { flex-direction: column; gap: 12px; text-align: center; }
+                    .adv-hero-sec { padding: 40px 28px; }
+                    .adv-stats-sec, .adv-logos-sec { padding: 32px 24px; }
+                    .adv-who-inner { margin: 16px 24px; }
+                    .adv-form-sec { padding: 40px 24px; }
+                    .adv-form-box { padding: 40px 0; }
+                    .adv-sec-title { font-size: 22px; }
+                    .adv-why-title { font-size: 24px; }
+                    .adv-form-title { font-size: 22px; }
+                    .adv-stat-tile { padding: 20px 16px; }
+                    .adv-logo-tile { padding: 12px 8px; }
+                    .adv-cta-heading { font-size: 17px; }
+                }
+                @media (max-width: 480px) {
+                    .adv-main-heading { font-size: 18px; }
+                    .adv-logos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                    .adv-hero-sec { padding: 32px 20px; }
+                    .adv-stats-sec, .adv-logos-sec { padding: 28px 20px; }
+                    .adv-who-inner { margin: 12px 20px; }
+                    .adv-form-sec { padding: 32px 20px; }
+                    .adv-form-box { padding: 24px 0; }
+                    .adv-sec-title { font-size: 18px; }
+                    .adv-why-title, .adv-form-title { font-size: 20px; }
+                    .adv-cta-heading { font-size: 16px; }
+                }
+            `}</style>
+            <section className="advertise-with-us-section adv-hero-sec">
                 <div className="advertise-with-us-main" style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
 
-                    <h2 className="heading" style={{ fontSize: "38px", fontWeight: 700, color: "#111" }}>
+                    <h2 className="adv-main-heading">
                         Reach The Most Engaged Startup & Tech Audience
                     </h2>
                     <p style={{ fontSize: "18px", lineHeight: "1.8", maxWidth: "760px", margin: "0 auto 30px", color: "#444" }}>
@@ -106,7 +155,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                        <div className="icon" style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", width: "60px", height: "60px", background: "#dbeafe", borderRadius: "50%", fontSize: "24px" }}>
                         <i className="fa-solid fa-headphones"></i>
                                 </div>
-                        <p style={{ fontSize: "22px", fontWeight: 600, color: "#111", marginBottom: "16px" }}>
+                        <p className="adv-cta-heading">
                         Ready to Advertise with StartupNews?
                     </p>
 
@@ -121,22 +170,21 @@ const ProgressBar = ({ value }: { value: number }) => {
             </section>
 
 
-            <section style={{ padding: "60px 20px"}}>
+            <section className="adv-stats-sec">
                 <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: "1px", background: "#fff", padding: "8px 12px", borderRadius: "999px", margin: "0 auto 18px", border: "1px solid #e6e4e2", color: "#000", fontSize: "12px", fontWeight: 600 }}>
                         <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "20px", borderRadius: "50%" }}>📊</span>
                         Our Impact
                     </div>
-                    <p style={{ fontSize: "30px", fontWeight: 600, color: "#111", marginBottom: "16px" }}>
+                    <p className="adv-sec-title">
                         Reach That Matters
                     </p>
                     <h2 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
                        StartupNews's unparalleled scale across India's most trusted media platforms
                     </h2>
                 </div>
-                <div style={{ maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "18px" }}>
-                    {[
-                        { value: "90.3M", label: "Google search Impressions" },
+                <div className="adv-stats-grid">
+                    {[{ value: "90.3M", label: "Google search Impressions" },
                         { value: "10M+", label: "Monthly Impressions" },
                         { value: "15M+", label: "Instagram organic Reach" },
                         { value: "22K+", label: "WhatsApp Community Members" },
@@ -144,7 +192,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                         { value: "24", label: "Countries Reached" },
                         { value: "250+", label: "Global media partners" },
                     ].map((item, idx) => (
-                        <div key={idx} style={{ background: "#fff", borderRadius: "16px", padding: "30px 24px", boxShadow: "0 16px 45px rgba(0,0,0,0.08)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+                        <div key={idx} className="adv-stat-tile">
                             <div style={{ color: "#e91e63", fontSize: "28px", fontWeight: 600, marginBottom: "10px" }}>{item.value}</div>
                             <div style={{ color: "#333", fontSize: "14px", fontWeight: 400, letterSpacing: "0.05em" }}>{item.label}</div>
                         </div>
@@ -152,20 +200,20 @@ const ProgressBar = ({ value }: { value: number }) => {
                 </div>
             </section>
 
-            <section style={{ padding: "60px 20px" }}>
+            <section className="adv-logos-sec">
                 <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: "1px", background: "#fff", padding: "8px 12px", borderRadius: "999px", margin: "0 auto 18px", border: "1px solid #e6e4e2", color: "#000", fontSize: "12px", fontWeight: 600 }}>
                         <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "20px", borderRadius: "50%" }}>❤️</span>
                         Trusted By
                     </div>
-                    <p style={{ fontSize: "30px", fontWeight: 600, color: "#111", marginBottom: "16px" }}>
+                    <p className="adv-sec-title">
                         Leading brands across India
                     </p>
                     <h2 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
                        Join 100’s advertisers who trust StartupNews for their media campaigns
                     </h2>
 
-                    <div style={{ maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "10px" }}>
+                    <div className="adv-logos-grid">
                     {[
                         { url: "https://m.media-amazon.com/images/I/31epF-8N9LL.png"  },
                         { url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpvVJfhRhMR4rDhLCiyw63AuPPQAuvh-lgIQ&s" },
@@ -188,7 +236,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                         { url: "https://1000logos.net/wp-content/uploads/2023/03/Paytm-logo.png"},
                         { url: "https://www.sticckiz.com/cdn/shop/files/14.DiljitDosanjhSticker_Singer.png?v=1745327901"},
                     ].map((item, idx) => (
-                        <div key={idx} style={{ background: "#fff", border:"1px solid #eee", borderRadius: "12px", padding: "30px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+                        <div key={idx} className="adv-logo-tile">
                             <div style={{ marginBottom: "10px" }}>
                                 <img src={item.url} alt={`logo-${idx}`} style={{ height: "40px", objectFit: "contain" }} />
                             </div>
@@ -196,7 +244,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                     ))}
                 </div>
 
-                    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "70px", marginBottom: "32px", marginTop: "32px", justifyContent: "center", color: "#5c5959", fontSize: "13px", fontWeight: 600 }}>
+                    <div className="adv-cta-row">
                         <p>100’s Advertisers</p>
                         <p>Multi-Continent Coverage</p>
                         <p>Multi-Language</p>
@@ -206,7 +254,7 @@ const ProgressBar = ({ value }: { value: number }) => {
 
             <section>
                 <div className="container">
-      <div style={{ margin: "48px", textAlign: "center" }}>
+      <div className="adv-who-inner">
                         <div style={{ maxWidth: "1100px", margin: "20px auto", textAlign: "center" }}>
                     <p style={{ fontSize: "30px", fontWeight: 600, color: "#111", marginBottom: "16px" }}>
                         Who we Reach
@@ -252,12 +300,12 @@ const ProgressBar = ({ value }: { value: number }) => {
                         <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "20px", borderRadius: "50%" }}>❤️</span>
                         Why Choose Us
                     </div>
-                        <h2 style={{ fontSize: "36px", fontWeight: 800, marginBottom: "16px", color: "#000" }}>Why Choose StartupNews?</h2>
+                        <h2 className="adv-why-title">Why Choose StartupNews?</h2>
                         <p style={{ fontSize: "18px", lineHeight: "1.7", maxWidth: "760px", margin: "0 auto", color: "#555" }}>
                             India&rsquo;s most credible media powerhouse, offering unmatched reach, precision, and performance. Experience the difference with our comprehensive media solutions and expert guidance.
                         </p>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "24px" }}>
+                    <div className="adv-why-grid">
                         {[
                             { title: "Precise Targeting", description: "Reach the right audience using geo-demo segmentation across TV and digital.", icon: "🎯" },
                             { title: "Expert Media Strategy", description: "Get comprehensive campaign planning and advertising guidance across our premium portfolio.", icon: "📊" },
@@ -278,16 +326,16 @@ const ProgressBar = ({ value }: { value: number }) => {
                 </div>
             </section>
 
-            <section id="advertise-form" style={{ padding: "80px 20px", background: "#f7f7f7" }}>
+            <section id="advertise-form" className="adv-form-sec">
                 <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 20px" }}>
                     <div style={{ textAlign: "center", marginBottom: "40px" }}>
-                        <h2 style={{ fontSize: "32px", fontWeight: 800, marginBottom: "12px", color: "#000" }}>Ready to Start Your Advertising Journey?</h2>
+                        <h2 className="adv-form-title">Ready to Start Your Advertising Journey?</h2>
                         <p style={{ fontSize: "18px", lineHeight: "1.7", color: "#555", maxWidth: "760px", margin: "0 auto" }}>
                           Join 100’s of advertisers who trust StartupNews for expert media guidance across India.
                         </p>
                     </div>
 
-                     <div id="sn-form" className="sn-row-form" style={{ padding: "100px 0", background: "#fff" }}>
+                     <div id="sn-form" className="sn-row-form adv-form-box">
                 <div className="kt-row-column-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
 
                     <h2 style={{ fontSize: "20px", fontWeight: 500, color: "#000", marginBottom: "12px", textTransform: "none" }}>Get in Touch</h2>

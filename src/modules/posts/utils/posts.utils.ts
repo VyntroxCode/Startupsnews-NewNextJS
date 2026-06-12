@@ -599,7 +599,7 @@ export async function entityToPost(entity: PostEntity): Promise<Post> {
     tags,
     status: entity.status ?? 'draft',
     isGone410: Boolean(entity.is_gone_410),
-    httpStatus: Boolean(entity.is_gone_410) ? 410 : (entity.status === 'published' ? 200 : 404),
+    httpStatus: Boolean(entity.is_gone_410) ? 410 : (entity.status === 'published' ? 200 : 410),
     // Author/Source information
     sourceName: hasRssSource ? rssInfo?.feed_name : undefined,
     sourceLogoUrl: hasRssSource ? (rssInfo?.feed_logo_url || undefined) : undefined,
@@ -713,7 +713,7 @@ export async function entitiesToPosts(entities: PostEntity[]): Promise<Post[]> {
         tags,
         status: entity.status ?? 'draft',
         isGone410: Boolean(entity.is_gone_410),
-        httpStatus: Boolean(entity.is_gone_410) ? 410 : (entity.status === 'published' ? 200 : 404),
+        httpStatus: Boolean(entity.is_gone_410) ? 410 : (entity.status === 'published' ? 200 : 410),
         sourceName: hasRssSource ? rssInfo?.feed_name : undefined,
         sourceLogoUrl: hasRssSource ? (rssInfo?.feed_logo_url || undefined) : undefined,
         sourceAuthor: hasRssSource ? (rssInfo?.item_author || undefined) : undefined,
@@ -765,7 +765,7 @@ export function entitiesToAdminListPosts(
       tags,
       status: entity.status ?? 'draft',
       isGone410: Boolean(entity.is_gone_410),
-      httpStatus: Boolean(entity.is_gone_410) ? 410 : (entity.status === 'published' ? 200 : 404),
+      httpStatus: Boolean(entity.is_gone_410) ? 410 : (entity.status === 'published' ? 200 : 410),
     };
   });
 }

@@ -748,6 +748,7 @@ export async function getEventBySlug(slug: string): Promise<StartupEvent | null>
   try {
     const entity = await eventsService.getEventBySlug(slug);
     if (!entity) return null;
+    if (entity.status === 'draft') return null;
     return entityToEvent(entity);
   } catch (error) {
     console.error('Error fetching event by slug:', error);
