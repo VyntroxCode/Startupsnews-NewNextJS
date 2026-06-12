@@ -114,7 +114,17 @@
       "Bash(cp /tmp/our-partners-page.tsx /home/tech/Startupsnews-NewNextJS-main/src/app/our-partners/page.tsx)",
       "Bash(cp /tmp/registered-users-page.tsx /home/tech/Startupsnews-NewNextJS-main/src/app/\\\\\\(admin\\\\\\)/admin/registered-users/page.tsx)",
       "Bash(cp /tmp/agent.md /home/tech/Startupsnews-NewNextJS-main/agent.md)",
-      "Bash(cp /tmp/package.json /home/tech/Startupsnews-NewNextJS-main/package.json)"
+      "Bash(cp /tmp/package.json /home/tech/Startupsnews-NewNextJS-main/package.json)",
+      "Bash(curl -s -X POST http://localhost:3000/api/advertise -H 'Content-Type: application/json' -d '{\"firstName\":\"Test\",\"companyName\":\"TestCo\",\"email\":\"test@test.com\",\"phone\":\"1234567890\",\"budgetRate\":\"$500\",\"campaignGoal\":\"Brand awareness\",\"objective\":\"Testing the form\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/advertise -H 'Content-Type: application/json' -d '{\"firstName\":\"Test\",\"companyName\":\"TestCo\",\"email\":\"test@test.com\",\"phone\":\"1234567890\",\"budgetRate\":\"$500\",\"campaignGoal\":\"Brand awareness\",\"objective\":\"Testing the form\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/advertise -H 'Content-Type: application/json' -d '{\"firstName\":\"Test\",\"companyName\":\"TestCo\",\"email\":\"test@test.com\",\"phone\":\"1234567890\",\"budgetRate\":\"$500\",\"campaignGoal\":\"Brand awareness\",\"objective\":\"Testing the form\",\"turnstileToken\":\"FAKE_INVALID_TOKEN_12345\"}')",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/advertise -H 'Content-Type: application/json' -d '{\"firstName\":\"Test\",\"companyName\":\"TestCo\",\"email\":\"test@test.com\",\"phone\":\"1234567890\",\"budgetRate\":\"$500\",\"campaignGoal\":\"Brand awareness\",\"objective\":\"Testing\",\"turnstileToken\":\"FAKE_INVALID_TOKEN_12345\"}')",
+      "Bash(echo \"HTTP status: $\\(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/advertise -H 'Content-Type: application/json' -d '{\"firstName\":\"Test\",\"companyName\":\"TestCo\",\"email\":\"test@test.com\",\"phone\":\"1234567890\",\"budgetRate\":\"$500\",\"campaignGoal\":\"Brand awareness\",\"objective\":\"Testing\",\"turnstileToken\":\"FAKE_INVALID_TOKEN_12345\"}'\\)\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/advertise -H 'Content-Type: application/json' -d '{\"firstName\":\"Test\",\"companyName\":\"TestCo\",\"email\":\"test@test.com\",\"phone\":\"1234567890\",\"budgetRate\":\"$500\",\"campaignGoal\":\"Brand awareness\",\"objective\":\"Testing\",\"turnstileToken\":\"   \"}')",
+      "Bash(curl -s http://localhost:3000/advertise-with-us)",
+      "Bash(curl -s -X POST http://localhost:3000/api/advertise -H 'Content-Type: application/json' -d '{\"firstName\":\"Test\",\"companyName\":\"TestCo\",\"email\":\"test@test.com\",\"objective\":\"Testing\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/advertise -H 'Content-Type: application/json' -d '{\"firstName\":\"Test\",\"companyName\":\"TestCo\",\"email\":\"test@test.com\",\"objective\":\"Testing\",\"turnstileToken\":\"FAKE_TOKEN\"}')"
     ],
     "additionalDirectories": [
       "/home/tech/Startupsnews-NewNextJS-main/src"

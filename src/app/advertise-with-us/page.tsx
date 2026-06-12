@@ -385,7 +385,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                         <div style={{ paddingTop: "10px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
                             <Turnstile
                                 ref={turnstileRef}
-                                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
                                 onSuccess={(token) => setTurnstileToken(token)}
                                 onExpire={() => setTurnstileToken(null)}
                                 onError={() => setTurnstileToken(null)}

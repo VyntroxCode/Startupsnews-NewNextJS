@@ -583,7 +583,7 @@ export default function AuthModal() {
 									style={{
 										flex: isMobileBanner ? "0 0 auto" : "1 1 320px",
 										minWidth: 0,
-										maxWidth: isMobileBanner ? "100%" : 420,
+										maxWidth: isMobileBanner ? "100%" : 650,
 										paddingRight: isMobileBanner ? 34 : 0,
 									}}
 								>
@@ -637,7 +637,7 @@ export default function AuthModal() {
 													overflow: isMobileBanner ? "hidden" : "visible",
 												}}
 											>
-												Sign-in for free
+												Sign-In for Free
 											</p>
 											<p
 												style={{
@@ -647,7 +647,12 @@ export default function AuthModal() {
 													margin: 0,
 												}}
 											>
-												Unlock unlimited access to News, Articles, Special Reports, Curated News Letters build for You & Your Business.
+												<span style={{ display: "block", whiteSpace: isMobileBanner ? "normal" : "nowrap" }}>
+													Unlock unlimited access to News, Articles, Special Reports,
+												</span>
+												<span style={{ display: "block", whiteSpace: isMobileBanner ? "normal" : "nowrap" }}>
+													Curated News Letters build for You & Your Business.
+												</span>
 											</p>
 										</>
 									)}
