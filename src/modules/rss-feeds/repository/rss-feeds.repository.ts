@@ -36,13 +36,14 @@ export class RssFeedsRepository {
     fetch_interval_minutes?: number;
     max_items_per_fetch?: number;
     auto_publish?: number;
+    feed_for?: string;
   }): Promise<RssFeedEntity> {
     const conn = await getDbConnection();
     const connection = await conn.getConnection();
     try {
       const sql = `
-        INSERT INTO rss_feeds (name, url, category_id, author_id, enabled, fetch_interval_minutes, max_items_per_fetch, auto_publish)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO rss_feeds (name, url, category_id, author_id, enabled, fetch_interval_minutes, max_items_per_fetch, auto_publish, feed_for)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const params = [
         data.name,
@@ -53,6 +54,7 @@ export class RssFeedsRepository {
         data.fetch_interval_minutes ?? 10,
         data.max_items_per_fetch ?? 10,
         data.auto_publish ?? 1,
+        data.feed_for ?? 'website',
       ];
       const result = await connection.query(sql, params) as { insertId?: number };
       const id = result.insertId;
@@ -75,6 +77,7 @@ export class RssFeedsRepository {
     fetch_interval_minutes: number;
     max_items_per_fetch: number;
     auto_publish: number;
+    feed_for: string;
   }>): Promise<RssFeedEntity | null> {
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
@@ -87,10 +90,15 @@ export class RssFeedsRepository {
     if (data.fetch_interval_minutes !== undefined) { fields.push('fetch_interval_minutes = ?'); values.push(data.fetch_interval_minutes); }
     if (data.max_items_per_fetch !== undefined) { fields.push('max_items_per_fetch = ?'); values.push(data.max_items_per_fetch); }
     if (data.auto_publish !== undefined) { fields.push('auto_publish = ?'); values.push(data.auto_publish); }
+    if (data.feed_for !== undefined) { fields.push('feed_for = ?'); values.push(data.feed_for); }
     if (fields.length === 0) return this.findById(id);
     values.push(id);
     await query(`UPDATE rss_feeds SET ${fields.join(', ')} WHERE id = ?`, values);
     return this.findById(id);
+  }
+
+  async disableAll(): Promise<void> {
+    await query('UPDATE rss_feeds SET enabled = 0');
   }
 
   async delete(id: number): Promise<void> {
@@ -169,6 +177,33 @@ export class RssFeedsRepository {
       sourceLogoUrl: row.logo_url ?? null,
       sourceAuthor: row.author ?? null,
     };
+  }
+
+  /** Items from rss_feed_items for all enabled feeds tagged for newsletter, newest first. */
+  async findNewsletterItems(limit = 500): Promise<Array<{
+    id: number;
+    rss_feed_id: number;
+    feed_name: string;
+    feed_url: string;
+    feed_logo_url: string | null;
+    title: string;
+    link: string;
+    image_url: string | null;
+    description: string | null;
+    published_at: Date | string | null;
+    created_at: Date | string;
+  }>> {
+    return query(
+      `SELECT i.id, i.rss_feed_id, f.name AS feed_name, f.url AS feed_url, f.logo_url AS feed_logo_url,
+              i.title, i.link, i.image_url, i.description, i.published_at, i.created_at
+       FROM rss_feed_items i
+       INNER JOIN rss_feeds f ON f.id = i.rss_feed_id
+       WHERE FIND_IN_SET('newsletter', f.feed_for) > 0
+         AND f.enabled = 1
+       ORDER BY i.published_at DESC, i.id DESC
+       LIMIT ?`,
+      [limit]
+    );
   }
 
   async updateLastFetched(feedId: number, error: string | null = null): Promise<void> {

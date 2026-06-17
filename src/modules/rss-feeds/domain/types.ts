@@ -16,6 +16,7 @@ export interface RssFeedEntity {
   error_count: number;
   max_items_per_fetch: number;
   auto_publish: number;
+  feed_for: string;
   created_at: Date | string;
   updated_at: Date | string;
 }

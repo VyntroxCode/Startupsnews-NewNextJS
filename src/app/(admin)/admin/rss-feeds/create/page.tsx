@@ -23,6 +23,7 @@ export default function CreateRssFeedPage() {
     fetchIntervalMinutes: 10,
     maxItemsPerFetch: 10,
     autoPublish: true,
+    feedFor: ['website'] as string[],
   });
   const [suggesting, setSuggesting] = useState(false);
 
@@ -54,6 +55,10 @@ export default function CreateRssFeedPage() {
       setError('Please select a category and an author.');
       return;
     }
+    if (formData.feedFor.length === 0) {
+      setError('Select at least one option for "Feed For".');
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/admin/rss-feeds', {
@@ -68,6 +73,7 @@ export default function CreateRssFeedPage() {
           fetchIntervalMinutes: formData.fetchIntervalMinutes,
           maxItemsPerFetch: formData.maxItemsPerFetch,
           autoPublish: formData.autoPublish,
+          feedFor: formData.feedFor.join(','),
         }),
       });
       const data = await res.json();
@@ -155,6 +161,27 @@ export default function CreateRssFeedPage() {
         <div style={{ marginBottom: 'clamp(1.25rem, 2.5vw, 1.5rem)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <input type="checkbox" id="autoPublish" checked={formData.autoPublish} onChange={(e) => setFormData({ ...formData, autoPublish: e.target.checked })} style={{ width: 'clamp(18px, 2vw, 20px)', height: 'clamp(18px, 2vw, 20px)' }} />
           <label htmlFor="autoPublish" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>Auto-publish posts</label>
+        </div>
+        <div style={{ marginBottom: 'clamp(1.25rem, 2.5vw, 1.5rem)' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#4a5568', fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>Feed For *</label>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            {(['website', 'newsletter'] as const).map((option) => (
+              <label key={option} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: 'clamp(0.875rem, 2vw, 1rem)', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.feedFor.includes(option)}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...formData.feedFor, option]
+                      : formData.feedFor.filter((v) => v !== option);
+                    setFormData({ ...formData, feedFor: next });
+                  }}
+                  style={{ width: 'clamp(18px, 2vw, 20px)', height: 'clamp(18px, 2vw, 20px)' }}
+                />
+                <span style={{ textTransform: 'capitalize' }}>{option}</span>
+              </label>
+            ))}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button type="submit" disabled={loading} style={{ padding: 'clamp(0.625rem, 1.5vw, 0.75rem) clamp(1.5rem, 4vw, 2rem)', background: loading ? '#a0aec0' : '#ed8936', color: 'white', border: 'none', borderRadius: '4px', fontSize: 'clamp(0.875rem, 2vw, 1rem)', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', flex: '1 1 auto', minWidth: '120px' }}>

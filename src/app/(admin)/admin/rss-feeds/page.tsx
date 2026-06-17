@@ -18,6 +18,7 @@ interface RssFeed {
   error_count: number;
   max_items_per_fetch: number;
   auto_publish: number;
+  feed_for: string;
   category_name?: string;
 }
 
@@ -231,12 +232,34 @@ const styles = {
   },
 };
 
+const FEED_FOR_COLORS: Record<string, { bg: string; color: string }> = {
+  website: { bg: '#dbeafe', color: '#1e40af' },
+  newsletter: { bg: '#fce7f3', color: '#9d174d' },
+};
+
+function FeedForBadges({ feedFor }: { feedFor: string }) {
+  const parts = feedFor ? String(feedFor).split(',').map((v) => v.trim()).filter(Boolean) : ['website'];
+  return (
+    <span style={{ display: 'inline-flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+      {parts.map((p) => {
+        const c = FEED_FOR_COLORS[p] ?? { bg: '#f1f5f9', color: '#475569' };
+        return (
+          <span key={p} style={{ padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, background: c.bg, color: c.color, textTransform: 'capitalize' }}>
+            {p}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 export default function RssFeedsPage() {
   const [feeds, setFeeds] = useState<RssFeed[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [fetchingId, setFetchingId] = useState<number | null>(null);
   const [testingId, setTestingId] = useState<number | null>(null);
+  const [disablingAll, setDisablingAll] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
 
@@ -320,6 +343,25 @@ export default function RssFeedsPage() {
     }
   };
 
+  const handleDisableAll = async () => {
+    if (!confirm('Disable ALL RSS feeds? This will stop all feeds from fetching.')) return;
+    setDisablingAll(true);
+    try {
+      const res = await fetch('/api/admin/rss-feeds', {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'disable-all' }),
+      });
+      const data = await res.json();
+      if (data.success) load();
+      else alert(data.error || 'Failed to disable all feeds');
+    } catch {
+      alert('Request failed');
+    } finally {
+      setDisablingAll(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this RSS feed? Items and links will be removed.')) return;
     try {
@@ -373,6 +415,10 @@ export default function RssFeedsPage() {
         <span style={styles.cardValue}>
           {feed.last_fetched_at ? new Date(feed.last_fetched_at).toLocaleString() : '—'}
         </span>
+      </div>
+      <div style={styles.cardRow}>
+        <span style={styles.cardLabel}>Feed For:</span>
+        <span><FeedForBadges feedFor={feed.feed_for} /></span>
       </div>
       <div style={styles.cardRow}>
         <span style={styles.cardLabel}>Status:</span>
@@ -464,9 +510,29 @@ export default function RssFeedsPage() {
             <h2 style={styles.title}>RSS Feeds</h2>
             <p style={styles.subtitle}>Manage feeds; fetch or test from dashboard.</p>
           </div>
-          <Link href="/admin/rss-feeds/create" style={styles.addButton}>
-            + Add RSS Feed
-          </Link>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' as const, alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={handleDisableAll}
+              disabled={disablingAll || feeds.length === 0}
+              style={{
+                padding: 'clamp(0.75rem, 2vw, 0.875rem) clamp(1.25rem, 3vw, 1.75rem)',
+                background: disablingAll || feeds.length === 0 ? '#94a3b8' : '#dc2626',
+                color: 'white',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: 'clamp(0.875rem, 2vw, 0.9375rem)',
+                whiteSpace: 'nowrap' as const,
+                cursor: disablingAll || feeds.length === 0 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {disablingAll ? 'Disabling…' : 'Disable All'}
+            </button>
+            <Link href="/admin/rss-feeds/create" style={styles.addButton}>
+              + Add RSS Feed
+            </Link>
+          </div>
         </div>
 
         {/* Category Filter */}
@@ -549,6 +615,7 @@ export default function RssFeedsPage() {
                   <th style={styles.tableHeaderCell}>Category</th>
                   <th style={styles.tableHeaderCell}>Interval</th>
                   <th style={styles.tableHeaderCell}>Last fetch</th>
+                  <th style={styles.tableHeaderCell}>Feed For</th>
                   <th style={styles.tableHeaderCell}>Status</th>
                   <th style={{ ...styles.tableHeaderCell, textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -568,6 +635,9 @@ export default function RssFeedsPage() {
                     </td>
                     <td style={{ ...styles.tableCell, color: '#64748b' }}>
                       {feed.last_fetched_at ? new Date(feed.last_fetched_at).toLocaleString() : '—'}
+                    </td>
+                    <td style={styles.tableCell}>
+                      <FeedForBadges feedFor={feed.feed_for} />
                     </td>
                     <td style={styles.tableCell}>
                       <span style={{

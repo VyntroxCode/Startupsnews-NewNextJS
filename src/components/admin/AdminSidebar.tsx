@@ -2,12 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { getAuthHeaders } from '@/lib/admin-auth';
 
 interface AdminSidebarProps {
   isOpen: boolean;
 }
 
 type IconProps = { size?: number; color?: string };
+
+interface ToolItem {
+  id: number;
+  name: string;
+  slug: string;
+}
 
 const DashboardIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -68,6 +76,19 @@ const BannersIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
+const NewsletterIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+    <polyline points="22,6 12,13 2,6"></polyline>
+  </svg>
+);
+
+const ToolsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+  </svg>
+);
+
 const ReportsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -103,6 +124,8 @@ const menuItems = [
   { href: '/admin/authors', label: 'Authors', icon: AuthorsIcon },
   { href: '/admin/banners', label: 'Banners', icon: BannersIcon },
   { href: '/admin/rss-feeds', label: 'RSS Feeds', icon: RssIcon },
+  { href: '/admin/newsletter', label: 'Newsletter', icon: NewsletterIcon },
+  { href: '/admin/tools', label: 'HTML Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/registered-users', label: 'Registered Users', icon: RegisteredUsersIcon },
 ];
@@ -110,6 +133,21 @@ const menuItems = [
 export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
   const pathname = usePathname();
   const headerHeight = 60;
+  const [tools, setTools] = useState<ToolItem[]>([]);
+
+  useEffect(() => {
+    const loadTools = async () => {
+      try {
+        const res = await fetch('/api/admin/tools', { headers: getAuthHeaders() });
+        const data = await res.json();
+        if (data.success) setTools(data.data);
+      } catch {}
+    };
+    loadTools();
+    const handler = () => loadTools();
+    window.addEventListener('admin:data-updated', handler);
+    return () => window.removeEventListener('admin:data-updated', handler);
+  }, []);
 
   return (
     <aside
@@ -132,69 +170,113 @@ export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
       <nav style={{ padding: '0 0.5rem' }}>
         {menuItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          const isToolsItem = item.href === '/admin/tools';
           const IconComponent = item.icon;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: isOpen ? 'flex-start' : 'center',
-                gap: isOpen ? '0.875rem' : '0',
-                padding: isOpen ? '0.875rem 1.25rem' : '0.875rem 0',
-                marginBottom: '0.25rem',
-                color: isActive ? '#6366f1' : '#475569',
-                background: isActive 
-                  ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%)' 
-                  : 'transparent',
-                textDecoration: 'none',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                borderLeft: isActive ? '3px solid #6366f1' : '3px solid transparent',
-                borderRadius: '8px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                position: 'relative',
-                fontWeight: isActive ? '600' : '500',
-              }}
-              title={!isOpen ? item.label : undefined}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = '#f1f5f9';
-                  e.currentTarget.style.color = '#334155';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#475569';
-                }
-              }}
-            >
-              <div
+            <div key={item.href}>
+              {/* Main menu item */}
+              <Link
+                href={item.href}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  width: '24px',
-                  height: '24px',
+                  justifyContent: isOpen ? 'flex-start' : 'center',
+                  gap: isOpen ? '0.875rem' : '0',
+                  padding: isOpen ? '0.875rem 1.25rem' : '0.875rem 0',
+                  marginBottom: '0.25rem',
+                  color: isActive ? '#6366f1' : '#475569',
+                  background: isActive
+                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%)'
+                    : 'transparent',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  borderLeft: isActive ? '3px solid #6366f1' : '3px solid transparent',
+                  borderRadius: '8px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  fontWeight: isActive ? '600' : '500',
+                }}
+                title={!isOpen ? item.label : undefined}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = '#f1f5f9';
+                    e.currentTarget.style.color = '#334155';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#475569';
+                  }
                 }}
               >
-                <IconComponent
-                  size={20}
-                  color={isActive ? '#6366f1' : 'currentColor'}
-                />
-              </div>
-              {isOpen && (
-                <span style={{ 
-                  fontSize: '0.9375rem',
-                  transition: 'opacity 0.2s',
-                }}>
-                  {item.label}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '24px', height: '24px' }}>
+                  <IconComponent size={20} color={isActive ? '#6366f1' : 'currentColor'} />
+                </div>
+                {isOpen && (
+                  <span style={{ fontSize: '0.9375rem', transition: 'opacity 0.2s', flex: 1 }}>
+                    {item.label}
+                  </span>
+                )}
+                {/* Count badge */}
+                {isToolsItem && isOpen && tools.length > 0 && (
+                  <span style={{ fontSize: '0.7rem', background: '#e0e7ff', color: '#4f46e5', borderRadius: '9999px', padding: '0.1rem 0.45rem', fontWeight: 700 }}>
+                    {tools.length}
+                  </span>
+                )}
+              </Link>
+
+              {/* Dynamic tool sub-items — always visible when sidebar is open */}
+              {isToolsItem && isOpen && tools.length > 0 && (
+                <div style={{ paddingLeft: '2.25rem', marginBottom: '0.5rem' }}>
+                  {tools.map(tool => {
+                    const toolHref = `/admin/tools/${tool.id}`;
+                    const isToolActive = pathname === toolHref;
+                    return (
+                      <Link
+                        key={tool.id}
+                        href={toolHref}
+                        title={tool.name}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.45rem 0.75rem',
+                          marginBottom: '0.1rem',
+                          color: isToolActive ? '#6366f1' : '#64748b',
+                          background: isToolActive ? 'rgba(99,102,241,0.08)' : 'transparent',
+                          textDecoration: 'none',
+                          borderRadius: '7px',
+                          borderLeft: isToolActive ? '2px solid #6366f1' : '2px solid #e2e8f0',
+                          fontSize: '0.84rem',
+                          fontWeight: isToolActive ? 600 : 400,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => {
+                          if (!isToolActive) {
+                            e.currentTarget.style.background = '#f1f5f9';
+                            e.currentTarget.style.color = '#334155';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (!isToolActive) {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = '#64748b';
+                          }
+                        }}
+                      >
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: isToolActive ? '#6366f1' : '#cbd5e1', flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{tool.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            </Link>
+            </div>
           );
         })}
       </nav>

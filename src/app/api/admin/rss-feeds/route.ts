@@ -34,6 +34,25 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth instanceof NextResponse) return auth;
+  try {
+    const body = await request.json();
+    if (body.action === 'disable-all') {
+      await repo.disableAll();
+      return NextResponse.json({ success: true, message: 'All feeds disabled' });
+    }
+    return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
+  } catch (error) {
+    console.error('Error in bulk RSS feed action:', error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Bulk action failed' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
@@ -48,6 +67,7 @@ export async function POST(request: NextRequest) {
       fetch_interval_minutes: body.fetchIntervalMinutes ?? 10,
       max_items_per_fetch: body.maxItemsPerFetch ?? 10,
       auto_publish: body.autoPublish !== false ? 1 : 0,
+      feed_for: body.feedFor ?? 'website',
     });
     return NextResponse.json({ success: true, data: feed });
   } catch (error) {

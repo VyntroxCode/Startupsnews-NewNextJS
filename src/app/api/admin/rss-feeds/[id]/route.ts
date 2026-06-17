@@ -42,6 +42,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       ...(body.fetchIntervalMinutes !== undefined && { fetch_interval_minutes: body.fetchIntervalMinutes }),
       ...(body.maxItemsPerFetch !== undefined && { max_items_per_fetch: body.maxItemsPerFetch }),
       ...(body.autoPublish !== undefined && { auto_publish: body.autoPublish ? 1 : 0 }),
+      ...(body.feedFor !== undefined && { feed_for: body.feedFor }),
     });
     return NextResponse.json({ success: true, data: feed });
   } catch (error) {
