@@ -185,6 +185,10 @@ export class PostsRepository {
     scheduledFrom?: string;
     /** Filter scheduled posts by published_at <= this ISO datetime */
     scheduledTo?: string;
+    /** Filter all posts by published/created date >= this date (YYYY-MM-DD) */
+    dateFrom?: string;
+    /** Filter all posts by published/created date <= this date (YYYY-MM-DD) */
+    dateTo?: string;
   }): Promise<PostEntity[]> {
     let sql = 'SELECT * FROM posts WHERE 1=1';
     const params: (string | number | boolean | null)[] = [];
@@ -219,6 +223,16 @@ export class PostsRepository {
           params.push(filters.scheduledTo);
         }
       }
+    }
+
+    if (filters?.dateFrom) {
+      sql += ' AND COALESCE(published_at, created_at) >= ?';
+      params.push(filters.dateFrom);
+    }
+    if (filters?.dateTo) {
+      // Include the full dateTo day by going to end-of-day
+      sql += ' AND COALESCE(published_at, created_at) < DATE_ADD(?, INTERVAL 1 DAY)';
+      params.push(filters.dateTo);
     }
 
     if (filters?.source === 'rss') {
@@ -288,6 +302,8 @@ export class PostsRepository {
     restrictThumbnail?: boolean;
     scheduledFrom?: string;
     scheduledTo?: string;
+    dateFrom?: string;
+    dateTo?: string;
   }): Promise<number> {
     let sql = 'SELECT COUNT(*) as count FROM posts WHERE 1=1';
     const params: (string | number | boolean | null)[] = [];
@@ -322,6 +338,15 @@ export class PostsRepository {
           params.push(filters.scheduledTo);
         }
       }
+    }
+
+    if (filters?.dateFrom) {
+      sql += ' AND COALESCE(published_at, created_at) >= ?';
+      params.push(filters.dateFrom);
+    }
+    if (filters?.dateTo) {
+      sql += ' AND COALESCE(published_at, created_at) < DATE_ADD(?, INTERVAL 1 DAY)';
+      params.push(filters.dateTo);
     }
 
     if (filters?.source === 'rss') {

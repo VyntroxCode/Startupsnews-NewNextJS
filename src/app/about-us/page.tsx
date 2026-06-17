@@ -52,7 +52,6 @@ export default function AboutPage() {
 						"We cover startups and technology across the United States, the United Kingdom, the UAE, Southeast Asia, and Europe — with particular depth in markets where innovation is moving faster than the mainstream media can track.",
 						"StartupNews.fyi also maintains one of the most comprehensive directories of global tech and startup events, curated editorially to help founders and operators find the rooms worth being in — from Singapore to San Francisco.",
 						"We are owned and operated by Dotfyi Media Ventures Pvt Ltd, an independent media company with no equity stakes, advisory relationships, or revenue-share arrangements with any company we cover.",
-						"Our journalism is funded through advertising, sponsored content — which is always clearly labelled — and ecosystem partnerships.",
 					].map((text, i) => (
 						<p
 							key={i}

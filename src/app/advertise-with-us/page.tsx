@@ -103,7 +103,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                 .adv-logos-sec { padding: 60px 20px; }
                 .adv-who-inner { margin: 48px; text-align: center; }
                 .adv-form-sec { padding: 80px 20px; background: #f7f7f7; }
-                .adv-form-box { padding: 100px 0; background: #fff; }
+                .adv-form-box { padding: 30px 0; background: #fff; }
                 .adv-sec-title { font-size: 30px; font-weight: 600; color: #111; margin-bottom: 16px; }
                 .adv-why-title { font-size: 36px; font-weight: 800; margin-bottom: 16px; color: #000; }
                 .adv-form-title { font-size: 32px; font-weight: 800; margin-bottom: 12px; color: #000; }
@@ -119,7 +119,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                     .adv-stats-sec, .adv-logos-sec { padding: 32px 24px; }
                     .adv-who-inner { margin: 16px 24px; }
                     .adv-form-sec { padding: 40px 24px; }
-                    .adv-form-box { padding: 40px 0; }
+                    .adv-form-box { padding: 20px 0; }
                     .adv-sec-title { font-size: 22px; }
                     .adv-why-title { font-size: 24px; }
                     .adv-form-title { font-size: 22px; }
@@ -134,7 +134,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                     .adv-stats-sec, .adv-logos-sec { padding: 28px 20px; }
                     .adv-who-inner { margin: 12px 20px; }
                     .adv-form-sec { padding: 32px 20px; }
-                    .adv-form-box { padding: 24px 0; }
+                    .adv-form-box { padding: 16px 0; }
                     .adv-sec-title { font-size: 18px; }
                     .adv-why-title, .adv-form-title { font-size: 20px; }
                     .adv-cta-heading { font-size: 16px; }
@@ -172,10 +172,6 @@ const ProgressBar = ({ value }: { value: number }) => {
 
             <section className="adv-stats-sec">
                 <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: "1px", background: "#fff", padding: "8px 12px", borderRadius: "999px", margin: "0 auto 18px", border: "1px solid #e6e4e2", color: "#000", fontSize: "12px", fontWeight: 600 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "20px", borderRadius: "50%" }}>📊</span>
-                        Our Impact
-                    </div>
                     <p className="adv-sec-title">
                         Reach That Matters
                     </p>
@@ -237,8 +233,8 @@ const ProgressBar = ({ value }: { value: number }) => {
                         { url: "https://www.sticckiz.com/cdn/shop/files/14.DiljitDosanjhSticker_Singer.png?v=1745327901"},
                     ].map((item, idx) => (
                         <div key={idx} className="adv-logo-tile">
-                            <div style={{ marginBottom: "10px" }}>
-                                <img src={item.url} alt={`logo-${idx}`} style={{ height: "40px", objectFit: "contain" }} />
+                            <div style={{ width: "110px", height: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <img src={item.url} alt={`logo-${idx}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                             </div>
                         </div>
                     ))}
@@ -250,47 +246,6 @@ const ProgressBar = ({ value }: { value: number }) => {
                         <p>Multi-Language</p>
                     </div>
                 </div>
-            </section>
-
-            <section>
-                <div className="container">
-      <div className="adv-who-inner">
-                        <div style={{ maxWidth: "1100px", margin: "20px auto", textAlign: "center" }}>
-                    <p style={{ fontSize: "30px", fontWeight: 600, color: "#111", marginBottom: "16px" }}>
-                        Who we Reach
-                    </p>
-                </div>
-
-      <div className="grid">
-        <div className="card">
-          <h3 className="card-title">Audience by type</h3>
-          <div className="list">
-            {audienceData.map((item, index) => (
-              <div key={index} className="list-item">
-                <span className="label">{item.label}</span>
-                <span className="value pink">{item.value}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <h3 className="card-title">Top geographies</h3>
-          <div className="geo-list">
-            {geoData.map((item, index) => (
-              <div key={index} className="geo-item">
-                <div className="geo-header">
-                  <span className="label">{item.label}</span>
-                  <span className="value">{item.value}%</span>
-                </div>
-                <ProgressBar value={item.value} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-    </div>
             </section>
 
             <section style={{ padding: "50px 20px", background: "#fff" }}>
@@ -338,7 +293,7 @@ const ProgressBar = ({ value }: { value: number }) => {
                      <div id="sn-form" className="sn-row-form adv-form-box">
                 <div className="kt-row-column-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
 
-                    <h2 style={{ fontSize: "20px", fontWeight: 500, color: "#000", marginBottom: "12px", textTransform: "none" }}>Get in Touch</h2>
+                    <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#000", marginBottom: "12px", textTransform: "none" }}>Get in Touch</h2>
                     <p style={{ fontSize: "14px", color: "#555", marginBottom: "50px" }}>
                         Tell us about your brand and campaign goals. Our team will get back to you within 24 hours with a custom media plan.
                     </p>

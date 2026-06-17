@@ -220,24 +220,17 @@ export default function AuthModal() {
 		const searchParams = new URLSearchParams(window.location.search);
 		if (searchParams.get("auth") === "login") return;
 
-		const showModal = () => {
+		if (sessionStorage.getItem("sn_auth_modal") === "1") return;
+
+		const initial = setTimeout(() => {
 			if (loggedInRef.current) return;
+			sessionStorage.setItem("sn_auth_modal", "1");
 			setError("");
 			setSuccess("");
 			setOpen(true);
-		};
+		}, 10000);
 
-		// Show after 15s from page load, then every 15s while not logged in
-		let interval: ReturnType<typeof setInterval> | null = null;
-		const initial = setTimeout(() => {
-			showModal();
-			interval = setInterval(showModal, 15000);
-		}, 15000);
-
-		return () => {
-			clearTimeout(initial);
-			if (interval) clearInterval(interval);
-		};
+		return () => clearTimeout(initial);
 	}, [mounted, isAdmin]);
 
 	const handleLogout = () => {
@@ -252,7 +245,7 @@ export default function AuthModal() {
 	};
 
 	const closeModal = () => {
-		// no-op: cooldown removed, modal recurs every 15s
+		sessionStorage.setItem("sn_auth_modal", "1");
 		setOpen(false);
 		setError("");
 		setSuccess("");
@@ -436,64 +429,6 @@ export default function AuthModal() {
 				</div>
 			)}
 
-			{/* Floating sign-in button */}
-			{!open && !loggedIn && (
-				<button
-					onClick={() => {
-						setError("");
-						setSuccess("");
-						setOpen(true);
-					}}
-					title="Sign in / Register"
-					style={{
-						position: "fixed",
-						bottom: 24,
-						right: 24,
-						zIndex: 9998,
-						display: "flex",
-						alignItems: "center",
-						gap: 10,
-						background: "#fff",
-						border: "1.5px solid #e5e7eb",
-						borderRadius: 50,
-						padding: "7px 18px 7px 10px",
-						boxShadow: "0 4px 20px rgba(0,0,0,0.13)",
-						cursor: "pointer",
-						transition: "box-shadow 0.2s, transform 0.2s",
-					}}
-					onMouseEnter={(e) => {
-						(e.currentTarget as HTMLButtonElement).style.boxShadow =
-							"0 8px 28px rgba(0,0,0,0.2)";
-						(e.currentTarget as HTMLButtonElement).style.transform =
-							"translateY(-2px)";
-					}}
-					onMouseLeave={(e) => {
-						(e.currentTarget as HTMLButtonElement).style.boxShadow =
-							"0 4px 20px rgba(0,0,0,0.13)";
-						(e.currentTarget as HTMLButtonElement).style.transform = "none";
-					}}
-				>
-					{/* eslint-disable-next-line @next/next/no-img-element */}
-					<img
-						src={GOOGLE_ICON}
-						alt="Google"
-						width={22}
-						height={22}
-						style={{ borderRadius: "50%", objectFit: "contain" }}
-					/>
-					<span
-						style={{
-							fontSize: 13,
-							fontWeight: 600,
-							color: "#374151",
-							whiteSpace: "nowrap",
-						}}
-					>
-						Login/Sign in
-					</span>
-				</button>
-			)}
-
 			{/* Bottom sheet */}
 			{open && !loggedIn && (
 				<div
@@ -645,12 +580,18 @@ export default function AuthModal() {
 													lineHeight: isMobileBanner ? 1.3 : 1.4,
 													color: modalTheme.inkSoft,
 													margin: 0,
+													...(isMobileBanner ? {
+														display: "-webkit-box",
+														WebkitLineClamp: 2,
+														WebkitBoxOrient: "vertical",
+														overflow: "hidden",
+													} : {}),
 												}}
 											>
-												<span style={{ display: "block", whiteSpace: isMobileBanner ? "normal" : "nowrap" }}>
-													Unlock unlimited access to News, Articles, Special Reports,
+												<span style={{ display: isMobileBanner ? "inline" : "block", whiteSpace: isMobileBanner ? "normal" : "nowrap" }}>
+													Unlock unlimited access to News, Articles, Special Reports,{isMobileBanner ? " " : ""}
 												</span>
-												<span style={{ display: "block", whiteSpace: isMobileBanner ? "normal" : "nowrap" }}>
+												<span style={{ display: isMobileBanner ? "inline" : "block", whiteSpace: isMobileBanner ? "normal" : "nowrap" }}>
 													Curated News Letters build for You & Your Business.
 												</span>
 											</p>

@@ -75,6 +75,8 @@ export async function GET(request: NextRequest) {
     const authorId = searchParams.get('authorId');
     const scheduledFrom = searchParams.get('scheduledFrom');
     const scheduledTo = searchParams.get('scheduledTo');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
@@ -92,6 +94,8 @@ export async function GET(request: NextRequest) {
       restrictThumbnail?: boolean;
       scheduledFrom?: string;
       scheduledTo?: string;
+      dateFrom?: string;
+      dateTo?: string;
     } = {
       limit: Math.min(limit, 100), // Max 100 items per page
       offset,
@@ -115,6 +119,8 @@ export async function GET(request: NextRequest) {
       const aId = parseInt(authorId, 10);
       if (!isNaN(aId)) filters.authorId = aId;
     }
+    if (dateFrom) filters.dateFrom = dateFrom;
+    if (dateTo) filters.dateTo = dateTo;
 
     // Run count and list in parallel for lower latency
     const [total, entities] = await Promise.all([

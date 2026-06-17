@@ -171,6 +171,27 @@ export default function PostsPage() {
     });
   }, [setFilters]);
 
+  const handleDateFromChange = useCallback((value: string) => {
+    setFilters((prev) => {
+      if (!value) { const { dateFrom: _, ...rest } = prev; return rest; }
+      return { ...prev, dateFrom: value };
+    });
+  }, [setFilters]);
+
+  const handleDateToChange = useCallback((value: string) => {
+    setFilters((prev) => {
+      if (!value) { const { dateTo: _, ...rest } = prev; return rest; }
+      return { ...prev, dateTo: value };
+    });
+  }, [setFilters]);
+
+  const clearDateFilter = useCallback(() => {
+    setFilters((prev) => {
+      const { dateFrom: _f, dateTo: _t, ...rest } = prev;
+      return rest;
+    });
+  }, [setFilters]);
+
   useEffect(() => {
     setSelectedPostIds(new Set());
   }, [posts]);
@@ -545,6 +566,66 @@ export default function PostsPage() {
               </option>
             ))}
           </select>
+
+          {/* Published date range filter */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" style={{ flexShrink: 0 }}>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <input
+              type="date"
+              value={String(filters.dateFrom ?? '')}
+              onChange={(e) => handleDateFromChange(e.target.value)}
+              style={{
+                padding: '0.6rem 0.75rem',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                background: 'white',
+                color: '#475569',
+                cursor: 'pointer',
+              }}
+              title="Published from"
+            />
+            <span style={{ color: '#94a3b8', fontSize: '0.8125rem', fontWeight: 500 }}>—</span>
+            <input
+              type="date"
+              value={String(filters.dateTo ?? '')}
+              onChange={(e) => handleDateToChange(e.target.value)}
+              style={{
+                padding: '0.6rem 0.75rem',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                background: 'white',
+                color: '#475569',
+                cursor: 'pointer',
+              }}
+              title="Published to"
+            />
+            {(filters.dateFrom || filters.dateTo) && (
+              <button
+                type="button"
+                onClick={clearDateFilter}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  background: 'white',
+                  color: '#64748b',
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+                title="Clear date filter"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         <div style={{

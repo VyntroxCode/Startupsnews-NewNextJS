@@ -1,9 +1,8 @@
 import type { MetadataRoute } from "next";
 import { query } from "@/shared/database/connection";
 import { normalizePostSlugForCategory } from "@/lib/post-utils";
-import { slugify } from "@/shared/utils/string.utils";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 43200; // regenerate every 12 hours (twice a day)
 export const runtime = 'nodejs';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
@@ -36,10 +35,6 @@ type EventSitemapRow = {
   created_at: Date | string | null;
 };
 
-type AuthorSitemapRow = {
-  name: string;
-  updated_at: Date | string | null;
-};
 
 function asDate(value: Date | string | null): Date | undefined {
   if (!value) return undefined;
@@ -64,7 +59,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const [categories, posts, events, authors] = await Promise.all([
+    const [categories, posts, events] = await Promise.all([
       query<CategorySitemapRow>(
         "SELECT slug FROM categories ORDER BY id DESC"
       ),
@@ -80,12 +75,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
          FROM events
          WHERE status IN ('upcoming', 'ongoing') AND slug IS NOT NULL AND slug != ''
          ORDER BY event_date ASC`
-      ),
-      query<AuthorSitemapRow>(
-        `SELECT name, updated_at
-         FROM users
-         WHERE is_active = 1 AND name IS NOT NULL AND name != ''
-         ORDER BY id ASC`
       ),
     ]);
 
@@ -120,22 +109,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }));
 
-    const authorRoutes: MetadataRoute.Sitemap = authors
-      .filter((a) => (a.name || "").trim().length > 0)
-      .map((a) => ({
-        url: `${SITE_URL}/author/${slugify(a.name.trim())}`,
-        lastModified: asDate(a.updated_at),
-        changeFrequency: "weekly" as const,
-        priority: 0.5,
-      }));
-
     const staffAuthorRoutes: MetadataRoute.Sitemap = STAFF_AUTHOR_SLUGS.map((a) => ({
       url: `${SITE_URL}/author/${a.slug}`,
       changeFrequency: "weekly" as const,
       priority: 0.5,
     }));
 
-    return [...staticRoutes, ...categoryRoutes, ...postRoutes, ...eventRoutes, ...authorRoutes, ...staffAuthorRoutes];
+    return [...staticRoutes, ...categoryRoutes, ...postRoutes, ...eventRoutes, ...staffAuthorRoutes];
   } catch (error) {
     console.error("Failed to generate sitemap from database:", error);
     return staticRoutes;
