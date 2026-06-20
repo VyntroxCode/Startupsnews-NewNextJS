@@ -74,6 +74,9 @@ export class RssFeedsService {
     const errors: string[] = [];
     let postsCreated = 0;
 
+    const feedForValues = String(feed.feed_for ?? 'website').split(',').map((v) => v.trim());
+    const isForWebsite = feedForValues.includes('website');
+
     for (const item of limited) {
       try {
         const savedItem = await this.repo.saveFeedItem({
@@ -88,9 +91,11 @@ export class RssFeedsService {
           published_at: item.publishedAt ?? null,
         });
 
-        const { postId } = await this.postCreator.createPostFromRssItem(item, feed);
-        await this.repo.linkItemToPost(savedItem.id, postId);
-        postsCreated++;
+        if (isForWebsite) {
+          const { postId } = await this.postCreator.createPostFromRssItem(item, feed);
+          await this.repo.linkItemToPost(savedItem.id, postId);
+          postsCreated++;
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         errors.push(`Item ${item.guid}: ${msg}`);

@@ -9,6 +9,7 @@ export interface PublicUserEntity {
   password_hash?: string;
   google_id?: string;
   linkedin_id?: string;
+  newsletter_category_slugs?: string | null;
   auth_provider: 'email' | 'google' | 'linkedin';
   is_active: boolean;
   created_at: Date;

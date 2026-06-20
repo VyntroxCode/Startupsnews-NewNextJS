@@ -35,6 +35,13 @@ const GOOGLE_ICON =
 const LINKEDIN_ICON =
 	"https://yt3.googleusercontent.com/i6KNxiy3gME-BulL4WnuGkTGqHuSYF8jl1WRn0rXftcJdSYK7dHKcJ3gLAaPc-KfhmLSYPwf824=s900-c-k-c0x00ffffff-no-rj";
 
+interface NLCategory {
+	id: number;
+	name: string;
+	slug: string;
+	color: string;
+}
+
 const modalTheme = {
 	brand: "#e91e63",
 	brandSoft: "#fce4ec",
@@ -54,6 +61,7 @@ interface AuthUser {
 	country?: string;
 	city?: string;
 	linkedin_url?: string;
+	newsletter_category_slugs?: string | null;
 }
 
 export default function AuthModal() {
@@ -71,6 +79,14 @@ export default function AuthModal() {
 	const [showWelcome, setShowWelcome] = useState(false);
 	const [welcomeUser, setWelcomeUser] = useState<AuthUser | null>(null);
 	const [isMobileBanner, setIsMobileBanner] = useState(false);
+
+	const [scrollSlideY, setScrollSlideY] = useState(100);
+	const [scrollVisible, setScrollVisible] = useState(false);
+
+	const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+	const [nlCategories, setNlCategories] = useState<NLCategory[]>([]);
+	const [selectedCats, setSelectedCats] = useState<string[]>([]);
+	const [catSaving, setCatSaving] = useState(false);
 
 	/* ── Google OAuth2 ──────────────────────────────────────── */
 	const initGIS = useCallback(() => {
@@ -137,6 +153,15 @@ export default function AuthModal() {
 							setWelcomeUser(d.data.user);
 							setShowWelcome(true);
 							window.dispatchEvent(new Event("pub-auth-changed"));
+							// Pre-fetch categories in background; picker only shows if user has no prefs
+							try {
+								const catRes = await fetch("/api/newsletter/categories");
+								const catData = await catRes.json();
+								if (catData.success && catData.data?.length) {
+									setNlCategories(catData.data);
+									setSelectedCats([]);
+								}
+							} catch { /* categories optional */ }
 						} else {
 							setError(d.error || "Google sign-in failed");
 						}
@@ -152,12 +177,21 @@ export default function AuthModal() {
 		}
 	}, []);
 
-	/* ── Welcome overlay auto-dismiss ───────────────────────── */
+	/* ── Welcome overlay auto-dismiss → show picker only if no categories saved ── */
 	useEffect(() => {
 		if (!showWelcome) return;
-		const t = setTimeout(() => setShowWelcome(false), 3000);
+		const t = setTimeout(() => {
+			setShowWelcome(false);
+			// Only show picker if user hasn't selected any newsletter categories yet
+			const hasCategories = user?.newsletter_category_slugs
+				? user.newsletter_category_slugs.split(',').filter(Boolean).length > 0
+				: false;
+			if (!hasCategories && nlCategories.length > 0) {
+				setShowCategoryPicker(true);
+			}
+		}, 3000);
 		return () => clearTimeout(t);
-	}, [showWelcome]);
+	}, [showWelcome, nlCategories, user]);
 
 	/* ── Mount & session check ──────────────────────────────── */
 	useEffect(() => {
@@ -220,17 +254,32 @@ export default function AuthModal() {
 		const searchParams = new URLSearchParams(window.location.search);
 		if (searchParams.get("auth") === "login") return;
 
-		if (sessionStorage.getItem("sn_auth_modal") === "1") return;
-
-		const initial = setTimeout(() => {
+		const onScroll = () => {
 			if (loggedInRef.current) return;
-			sessionStorage.setItem("sn_auth_modal", "1");
-			setError("");
-			setSuccess("");
-			setOpen(true);
-		}, 10000);
+			const scrolled = window.scrollY;
 
-		return () => clearTimeout(initial);
+			if (scrolled < 50) {
+				setScrollVisible(false);
+				setScrollSlideY(100);
+				return;
+			}
+
+			setScrollVisible(true);
+			// 50px → 600px of scroll = full reveal
+			const progress = Math.min(1, (scrolled - 50) / 550);
+			setScrollSlideY(Math.round((1 - progress) * 100));
+
+			if (progress >= 1) {
+				setScrollVisible(false);
+				setError("");
+				setSuccess("");
+				setOpen(true);
+				window.removeEventListener("scroll", onScroll);
+			}
+		};
+
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
 	}, [mounted, isAdmin]);
 
 	const handleLogout = () => {
@@ -245,7 +294,6 @@ export default function AuthModal() {
 	};
 
 	const closeModal = () => {
-		sessionStorage.setItem("sn_auth_modal", "1");
 		setOpen(false);
 		setError("");
 		setSuccess("");
@@ -429,8 +477,8 @@ export default function AuthModal() {
 				</div>
 			)}
 
-			{/* Bottom sheet */}
-			{open && !loggedIn && (
+			{/* Newsletter category picker — shown after sign-in */}
+			{showCategoryPicker && (
 				<div
 					style={{
 						position: "fixed",
@@ -456,7 +504,254 @@ export default function AuthModal() {
 							boxShadow: "0 -4px 18px rgba(17,17,17,0.08)",
 							overflow: "hidden",
 							position: "relative",
-							animation: "authSlideUp 0.28s cubic-bezier(0.34,1.56,0.64,1)",
+							animation: "authSlideUp 1.2s cubic-bezier(0.16,1,0.3,1)",
+							border: `1px solid ${modalTheme.line}`,
+							pointerEvents: "auto",
+							maxHeight: isMobileBanner ? "88vh" : "none",
+							overflowY: isMobileBanner ? "auto" : "visible",
+						}}
+					>
+						<div
+							aria-hidden
+							style={{
+								position: "absolute",
+								inset: 0,
+								background:
+									"linear-gradient(0deg, rgba(255,220,226,0.55) 0%, rgba(252,228,236,0.22) 18%, rgba(255,255,255,0) 40%)",
+								pointerEvents: "none",
+							}}
+						/>
+
+						{/* Skip button */}
+						<button
+							onClick={() => {
+								setShowCategoryPicker(false);
+								setShowWelcome(true);
+							}}
+							style={{
+								position: "absolute",
+								top: isMobileBanner ? 8 : 14,
+								right: isMobileBanner ? 8 : 14,
+								padding: "5px 14px",
+								borderRadius: 20,
+								border: `1px solid ${modalTheme.line}`,
+								background: "rgba(255,255,255,0.92)",
+								cursor: "pointer",
+								color: modalTheme.inkSoft,
+								fontSize: 12,
+								fontWeight: 600,
+								zIndex: 1,
+							}}
+						>
+							Skip
+						</button>
+
+						<div style={{ padding: isMobileBanner ? "14px 14px 16px" : "22px 56px 24px 96px" }}>
+							{/* Header row */}
+							<div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: isMobileBanner ? 12 : 16, flexWrap: "wrap" }}>
+								<div style={{ flex: 1, minWidth: 0 }}>
+									<p style={{ fontSize: isMobileBanner ? 12 : 13, fontWeight: 700, color: modalTheme.brand, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px" }}>
+										Almost there!
+									</p>
+									<p style={{ fontSize: isMobileBanner ? 18 : 26, fontWeight: 800, color: modalTheme.ink, margin: "0 0 4px", lineHeight: 1.1 }}>
+										Pick your interests
+									</p>
+									<p style={{ fontSize: isMobileBanner ? 12 : 14, color: modalTheme.inkSoft, margin: 0 }}>
+										Choose{" "}
+										<strong>1–3 categories</strong>{" "}
+										to personalise your newsletter feed.
+										{selectedCats.length > 0 && (
+											<span style={{ marginLeft: 8, color: modalTheme.brand, fontWeight: 700 }}>
+												{selectedCats.length}/3 selected
+											</span>
+										)}
+									</p>
+								</div>
+
+								{/* Continue button — desktop inline */}
+								{!isMobileBanner && (
+									<button
+										onClick={async () => {
+											if (selectedCats.length === 0) return;
+											setCatSaving(true);
+											try {
+												const token = localStorage.getItem("pub_auth_token");
+												if (token) {
+													await fetch("/api/public-auth/newsletter-preferences", {
+														method: "POST",
+														headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+														body: JSON.stringify({ categories: selectedCats }),
+													});
+												}
+											} catch { /* best-effort */ }
+											setCatSaving(false);
+											setShowCategoryPicker(false);
+										}}
+										disabled={selectedCats.length === 0 || catSaving}
+										style={{
+											padding: "11px 28px",
+											background: selectedCats.length === 0
+												? "#e2e8f0"
+												: "linear-gradient(135deg, #e91e63 0%, #f97316 100%)",
+											color: selectedCats.length === 0 ? "#94a3b8" : "#fff",
+											border: "none",
+											borderRadius: 12,
+											fontWeight: 700,
+											fontSize: 15,
+											cursor: selectedCats.length === 0 ? "not-allowed" : "pointer",
+											whiteSpace: "nowrap",
+											flexShrink: 0,
+											alignSelf: "flex-end",
+											transition: "background 0.2s",
+										}}
+									>
+										{catSaving ? "Saving…" : "Continue →"}
+									</button>
+								)}
+							</div>
+
+							{/* Category chips */}
+							<div
+								style={{
+									display: "flex",
+									flexWrap: "wrap",
+									gap: isMobileBanner ? 7 : 10,
+									marginBottom: isMobileBanner ? 14 : 0,
+								}}
+							>
+								{nlCategories.map((cat) => {
+									const isSelected = selectedCats.includes(cat.slug);
+									const maxReached = selectedCats.length >= 3 && !isSelected;
+									return (
+										<button
+											key={cat.slug}
+											type="button"
+											disabled={maxReached}
+											onClick={() => {
+												setSelectedCats((prev) =>
+													isSelected
+														? prev.filter((s) => s !== cat.slug)
+														: [...prev, cat.slug]
+												);
+											}}
+											style={{
+												display: "inline-flex",
+												alignItems: "center",
+												gap: 6,
+												padding: isMobileBanner ? "6px 12px" : "8px 16px",
+												borderRadius: 999,
+												border: isSelected
+													? `2px solid ${cat.color}`
+													: "2px solid #e2e8f0",
+												background: isSelected
+													? cat.color + "18"
+													: maxReached
+													? "#f8fafc"
+													: "#fff",
+												color: isSelected
+													? cat.color
+													: maxReached
+													? "#cbd5e1"
+													: "#374151",
+												fontWeight: isSelected ? 700 : 500,
+												fontSize: isMobileBanner ? 12 : 13,
+												cursor: maxReached ? "not-allowed" : "pointer",
+												transition: "all 0.15s",
+												opacity: maxReached ? 0.5 : 1,
+												whiteSpace: "nowrap",
+											}}
+										>
+											{isSelected && (
+												<span style={{ fontSize: 11, fontWeight: 800 }}>✓</span>
+											)}
+											<span
+												style={{
+													width: 8,
+													height: 8,
+													borderRadius: "50%",
+													background: isSelected ? cat.color : "#cbd5e1",
+													flexShrink: 0,
+													display: "inline-block",
+												}}
+											/>
+											{cat.name}
+										</button>
+									);
+								})}
+							</div>
+
+							{/* Continue button — mobile below chips */}
+							{isMobileBanner && (
+								<button
+									onClick={async () => {
+										if (selectedCats.length === 0) return;
+										setCatSaving(true);
+										try {
+											const token = localStorage.getItem("pub_auth_token");
+											if (token) {
+												await fetch("/api/public-auth/newsletter-preferences", {
+													method: "POST",
+													headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+													body: JSON.stringify({ categories: selectedCats }),
+												});
+											}
+										} catch { /* best-effort */ }
+										setCatSaving(false);
+										setShowCategoryPicker(false);
+									}}
+									disabled={selectedCats.length === 0 || catSaving}
+									style={{
+										width: "100%",
+										padding: "13px 0",
+										background: selectedCats.length === 0
+											? "#e2e8f0"
+											: "linear-gradient(135deg, #e91e63 0%, #f97316 100%)",
+										color: selectedCats.length === 0 ? "#94a3b8" : "#fff",
+										border: "none",
+										borderRadius: 12,
+										fontWeight: 700,
+										fontSize: 15,
+										cursor: selectedCats.length === 0 ? "not-allowed" : "pointer",
+										transition: "background 0.2s",
+									}}
+								>
+									{catSaving ? "Saving…" : "Continue →"}
+								</button>
+							)}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Bottom sheet */}
+			{(open || scrollVisible) && !loggedIn && (
+				<div
+					style={{
+						position: "fixed",
+						left: 0,
+						right: 0,
+						bottom: 0,
+						zIndex: 9999,
+						display: "flex",
+						justifyContent: "center",
+						alignItems: "flex-end",
+						padding: isMobileBanner ? "0 10px 10px" : "0 12px 12px",
+						boxSizing: "border-box",
+						pointerEvents: "none",
+					}}
+				>
+					<div
+						onClick={(e) => e.stopPropagation()}
+						style={{
+							background: `linear-gradient(0deg, #fff6ee 0%, ${modalTheme.panelStrong} 34%, ${modalTheme.panel} 100%)`,
+							borderRadius: isMobileBanner ? 18 : 22,
+							width: "100%",
+							maxWidth: 1180,
+							boxShadow: "0 -4px 18px rgba(17,17,17,0.08)",
+							overflow: "hidden",
+							position: "relative",
+							animation: scrollVisible ? "none" : "authSlideUp 0.4s cubic-bezier(0.16,1,0.3,1)",
+							transform: scrollVisible ? `translateY(${scrollSlideY}%)` : undefined,
 							border: `1px solid ${modalTheme.line}`,
 							pointerEvents: "auto",
 							maxHeight: isMobileBanner ? "82vh" : "none",
@@ -880,8 +1175,8 @@ export default function AuthModal() {
 
 			<style>{`
         @keyframes authSlideUp {
-          from { opacity: 0; transform: translateY(24px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0)     scale(1);    }
+          from { transform: translateY(110%); }
+          to   { transform: translateY(0);    }
         }
         @keyframes welcomeCardIn {
           from { opacity: 0; transform: translateY(32px) scale(0.92); }

@@ -31,6 +31,7 @@ async function ensureTable() {
   await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS city VARCHAR(100)`);
   await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS linkedin_url VARCHAR(500)`);
   await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS linkedin_id VARCHAR(255)`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS newsletter_category_slugs VARCHAR(500) NULL DEFAULT NULL`);
   
   // Safe way to modify ENUM if not already updated (try-catch because syntax can be tricky if it exists, but MODIFY is usually fine)
   try {
@@ -154,6 +155,11 @@ export async function verifyPassword(user: PublicUserEntity, password: string): 
 
 export async function updateLastLogin(id: number): Promise<void> {
   await query('UPDATE public_registrations SET last_login = NOW() WHERE id = ?', [id]);
+}
+
+export async function updateNewsletterCategories(id: number, slugs: string[]): Promise<void> {
+  const value = slugs.filter(Boolean).slice(0, 3).join(',') || null;
+  await query('UPDATE public_registrations SET newsletter_category_slugs = ? WHERE id = ?', [value, id]);
 }
 
 export async function updateProfile(id: number, data: { phone?: string; country?: string; city?: string; linkedin_url?: string }): Promise<void> {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 
 interface AuthUser { id: number; name: string; email: string; phone?: string; country?: string; city?: string; linkedin_url?: string; }
+interface NLCategory { id: number; name: string; slug: string; color: string; }
 
 const AVATAR_COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4'];
 function avatarColor(name: string) { return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]; }
@@ -38,6 +39,13 @@ export default function SettingsPage() {
   const [linkedin, setLinkedin] = useState('');
   const [saved, setSaved] = useState(false);
 
+  // Newsletter categories
+  const [nlCategories, setNlCategories] = useState<NLCategory[]>([]);
+  const [selectedCats, setSelectedCats] = useState<string[]>([]);
+  const [nlSaving, setNlSaving] = useState(false);
+  const [nlSaved, setNlSaved] = useState(false);
+  const [nlError, setNlError] = useState('');
+
   useEffect(() => {
     const syncViewport = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -70,6 +78,46 @@ export default function SettingsPage() {
     window.addEventListener('pub-auth-changed', sync);
     return () => window.removeEventListener('pub-auth-changed', sync);
   }, []);
+
+  // Load newsletter categories + user's current prefs
+  useEffect(() => {
+    fetch('/api/newsletter/categories')
+      .then(r => r.json())
+      .then(d => { if (d.success) setNlCategories(d.data); })
+      .catch(() => {});
+
+    const token = localStorage.getItem('pub_auth_token');
+    if (token) {
+      fetch('/api/public-auth/newsletter-preferences', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.json())
+        .then(d => { if (d.success) setSelectedCats(d.data); })
+        .catch(() => {});
+    }
+  }, []);
+
+  const handleSaveNewsletter = async () => {
+    if (selectedCats.length === 0) { setNlError('Please select at least 1 category.'); return; }
+    setNlError('');
+    setNlSaving(true);
+    try {
+      const token = localStorage.getItem('pub_auth_token');
+      const res = await fetch('/api/public-auth/newsletter-preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ categories: selectedCats }),
+      });
+      const d = await res.json();
+      if (!d.success) { setNlError(d.error || 'Save failed'); return; }
+      setNlSaved(true);
+      setTimeout(() => setNlSaved(false), 3000);
+    } catch {
+      setNlError('Save failed. Please try again.');
+    } finally {
+      setNlSaving(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,6 +261,117 @@ export default function SettingsPage() {
               </div>
             </form>
           </div>
+          {/* Newsletter category preferences card */}
+          {nlCategories.length > 0 && (
+            <div style={{ background: '#ffffff', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+              {/* Card header */}
+              <div style={{ padding: isMobile ? '1.25rem' : '1.5rem 1.75rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #fce4ec, #fdf2f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e91e63" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 style={{ margin: '0 0 3px', fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>Newsletter Interests</h2>
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                    Choose <strong>1–3 topics</strong> — we&apos;ll curate your newsletter around them
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ padding: isMobile ? '1.25rem' : '1.75rem' }}>
+                {/* Success / error messages */}
+                {nlSaved && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, padding: '10px 14px', marginBottom: '1rem', fontSize: '0.875rem', color: '#065f46', fontWeight: 600 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Newsletter preferences saved!
+                  </div>
+                )}
+                {nlError && (
+                  <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: 8, padding: '10px 14px', marginBottom: '1rem', fontSize: '0.875rem', color: '#b42318', fontWeight: 500 }}>
+                    {nlError}
+                  </div>
+                )}
+
+                {/* Selection counter */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                    {selectedCats.length === 0
+                      ? 'No categories selected'
+                      : <><strong style={{ color: '#e91e63' }}>{selectedCats.length}/3</strong> selected</>}
+                  </span>
+                  {selectedCats.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCats([])}
+                      style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                {/* Category chips */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.5rem' }}>
+                  {nlCategories.map((cat) => {
+                    const isSelected = selectedCats.includes(cat.slug);
+                    const maxReached = selectedCats.length >= 3 && !isSelected;
+                    return (
+                      <button
+                        key={cat.slug}
+                        type="button"
+                        disabled={maxReached}
+                        onClick={() => {
+                          setNlError('');
+                          setSelectedCats(prev =>
+                            isSelected ? prev.filter(s => s !== cat.slug) : [...prev, cat.slug]
+                          );
+                        }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '8px 14px', borderRadius: 999,
+                          border: isSelected ? `2px solid ${cat.color}` : '2px solid #e2e8f0',
+                          background: isSelected ? cat.color + '18' : maxReached ? '#f8fafc' : '#fff',
+                          color: isSelected ? cat.color : maxReached ? '#cbd5e1' : '#374151',
+                          fontWeight: isSelected ? 700 : 500, fontSize: '0.8125rem',
+                          cursor: maxReached ? 'not-allowed' : 'pointer',
+                          opacity: maxReached ? 0.5 : 1,
+                          transition: 'all 0.15s', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {isSelected && <span style={{ fontSize: 11, fontWeight: 800 }}>✓</span>}
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: isSelected ? cat.color : '#cbd5e1', flexShrink: 0, display: 'inline-block' }} />
+                        {cat.name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Save button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={handleSaveNewsletter}
+                    disabled={nlSaving || selectedCats.length === 0}
+                    style={{
+                      padding: '0.75rem 1.75rem',
+                      background: selectedCats.length === 0 ? '#e2e8f0' : 'linear-gradient(135deg, #e91e63 0%, #f97316 100%)',
+                      color: selectedCats.length === 0 ? '#94a3b8' : '#fff',
+                      border: 'none', borderRadius: 8,
+                      fontWeight: 600, fontSize: '0.9375rem',
+                      cursor: selectedCats.length === 0 ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      transition: 'opacity 0.2s',
+                      width: isMobile ? '100%' : 'auto', justifyContent: 'center' as const,
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    {nlSaving ? 'Saving…' : 'Save Preferences'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT — sidebar panels */}

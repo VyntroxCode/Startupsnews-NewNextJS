@@ -186,6 +186,7 @@ export class RssFeedsRepository {
     feed_name: string;
     feed_url: string;
     feed_logo_url: string | null;
+    category_slug: string | null;
     title: string;
     link: string;
     image_url: string | null;
@@ -195,9 +196,11 @@ export class RssFeedsRepository {
   }>> {
     return query(
       `SELECT i.id, i.rss_feed_id, f.name AS feed_name, f.url AS feed_url, f.logo_url AS feed_logo_url,
+              c.slug AS category_slug,
               i.title, i.link, i.image_url, i.description, i.published_at, i.created_at
        FROM rss_feed_items i
        INNER JOIN rss_feeds f ON f.id = i.rss_feed_id
+       LEFT JOIN categories c ON c.id = f.category_id
        WHERE FIND_IN_SET('newsletter', f.feed_for) > 0
          AND f.enabled = 1
        ORDER BY i.published_at DESC, i.id DESC

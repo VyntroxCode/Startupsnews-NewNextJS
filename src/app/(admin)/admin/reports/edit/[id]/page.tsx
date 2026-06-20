@@ -7,6 +7,21 @@ import { getAdminToken, getAuthHeaders, withAdminToken } from '@/lib/admin-auth'
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
 import type { ReportEntity } from '@/modules/reports/domain/types';
+import { PDFDocument } from 'pdf-lib';
+
+async function countPdfPagesFromFile(file: File): Promise<number | null> {
+  try {
+    const buffer = await file.arrayBuffer();
+    const pdf = await PDFDocument.load(new Uint8Array(buffer), {
+      ignoreEncryption: true,
+      throwOnInvalidObject: false,
+      updateMetadata: false,
+    });
+    return pdf.getPageCount();
+  } catch {
+    return null;
+  }
+}
 
 const formatBytes = (bytes: number | null, decimals = 2) => {
   if (bytes === 0 || bytes === null) return '0 Bytes';
@@ -30,6 +45,7 @@ export default function AdminReportEditPage() {
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState<number | null>(null);
   const [mimeType, setMimeType] = useState('');
+  const [pageCount, setPageCount] = useState<number | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +77,7 @@ export default function AdminReportEditPage() {
         setFileName(fetchedReport.file_name || '');
         setFileSize(fetchedReport.file_size || null);
         setMimeType(fetchedReport.mime_type || '');
+        setPageCount(fetchedReport.page_count ?? null);
         setIsActive(fetchedReport.is_active === 1);
         // No direct file to set for reportFile here as it's for new uploads
         setReportFile(null);
@@ -170,6 +187,7 @@ export default function AdminReportEditPage() {
           thumbnailUrl: thumbnailUrl || null,
           fileName: finalFileName || null,
           fileSize: finalFileSize,
+          pageCount: pageCount ?? null,
           mimeType: finalMimeType || null,
           isActive,
         }),
@@ -178,19 +196,6 @@ export default function AdminReportEditPage() {
       const data = await apiRes.json();
       if (!data.success) {
         throw new Error(data.error || 'Failed to update report');
-      }
-
-      const isPdf = (finalMimeType || '').toLowerCase() === 'application/pdf' || finalFileUrl.toLowerCase().endsWith('.pdf');
-      if (finalFileUrl && isPdf) {
-        await fetch(withAdminToken('/api/admin/reports/page-count'), {
-          method: 'POST',
-          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            reportId,
-            fileUrl: finalFileUrl,
-            mimeType: finalMimeType || null,
-          }),
-        }).catch(() => null);
       }
 
       setSuccess(true);
@@ -210,6 +215,7 @@ export default function AdminReportEditPage() {
       setFileName(report?.file_name || '');
       setFileSize(report?.file_size || null);
       setMimeType(report?.mime_type || '');
+      setPageCount(report?.page_count ?? null);
       setFileUrl(report?.file_url || '');
       setFileUploadError('');
       return;
@@ -230,18 +236,20 @@ export default function AdminReportEditPage() {
       setFileName(report?.file_name || '');
       setFileSize(report?.file_size || null);
       setMimeType(report?.mime_type || '');
+      setPageCount(report?.page_count ?? null);
       setFileUrl(report?.file_url || '');
       return;
     }
 
     // Max file size 50MB (same as S3 upload limit)
-    const MAX_SIZE = 50 * 1024 * 1024; 
+    const MAX_SIZE = 50 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       setFileUploadError('File size exceeds 50MB limit.');
       setReportFile(null);
       setFileName(report?.file_name || '');
       setFileSize(report?.file_size || null);
       setMimeType(report?.mime_type || '');
+      setPageCount(report?.page_count ?? null);
       setFileUrl(report?.file_url || '');
       return;
     }
@@ -252,6 +260,12 @@ export default function AdminReportEditPage() {
     setMimeType(file.type);
     setFileUrl(''); // Clear URL if a file is selected
     setFileUploadError('');
+
+    if (file.type === 'application/pdf') {
+      countPdfPagesFromFile(file).then(setPageCount);
+    } else {
+      setPageCount(null);
+    }
   };
 
   if (loading) {

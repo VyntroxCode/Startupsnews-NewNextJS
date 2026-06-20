@@ -132,12 +132,16 @@
       "Bash(mkdir -p \"/home/tech/Startupsnews-NewNextJS-main/src/app/api/admin/tools/[id]\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/api/admin/tools\" -H \"x-admin-token: $\\(grep ADMIN_SECRET /home/tech/Startupsnews-NewNextJS-main/.env.local)",
       "Bash(xargs cat)",
-      "Bash(mkdir -p /home/tech/Startupsnews-NewNextJS-main/src/app/\\\\\\(admin\\\\\\)/admin/tools/\\\\[id\\\\])"
+      "Bash(mkdir -p /home/tech/Startupsnews-NewNextJS-main/src/app/\\\\\\(admin\\\\\\)/admin/tools/\\\\[id\\\\])",
+      "Bash(mkdir -p /home/tech/Startupsnews-NewNextJS-main/src/app/api/admin/newsletter/categories/\\\\[id\\\\])",
+      "Bash(mariadb --version)",
+      "Bash(dpkg -l)"
     ],
     "additionalDirectories": [
       "/home/tech/Startupsnews-NewNextJS-main/src",
       "/home/tech/Startupsnews-NewNextJS-main/src/app/api/admin/tools",
-      "/home/tech/Startupsnews-NewNextJS-main/src/app/(admin)/admin/tools"
+      "/home/tech/Startupsnews-NewNextJS-main/src/app/(admin)/admin/tools",
+      "/home/tech/Startupsnews-NewNextJS-main/src/app/api/admin/newsletter/categories"
     ]
   }
 }

@@ -3,6 +3,12 @@ import type { ParsedRssItem } from '../domain/types';
 
 const FETCH_TIMEOUT_MS = Number(process.env.RSS_FETCH_TIMEOUT) || 30000;
 
+type CustomItem = {
+  'media:content': { $: { url?: string; medium?: string } } | { $: { url?: string; medium?: string } }[];
+  'media:thumbnail': { $: { url?: string } };
+  enclosure: { url?: string; type?: string };
+};
+
 export interface FetchAndParseResult {
   items: ParsedRssItem[];
   feedImageUrl?: string;
@@ -10,13 +16,19 @@ export interface FetchAndParseResult {
 }
 
 export class RssParserService {
-  private parser: Parser;
+  private parser: Parser<Record<string, unknown>, CustomItem>;
 
   constructor() {
-    this.parser = new Parser({
+    this.parser = new Parser<Record<string, unknown>, CustomItem>({
       timeout: FETCH_TIMEOUT_MS,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      },
+      customFields: {
+        item: [
+          ['media:content', 'media:content', { keepArray: false }],
+          ['media:thumbnail', 'media:thumbnail', { keepArray: false }],
+        ],
       },
     });
   }
@@ -53,20 +65,29 @@ export class RssParserService {
     };
   }
 
-  private extractImageUrl(item: Parser.Item): string | undefined {
+  private extractImageUrl(item: Parser.Item & Partial<CustomItem>): string | undefined {
+    // media:content — rss-parser returns it as object or array
+    const mediaContent = item['media:content'];
+    if (mediaContent) {
+      const mc = Array.isArray(mediaContent) ? mediaContent[0] : mediaContent;
+      if (mc?.$?.url) return mc.$.url;
+    }
+
+    // media:thumbnail
+    const mediaThumbnail = item['media:thumbnail'];
+    if (mediaThumbnail?.$?.url) return mediaThumbnail.$.url;
+
+    // enclosure (podcast/image RSS feeds)
     const enclosure = item.enclosure;
     if (enclosure?.type?.startsWith('image/') && enclosure?.url) {
       return enclosure.url;
     }
-    if ((item as { mediaContent?: { $?: { url?: string } }; 'media:content'?: { $?: { url?: string } } })?.mediaContent?.$?.url) {
-      return (item as { mediaContent: { $: { url: string } } }).mediaContent.$.url;
-    }
-    if ((item as { 'media:content'?: { $?: { url?: string } } })?.['media:content']?.$?.url) {
-      return (item as { 'media:content': { $: { url: string } } })['media:content'].$.url;
-    }
+
+    // last resort: first <img> in content HTML
     const content = item.content || item.contentSnippet || '';
     const imgMatch = String(content).match(/<img[^>]+src=["']([^"']+)["']/i);
     if (imgMatch?.[1]) return imgMatch[1];
+
     return undefined;
   }
 }

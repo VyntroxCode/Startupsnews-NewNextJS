@@ -13,6 +13,7 @@ interface RegisteredUser {
 	is_active: boolean;
 	created_at: string;
 	last_login?: string;
+	newsletter_category_slugs?: string | null;
 }
 
 interface Pagination {
@@ -118,6 +119,7 @@ export default function RegisteredUsersPage() {
 			"Phone",
 			"City",
 			"Country",
+			"Newsletter Categories",
 			"Provider",
 			"Joined",
 			"Last Active",
@@ -136,6 +138,7 @@ export default function RegisteredUsersPage() {
 				esc(u.phone),
 				esc(u.city),
 				esc(u.country),
+				esc(u.newsletter_category_slugs || ""),
 				u.auth_provider,
 				u.created_at
 					? new Date(u.created_at).toLocaleDateString("en-IN", {
@@ -494,6 +497,7 @@ export default function RegisteredUsersPage() {
 										"User",
 										"Contact",
 										"Location",
+										"Newsletter",
 										"Provider",
 										"Joined",
 										"Last Active",
@@ -655,6 +659,32 @@ export default function RegisteredUsersPage() {
 												<span style={{ color: "#cbd5e1", fontSize: 13 }}>
 													—
 												</span>
+											)}
+										</td>
+
+										{/* Newsletter categories */}
+										<td style={{ padding: "14px 16px", minWidth: 200 }}>
+											{u.newsletter_category_slugs ? (
+												<div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+													{u.newsletter_category_slugs.split(",").map((slug) => (
+														<span
+															key={slug}
+															style={{
+																padding: "2px 8px",
+																borderRadius: 12,
+																background: "#ede9fe",
+																color: "#6d28d9",
+																fontSize: 11,
+																fontWeight: 600,
+																whiteSpace: "nowrap",
+															}}
+														>
+															{slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+														</span>
+													))}
+												</div>
+											) : (
+												<span style={{ color: "#cbd5e1", fontSize: 12 }}>Not set</span>
 											)}
 										</td>
 

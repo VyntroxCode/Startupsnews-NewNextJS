@@ -17,6 +17,7 @@ import { JobType } from '@/queue/job-types';
 import { createCronLock } from '@/shared/locks/redis-lock';
 import { RssFeedsSchedulerJob } from './jobs/rss-feeds-scheduler.job';
 import { RssFeedWorker } from '@/workers/rss.worker';
+import { MorningSignalJob } from './jobs/morning-signal.job';
 
 loadEnvConfig(process.cwd());
 
@@ -111,6 +112,20 @@ async function start(): Promise<void> {
 
   cron.schedule(schedule, runSchedulerOnce, { timezone: process.env.TZ || 'UTC' });
   log.info('Cron started', { schedule, timezone: process.env.TZ || 'UTC' });
+
+  // Morning Signal: every 2 hours
+  const morningSignalSchedule = process.env.MORNING_SIGNAL_CRON || '0 */2 * * *';
+  cron.schedule(morningSignalSchedule, async () => {
+    log.info('Morning Signal triggered');
+    try {
+      const job = new MorningSignalJob();
+      const result = await job.execute();
+      log.info('Morning Signal done', result);
+    } catch (err) {
+      log.error('Morning Signal failed', err);
+    }
+  }, { timezone: 'UTC' });
+  log.info('Morning Signal cron registered', { schedule: morningSignalSchedule });
 }
 
 start().catch((err) => {

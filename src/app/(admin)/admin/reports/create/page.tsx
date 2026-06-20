@@ -6,6 +6,21 @@ import { useRouter } from 'next/navigation';
 import { getAdminToken, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
+import { PDFDocument } from 'pdf-lib';
+
+async function countPdfPagesFromFile(file: File): Promise<number | null> {
+  try {
+    const buffer = await file.arrayBuffer();
+    const pdf = await PDFDocument.load(new Uint8Array(buffer), {
+      ignoreEncryption: true,
+      throwOnInvalidObject: false,
+      updateMetadata: false,
+    });
+    return pdf.getPageCount();
+  } catch {
+    return null;
+  }
+}
 
 const formatBytes = (bytes: number | null, decimals = 2) => {
   if (bytes === 0 || bytes === null) return '0 Bytes';
@@ -26,6 +41,7 @@ export default function AdminReportCreatePage() {
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState<number | ''>('');
   const [mimeType, setMimeType] = useState('');
+  const [pageCount, setPageCount] = useState<number | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -121,6 +137,7 @@ export default function AdminReportCreatePage() {
           thumbnailUrl: thumbnailUrl || null,
           fileName: finalFileName || null,
           fileSize: finalFileSize || null,
+          pageCount: pageCount ?? null,
           mimeType: finalMimeType || null,
           isActive,
         }),
@@ -132,20 +149,6 @@ export default function AdminReportCreatePage() {
         throw new Error(data.error || 'Failed to create report');
       }
 
-      const createdReportId = Number(data.data?.id || 0);
-      const isPdf = (finalMimeType || '').toLowerCase() === 'application/pdf' || finalFileUrl.toLowerCase().endsWith('.pdf');
-      if (createdReportId && finalFileUrl && isPdf) {
-        await fetch(withAdminToken('/api/admin/reports/page-count'), {
-          method: 'POST',
-          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            reportId: createdReportId,
-            fileUrl: finalFileUrl,
-            mimeType: finalMimeType || null,
-          }),
-        }).catch(() => null);
-      }
-
       setSuccess(true);
       setTitle('');
       setDescription('');
@@ -154,6 +157,7 @@ export default function AdminReportCreatePage() {
       setFileName('');
       setFileSize('');
       setMimeType('');
+      setPageCount(null);
       setIsActive(true);
       setReportFile(null);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -175,6 +179,7 @@ export default function AdminReportCreatePage() {
       setFileName('');
       setFileSize('');
       setMimeType('');
+      setPageCount(null);
       setFileUrl(''); // Clear URL if a file is selected
       setFileUploadError('');
       return;
@@ -195,18 +200,20 @@ export default function AdminReportCreatePage() {
       setFileName('');
       setFileSize('');
       setMimeType('');
+      setPageCount(null);
       setFileUrl('');
       return;
     }
 
     // Max file size 50MB (same as S3 upload limit)
-    const MAX_SIZE = 50 * 1024 * 1024; 
+    const MAX_SIZE = 50 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       setFileUploadError('File size exceeds 50MB limit.');
       setReportFile(null);
       setFileName('');
       setFileSize('');
       setMimeType('');
+      setPageCount(null);
       setFileUrl('');
       return;
     }
@@ -217,6 +224,12 @@ export default function AdminReportCreatePage() {
     setMimeType(file.type);
     setFileUrl(''); // Ensure URL is cleared when a file is selected
     setFileUploadError('');
+
+    if (file.type === 'application/pdf') {
+      countPdfPagesFromFile(file).then(setPageCount);
+    } else {
+      setPageCount(null);
+    }
   };
 
   return (
