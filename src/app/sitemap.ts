@@ -1,21 +1,12 @@
 import type { MetadataRoute } from "next";
 import { query } from "@/shared/database/connection";
 import { normalizePostSlugForCategory } from "@/lib/post-utils";
+import { slugify } from "@/shared/utils/string.utils";
 
 export const revalidate = 43200; // regenerate every 12 hours (twice a day)
 export const runtime = 'nodejs';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
-
-// Staff authors hardcoded in FullArticle — added to sitemap so search engines
-// can discover their author pages. Not rendered as clickable links in articles.
-const STAFF_AUTHOR_SLUGS = [
-  { name: "StartupNews.fyi Editorial Team", slug: "startupnewsfyi-editorial-team" },
-  { name: "Madhur Mohan Malik",             slug: "madhur-mohan-malik"            },
-  { name: "Kapil Suri",                     slug: "kapil-suri"                    },
-  { name: "Kanak Aggarwal",                 slug: "kanak-aggarwal"                },
-  { name: "Sreejit Kumar",                  slug: "sreejit-kumar"                 },
-];
 
 type PostSitemapRow = {
   slug: string;
@@ -59,7 +50,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const [categories, posts, events] = await Promise.all([
+    const [categories, posts, events, authors] = await Promise.all([
       query<CategorySitemapRow>(
         "SELECT slug FROM categories ORDER BY id DESC"
       ),
@@ -75,6 +66,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
          FROM events
          WHERE status IN ('upcoming', 'ongoing') AND slug IS NOT NULL AND slug != ''
          ORDER BY event_date ASC`
+      ),
+      query<{ name: string }>(
+        "SELECT name FROM users WHERE is_active = 1 AND name IS NOT NULL AND name != ''"
       ),
     ]);
 
@@ -109,11 +103,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }));
 
-    const staffAuthorRoutes: MetadataRoute.Sitemap = STAFF_AUTHOR_SLUGS.map((a) => ({
-      url: `${SITE_URL}/author/${a.slug}`,
-      changeFrequency: "weekly" as const,
-      priority: 0.5,
-    }));
+    const staffAuthorRoutes: MetadataRoute.Sitemap = authors
+      .map((a) => slugify(a.name))
+      .filter((slug) => slug.length > 0)
+      .filter((slug, i, arr) => arr.indexOf(slug) === i) // deduplicate
+      .map((slug) => ({
+        url: `${SITE_URL}/author/${slug}`,
+        changeFrequency: "weekly" as const,
+        priority: 0.5,
+      }));
 
     return [...staticRoutes, ...categoryRoutes, ...postRoutes, ...eventRoutes, ...staffAuthorRoutes];
   } catch (error) {

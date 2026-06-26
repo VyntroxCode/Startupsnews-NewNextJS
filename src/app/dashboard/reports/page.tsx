@@ -118,7 +118,9 @@ export default function ReportsPage() {
             title: String(report.title || ''),
             desc: String(report.description || ''),
             category: String(report.category || 'General'),
-            date: new Date(report.created_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
+            date: new Date(
+              (report.publish_at || report.created_at).toString().replace(' ', 'T')
+            ).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
             pages: storedPageCount > 0 ? storedPageCount : null,
             tag: report.is_active ? 'Free' : 'Premium',
             color: reportColor.color,

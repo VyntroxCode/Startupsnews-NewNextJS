@@ -52,11 +52,7 @@ function getAuthorHref(post: Post): string {
         return `/author/${slug}?type=source&name=${encodeURIComponent(displayName)}`;
     }
 
-    if (post.authorId) {
-        return `/author/${slug}?type=staff&id=${post.authorId}`;
-    }
-
-    return `/author/${slug}?type=staff`;
+    return `/author/${slug}`;
 }
 
 function stripNoFollowFromLinks(html: string): string {
@@ -129,6 +125,15 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
     return (
         <article className="mvp-article-wrap" itemScope itemType="http://schema.org/NewsArticle">
             <meta itemProp="mainEntityOfPage" itemType="https://schema.org/WebPage" itemID={postPath} />
+            <meta itemProp="description" content={(post.metaDescription || post.excerpt || '').slice(0, 300)} />
+            <meta itemProp="dateModified" content={post.publishedAt || (post.date + 'T00:00:00+05:30')} />
+            <meta itemProp="inLanguage" content="en" />
+            <meta itemProp="isAccessibleForFree" content="true" />
+            <span itemProp="articleSection" style={{ display: 'none' }}>{post.category}</span>
+            <span itemProp="publisher" itemScope itemType="https://schema.org/NewsMediaOrganization" style={{ display: 'none' }}>
+                <meta itemProp="name" content="StartupNews.fyi" />
+                <link itemProp="url" href="https://www.startupnews.fyi/" />
+            </span>
             <div id="mvp-article-cont" className="left relative">
                 <div className="mvp-main-box">
                     <nav className="event-by-country-breadcrumb" aria-label="Breadcrumb">
@@ -162,7 +167,8 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                         <h2 className="mvp-post-title left entry-title post-heading-max-3-lines" itemProp="headline">
                                             {post.title}
                                         </h2>
-                                        <div className="mvp-author-info-wrap left relative">
+                                        <div className="mvp-author-info-wrap left relative" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
                                             {(post.sourceName || post.sourceAuthor || post.sourceLogoUrl) ? (
                                                 <>
                                                     <div className="mvp-author-info-thumb left relative" style={{ width: 46, height: 46, borderRadius: "8px", overflow: "hidden", flexShrink: 0, backgroundColor: "#f0f0f0" }}>
@@ -255,6 +261,20 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                     </div>
                                                 </>
                                             )}
+                                            </div>
+                                            <a
+                                                href="https://www.google.com/preferences/source?q=https://startupnews.fyi/"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ flexShrink: 0, lineHeight: 0, display: 'inline-block' }}
+                                                title="Add as a preferred source on Google"
+                                            >
+                                                <img
+                                                    src="https://www.residentialsystems.com/wp-content/uploads/2025/09/google_preferred_source_badge_dark@2x.png"
+                                                    alt="Add as a preferred source on Google"
+                                                    className="google-preferred-badge"
+                                                />
+                                            </a>
                                         </div>
                                     </header>
                                     <div id="mvp-post-feat-img" className="left relative" itemProp="image" itemScope itemType="https://schema.org/ImageObject">
@@ -266,6 +286,8 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                             style={{ width: "100%", height: "auto", objectFit: "cover" }}
                                         />
                                         <meta itemProp="url" content={post.image} />
+                                        <meta itemProp="width" content="1200" />
+                                        <meta itemProp="height" content="630" />
                                     </div>
                                     <div id="mvp-content-wrap" className="left relative">
                                         <div className="mvp-post-soc-out right relative">

@@ -32,7 +32,10 @@ async function ensureTable() {
   await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS linkedin_url VARCHAR(500)`);
   await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS linkedin_id VARCHAR(255)`);
   await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS newsletter_category_slugs VARCHAR(500) NULL DEFAULT NULL`);
-  
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS last_newsletter_sent_date DATE NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS newsletter_unsubscribed TINYINT(1) NOT NULL DEFAULT 0`);
+
   // Safe way to modify ENUM if not already updated (try-catch because syntax can be tricky if it exists, but MODIFY is usually fine)
   try {
     await conn.query(`ALTER TABLE public_registrations MODIFY COLUMN auth_provider ENUM('email', 'google', 'linkedin') NOT NULL DEFAULT 'email'`);
@@ -83,15 +86,15 @@ export async function create(data: { name: string; email: string; phone?: string
   );
 }
 
-export async function upsertGoogleUser(data: { googleId: string; name: string; email: string; country?: string; city?: string }): Promise<{ user: PublicUserEntity; isNew: boolean }> {
+export async function upsertGoogleUser(data: { googleId: string; name: string; email: string; country?: string; city?: string; timezone?: string }): Promise<{ user: PublicUserEntity; isNew: boolean }> {
   await ensureTable();
 
   // Check by Google ID first
   let user = await findByGoogleId(data.googleId);
   if (user) {
     await query(
-      'UPDATE public_registrations SET last_login = NOW(), country = COALESCE(NULLIF(country, ""), ?), city = COALESCE(NULLIF(city, ""), ?) WHERE id = ?',
-      [data.country || null, data.city || null, user.id]
+      'UPDATE public_registrations SET last_login = NOW(), country = COALESCE(NULLIF(country, ""), ?), city = COALESCE(NULLIF(city, ""), ?), timezone = COALESCE(NULLIF(timezone, ""), ?) WHERE id = ?',
+      [data.country || null, data.city || null, data.timezone || null, user.id]
     );
     return { user: { ...user, country: user.country || data.country, city: user.city || data.city }, isNew: false };
   }
@@ -100,16 +103,16 @@ export async function upsertGoogleUser(data: { googleId: string; name: string; e
   user = await findByEmail(data.email);
   if (user) {
     await query(
-      'UPDATE public_registrations SET google_id = ?, last_login = NOW(), country = COALESCE(NULLIF(country, ""), ?), city = COALESCE(NULLIF(city, ""), ?) WHERE id = ?',
-      [data.googleId, data.country || null, data.city || null, user.id]
+      'UPDATE public_registrations SET google_id = ?, last_login = NOW(), country = COALESCE(NULLIF(country, ""), ?), city = COALESCE(NULLIF(city, ""), ?), timezone = COALESCE(NULLIF(timezone, ""), ?) WHERE id = ?',
+      [data.googleId, data.country || null, data.city || null, data.timezone || null, user.id]
     );
     return { user: { ...user, google_id: data.googleId, country: user.country || data.country, city: user.city || data.city }, isNew: false };
   }
 
   // Create new
   await query(
-    'INSERT INTO public_registrations (name, email, google_id, country, city, auth_provider) VALUES (?, ?, ?, ?, ?, ?)',
-    [data.name, data.email, data.googleId, data.country || null, data.city || null, 'google']
+    'INSERT INTO public_registrations (name, email, google_id, country, city, timezone, auth_provider) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [data.name, data.email, data.googleId, data.country || null, data.city || null, data.timezone || null, 'google']
   );
   return { user: (await findByEmail(data.email))!, isNew: true };
 }
@@ -160,6 +163,23 @@ export async function updateLastLogin(id: number): Promise<void> {
 export async function updateNewsletterCategories(id: number, slugs: string[]): Promise<void> {
   const value = slugs.filter(Boolean).slice(0, 3).join(',') || null;
   await query('UPDATE public_registrations SET newsletter_category_slugs = ? WHERE id = ?', [value, id]);
+}
+
+export async function markNewsletterSent(ids: number[]): Promise<void> {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(',');
+  await query(
+    `UPDATE public_registrations SET last_newsletter_sent_date = CURDATE() WHERE id IN (${placeholders})`,
+    ids
+  );
+}
+
+export async function unsubscribeByEmail(email: string): Promise<{ found: boolean }> {
+  await ensureTable();
+  const user = await findByEmail(email);
+  if (!user) return { found: false };
+  await query('UPDATE public_registrations SET newsletter_unsubscribed = 1 WHERE email = ?', [email]);
+  return { found: true };
 }
 
 export async function updateProfile(id: number, data: { phone?: string; country?: string; city?: string; linkedin_url?: string }): Promise<void> {

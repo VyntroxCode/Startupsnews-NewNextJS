@@ -7,7 +7,7 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
 export async function POST(req: NextRequest) {
   try {
-    const { credential, accessToken, country, city } = await req.json() as { credential?: string; accessToken?: string; country?: string; city?: string };
+    const { credential, accessToken, country, city, timezone } = await req.json() as { credential?: string; accessToken?: string; country?: string; city?: string; timezone?: string };
     if (!credential && !accessToken) {
       return NextResponse.json({ success: false, error: 'No credential or access token provided.' }, { status: 400 });
     }
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
       email: payload.email,
       country: country || undefined,
       city: city || undefined,
+      timezone: timezone || undefined,
     });
 
     const token = jwt.sign(

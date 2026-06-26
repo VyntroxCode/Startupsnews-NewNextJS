@@ -124,7 +124,7 @@ const graphJsonLd = {
         "https://apps.apple.com/in/app/startupnews-fyi/id6473291055",
       ],
       publishingPrinciples: "https://www.startupnews.fyi/editorial-policy",
-      aboutus: "https://www.startupnews.fyi/about-us",
+      masthead: "https://www.startupnews.fyi/about-us",
       ownershipFundingInfo: "https://www.startupnews.fyi/about-us",
       contactPoint: [
         {

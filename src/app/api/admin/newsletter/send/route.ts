@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Fetch from DB
       let dbRecipients: Recipient[] = await query<Recipient>(
-        'SELECT id, name, email, newsletter_category_slugs FROM public_registrations WHERE is_active = 1'
+        'SELECT id, name, email, newsletter_category_slugs FROM public_registrations WHERE is_active = 1 AND (newsletter_unsubscribed IS NULL OR newsletter_unsubscribed = 0)'
       );
       const filterSlugs = Array.isArray(body.recipientFilter) ? body.recipientFilter : [];
       if (filterSlugs.length > 0) {
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const recipients: Recipient[] = await query<Recipient>(
-      'SELECT id, newsletter_category_slugs FROM public_registrations WHERE is_active = 1'
+      'SELECT id, newsletter_category_slugs FROM public_registrations WHERE is_active = 1 AND (newsletter_unsubscribed IS NULL OR newsletter_unsubscribed = 0)'
     );
 
     if (filter === 'all') {

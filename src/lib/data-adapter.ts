@@ -605,6 +605,26 @@ export async function getAuthorPostsPageData(params: {
       };
     }
 
+    // Slug-based staff author lookup (clean URLs like /author/madhur-mohan-malik)
+    const allAuthors = await usersRepository.findAll({ isActive: true });
+    const matchedUser = allAuthors.find(
+      (u) => u.name?.trim() && slugify(u.name) === params.slug
+    );
+
+    if (matchedUser) {
+      const entities = await postsRepository.findLatestByAuthorId(matchedUser.id, limit);
+      const posts = toListPosts(onlyPostsWithImage(await entitiesToPosts(entities)));
+
+      return {
+        name: matchedUser.name.trim(),
+        slug: slugify(matchedUser.name),
+        type: 'staff',
+        avatarUrl: matchedUser.avatar_url ?? null,
+        description: matchedUser.author_description ?? null,
+        posts,
+      };
+    }
+
     return null;
   } catch (error) {
     console.error('Error fetching author posts page data:', error);

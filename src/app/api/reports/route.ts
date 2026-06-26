@@ -5,6 +5,7 @@ const repo = new ReportsRepository();
 
 export async function GET() {
   try {
+    await repo.publishDue().catch(() => {});
     const reports = await repo.findActive();
     return NextResponse.json({ success: true, data: reports });
   } catch (err) {

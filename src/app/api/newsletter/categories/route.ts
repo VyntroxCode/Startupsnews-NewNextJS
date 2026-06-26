@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/shared/database/connection';
+import { query, queryOne } from '@/shared/database/connection';
 
 interface NewsletterCategory {
   id: number;
@@ -12,10 +12,15 @@ interface NewsletterCategory {
 /** GET /api/newsletter/categories — public, no auth required */
 export async function GET() {
   try {
-    const rows = await query<NewsletterCategory>(
-      'SELECT id, name, slug, color, sort_order FROM newsletter_categories ORDER BY sort_order ASC, name ASC'
-    );
-    return NextResponse.json({ success: true, data: rows });
+    const [rows, enabledRow] = await Promise.all([
+      query<NewsletterCategory>(
+        'SELECT id, name, slug, color, sort_order FROM newsletter_categories ORDER BY sort_order ASC, name ASC'
+      ),
+      queryOne<{ value: string }>('SELECT value FROM site_settings WHERE `key` = ?', ['nl_morning_signal_enabled']),
+    ]);
+    // Default enabled (null = never configured = enabled)
+    const morningSignalEnabled = enabledRow?.value !== '0';
+    return NextResponse.json({ success: true, data: rows, morningSignalEnabled });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });

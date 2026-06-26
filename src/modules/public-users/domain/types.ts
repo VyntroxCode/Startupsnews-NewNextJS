@@ -10,6 +10,8 @@ export interface PublicUserEntity {
   google_id?: string;
   linkedin_id?: string;
   newsletter_category_slugs?: string | null;
+  timezone?: string | null;
+  last_newsletter_sent_date?: string | null;
   auth_provider: 'email' | 'google' | 'linkedin';
   is_active: boolean;
   created_at: Date;

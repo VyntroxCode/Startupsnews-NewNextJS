@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { PostImage } from "@/components/PostImage";
 import { getPostsByCategory, getStartupEvents, hasThumbnail } from "@/lib/data-adapter";
 import { getPostPath } from "@/lib/post-utils";
+import { CategoryMorePosts } from "@/components/CategoryMorePosts";
 // import { Sidebar } from "@/components/Sidebar"; // Unused
 import { StickySidebarContent } from "@/components/StickySidebarContent";
 import { StartupEventsSection } from "@/components/StartupEventsSection";
@@ -149,14 +150,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                       </li>
                     ))}
                 </ul>
-                <div className="mvp-inf-more-wrap left relative">
-                  <Link href="/news" className="mvp-inf-more-but">
-                    More Posts
-                  </Link>
-                  <div className="mvp-nav-links">
-                    <Link href="/news">Page 1 of 1</Link>
-                  </div>
-                </div>
+                <CategoryMorePosts categorySlug={slug} initialCount={listPosts.length} />
               </div>
             </div>
             <div id="mvp-side-wrap" className="left relative theiaStickySidebar">

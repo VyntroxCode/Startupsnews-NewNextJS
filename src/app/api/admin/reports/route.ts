@@ -15,6 +15,7 @@ function normalizeBody(body: Record<string, unknown>) {
     pageCount: body.pageCount == null || body.pageCount === '' ? null : Number(body.pageCount),
     mimeType: String(body.mimeType || '').trim() || null,
     isActive: body.isActive !== false,
+    publishAt: body.publishAt ? String(body.publishAt).trim() || null : null,
   };
 }
 
@@ -23,6 +24,8 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
+    // Auto-publish any scheduled reports whose time has passed on every page load
+    await repo.publishDue().catch(() => {});
     const reports = await repo.findAll();
     return NextResponse.json({ success: true, data: reports });
   } catch (err) {

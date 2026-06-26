@@ -62,12 +62,14 @@ export class RssFeedsService {
     }
 
     const ageFiltered = this.filterItemsByPublishedAge(items, feed.name);
-
-    const toProcess = [...ageFiltered];
+    const toProcess = this.filterItemsByQuality(ageFiltered, feed.name);
     const newItems: typeof items = [];
     for (const item of toProcess) {
-      const exists = await this.repo.itemExistsByGuid(feed.id, item.guid);
-      if (!exists) newItems.push(item);
+      const existsByGuid = await this.repo.itemExistsByGuid(feed.id, item.guid);
+      if (existsByGuid) continue;
+      const existsByTitle = await this.repo.itemExistsByTitle(item.title);
+      if (existsByTitle) continue;
+      newItems.push(item);
     }
 
     const limited = newItems.slice(0, feed.max_items_per_fetch || 10);
@@ -76,8 +78,10 @@ export class RssFeedsService {
 
     const feedForValues = String(feed.feed_for ?? 'website').split(',').map((v) => v.trim());
     const isForWebsite = feedForValues.includes('website');
+    const isForNewsletter = feedForValues.includes('newsletter');
 
     for (const item of limited) {
+      let savedItemId: number | null = null;
       try {
         const savedItem = await this.repo.saveFeedItem({
           rss_feed_id: feed.id,
@@ -90,15 +94,35 @@ export class RssFeedsService {
           image_url: item.imageUrl ?? null,
           published_at: item.publishedAt ?? null,
         });
+        savedItemId = savedItem.id;
 
         if (isForWebsite) {
           const { postId } = await this.postCreator.createPostFromRssItem(item, feed);
-          await this.repo.linkItemToPost(savedItem.id, postId);
+          await this.repo.linkItemToPost(savedItemId, postId);
           postsCreated++;
+        }
+
+        if (isForNewsletter) {
+          await this.repo.saveNewsletterItem({
+            rss_feed_id: feed.id,
+            feed_name: feed.name,
+            feed_url: feed.url,
+            feed_logo_url: feed.logo_url ?? null,
+            title: item.title,
+            link: item.link,
+            image_url: item.imageUrl ?? null,
+            description: item.description ?? null,
+            published_at: item.publishedAt ?? null,
+          });
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         errors.push(`Item ${item.guid}: ${msg}`);
+        // Remove the feed item row so the item can be retried on the next run
+        // (otherwise guid uniqueness would permanently skip it with post_id = NULL)
+        if (savedItemId !== null) {
+          try { await this.repo.deleteFeedItem(savedItemId); } catch { /* best-effort */ }
+        }
       }
     }
 
@@ -159,6 +183,36 @@ export class RssFeedsService {
         afterFilter: out.length,
         droppedNoDate,
         droppedOld,
+      });
+    }
+
+    return out;
+  }
+
+  /** Drop items with no image or with unresolved HTML entities in the title. */
+  private filterItemsByQuality(items: ParsedRssItem[], feedName: string): ParsedRssItem[] {
+    const HTML_ENTITY_RE = /&(?:[a-z]+|#[0-9]+|#x[0-9a-f]+);/i;
+    let droppedNoImage = 0;
+    let droppedBadTitle = 0;
+
+    const out = items.filter((item) => {
+      if (!item.imageUrl) {
+        droppedNoImage++;
+        return false;
+      }
+      if (HTML_ENTITY_RE.test(item.title)) {
+        droppedBadTitle++;
+        return false;
+      }
+      return true;
+    });
+
+    if (droppedNoImage > 0 || droppedBadTitle > 0) {
+      log.info('RSS items skipped by quality filter', {
+        feedName,
+        droppedNoImage,
+        droppedBadTitle,
+        remaining: out.length,
       });
     }
 

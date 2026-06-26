@@ -39,10 +39,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     const placeholders = newsletterFeedIds.map(() => '?').join(',');
-    await query(
-      `DELETE FROM rss_feed_items WHERE rss_feed_id IN (${placeholders})`,
-      newsletterFeedIds
-    );
+    await Promise.all([
+      query(`DELETE FROM rss_feed_items WHERE rss_feed_id IN (${placeholders})`, newsletterFeedIds),
+      query(`DELETE FROM newsletter_items WHERE rss_feed_id IN (${placeholders})`, newsletterFeedIds),
+    ]);
 
     return NextResponse.json({ success: true, deleted: newsletterFeedIds.length });
   } catch (error) {

@@ -15,6 +15,7 @@ function normalizeBody(body: Record<string, unknown>) {
     pageCount: body.pageCount == null || body.pageCount === '' ? null : Number(body.pageCount),
     mimeType: String(body.mimeType || '').trim() || null,
     isActive: body.isActive !== false,
+    publishAt: body.publishAt ? String(body.publishAt).trim() || null : null,
   };
 }
 
@@ -66,7 +67,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ success: true, data: report });
   } catch (err) {
     console.error('PUT /api/admin/reports/[id] error:', err);
-    return NextResponse.json({ success: false, error: 'Failed to update report' }, { status: 500 });
+    return NextResponse.json({ success: false, error: (err as Error).message || 'Failed to update report' }, { status: 500 });
   }
 }
 

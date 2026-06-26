@@ -9,6 +9,7 @@ export interface ReportEntity {
   page_count: number | null;
   mime_type: string | null;
   is_active: number;
+  publish_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -23,4 +24,5 @@ export interface ReportInput {
   pageCount?: number | null;
   mimeType?: string | null;
   isActive?: boolean;
+  publishAt?: string | null;
 }

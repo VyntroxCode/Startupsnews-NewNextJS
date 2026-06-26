@@ -87,6 +87,7 @@ export default function AuthModal() {
 	const [nlCategories, setNlCategories] = useState<NLCategory[]>([]);
 	const [selectedCats, setSelectedCats] = useState<string[]>([]);
 	const [catSaving, setCatSaving] = useState(false);
+	const [morningSignalEnabled, setMorningSignalEnabled] = useState(false);
 
 	/* ── Google OAuth2 ──────────────────────────────────────── */
 	const initGIS = useCallback(() => {
@@ -134,10 +135,12 @@ export default function AuthModal() {
 							}
 						} catch { /* geo is best-effort */ }
 
+						const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+
 						const res = await fetch("/api/public-auth/google-verify", {
 							method: "POST",
 							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ accessToken: response.access_token, country, city }),
+							body: JSON.stringify({ accessToken: response.access_token, country, city, timezone }),
 						});
 						const d = (await res.json()) as {
 							success: boolean;
@@ -153,12 +156,13 @@ export default function AuthModal() {
 							setWelcomeUser(d.data.user);
 							setShowWelcome(true);
 							window.dispatchEvent(new Event("pub-auth-changed"));
-							// Pre-fetch categories in background; picker only shows if user has no prefs
+							// Pre-fetch categories + morning signal status; picker only shows if enabled and user has no prefs
 							try {
 								const catRes = await fetch("/api/newsletter/categories");
 								const catData = await catRes.json();
 								if (catData.success && catData.data?.length) {
 									setNlCategories(catData.data);
+									setMorningSignalEnabled(catData.morningSignalEnabled === true);
 									setSelectedCats([]);
 								}
 							} catch { /* categories optional */ }
@@ -182,11 +186,11 @@ export default function AuthModal() {
 		if (!showWelcome) return;
 		const t = setTimeout(() => {
 			setShowWelcome(false);
-			// Only show picker if user hasn't selected any newsletter categories yet
+			// Only show picker if morning signal is enabled and user hasn't selected categories yet
 			const hasCategories = user?.newsletter_category_slugs
 				? user.newsletter_category_slugs.split(',').filter(Boolean).length > 0
 				: false;
-			if (!hasCategories && nlCategories.length > 0) {
+			if (!hasCategories && nlCategories.length > 0 && morningSignalEnabled) {
 				setShowCategoryPicker(true);
 			}
 		}, 3000);
@@ -619,7 +623,7 @@ export default function AuthModal() {
 									marginBottom: isMobileBanner ? 14 : 0,
 								}}
 							>
-								{nlCategories.map((cat) => {
+								{[...nlCategories].sort((a, b) => a.name.localeCompare(b.name)).map((cat) => {
 									const isSelected = selectedCats.includes(cat.slug);
 									const maxReached = selectedCats.length >= 3 && !isSelected;
 									return (

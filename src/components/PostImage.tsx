@@ -118,7 +118,7 @@ export function PostImage({
               setErrored(true);
             }}
             style={{
-              objectFit: hasBackdrop ? "contain" : (imageStyle?.objectFit ?? "cover"),
+              objectFit: hasBackdrop ? "cover" : (imageStyle?.objectFit ?? "cover"),
               objectPosition: "center",
               zIndex: hasBackdrop ? 1 : undefined,
               ...imageStyle,

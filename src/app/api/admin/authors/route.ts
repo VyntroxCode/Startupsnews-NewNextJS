@@ -4,6 +4,7 @@ import { UsersRepository } from '@/modules/users/repository/users.repository';
 import { UsersService } from '@/modules/users/service/users.service';
 import { query, queryOne } from '@/shared/database/connection';
 import { deleteCacheByPrefix } from '@/shared/cache/redis.client';
+import { slugify } from '@/shared/utils/string.utils';
 
 const usersRepository = new UsersRepository();
 const usersService = new UsersService(usersRepository);
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'author';
+    const slug = slugify(name) || 'author';
     const nonce = Date.now();
     const email = `${slug}-${nonce}@authors.startupnews.fyi`;
     const password = `Author-${nonce}-${Math.random().toString(36).slice(2, 10)}`;

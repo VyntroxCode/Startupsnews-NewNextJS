@@ -43,13 +43,17 @@ export class RssParserService {
       const guid = (item.guid || item.link || link || `hash-${hashString(link + title)}`).trim();
       const author = (item.creator ?? (item as { author?: string }).author ?? '').trim() || undefined;
 
+      const rawItem = item as unknown as Record<string, unknown>;
+      const contentEncoded = rawItem['content:encoded'] ? String(rawItem['content:encoded']) : undefined;
+      const rawDescription = contentEncoded || item.content || item.contentSnippet || '';
+
       items.push({
         guid: guid.substring(0, 500),
         title,
         link,
         author: author ? author.substring(0, 500) : undefined,
-        description: item.contentSnippet || item.content ? stripHtml(String(item.content || item.contentSnippet || '')).slice(0, 2000) : undefined,
-        content: item.content ? String(item.content) : undefined,
+        description: rawDescription ? stripHtml(rawDescription).slice(0, 2000) : undefined,
+        content: contentEncoded || (item.content ? String(item.content) : undefined),
         imageUrl: this.extractImageUrl(item),
         publishedAt: item.pubDate ? new Date(item.pubDate) : null,
       });
@@ -83,9 +87,9 @@ export class RssParserService {
       return enclosure.url;
     }
 
-    // last resort: first <img> in content HTML
-    const content = item.content || item.contentSnippet || '';
-    const imgMatch = String(content).match(/<img[^>]+src=["']([^"']+)["']/i);
+    // last resort: first <img> in content HTML (check content:encoded first, then content)
+    const htmlContent = (item as Record<string, unknown>)['content:encoded'] || item.content || '';
+    const imgMatch = String(htmlContent).match(/<img[^>]+src=["']([^"']+)["']/i);
     if (imgMatch?.[1]) return imgMatch[1];
 
     return undefined;

@@ -85,6 +85,7 @@ export class ReportsRepository {
     await this.ensureColumn('page_count', 'page_count INT NULL');
     await this.ensureColumn('mime_type', 'mime_type VARCHAR(120) NULL');
     await this.ensureColumn('is_active', 'is_active TINYINT(1) NOT NULL DEFAULT 1');
+    await this.ensureColumn('publish_at', 'publish_at DATETIME NULL DEFAULT NULL');
     await this.ensureColumn('created_at', 'created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
     await this.ensureColumn('updated_at', 'updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
     await this.ensureIndex('idx_reports_active_created', 'INDEX idx_reports_active_created (is_active, created_at)');
@@ -94,13 +95,16 @@ export class ReportsRepository {
 
   async findAll(): Promise<ReportEntity[]> {
     await this.ensureTable();
-    const reports = await query<ReportEntity>('SELECT * FROM reports ORDER BY created_at DESC');
+    const reports = await query<ReportEntity>('SELECT * FROM reports ORDER BY COALESCE(publish_at, created_at) DESC');
     return this.normalizeReports(reports);
   }
 
   async findActive(): Promise<ReportEntity[]> {
     await this.ensureTable();
-    const reports = await query<ReportEntity>('SELECT * FROM reports WHERE is_active = 1 ORDER BY created_at DESC');
+    // When publish_at is NULL, fall back to created_at for ordering
+    const reports = await query<ReportEntity>(
+      'SELECT *, COALESCE(publish_at, created_at) AS effective_date FROM reports WHERE is_active = 1 ORDER BY COALESCE(publish_at, created_at) DESC'
+    );
     return this.normalizeReports(reports);
   }
 
@@ -110,11 +114,20 @@ export class ReportsRepository {
     return report ? this.normalizeReport(report) : null;
   }
 
+  private toDbDatetime(dt: string): string {
+    // datetime-local gives "YYYY-MM-DDTHH:mm" — MariaDB needs "YYYY-MM-DD HH:MM:SS"
+    return dt.replace('T', ' ') + (dt.length === 16 ? ':00' : '');
+  }
+
   async create(input: ReportInput): Promise<ReportEntity> {
     await this.ensureTable();
+    const rawPublishAt = input.publishAt ? this.toDbDatetime(input.publishAt) : null;
+    const isFuture = rawPublishAt ? new Date(rawPublishAt) > new Date() : false;
+    const isActive = isFuture ? 0 : (input.isActive === false ? 0 : 1);
+    // Always store the user-entered date; only fall back to NOW() when no date given
     await query(
-      `INSERT INTO reports (title, description, file_url, thumbnail_url, file_name, file_size, page_count, mime_type, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO reports (title, description, file_url, thumbnail_url, file_name, file_size, page_count, mime_type, is_active, publish_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW()))`,
       [
         input.title,
         input.description,
@@ -124,7 +137,8 @@ export class ReportsRepository {
         input.fileSize ?? null,
         input.pageCount ?? null,
         input.mimeType || null,
-        input.isActive === false ? 0 : 1,
+        isActive,
+        rawPublishAt,
       ]
     );
 
@@ -134,9 +148,14 @@ export class ReportsRepository {
 
   async update(id: number, input: ReportInput): Promise<ReportEntity | null> {
     await this.ensureTable();
+    const rawPublishAt = input.publishAt ? this.toDbDatetime(input.publishAt) : null;
+    const isFuture = rawPublishAt ? new Date(rawPublishAt) > new Date() : false;
+    const isActive = isFuture ? 0 : (input.isActive === false ? 0 : 1);
+    // Always store the user-entered date; fall back to created_at only when no date given
     await query(
       `UPDATE reports
-       SET title = ?, description = ?, file_url = ?, thumbnail_url = ?, file_name = ?, file_size = ?, page_count = ?, mime_type = ?, is_active = ?
+       SET title = ?, description = ?, file_url = ?, thumbnail_url = ?, file_name = ?, file_size = ?, page_count = ?, mime_type = ?, is_active = ?,
+           publish_at = COALESCE(?, created_at)
        WHERE id = ?`,
       [
         input.title,
@@ -147,12 +166,22 @@ export class ReportsRepository {
         input.fileSize ?? null,
         input.pageCount ?? null,
         input.mimeType || null,
-        input.isActive === false ? 0 : 1,
+        isActive,
+        rawPublishAt,
         id,
       ]
     );
 
     return this.findById(id);
+  }
+
+  async publishDue(): Promise<number> {
+    await this.ensureTable();
+    // Keep publish_at value after going live (used for ordering); just flip is_active
+    const result = await query<{ affectedRows?: number }>(
+      `UPDATE reports SET is_active = 1 WHERE publish_at IS NOT NULL AND publish_at <= NOW() AND is_active = 0`
+    );
+    return (result as unknown as { affectedRows: number })?.affectedRows ?? 0;
   }
 
   async delete(id: number): Promise<void> {

@@ -113,6 +113,14 @@ export class RssFeedsRepository {
     return !!row;
   }
 
+  async itemExistsByTitle(title: string): Promise<boolean> {
+    const row = await queryOne<{ id: number }>(
+      'SELECT id FROM rss_feed_items WHERE title = ? LIMIT 1',
+      [title.substring(0, 500)]
+    );
+    return !!row;
+  }
+
   async saveFeedItem(data: {
     rss_feed_id: number;
     guid: string;
@@ -161,6 +169,10 @@ export class RssFeedsRepository {
     );
   }
 
+  async deleteFeedItem(itemId: number): Promise<void> {
+    await query('DELETE FROM rss_feed_items WHERE id = ?', [itemId]);
+  }
+
   /** Get source attribution for a post that came from RSS (feed name, logo, item author). */
   async getRssSourceByPostId(postId: number): Promise<{ sourceName: string; sourceLogoUrl: string | null; sourceAuthor: string | null } | null> {
     const row = await queryOne<{ name: string; logo_url: string | null; author: string | null }>(
@@ -177,6 +189,39 @@ export class RssFeedsRepository {
       sourceLogoUrl: row.logo_url ?? null,
       sourceAuthor: row.author ?? null,
     };
+  }
+
+  async saveNewsletterItem(data: {
+    rss_feed_id: number;
+    feed_name: string;
+    feed_url: string;
+    feed_logo_url?: string | null;
+    title: string;
+    link: string;
+    image_url?: string | null;
+    description?: string | null;
+    published_at?: Date | string | null;
+  }): Promise<void> {
+    const categoryRow = await queryOne<{ slug: string }>(
+      'SELECT c.slug FROM rss_feeds f LEFT JOIN categories c ON c.id = f.category_id WHERE f.id = ? LIMIT 1',
+      [data.rss_feed_id]
+    );
+    await query(
+      `INSERT INTO newsletter_items (rss_feed_id, feed_name, feed_url, feed_logo_url, category_slug, title, link, image_url, description, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.rss_feed_id,
+        data.feed_name,
+        data.feed_url,
+        data.feed_logo_url ?? null,
+        categoryRow?.slug ?? null,
+        data.title.substring(0, 500),
+        data.link,
+        data.image_url ?? null,
+        data.description ?? null,
+        data.published_at ?? null,
+      ]
+    );
   }
 
   /** Items from rss_feed_items for all enabled feeds tagged for newsletter, newest first. */

@@ -17,6 +17,7 @@ import {
   getPrevNextPosts,
 } from "@/lib/data-adapter";
 import { getPostPath, normalizePostSlugForCategory } from "@/lib/post-utils";
+import { CategoryMorePosts } from "@/components/CategoryMorePosts";
 
 type CatchAllParams = {
   slug: string[];
@@ -140,13 +141,7 @@ async function renderCategoryPage(slug: string) {
                     </li>
                   ))}
                 </ul>
-                <div className="mvp-inf-more-wrap left relative">
-                  <Link href="/news" className="mvp-inf-more-but">
-                    More Posts
-                  </Link>
-                  <div className="mvp-nav-links">
-                  </div>
-                </div>
+                <CategoryMorePosts categorySlug={slug} initialCount={listPosts.length} />
               </div>
             </div>
             <div id="mvp-side-wrap" className="left relative theiaStickySidebar">
@@ -192,6 +187,10 @@ async function resolvePostByCategoryAndPath(categorySlug: string, postPath: stri
   return null;
 }
 
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 async function renderPostPage(categorySlug: string, postPath: string) {
   const post = await resolvePostByCategoryAndPath(categorySlug, postPath);
   if (!post) notFound();
@@ -208,8 +207,69 @@ async function renderPostPage(categorySlug: string, postPath: string) {
     getMoreNewsSlugs([post.id]),
   ]);
 
+  const postUrl = `${SITE_BASE}/${post.categorySlug}/${canonicalLeaf}`;
+  const dateIso = post.publishedAt || `${post.date}T00:00:00+05:30`;
+  const wordCount = post.content ? stripHtmlTags(post.content).split(/\s+/).filter(Boolean).length : undefined;
+
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "@id": postUrl,
+    "headline": post.title,
+    "name": post.title,
+    "description": (post.metaDescription || post.excerpt || '').slice(0, 300) || undefined,
+    "url": postUrl,
+    "inLanguage": "en",
+    "articleSection": post.category,
+    "keywords": post.tags?.length ? post.tags.join(', ') : post.category,
+    "datePublished": dateIso,
+    "dateModified": dateIso,
+    "isAccessibleForFree": true,
+    ...(wordCount ? { "wordCount": wordCount } : {}),
+    "image": {
+      "@type": "ImageObject",
+      "url": post.image,
+      "width": 1200,
+      "height": 630,
+    },
+    "thumbnailUrl": post.imageSmall || post.image || undefined,
+    "author": {
+      "@type": "Person",
+      "name": post.authorName || "StartupNews.fyi Editorial Team",
+      ...(post.authorSlug ? { "url": `${SITE_BASE}/author/${post.authorSlug}` } : {}),
+    },
+    "publisher": {
+      "@type": "NewsMediaOrganization",
+      "@id": "https://www.startupnews.fyi/#organization",
+      "name": "StartupNews.fyi",
+      "url": "https://www.startupnews.fyi/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.startupnews.fyi/wp-content/uploads/2024/01/logo.png",
+        "width": 512,
+        "height": 512,
+      },
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": postUrl,
+    },
+    "isPartOf": {
+      "@id": "https://www.startupnews.fyi/#website",
+    },
+    "copyrightHolder": {
+      "@id": "https://www.startupnews.fyi/#organization",
+    },
+    "copyrightYear": new Date(dateIso).getFullYear(),
+    "publishingPrinciples": "https://www.startupnews.fyi/editorial-policy",
+  };
+
   return (
     <div id="mvp-post-main-container">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <FullArticle post={post} related={related} prev={prev} next={next} />
       <InfiniteArticleLoader initialPosts={[post]} availableSlugs={availableSlugs} />
     </div>

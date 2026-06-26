@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
     const postIds = entities.map((e) => e.id);
     const categoryMap = new Map<number, { name: string; slug: string }>();
     const tagsByPostId = new Map<number, string[]>();
-    const feedNameByPostId = new Map<string, string>();
+    const feedNameByPostId = new Map<number, string>();
 
     // Run all batch lookups in parallel
     const [categoryRows, tagRows, rssRows] = await Promise.all([
@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
       tagsByPostId.set(row.post_id, arr);
     }
     for (const row of rssRows) {
-      const key = String(row.post_id);
+      const key = Number(row.post_id);
       if (!feedNameByPostId.has(key)) feedNameByPostId.set(key, row.name);
     }
 
@@ -175,8 +175,8 @@ export async function GET(request: NextRequest) {
     if (posts.length > 0) {
       posts = posts.map((p) => ({
         ...p,
-        source: feedNameByPostId.has(p.id) ? ('rss' as const) : ('manual' as const),
-        rssFeedName: feedNameByPostId.get(p.id),
+        source: feedNameByPostId.has(Number(p.id)) ? ('rss' as const) : ('manual' as const),
+        rssFeedName: feedNameByPostId.get(Number(p.id)),
         isGone410: Boolean((p as { isGone410?: boolean }).isGone410),
         httpStatus: (p as { httpStatus?: number }).httpStatus ?? 404,
       }));

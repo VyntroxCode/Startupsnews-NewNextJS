@@ -11,7 +11,7 @@ interface NewsletterItem { id: number; rss_feed_id: number; feed_name: string; f
 interface NLCategory { id: number; name: string; slug: string; color: string; }
 interface MailConfig { host: string; port: string; secure: string; user: string; pass: string; from: string; source: 'db' | 'env'; }
 
-type Tab = 'overview' | 'mail-config' | 'compose';
+type Tab = 'overview' | 'mail-config' | 'compose' | 'cron';
 
 /* ─── Shared input style ──────────────────────────────────── */
 const inp: React.CSSProperties = {
@@ -65,6 +65,17 @@ export default function NewsletterPage() {
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
 
+  /* ── Cron state ── */
+  interface CronConfig { enabled: boolean; cronExpr: string; lastRun: string | null; lastSent: number | null; lastTotal: number | null; }
+  const [cronConfig, setCronConfig] = useState<CronConfig>({ enabled: true, cronExpr: '0 * * * *', lastRun: null, lastSent: null, lastTotal: null });
+  const [cronLoading, setCronLoading] = useState(false);
+  const [cronSaving, setCronSaving] = useState(false);
+  const [cronMsg, setCronMsg] = useState('');
+  const [cronError, setCronError] = useState('');
+  const [cronTriggering, setCronTriggering] = useState(false);
+  const [cronTriggerResult, setCronTriggerResult] = useState<{ sent: number; total: number; errors: number; skipped: number } | null>(null);
+  const [cronTriggerError, setCronTriggerError] = useState('');
+
   /* ── Load overview ── */
   const loadOverview = useCallback(async () => {
     setOverviewError('');
@@ -89,6 +100,22 @@ export default function NewsletterPage() {
       .catch(() => {})
       .finally(() => setConfigLoading(false));
   }, [tab]);
+
+  /* ── Load cron config ── */
+  const loadCronConfig = useCallback(async () => {
+    setCronLoading(true);
+    try {
+      const res = await fetch('/api/admin/newsletter/cron-config', { headers: getAuthHeaders() });
+      const d = await res.json();
+      if (d.success) setCronConfig(d.data);
+    } catch { /* silent */ }
+    finally { setCronLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (tab !== 'cron') return;
+    loadCronConfig();
+  }, [tab, loadCronConfig]);
 
   /* ── Load categories + recipient count + schedules for compose ── */
   const loadSchedules = useCallback(async () => {
@@ -155,237 +182,369 @@ export default function NewsletterPage() {
     finally { setTestSending(false); }
   };
 
-  /* ── Default template ── */
+  /* ── Default template (Morning Signal — dark mode) ── */
   const DEFAULT_TEMPLATE = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="x-apple-disable-message-reformatting">
-  <meta name="color-scheme" content="light">
-  <meta name="supported-color-schemes" content="light">
-  <title>The Morning Signal</title>
-  <style>
-    body, table, td, a { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
-    table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
-    img { -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; display:block; }
-    table { border-collapse:collapse !important; }
-    body { margin:0 !important; padding:0 !important; width:100% !important; }
-    a { text-decoration:none; }
-    @media screen {
-      .news-link:hover .nl-title { color:#E6005C !important; }
-      .card-link:hover .card-title { color:#E6005C !important; }
-      .card-link:hover .read-arrow { transform:translateX(3px); }
-      .read-arrow { transition:transform .25s ease; }
-    }
-    @media (prefers-color-scheme: dark) {
-      .bg-page  { background:#15130F !important; }
-      .bg-card  { background:#1C1A15 !important; }
-      .bg-tint  { background:#241A1E !important; }
-      .txt-dark { color:#EDE8DD !important; }
-      .txt-body { color:#B8B0A1 !important; }
-      .txt-mute { color:#8E8676 !important; }
-      .rule     { border-color:#2E2A23 !important; }
-      .rule-h   { border-color:#46402F !important; }
-    }
-    @media only screen and (max-width:620px) {
-      .container { width:100% !important; }
-      .px        { padding-left:24px !important; padding-right:24px !important; }
-      .stack     { display:block !important; width:100% !important; }
-      .thumb     { width:100% !important; height:auto !important; max-width:100% !important; }
-      .thumb-cell{ padding-bottom:16px !important; padding-right:0 !important; }
-      .hero-title{ font-size:26px !important; line-height:32px !important; }
-      .card-title{ font-size:18px !important; line-height:24px !important; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="dark">
+<title>StartupNews.fyi &mdash; Morning Signal</title>
+<style>
+  body,table,td,a{ -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  table,td{ mso-table-lspace:0pt; mso-table-rspace:0pt; }
+  img{ -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; }
+  table{ border-collapse:collapse !important; }
+  body{ margin:0 !important; padding:0 !important; width:100% !important; }
+  a{ text-decoration:none; }
+  @keyframes pulseGlow { 0%,100%{ box-shadow:0 0 0 0 rgba(255,45,120,0.45);} 50%{ box-shadow:0 0 0 8px rgba(255,45,120,0);} }
+  .headline-link:hover{ color:#FF4D8F !important; }
+  .cta-btn:hover{ filter:brightness(1.08); }
+  @media screen and (max-width:620px){
+    .container{ width:100% !important; }
+    .px{ padding-left:22px !important; padding-right:22px !important; }
+    .stack{ display:block !important; width:100% !important; }
+    .h1{ font-size:30px !important; line-height:36px !important; }
+    .event-img{ width:100% !important; height:auto !important; }
+    .logo-img{ width:200px !important; }
+  }
+</style>
 </head>
-<body class="bg-page" style="margin:0; padding:0; background-color:#F3F0E9;">
-  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#F3F0E9;">
-    Good morning &mdash; today in FinTech &amp; AI, gathered from the world's best desks. &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
-  </div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="bg-page" style="background-color:#F3F0E9;">
-    <tr>
-      <td align="center" style="padding:32px 12px 52px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="container bg-card" style="width:600px; max-width:600px; background-color:#FCFBF7;">
+<body style="margin:0; padding:0; background:#0B0A0F;">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#0B0A0F;">
+  Good morning {{name}}. Madhur here. Your daily startup briefing is ready. &#9749;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+</div>
+<center style="width:100%; background:#0B0A0F;">
 
-          <!-- MASTHEAD -->
-          <tr>
-            <td class="px" style="padding:34px 48px 0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-                <td align="left" style="vertical-align:middle;">
-                  <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-                    <td style="vertical-align:middle;">
-                      <span style="display:inline-block; width:18px; height:18px; vertical-align:middle;">
-                        <img src="https://startupnews.fyi/logo.png" width="18" height="18" alt="StartupNews.fyi" style="display:block; width:18px; height:18px; object-fit:contain;">
-                      </span>
-                    </td>
-                    <td width="7" style="font-size:0;">&nbsp;</td>
-                    <td style="vertical-align:middle;">
-                      <span style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:12px; font-weight:700; letter-spacing:.5px; color:#E6005C;">StartupNews</span><span style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:12px; font-weight:700; letter-spacing:.5px; color:#1C1A15;">.fyi</span>
-                    </td>
-                  </tr></table>
-                </td>
-                <td align="right" class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; letter-spacing:2.5px; color:#A39A87; text-transform:uppercase; vertical-align:middle;">The Morning Signal</td>
-              </tr></table>
-            </td>
-          </tr>
+<!-- TOP BAR -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td align="center" style="background:#131019; border-bottom:1px solid #221C2B; padding:18px 16px;">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+      <tr><td align="center" style="padding-bottom:8px;">
+        <img src="https://startupnews.fyi/logo.png" alt="StartupNews.fyi" width="230" class="logo-img" style="display:block; width:230px; max-width:230px; height:auto;">
+      </td></tr>
+      <tr><td align="center" style="font-family:Arial,Helvetica,sans-serif; font-size:11px; letter-spacing:2px; color:#FF92AE; text-transform:uppercase; font-weight:bold;">
+        Morning Signal &nbsp;&middot;&nbsp; {{date}} &nbsp;&middot;&nbsp; <a href="https://startupnews.fyi" style="color:#FF4D8F; text-decoration:underline;">View online</a>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
 
-          <tr>
-            <td class="px" align="center" style="padding:24px 48px 0;">
-              <div class="txt-dark" style="font-family:Georgia,'Times New Roman',serif; font-size:36px; line-height:40px; font-weight:400; color:#1C1A15; letter-spacing:-0.5px;">The Morning <span style="color:#E6005C;">Signal</span></div>
-              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:15px auto 0;"><tr>
-                <td width="40" style="border-top:1px solid #F0B9CE; font-size:0; line-height:0;">&nbsp;</td>
-                <td width="10" style="font-size:0; line-height:0;">&nbsp;</td>
-                <td style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:9px; letter-spacing:3px; color:#C66B92; text-transform:uppercase;">Startup &amp; Tech</td>
-                <td width="10" style="font-size:0; line-height:0;">&nbsp;</td>
-                <td width="40" style="border-top:1px solid #F0B9CE; font-size:0; line-height:0;">&nbsp;</td>
-              </tr></table>
-              <div class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; letter-spacing:2.5px; color:#A39A87; text-transform:uppercase; padding-top:13px;">{{date}}</div>
-            </td>
-          </tr>
-
-          <!-- EDITOR'S NOTE -->
-          <tr>
-            <td class="px" style="padding:30px 48px 0;">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="padding-bottom:14px;"><tr>
-                <td width="34" style="vertical-align:middle;">
-                  <div style="width:34px; height:34px; border-radius:50%; background:#FBE3ED; text-align:center; line-height:34px; font-family:Georgia,serif; font-size:15px; color:#E6005C;">M</div>
-                </td>
-                <td width="12" style="font-size:0;">&nbsp;</td>
-                <td style="vertical-align:middle;">
-                  <div class="txt-dark" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:12px; font-weight:600; color:#2C2820; letter-spacing:.3px;">From the desk of Madhur Malik</div>
-                  <div class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; color:#A39A87;">Editor, StartupNews.fyi</div>
-                </td>
-              </tr></table>
-              <div class="txt-dark" style="font-family:Georgia,serif; font-size:16px; font-weight:700; color:#1C1A15; padding-top:4px;">Good morning, {{name}}</div>
-              <div class="txt-body" style="font-family:Georgia,serif; font-size:15px; line-height:24px; color:#5A5347; padding-top:10px;">
-                [Write your editor's note here — set the tone for the week in 2–3 sentences.]
-              </div>
-            </td>
-          </tr>
-
-          <tr><td class="px" style="padding:28px 48px 0;"><div class="rule" style="border-top:1px solid #E6E0D3; font-size:0; line-height:0;">&nbsp;</div></td></tr>
-
-          <!-- LEAD STORY -->
-          <tr>
-            <td class="px" style="padding:28px 48px 0;">
-              <a href="LEAD_STORY_URL" target="_blank" class="card-link" style="text-decoration:none; color:inherit; display:block;">
-                <table role="presentation" cellpadding="0" cellspacing="0" style="padding-bottom:14px;"><tr>
-                  <td style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; font-weight:600; letter-spacing:2px; color:#E6005C; text-transform:uppercase;">Lead&nbsp;Story</td>
-                  <td width="12" style="font-size:0;">&nbsp;</td>
-                  <td class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; letter-spacing:2px; color:#B3AA98; text-transform:uppercase;">&middot;&nbsp;&nbsp;Source Name</td>
-                </tr></table>
-                <img src="LEAD_STORY_IMAGE_URL" width="504" height="auto" alt="" class="thumb" style="width:100%; max-width:504px; height:auto; border-radius:2px;">
-                <div class="txt-dark card-title hero-title" style="font-family:Georgia,serif; font-size:27px; line-height:34px; font-weight:400; color:#1C1A15; padding-top:18px; letter-spacing:-0.3px;">Lead Story Headline Goes Here</div>
-                <div class="txt-body" style="font-family:Georgia,serif; font-size:15px; line-height:24px; color:#5A5347; padding-top:11px;">A short 1–2 sentence description of the lead story. Keep it punchy and informative.</div>
-                <div style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:1.5px; color:#E6005C; padding-top:16px; text-transform:uppercase;">Read more&nbsp;<span class="read-arrow" style="display:inline-block;">&rarr;</span></div>
-              </a>
-            </td>
-          </tr>
-
-          <tr><td class="px" style="padding:30px 48px 0;"><div class="rule" style="border-top:1px solid #E6E0D3; font-size:0; line-height:0;">&nbsp;</div></td></tr>
-
-          <!-- THE BRIEFING -->
-          <tr><td class="px" style="padding:24px 48px 0;">
-            <div style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:.5px; color:#E6005C;">&#9656;&nbsp;&nbsp;The Briefing</div>
-          </td></tr>
-
-          <tr><td class="px" style="padding:18px 48px 0;"><a href="STORY_2_URL" target="_blank" class="card-link" style="text-decoration:none; color:inherit; display:block;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-            <td class="stack thumb-cell" width="140" style="vertical-align:top; padding-right:20px;"><img src="STORY_2_IMAGE_URL" width="140" height="105" alt="" class="thumb" style="width:140px; height:105px; object-fit:cover; border-radius:2px;"></td>
-            <td class="stack" style="vertical-align:top;"><div class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; font-weight:600; letter-spacing:1.5px; color:#A39A87; text-transform:uppercase; padding-bottom:6px;">Source Name</div><div class="txt-dark card-title" style="font-family:Georgia,serif; font-size:18px; line-height:24px; font-weight:400; color:#1C1A15;">Story 2 headline goes here</div><div class="txt-body" style="font-family:Georgia,serif; font-size:13px; line-height:20px; color:#6E665A; padding-top:6px;">Short description — one sentence.</div></td>
-          </tr></table></a></td></tr>
-          <tr><td class="px" style="padding:20px 48px 0;"><div class="rule" style="border-top:1px solid #EDE8DC; font-size:0; line-height:0;">&nbsp;</div></td></tr>
-
-          <tr><td class="px" style="padding:20px 48px 0;"><a href="STORY_3_URL" target="_blank" class="card-link" style="text-decoration:none; color:inherit; display:block;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-            <td class="stack thumb-cell" width="140" style="vertical-align:top; padding-right:20px;"><img src="STORY_3_IMAGE_URL" width="140" height="105" alt="" class="thumb" style="width:140px; height:105px; object-fit:cover; border-radius:2px;"></td>
-            <td class="stack" style="vertical-align:top;"><div class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; font-weight:600; letter-spacing:1.5px; color:#A39A87; text-transform:uppercase; padding-bottom:6px;">Source Name</div><div class="txt-dark card-title" style="font-family:Georgia,serif; font-size:18px; line-height:24px; font-weight:400; color:#1C1A15;">Story 3 headline goes here</div><div class="txt-body" style="font-family:Georgia,serif; font-size:13px; line-height:20px; color:#6E665A; padding-top:6px;">Short description — one sentence.</div></td>
-          </tr></table></a></td></tr>
-          <tr><td class="px" style="padding:20px 48px 0;"><div class="rule" style="border-top:1px solid #EDE8DC; font-size:0; line-height:0;">&nbsp;</div></td></tr>
-
-          <tr><td class="px" style="padding:20px 48px 0;"><a href="STORY_4_URL" target="_blank" class="card-link" style="text-decoration:none; color:inherit; display:block;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-            <td class="stack thumb-cell" width="140" style="vertical-align:top; padding-right:20px;"><img src="STORY_4_IMAGE_URL" width="140" height="105" alt="" class="thumb" style="width:140px; height:105px; object-fit:cover; border-radius:2px;"></td>
-            <td class="stack" style="vertical-align:top;"><div class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; font-weight:600; letter-spacing:1.5px; color:#A39A87; text-transform:uppercase; padding-bottom:6px;">Source Name</div><div class="txt-dark card-title" style="font-family:Georgia,serif; font-size:18px; line-height:24px; font-weight:400; color:#1C1A15;">Story 4 headline goes here</div><div class="txt-body" style="font-family:Georgia,serif; font-size:13px; line-height:20px; color:#6E665A; padding-top:6px;">Short description — one sentence.</div></td>
-          </tr></table></a></td></tr>
-
-          <!-- SIGNAL TALKS (event block) -->
-          <tr><td class="px" style="padding:30px 48px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="bg-tint" style="background-color:#FCF0F5; border-radius:4px;"><tr><td style="padding:22px 24px;">
-              <div style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; font-weight:700; letter-spacing:1.5px; color:#E6005C; text-transform:uppercase; padding-bottom:8px;">Signal Talks</div>
-              <div class="txt-dark" style="font-family:Georgia,serif; font-size:18px; line-height:24px; font-weight:400; color:#1C1A15;">[Event title goes here]</div>
-              <div class="txt-body" style="font-family:Georgia,serif; font-size:13px; line-height:20px; color:#6E665A; padding-top:8px;">[Event description — date, speakers, topic]</div>
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:16px;"><tr><td style="background-color:#E6005C;"><a href="EVENT_URL" target="_blank" style="display:inline-block; padding:10px 24px; font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:1.5px; color:#FFFFFF; text-decoration:none; text-transform:uppercase;">Save your spot</a></td></tr></table>
-            </td></tr></table>
-          </td></tr>
-
-          <!-- THE NEWS -->
-          <tr><td class="px" style="padding:32px 48px 0;">
-            <div style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:.5px; color:#E6005C;">&#9656;&nbsp;&nbsp;The News</div>
-          </td></tr>
-          <tr><td class="px" style="padding:16px 48px 0;">
-            <a href="NEWS_1_URL" target="_blank" class="news-link" style="text-decoration:none; color:inherit; display:block; padding-bottom:14px;"><div class="txt-dark nl-title" style="font-family:Georgia,serif; font-size:15px; line-height:23px; color:#2C2820;"><span style="font-weight:600; color:#C66B92;">Source &mdash;</span> News headline one goes here.</div></a>
-            <a href="NEWS_2_URL" target="_blank" class="news-link" style="text-decoration:none; color:inherit; display:block; padding-bottom:14px;"><div class="txt-dark nl-title" style="font-family:Georgia,serif; font-size:15px; line-height:23px; color:#2C2820;"><span style="font-weight:600; color:#C66B92;">Source &mdash;</span> News headline two goes here.</div></a>
-            <a href="NEWS_3_URL" target="_blank" class="news-link" style="text-decoration:none; color:inherit; display:block;"><div class="txt-dark nl-title" style="font-family:Georgia,serif; font-size:15px; line-height:23px; color:#2C2820;"><span style="font-weight:600; color:#C66B92;">Source &mdash;</span> News headline three goes here.</div></a>
-          </td></tr>
-
-          <!-- MUST READS -->
-          <tr><td class="px" style="padding:30px 48px 0;">
-            <div style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:.5px; color:#E6005C;">&#9656;&nbsp;&nbsp;Must Reads</div>
-          </td></tr>
-          <tr><td class="px" style="padding:16px 48px 0;">
-            <a href="READ_1_URL" target="_blank" class="news-link" style="text-decoration:none; color:inherit; display:block; padding-bottom:14px;"><div class="txt-dark nl-title" style="font-family:Georgia,serif; font-size:15px; line-height:23px; color:#2C2820;"><span style="font-weight:600; color:#C66B92;">Source &mdash;</span> Must-read headline one.</div></a>
-            <a href="READ_2_URL" target="_blank" class="news-link" style="text-decoration:none; color:inherit; display:block; padding-bottom:14px;"><div class="txt-dark nl-title" style="font-family:Georgia,serif; font-size:15px; line-height:23px; color:#2C2820;"><span style="font-weight:600; color:#C66B92;">Source &mdash;</span> Must-read headline two.</div></a>
-            <a href="READ_3_URL" target="_blank" class="news-link" style="text-decoration:none; color:inherit; display:block;"><div class="txt-dark nl-title" style="font-family:Georgia,serif; font-size:15px; line-height:23px; color:#2C2820;"><span style="font-weight:600; color:#C66B92;">Source &mdash;</span> Must-read headline three.</div></a>
-          </td></tr>
-
-          <!-- EVENTS NEAR YOU -->
-          <tr><td class="px" style="padding:32px 48px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:.5px; color:#E6005C;">&#9656;&nbsp;&nbsp;Events Near You</td>
-              <td align="right" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; letter-spacing:1.5px; color:#A39A87; text-transform:uppercase; vertical-align:middle;">India &middot; This week</td>
+<!-- FOUNDER NOTE -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+      <tr><td class="px" style="padding:30px 40px 0 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#15131C; border-radius:18px; border:1px solid #2A2435; box-shadow:0 10px 28px rgba(0,0,0,0.55);">
+          <tr><td style="padding:24px 26px 22px 26px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td width="48" valign="middle"><div style="width:44px; height:44px; border-radius:50%; background:#FF4D8F; color:#FFFFFF; font-family:Georgia,serif; font-size:20px; font-weight:bold; text-align:center; line-height:44px;">M</div></td>
+              <td valign="middle" style="padding-left:12px;">
+                <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:14px; font-weight:bold; color:#F2EDF7;">Madhur Mohan Malik</p>
+                <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Founder, StartupNews.fyi</p>
+              </td>
             </tr></table>
+            <p style="margin:16px 0 0 0; font-family:Georgia,serif; font-size:16px; line-height:25px; color:#F2EDF7;">Good morning {{name}} &#128075;<br><br>[Editor&rsquo;s note &mdash; write your daily intro here. Share what&rsquo;s moving markets, what caught your eye, and what the reader should focus on today.]</p>
+            <p style="margin:14px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:20px; color:#B6ACC4;">Your personalised briefing is below. Let&rsquo;s get into it. &#9889;</p>
           </td></tr>
-          <tr><td class="px" style="padding:16px 48px 0;">
-            <a href="EVENT_1_URL" target="_blank" class="news-link" style="text-decoration:none; color:inherit; display:block; padding-bottom:14px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-              <td width="58" style="vertical-align:top;"><span class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; font-weight:600; letter-spacing:1px; color:#C66B92; text-transform:uppercase;">DD Mon</span></td>
-              <td><div class="txt-dark nl-title" style="font-family:Georgia,serif; font-size:15px; line-height:21px; color:#2C2820;">Event Name Goes Here</div><div class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; color:#A39A87; padding-top:2px;">Venue &middot; City</div></td>
-            </tr></table></a>
-            <div style="padding-top:14px;"><a href="https://startupnews.fyi/events" target="_blank" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:1px; color:#E6005C; text-decoration:none; text-transform:uppercase;">See all events&nbsp;&rarr;</a></div>
-          </td></tr>
-
-          <!-- ADVERTISE -->
-          <tr><td class="px" align="center" style="padding:30px 48px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAF7F0; border-top:1px solid #EDE8DC; border-bottom:1px solid #EDE8DC;"><tr><td align="center" style="padding:16px 20px;">
-              <span class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:12px; line-height:18px; color:#8A8170;">Reach 10M+ founders &amp; investors across 24 countries.&nbsp;</span><a href="https://startupnews.fyi/advertise-with-us" target="_blank" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:12px; font-weight:600; color:#E6005C; text-decoration:none;">Advertise with us&nbsp;&rarr;</a>
-            </td></tr></table>
-          </td></tr>
-
-          <!-- CTA -->
-          <tr><td class="px" align="center" style="padding:38px 48px 0;">
-            <div style="border-top:1px solid #F0B9CE; font-size:0; line-height:0; width:40px; margin:0 auto;">&nbsp;</div>
-            <div class="txt-dark" style="font-family:Georgia,serif; font-size:18px; line-height:25px; color:#1C1A15; padding-top:20px;">A different beat tomorrow?</div>
-            <div class="txt-body" style="font-family:Georgia,serif; font-size:14px; line-height:21px; color:#6E665A; padding-top:8px;">Adjust your sectors, add markets, or change the hour your Signal arrives.</div>
-            <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:18px auto 0;"><tr>
-              <td style="border:1px solid #E6005C;"><a href="https://startupnews.fyi/dashboard/settings" target="_blank" style="display:inline-block; padding:12px 30px; font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:1.5px; color:#E6005C; text-decoration:none; text-transform:uppercase;">Tune my feed</a></td>
-            </tr></table>
-          </td></tr>
-
-          <!-- FOOTER -->
-          <tr><td class="px" align="center" style="padding:42px 48px 44px;">
-            <div class="rule" style="border-top:1px solid #E6E0D3; font-size:0; line-height:0; margin-bottom:22px;">&nbsp;</div>
-            <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
-              <td style="vertical-align:middle;"><img src="https://startupnews.fyi/logo.png" width="16" height="16" alt="StartupNews.fyi" style="display:block; width:16px; height:16px; object-fit:contain;"></td>
-              <td width="6" style="font-size:0;">&nbsp;</td>
-              <td style="vertical-align:middle;"><span style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:13px; font-weight:700; color:#E6005C;">StartupNews</span><span style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:13px; font-weight:700; color:#1C1A15;">.fyi</span></td>
-            </tr></table>
-            <div class="txt-mute" style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; line-height:18px; color:#9A917E; padding-top:10px;">The Morning Signal &middot; curated from 250+ global media partners.<br>Headlines and images link to original publishers; all rights remain theirs.</div>
-            <div style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:11px; padding-top:16px;"><a href="https://startupnews.fyi/dashboard/settings" style="color:#8A8170; text-decoration:underline;">Preferences</a> &nbsp;&middot;&nbsp; <a href="#" style="color:#8A8170; text-decoration:underline;">View in browser</a> &nbsp;&middot;&nbsp; <a href="#" style="color:#8A8170; text-decoration:underline;">Unsubscribe</a></div>
-          </td></tr>
-
         </table>
-      </td>
-    </tr>
-  </table>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+
+<!-- SECTOR 1: FINTECH -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+      <tr><td class="px" style="padding:30px 40px 0 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="border-top:1px solid #2A2435; padding-top:16px;">
+            <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FFFFFF; background:#FF4D8F; padding:8px 16px; border-radius:30px; letter-spacing:1.5px; text-transform:uppercase;">&#129516; FINTECH</span>
+          </td></tr>
+        </table>
+      </td></tr>
+      <!-- HERO CARD -->
+      <tr><td class="px" style="padding:16px 40px 0 40px;">
+        <a href="#" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:18px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
+          <img src="https://placehold.co/516x210/15131C/FF4D8F?text=Story+Image" width="516" alt="" class="event-img" style="display:block; width:100%; max-width:516px; height:auto; border-bottom:1px solid #2A2435;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr><td style="padding:18px 22px 20px 22px;">
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; color:#8B8296; letter-spacing:0.5px;">Source &middot; Xh ago</span>
+              <p class="headline-link" style="margin:8px 0 6px 0; font-family:Georgia,serif; font-size:22px; line-height:27px; font-weight:bold; color:#F2EDF7;">[FinTech Hero Headline &mdash; paste your story title here]</p>
+              <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#B6ACC4;">[Two-line summary of the lead FinTech story. Keep it punchy &mdash; what happened, why it matters.]</p>
+              <span style="display:inline-block; margin-top:12px; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FF4D8F;">Read full story &rarr;</span>
+            </td></tr>
+          </table>
+        </a>
+      </td></tr>
+      <!-- COMPACT CARDS -->
+      <tr><td class="px" style="padding:14px 40px 0 40px;">
+        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="96" valign="top" style="padding:14px 0 14px 14px;">
+              <img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;">
+            </td>
+            <td valign="top" style="padding:14px 16px 14px 14px;">
+              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
+              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[FinTech story 2 headline]</p>
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
+            </td>
+          </tr></table>
+        </a>
+      </td></tr>
+      <tr><td class="px" style="padding:14px 40px 0 40px;">
+        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="96" valign="top" style="padding:14px 0 14px 14px;">
+              <img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;">
+            </td>
+            <td valign="top" style="padding:14px 16px 14px 14px;">
+              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
+              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[FinTech story 3 headline]</p>
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
+            </td>
+          </tr></table>
+        </a>
+      </td></tr>
+      <tr><td class="px" style="padding:14px 40px 0 40px;">
+        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="96" valign="top" style="padding:14px 0 14px 14px;">
+              <img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;">
+            </td>
+            <td valign="top" style="padding:14px 16px 14px 14px;">
+              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
+              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[FinTech story 4 headline]</p>
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
+            </td>
+          </tr></table>
+        </a>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+
+<!-- SECTOR 2: AGRITECH (duplicate block above for additional sectors) -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+      <tr><td class="px" style="padding:30px 40px 0 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="border-top:1px solid #2A2435; padding-top:16px;">
+            <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FFFFFF; background:#FF4D8F; padding:8px 16px; border-radius:30px; letter-spacing:1.5px; text-transform:uppercase;">&#127806; AGRITECH</span>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td class="px" style="padding:16px 40px 0 40px;">
+        <a href="#" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:18px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
+          <img src="https://placehold.co/516x210/15131C/FF4D8F?text=Story+Image" width="516" alt="" class="event-img" style="display:block; width:100%; max-width:516px; height:auto; border-bottom:1px solid #2A2435;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr><td style="padding:18px 22px 20px 22px;">
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; color:#8B8296; letter-spacing:0.5px;">Source &middot; Xh ago</span>
+              <p class="headline-link" style="margin:8px 0 6px 0; font-family:Georgia,serif; font-size:22px; line-height:27px; font-weight:bold; color:#F2EDF7;">[AgriTech Hero Headline]</p>
+              <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#B6ACC4;">[Two-line summary of the lead AgriTech story.]</p>
+              <span style="display:inline-block; margin-top:12px; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FF4D8F;">Read full story &rarr;</span>
+            </td></tr>
+          </table>
+        </a>
+      </td></tr>
+      <tr><td class="px" style="padding:14px 40px 0 40px;">
+        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="96" valign="top" style="padding:14px 0 14px 14px;"><img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;"></td>
+            <td valign="top" style="padding:14px 16px 14px 14px;">
+              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
+              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[AgriTech story 2 headline]</p>
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
+            </td>
+          </tr></table>
+        </a>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+
+<!-- SECTOR 3: SPACETECH -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center">
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+      <tr><td class="px" style="padding:30px 40px 0 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="border-top:1px solid #2A2435; padding-top:16px;">
+            <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FFFFFF; background:#FF4D8F; padding:8px 16px; border-radius:30px; letter-spacing:1.5px; text-transform:uppercase;">&#128640; SPACETECH</span>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td class="px" style="padding:16px 40px 0 40px;">
+        <a href="#" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:18px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
+          <img src="https://placehold.co/516x210/15131C/FF4D8F?text=Story+Image" width="516" alt="" class="event-img" style="display:block; width:100%; max-width:516px; height:auto; border-bottom:1px solid #2A2435;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr><td style="padding:18px 22px 20px 22px;">
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; color:#8B8296; letter-spacing:0.5px;">Source &middot; Xh ago</span>
+              <p class="headline-link" style="margin:8px 0 6px 0; font-family:Georgia,serif; font-size:22px; line-height:27px; font-weight:bold; color:#F2EDF7;">[SpaceTech Hero Headline]</p>
+              <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#B6ACC4;">[Two-line summary of the lead SpaceTech story.]</p>
+              <span style="display:inline-block; margin-top:12px; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FF4D8F;">Read full story &rarr;</span>
+            </td></tr>
+          </table>
+        </a>
+      </td></tr>
+      <tr><td class="px" style="padding:14px 40px 0 40px;">
+        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="96" valign="top" style="padding:14px 0 14px 14px;"><img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;"></td>
+            <td valign="top" style="padding:14px 16px 14px 14px;">
+              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
+              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[SpaceTech story 2 headline]</p>
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
+            </td>
+          </tr></table>
+        </a>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+
+<!-- GOOGLE ADS -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+    <tr><td class="px" style="padding:26px 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px dashed #2A2435; border-radius:12px;">
+        <tr><td align="center" style="padding:14px;">
+          <span style="font-family:Arial,Helvetica,sans-serif; font-size:9px; letter-spacing:2px; color:#6F6580; text-transform:uppercase;">Advertisement</span>
+          <!-- {{GOOGLE_ADS_CODE}} -->
+          <div style="margin-top:8px; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#6F6580;">[ Google Ads slot &mdash; 600x90 ]</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table></td></tr>
+</table>
+
+<!-- AMAZON AFFILIATE / FOUNDER PICKS -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+    <tr><td class="px" style="padding:0 40px 6px 40px;">
+      <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; letter-spacing:2px; color:#FF8C3B; text-transform:uppercase;">&#128722; FOUNDER PICKS</span>
+      <span style="font-family:Arial,Helvetica,sans-serif; font-size:9px; color:#6F6580;"> &nbsp;&middot;&nbsp; affiliate</span>
+    </td></tr>
+    <tr><td class="px" style="padding:10px 40px 0 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#15131C; border-radius:16px; border:1px solid #211C29;">
+        <tr><td style="padding:18px 22px;">
+          <!-- {{AMAZON_AFFILIATE_CODE}} -->
+          <p style="margin:0 0 10px 0; font-family:Arial,Helvetica,sans-serif; font-size:15px; font-weight:bold; color:#FFD23F;">Gear that ships fast &rarr;</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="33%" valign="top" style="padding-right:8px;">
+              <a href="https://amazon.in/?tag=snf-21" style="display:block;"><img src="https://placehold.co/200x200/211C29/FFD23F?text=Product" width="100%" alt="" style="display:block; border-radius:10px; border:1px solid #2A2435;"></a>
+              <p style="margin:6px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:15px; color:#D7CFE3;">[Product Name 1]</p>
+              <p style="margin:2px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; font-weight:bold; color:#FFD23F;">&#8377;0,000</p>
+            </td>
+            <td width="33%" valign="top" style="padding:0 4px;">
+              <a href="https://amazon.in/?tag=snf-21" style="display:block;"><img src="https://placehold.co/200x200/211C29/FFD23F?text=Product" width="100%" alt="" style="display:block; border-radius:10px; border:1px solid #2A2435;"></a>
+              <p style="margin:6px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:15px; color:#D7CFE3;">[Product Name 2]</p>
+              <p style="margin:2px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; font-weight:bold; color:#FFD23F;">&#8377;0,000</p>
+            </td>
+            <td width="33%" valign="top" style="padding-left:8px;">
+              <a href="https://amazon.in/?tag=snf-21" style="display:block;"><img src="https://placehold.co/200x200/211C29/FFD23F?text=Product" width="100%" alt="" style="display:block; border-radius:10px; border:1px solid #2A2435;"></a>
+              <p style="margin:6px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:15px; color:#D7CFE3;">[Product Name 3]</p>
+              <p style="margin:2px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; font-weight:bold; color:#FFD23F;">&#8377;0,000</p>
+            </td>
+          </tr></table>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table></td></tr>
+</table>
+
+<!-- CITY EVENTS -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+    <tr><td class="px" style="padding:30px 40px 8px 40px;">
+      <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; letter-spacing:2px; color:#FF4D8F; text-transform:uppercase;">&#128205; HAPPENING NEAR YOU</span>
+    </td></tr>
+    <tr><td class="px" style="padding:8px 40px 0 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td class="stack" width="48%" valign="top" style="padding:0 6px 12px 0;">
+          <a href="https://startupnews.fyi/events/" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:16px; overflow:hidden;">
+            <img src="https://placehold.co/260x130/15131C/FF4D8F?text=Event" width="260" alt="" class="event-img" style="display:block; width:100%; max-width:260px; height:130px; object-fit:cover; border-bottom:1px solid #2A2435;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:12px 14px 14px 14px;">
+              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#1A1422; background:#FFD23F; padding:3px 8px; border-radius:6px;">[Date]</span>
+              <p style="margin:8px 0 0 0; font-family:Georgia,serif; font-size:15px; line-height:19px; font-weight:bold; color:#F2EDF7;">[Event Name 1]</p>
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#FF4D8F; font-weight:bold;">RSVP &rarr;</span>
+            </td></tr></table>
+          </a>
+        </td>
+        <td class="stack" width="48%" valign="top" style="padding:0 0 12px 6px;">
+          <a href="https://startupnews.fyi/events/" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:16px; overflow:hidden;">
+            <img src="https://placehold.co/260x130/15131C/FF4D8F?text=Event" width="260" alt="" class="event-img" style="display:block; width:100%; max-width:260px; height:130px; object-fit:cover; border-bottom:1px solid #2A2435;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:12px 14px 14px 14px;">
+              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#1A1422; background:#FFD23F; padding:3px 8px; border-radius:6px;">[Date]</span>
+              <p style="margin:8px 0 0 0; font-family:Georgia,serif; font-size:15px; line-height:19px; font-weight:bold; color:#F2EDF7;">[Event Name 2]</p>
+              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#FF4D8F; font-weight:bold;">RSVP &rarr;</span>
+            </td></tr></table>
+          </a>
+        </td>
+      </tr></table>
+    </td></tr>
+  </table></td></tr>
+</table>
+
+<!-- ADVERTISE WITH US -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+    <tr><td class="px" style="padding:28px 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FF4D8F; background-image:linear-gradient(120deg,#FF4D8F,#FF8C3B); border-radius:18px;">
+        <tr><td style="padding:26px 28px;">
+          <p style="margin:0 0 4px 0; font-family:Georgia,serif; font-size:21px; font-weight:bold; color:#FFFFFF;">Want 100K+ founders &amp; operators reading you?</p>
+          <p style="margin:0 0 16px 0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:20px; color:#FFE3EC;">Get your brand in front of the sharpest startup audience &mdash; one slot, every morning.</p>
+          <a href="https://startupnews.fyi/advertise-with-us" style="display:inline-block; background:#0B0A0F; color:#FFFFFF; font-family:Arial,Helvetica,sans-serif; font-size:14px; font-weight:bold; padding:13px 26px; border-radius:30px;">Advertise With Us &rarr;</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table></td></tr>
+</table>
+
+<!-- QUOTE + SIGNOFF -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+    <tr><td class="px" style="padding:14px 40px 0 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="padding:0 0 0 18px; border-left:3px solid #FF4D8F;">
+          <p style="margin:0; font-family:Georgia,serif; font-size:19px; line-height:27px; font-style:italic; color:#F2EDF7;">&ldquo;The best time to build was yesterday. The second best time is the next 24 hours.&rdquo;</p>
+          <p style="margin:6px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; font-weight:bold; color:#9089A0;">&mdash; On founder urgency</p>
+        </td>
+      </tr></table>
+    </td></tr>
+    <tr><td class="px" style="padding:24px 40px 6px 40px;">
+      <p style="margin:0; font-family:Georgia,serif; font-size:16px; line-height:24px; color:#F2EDF7;">Warm regards,</p>
+      <p style="margin:4px 0 0 0; font-family:Georgia,serif; font-size:22px; font-weight:bold; color:#FF4D8F;">Madhur Mohan Malik</p>
+      <p style="margin:2px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#9089A0;">Founder, StartupNews.fyi</p>
+    </td></tr>
+  </table></td></tr>
+</table>
+
+<!-- FOOTER -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0E0B13;">
+  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+    <tr><td class="px" style="padding:30px 40px;" align="center">
+      <img src="https://startupnews.fyi/logo.png" alt="StartupNews.fyi" width="210" class="logo-img" style="display:block; width:210px; max-width:210px; height:auto; margin-bottom:14px;">
+      <p style="margin:0 0 16px 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:18px; color:#b9adc9;">The pulse of global startups &mdash; every morning, 8 AM.</p>
+      <p style="margin:0 0 16px 0; font-family:Arial,Helvetica,sans-serif; font-size:12px;">
+        <a href="https://instagram.com/startupnews.fyi" style="color:#FFD23F; padding:0 6px;">Instagram</a> &middot;
+        <a href="https://linkedin.com/company/startupnews-fyi" style="color:#FFD23F; padding:0 6px;">LinkedIn</a> &middot;
+        <a href="https://startupnews.fyi" style="color:#FFD23F; padding:0 6px;">Website</a>
+      </p>
+      <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:17px; color:#6f6580;">
+        You are receiving this because you subscribed to StartupNews.fyi.
+        <a href="#" style="color:#b9adc9; text-decoration:underline;">Unsubscribe</a><br>
+        DOTFYI Media Ventures Pvt. Ltd. &middot; New Delhi, India
+      </p>
+    </td></tr>
+  </table></td></tr>
+</table>
+
+</center>
 </body>
 </html>`;
 
@@ -481,6 +640,34 @@ export default function NewsletterPage() {
     } catch { /* silent */ }
   };
 
+  /* ── Cron: save config ── */
+  const handleSaveCronConfig = async () => {
+    setCronError(''); setCronMsg(''); setCronSaving(true);
+    try {
+      const res = await fetch('/api/admin/newsletter/cron-config', {
+        method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: cronConfig.enabled, cronExpr: cronConfig.cronExpr }),
+      });
+      const d = await res.json();
+      if (d.success) { setCronMsg('Cron configuration saved.'); setTimeout(() => setCronMsg(''), 4000); }
+      else setCronError(d.error || 'Save failed');
+    } catch { setCronError('Save request failed'); }
+    finally { setCronSaving(false); }
+  };
+
+  /* ── Cron: trigger now ── */
+  const handleCronTrigger = async () => {
+    if (!confirm('Send Morning Signal now to ALL active subscribers? This bypasses the timezone filter and sends immediately regardless of their local time.')) return;
+    setCronTriggerError(''); setCronTriggerResult(null); setCronTriggering(true);
+    try {
+      const res = await fetch('/api/admin/newsletter/cron-trigger', { method: 'POST', headers: getAuthHeaders() });
+      const d = await res.json();
+      if (d.success) { setCronTriggerResult({ sent: d.sent, total: d.total, errors: d.errors, skipped: d.skipped }); loadCronConfig(); }
+      else setCronTriggerError(d.error || 'Trigger failed');
+    } catch { setCronTriggerError('Trigger request failed'); }
+    finally { setCronTriggering(false); }
+  };
+
   /* ── Grouped articles ── */
   const grouped = items.reduce<Record<number, { feedName: string; feedUrl: string; feedLogoUrl: string | null; items: NewsletterItem[] }>>((acc, item) => {
     if (!acc[item.rss_feed_id]) acc[item.rss_feed_id] = { feedName: item.feed_name, feedUrl: item.feed_url, feedLogoUrl: item.feed_logo_url, items: [] };
@@ -523,6 +710,7 @@ export default function NewsletterPage() {
             { id: 'overview', label: 'Overview' },
             { id: 'mail-config', label: 'Mail Config' },
             { id: 'compose', label: 'Compose & Send' },
+            { id: 'cron', label: 'Cron Settings' },
           ] as { id: Tab; label: string }[]).map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               padding: '0.75rem 1.5rem', background: 'none', border: 'none',
@@ -972,6 +1160,111 @@ export default function NewsletterPage() {
               </div>
             )}
           </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════
+            TAB 4 — CRON SETTINGS
+        ══════════════════════════════════════ */}
+        {tab === 'cron' && (
+          <div style={{ maxWidth: 680 }}>
+            {cronLoading ? (
+              <p style={{ color: '#64748b' }}>Loading cron configuration…</p>
+            ) : (
+              <>
+                {/* Morning Signal enable/disable */}
+                <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: '1.75rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.25rem' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#0f172a', margin: 0 }}>Morning Signal Newsletter</h3>
+                    <span style={{ fontSize: '0.75rem', padding: '2px 10px', borderRadius: 20, fontWeight: 700, background: cronConfig.enabled ? '#dcfce7' : '#f1f5f9', color: cronConfig.enabled ? '#166534' : '#94a3b8' }}>
+                      {cronConfig.enabled ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1.5rem' }}>
+                    When enabled, subscribers receive a personalised newsletter every morning at 8 AM in their local timezone. The newsletter category picker will also appear in the sign-up modal for new users.
+                  </p>
+
+                  {cronMsg && <div style={{ background: '#dcfce7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem', fontWeight: 600 }}>✓ {cronMsg}</div>}
+                  {cronError && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem' }}>{cronError}</div>}
+
+                  {/* Enable toggle */}
+                  <div
+                    onClick={() => setCronConfig(c => ({ ...c, enabled: !c.enabled }))}
+                    style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', padding: '1rem 1.25rem', background: cronConfig.enabled ? '#f0fdf4' : '#fafafa', border: `1.5px solid ${cronConfig.enabled ? '#86efac' : '#e2e8f0'}`, borderRadius: 10, cursor: 'pointer', userSelect: 'none' as const }}
+                  >
+                    <div style={{ width: 48, height: 26, borderRadius: 13, background: cronConfig.enabled ? '#22c55e' : '#cbd5e1', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+                      <div style={{ position: 'absolute', top: 3, left: cronConfig.enabled ? 25 : 3, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#0f172a' }}>
+                        {cronConfig.enabled ? 'Newsletter is ON' : 'Newsletter is OFF'}
+                      </div>
+                      <div style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: 2 }}>
+                        {cronConfig.enabled
+                          ? 'Automated morning sends active · Category picker shown on signup'
+                          : 'No automated sends · Category picker hidden on signup'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Delivery time info */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#374151', marginBottom: 4 }}>Delivery Time</div>
+                    <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                      Every day at <strong>8:00 AM</strong> in each subscriber&apos;s local timezone. The cron runs every hour and sends only to subscribers whose local time is currently 8 AM and who haven&apos;t received it yet today.
+                    </div>
+                  </div>
+
+                  <button onClick={handleSaveCronConfig} disabled={cronSaving} style={{ padding: '0.75rem 2rem', background: cronSaving ? '#94a3b8' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.9375rem', cursor: cronSaving ? 'not-allowed' : 'pointer' }}>
+                    {cronSaving ? 'Saving…' : 'Save Settings'}
+                  </button>
+                </div>
+
+                {/* Last run stats */}
+                <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#0f172a', margin: '0 0 1rem' }}>Last Run Stats</h3>
+                  {cronConfig.lastRun ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                      <div style={{ textAlign: 'center' as const, padding: '1rem', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#6366f1' }}>{cronConfig.lastSent ?? '—'}</div>
+                        <div style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: 2 }}>Emails sent</div>
+                      </div>
+                      <div style={{ textAlign: 'center' as const, padding: '1rem', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>{cronConfig.lastTotal ?? '—'}</div>
+                        <div style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: 2 }}>Total subscribers</div>
+                      </div>
+                      <div style={{ textAlign: 'center' as const, padding: '1rem', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#475569', marginTop: 6 }}>{new Date(cronConfig.lastRun).toLocaleString()}</div>
+                        <div style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: 2 }}>Last run time</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0 }}>No runs recorded yet. Stats will appear here after the first cron execution or manual trigger.</p>
+                  )}
+                </div>
+
+                {/* Manual trigger */}
+                <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  <h3 style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#0f172a', margin: '0 0 0.5rem' }}>Manual Trigger</h3>
+                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1.25rem' }}>
+                    Send the Morning Signal newsletter to <strong>all active subscribers right now</strong>, regardless of their local timezone. Deduplication still applies — subscribers who already received it today will be skipped.
+                  </p>
+
+                  {cronTriggerResult && (
+                    <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 8, padding: '12px 16px', marginBottom: '1rem' }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#166534', fontSize: '0.9375rem' }}>
+                        ✓ Trigger complete — sent {cronTriggerResult.sent}, skipped {cronTriggerResult.skipped}, errors {cronTriggerResult.errors}, out of {cronTriggerResult.total} total subscribers
+                      </p>
+                    </div>
+                  )}
+                  {cronTriggerError && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem' }}>{cronTriggerError}</div>}
+
+                  <button onClick={handleCronTrigger} disabled={cronTriggering} style={{ padding: '0.75rem 1.75rem', background: cronTriggering ? '#94a3b8' : '#0ea5e9', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.9375rem', cursor: cronTriggering ? 'not-allowed' : 'pointer' }}>
+                    {cronTriggering ? 'Running…' : 'Trigger Morning Signal Now'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

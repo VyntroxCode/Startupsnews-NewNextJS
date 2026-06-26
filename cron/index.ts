@@ -18,6 +18,7 @@ import { createCronLock } from '@/shared/locks/redis-lock';
 import { RssFeedsSchedulerJob } from './jobs/rss-feeds-scheduler.job';
 import { RssFeedWorker } from '@/workers/rss.worker';
 import { MorningSignalJob } from './jobs/morning-signal.job';
+import { ReportSchedulerJob } from './jobs/report-scheduler.job';
 
 loadEnvConfig(process.cwd());
 
@@ -113,19 +114,39 @@ async function start(): Promise<void> {
   cron.schedule(schedule, runSchedulerOnce, { timezone: process.env.TZ || 'UTC' });
   log.info('Cron started', { schedule, timezone: process.env.TZ || 'UTC' });
 
-  // Morning Signal: every 2 hours
-  const morningSignalSchedule = process.env.MORNING_SIGNAL_CRON || '0 */2 * * *';
+  // Morning Signal: every hour — job filters by subscriber timezone (sends at 8 AM their local time)
+  const morningSignalSchedule = process.env.MORNING_SIGNAL_CRON || '0 * * * *';
   cron.schedule(morningSignalSchedule, async () => {
     log.info('Morning Signal triggered');
     try {
       const job = new MorningSignalJob();
       const result = await job.execute();
-      log.info('Morning Signal done', result);
+      log.info('Morning Signal done', { ...result });
+
+      // Record last run stats in site_settings for admin UI
+      const { query: dbQuery } = await import('@/shared/database/connection');
+      const now = new Date().toISOString();
+      await Promise.all([
+        dbQuery('INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?, updated_at = NOW()', ['nl_morning_signal_last_run', now, now]),
+        dbQuery('INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?, updated_at = NOW()', ['nl_morning_signal_last_sent', String(result.sent), String(result.sent)]),
+        dbQuery('INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?, updated_at = NOW()', ['nl_morning_signal_last_total', String(result.total), String(result.total)]),
+      ]);
     } catch (err) {
       log.error('Morning Signal failed', err);
     }
   }, { timezone: 'UTC' });
   log.info('Morning Signal cron registered', { schedule: morningSignalSchedule });
+
+  // Report scheduler: every 5 minutes — publishes reports whose publish_at has passed
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const job = new ReportSchedulerJob();
+      await job.execute();
+    } catch (err) {
+      log.error('Report scheduler failed', err);
+    }
+  }, { timezone: 'UTC' });
+  log.info('Report scheduler cron registered', { schedule: '*/5 * * * *' });
 }
 
 start().catch((err) => {

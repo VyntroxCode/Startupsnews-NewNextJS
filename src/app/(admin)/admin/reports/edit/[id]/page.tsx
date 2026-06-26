@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getAdminToken, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
@@ -47,6 +47,8 @@ export default function AdminReportEditPage() {
   const [mimeType, setMimeType] = useState('');
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [isActive, setIsActive] = useState(true);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [publishAt, setPublishAt] = useState('');
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,42 +56,52 @@ export default function AdminReportEditPage() {
   const [success, setSuccess] = useState(false);
   const [fileUploadError, setFileUploadError] = useState('');
 
+  const loadReport = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(withAdminToken(`/api/admin/reports/${reportId}`), { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load report');
+      }
+      const fetchedReport: ReportEntity = data.data;
+      setReport(fetchedReport);
+      setTitle(fetchedReport.title);
+      setDescription(fetchedReport.description);
+      setFileUrl(fetchedReport.file_url);
+      setThumbnailUrl(fetchedReport.thumbnail_url || '');
+      setFileName(fetchedReport.file_name || '');
+      setFileSize(fetchedReport.file_size || null);
+      setMimeType(fetchedReport.mime_type || '');
+      setPageCount(fetchedReport.page_count ?? null);
+      setIsActive(fetchedReport.is_active === 1);
+      setScheduleEnabled(false);
+      setPublishAt('');
+      setReportFile(null);
+      // Only pre-populate schedule if the report is pending (inactive + future publish_at)
+      if (fetchedReport.publish_at && fetchedReport.is_active === 0) {
+        const publishDate = new Date(fetchedReport.publish_at.toString().replace(' ', 'T'));
+        if (publishDate > new Date()) {
+          setScheduleEnabled(true);
+          setPublishAt(new Date(publishDate.getTime() - publishDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load report');
+    } finally {
+      if (showLoader) setLoading(false);
+    }
+  }, [reportId]);
+
   useEffect(() => {
     if (Number.isNaN(reportId)) {
       setError('Invalid report ID');
       setLoading(false);
       return;
     }
-
-    const fetchReport = async () => {
-      try {
-        const res = await fetch(withAdminToken(`/api/admin/reports/${reportId}`), { headers: getAuthHeaders() });
-        const data = await res.json();
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to load report');
-        }
-        const fetchedReport: ReportEntity = data.data;
-        setReport(fetchedReport);
-        setTitle(fetchedReport.title);
-        setDescription(fetchedReport.description);
-        setFileUrl(fetchedReport.file_url);
-        setThumbnailUrl(fetchedReport.thumbnail_url || '');
-        setFileName(fetchedReport.file_name || '');
-        setFileSize(fetchedReport.file_size || null);
-        setMimeType(fetchedReport.mime_type || '');
-        setPageCount(fetchedReport.page_count ?? null);
-        setIsActive(fetchedReport.is_active === 1);
-        // No direct file to set for reportFile here as it's for new uploads
-        setReportFile(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load report');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchReport();
-  }, [reportId]);
+    loadReport(true);
+  }, [reportId, loadReport]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,6 +202,7 @@ export default function AdminReportEditPage() {
           pageCount: pageCount ?? null,
           mimeType: finalMimeType || null,
           isActive,
+          publishAt: scheduleEnabled && publishAt ? publishAt : null,
         }),
       });
 
@@ -198,8 +211,8 @@ export default function AdminReportEditPage() {
         throw new Error(data.error || 'Failed to update report');
       }
 
-      setSuccess(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      router.refresh();
+      router.push('/admin/reports');
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -485,28 +498,65 @@ export default function AdminReportEditPage() {
 
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', marginTop: '1.25rem' }}>
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  style={{
-                    height: '1.25rem',
-                    width: '1.25rem',
-                    accentColor: '#6366f1',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
-                />
-                <label htmlFor="isActive" style={{ marginLeft: '0.5rem', display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#4a5568' }}>Active (Show to users)</label>
+              {/* Publish settings */}
+              <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <p style={{ margin: '0 0 1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.9rem' }}>📅 Publish Settings</p>
+
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={isActive && !scheduleEnabled}
+                    onChange={(e) => { setIsActive(e.target.checked); if (e.target.checked) { setScheduleEnabled(false); setPublishAt(''); } }}
+                    style={{ height: '1.15rem', width: '1.15rem', accentColor: '#6366f1', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="isActive" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#4a5568' }}>
+                    Published (visible to users)
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                  <input
+                    type="checkbox"
+                    id="scheduleEnabled"
+                    checked={scheduleEnabled}
+                    onChange={(e) => { setScheduleEnabled(e.target.checked); if (e.target.checked) setIsActive(false); else setPublishAt(''); }}
+                    style={{ height: '1.15rem', width: '1.15rem', accentColor: '#f59e0b', cursor: 'pointer', marginTop: '2px' }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="scheduleEnabled" style={{ fontSize: '0.875rem', fontWeight: '500', color: '#4a5568', cursor: 'pointer' }}>
+                      Schedule for a specific date &amp; time
+                    </label>
+                    {scheduleEnabled && (
+                      <div style={{ marginTop: '0.75rem' }}>
+                        <input
+                          type="datetime-local"
+                          value={publishAt}
+                          onChange={(e) => setPublishAt(e.target.value)}
+                          required={scheduleEnabled}
+                          style={{
+                            padding: '0.625rem 0.875rem',
+                            border: '1.5px solid #f59e0b',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            color: '#0f172a',
+                            outline: 'none',
+                            background: '#fffbeb',
+                          }}
+                        />
+                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#92400e' }}>
+                          ⏰ Report will automatically go live at this date/time. It will be hidden until then.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9', marginTop: '2rem' }}>
               <button
                 type="submit"
-                disabled={saving || !title || !description || !fileUrl}
+                disabled={saving || !title || !description || (!fileUrl && !reportFile && !report?.file_url)}
                 style={{
                   padding: '0.875rem 1.5rem',
                   background: saving ? '#a0aec0' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',

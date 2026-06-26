@@ -14,6 +14,7 @@ interface RegisteredUser {
 	created_at: string;
 	last_login?: string;
 	newsletter_category_slugs?: string | null;
+	timezone?: string | null;
 }
 
 interface Pagination {
@@ -119,6 +120,7 @@ export default function RegisteredUsersPage() {
 			"Phone",
 			"City",
 			"Country",
+			"Timezone",
 			"Newsletter Categories",
 			"Provider",
 			"Joined",
@@ -138,6 +140,7 @@ export default function RegisteredUsersPage() {
 				esc(u.phone),
 				esc(u.city),
 				esc(u.country),
+				esc(u.timezone || ""),
 				esc(u.newsletter_category_slugs || ""),
 				u.auth_provider,
 				u.created_at
@@ -497,6 +500,7 @@ export default function RegisteredUsersPage() {
 										"User",
 										"Contact",
 										"Location",
+										"Timezone",
 										"Newsletter",
 										"Provider",
 										"Joined",
@@ -659,6 +663,25 @@ export default function RegisteredUsersPage() {
 												<span style={{ color: "#cbd5e1", fontSize: 13 }}>
 													—
 												</span>
+											)}
+										</td>
+
+										{/* Timezone */}
+										<td style={{ padding: "14px 16px", minWidth: 160, whiteSpace: "nowrap" }}>
+											{u.timezone ? (
+												<span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "#475569", fontWeight: 500 }}>
+													<span style={{ fontSize: 14 }}>🕐</span>
+													<span>
+														<span style={{ display: "block", fontWeight: 600, color: "#1e293b", fontSize: 12 }}>
+															{u.timezone.split("/").pop()?.replace(/_/g, " ") ?? u.timezone}
+														</span>
+														<span style={{ display: "block", color: "#94a3b8", fontSize: 11 }}>
+															{u.timezone}
+														</span>
+													</span>
+												</span>
+											) : (
+												<span style={{ color: "#cbd5e1", fontSize: 12 }}>—</span>
 											)}
 										</td>
 

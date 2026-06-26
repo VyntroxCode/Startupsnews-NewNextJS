@@ -9,7 +9,7 @@ import Image from 'next/image';
 
 interface ReportWithMeta extends ReportEntity {
   fileSizeFormatted: string;
-  createdAtFormatted: string;
+  publishedAtFormatted: string;
 }
 
 const formatBytes = (bytes: number | null, decimals = 2) => {
@@ -44,7 +44,7 @@ export default function AdminReportsPage() {
       const formattedReports = data.data.map((r: ReportEntity) => ({
         ...r,
         fileSizeFormatted: formatBytes(r.file_size),
-        createdAtFormatted: formatDateTime(r.created_at),
+        publishedAtFormatted: formatDateTime((r.publish_at || r.created_at).toString().replace(' ', 'T')),
       }));
       setReports(formattedReports);
     } catch (err) {
@@ -55,6 +55,13 @@ export default function AdminReportsPage() {
   }, []);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
+
+  // Refetch when navigating back from create/edit
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchReports(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchReports]);
 
   const handleDelete = async (id: number, title: string) => {
     if (!confirm(`Are you sure you want to delete report "${title}"? This action cannot be undone.`)) return;
@@ -137,7 +144,7 @@ export default function AdminReportsPage() {
                     <th scope="col" style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Title</th>
                     <th scope="col" style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>File Info</th>
                     <th scope="col" style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Status</th>
-                    <th scope="col" style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Created At</th>
+                    <th scope="col" style={{ padding: '1rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Published At</th>
                     <th scope="col" style={{ position: 'relative', padding: '1rem 1.5rem', textAlign: 'right' }}><span style={{ position: 'absolute', width: '1px', height: '1px', padding: '0', margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', borderWidth: '0' }}>Actions</span></th>
                   </tr>
                 </thead>
@@ -173,13 +180,15 @@ export default function AdminReportsPage() {
                           lineHeight: '1.25rem',
                           fontWeight: '600',
                           borderRadius: '9999px',
-                          background: report.is_active === 1 ? '#ecfdf5' : '#fef2f2',
-                          color: report.is_active === 1 ? '#047857' : '#991b1b',
+                          background: report.publish_at && report.is_active === 0 ? '#fffbeb' : report.is_active === 1 ? '#ecfdf5' : '#fef2f2',
+                          color: report.publish_at && report.is_active === 0 ? '#92400e' : report.is_active === 1 ? '#047857' : '#991b1b',
                         }}>
-                          {report.is_active === 1 ? 'Active' : 'Inactive'}
+                          {report.publish_at && report.is_active === 0
+                            ? `⏰ ${new Date(report.publish_at!.toString().replace(' ', 'T')).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}`
+                            : report.is_active === 1 ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td style={{ padding: '1rem 1.5rem', whiteSpace: 'nowrap', fontSize: '0.875rem', color: '#64748b' }}>{report.createdAtFormatted}</td>
+                      <td style={{ padding: '1rem 1.5rem', whiteSpace: 'nowrap', fontSize: '0.875rem', color: '#64748b' }}>{report.publishedAtFormatted}</td>
                       <td style={{ padding: '1rem 1.5rem', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.875rem', fontWeight: '500' }}>
                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                           <Link
