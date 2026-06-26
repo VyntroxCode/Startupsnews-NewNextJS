@@ -203,13 +203,9 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                                 </span>
                                                             )}
                                                             {isLinkedAuthor(post.authorName || post.sourceAuthor || post.sourceName) ? (
-                                                                <>
-                                                                    {/* Author URL in structured data only — not a visible link */}
-                                                                    <link itemProp="url" href={`${SITE_BASE}${getAuthorHref(post)}`} />
-                                                                    <span className="author-name vcard fn author" itemProp="name">
-                                                                        {post.authorName || post.sourceAuthor || post.sourceName || "Source"}
-                                                                    </span>
-                                                                </>
+                                                                <a href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="url">
+                                                                    <span itemProp="name">{post.authorName || post.sourceAuthor || post.sourceName || "Source"}</span>
+                                                                </a>
                                                             ) : (
                                                                 <span className="author-name vcard fn author" itemProp="name">
                                                                     {post.authorName || post.sourceAuthor || post.sourceName || "Source"}
@@ -245,13 +241,9 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                         <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
                                                             <p>By</p>{" "}
                                                             {isLinkedAuthor(post.authorName) ? (
-                                                                <>
-                                                                    {/* Author URL in structured data only — not a visible link */}
-                                                                    <link itemProp="url" href={`${SITE_BASE}${getAuthorHref(post)}`} />
-                                                                    <span className="author-name vcard fn author" itemProp="name">
-                                                                        {post.authorName}
-                                                                    </span>
-                                                                </>
+                                                                <a href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="url">
+                                                                    <span itemProp="name">{post.authorName}</span>
+                                                                </a>
                                                             ) : (
                                                                 <span className="author-name vcard fn author" itemProp="name">
                                                                     {post.authorName}

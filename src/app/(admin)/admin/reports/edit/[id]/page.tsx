@@ -77,15 +77,18 @@ export default function AdminReportEditPage() {
       setPageCount(fetchedReport.page_count ?? null);
       setIsActive(fetchedReport.is_active === 1);
       setScheduleEnabled(false);
-      setPublishAt('');
       setReportFile(null);
-      // Only pre-populate schedule if the report is pending (inactive + future publish_at)
-      if (fetchedReport.publish_at && fetchedReport.is_active === 0) {
+      // Always pre-populate publishAt so it's preserved on save even when not rescheduling
+      if (fetchedReport.publish_at) {
         const publishDate = new Date(fetchedReport.publish_at.toString().replace(' ', 'T'));
-        if (publishDate > new Date()) {
+        const localIso = new Date(publishDate.getTime() - publishDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        setPublishAt(localIso);
+        // Show schedule UI only for pending (inactive + future) reports
+        if (fetchedReport.is_active === 0 && publishDate > new Date()) {
           setScheduleEnabled(true);
-          setPublishAt(new Date(publishDate.getTime() - publishDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
         }
+      } else {
+        setPublishAt('');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load report');
@@ -110,7 +113,10 @@ export default function AdminReportEditPage() {
     setSuccess(false);
     setFileUploadError('');
 
-    if (!report) return;
+    if (!report) {
+      setSaving(false);
+      return;
+    }
 
     if (reportFile && fileUrl) {
       setError('Please either upload a new file OR enter a URL, not both.');
@@ -202,7 +208,9 @@ export default function AdminReportEditPage() {
           pageCount: pageCount ?? null,
           mimeType: finalMimeType || null,
           isActive,
-          publishAt: scheduleEnabled && publishAt ? publishAt : null,
+          // Always send publishAt so existing dates aren't reset to created_at.
+          // When scheduling: use the chosen future date. Otherwise: preserve existing.
+          publishAt: scheduleEnabled ? publishAt || null : publishAt || null,
         }),
       });
 
@@ -211,7 +219,6 @@ export default function AdminReportEditPage() {
         throw new Error(data.error || 'Failed to update report');
       }
 
-      router.refresh();
       router.push('/admin/reports');
 
     } catch (err) {
@@ -285,22 +292,21 @@ export default function AdminReportEditPage() {
     return <div className="admin-content-area p-6 text-center text-slate-500">Loading report...</div>;
   }
 
-  if (error) {
-    return (
-      <AdminErrorBoundary>
-        <div className="admin-content-area p-6">
-          <div className="bg-red-100 text-red-800 px-4 py-3 rounded-lg mb-6 text-sm border border-red-200">
-            <strong>Error:</strong> {error}
-          </div>
-          <Link href="/admin/reports" className="text-indigo-600 hover:text-indigo-800 text-sm">
-            ← Back to Reports
-          </Link>
-        </div>
-      </AdminErrorBoundary>
-    );
-  }
-
   if (!report) {
+    if (error) {
+      return (
+        <AdminErrorBoundary>
+          <div className="admin-content-area p-6">
+            <div className="bg-red-100 text-red-800 px-4 py-3 rounded-lg mb-6 text-sm border border-red-200">
+              <strong>Error:</strong> {error}
+            </div>
+            <Link href="/admin/reports" className="text-indigo-600 hover:text-indigo-800 text-sm">
+              ← Back to Reports
+            </Link>
+          </div>
+        </AdminErrorBoundary>
+      );
+    }
     return (
       <AdminErrorBoundary>
         <div className="admin-content-area p-6 text-center text-slate-500">
@@ -507,13 +513,30 @@ export default function AdminReportEditPage() {
                     type="checkbox"
                     id="isActive"
                     checked={isActive && !scheduleEnabled}
-                    onChange={(e) => { setIsActive(e.target.checked); if (e.target.checked) { setScheduleEnabled(false); setPublishAt(''); } }}
+                    onChange={(e) => {
+                      setIsActive(e.target.checked);
+                      if (e.target.checked) {
+                        setScheduleEnabled(false);
+                        // If moving from a future schedule to "publish now", stamp today's date
+                        if (publishAt && new Date(publishAt) > new Date()) {
+                          const now = new Date();
+                          setPublishAt(new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+                        }
+                      }
+                    }}
                     style={{ height: '1.15rem', width: '1.15rem', accentColor: '#6366f1', cursor: 'pointer' }}
                   />
                   <label htmlFor="isActive" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#4a5568' }}>
                     Published (visible to users)
                   </label>
                 </div>
+
+                {/* Show current publish date for already-published reports */}
+                {isActive && !scheduleEnabled && publishAt && (
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#64748b' }}>
+                    📅 Published on: {new Date(publishAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </p>
+                )}
 
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                   <input

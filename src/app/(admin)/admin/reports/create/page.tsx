@@ -153,7 +153,6 @@ export default function AdminReportCreatePage() {
       }
 
       setSuccess(true);
-      router.refresh();
       router.push('/admin/reports');
 
     } catch (err) {

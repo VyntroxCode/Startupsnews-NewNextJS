@@ -328,14 +328,9 @@ export default function ReportsPage() {
                   <h3 style={{ margin: 0, fontSize: isMobile ? 20 : 21, fontWeight: 500, color: '#1f1f1f', lineHeight: 1.1, letterSpacing: '-0.04em' }}>{report.title}</h3>
 
                   <div className="reports-card-footer" style={{ display: 'flex', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: 12, marginTop: 18, paddingTop: 14, borderTop: '1px solid #e5e7eb' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: '#7a7a7a' }}>
-                      <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 500 }}>
-                        {report.pages ? `${report.pages} Pages` : 'Page count pending'}
-                      </span>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#d4d4d4', display: 'inline-block' }} />
-                      <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 500 }}>{report.date}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap', color: '#7a7a7a', width: '100%' }}>
+                      <span style={{ fontSize: isMobile ? 16 : 17, fontWeight: 500 }}>{report.date}</span>
                     </div>
-                    <div className="reports-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: isMobile ? 'stretch' : 'flex-end', width: isMobile ? '100%' : 'auto' }} />
                   </div>
                 </div>
               </div>

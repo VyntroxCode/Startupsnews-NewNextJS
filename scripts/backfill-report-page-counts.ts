@@ -37,6 +37,7 @@ async function main() {
         pageCount,
         mimeType: report.mime_type,
         isActive: report.is_active === 1,
+        publishAt: report.publish_at || undefined,
       });
 
       updatedCount += 1;

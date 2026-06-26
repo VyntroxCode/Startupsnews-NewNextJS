@@ -155,7 +155,7 @@ export class ReportsRepository {
     await query(
       `UPDATE reports
        SET title = ?, description = ?, file_url = ?, thumbnail_url = ?, file_name = ?, file_size = ?, page_count = ?, mime_type = ?, is_active = ?,
-           publish_at = COALESCE(?, created_at)
+           publish_at = COALESCE(?, publish_at)
        WHERE id = ?`,
       [
         input.title,
