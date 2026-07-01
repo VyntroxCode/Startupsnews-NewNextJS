@@ -95,6 +95,17 @@ export default function CreatePostPage() {
     }
   };
 
+  const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+
+  const isPressRelease = () => {
+    const cat = categories.find((c) => String(c.id) === formData.categoryId);
+    return cat ? /press.?release/i.test(cat.name) || /press.?release/i.test(cat.slug) : false;
+  };
+
+  const titleWordError = isPressRelease() && formData.title.trim() && countWords(formData.title) > 8
+    ? `Title word limit is 8 only (currently ${countWords(formData.title)} words)`
+    : '';
+
   const generateSlug = (title: string) => {
     return title
       .toLowerCase()
@@ -195,6 +206,13 @@ export default function CreatePostPage() {
       const sanitizedContent = sanitizeHtmlForEdgeSecurity(formData.content);
       const categoryId = formData.categoryId ? parseInt(formData.categoryId, 10) : NaN;
       const authorId = formData.authorId ? parseInt(formData.authorId, 10) : NaN;
+
+      if (titleWordError) {
+        setError(titleWordError);
+        setLoading(false);
+        return;
+      }
+
       if (!formData.categoryId || isNaN(categoryId)) {
         setError('Please select a category.');
         setLoading(false);
@@ -356,8 +374,18 @@ export default function CreatePostPage() {
             value={formData.title}
             onChange={(e) => handleTitleChange(e.target.value)}
             required
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '0.75rem', border: `1px solid ${titleWordError ? '#e53e3e' : '#e2e8f0'}`, borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
           />
+          {titleWordError && (
+            <span style={{ fontSize: '0.8125rem', color: '#e53e3e', marginTop: '0.25rem', display: 'block' }}>
+              ⚠ {titleWordError}
+            </span>
+          )}
+          {isPressRelease() && !titleWordError && (
+            <span style={{ fontSize: '0.8125rem', color: '#b7791f', marginTop: '0.25rem', display: 'block' }}>
+              Press Release: title must be 8 words or fewer ({countWords(formData.title)}/8)
+            </span>
+          )}
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>

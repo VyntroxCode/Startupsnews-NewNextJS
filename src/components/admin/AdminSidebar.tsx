@@ -17,6 +17,7 @@ interface ToolItem {
   slug: string;
 }
 
+
 const DashboardIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="7" height="7" rx="1"></rect>
@@ -227,7 +228,7 @@ export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
                 )}
               </Link>
 
-              {/* Dynamic tool sub-items — always visible when sidebar is open */}
+              {/* Dynamic tool sub-items */}
               {isToolsItem && isOpen && tools.length > 0 && (
                 <div style={{ paddingLeft: '2.25rem', marginBottom: '0.5rem' }}>
                   {tools.map(tool => {
@@ -276,6 +277,7 @@ export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
                   })}
                 </div>
               )}
+
             </div>
           );
         })}

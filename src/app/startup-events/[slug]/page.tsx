@@ -101,10 +101,10 @@ export default async function StartupEventPage({
                 {event.eventTime && !event.eventTime.startsWith('00:00') && (
                   <span className="event-detail-time">{event.eventTime}</span>
                 )}
-                {event.eventEndDate && (
+                {event.eventEndDate && event.eventEndDate !== event.date && (
                   <span className="event-detail-date">to {event.eventEndDate}</span>
                 )}
-                {event.eventTime && !event.eventTime.startsWith('00:00') && event.eventEndTime && !event.eventEndTime.startsWith('00:00') && (
+                {event.eventEndDate && event.eventEndDate !== event.date && event.eventTime && !event.eventTime.startsWith('00:00') && event.eventEndTime && !event.eventEndTime.startsWith('00:00') && (
                   <span className="event-detail-time">{event.eventEndTime}</span>
                 )}
                 <span className="event-detail-location">{event.location}</span>

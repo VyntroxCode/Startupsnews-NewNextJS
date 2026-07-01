@@ -634,12 +634,21 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   text-decoration: none;
   color: inherit;
   border: none;
-  margin-bottom: 18px;
+  border-bottom: 1px solid #e8e8e8;
+  margin-bottom: 0;
+  padding-top: 2px;
+  padding-bottom: 5px;
   border-radius: 0 !important;
+  overflow: hidden;
+}
+
+.startup-events-wrap .startup-events-item:first-child {
+  padding-top: 0;
 }
 
 .startup-events-wrap .startup-events-item:last-child {
-  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .startup-events-wrap .startup-events-item:hover .mvp-feat1-list-text h2 {
@@ -654,7 +663,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .startup-events-wrap .startup-events-item .mvp-feat1-list-text {
   width: 100%;
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 /* First line: smaller, lighter grey – LOCATION / DATE */
@@ -665,11 +674,20 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   letter-spacing: 0.04em;
   margin-bottom: 5px;
   line-height: 1.4;
+  overflow: hidden;
 }
 
 .startup-events-wrap .mvp-cd-cat,
 .startup-events-wrap .mvp-cd-date {
   color: #999 !important;
+  float: none !important;
+  display: inline !important;
+  margin-left: 0 !important;
+}
+
+/* Suppress the theme's auto "/" before the date — we render our own separator span */
+.startup-events-wrap span.mvp-cd-date:before {
+  content: none !important;
 }
 
 .startup-events-wrap .mvp-cd-sep {
@@ -753,7 +771,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
     max-width: 320px;
     align-self: stretch;
     margin-left: 0;
-    overflow: visible !important;
+    overflow: visible;
   }
 
   .mvp-main-blog-wrap .mvp-main-blog-out #mvp-side-wrap .left {
@@ -1116,14 +1134,17 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   /* Hide vertical share bar if it's causing alignment issues */
 }
 
-/* Sticky sidebar (JS) wrapper/content */
+/* Sticky sidebar */
 .sticky-sidebar-wrapper {
-  position: relative;
   width: 100%;
-  max-width: 100%;
+  height: 100%; /* must fill #mvp-side-wrap so sticky has scroll distance to work */
 }
 
+/* CSS sticky: stays pinned at top of viewport while inside #mvp-side-wrap,
+   automatically stops at the container boundary — no JS, no overflow hacks needed */
 .sticky-sidebar-content {
+  position: sticky;
+  top: 88px;
   box-sizing: border-box;
 }
 
@@ -1134,19 +1155,67 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 }
 
 .sticky-sidebar-content .startup-events-wrap .startup-events-item {
-  margin-bottom: 8px;
+  margin-bottom: 0;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e8e8e8;
+  overflow: hidden;
+}
+
+.sticky-sidebar-content .startup-events-wrap .startup-events-item:first-child {
+  padding-top: 0;
 }
 
 .sticky-sidebar-content .startup-events-wrap .startup-events-item:last-child {
   margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .sticky-sidebar-content .startup-events-wrap .startup-events-item .mvp-feat1-list-text {
-  margin-top: 6px;
+  margin-top: 0;
 }
 
-.sticky-sidebar-content .startup-events-wrap .mvp-feat1-pop-head {
+/* Explicit float kill for sticky sidebar — prevents theme's float:left from leaking here */
+.sticky-sidebar-content .startup-events-wrap .mvp-cd-cat,
+.sticky-sidebar-content .startup-events-wrap .mvp-cd-date {
+  float: none !important;
+  display: inline !important;
+  margin-left: 0 !important;
+  color: #999 !important;
+}
+
+.sticky-sidebar-content .startup-events-wrap span.mvp-cd-date:before {
+  content: none !important;
+}
+
+.sticky-sidebar-content .startup-events-wrap .mvp-cat-date-wrap {
+  overflow: hidden;
+}
+
+.sticky-sidebar-content .startup-events-wrap .mvp-feat1-list-text h2 {
+  float: none !important;
+  clear: both;
+}
+
+.sticky-sidebar-content .startup-events-wrap h3.mvp-feat1-pop-head {
+  float: none !important; /* theme floats h3 left; that breaks BFC stacking in sidebar */
+  width: 100%;
   margin-bottom: 8px;
+}
+
+/* Ensure the events list is also plain block flow (not affected by any float) */
+.sticky-sidebar-content .startup-events-wrap #mvp-feat-tab-col1,
+.sticky-sidebar-content .startup-events-wrap .startup-events-list {
+  float: none !important;
+  clear: both;
+  width: 100%;
+  margin-top: 0;
+}
+
+/* Contain the h3 so the events list starts immediately below it */
+.sticky-sidebar-content .startup-events-wrap {
+  overflow: hidden;
 }
 
 /* Sticky sidebar JS: keep fixed box visible and aligned */
@@ -1189,21 +1258,24 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 .event-by-country-breadcrumb {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 5px;
   padding-top: 12px;
   margin-bottom: 14px;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   line-height: 1.4;
-  color: #666;
+  color: #999;
   text-align: left;
+  overflow: hidden;
 }
 
 .event-by-country-breadcrumb-link {
-  color: #666;
+  color: #999;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .event-by-country-breadcrumb-link:hover {
@@ -1211,12 +1283,17 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 }
 
 .event-by-country-breadcrumb-separator {
-  color: rgba(17, 17, 17, 0.35);
+  color: #bbb;
+  flex-shrink: 0;
 }
 
 .event-by-country-breadcrumb-current {
-  color: #666;
-  font-weight: 600;
+  color: #999;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .event-by-country-header {
@@ -1763,19 +1840,22 @@ img.mvp-big-img {
 .event-detail-breadcrumb {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 5px;
   padding-top: 12px;
   margin-bottom: 14px;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   line-height: 1.4;
-  color: #666;
+  color: #999;
+  overflow: hidden;
 }
 
 .event-detail-breadcrumb-link {
-  color: #e62e69;
+  color: #999;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .event-detail-breadcrumb-link:hover {
@@ -1783,12 +1863,17 @@ img.mvp-big-img {
 }
 
 .event-detail-breadcrumb-separator {
-  color: rgba(17, 17, 17, 0.35);
+  color: #bbb;
+  flex-shrink: 0;
 }
 
 .event-detail-breadcrumb-current {
-  color: #111;
-  font-weight: 600;
+  color: #999;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .event-detail-article {
@@ -2588,7 +2673,7 @@ img.mvp-big-img {
     max-width: 320px;
     align-self: stretch !important;
     margin-left: 0;
-    overflow: visible !important;
+    overflow: visible;
   }
 
   .mvp-main-blog-wrap .mvp-main-blog-out #mvp-side-wrap .left {
@@ -2735,13 +2820,13 @@ img.mvp-big-img {
   .event-detail-breadcrumb {
     padding-top: 8px;
     margin-bottom: 10px;
-    font-size: 0.9rem;
+    font-size: 0.78rem;
   }
 
   .event-by-country-breadcrumb {
     padding-top: 8px;
     margin-bottom: 10px;
-    font-size: 0.9rem;
+    font-size: 0.78rem;
   }
 
   .mvp-nav-bot-right-mobile-hamburger {
@@ -3219,6 +3304,11 @@ img.mvp-big-img {
     gap: 4px;
     padding-top: 8px;
     margin-bottom: 18px;
+  }
+
+  .event-detail-breadcrumb {
+    font-size: 0.72rem;
+    gap: 4px;
   }
 
   #mvp-related-posts h4.mvp-widget-home-title {

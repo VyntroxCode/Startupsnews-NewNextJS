@@ -10,6 +10,7 @@ export interface ReportEntity {
   mime_type: string | null;
   is_active: number;
   publish_at: string | null;
+  section_id: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -25,4 +26,5 @@ export interface ReportInput {
   mimeType?: string | null;
   isActive?: boolean;
   publishAt?: string | null;
+  sectionId?: number | null;
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/shared/database/connection';
 import nodemailer from 'nodemailer';
 import jwt from 'jsonwebtoken';
+import { getAmazonProducts, buildAmazonNativeBlock, buildAmazonBannerBlock } from '@/lib/amazon-affiliate';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
 
@@ -58,235 +59,239 @@ function esc(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+interface UpcomingEvent { title: string; url: string | null; location: string; event_date: string; event_time?: string | null; image_url?: string | null; }
+
+async function getUpcomingEvents(limit = 2): Promise<UpcomingEvent[]> {
+  try {
+    return await query<UpcomingEvent>(
+      `SELECT title, external_url AS url, location, event_date, event_time, image_url FROM events WHERE status = 'upcoming' AND event_date >= CURDATE() ORDER BY event_date ASC LIMIT ?`,
+      [limit]
+    );
+  } catch { return []; }
+}
+
+function buildEventsBlock(events: UpcomingEvent[]): string {
+  if (!events.length) return '';
+  const cards = events.map(ev => {
+    const d = new Date(ev.event_date);
+    const day = d.getDate();
+    const mon = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const img = ev.image_url || `https://placehold.co/264x150/EFEAFB/5B3FA8?text=${encodeURIComponent(ev.location || 'Event')}`;
+    const meta = [ev.event_time, ev.location].filter(Boolean).join(' · ');
+    const link = ev.url || '#';
+    return `
+      <td width="48%" valign="top" class="stack" style="padding:0 3px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #EEE2E6;border-radius:8px;overflow:hidden;">
+          <tr><td>
+            <a href="${esc(link)}" style="display:block;text-decoration:none;">
+              <img src="${esc(img)}" width="264" height="150" alt="" style="display:block;border-radius:8px 8px 0 0;width:100%;height:auto;">
+            </a>
+          </td></tr>
+          <tr><td style="padding:12px 14px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td width="54" valign="top">
+                <div style="background:#9C2A57;color:#fff;text-align:center;border-radius:6px;width:54px;padding:8px 0;">
+                  <span style="font-size:18px;font-weight:bold;display:block;line-height:1;">${day}</span>
+                  <span style="font-size:10px;text-transform:uppercase;display:block;margin-top:2px;">${mon}</span>
+                </div>
+              </td>
+              <td valign="top" style="padding-left:10px;">
+                <p style="margin:0 0 3px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;color:#1A1A1A;">${esc(ev.title)}</p>
+                <span style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8A8A8A;">${esc(meta)}</span>
+              </td>
+            </tr></table>
+          </td></tr>
+        </table>
+      </td>`;
+  });
+  return `
+      <tr><td style="padding:28px 24px 0;border-top:1px solid #EEE2E6;"></td></tr>
+      <tr>
+        <td style="padding:20px 24px 6px;">
+          <span style="display:inline-block;background:#EFEAFB;color:#5B3FA8;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;padding:5px 10px;border-radius:3px;">&#128205; Happening Near You</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            ${cards.join('<td width="4%" class="hide-mobile">&nbsp;</td>')}
+          </tr></table>
+        </td>
+      </tr>`;
+}
+
+const SECTOR_COLORS: Record<string, { bg: string; color: string; link: string }> = {
+  'ai-deeptech':     { bg: '#E8EEFC', color: '#1F4DA1', link: '#1F4DA1' },
+  'business':        { bg: '#F0F0F0', color: '#444444', link: '#555555' },
+  'climate-energy':  { bg: '#E8F7EF', color: '#1A7A55', link: '#1A7A55' },
+  'consumer-d2c':    { bg: '#FEF3E2', color: '#8C5A00', link: '#B07000' },
+  'cyber-security':  { bg: '#E8EEFC', color: '#1F4DA1', link: '#1F4DA1' },
+  'ecommerce':       { bg: '#FEF3E2', color: '#8C5A00', link: '#B07000' },
+  'ev-mobility':     { bg: '#E8EEFC', color: '#2A5FA8', link: '#2A5FA8' },
+  'fintech':         { bg: '#FCE8EF', color: '#9C2A57', link: '#C13E70' },
+  'funding':         { bg: '#E8F5FC', color: '#0A6080', link: '#0A6080' },
+  'gaming':          { bg: '#FEE8F8', color: '#8C2A7A', link: '#8C2A7A' },
+  'healthtech':      { bg: '#E8F7EF', color: '#1A7A55', link: '#1A7A55' },
+  'press-release':   { bg: '#F0F0F0', color: '#444444', link: '#555555' },
+  'robotics':        { bg: '#E8EEFC', color: '#1F4DA1', link: '#1F4DA1' },
+  'saas-enterprise': { bg: '#EFEAFB', color: '#5B3FA8', link: '#5B3FA8' },
+  'social-media':    { bg: '#FCE8EF', color: '#9C2A57', link: '#C13E70' },
+  'tech':            { bg: '#EFEAFB', color: '#5B3FA8', link: '#5B3FA8' },
+  'web3-blockchain': { bg: '#EFEAFB', color: '#5B3FA8', link: '#5B3FA8' },
+};
+const DEFAULT_SECTOR_COLOR = { bg: '#FCE8EF', color: '#9C2A57', link: '#C13E70' };
+
 function buildSectorBlock(slug: string, items: NewsletterItem[]): string {
   if (!items.length) return '';
   const meta = SECTOR_META[slug] || { label: slug, emoji: '📰' };
+  const sc = SECTOR_COLORS[slug] || DEFAULT_SECTOR_COLOR;
   const hero = items[0];
   const compacts = items.slice(1, 4);
-  const heroImg = hero.image_url || `https://placehold.co/516x210/f3f0f8/FF4D8F?text=${encodeURIComponent(meta.label)}`;
-  const heroDesc = hero.description ? esc(hero.description.substring(0, 160)) + (hero.description.length > 160 ? '&hellip;' : '') : '';
-  const heroAgo = timeAgo(hero.published_at);
+  const heroImg = hero.image_url || `https://placehold.co/552x225/${sc.bg.replace('#', '')}/${sc.color.replace('#', '')}?text=${encodeURIComponent(meta.label)}`;
+  const heroDesc = hero.description
+    ? esc(hero.description.substring(0, 180)) + (hero.description.length > 180 ? '&hellip;' : '')
+    : '';
 
-  const compactRowsHtml = compacts.map(item => {
-    const thumb = item.image_url || 'https://placehold.co/82x82/e8e0f0/FF4D8F?text=News';
+  const compactRowsHtml = compacts.map((item, i) => {
+    const thumb = item.image_url || 'https://placehold.co/64x48/F7F4F5/C8C8C8?text=News';
     const ago = timeAgo(item.published_at);
+    const isLast = i === compacts.length - 1;
     return `
-      <tr><td class="px" style="padding:14px 40px 0 40px;">
-        <a href="${esc(item.link)}" class="compact-card" style="display:block;background:#ffffff;border:1px solid #e4e4e7;border-radius:14px;text-decoration:none;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="96" valign="top" style="padding:14px 0 14px 14px;">
-              <img src="${esc(thumb)}" width="82" height="82" alt="" style="display:block;width:82px;height:82px;border-radius:10px;object-fit:cover;">
-            </td>
-            <td valign="top" style="padding:14px 16px 14px 14px;">
-              <span class="source-badge" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;color:#FF4D8F;background:rgba(255,77,143,0.1);padding:3px 9px;border-radius:20px;">${esc(item.feed_name)}</span>
-              <p class="text-primary" style="margin:8px 0 4px 0;font-family:Georgia,serif;font-size:16px;line-height:21px;font-weight:bold;color:#111111;">${esc(item.title)}</p>
-              <span class="text-muted" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#71717a;">${ago ? ago + ' &middot; ' : ''}Read &rarr;</span>
-            </td>
-          </tr></table>
-        </a>
-      </td></tr>`;
+        <tr>
+          <td width="68" valign="top"${isLast ? '' : ' style="padding-bottom:14px;"'}>
+            <img src="${esc(thumb)}" width="64" height="48" alt="" style="display:block;border-radius:6px;width:64px;height:48px;object-fit:cover;">
+          </td>
+          <td valign="top" style="padding-left:12px;${isLast ? '' : 'padding-bottom:14px;'}">
+            <p style="margin:0 0 3px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.4;font-weight:bold;color:#1A1A1A;">${esc(item.title)}</p>
+            <span style="font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#9A9A9A;">${esc(item.feed_name)}${ago ? ' &middot; ' + ago : ''}</span>
+          </td>
+        </tr>`;
   }).join('');
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="body-bg" style="background:#f4f4f5;">
-  <tr><td align="center">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
-      <tr><td class="px" style="padding:30px 40px 0 40px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr><td class="divider-row" style="border-top:1px solid #e4e4e7;padding-top:16px;">
-            <span style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;color:#ffffff;background:#FF4D8F;padding:8px 16px;border-radius:30px;letter-spacing:1.5px;text-transform:uppercase;">${meta.emoji} ${esc(meta.label.toUpperCase())}</span>
-          </td></tr>
-        </table>
-      </td></tr>
-      <tr><td class="px" style="padding:16px 40px 0 40px;">
-        <a href="${esc(hero.link)}" class="hero-card" style="display:block;background:#ffffff;border:1px solid #e4e4e7;border-radius:18px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);text-decoration:none;">
-          <img src="${esc(heroImg)}" width="516" alt="" class="event-img" style="display:block;width:100%;max-width:516px;height:auto;border-bottom:1px solid #e8e0f0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr><td style="padding:18px 22px 20px 22px;">
-              <span class="text-muted" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;color:#71717a;letter-spacing:0.5px;">${esc(hero.feed_name)}${heroAgo ? ' &middot; ' + heroAgo : ''}</span>
-              <p class="text-primary" style="margin:8px 0 6px 0;font-family:Georgia,serif;font-size:22px;line-height:27px;font-weight:bold;color:#111111;">${esc(hero.title)}</p>
-              ${heroDesc ? `<p class="text-secondary" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#444444;">${heroDesc}</p>` : ''}
-              <span style="display:inline-block;margin-top:12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;color:#FF4D8F;">Read full story &rarr;</span>
-            </td></tr>
+      <tr><td style="padding:28px 24px 0;border-top:1px solid #EEE2E6;"></td></tr>
+      <tr>
+        <td style="padding:20px 24px 0;">
+          <span style="display:inline-block;background:${sc.bg};color:${sc.color};font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;padding:5px 10px;border-radius:3px;">${esc(meta.label)}</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <a href="${esc(hero.link)}" style="text-decoration:none;display:block;">
+            <img src="${esc(heroImg)}" width="552" height="225" alt="" style="display:block;border-radius:8px;width:100%;max-width:552px;height:auto;" class="feat-img">
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <a href="${esc(hero.link)}" style="text-decoration:none;">
+            <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;font-weight:bold;color:#1A1A1A;">${esc(hero.title)}</p>
+          </a>
+          ${heroDesc ? `<p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#4A4A4A;">${heroDesc}</p>` : ''}
+          <a href="${esc(hero.link)}" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;color:${sc.link};text-decoration:none;">Read full story &rarr;</a>
+        </td>
+      </tr>
+      ${compacts.length > 0 ? `
+      <tr><td style="padding:18px 24px 0;border-top:1px solid #EEE2E6;"></td></tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${compactRowsHtml}
           </table>
-        </a>
-      </td></tr>
-      ${compactRowsHtml}
-    </table>
-  </td></tr>
-</table>`;
+        </td>
+      </tr>` : ''}`;
 }
 
 function buildUnsubscribeToken(email: string): string {
   return jwt.sign({ email, purpose: 'unsubscribe' }, JWT_SECRET, { expiresIn: '90d' });
 }
 
-function buildNewsletterHtml(name: string, date: string, sectorBlocks: string, unsubscribeUrl = 'https://startupnews.fyi/unsubscribe'): string {
+function buildNewsletterHtml(name: string, date: string, sectorBlocks: string, amazonNativeBlock: string, eventsBlock: string, amazonBannerBlock: string, unsubscribeUrl = 'https://startupnews.fyi/unsubscribe'): string {
   const safeName = esc(name);
+  const safeDate = esc(date);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="color-scheme" content="light dark">
-<meta name="supported-color-schemes" content="light dark">
-<title>StartupNews.fyi Morning Signal</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StartupNews.fyi — Daily Industry Digest</title>
 <style>
-body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}
-table{border-collapse:collapse!important;}
-body{margin:0!important;padding:0!important;width:100%!important;}
-a{text-decoration:none;}
-
-/* Light mode defaults */
-.body-bg{background-color:#f4f4f5!important;}
-.topbar-td{background-color:#ffffff!important;border-color:#e4e4e7!important;}
-.topbar-label{color:#71717a!important;}
-.view-online{color:#FF4D8F!important;}
-.founder-card{background-color:#ffffff!important;border-color:#e4e4e7!important;}
-.text-primary{color:#111111!important;}
-.text-secondary{color:#444444!important;}
-.text-muted{color:#71717a!important;}
-.hero-card{background-color:#ffffff!important;border-color:#e4e4e7!important;}
-.compact-card{background-color:#ffffff!important;border-color:#e4e4e7!important;}
-.source-badge{color:#FF4D8F!important;background:rgba(255,77,143,0.1)!important;}
-.divider-row{border-color:#e4e4e7!important;}
-.adv-btn{background:#111111!important;color:#ffffff!important;}
-.signoff-name{color:#FF4D8F!important;}
-.footer-td{background-color:#e4e4e7!important;}
-.footer-text{color:#71717a!important;}
-.footer-link{color:#FF4D8F!important;}
-.unsubscribe{color:#a1a1aa!important;}
-
-/* Dark mode overrides */
-@media (prefers-color-scheme: dark){
-  .body-bg{background-color:#0B0A0F!important;}
-  .topbar-td{background-color:#131019!important;border-color:#221C2B!important;}
-  .topbar-label{color:#FF92AE!important;}
-  .view-online{color:#FF4D8F!important;}
-  .founder-card{background-color:#15131C!important;border-color:#2A2435!important;}
-  .text-primary{color:#F2EDF7!important;}
-  .text-secondary{color:#B6ACC4!important;}
-  .text-muted{color:#9089A0!important;}
-  .hero-card{background-color:#15131C!important;border-color:#2A2435!important;}
-  .compact-card{background-color:#15131C!important;border-color:#211C29!important;}
-  .source-badge{color:#FF92AE!important;background:rgba(255,77,143,0.16)!important;}
-  .divider-row{border-color:#2A2435!important;}
-  .adv-btn{background:#0B0A0F!important;color:#ffffff!important;}
-  .signoff-name{color:#FF4D8F!important;}
-  .footer-td{background-color:#0E0B13!important;}
-  .footer-text{color:#b9adc9!important;}
-  .footer-link{color:#FFD23F!important;}
-  .unsubscribe{color:#b9adc9!important;}
-}
-
-@media screen and (max-width:620px){
-  .container{width:100%!important;}
-  .px{padding-left:22px!important;padding-right:22px!important;}
-  .event-img{width:100%!important;height:auto!important;}
-}
+  body, table, td { font-family: Arial, Helvetica, sans-serif; }
+  body { margin:0; padding:0; background:#F7F4F5; }
+  table { border-collapse: collapse; }
+  img { border:0; display:block; }
+  a { text-decoration:none; }
+  @media only screen and (max-width:620px) {
+    .container { width:100% !important; }
+    .pad { padding-left:16px !important; padding-right:16px !important; }
+    .feat-img { width:100% !important; height:auto !important; }
+    .hide-mobile { display:none !important; }
+  }
 </style>
 </head>
-<body class="body-bg" style="margin:0;padding:0;background:#f4f4f5;">
-<div style="display:none;max-height:0;overflow:hidden;font-size:1px;">Good morning ${safeName}. Your personalised startup briefing is ready. Your sectors, your stories. &#9749;</div>
-<center style="width:100%;">
+<body style="margin:0;padding:0;background:#F7F4F5;">
+<div style="display:none;max-height:0;overflow:hidden;font-size:1px;">Hey ${safeName} — your personalised startup briefing is ready. &#9749;</div>
 
-<!-- TOP BAR -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr><td class="topbar-td" align="center" style="background:#ffffff;border-bottom:2px solid #e4e4e7;padding:18px 16px;">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
-      <tr><td align="center" style="padding-bottom:8px;">
-        <img src="https://startupnews.fyi/logo.png" alt="StartupNews.fyi" width="230" style="display:block;width:230px;height:auto;">
-      </td></tr>
-      <tr><td align="center" class="topbar-label" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;color:#71717a;text-transform:uppercase;font-weight:bold;">
-        Morning Signal &nbsp;&middot;&nbsp; ${esc(date)} &nbsp;&middot;&nbsp; <a href="https://startupnews.fyi" class="view-online" style="color:#FF4D8F;text-decoration:underline;">View online</a>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-
-<!-- FOUNDER NOTE -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="body-bg" style="background:#f4f4f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F4F5;padding:24px 0;">
   <tr><td align="center">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
-      <tr><td class="px" style="padding:30px 40px 0 40px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="founder-card" style="background:#ffffff;border-radius:18px;border:1px solid #e4e4e7;box-shadow:0 4px 16px rgba(0,0,0,0.06);">
-          <tr><td style="padding:24px 26px 22px 26px;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-              <td width="48" valign="middle"><div style="width:44px;height:44px;border-radius:50%;background:#FF4D8F;color:#ffffff;font-family:Georgia,serif;font-size:20px;font-weight:bold;text-align:center;line-height:44px;">M</div></td>
-              <td valign="middle" style="padding-left:12px;">
-                <p class="text-primary" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#111111;">Madhur Mohan Malik</p>
-                <p class="text-muted" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#71717a;">Founder, StartupNews.fyi</p>
+
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#FFFFFF;">
+
+      <!-- HEADER -->
+      <tr>
+        <td class="pad" style="padding:24px 24px 16px;border-bottom:3px solid #E8B7CC;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>
+                <a href="https://startupnews.fyi" style="display:inline-block;text-decoration:none;">
+                  <img src="https://startupnews.fyi/logo.png" width="180" alt="StartupNews.fyi" style="display:block;height:auto;border:0;">
+                </a>
               </td>
-            </tr></table>
-            <p class="text-primary" style="margin:16px 0 0 0;font-family:Georgia,serif;font-size:16px;line-height:25px;color:#111111;">Good morning ${safeName} &#128075;<br><br>Here is your personalised startup briefing. Every story was picked from the sectors you care about.</p>
-            <p class="text-secondary" style="margin:14px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:20px;color:#444444;">Let&rsquo;s get into it. &#9889;</p>
-          </td></tr>
-        </table>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-
-<!-- SECTOR BLOCKS -->
-${sectorBlocks}
-
-<!-- ADVERTISE BANNER -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="body-bg" style="background:#f4f4f5;">
-  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
-    <tr><td class="px" style="padding:34px 40px 0 40px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-image:linear-gradient(120deg,#FF4D8F,#FF8C3B);border-radius:18px;">
-        <tr><td style="padding:26px 28px;">
-          <p style="margin:0 0 4px 0;font-family:Georgia,serif;font-size:21px;font-weight:bold;color:#ffffff;">Want 100K+ founders &amp; operators reading you?</p>
-          <p style="margin:0 0 16px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#FFE3EC;">Get your brand in front of the sharpest startup audience &mdash; one slot, every morning.</p>
-          <a href="https://startupnews.fyi/advertise-with-us" class="adv-btn" style="display:inline-block;background:#1a1025;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;padding:13px 26px;border-radius:30px;">Advertise With Us &rarr;</a>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table></td></tr>
-</table>
-
-<!-- SIGNOFF -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="body-bg" style="background:#f4f4f5;">
-  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
-    <tr><td class="px" style="padding:28px 40px 0 40px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="padding:0 0 0 18px;border-left:3px solid #FF4D8F;">
-          <p class="text-primary" style="margin:0;font-family:Georgia,serif;font-size:19px;line-height:27px;font-style:italic;color:#111111;">&ldquo;The best time to build was yesterday. The second best time is the next 24 hours.&rdquo;</p>
-          <p class="text-muted" style="margin:6px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#71717a;">&mdash; On founder urgency</p>
+              <td align="right" style="font-size:11px;color:#B9B9B9;white-space:nowrap;">${safeDate}</td>
+            </tr>
+          </table>
         </td>
-      </tr></table>
-    </td></tr>
-    <tr><td class="px" style="padding:22px 40px 6px 40px;">
-      <p class="text-primary" style="margin:0;font-family:Georgia,serif;font-size:16px;line-height:24px;color:#111111;">Warm regards,</p>
-      <p class="signoff-name" style="margin:4px 0 0 0;font-family:Georgia,serif;font-size:22px;font-weight:bold;color:#FF4D8F;">Madhur Mohan Malik</p>
-      <p class="text-muted" style="margin:2px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#71717a;">Founder, StartupNews.fyi</p>
-    </td></tr>
-  </table></td></tr>
-</table>
+      </tr>
 
-<!-- FOOTER -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">
-  <tr><td class="footer-td" align="center" style="background:#e4e4e7;">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
-      <tr><td class="px" style="padding:30px 40px;" align="center">
-        <img src="https://startupnews.fyi/logo.png" alt="StartupNews.fyi" width="210" style="display:block;width:210px;height:auto;margin:0 auto 14px auto;">
-        <p class="footer-text" style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#71717a;">The pulse of global startups &mdash; every morning, 8 AM.</p>
-        <p style="margin:0 0 16px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;">
-          <a href="https://instagram.com/startupnews.fyi" class="footer-link" style="color:#FF4D8F;padding:0 6px;">Instagram</a> &middot;
-          <a href="https://linkedin.com/company/startupnews-fyi" class="footer-link" style="color:#FF4D8F;padding:0 6px;">LinkedIn</a> &middot;
-          <a href="https://startupnews.fyi" class="footer-link" style="color:#FF4D8F;padding:0 6px;">Website</a>
-        </p>
-        <p class="footer-text" style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#71717a;">
-          You are receiving this because you subscribed to StartupNews.fyi.<br>
-          <a href="${unsubscribeUrl}" class="unsubscribe" style="color:#a1a1aa;text-decoration:underline;">Unsubscribe</a><br>
-          DOTFYI Media Ventures Pvt. Ltd. &middot; New Delhi, India
-        </p>
-      </td></tr>
+      <!-- INTRO LINE -->
+      <tr>
+        <td class="pad" style="padding:16px 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6A6A6A;line-height:1.6;">
+          Hey ${safeName} — here's your personalised startup briefing for today. Every story was picked from the sectors you care about.
+        </td>
+      </tr>
+
+      <!-- SECTOR BLOCKS -->
+      ${sectorBlocks}
+
+      <!-- NATIVE AD (after sectors) -->
+      ${amazonNativeBlock}
+
+      <!-- EVENTS -->
+      ${eventsBlock}
+
+      <!-- RECTANGLE AD (before footer) -->
+      ${amazonBannerBlock}
+
+      <!-- FOOTER -->
+      <tr>
+        <td style="padding:32px 24px 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="border-top:1px solid #EEE2E6;padding-top:18px;">
+              <p style="margin:0;font-size:11px;color:#9A9A9A;line-height:1.6;">
+                You're receiving this because you subscribed to StartupNews.fyi.<br>
+                <a href="${unsubscribeUrl}" style="color:#9A9A9A;text-decoration:underline;">Unsubscribe</a>
+              </p>
+              <p style="margin:10px 0 0;font-size:11px;color:#9A9A9A;">DOTFYI Media Ventures Pvt. Ltd. &middot; New Delhi, India</p>
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+
     </table>
+
   </td></tr>
 </table>
 
-</center>
 </body>
 </html>`;
 }
@@ -331,13 +336,24 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Fetch up to 8 latest items per category from newsletter_items
-    const rawItems = await query<NewsletterItem>(
-      `SELECT id, title, link, image_url, description, published_at, feed_name, category_slug
-       FROM newsletter_items
-       ORDER BY published_at DESC, id DESC
-       LIMIT 400`
-    );
+     const enabledRow = await queryOne<{ value: string }>('SELECT value FROM site_settings WHERE `key` = ?', ['nl_morning_signal_enabled']);
+    if (enabledRow?.value !== '1') {
+      return NextResponse.json({ success: true, sent: 0, message: 'Newsletter disabled via admin settings' });
+    }
+    const [rawItems, upcomingEvents, amazonProducts] = await Promise.all([
+      query<NewsletterItem>(
+        `SELECT id, title, link, image_url, description, published_at, feed_name, category_slug
+         FROM newsletter_items
+         ORDER BY published_at DESC, id DESC
+         LIMIT 400`
+      ),
+      getUpcomingEvents(2),
+      getAmazonProducts(3),
+    ]);
+
+    const eventsBlock = buildEventsBlock(upcomingEvents);
+    const amazonNativeBlock = amazonProducts.length ? buildAmazonNativeBlock(amazonProducts[0]) : '';
+    const amazonBannerBlock = buildAmazonBannerBlock(amazonProducts.slice(1));
 
     // Group into { slug -> items[] }, capped at 4 per category (1 hero + 3 compact)
     const itemsBySlug: Record<string, NewsletterItem[]> = {};
@@ -369,9 +385,7 @@ export async function GET(request: NextRequest) {
         .map(s => s.trim())
         .filter(Boolean);
 
-      const slugsToSend = testSlugs.length > 0
-        ? testSlugs.filter(slug => itemsBySlug[slug]?.length > 0)
-        : Object.keys(itemsBySlug).filter(slug => itemsBySlug[slug].length > 0);
+      const slugsToSend = testSlugs.filter(slug => itemsBySlug[slug]?.length > 0);
 
       const sectorHtml = slugsToSend
         .map(slug => buildSectorBlock(slug, itemsBySlug[slug]))
@@ -379,7 +393,7 @@ export async function GET(request: NextRequest) {
 
       const testUnsubToken = buildUnsubscribeToken(testEmail);
       const testUnsubUrl = `https://startupnews.fyi/unsubscribe?token=${testUnsubToken}`;
-      const html = buildNewsletterHtml(testName, dateStr, sectorHtml || '<p style="color:#fff;padding:20px;">No newsletter items available for your selected categories.</p>', testUnsubUrl);
+      const html = buildNewsletterHtml(testName, dateStr, sectorHtml || '<p style="padding:20px;color:#9A9A9A;">No newsletter items available for your selected categories.</p>', amazonNativeBlock, eventsBlock, amazonBannerBlock, testUnsubUrl);
       await transporter.sendMail({ from, to: testEmail, subject: `[TEST] ${subject}`, html });
       return NextResponse.json({ success: true, sent: 1, mode: 'test', to: testEmail, categories: slugsToSend });
     }
@@ -404,10 +418,8 @@ export async function GET(request: NextRequest) {
           .map(s => s.trim())
           .filter(Boolean);
 
-        // Fall back to all available sectors if subscriber has no preference set
-        const slugsToUse = userSlugs.length > 0
-          ? userSlugs.filter(slug => itemsBySlug[slug]?.length > 0)
-          : Object.keys(itemsBySlug).filter(slug => itemsBySlug[slug].length > 0);
+        if (userSlugs.length === 0) continue;
+        const slugsToUse = userSlugs.filter(slug => itemsBySlug[slug]?.length > 0);
 
         if (slugsToUse.length === 0) continue;
 
@@ -417,7 +429,7 @@ export async function GET(request: NextRequest) {
 
         const unsubToken = buildUnsubscribeToken(r.email);
         const unsubUrl = `https://startupnews.fyi/unsubscribe?token=${unsubToken}`;
-        const html = buildNewsletterHtml(r.name, dateStr, sectorBlocks, unsubUrl);
+        const html = buildNewsletterHtml(r.name, dateStr, sectorBlocks, amazonNativeBlock, eventsBlock, amazonBannerBlock, unsubUrl);
 
         await transporter.sendMail({ from, to: r.email, subject, html });
         sent++;

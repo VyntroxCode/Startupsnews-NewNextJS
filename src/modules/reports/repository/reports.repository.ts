@@ -19,6 +19,7 @@ export class ReportsRepository {
           : typeof report.page_count === 'bigint'
             ? Number(report.page_count)
             : Number(report.page_count),
+      section_id: report.section_id == null ? null : Number(report.section_id),
     };
   }
 
@@ -86,6 +87,7 @@ export class ReportsRepository {
     await this.ensureColumn('mime_type', 'mime_type VARCHAR(120) NULL');
     await this.ensureColumn('is_active', 'is_active TINYINT(1) NOT NULL DEFAULT 1');
     await this.ensureColumn('publish_at', 'publish_at DATETIME NULL DEFAULT NULL');
+    await this.ensureColumn('section_id', 'section_id INT NULL DEFAULT NULL');
     await this.ensureColumn('created_at', 'created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
     await this.ensureColumn('updated_at', 'updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
     await this.ensureIndex('idx_reports_active_created', 'INDEX idx_reports_active_created (is_active, created_at)');
@@ -126,8 +128,8 @@ export class ReportsRepository {
     const isActive = isFuture ? 0 : (input.isActive === false ? 0 : 1);
     // Always store the user-entered date; only fall back to NOW() when no date given
     await query(
-      `INSERT INTO reports (title, description, file_url, thumbnail_url, file_name, file_size, page_count, mime_type, is_active, publish_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW()))`,
+      `INSERT INTO reports (title, description, file_url, thumbnail_url, file_name, file_size, page_count, mime_type, is_active, publish_at, section_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW()), ?)`,
       [
         input.title,
         input.description,
@@ -139,6 +141,7 @@ export class ReportsRepository {
         input.mimeType || null,
         isActive,
         rawPublishAt,
+        input.sectionId ?? null,
       ]
     );
 
@@ -155,7 +158,7 @@ export class ReportsRepository {
     await query(
       `UPDATE reports
        SET title = ?, description = ?, file_url = ?, thumbnail_url = ?, file_name = ?, file_size = ?, page_count = ?, mime_type = ?, is_active = ?,
-           publish_at = COALESCE(?, publish_at)
+           publish_at = COALESCE(?, publish_at), section_id = ?
        WHERE id = ?`,
       [
         input.title,
@@ -168,6 +171,7 @@ export class ReportsRepository {
         input.mimeType || null,
         isActive,
         rawPublishAt,
+        input.sectionId ?? null,
         id,
       ]
     );

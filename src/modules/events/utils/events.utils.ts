@@ -28,6 +28,8 @@ function normalizeEventDescription(value?: string | null): string | undefined {
   return trimmed || undefined;
 }
 
+const MONTH_ABBR = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEPT', 'OCT', 'NOV', 'DEC'];
+
 /**
  * Convert EventEntity to StartupEvent (backward compatible format)
  */
@@ -36,19 +38,13 @@ export function entityToEvent(entity: EventEntity): StartupEvent {
   const formatDateString = (d: Date | string): string => {
     let year: number, month: number, day: number;
     if (d instanceof Date) {
-      // Use local date parts to avoid UTC shift
       year = d.getFullYear();
       month = d.getMonth() + 1;
       day = d.getDate();
     } else {
-      // Parse YYYY-MM-DD string directly
       [year, month, day] = d.slice(0, 10).split('-').map(Number);
     }
-    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
+    return `${day} ${MONTH_ABBR[month - 1]} ${year}`;
   };
 
   return {

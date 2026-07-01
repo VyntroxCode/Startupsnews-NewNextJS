@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getAdminToken, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { PDFDocument } from 'pdf-lib';
+import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
 
 async function countPdfPagesFromFile(file: File): Promise<number | null> {
   try {
@@ -36,6 +37,8 @@ export default function AdminReportCreatePage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [sectionId, setSectionId] = useState<number | null>(null);
+  const [sections, setSections] = useState<ReportSectionEntity[]>([]);
   const [fileUrl, setFileUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [fileName, setFileName] = useState('');
@@ -50,6 +53,13 @@ export default function AdminReportCreatePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [fileUploadError, setFileUploadError] = useState('');
+
+  useEffect(() => {
+    fetch(withAdminToken('/api/admin/report-sections'), { headers: getAuthHeaders() })
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setSections(data.data); })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +153,7 @@ export default function AdminReportCreatePage() {
           mimeType: finalMimeType || null,
           isActive,
           publishAt: scheduleEnabled && publishAt ? publishAt : null,
+          sectionId: sectionId ?? null,
         }),
       });
 
@@ -315,6 +326,37 @@ export default function AdminReportCreatePage() {
                   onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
                 ></textarea>
+              </div>
+
+              <div>
+                <label htmlFor="sectionId" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#4a5568', marginBottom: '0.25rem' }}>
+                  Title Section
+                  <span style={{ marginLeft: 6, fontSize: '0.75rem', color: '#94a3b8', fontWeight: '400' }}>(optional — groups this report under a section headline)</span>
+                </label>
+                <select
+                  id="sectionId"
+                  value={sectionId ?? ''}
+                  onChange={(e) => setSectionId(e.target.value ? Number(e.target.value) : null)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    color: '#0f172a',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: '#fff',
+                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
+                  <option value="">— No Section —</option>
+                  {sections.map((s) => (
+                    <option key={s.id} value={s.id}>{s.title}</option>
+                  ))}
+                </select>
               </div>
 
               <div style={{ gridColumn: '1 / -1' }}>

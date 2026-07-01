@@ -7,6 +7,7 @@ import { getAdminToken, getAuthHeaders, withAdminToken } from '@/lib/admin-auth'
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
 import type { ReportEntity } from '@/modules/reports/domain/types';
+import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
 import { PDFDocument } from 'pdf-lib';
 
 async function countPdfPagesFromFile(file: File): Promise<number | null> {
@@ -40,6 +41,8 @@ export default function AdminReportEditPage() {
   const [report, setReport] = useState<ReportEntity | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [sectionId, setSectionId] = useState<number | null>(null);
+  const [sections, setSections] = useState<ReportSectionEntity[]>([]);
   const [fileUrl, setFileUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [fileName, setFileName] = useState('');
@@ -76,6 +79,7 @@ export default function AdminReportEditPage() {
       setMimeType(fetchedReport.mime_type || '');
       setPageCount(fetchedReport.page_count ?? null);
       setIsActive(fetchedReport.is_active === 1);
+      setSectionId(fetchedReport.section_id ?? null);
       setScheduleEnabled(false);
       setReportFile(null);
       // Always pre-populate publishAt so it's preserved on save even when not rescheduling
@@ -105,6 +109,13 @@ export default function AdminReportEditPage() {
     }
     loadReport(true);
   }, [reportId, loadReport]);
+
+  useEffect(() => {
+    fetch(withAdminToken('/api/admin/report-sections'), { headers: getAuthHeaders() })
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setSections(data.data); })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,9 +219,8 @@ export default function AdminReportEditPage() {
           pageCount: pageCount ?? null,
           mimeType: finalMimeType || null,
           isActive,
-          // Always send publishAt so existing dates aren't reset to created_at.
-          // When scheduling: use the chosen future date. Otherwise: preserve existing.
           publishAt: scheduleEnabled ? publishAt || null : publishAt || null,
+          sectionId: sectionId ?? null,
         }),
       });
 
@@ -412,6 +422,37 @@ export default function AdminReportEditPage() {
                   onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
                 ></textarea>
+              </div>
+
+              <div>
+                <label htmlFor="sectionId" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#4a5568', marginBottom: '0.25rem' }}>
+                  Title Section
+                  <span style={{ marginLeft: 6, fontSize: '0.75rem', color: '#94a3b8', fontWeight: '400' }}>(optional — groups this report under a section headline)</span>
+                </label>
+                <select
+                  id="sectionId"
+                  value={sectionId ?? ''}
+                  onChange={(e) => setSectionId(e.target.value ? Number(e.target.value) : null)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    color: '#0f172a',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: '#fff',
+                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
+                  <option value="">— No Section —</option>
+                  {sections.map((s) => (
+                    <option key={s.id} value={s.id}>{s.title}</option>
+                  ))}
+                </select>
               </div>
 
               <div style={{ gridColumn: '1 / -1' }}>

@@ -13,6 +13,12 @@ interface AuthUser {
   country?: string;
 }
 
+interface ReportSection {
+  id: number;
+  title: string;
+  sort_order: number;
+}
+
 const AVATAR_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4'];
 
 function avatarColor(name: string) {
@@ -23,7 +29,8 @@ const NAV_GROUPS = [
   {
     title: 'RESEARCH',
     items: [
-      { href: '/dashboard/reports', label: 'Research Reports', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
+      { href: '/dashboard/reports', label: 'Reports', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
+      { href: '/dashboard/newsletter', label: 'Newsletter', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
       { href: '/dashboard/settings', label: 'Profile', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
     ]
   }
@@ -37,6 +44,22 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [reportSections, setReportSections] = useState<ReportSection[]>([]);
+  const [reportsExpanded, setReportsExpanded] = useState(false);
+
+  // Auto-expand when on the reports page
+  useEffect(() => {
+    if (pathname?.startsWith('/dashboard/reports')) {
+      setReportsExpanded(true);
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    fetch('/api/report-sections')
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setReportSections(data.data); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -171,49 +194,108 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
               </div>
             )}
             {group.items.map((item) => {
+              const isReports = item.href === '/dashboard/reports';
               const active = item.href === '/dashboard' ? pathname === '/dashboard' : (item.href !== '#' && pathname?.startsWith(item.href));
+              const hasSections = isReports && reportSections.length > 0;
+
               return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  title={collapsed ? item.label : undefined}
-                  onClick={() => setMobileOpen(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    gap: collapsed ? 0 : 12,
-                    padding: collapsed ? '10px 0' : '9px 10px',
-                    marginBottom: 2,
-                    borderRadius: 6,
-                    textDecoration: 'none',
-                    color: active ? '#dc2626' : '#4b5563',
-                    background: active ? '#f1f5f9' : 'transparent',
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                  onMouseEnter={e => {
-                    if (!active) {
-                      e.currentTarget.style.background = '#f3f4f6';
-                      e.currentTarget.style.color = '#111827';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (!active) {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#4b5563';
-                    }
-                  }}
-                >
-                  <span style={{ display: 'flex', flexShrink: 0, color: active ? '#dc2626' : '#9ca3af' }}>{item.icon}</span>
-                  {!collapsed && (
-                    <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
-                      <span style={{ display: 'block', fontSize: 14, fontWeight: active ? 600 : 500 }}>{item.label}</span>
-                      {item.badge && (
-                        <span style={{ fontSize: 9, border: '1px solid #d1d5db', color: '#6b7280', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>{item.badge}</span>
+                <div key={item.label}>
+                  {/* Nav row — Reports gets a toggle chevron instead of being a plain link */}
+                  {isReports && !collapsed ? (
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          flex: 1, padding: '9px 10px', borderRadius: 6,
+                          textDecoration: 'none',
+                          color: '#4b5563',
+                          background: 'transparent',
+                          transition: 'background 0.15s, color 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4b5563'; }}
+                      >
+                        <span style={{ display: 'flex', flexShrink: 0, color: '#9ca3af' }}>{item.icon}</span>
+                        <span style={{ fontSize: 14, fontWeight: 500, flex: 1 }}>{item.label}</span>
+                      </Link>
+                      {hasSections && (
+                        <button
+                          type="button"
+                          onClick={() => setReportsExpanded((v) => !v)}
+                          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', borderRadius: 6, flexShrink: 0, transition: 'color 0.15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.color = '#374151'; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af'; }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: reportsExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
+                        </button>
                       )}
-                    </span>
+                    </div>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      title={collapsed ? item.label : undefined}
+                      onClick={() => setMobileOpen(false)}
+                      style={{
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        gap: collapsed ? 0 : 12,
+                        padding: collapsed ? '10px 0' : '9px 10px',
+                        marginBottom: 2, borderRadius: 6, textDecoration: 'none',
+                        color: '#4b5563',
+                        background: 'transparent',
+                        transition: 'background 0.15s, color 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4b5563'; }}
+                    >
+                      <span style={{ display: 'flex', flexShrink: 0, color: '#9ca3af' }}>{item.icon}</span>
+                      {!collapsed && (
+                        <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+                          <span style={{ display: 'block', fontSize: 14, fontWeight: 500 }}>{item.label}</span>
+                          {item.badge && (
+                            <span style={{ fontSize: 9, border: '1px solid #d1d5db', color: '#6b7280', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>{item.badge}</span>
+                          )}
+                        </span>
+                      )}
+                    </Link>
                   )}
-                </Link>
+
+                  {/* Reports submenu */}
+                  {isReports && !collapsed && reportsExpanded && hasSections && (
+                    <div style={{ paddingLeft: 34, marginBottom: 6 }}>
+                      {/* One row per section */}
+                      {reportSections.map((section) => {
+                        const sectionHref = `/dashboard/reports?section=${section.id}`;
+                        return (
+                          <Link
+                            key={section.id}
+                            href={sectionHref}
+                            onClick={() => setMobileOpen(false)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              padding: '0.4rem 0.625rem', marginBottom: 2,
+                              borderRadius: 6, textDecoration: 'none',
+                              color: '#64748b',
+                              background: 'transparent',
+                              fontSize: '0.8125rem', fontWeight: 500,
+                              transition: 'background 0.12s, color 0.12s',
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
+                          >
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{section.title}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -233,7 +315,7 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
             justifyContent: 'center',
             padding: collapsed ? '12px 0' : '11px 0',
             borderRadius: collapsed ? 6 : 4,
-            background: '#dc2626',
+            background: '#ee1761',
             color: '#fff',
             border: 'none',
             cursor: 'pointer',
@@ -241,8 +323,8 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
             fontSize: 14,
             transition: 'background 0.2s',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = '#b91c1c'}
-          onMouseLeave={e => e.currentTarget.style.background = '#dc2626'}
+          onMouseEnter={e => e.currentTarget.style.background = '#c8114d'}
+          onMouseLeave={e => e.currentTarget.style.background = '#ee1761'}
         >
           {collapsed ? (
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -259,7 +341,7 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
+    <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: '"Garnett", Helvetica, Arial, sans-serif' }}>
       {isMobile && (
         <>
           <div style={{ position: 'fixed', inset: '0 0 auto 0', height: 72, zIndex: 1001, display: 'flex', alignItems: 'center', gap: 12, padding: '0 18px', background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(18px)', borderBottom: '1px solid rgba(148,163,184,0.18)' }}>

@@ -93,31 +93,6 @@ export function Footer() {
                   </svg>
                 </a>
               )}
-              <div className="footer-social-mobile-view">
-              {siteConfig.social.appstore && (
-                <Link href="">
-                  <Image
-                  src={siteConfig.social.appstore}
-                  alt="App Store"
-                  width={140}
-                  height={45}
-                  className="max-w-[140px] h-auto block mx-auto"
-                />  
-                </Link>   
-              )}
-              {siteConfig.social.googleplay && (
-                   <Link href="https://play.google.com/store/apps/details?id=com.startupnews.fyi&hl=en_IN">
-                  <Image
-                  src={siteConfig.social.googleplay}
-                  alt="Google Play"
-                  width={160}
-                  height={45}
-                  className="max-w-[160px] h-auto block mx-auto"
-                />  
-                </Link>           
-              
-              )}
-              </div>
             </div>
           </div>
         </div>
@@ -152,7 +127,7 @@ export function Footer() {
             <ul>
                <li><Link href="/events">Upcoming Events</Link></li>
                <li><Link href="/events/dubai">Tech Events in Dubai</Link></li>
-               <li><Link href="/events">Tech Events in Singapore</Link></li>
+               <li><Link href="/events/singapore">Tech Events in Singapore</Link></li>
                <li><Link href="/events/bengaluru">Startup Events in Bengaluru </Link></li>
               <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Partner / Sponsor an Event</a></li>
               <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Submit Your Event</a></li>
@@ -166,7 +141,7 @@ export function Footer() {
               <li><Link href="/regional-reports">Regional Reports</Link></li>
               <li><Link href="/speak-sponsor">Speak / Sponsor Opportunities</Link></li> */}
               <li><Link href="/funding"> Funding Tracker</Link></li>
-              <li>Indian Startup Funding Report</li>
+              <li><Link href="/dashboard/reports">Indian Startup Funding Report</Link></li>
             </ul>
           </div>
 

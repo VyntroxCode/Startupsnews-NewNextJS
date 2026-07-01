@@ -184,367 +184,216 @@ export default function NewsletterPage() {
 
   /* ── Default template (Morning Signal — dark mode) ── */
   const DEFAULT_TEMPLATE = `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="x-apple-disable-message-reformatting">
-<meta name="color-scheme" content="dark">
-<title>StartupNews.fyi &mdash; Morning Signal</title>
+<title>StartupNews.fyi — Daily Industry Digest</title>
 <style>
-  body,table,td,a{ -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
-  table,td{ mso-table-lspace:0pt; mso-table-rspace:0pt; }
-  img{ -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; }
-  table{ border-collapse:collapse !important; }
-  body{ margin:0 !important; padding:0 !important; width:100% !important; }
-  a{ text-decoration:none; }
-  @keyframes pulseGlow { 0%,100%{ box-shadow:0 0 0 0 rgba(255,45,120,0.45);} 50%{ box-shadow:0 0 0 8px rgba(255,45,120,0);} }
-  .headline-link:hover{ color:#FF4D8F !important; }
-  .cta-btn:hover{ filter:brightness(1.08); }
-  @media screen and (max-width:620px){
-    .container{ width:100% !important; }
-    .px{ padding-left:22px !important; padding-right:22px !important; }
-    .stack{ display:block !important; width:100% !important; }
-    .h1{ font-size:30px !important; line-height:36px !important; }
-    .event-img{ width:100% !important; height:auto !important; }
-    .logo-img{ width:200px !important; }
+  body, table, td { font-family: Arial, Helvetica, sans-serif; }
+  body { margin:0; padding:0; background:#F7F4F5; }
+  table { border-collapse: collapse; }
+  img { border:0; display:block; }
+  a { text-decoration:none; }
+  @media only screen and (max-width:620px) {
+    .container { width:100% !important; }
+    .pad { padding-left:16px !important; padding-right:16px !important; }
+    .feat-img { width:100% !important; height:auto !important; }
+    .hide-mobile { display:none !important; }
   }
 </style>
 </head>
-<body style="margin:0; padding:0; background:#0B0A0F;">
-<div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#0B0A0F;">
-  Good morning {{name}}. Madhur here. Your daily startup briefing is ready. &#9749;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
-</div>
-<center style="width:100%; background:#0B0A0F;">
+<body style="margin:0;padding:0;background:#F7F4F5;">
+<div style="display:none;max-height:0;overflow:hidden;font-size:1px;">Hey {{name}} — your personalised startup briefing is ready. &#9749;</div>
 
-<!-- TOP BAR -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr><td align="center" style="background:#131019; border-bottom:1px solid #221C2B; padding:18px 16px;">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-      <tr><td align="center" style="padding-bottom:8px;">
-        <img src="https://startupnews.fyi/logo.png" alt="StartupNews.fyi" width="230" class="logo-img" style="display:block; width:230px; max-width:230px; height:auto;">
-      </td></tr>
-      <tr><td align="center" style="font-family:Arial,Helvetica,sans-serif; font-size:11px; letter-spacing:2px; color:#FF92AE; text-transform:uppercase; font-weight:bold;">
-        Morning Signal &nbsp;&middot;&nbsp; {{date}} &nbsp;&middot;&nbsp; <a href="https://startupnews.fyi" style="color:#FF4D8F; text-decoration:underline;">View online</a>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-
-<!-- FOUNDER NOTE -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F4F5;padding:24px 0;">
   <tr><td align="center">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-      <tr><td class="px" style="padding:30px 40px 0 40px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#15131C; border-radius:18px; border:1px solid #2A2435; box-shadow:0 10px 28px rgba(0,0,0,0.55);">
-          <tr><td style="padding:24px 26px 22px 26px;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-              <td width="48" valign="middle"><div style="width:44px; height:44px; border-radius:50%; background:#FF4D8F; color:#FFFFFF; font-family:Georgia,serif; font-size:20px; font-weight:bold; text-align:center; line-height:44px;">M</div></td>
-              <td valign="middle" style="padding-left:12px;">
-                <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:14px; font-weight:bold; color:#F2EDF7;">Madhur Mohan Malik</p>
-                <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Founder, StartupNews.fyi</p>
+    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#FFFFFF;">
+
+      <!-- HEADER -->
+      <tr>
+        <td class="pad" style="padding:24px 24px 16px;border-bottom:3px solid #E8B7CC;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>
+                <a href="https://startupnews.fyi" style="display:inline-block;text-decoration:none;">
+                  <img src="https://startupnews.fyi/logo.png" width="180" alt="StartupNews.fyi" style="display:block;height:auto;border:0;">
+                </a>
               </td>
-            </tr></table>
-            <p style="margin:16px 0 0 0; font-family:Georgia,serif; font-size:16px; line-height:25px; color:#F2EDF7;">Good morning {{name}} &#128075;<br><br>[Editor&rsquo;s note &mdash; write your daily intro here. Share what&rsquo;s moving markets, what caught your eye, and what the reader should focus on today.]</p>
-            <p style="margin:14px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:20px; color:#B6ACC4;">Your personalised briefing is below. Let&rsquo;s get into it. &#9889;</p>
-          </td></tr>
-        </table>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-
-<!-- SECTOR 1: FINTECH -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
-  <tr><td align="center">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-      <tr><td class="px" style="padding:30px 40px 0 40px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr><td style="border-top:1px solid #2A2435; padding-top:16px;">
-            <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FFFFFF; background:#FF4D8F; padding:8px 16px; border-radius:30px; letter-spacing:1.5px; text-transform:uppercase;">&#129516; FINTECH</span>
-          </td></tr>
-        </table>
-      </td></tr>
-      <!-- HERO CARD -->
-      <tr><td class="px" style="padding:16px 40px 0 40px;">
-        <a href="#" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:18px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
-          <img src="https://placehold.co/516x210/15131C/FF4D8F?text=Story+Image" width="516" alt="" class="event-img" style="display:block; width:100%; max-width:516px; height:auto; border-bottom:1px solid #2A2435;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr><td style="padding:18px 22px 20px 22px;">
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; color:#8B8296; letter-spacing:0.5px;">Source &middot; Xh ago</span>
-              <p class="headline-link" style="margin:8px 0 6px 0; font-family:Georgia,serif; font-size:22px; line-height:27px; font-weight:bold; color:#F2EDF7;">[FinTech Hero Headline &mdash; paste your story title here]</p>
-              <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#B6ACC4;">[Two-line summary of the lead FinTech story. Keep it punchy &mdash; what happened, why it matters.]</p>
-              <span style="display:inline-block; margin-top:12px; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FF4D8F;">Read full story &rarr;</span>
-            </td></tr>
+              <td align="right" style="font-size:11px;color:#B9B9B9;white-space:nowrap;">{{date}}</td>
+            </tr>
           </table>
-        </a>
-      </td></tr>
-      <!-- COMPACT CARDS -->
-      <tr><td class="px" style="padding:14px 40px 0 40px;">
-        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="96" valign="top" style="padding:14px 0 14px 14px;">
-              <img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;">
-            </td>
-            <td valign="top" style="padding:14px 16px 14px 14px;">
-              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
-              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[FinTech story 2 headline]</p>
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
-            </td>
-          </tr></table>
-        </a>
-      </td></tr>
-      <tr><td class="px" style="padding:14px 40px 0 40px;">
-        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="96" valign="top" style="padding:14px 0 14px 14px;">
-              <img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;">
-            </td>
-            <td valign="top" style="padding:14px 16px 14px 14px;">
-              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
-              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[FinTech story 3 headline]</p>
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
-            </td>
-          </tr></table>
-        </a>
-      </td></tr>
-      <tr><td class="px" style="padding:14px 40px 0 40px;">
-        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="96" valign="top" style="padding:14px 0 14px 14px;">
-              <img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;">
-            </td>
-            <td valign="top" style="padding:14px 16px 14px 14px;">
-              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
-              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[FinTech story 4 headline]</p>
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
-            </td>
-          </tr></table>
-        </a>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
+        </td>
+      </tr>
 
-<!-- SECTOR 2: AGRITECH (duplicate block above for additional sectors) -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
-  <tr><td align="center">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-      <tr><td class="px" style="padding:30px 40px 0 40px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr><td style="border-top:1px solid #2A2435; padding-top:16px;">
-            <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FFFFFF; background:#FF4D8F; padding:8px 16px; border-radius:30px; letter-spacing:1.5px; text-transform:uppercase;">&#127806; AGRITECH</span>
-          </td></tr>
-        </table>
-      </td></tr>
-      <tr><td class="px" style="padding:16px 40px 0 40px;">
-        <a href="#" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:18px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
-          <img src="https://placehold.co/516x210/15131C/FF4D8F?text=Story+Image" width="516" alt="" class="event-img" style="display:block; width:100%; max-width:516px; height:auto; border-bottom:1px solid #2A2435;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr><td style="padding:18px 22px 20px 22px;">
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; color:#8B8296; letter-spacing:0.5px;">Source &middot; Xh ago</span>
-              <p class="headline-link" style="margin:8px 0 6px 0; font-family:Georgia,serif; font-size:22px; line-height:27px; font-weight:bold; color:#F2EDF7;">[AgriTech Hero Headline]</p>
-              <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#B6ACC4;">[Two-line summary of the lead AgriTech story.]</p>
-              <span style="display:inline-block; margin-top:12px; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FF4D8F;">Read full story &rarr;</span>
-            </td></tr>
-          </table>
-        </a>
-      </td></tr>
-      <tr><td class="px" style="padding:14px 40px 0 40px;">
-        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="96" valign="top" style="padding:14px 0 14px 14px;"><img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;"></td>
-            <td valign="top" style="padding:14px 16px 14px 14px;">
-              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
-              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[AgriTech story 2 headline]</p>
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
-            </td>
-          </tr></table>
-        </a>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
+      <!-- INTRO LINE -->
+      <tr>
+        <td class="pad" style="padding:16px 24px 0;font-size:13px;color:#6A6A6A;line-height:1.6;">
+          Hey {{name}} — here's what moved in <strong>[Sector 1]</strong> and <strong>[Sector 2]</strong> today.
+        </td>
+      </tr>
 
-<!-- SECTOR 3: SPACETECH -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
-  <tr><td align="center">
-    <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-      <tr><td class="px" style="padding:30px 40px 0 40px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr><td style="border-top:1px solid #2A2435; padding-top:16px;">
-            <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FFFFFF; background:#FF4D8F; padding:8px 16px; border-radius:30px; letter-spacing:1.5px; text-transform:uppercase;">&#128640; SPACETECH</span>
-          </td></tr>
-        </table>
-      </td></tr>
-      <tr><td class="px" style="padding:16px 40px 0 40px;">
-        <a href="#" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:18px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
-          <img src="https://placehold.co/516x210/15131C/FF4D8F?text=Story+Image" width="516" alt="" class="event-img" style="display:block; width:100%; max-width:516px; height:auto; border-bottom:1px solid #2A2435;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr><td style="padding:18px 22px 20px 22px;">
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; color:#8B8296; letter-spacing:0.5px;">Source &middot; Xh ago</span>
-              <p class="headline-link" style="margin:8px 0 6px 0; font-family:Georgia,serif; font-size:22px; line-height:27px; font-weight:bold; color:#F2EDF7;">[SpaceTech Hero Headline]</p>
-              <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#B6ACC4;">[Two-line summary of the lead SpaceTech story.]</p>
-              <span style="display:inline-block; margin-top:12px; font-family:Arial,Helvetica,sans-serif; font-size:13px; font-weight:bold; color:#FF4D8F;">Read full story &rarr;</span>
-            </td></tr>
-          </table>
-        </a>
-      </td></tr>
-      <tr><td class="px" style="padding:14px 40px 0 40px;">
-        <a href="#" style="display:block; background:#15131C; border:1px solid #211C29; border-radius:14px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="96" valign="top" style="padding:14px 0 14px 14px;"><img src="https://placehold.co/82x82/211C29/FF92AE?text=Img" width="82" height="82" alt="" style="display:block; width:82px; height:82px; border-radius:10px;"></td>
-            <td valign="top" style="padding:14px 16px 14px 14px;">
-              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#FF92AE; background:rgba(255,77,143,0.16); padding:3px 9px; border-radius:20px;">Source</span>
-              <p class="headline-link" style="margin:8px 0 4px 0; font-family:Georgia,serif; font-size:16px; line-height:21px; font-weight:bold; color:#F2EDF7;">[SpaceTech story 2 headline]</p>
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#9089A0;">Xh ago &middot; Read &rarr;</span>
-            </td>
-          </tr></table>
-        </a>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-
-<!-- GOOGLE ADS -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
-  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-    <tr><td class="px" style="padding:26px 40px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px dashed #2A2435; border-radius:12px;">
-        <tr><td align="center" style="padding:14px;">
-          <span style="font-family:Arial,Helvetica,sans-serif; font-size:9px; letter-spacing:2px; color:#6F6580; text-transform:uppercase;">Advertisement</span>
-          <!-- {{GOOGLE_ADS_CODE}} -->
-          <div style="margin-top:8px; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#6F6580;">[ Google Ads slot &mdash; 600x90 ]</div>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table></td></tr>
-</table>
-
-<!-- AMAZON AFFILIATE / FOUNDER PICKS -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
-  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-    <tr><td class="px" style="padding:0 40px 6px 40px;">
-      <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; letter-spacing:2px; color:#FF8C3B; text-transform:uppercase;">&#128722; FOUNDER PICKS</span>
-      <span style="font-family:Arial,Helvetica,sans-serif; font-size:9px; color:#6F6580;"> &nbsp;&middot;&nbsp; affiliate</span>
-    </td></tr>
-    <tr><td class="px" style="padding:10px 40px 0 40px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#15131C; border-radius:16px; border:1px solid #211C29;">
-        <tr><td style="padding:18px 22px;">
-          <!-- {{AMAZON_AFFILIATE_CODE}} -->
-          <p style="margin:0 0 10px 0; font-family:Arial,Helvetica,sans-serif; font-size:15px; font-weight:bold; color:#FFD23F;">Gear that ships fast &rarr;</p>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="33%" valign="top" style="padding-right:8px;">
-              <a href="https://amazon.in/?tag=snf-21" style="display:block;"><img src="https://placehold.co/200x200/211C29/FFD23F?text=Product" width="100%" alt="" style="display:block; border-radius:10px; border:1px solid #2A2435;"></a>
-              <p style="margin:6px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:15px; color:#D7CFE3;">[Product Name 1]</p>
-              <p style="margin:2px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; font-weight:bold; color:#FFD23F;">&#8377;0,000</p>
-            </td>
-            <td width="33%" valign="top" style="padding:0 4px;">
-              <a href="https://amazon.in/?tag=snf-21" style="display:block;"><img src="https://placehold.co/200x200/211C29/FFD23F?text=Product" width="100%" alt="" style="display:block; border-radius:10px; border:1px solid #2A2435;"></a>
-              <p style="margin:6px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:15px; color:#D7CFE3;">[Product Name 2]</p>
-              <p style="margin:2px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; font-weight:bold; color:#FFD23F;">&#8377;0,000</p>
-            </td>
-            <td width="33%" valign="top" style="padding-left:8px;">
-              <a href="https://amazon.in/?tag=snf-21" style="display:block;"><img src="https://placehold.co/200x200/211C29/FFD23F?text=Product" width="100%" alt="" style="display:block; border-radius:10px; border:1px solid #2A2435;"></a>
-              <p style="margin:6px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:15px; color:#D7CFE3;">[Product Name 3]</p>
-              <p style="margin:2px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; font-weight:bold; color:#FFD23F;">&#8377;0,000</p>
-            </td>
-          </tr></table>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table></td></tr>
-</table>
-
-<!-- CITY EVENTS -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
-  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-    <tr><td class="px" style="padding:30px 40px 8px 40px;">
-      <span style="font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; letter-spacing:2px; color:#FF4D8F; text-transform:uppercase;">&#128205; HAPPENING NEAR YOU</span>
-    </td></tr>
-    <tr><td class="px" style="padding:8px 40px 0 40px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td class="stack" width="48%" valign="top" style="padding:0 6px 12px 0;">
-          <a href="https://startupnews.fyi/events/" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:16px; overflow:hidden;">
-            <img src="https://placehold.co/260x130/15131C/FF4D8F?text=Event" width="260" alt="" class="event-img" style="display:block; width:100%; max-width:260px; height:130px; object-fit:cover; border-bottom:1px solid #2A2435;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:12px 14px 14px 14px;">
-              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#1A1422; background:#FFD23F; padding:3px 8px; border-radius:6px;">[Date]</span>
-              <p style="margin:8px 0 0 0; font-family:Georgia,serif; font-size:15px; line-height:19px; font-weight:bold; color:#F2EDF7;">[Event Name 1]</p>
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#FF4D8F; font-weight:bold;">RSVP &rarr;</span>
-            </td></tr></table>
+      <!-- ===== SECTOR 1: FINTECH ===== -->
+      <tr><td style="padding:28px 24px 0;border-top:1px solid #EEE2E6;"></td></tr>
+      <tr>
+        <td style="padding:20px 24px 0;">
+          <span style="display:inline-block;background:#FCE8EF;color:#9C2A57;font-size:11px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;padding:5px 10px;border-radius:3px;">&#128181; Fintech</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <a href="#" style="text-decoration:none;display:block;">
+            <img src="https://placehold.co/552x225/FCE8EF/9C2A57?text=Featured+Story+Image" width="552" height="225" alt="" style="display:block;border-radius:8px;width:100%;max-width:552px;height:auto;" class="feat-img">
           </a>
         </td>
-        <td class="stack" width="48%" valign="top" style="padding:0 0 12px 6px;">
-          <a href="https://startupnews.fyi/events/" style="display:block; background:#15131C; border:1px solid #2A2435; border-radius:16px; overflow:hidden;">
-            <img src="https://placehold.co/260x130/15131C/FF4D8F?text=Event" width="260" alt="" class="event-img" style="display:block; width:100%; max-width:260px; height:130px; object-fit:cover; border-bottom:1px solid #2A2435;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:12px 14px 14px 14px;">
-              <span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:10px; font-weight:bold; color:#1A1422; background:#FFD23F; padding:3px 8px; border-radius:6px;">[Date]</span>
-              <p style="margin:8px 0 0 0; font-family:Georgia,serif; font-size:15px; line-height:19px; font-weight:bold; color:#F2EDF7;">[Event Name 2]</p>
-              <span style="font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#FF4D8F; font-weight:bold;">RSVP &rarr;</span>
-            </td></tr></table>
+      </tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <a href="#" style="text-decoration:none;">
+            <p style="margin:0 0 8px;font-size:20px;line-height:1.3;font-weight:bold;color:#1A1A1A;">[Fintech Hero Headline — paste your story title here]</p>
+          </a>
+          <p style="margin:0 0 10px;font-size:14px;line-height:1.55;color:#4A4A4A;">[Two-line summary of the lead Fintech story. Keep it punchy — what happened, why it matters.]</p>
+          <a href="#" style="font-size:13px;font-weight:bold;color:#C13E70;text-decoration:none;">Read full story &rarr;</a>
+        </td>
+      </tr>
+      <tr><td style="padding:18px 24px 0;border-top:1px solid #EEE2E6;"></td></tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="68" valign="top" style="padding-bottom:14px;">
+                <img src="https://placehold.co/64x48/F7F4F5/C8C8C8?text=News" width="64" height="48" alt="" style="display:block;border-radius:6px;width:64px;height:48px;object-fit:cover;">
+              </td>
+              <td valign="top" style="padding-left:12px;padding-bottom:14px;">
+                <p style="margin:0 0 3px;font-size:14.5px;line-height:1.4;font-weight:bold;color:#1A1A1A;">[Fintech story 2 headline]</p>
+                <span style="font-size:11.5px;color:#9A9A9A;">Source &middot; Xh ago</span>
+              </td>
+            </tr>
+            <tr>
+              <td width="68" valign="top" style="padding-bottom:14px;">
+                <img src="https://placehold.co/64x48/F7F4F5/C8C8C8?text=News" width="64" height="48" alt="" style="display:block;border-radius:6px;width:64px;height:48px;object-fit:cover;">
+              </td>
+              <td valign="top" style="padding-left:12px;padding-bottom:14px;">
+                <p style="margin:0 0 3px;font-size:14.5px;line-height:1.4;font-weight:bold;color:#1A1A1A;">[Fintech story 3 headline]</p>
+                <span style="font-size:11.5px;color:#9A9A9A;">Source &middot; Xh ago</span>
+              </td>
+            </tr>
+            <tr>
+              <td width="68" valign="top">
+                <img src="https://placehold.co/64x48/F7F4F5/C8C8C8?text=News" width="64" height="48" alt="" style="display:block;border-radius:6px;width:64px;height:48px;object-fit:cover;">
+              </td>
+              <td valign="top" style="padding-left:12px;">
+                <p style="margin:0 0 3px;font-size:14.5px;line-height:1.4;font-weight:bold;color:#1A1A1A;">[Fintech story 4 headline]</p>
+                <span style="font-size:11.5px;color:#9A9A9A;">Source &middot; Xh ago</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- ===== SECTOR 2: AI ===== -->
+      <tr><td style="padding:28px 24px 0;border-top:1px solid #EEE2E6;"></td></tr>
+      <tr>
+        <td style="padding:20px 24px 0;">
+          <span style="display:inline-block;background:#E8EEFC;color:#1F4DA1;font-size:11px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;padding:5px 10px;border-radius:3px;">&#129504; Artificial Intelligence</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <a href="#" style="text-decoration:none;display:block;">
+            <img src="https://placehold.co/552x225/E8EEFC/1F4DA1?text=Featured+Story+Image" width="552" height="225" alt="" style="display:block;border-radius:8px;width:100%;max-width:552px;height:auto;" class="feat-img">
           </a>
         </td>
-      </tr></table>
-    </td></tr>
-  </table></td></tr>
-</table>
-
-<!-- ADVERTISE WITH US -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
-  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-    <tr><td class="px" style="padding:28px 40px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FF4D8F; background-image:linear-gradient(120deg,#FF4D8F,#FF8C3B); border-radius:18px;">
-        <tr><td style="padding:26px 28px;">
-          <p style="margin:0 0 4px 0; font-family:Georgia,serif; font-size:21px; font-weight:bold; color:#FFFFFF;">Want 100K+ founders &amp; operators reading you?</p>
-          <p style="margin:0 0 16px 0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:20px; color:#FFE3EC;">Get your brand in front of the sharpest startup audience &mdash; one slot, every morning.</p>
-          <a href="https://startupnews.fyi/advertise-with-us" style="display:inline-block; background:#0B0A0F; color:#FFFFFF; font-family:Arial,Helvetica,sans-serif; font-size:14px; font-weight:bold; padding:13px 26px; border-radius:30px;">Advertise With Us &rarr;</a>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table></td></tr>
-</table>
-
-<!-- QUOTE + SIGNOFF -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0A0F;">
-  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-    <tr><td class="px" style="padding:14px 40px 0 40px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="padding:0 0 0 18px; border-left:3px solid #FF4D8F;">
-          <p style="margin:0; font-family:Georgia,serif; font-size:19px; line-height:27px; font-style:italic; color:#F2EDF7;">&ldquo;The best time to build was yesterday. The second best time is the next 24 hours.&rdquo;</p>
-          <p style="margin:6px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; font-weight:bold; color:#9089A0;">&mdash; On founder urgency</p>
+      </tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <a href="#" style="text-decoration:none;">
+            <p style="margin:0 0 8px;font-size:20px;line-height:1.3;font-weight:bold;color:#1A1A1A;">[AI Hero Headline — paste your story title here]</p>
+          </a>
+          <p style="margin:0 0 10px;font-size:14px;line-height:1.55;color:#4A4A4A;">[Two-line summary of the lead AI story.]</p>
+          <a href="#" style="font-size:13px;font-weight:bold;color:#1F4DA1;text-decoration:none;">Read full story &rarr;</a>
         </td>
-      </tr></table>
-    </td></tr>
-    <tr><td class="px" style="padding:24px 40px 6px 40px;">
-      <p style="margin:0; font-family:Georgia,serif; font-size:16px; line-height:24px; color:#F2EDF7;">Warm regards,</p>
-      <p style="margin:4px 0 0 0; font-family:Georgia,serif; font-size:22px; font-weight:bold; color:#FF4D8F;">Madhur Mohan Malik</p>
-      <p style="margin:2px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#9089A0;">Founder, StartupNews.fyi</p>
-    </td></tr>
-  </table></td></tr>
+      </tr>
+      <tr><td style="padding:18px 24px 0;border-top:1px solid #EEE2E6;"></td></tr>
+      <tr>
+        <td style="padding:14px 24px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="68" valign="top" style="padding-bottom:14px;">
+                <img src="https://placehold.co/64x48/F7F4F5/C8C8C8?text=News" width="64" height="48" alt="" style="display:block;border-radius:6px;width:64px;height:48px;object-fit:cover;">
+              </td>
+              <td valign="top" style="padding-left:12px;padding-bottom:14px;">
+                <p style="margin:0 0 3px;font-size:14.5px;line-height:1.4;font-weight:bold;color:#1A1A1A;">[AI story 2 headline]</p>
+                <span style="font-size:11.5px;color:#9A9A9A;">Source &middot; Xh ago</span>
+              </td>
+            </tr>
+            <tr>
+              <td width="68" valign="top">
+                <img src="https://placehold.co/64x48/F7F4F5/C8C8C8?text=News" width="64" height="48" alt="" style="display:block;border-radius:6px;width:64px;height:48px;object-fit:cover;">
+              </td>
+              <td valign="top" style="padding-left:12px;">
+                <p style="margin:0 0 3px;font-size:14.5px;line-height:1.4;font-weight:bold;color:#1A1A1A;">[AI story 3 headline]</p>
+                <span style="font-size:11.5px;color:#9A9A9A;">Source &middot; Xh ago</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- ===== AMAZON AFFILIATE / FOUNDER PICKS ===== -->
+      <tr><td style="padding:28px 24px 0;border-top:1px solid #EEE2E6;"></td></tr>
+      <tr>
+        <td style="padding:0 24px;">
+          <p style="margin:0 0 1px;font-size:11px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;color:#C13E70;">&#128722; Founder Picks</p>
+          <span style="font-size:9px;color:#B9B9B9;">affiliate</span>
+          <p style="margin:10px 0 12px;font-size:15px;font-weight:bold;color:#1A1A1A;">Gear that ships fast &rarr;</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="33%" valign="top" style="padding-right:8px;">
+                <a href="https://amazon.in/?tag=snf-21" style="display:block;text-decoration:none;">
+                  <img src="https://placehold.co/200x200/FCE8EF/9C2A57?text=Product+1" width="100%" alt="" style="display:block;border-radius:8px;border:1px solid #EEE2E6;">
+                </a>
+                <p style="margin:6px 0 0;font-size:11px;line-height:1.4;color:#4A4A4A;">[Product Name 1]</p>
+                <p style="margin:2px 0 0;font-size:12px;font-weight:bold;color:#C13E70;">&#8377;0,000</p>
+              </td>
+              <td width="33%" valign="top" style="padding:0 4px;">
+                <a href="https://amazon.in/?tag=snf-21" style="display:block;text-decoration:none;">
+                  <img src="https://placehold.co/200x200/FCE8EF/9C2A57?text=Product+2" width="100%" alt="" style="display:block;border-radius:8px;border:1px solid #EEE2E6;">
+                </a>
+                <p style="margin:6px 0 0;font-size:11px;line-height:1.4;color:#4A4A4A;">[Product Name 2]</p>
+                <p style="margin:2px 0 0;font-size:12px;font-weight:bold;color:#C13E70;">&#8377;0,000</p>
+              </td>
+              <td width="33%" valign="top" style="padding-left:8px;">
+                <a href="https://amazon.in/?tag=snf-21" style="display:block;text-decoration:none;">
+                  <img src="https://placehold.co/200x200/FCE8EF/9C2A57?text=Product+3" width="100%" alt="" style="display:block;border-radius:8px;border:1px solid #EEE2E6;">
+                </a>
+                <p style="margin:6px 0 0;font-size:11px;line-height:1.4;color:#4A4A4A;">[Product Name 3]</p>
+                <p style="margin:2px 0 0;font-size:12px;font-weight:bold;color:#C13E70;">&#8377;0,000</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- FOOTER -->
+      <tr>
+        <td style="padding:32px 24px 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="border-top:1px solid #EEE2E6;padding-top:18px;">
+              <p style="margin:0;font-size:11px;color:#9A9A9A;line-height:1.6;">
+                You're receiving this because you subscribed to StartupNews.fyi.<br>
+                <a href="https://startupnews.fyi/unsubscribe" style="color:#9A9A9A;text-decoration:underline;">Unsubscribe</a>
+              </p>
+              <p style="margin:10px 0 0;font-size:11px;color:#9A9A9A;">DOTFYI Media Ventures Pvt. Ltd. &middot; New Delhi, India</p>
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
 </table>
 
-<!-- FOOTER -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0E0B13;">
-  <tr><td align="center"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
-    <tr><td class="px" style="padding:30px 40px;" align="center">
-      <img src="https://startupnews.fyi/logo.png" alt="StartupNews.fyi" width="210" class="logo-img" style="display:block; width:210px; max-width:210px; height:auto; margin-bottom:14px;">
-      <p style="margin:0 0 16px 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:18px; color:#b9adc9;">The pulse of global startups &mdash; every morning, 8 AM.</p>
-      <p style="margin:0 0 16px 0; font-family:Arial,Helvetica,sans-serif; font-size:12px;">
-        <a href="https://instagram.com/startupnews.fyi" style="color:#FFD23F; padding:0 6px;">Instagram</a> &middot;
-        <a href="https://linkedin.com/company/startupnews-fyi" style="color:#FFD23F; padding:0 6px;">LinkedIn</a> &middot;
-        <a href="https://startupnews.fyi" style="color:#FFD23F; padding:0 6px;">Website</a>
-      </p>
-      <p style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:11px; line-height:17px; color:#6f6580;">
-        You are receiving this because you subscribed to StartupNews.fyi.
-        <a href="#" style="color:#b9adc9; text-decoration:underline;">Unsubscribe</a><br>
-        DOTFYI Media Ventures Pvt. Ltd. &middot; New Delhi, India
-      </p>
-    </td></tr>
-  </table></td></tr>
-</table>
-
-</center>
 </body>
 </html>`;
 

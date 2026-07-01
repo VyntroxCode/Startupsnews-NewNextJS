@@ -16,6 +16,7 @@ function normalizeBody(body: Record<string, unknown>) {
     mimeType: String(body.mimeType || '').trim() || null,
     isActive: body.isActive !== false,
     publishAt: body.publishAt ? String(body.publishAt).trim() || null : null,
+    sectionId: body.sectionId == null || body.sectionId === '' ? null : Number(body.sectionId),
   };
 }
 
