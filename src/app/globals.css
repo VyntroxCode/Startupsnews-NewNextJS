@@ -1134,17 +1134,14 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   /* Hide vertical share bar if it's causing alignment issues */
 }
 
-/* Sticky sidebar */
+/* Sticky sidebar (JS) wrapper/content */
 .sticky-sidebar-wrapper {
+  position: relative;
   width: 100%;
-  height: 100%; /* must fill #mvp-side-wrap so sticky has scroll distance to work */
+  max-width: 100%;
 }
 
-/* CSS sticky: stays pinned at top of viewport while inside #mvp-side-wrap,
-   automatically stops at the container boundary — no JS, no overflow hacks needed */
 .sticky-sidebar-content {
-  position: sticky;
-  top: 88px;
   box-sizing: border-box;
 }
 
