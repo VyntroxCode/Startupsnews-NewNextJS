@@ -120,15 +120,15 @@ export default function SettingsPage() {
 
       {/* Page header */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 12, fontSize: '0.72rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 20, fontSize: '0.72rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           <a href="/dashboard" style={{ color: '#94a3b8', textDecoration: 'none' }}>Dashboard</a>
           <span>›</span>
           <span style={{ color: '#64748b', fontWeight: 500 }}>Profile</span>
         </div>
-        <h1 style={{ fontSize: isMobile ? '2rem' : '2.5rem', fontWeight: 800, color: '#0f172a', margin: '0 0 10px', letterSpacing: '-0.03em' }}>
+        <h1 style={{ fontSize: isMobile ? '2rem' : '2.5rem', fontWeight: 800, color: '#0f172a', margin: '0 0 20px', letterSpacing: '-0.03em' }}>
           My Profile
         </h1>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0 0 8px', marginTop: '18px' }}>Update Profile &amp; Personal Details.</p>
+        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0 0 20px' }}>Update Profile &amp; Personal Details.</p>
       </div>
 
       {/* Two-col layout on desktop */}

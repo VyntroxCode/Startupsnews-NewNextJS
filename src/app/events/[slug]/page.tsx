@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getEventsByRegion, getEventImage } from "@/lib/data-adapter";
 import { EventByCountryCard } from "@/components/EventByCountryCard";
 
@@ -58,12 +59,29 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
 
     return (
         <div className="mvp-main-blog-wrap left relative mvp-main-blog-marg event-by-country-page">
-            <div className="mvp-main-box">
+            <div className="mvp-main-box event-by-country-container">
                 <div className="mvp-main-blog-cont left relative">
+                    <nav className="event-by-country-breadcrumb" aria-label="Breadcrumb">
+                        <Link href="/" className="event-by-country-breadcrumb-link">
+                            Home
+                        </Link>
+                        <span className="event-by-country-breadcrumb-separator" aria-hidden="true">
+                            /
+                        </span>
+                        <Link href="/events" className="event-by-country-breadcrumb-link">
+                            Events
+                        </Link>
+                        <span className="event-by-country-breadcrumb-separator" aria-hidden="true">
+                            /
+                        </span>
+                        <span className="event-by-country-breadcrumb-current" aria-current="page">
+                            {region}
+                        </span>
+                    </nav>
                     <div className="mvp-main-blog-out left relative event-by-country-out">
                         <div className="mvp-main-blog-in event-by-country-in">
                             <div className="mvp-main-blog-body left relative event-by-country-body">
-                                <section className="event-by-country-section" style={{ paddingTop: "40px" }}>
+                                <section className="event-by-country-section" style={{ paddingTop: "20px" }}>
                                     <h2 className="event-by-country-region">Events In {region}</h2>
                                     {upcomingEvents.length > 0 ? (
                                         <ul className="event-by-country-list">
@@ -78,6 +96,11 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
                                     ) : (
                                         <p>No upcoming events found for {region} at this time.</p>
                                     )}
+                                    <div style={{ marginTop: "40px", textAlign: "center" }}>
+                                        <Link href="/events" className="event-detail-back">
+                                            Back to Events <i className="fa fa-long-arrow-right" aria-hidden="true" style={{ marginLeft: "5px" }} />
+                                        </Link>
+                                    </div>
                                 </section>
                             </div>
                         </div>

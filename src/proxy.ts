@@ -77,8 +77,34 @@ function renderGoneHtml(slug: string): string {
 </html>`;
 }
 
+// Legacy WordPress-style date permalinks (e.g. /2020/01/15/old-post-title).
+// The site never serves content at this URL shape (current posts live at
+// /:category/:slug), so any match is a stale indexed URL — always 410.
+const LEGACY_DATE_PERMALINK = /^\/\d{4}\/\d{1,2}\/\d{1,2}\//;
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (LEGACY_DATE_PERMALINK.test(pathname)) {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return NextResponse.next();
+    }
+    if (request.method === 'HEAD') {
+      return new NextResponse(null, {
+        status: 410,
+        headers: { 'Cache-Control': 'public, max-age=3600', 'X-Robots-Tag': 'noindex, nofollow' },
+      });
+    }
+    return new NextResponse(renderGoneHtml(pathname.replace(/^\/+/, '')), {
+      status: 410,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
+  }
+
   const slug = getSlugFromPath(pathname);
 
   // --- Handle /post/:slug (410 Gone) ---

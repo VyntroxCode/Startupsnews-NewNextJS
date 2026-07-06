@@ -17,9 +17,13 @@ export function StartupEventsSection({ events, showLocationTag = true }: Startup
         </Link>
       </h3>
       <div id="mvp-feat-tab-col1" className="mvp-feat1-list left relative mvp-tab-col-cont startup-events-list" style={{ display: "block" }}>
-        {list.slice(0, 18).map((event) => {
+        {list.slice(0, 24).map((event) => {
           const detailUrl = getStartupEventDetailPath(event);
           const isInternal = detailUrl.startsWith("/");
+          const titleWords = event.title.trim().split(/\s+/);
+          const shortTitle = titleWords.length > 4
+            ? `${titleWords.slice(0, 4).join(" ")}...`
+            : event.title;
 
           return (
             <a 
@@ -39,7 +43,7 @@ export function StartupEventsSection({ events, showLocationTag = true }: Startup
                     )}
                     <span className="mvp-cd-date left relative">{event.date}</span>
                   </div>
-                  <h2>{event.title}</h2>
+                  <h2>{shortTitle}</h2>
                 </div>
               </div>
             </a>

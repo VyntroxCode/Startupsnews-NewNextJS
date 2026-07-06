@@ -569,18 +569,18 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   flex-shrink: 0;
   border: none;
   border-radius: 50%;
-  background: #6b7280;
-  color: #fff;
+  background: transparent;
+  color: #6b7280;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.9rem;
-  transition: background 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .startupnews-search-btn:hover {
-  background: #4b5563;
+  color: #4b5563;
 }
 
 .startupnews-search-btn i {
@@ -652,7 +652,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 }
 
 .startup-events-wrap .startup-events-item:hover .mvp-feat1-list-text h2 {
-  color: #c41a52;
+  color: #ee1761 !important;
 }
 
 .startup-events-wrap .startup-events-item .mvp-feat1-list-cont {
@@ -704,6 +704,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin: 0 !important;
   float: none;
   padding: 0;
+  transition: color 0.15s ease-in-out;
 }
 
 /* Event list: smaller, lighter grey – LOCATION / DATE */
@@ -2769,19 +2770,19 @@ img.mvp-big-img {
     margin: 0;
     font-size: 0.85rem;
     border-radius: 50%;
-    background: #6b7280;
+    background: transparent;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: #fff;
+    color: #6b7280;
     cursor: pointer;
-    transition: background 0.2s ease, border-radius 0.3s ease;
+    transition: color 0.2s ease, border-radius 0.3s ease;
   }
 
   .startupnews-search-btn:hover {
-    background: #4b5563;
+    color: #4b5563;
   }
 
   /* When expanded, adjust button border radius */

@@ -268,40 +268,18 @@ export function Header() {
                         {userMenuOpen && (
                           <div style={{
                             position: 'absolute', top: 'calc(100% + 10px)', right: 0,
-                            background: '#fff', borderRadius: 12, padding: '6px 0',
+                            background: '#fff', borderRadius: 8, padding: '2px',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.16)', border: '1px solid #e5e7eb',
-                            minWidth: 200, zIndex: 99999,
+                            zIndex: 99999,
                           }}>
-                            {/* User info */}
-                            <div style={{ padding: '10px 16px 10px', borderBottom: '1px solid #f3f4f6' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor(authUser.name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
-                                  {authUser.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div style={{ overflow: 'hidden' }}>
-                                  <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser.name}</p>
-                                  <p style={{ margin: 0, fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser.email}</p>
-                                </div>
-                              </div>
-                            </div>
-                            {/* Dashboard link */}
-                            <button
-                              onClick={() => { setUserMenuOpen(false); window.location.href = '/dashboard'; }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 600, textAlign: 'left' }}
-                              onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
-                              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                              My Dashboard
-                            </button>
                             {/* Sign out */}
                             <button
                               onClick={handleLogout}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: '#dc2626', fontWeight: 600, textAlign: 'left' }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '6px 10px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: '#dc2626', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', borderRadius: 6 }}
                               onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
                               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                               Sign Out
                             </button>
                           </div>

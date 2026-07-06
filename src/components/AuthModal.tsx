@@ -158,7 +158,7 @@ export default function AuthModal() {
 							window.dispatchEvent(new Event("pub-auth-changed"));
 							// Pre-fetch categories + morning signal status; picker only shows if enabled and user has no prefs
 							try {
-								const catRes = await fetch("/api/newsletter/categories");
+								const catRes = await fetch("/api/newsletter/categories", { cache: "no-store" });
 								const catData = await catRes.json();
 								if (catData.success && catData.data?.length) {
 									setNlCategories(catData.data);
@@ -195,7 +195,7 @@ export default function AuthModal() {
 			}
 		}, 3000);
 		return () => clearTimeout(t);
-	}, [showWelcome, nlCategories, user]);
+	}, [showWelcome, nlCategories, user, morningSignalEnabled]);
 
 	/* ── Mount & session check ──────────────────────────────── */
 	useEffect(() => {

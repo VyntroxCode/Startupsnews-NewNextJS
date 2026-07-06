@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { query, queryOne } from '@/shared/database/connection';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface RawCategory {
   id: number;
   name: string;
@@ -45,7 +48,10 @@ export async function GET() {
       color: slugColor(row.slug),
     }));
 
-    return NextResponse.json({ success: true, data, morningSignalEnabled });
+    return NextResponse.json(
+      { success: true, data, morningSignalEnabled },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });

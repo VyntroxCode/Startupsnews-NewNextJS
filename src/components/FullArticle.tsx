@@ -262,7 +262,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                 title="Add as a preferred source on Google"
                                             >
                                                 <img
-                                                    src="https://www.residentialsystems.com/wp-content/uploads/2025/09/google_preferred_source_badge_dark@2x.png"
+                                                    src="https://telecomtalk.info/wp-content/themes/telecom-talk/assets/images/sog1.jpeg"
                                                     alt="Add as a preferred source on Google"
                                                     className="google-preferred-badge"
                                                 />

@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
 import { getPublicToken } from '@/lib/public-auth';
 import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface Report {
   id: string;
@@ -12,6 +17,8 @@ interface Report {
   desc: string;
   category: string;
   date: string;
+  month: string;
+  shortMonth: string;
   pages: number | null;
   tag: string;
   color: string;
@@ -48,6 +55,9 @@ export default function ReportsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [brokenPreviewImages, setBrokenPreviewImages] = useState<Record<string, boolean>>({});
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [pdfNumPages, setPdfNumPages] = useState(0);
+  const [pdfViewportWidth, setPdfViewportWidth] = useState(0);
+  const pdfViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const sync = () => setIsMobile(window.innerWidth <= 768);
@@ -57,9 +67,37 @@ export default function ReportsPage() {
   }, []);
 
   useEffect(() => {
+    setPdfNumPages(0);
+  }, [selectedReport]);
+
+  useEffect(() => {
+    if (!selectedReport) return;
+    const el = pdfViewportRef.current;
+    if (!el) return;
+    const sync = () => setPdfViewportWidth(el.clientWidth);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [selectedReport]);
+
+  useEffect(() => {
     setSelectedReport(null);
     setSearch('');
   }, [sectionFilter]);
+
+  useEffect(() => {
+    if (!selectedReport) return;
+    const blockKeys = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (key === 'p' || key === 's')) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', blockKeys, true);
+    return () => window.removeEventListener('keydown', blockKeys, true);
+  }, [selectedReport]);
 
   useEffect(() => {
     (async () => {
@@ -83,12 +121,15 @@ export default function ReportsPage() {
 
         setReports(reportsData.data.map((r: any) => {
           const rc = REPORT_COLORS[r.category] || { color: '#64748b', bg: '#f1f5f9', tagColor: '#64748b', tagBg: '#f1f5f9' };
+          const dateObj = new Date((r.publish_at || r.created_at).toString().replace(' ', 'T'));
           return {
             id: String(r.id),
             title: String(r.title || ''),
             desc: String(r.description || ''),
             category: String(r.category || 'General'),
-            date: new Date((r.publish_at || r.created_at).toString().replace(' ', 'T')).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+            date: dateObj.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+            month: dateObj.toLocaleDateString('en-IN', { month: 'long' }),
+            shortMonth: dateObj.toLocaleDateString('en-IN', { month: 'short' }),
             pages: Number(r.page_count || 0) > 0 ? Number(r.page_count) : null,
             tag: r.is_active ? 'Free' : 'Premium',
             color: rc.color, bg: rc.bg, tagColor: rc.tagColor, tagBg: rc.tagBg,
@@ -123,7 +164,7 @@ export default function ReportsPage() {
 
   const filtered = sectionReports.filter((r) => {
     const q = search.trim().toLowerCase();
-    return !q || [r.title, r.category, r.desc, r.date].join(' ').toLowerCase().includes(q);
+    return !q || r.title.toLowerCase().includes(q) || r.month.toLowerCase().includes(q) || r.shortMonth.toLowerCase().includes(q);
   });
 
   // ── No section selected ────────────────────────────────────────────────────
@@ -171,7 +212,7 @@ export default function ReportsPage() {
           </svg>
           <input
             type="search"
-            placeholder="Search reports…"
+            placeholder="Search by name or month…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ width: '100%', padding: '10px 16px 10px 36px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, outline: 'none', background: '#fff', color: '#111827', boxSizing: 'border-box' }}
@@ -239,18 +280,35 @@ export default function ReportsPage() {
 
       {/* Preview modal */}
       {selectedReport && (
-        <div onClick={closePreview} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '16px' : '20px' }}>
-          <div onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()} style={{ width: '100%', maxWidth: 680, height: isMobile ? '88vh' : '92vh', background: '#fff', borderRadius: 18, boxShadow: '0 30px 80px rgba(15,23,42,0.35)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', flexDirection: isMobile ? 'column' : 'row', gap: 16, padding: isMobile ? '14px 16px' : '18px 22px', borderBottom: '1px solid #e5e7eb' }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ee1761' }}>Report Preview</p>
-                <h2 style={{ margin: '4px 0 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>{selectedReport.title}</h2>
+        <div onClick={closePreview} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'center', padding: isMobile ? 0 : '20px' }}>
+          <div onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()} style={{ position: 'relative', width: '100%', maxWidth: isMobile ? '100%' : 680, height: isMobile ? '100dvh' : '92vh', background: '#fff', borderRadius: isMobile ? 0 : 18, boxShadow: isMobile ? 'none' : '0 30px 80px rgba(15,23,42,0.35)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: 'row', gap: 16, padding: isMobile ? '14px 52px 14px 16px' : '24px 28px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 10, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ee1761', flexShrink: 0 }}>Report Preview</p>
+                <h2 style={{ margin: 0, fontSize: isMobile ? 13 : 16, fontWeight: 700, color: '#111827', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedReport.title}</h2>
               </div>
-              <button type="button" onClick={closePreview} style={{ width: 40, height: 40, borderRadius: 999, border: 'none', background: '#f3f4f6', color: '#6b7280', cursor: 'pointer', fontSize: 22, flexShrink: 0 }}>×</button>
+              <button type="button" onClick={closePreview} style={{ position: 'absolute', top: isMobile ? 10 : 12, right: isMobile ? 10 : 12, width: isMobile ? 32 : 36, height: isMobile ? 32 : 36, borderRadius: 999, border: 'none', background: '#f3f4f6', color: '#6b7280', cursor: 'pointer', fontSize: isMobile ? 18 : 20, flexShrink: 0 }}>×</button>
             </div>
-            <div style={{ flex: 1, background: '#f8fafc', padding: isMobile ? 12 : 18 }}>
+            <div style={{ flex: 1, background: '#f8fafc', padding: isMobile ? 8 : 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               {isPdf ? (
-                <iframe src={`${selectedReport.fileUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`} title={selectedReport.title} onContextMenu={(e) => e.preventDefault()} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12 }} />
+                <div ref={pdfViewportRef} onContextMenu={(e) => e.preventDefault()} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', borderRadius: isMobile ? 8 : 12, background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isMobile ? 10 : 16, padding: isMobile ? '10px 0' : '16px 0' }}>
+                  <Document
+                    file={selectedReport.fileUrl}
+                    onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
+                    loading={<p style={{ padding: 24, color: '#64748b', fontSize: 14 }}>Loading document…</p>}
+                    error={<p style={{ padding: 24, color: '#dc2626', fontSize: 14 }}>Failed to load PDF.</p>}
+                  >
+                    {pdfViewportWidth > 0 && Array.from({ length: pdfNumPages }, (_, i) => (
+                      <div key={i} style={{ marginBottom: isMobile ? 10 : 16, boxShadow: '0 1px 6px rgba(15,23,42,0.12)' }}>
+                        <Page
+                          pageNumber={i + 1}
+                          width={pdfViewportWidth}
+                          renderAnnotationLayer={false}
+                        />
+                      </div>
+                    ))}
+                  </Document>
+                </div>
               ) : isImage ? (
                 <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'relative', width: '100%', height: '100%', borderRadius: 12, overflow: 'hidden' }}>
                   <Image src={selectedReport.fileUrl} alt={selectedReport.title} fill sizes="100vw" style={{ objectFit: 'contain' }} />
