@@ -63,6 +63,20 @@ export default function BannersPage() {
     }
   }, [refetch]);
 
+  const getScheduleStatus = useCallback((banner: Banner) => {
+    if (!banner.isActive) {
+      return { label: 'Inactive', bg: '#fed7d7', color: '#742a2a' };
+    }
+    const now = Date.now();
+    if (banner.startDate && new Date(banner.startDate).getTime() > now) {
+      return { label: 'Scheduled', bg: '#feebc8', color: '#7b341e' };
+    }
+    if (banner.endDate && new Date(banner.endDate).getTime() < now) {
+      return { label: 'Expired', bg: '#e2e8f0', color: '#4a5568' };
+    }
+    return { label: 'Live', bg: '#c6f6d5', color: '#22543d' };
+  }, []);
+
   const handleStatusFilter = useCallback((isActive: string | null) => {
     setFilters((prev) => {
       if (isActive !== null) return { ...prev, isActive };
@@ -314,16 +328,28 @@ export default function BannersPage() {
                           {banner.order}
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: '500',
-                            background: banner.isActive ? '#c6f6d5' : '#fed7d7',
-                            color: banner.isActive ? '#22543d' : '#742a2a',
-                          }}>
-                            {banner.isActive ? 'Active' : 'Inactive'}
-                          </span>
+                          {(() => {
+                            const status = getScheduleStatus(banner);
+                            return (
+                              <span style={{
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: '500',
+                                background: status.bg,
+                                color: status.color,
+                              }}>
+                                {status.label}
+                              </span>
+                            );
+                          })()}
+                          {(banner.startDate || banner.endDate) && (
+                            <div style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: '0.25rem' }}>
+                              {banner.startDate ? new Date(banner.startDate).toLocaleString() : 'No start'}
+                              {' – '}
+                              {banner.endDate ? new Date(banner.endDate).toLocaleString() : 'No end'}
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '1rem' }}>
                           {banner.linkUrl ? (

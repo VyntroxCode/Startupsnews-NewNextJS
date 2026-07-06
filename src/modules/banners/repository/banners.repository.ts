@@ -17,8 +17,8 @@ export class BannersRepository {
     }
 
     // Filter by date range only if explicitly requested (for frontend display).
-    // Keep upcoming active banners visible by enforcing only end_date here.
     if (filters?.filterByDate === true) {
+      sql += ' AND (start_date IS NULL OR start_date <= NOW())';
       sql += ' AND (end_date IS NULL OR end_date >= NOW())';
     }
 

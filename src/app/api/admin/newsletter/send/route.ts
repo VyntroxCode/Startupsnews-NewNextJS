@@ -1,31 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/shared/middleware/auth.middleware';
-import { query, queryOne } from '@/shared/database/connection';
-import nodemailer from 'nodemailer';
+import { query } from '@/shared/database/connection';
+import { buildNewsletterTransporter, getNewsletterFrom } from '@/lib/newsletter-smtp';
 
 interface Recipient { id: number; name: string; email: string; newsletter_category_slugs: string | null; }
-
-async function getSetting(key: string): Promise<string | null> {
-  const row = await queryOne<{ value: string }>('SELECT value FROM site_settings WHERE `key` = ?', [key]);
-  return row?.value ?? null;
-}
-
-async function buildTransporter() {
-  const host   = await getSetting('nl_smtp_host')   || process.env.SMTP_HOST  || '';
-  const port   = await getSetting('nl_smtp_port')   || process.env.SMTP_PORT  || '465';
-  const secure = await getSetting('nl_smtp_secure') || process.env.SMTP_SECURE || 'true';
-  const user   = await getSetting('nl_smtp_user')   || process.env.SMTP_USER  || '';
-  const pass   = await getSetting('nl_smtp_pass')   || process.env.SMTP_PASS  || '';
-
-  if (!host || !user || !pass) throw new Error('SMTP not configured. Set up mail config first.');
-
-  return nodemailer.createTransport({
-    host,
-    port: Number(port),
-    secure: secure.toLowerCase() === 'true',
-    auth: { user, pass },
-  });
-}
 
 /** POST /api/admin/newsletter/send */
 export async function POST(request: NextRequest) {
@@ -48,8 +26,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Email body is required' }, { status: 400 });
     }
 
-    const fromSetting = await getSetting('nl_smtp_from') || process.env.SMTP_FROM || '';
-    const transporter = await buildTransporter();
+    const fromSetting = await getNewsletterFrom();
+    const transporter = await buildNewsletterTransporter();
 
     // Test send
     if (body.testEmail) {

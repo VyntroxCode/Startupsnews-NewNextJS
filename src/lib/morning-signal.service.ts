@@ -1,9 +1,9 @@
-import nodemailer from 'nodemailer';
 import { createLogger } from '@/shared/utils/logger';
 import { query, queryOne } from '@/shared/database/connection';
 import { RssFeedsRepository } from '@/modules/rss-feeds/repository/rss-feeds.repository';
 import { markNewsletterSent } from '@/modules/public-users/repository/public-users.repository';
 import { getAmazonProducts, buildAmazonNativeBlock, buildAmazonBannerBlock } from './amazon-affiliate';
+import { buildNewsletterTransporter, getNewsletterFrom } from './newsletter-smtp';
 
 const log = createLogger('morning-signal');
 const rssRepo = new RssFeedsRepository();
@@ -107,16 +107,6 @@ function buildEventsBlock(events: UpcomingEvent[]): string {
 async function getSetting(key: string): Promise<string | null> {
   const row = await queryOne<{ value: string }>('SELECT value FROM site_settings WHERE `key` = ?', [key]);
   return row?.value ?? null;
-}
-
-async function buildTransporter() {
-  const host   = await getSetting('nl_smtp_host')   || process.env.SMTP_HOST   || '';
-  const port   = await getSetting('nl_smtp_port')   || process.env.SMTP_PORT   || '465';
-  const secure = await getSetting('nl_smtp_secure') || process.env.SMTP_SECURE || 'true';
-  const user   = await getSetting('nl_smtp_user')   || process.env.SMTP_USER   || '';
-  const pass   = await getSetting('nl_smtp_pass')   || process.env.SMTP_PASS   || '';
-  if (!host || !user || !pass) throw new Error('SMTP not configured');
-  return nodemailer.createTransport({ host, port: Number(port), secure: secure === 'true', auth: { user, pass } });
 }
 
 function timeAgo(d: Date | string | null): string {
@@ -411,8 +401,8 @@ export async function runMorningSignal(options?: { bypassEnabledCheck?: boolean;
     if (itemsBySlug[slug].length < 4) itemsBySlug[slug].push(item);
   }
 
-  const fromSetting = await getSetting('nl_smtp_from') || process.env.SMTP_FROM || '';
-  const transporter = await buildTransporter();
+  const fromSetting = await getNewsletterFrom();
+  const transporter = await buildNewsletterTransporter();
   const subject = `Morning Signal — ${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
 
   let sent = 0;
