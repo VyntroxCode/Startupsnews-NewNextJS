@@ -573,7 +573,7 @@ async function getAdminUser(): Promise<User | null> {
   // Fallback: try the default admin email
   const defaultAdmin = await queryOne<User>(
     'SELECT id, email, name FROM users WHERE email = ? LIMIT 1',
-    [process.env.ADMIN_EMAIL || 'admin@startupnews.fyi']
+    ['admin@startupnews.fyi']
   );
 
   if (defaultAdmin) {

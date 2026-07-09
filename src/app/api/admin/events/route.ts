@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { EventsService } from '@/modules/events/service/events.service';
 import { EventsRepository } from '@/modules/events/repository/events.repository';
 import { entityToEvent } from '@/modules/events/utils/events.utils';
@@ -34,7 +35,7 @@ const eventsService = new EventsService(eventsRepository);
  * Get all events (admin view - includes all statuses) with pagination
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
  * Create new event. Accepts multipart with imageFile (same as RSS: upload to S3 server-side).
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -282,6 +283,7 @@ export async function POST(request: NextRequest) {
       imageUrl,
       externalUrl: body.externalUrl != null ? String(body.externalUrl) : undefined,
       status: (body.status as 'draft' | 'upcoming' | 'completed' | 'cancelled') || 'draft',
+      createdBy: auth.user.email,
     });
 
     const event = entityToEvent(entity);

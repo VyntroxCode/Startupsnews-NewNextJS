@@ -73,14 +73,15 @@ export class BannersRepository {
     isActive: boolean;
     startDate?: Date | string;
     endDate?: Date | string;
+    createdBy?: string;
   }): Promise<BannerEntity> {
     const sql = `
       INSERT INTO banners (
         title, description, image_url, link_url, link_text,
-        display_order, is_active, start_date, end_date, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        display_order, is_active, start_date, end_date, created_by, updated_by, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `;
-    
+
     const params = [
       data.title,
       data.description || null,
@@ -91,6 +92,8 @@ export class BannersRepository {
       data.isActive ? 1 : 0,
       data.startDate || null,
       data.endDate || null,
+      data.createdBy || null,
+      data.createdBy || null,
     ];
 
     const conn = await getDbConnection();
@@ -120,6 +123,7 @@ export class BannersRepository {
     isActive: boolean;
     startDate: Date | string;
     endDate: Date | string;
+    updatedBy: string;
   }>): Promise<BannerEntity> {
     const updates: string[] = [];
     const params: (string | number | boolean | Date | null)[] = [];
@@ -159,6 +163,10 @@ export class BannersRepository {
     if (data.endDate !== undefined) {
       updates.push('end_date = ?');
       params.push(data.endDate || null);
+    }
+    if (data.updatedBy !== undefined) {
+      updates.push('updated_by = ?');
+      params.push(data.updatedBy);
     }
 
     if (updates.length === 0) {

@@ -4,11 +4,21 @@ import { UsersService } from '@/modules/users/service/users.service';
 import { UsersRepository } from '@/modules/users/repository/users.repository';
 import { JWTPayload } from '@/modules/users/service/auth.service';
 import { User } from '@/modules/users/domain/types';
+import { PanelAdminsService } from '@/modules/panel-admins/service/panel-admins.service';
+import { PanelAdminsRepository } from '@/modules/panel-admins/repository/panel-admins.repository';
+import { PanelAdmin, PanelAdminRole } from '@/modules/panel-admins/domain/types';
+
+/** Either a real `users` table account or a `panel_admins` table account. */
+export type AuthUser = User | PanelAdmin;
+
+const PANEL_ADMIN_ROLES: readonly PanelAdminRole[] = ['event_admin', 'publisher_admin'];
 
 // Initialize services
 const usersRepository = new UsersRepository();
 const usersService = new UsersService(usersRepository);
-const authService = new AuthService(usersService);
+const panelAdminsRepository = new PanelAdminsRepository();
+const panelAdminsService = new PanelAdminsService(panelAdminsRepository);
+const authService = new AuthService(usersService, panelAdminsService);
 
 /**
  * Get token from request.
@@ -48,14 +58,20 @@ function getTokenFromRequest(request: NextRequest, formToken?: string | null): s
  * Get user from a token string (e.g. from form body when Authorization header is stripped on multipart)
  */
 export async function getAuthUserFromToken(token: string): Promise<{
-  user: User;
+  user: AuthUser;
   payload: JWTPayload;
 } | null> {
   try {
     if (!token || !token.trim()) return null;
     const payload = authService.verifyToken(token);
     if (!payload) return null;
-    const user = await usersService.getUserById(payload.userId);
+
+    // The signed role claim decides which table to resolve the id against
+    // (event_admin/publisher_admin live in panel_admins, not users).
+    const user = PANEL_ADMIN_ROLES.includes(payload.role as PanelAdminRole)
+      ? await panelAdminsService.getById(payload.userId)
+      : await usersService.getUserById(payload.userId);
+
     if (!user || !user.isActive) return null;
     return { user, payload };
   } catch {
@@ -70,7 +86,7 @@ export async function getAuthUser(
   request: NextRequest,
   formToken?: string | null
 ): Promise<{
-  user: User;
+  user: AuthUser;
   payload: JWTPayload;
 } | null> {
   try {
@@ -90,13 +106,13 @@ export async function getAuthUser(
 }
 
 /**
- * Require authentication middleware
+ * Resolve the authenticated user for a request (header, cookie, or body-fallback token).
+ * Shared by requireAuth and requireAnyRole.
  */
-export async function requireAuth(
-  request: NextRequest,
-  requiredRole?: 'admin' | 'editor' | 'author'
+async function authenticateRequest(
+  request: NextRequest
 ): Promise<{
-  user: User;
+  user: AuthUser;
   payload: JWTPayload;
 } | NextResponse> {
   let token = getTokenFromRequest(request);
@@ -149,6 +165,22 @@ export async function requireAuth(
     );
   }
 
+  return auth;
+}
+
+/**
+ * Require authentication middleware
+ */
+export async function requireAuth(
+  request: NextRequest,
+  requiredRole?: 'admin' | 'editor' | 'author'
+): Promise<{
+  user: AuthUser;
+  payload: JWTPayload;
+} | NextResponse> {
+  const auth = await authenticateRequest(request);
+  if (auth instanceof NextResponse) return auth;
+
   if (requiredRole && !authService.hasRole(auth.user, requiredRole)) {
     console.error(`[Auth] Role check failed - User role: "${auth.user.role}", Required: "${requiredRole}"`, {
       userId: auth.user.id,
@@ -167,12 +199,44 @@ export async function requireAuth(
 }
 
 /**
+ * Require the caller's role to be one of a fixed set of sibling roles (no hierarchy).
+ * Used for section-scoped panels (e.g. Event Admin, Publisher Admin) that sit
+ * alongside admin/editor/author rather than above or below them.
+ */
+export async function requireAnyRole(
+  request: NextRequest,
+  allowedRoles: readonly string[]
+): Promise<{
+  user: AuthUser;
+  payload: JWTPayload;
+} | NextResponse> {
+  const auth = await authenticateRequest(request);
+  if (auth instanceof NextResponse) return auth;
+
+  if (!allowedRoles.includes(auth.user.role)) {
+    console.error(`[Auth] Section role check failed - User role: "${auth.user.role}", Allowed: [${allowedRoles.join(', ')}]`, {
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Forbidden - Insufficient permissions. Your role: ${auth.user.role}`,
+      },
+      { status: 403 }
+    );
+  }
+
+  return auth;
+}
+
+/**
  * Require admin middleware
  */
 export async function requireAdmin(
   request: NextRequest
 ): Promise<{
-  user: User;
+  user: AuthUser;
   payload: JWTPayload;
 } | NextResponse> {
   return requireAuth(request, 'admin');

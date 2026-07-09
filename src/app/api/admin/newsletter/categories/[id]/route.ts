@@ -36,13 +36,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     await query(
-      'UPDATE newsletter_categories SET name=?, slug=?, description=?, color=?, sort_order=? WHERE id=?',
+      'UPDATE newsletter_categories SET name=?, slug=?, description=?, color=?, sort_order=?, updated_by=? WHERE id=?',
       [
         name.toString().trim(),
         slug.toString().trim(),
         description?.toString().trim() || null,
         color?.toString().trim() || '#6366f1',
         sort_order ?? 0,
+        auth.user.email,
         id,
       ]
     );

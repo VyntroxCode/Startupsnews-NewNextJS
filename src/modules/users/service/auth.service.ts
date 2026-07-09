@@ -1,6 +1,15 @@
 import { UsersService } from './users.service';
 import { User } from '../domain/types';
+import { PanelAdminsService } from '@/modules/panel-admins/service/panel-admins.service';
+import { PanelAdmin } from '@/modules/panel-admins/domain/types';
 import jwt, { SignOptions } from 'jsonwebtoken';
+
+/** Minimal shape needed to sign a token — satisfied by both User and PanelAdmin. */
+interface AuthPrincipal {
+  id: number;
+  email: string;
+  role: string;
+}
 
 // Ensure JWT_SECRET is always a string (required for jwt.sign)
 const JWT_SECRET: string = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
@@ -20,16 +29,19 @@ export interface JWTPayload {
 }
 
 export class AuthService {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private panelAdminsService: PanelAdminsService
+  ) {}
 
   /**
    * Generate JWT token
    */
-  generateToken(user: User): string {
+  generateToken(principal: AuthPrincipal): string {
     const payload: JWTPayload = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
+      userId: principal.id,
+      email: principal.email,
+      role: principal.role,
     };
 
     return jwt.sign(payload, JWT_SECRET, {
@@ -40,11 +52,11 @@ export class AuthService {
   /**
    * Generate refresh token
    */
-  generateRefreshToken(user: User): string {
+  generateRefreshToken(principal: AuthPrincipal): string {
     const payload: JWTPayload = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
+      userId: principal.id,
+      email: principal.email,
+      role: principal.role,
     };
 
     return jwt.sign(payload, JWT_SECRET, {
@@ -77,28 +89,40 @@ export class AuthService {
   }
 
   /**
-   * Login and return user with token
+   * Login and return user with token.
+   * Tries the real-login `users` table (admin/editor/author) first, then the
+   * separate `panel_admins` table (event_admin/publisher_admin).
    */
   async login(email: string, password: string): Promise<{
-    user: User;
+    user: User | PanelAdmin;
     token: string;
     refreshToken: string;
   }> {
-    const { user } = await this.usersService.login({ email, password });
-    const token = this.generateToken(user);
-    const refreshToken = this.generateRefreshToken(user);
-
-    return {
-      user,
-      token,
-      refreshToken,
-    };
+    try {
+      const { user } = await this.usersService.login({ email, password });
+      return {
+        user,
+        token: this.generateToken(user),
+        refreshToken: this.generateRefreshToken(user),
+      };
+    } catch (usersError) {
+      try {
+        const { admin } = await this.panelAdminsService.login({ email, password });
+        return {
+          user: admin,
+          token: this.generateToken(admin),
+          refreshToken: this.generateRefreshToken(admin),
+        };
+      } catch {
+        throw usersError;
+      }
+    }
   }
 
   /**
    * Verify if user has required role
    */
-  hasRole(user: User, requiredRole: 'admin' | 'editor' | 'author'): boolean {
+  hasRole(user: AuthPrincipal, requiredRole: 'admin' | 'editor' | 'author'): boolean {
     const roleHierarchy: Record<string, number> = {
       admin: 3,
       administrator: 3, // alias for admin

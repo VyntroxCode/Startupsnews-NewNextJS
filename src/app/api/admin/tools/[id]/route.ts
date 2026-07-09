@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/shared/middleware/auth.middleware';
+import { requireAdmin, requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { TOOLS_VIEW_ROLES } from '@/shared/middleware/roles';
 import { queryOne, query } from '@/shared/database/connection';
 
 interface ToolRow {
@@ -7,13 +8,15 @@ interface ToolRow {
   name: string;
   slug: string;
   html_content: string;
+  visible_to_event_admin: boolean | number;
+  visible_to_publisher_admin: boolean | number;
   created_at: string;
   updated_at: string;
 }
 
 /** GET /api/admin/tools/[id] — serve raw HTML (opens as a full page) */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin(request);
+  const auth = await requireAnyRole(request, TOOLS_VIEW_ROLES);
   if (auth instanceof NextResponse) return auth;
   const { id } = await params;
   try {
@@ -22,6 +25,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       [isNaN(Number(id)) ? 0 : Number(id), id]
     );
     if (!row) return NextResponse.json({ success: false, error: 'Tool not found' }, { status: 404 });
+
+    const role = auth.user.role;
+    if (role === 'event_admin' && !row.visible_to_event_admin) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+    if (role === 'publisher_admin' && !row.visible_to_publisher_admin) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
 
     // Serve as full HTML page
     return new NextResponse(row.html_content, {

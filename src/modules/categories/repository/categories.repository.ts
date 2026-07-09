@@ -119,11 +119,12 @@ export class CategoriesRepository {
     imageUrl?: string;
     parentId?: number;
     sortOrder?: number;
+    createdBy?: string;
   }): Promise<CategoryEntity> {
     const sql = `
       INSERT INTO categories (
-        name, slug, description, image_url, parent_id, sort_order
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        name, slug, description, image_url, parent_id, sort_order, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       data.name,
@@ -132,6 +133,8 @@ export class CategoriesRepository {
       data.imageUrl || null,
       data.parentId || null,
       data.sortOrder || 0,
+      data.createdBy || null,
+      data.createdBy || null,
     ];
 
     const conn = await getDbConnection();

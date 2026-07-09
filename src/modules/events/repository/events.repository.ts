@@ -159,12 +159,13 @@ export class EventsRepository {
     imageUrl?: string;
     externalUrl?: string;
     status?: 'draft' | 'upcoming' | 'completed' | 'cancelled';
+    createdBy?: string;
   }): Promise<EventEntity> {
     const sql = `
       INSERT INTO events (
         title, slug, excerpt, description, location, event_date, event_end_date, event_time, event_end_time,
-        image_url, external_url, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        image_url, external_url, status, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const eventDateStr = this.normalizeEventDate(data.eventDate);
     const eventEndDateStr = data.eventEndDate ? this.normalizeEventDate(data.eventEndDate) : null;
@@ -181,6 +182,8 @@ export class EventsRepository {
       data.imageUrl || null,
       data.externalUrl || null,
       data.status || 'draft',
+      data.createdBy || null,
+      data.createdBy || null,
     ];
 
     const conn = await getDbConnection();

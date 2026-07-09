@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { BANNERS_ROLES } from '@/shared/middleware/roles';
 import { BannersService } from '@/modules/banners/service/banners.service';
 import { BannersRepository } from '@/modules/banners/repository/banners.repository';
 import { entityToBanner } from '@/modules/banners/utils/banners.utils';
@@ -15,7 +16,7 @@ const bannersService = new BannersService(bannersRepository);
  * Get all banners (admin view) with pagination
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, BANNERS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
  * Create new banner
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, BANNERS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -106,6 +107,8 @@ export async function POST(request: NextRequest) {
       isActive: body.isActive !== undefined ? body.isActive : true,
       startDate: body.startDate,
       endDate: body.endDate,
+      createdBy: auth.user.email,
+      updatedBy: auth.user.email,
     });
 
     return NextResponse.json({

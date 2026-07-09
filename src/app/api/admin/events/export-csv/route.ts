@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { query } from '@/shared/database/connection';
 import { convertToCsv } from '@/shared/utils/csv-utils';
 
@@ -22,7 +23,7 @@ interface EventRow {
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication
-    const auth = await requireAuth(request);
+    const auth = await requireAnyRole(request, EVENTS_ROLES);
     if (auth instanceof NextResponse) return auth;
 
     // Fetch events with all details

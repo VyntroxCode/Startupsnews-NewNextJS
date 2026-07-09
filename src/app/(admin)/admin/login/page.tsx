@@ -71,8 +71,8 @@ export default function AdminLoginPage() {
               <Image
                 src={siteConfig.logo}
                 alt={`${siteConfig.name} Logo`}
-                width={120}
-                height={60}
+                width={240}
+                height={120}
                 priority
                 className="admin-login-logo"
               />
@@ -382,16 +382,12 @@ export default function AdminLoginPage() {
           justify-content: center;
           align-items: center;
           margin-bottom: 1.5rem;
-          padding: 1rem;
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-          border-radius: 16px;
-          border: 1px solid rgba(102, 126, 234, 0.2);
         }
 
         .admin-login-logo {
           height: auto;
           width: auto;
-          max-width: 180px;
+          max-width: 320px;
           object-fit: contain;
         }
 

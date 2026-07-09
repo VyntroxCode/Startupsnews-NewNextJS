@@ -212,12 +212,12 @@ export default function AdminReportsPage() {
 
   return (
     <AdminErrorBoundary>
-      <div style={{ padding: '1.5rem' }}>
+      <div>
 
         {/* ── Page Header ── */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: '700', color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>Reports</h2>
-          <p style={{ color: '#64748b', fontSize: '0.9375rem', margin: '4px 0 0' }}>Manage reports and section groupings.</p>
+        <div style={{ marginBottom: '2.5rem' }}>
+          <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Reports</h2>
+          <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>Manage reports and section groupings.</p>
         </div>
 
         {/* ── Tab Bar ── */}
@@ -280,15 +280,15 @@ export default function AdminReportsPage() {
                   background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
                   color: 'white',
                   fontWeight: '600',
-                  padding: '0.7rem 1.4rem',
-                  borderRadius: '0.75rem',
+                  padding: '0.875rem 1.75rem',
+                  borderRadius: '8px',
                   boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
                   transition: 'all 0.2s',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.5rem',
                   textDecoration: 'none',
-                  fontSize: '0.9rem',
+                  fontSize: '0.9375rem',
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(99,102,241,0.4)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.3)'; }}
@@ -391,23 +391,34 @@ export default function AdminReportsPage() {
                           </td>
                           <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap', fontSize: '0.875rem', color: '#64748b' }}>{report.publishedAtFormatted}</td>
                           <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                               <Link
                                 href={`/admin/reports/edit/${report.id}`}
-                                style={{ color: '#d97706', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', fontWeight: '500' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.color = '#b45309'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.color = '#d97706'; }}
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                  color: 'white',
+                                  borderRadius: '6px',
+                                  textDecoration: 'none',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: '600',
+                                }}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
                                 Edit
                               </Link>
                               <button
                                 onClick={() => handleDeleteReport(report.id, report.title)}
-                                style={{ color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', fontWeight: '500' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.color = '#b91c1c'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.color = '#dc2626'; }}
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                }}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                                 Delete
                               </button>
                             </div>

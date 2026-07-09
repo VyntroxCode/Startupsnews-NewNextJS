@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { BANNERS_ROLES } from '@/shared/middleware/roles';
 import { BannersService } from '@/modules/banners/service/banners.service';
 import { BannersRepository } from '@/modules/banners/repository/banners.repository';
 import { entityToBanner } from '@/modules/banners/utils/banners.utils';
@@ -20,7 +21,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, BANNERS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -71,7 +72,7 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, BANNERS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -100,6 +101,7 @@ export async function PUT(
       isActive: body.isActive,
       startDate: body.startDate,
       endDate: body.endDate,
+      updatedBy: auth.user.email,
     });
 
     return NextResponse.json({
@@ -126,7 +128,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, BANNERS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

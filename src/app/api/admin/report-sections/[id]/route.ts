@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { REPORTS_ROLES } from '@/shared/middleware/roles';
 import { ReportSectionsRepository } from '@/modules/reports/repository/report-sections.repository';
 
 const repo = new ReportSectionsRepository();
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, REPORTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
@@ -26,7 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, error: 'Section not found' }, { status: 404 });
     }
 
-    const section = await repo.update(sectionId, { title, sortOrder: Number(body.sortOrder ?? existing.sort_order) });
+    const section = await repo.update(sectionId, { title, sortOrder: Number(body.sortOrder ?? existing.sort_order), updatedBy: auth.user.email });
     return NextResponse.json({ success: true, data: section });
   } catch (err) {
     console.error('PUT /api/admin/report-sections/[id] error:', err);
@@ -35,7 +36,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, REPORTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;

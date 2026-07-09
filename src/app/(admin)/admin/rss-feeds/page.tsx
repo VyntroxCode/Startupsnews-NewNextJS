@@ -33,14 +33,13 @@ const styles = {
   container: {
     width: '100%',
     maxWidth: '100%',
-    padding: 'clamp(1rem, 2vw, 2rem)',
     boxSizing: 'border-box' as const,
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: '2rem',
+    marginBottom: '2.5rem',
     flexWrap: 'wrap' as const,
     gap: '1rem',
   },
@@ -88,11 +87,11 @@ const styles = {
     borderRadius: '8px',
   },
   tableWrapper: {
-    background: 'white',
+    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
     borderRadius: '12px',
     overflow: 'hidden',
     boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-    border: '1px solid #e2e8f0',
+    border: '1px solid rgba(0,0,0,0.04)',
     overflowX: 'auto' as const,
     WebkitOverflowScrolling: 'touch' as const,
   },
@@ -102,16 +101,18 @@ const styles = {
     minWidth: '800px',
   },
   tableHeader: {
-    background: '#f8fafc',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
   },
   tableHeaderCell: {
-    padding: 'clamp(0.75rem, 2vw, 1rem) clamp(0.875rem, 2vw, 1.25rem)',
+    padding: 'clamp(0.75rem, 2vw, 1.25rem) clamp(0.875rem, 2vw, 1.5rem)',
     textAlign: 'left' as const,
     fontWeight: 600,
     fontSize: 'clamp(0.6875rem, 1.5vw, 0.75rem)',
     color: '#475569',
     textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
     whiteSpace: 'nowrap' as const,
+    borderBottom: '1px solid rgba(0,0,0,0.06)',
   },
   tableCell: {
     padding: 'clamp(0.75rem, 2vw, 1rem) clamp(0.875rem, 2vw, 1.25rem)',
@@ -135,8 +136,9 @@ const styles = {
     whiteSpace: 'nowrap' as const,
   },
   actionButton: {
-    padding: 'clamp(0.25rem, 1vw, 0.375rem) clamp(0.5rem, 1.5vw, 0.75rem)',
+    padding: 'clamp(0.375rem, 1vw, 0.5rem) clamp(0.625rem, 1.5vw, 1rem)',
     fontSize: 'clamp(0.6875rem, 1.5vw, 0.8125rem)',
+    fontWeight: 600,
     border: 'none',
     borderRadius: '6px',
     cursor: 'pointer',
@@ -146,8 +148,9 @@ const styles = {
     display: 'inline-block',
   },
   actionLink: {
-    padding: 'clamp(0.25rem, 1vw, 0.375rem) clamp(0.5rem, 1.5vw, 0.75rem)',
+    padding: 'clamp(0.375rem, 1vw, 0.5rem) clamp(0.625rem, 1.5vw, 1rem)',
     fontSize: 'clamp(0.6875rem, 1.5vw, 0.8125rem)',
+    fontWeight: 600,
     borderRadius: '6px',
     textDecoration: 'none',
     marginRight: '0.5rem',
@@ -481,7 +484,7 @@ export default function RssFeedsPage() {
           href={`/admin/rss-feeds/edit/${feed.id}`}
           style={{
             ...styles.cardLink,
-            background: '#f59e0b',
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
             color: 'white',
           }}
         >
@@ -492,7 +495,7 @@ export default function RssFeedsPage() {
           onClick={() => handleDelete(feed.id)}
           style={{
             ...styles.cardButton,
-            background: '#dc2626',
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
             color: 'white',
           }}
         >
@@ -622,7 +625,12 @@ export default function RssFeedsPage() {
               </thead>
               <tbody>
                 {filteredFeeds.map((feed, i) => (
-                  <tr key={feed.id} style={{ borderTop: i ? '1px solid #e2e8f0' : undefined }}>
+                  <tr
+                    key={feed.id}
+                    style={{ borderBottom: i < filteredFeeds.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
                     <td style={{ ...styles.tableCell, fontWeight: 500 }}>{feed.name}</td>
                     <td style={{ ...styles.tableCell, ...styles.urlCell }} title={feed.url}>
                       {feed.url}
@@ -697,7 +705,7 @@ export default function RssFeedsPage() {
                         href={`/admin/rss-feeds/edit/${feed.id}`}
                         style={{
                           ...styles.actionLink,
-                          background: '#f59e0b',
+                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                           color: 'white',
                         }}
                       >
@@ -708,7 +716,7 @@ export default function RssFeedsPage() {
                         onClick={() => handleDelete(feed.id)}
                         style={{
                           ...styles.actionButton,
-                          background: '#dc2626',
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                           color: 'white',
                         }}
                       >

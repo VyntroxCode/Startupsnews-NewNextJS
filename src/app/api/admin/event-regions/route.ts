@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { EventRegionsRepository } from '@/modules/events/repository/event-regions.repository';
 
 const repo = new EventRegionsRepository();
@@ -9,7 +10,7 @@ const repo = new EventRegionsRepository();
  * List all event regions ordered by sort_order
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
  * Create a new event region
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (await repo.nameExists(name)) {
       return NextResponse.json({ success: false, error: 'Region name already exists' }, { status: 409 });
     }
-    const region = await repo.create(name, body.sort_order);
+    const region = await repo.create(name, body.sort_order, auth.user.email);
     return NextResponse.json({ success: true, data: region }, { status: 201 });
   } catch (err) {
     console.error('POST /api/admin/event-regions error:', err);

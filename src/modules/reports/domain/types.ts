@@ -13,6 +13,8 @@ export interface ReportEntity {
   section_id: number | null;
   created_at: string;
   updated_at: string;
+  created_by?: string;
+  updated_by?: string;
 }
 
 export interface ReportInput {
@@ -27,4 +29,6 @@ export interface ReportInput {
   isActive?: boolean;
   publishAt?: string | null;
   sectionId?: number | null;
+  createdBy?: string;
+  updatedBy?: string;
 }

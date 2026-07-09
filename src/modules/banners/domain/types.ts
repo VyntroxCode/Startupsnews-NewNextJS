@@ -31,6 +31,8 @@ export interface BannerEntity {
   end_date?: Date | string;
   created_at: Date | string;
   updated_at: Date | string;
+  created_by?: string;
+  updated_by?: string;
 }
 
 /**
@@ -46,6 +48,8 @@ export interface CreateBannerDto {
   isActive: boolean;
   startDate?: Date | string;
   endDate?: Date | string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface UpdateBannerDto extends Partial<CreateBannerDto> {

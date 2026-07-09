@@ -179,18 +179,23 @@ export default function AuthorsPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-                      <th style={{ padding: '1.1rem', textAlign: 'left', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase' }}>Photo</th>
-                      <th style={{ padding: '1.1rem', textAlign: 'left', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase' }}>Name</th>
-                      <th style={{ padding: '1.1rem', textAlign: 'left', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase' }}>Description</th>
-                      <th style={{ padding: '1.1rem', textAlign: 'left', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase' }}>Default</th>
-                      <th style={{ padding: '1.1rem', textAlign: 'left', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase' }}>Status</th>
-                      <th style={{ padding: '1.1rem', textAlign: 'right', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase' }}>Actions</th>
+                      <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Photo</th>
+                      <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Name</th>
+                      <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Description</th>
+                      <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Default</th>
+                      <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Status</th>
+                      <th style={{ padding: '1.25rem 1.5rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {authors.map((author) => (
-                      <tr key={author.id} style={{ borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
-                        <td style={{ padding: '1.1rem' }}>
+                    {authors.map((author, index) => (
+                      <tr
+                        key={author.id}
+                        style={{ borderBottom: index < authors.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', transition: 'background 0.2s' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <td style={{ padding: '1.25rem 1.5rem' }}>
                           {author.avatarUrl ? (
                             <img
                               src={author.avatarUrl}
@@ -201,13 +206,13 @@ export default function AuthorsPage() {
                             <div style={{ width: 40, height: 40, borderRadius: '999px', background: '#e2e8f0' }} />
                           )}
                         </td>
-                        <td style={{ padding: '1.1rem', fontWeight: 600, color: '#0f172a' }}>{author.name}</td>
-                        <td style={{ padding: '1.1rem', color: '#64748b', maxWidth: 320 }}>
+                        <td style={{ padding: '1.25rem 1.5rem', fontWeight: 600, color: '#0f172a' }}>{author.name}</td>
+                        <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', maxWidth: 320 }}>
                           <span style={{ display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 320 }}>
                             {author.authorDescription || '-'}
                           </span>
                         </td>
-                        <td style={{ padding: '1.1rem' }}>
+                        <td style={{ padding: '1.25rem 1.5rem' }}>
                           {author.isDefaultAuthor ? (
                             <span
                               style={{
@@ -240,7 +245,7 @@ export default function AuthorsPage() {
                             </button>
                           )}
                         </td>
-                        <td style={{ padding: '1.1rem' }}>
+                        <td style={{ padding: '1.25rem 1.5rem' }}>
                           <span
                             style={{
                               padding: '0.25rem 0.6rem',
@@ -254,7 +259,7 @@ export default function AuthorsPage() {
                             {author.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td style={{ padding: '1.1rem', textAlign: 'right' }}>
+                        <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
                             <Link
                               href={`/admin/authors/edit/${author.id}`}

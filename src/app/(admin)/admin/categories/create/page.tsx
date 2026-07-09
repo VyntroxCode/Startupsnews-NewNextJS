@@ -162,14 +162,14 @@ export default function CreateCategoryPage() {
 
     return (
         <div>
-            <div style={{ marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '2.5rem' }}>
                 <Link
                     href="/admin/categories"
-                    style={{ color: '#48bb78', textDecoration: 'none', marginBottom: '1rem', display: 'inline-block' }}
+                    style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '0.75rem', display: 'inline-block' }}
                 >
                     ← Back to Categories
                 </Link>
-                <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#1a202c', marginTop: '0.5rem' }}>
+                <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
                     Create New Category
                 </h2>
             </div>

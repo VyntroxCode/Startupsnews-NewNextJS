@@ -1,5 +1,5 @@
 import { query, queryOne, getDbConnection } from '@/shared/database/connection';
-import { UserEntity } from '../domain/types';
+import { UserEntity, UserRole } from '../domain/types';
 import bcrypt from 'bcryptjs';
 
 export class UsersRepository {
@@ -49,17 +49,18 @@ export class UsersRepository {
     email: string;
     password: string;
     name: string;
-    role?: 'admin' | 'editor' | 'author';
+    role?: UserRole;
     avatarUrl?: string;
     authorDescription?: string;
+    createdBy?: string;
   }): Promise<UserEntity> {
     // Hash password
     const passwordHash = await bcrypt.hash(data.password, 10);
 
     const sql = `
       INSERT INTO users (
-        email, password_hash, name, role, avatar_url, author_description
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        email, password_hash, name, role, avatar_url, author_description, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       data.email,
@@ -68,6 +69,8 @@ export class UsersRepository {
       data.role || 'author',
       data.avatarUrl || null,
       data.authorDescription || null,
+      data.createdBy || null,
+      data.createdBy || null,
     ];
 
     const conn = await getDbConnection();

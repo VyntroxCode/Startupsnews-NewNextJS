@@ -1,24 +1,29 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getAuthHeaders } from '@/lib/admin-auth';
+import { getAdminUser, getAuthHeaders } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 
 interface Tool {
   id: number;
   name: string;
   slug: string;
+  visibleToEventAdmin?: boolean;
+  visibleToPublisherAdmin?: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export default function AdminToolsPage() {
+  const isAdmin = getAdminUser()?.role === 'admin';
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [toolName, setToolName] = useState('');
+  const [visibleToEventAdmin, setVisibleToEventAdmin] = useState(false);
+  const [visibleToPublisherAdmin, setVisibleToPublisherAdmin] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -48,12 +53,19 @@ export default function AdminToolsPage() {
       const res = await fetch('/api/admin/tools', {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), html_content }),
+        body: JSON.stringify({
+          name: name.trim(),
+          html_content,
+          visibleToEventAdmin,
+          visibleToPublisherAdmin,
+        }),
       });
       const data = await res.json();
       if (data.success) {
         setSuccess(`"${name}" uploaded successfully`);
         setToolName('');
+        setVisibleToEventAdmin(false);
+        setVisibleToPublisherAdmin(false);
         if (fileRef.current) fileRef.current.value = '';
         await load();
       } else {
@@ -106,12 +118,12 @@ export default function AdminToolsPage() {
 
   return (
     <AdminErrorBoundary>
-      <div style={{ width: '100%', maxWidth: '100%', padding: 'clamp(1rem, 2vw, 2rem)', boxSizing: 'border-box' }}>
+      <div>
 
         {/* Header */}
-        <div style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)', fontWeight: 700, marginBottom: '0.25rem', color: '#0f172a' }}>HTML Tools</h2>
-          <p style={{ color: '#64748b', fontSize: '0.9375rem', margin: 0 }}>
+        <div style={{ marginBottom: '2.5rem' }}>
+          <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>HTML Tools</h2>
+          <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>
             Upload any self-contained HTML tool — it will be saved to the database and accessible instantly from this page.
           </p>
         </div>
@@ -128,6 +140,7 @@ export default function AdminToolsPage() {
         )}
 
         {/* Upload form */}
+        {isAdmin && (
         <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a', marginBottom: '1.25rem' }}>Upload a new tool</h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -140,6 +153,28 @@ export default function AdminToolsPage() {
                 placeholder="e.g. Content Studio"
                 style={{ width: '100%', maxWidth: '400px', padding: '0.625rem 0.875rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9375rem', outline: 'none', fontFamily: 'inherit' }}
               />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>Also show to</label>
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#334155', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={visibleToEventAdmin}
+                    onChange={e => setVisibleToEventAdmin(e.target.checked)}
+                  />
+                  Event Admin
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#334155', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={visibleToPublisherAdmin}
+                    onChange={e => setVisibleToPublisherAdmin(e.target.checked)}
+                  />
+                  Publisher Admin
+                </label>
+              </div>
             </div>
 
             {/* Drop zone */}
@@ -189,6 +224,7 @@ export default function AdminToolsPage() {
             </div>
           </form>
         </div>
+        )}
 
         {/* Tools list */}
         <div>
@@ -219,6 +255,20 @@ export default function AdminToolsPage() {
                       Uploaded {new Date(tool.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       &nbsp;·&nbsp; ID: {tool.id}
                     </div>
+                    {isAdmin && (tool.visibleToEventAdmin || tool.visibleToPublisherAdmin) && (
+                      <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.375rem', flexWrap: 'wrap' }}>
+                        {tool.visibleToEventAdmin && (
+                          <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontSize: '0.6875rem', fontWeight: 600 }}>
+                            Event Admin
+                          </span>
+                        )}
+                        {tool.visibleToPublisherAdmin && (
+                          <span style={{ background: '#fef3c7', color: '#92400e', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontSize: '0.6875rem', fontWeight: 600 }}>
+                            Publisher Admin
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                     <button
@@ -227,12 +277,14 @@ export default function AdminToolsPage() {
                     >
                       Open ↗
                     </button>
-                    <button
-                      onClick={() => handleDelete(tool)}
-                      style={{ padding: '0.5rem 0.875rem', background: 'white', color: '#dc2626', border: '1.5px solid #fecaca', borderRadius: '7px', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer' }}
-                    >
-                      Delete
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDelete(tool)}
+                        style={{ padding: '0.5rem 0.875rem', background: 'white', color: '#dc2626', border: '1.5px solid #fecaca', borderRadius: '7px', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer' }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

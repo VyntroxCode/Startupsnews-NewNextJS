@@ -38,6 +38,8 @@ export interface EventEntity {
   status: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   created_at: Date | string;
   updated_at: Date | string;
+  created_by?: string;
+  updated_by?: string;
 }
 
 /**
@@ -56,6 +58,8 @@ export interface CreateEventDto {
   imageUrl?: string;
   externalUrl?: string;
   status?: 'draft' | 'upcoming' | 'completed' | 'cancelled';
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface UpdateEventDto extends Partial<CreateEventDto> {

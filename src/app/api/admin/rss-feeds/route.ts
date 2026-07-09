@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       max_items_per_fetch: body.maxItemsPerFetch ?? 10,
       auto_publish: body.autoPublish !== false ? 1 : 0,
       feed_for: body.feedFor ?? 'website',
+      created_by: auth.user.email,
     });
     return NextResponse.json({ success: true, data: feed });
   } catch (error) {

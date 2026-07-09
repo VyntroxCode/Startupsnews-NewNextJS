@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { CONTENT_ROLES } from '@/shared/middleware/roles';
 import { query } from '@/shared/database/connection';
 import { convertToCsv } from '@/shared/utils/csv-utils';
 
@@ -27,7 +28,7 @@ interface PostRow {
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication
-    const auth = await requireAuth(request);
+    const auth = await requireAnyRole(request, CONTENT_ROLES);
     if (auth instanceof NextResponse) return auth;
 
     // Fetch posts with all details

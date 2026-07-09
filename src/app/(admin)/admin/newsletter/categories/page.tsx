@@ -121,10 +121,10 @@ export default function NewsletterCategoriesPage() {
 
   return (
     <AdminErrorBoundary>
-      <div style={{ width: '100%', maxWidth: '100%', padding: 'clamp(1rem, 2vw, 2rem)', boxSizing: 'border-box' }}>
+      <div>
 
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
               <Link href="/admin/newsletter" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500 }}>
@@ -133,10 +133,10 @@ export default function NewsletterCategoriesPage() {
               <span style={{ color: '#94a3b8' }}>/</span>
               <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Categories</span>
             </div>
-            <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)', fontWeight: 700, margin: 0, color: '#0f172a' }}>
+            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>
               Newsletter Categories
             </h2>
-            <p style={{ color: '#64748b', fontSize: '0.9375rem', margin: '0.25rem 0 0' }}>
+            <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>
               Define categories to label and organize newsletter content.
             </p>
           </div>

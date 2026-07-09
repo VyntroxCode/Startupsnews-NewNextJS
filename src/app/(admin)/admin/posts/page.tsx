@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAuthHeaders } from '@/lib/admin-auth';
+import { getAdminUser, getAuthHeaders } from '@/lib/admin-auth';
 import { useAdminData } from '@/hooks/useAdminData';
 import Pagination from '@/components/admin/Pagination';
 import SearchBar from '@/components/admin/SearchBar';
@@ -48,6 +48,7 @@ export default function PostsPage() {
   const [bulkScope, setBulkScope] = useState<BulkScope>('selected');
   const [targetHttpCode, setTargetHttpCode] = useState<TargetHttpCode>('410');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const isAdmin = getAdminUser()?.role === 'admin';
 
   const {
     data: posts,
@@ -628,68 +629,70 @@ export default function PostsPage() {
           </div>
         </div>
 
-        <div style={{
-          display: 'flex',
-          gap: '0.75rem',
-          marginBottom: '1rem',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}>
-          <select
-            value={bulkScope}
-            onChange={(e) => setBulkScope(e.target.value as BulkScope)}
-            style={{
-              padding: '0.65rem 0.9rem',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              background: 'white',
-              color: '#0f172a',
-              fontWeight: '600',
-              minWidth: '220px',
-            }}
-          >
-            <option value="selected">Selected posts ({selectedPostIds.size})</option>
-            <option value="published">All published posts</option>
-            <option value="draft">All draft posts</option>
-            <option value="archived">All archived posts</option>
-            <option value="unpublished">All unpublished (draft + archived)</option>
-          </select>
+        {isAdmin && (
+          <div style={{
+            display: 'flex',
+            gap: '0.75rem',
+            marginBottom: '1rem',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}>
+            <select
+              value={bulkScope}
+              onChange={(e) => setBulkScope(e.target.value as BulkScope)}
+              style={{
+                padding: '0.65rem 0.9rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: 'white',
+                color: '#0f172a',
+                fontWeight: '600',
+                minWidth: '220px',
+              }}
+            >
+              <option value="selected">Selected posts ({selectedPostIds.size})</option>
+              <option value="published">All published posts</option>
+              <option value="draft">All draft posts</option>
+              <option value="archived">All archived posts</option>
+              <option value="unpublished">All unpublished (draft + archived)</option>
+            </select>
 
-          <select
-            value={targetHttpCode}
-            onChange={(e) => setTargetHttpCode(e.target.value as TargetHttpCode)}
-            style={{
-              padding: '0.65rem 0.9rem',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              background: 'white',
-              color: '#0f172a',
-              fontWeight: '600',
-              minWidth: '170px',
-            }}
-          >
-            <option value="200">Set HTTP 200</option>
-            <option value="404">Set HTTP 404</option>
-            <option value="410">Set HTTP 410</option>
-          </select>
+            <select
+              value={targetHttpCode}
+              onChange={(e) => setTargetHttpCode(e.target.value as TargetHttpCode)}
+              style={{
+                padding: '0.65rem 0.9rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: 'white',
+                color: '#0f172a',
+                fontWeight: '600',
+                minWidth: '170px',
+              }}
+            >
+              <option value="200">Set HTTP 200</option>
+              <option value="404">Set HTTP 404</option>
+              <option value="410">Set HTTP 410</option>
+            </select>
 
-          <button
-            type="button"
-            disabled={bulkLoading || (bulkScope === 'selected' && selectedPostIds.size === 0)}
-            onClick={applyBulkStatus}
-            style={{
-              padding: '0.65rem 0.9rem',
-              borderRadius: '8px',
-              border: '1px solid #334155',
-              background: '#0f172a',
-              color: 'white',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
-          >
-            {bulkLoading ? 'Applying...' : 'Apply'}
-          </button>
-        </div>
+            <button
+              type="button"
+              disabled={bulkLoading || (bulkScope === 'selected' && selectedPostIds.size === 0)}
+              onClick={applyBulkStatus}
+              style={{
+                padding: '0.65rem 0.9rem',
+                borderRadius: '8px',
+                border: '1px solid #334155',
+                background: '#0f172a',
+                color: 'white',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              {bulkLoading ? 'Applying...' : 'Apply'}
+            </button>
+          </div>
+        )}
 
         {actionNotice && (
           <div style={{
@@ -831,21 +834,23 @@ export default function PostsPage() {
                     <tr style={{
                       background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
                     }}>
-                      <th style={{
-                        padding: '1.25rem 0.75rem',
-                        textAlign: 'center',
-                        fontWeight: '600',
-                        fontSize: '0.75rem',
-                        color: '#475569',
-                        borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-                        width: '40px',
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={allOnPageSelected}
-                          onChange={(e) => toggleSelectAllOnPage(e.target.checked)}
-                        />
-                      </th>
+                      {isAdmin && (
+                        <th style={{
+                          padding: '1.25rem 0.75rem',
+                          textAlign: 'center',
+                          fontWeight: '600',
+                          fontSize: '0.75rem',
+                          color: '#475569',
+                          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+                          width: '40px',
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={allOnPageSelected}
+                            onChange={(e) => toggleSelectAllOnPage(e.target.checked)}
+                          />
+                        </th>
+                      )}
                       <th style={{
                         padding: '1.25rem 1.5rem',
                         textAlign: 'left',
@@ -947,13 +952,15 @@ export default function PostsPage() {
                           e.currentTarget.style.background = 'transparent';
                         }}
                       >
-                        <td style={{ padding: '1.25rem 0.75rem', textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedPostIds.has(post.id)}
-                            onChange={(e) => toggleSelectPost(post.id, e.target.checked)}
-                          />
-                        </td>
+                        {isAdmin && (
+                          <td style={{ padding: '1.25rem 0.75rem', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedPostIds.has(post.id)}
+                              onChange={(e) => toggleSelectPost(post.id, e.target.checked)}
+                            />
+                          </td>
+                        )}
                         <td style={{ padding: '1.25rem 1.5rem' }}>
                           <div style={{ fontWeight: '600', color: '#0f172a', marginBottom: '0.25rem' }}>
                             {post.title}

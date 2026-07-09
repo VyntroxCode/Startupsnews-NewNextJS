@@ -225,23 +225,25 @@ export default function EditEventPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
+      <div style={{ marginBottom: '2.5rem' }}>
         <Link
           href="/admin/events"
           style={{
             color: '#48bb78',
             textDecoration: 'none',
-            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            marginBottom: '0.75rem',
             display: 'inline-block',
           }}
         >
           ← Back to Events
         </Link>
         <h2 style={{
-          fontSize: '2rem',
-          fontWeight: 'bold',
-          color: '#1a202c',
-          marginTop: '0.5rem',
+          fontSize: '2.25rem',
+          fontWeight: '700',
+          color: '#0f172a',
+          margin: 0,
+          letterSpacing: '-0.02em',
         }}>
           Edit Event
         </h2>

@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AuthService } from '@/modules/users/service/auth.service';
 import { UsersService } from '@/modules/users/service/users.service';
 import { UsersRepository } from '@/modules/users/repository/users.repository';
+import { PanelAdminsService } from '@/modules/panel-admins/service/panel-admins.service';
+import { PanelAdminsRepository } from '@/modules/panel-admins/repository/panel-admins.repository';
 
 // Initialize services
 const usersRepository = new UsersRepository();
 const usersService = new UsersService(usersRepository);
-const authService = new AuthService(usersService);
+const panelAdminsRepository = new PanelAdminsRepository();
+const panelAdminsService = new PanelAdminsService(panelAdminsRepository);
+const authService = new AuthService(usersService, panelAdminsService);
 
 /**
  * POST /api/admin/auth/login
@@ -29,12 +33,13 @@ export async function POST(request: NextRequest) {
 
     const result = await authService.login(email, password);
 
-    // Allow admin, editor, and author roles to login to admin panel
-    if (result.user.role !== 'admin' && result.user.role !== 'editor' && result.user.role !== 'author') {
+    // Allow admin, editor, author, event_admin, and publisher_admin roles to login to admin panel
+    const allowedLoginRoles = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin'];
+    if (!allowedLoginRoles.includes(result.user.role)) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Access denied. Admin, editor, or author role required.',
+          error: 'Access denied. Insufficient role permissions.',
         },
         { status: 403 }
       );

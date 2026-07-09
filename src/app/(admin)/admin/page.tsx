@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
+import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 
 interface DashboardStats {
@@ -10,9 +10,14 @@ interface DashboardStats {
   events: number;
   categories: number;
   users: number;
+  eventRegions: number;
+  authors: number;
 }
 
 export default function AdminDashboard() {
+  const role = getAdminUser()?.role || 'admin';
+  const isEventAdmin = role === 'event_admin';
+  const isPublisherAdmin = role === 'publisher_admin';
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +55,11 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    if (isEventAdmin || isPublisherAdmin) {
+      setSettingsLoading(false);
+      return;
+    }
+
     const fetchSettings = async () => {
       try {
         const response = await fetch(withAdminToken('/api/admin/site-settings/footer-copyright'), {
@@ -67,6 +77,7 @@ export default function AdminDashboard() {
     };
 
     fetchSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saveFooterSetting = async () => {
@@ -178,36 +189,113 @@ export default function AdminDashboard() {
     </svg>
   );
 
-  const statCards = [
-    {
-      title: 'Posts',
-      value: stats?.posts || 0,
-      href: '/admin/posts',
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      icon: PostsIcon,
-    },
-    {
-      title: 'Events',
-      value: stats?.events || 0,
-      href: '/admin/events',
-      gradient: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
-      icon: EventsIcon,
-    },
-    {
-      title: 'Categories',
-      value: stats?.categories || 0,
-      href: '/admin/categories',
-      gradient: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
-      icon: CategoriesIcon,
-    },
-    {
-      title: 'Users',
-      value: stats?.users || 0,
-      href: '#',
-      gradient: 'linear-gradient(135deg, #9f7aea 0%, #805ad5 100%)',
-      icon: DashboardIcon,
-    },
-  ];
+  const AuthorsIcon = ({ color }: { color: string }) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+  );
+
+  const RegionsIcon = ({ color }: { color: string }) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="2" y1="12" x2="22" y2="12"></line>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+    </svg>
+  );
+
+  const statCards = isEventAdmin
+    ? [
+        {
+          title: 'Events',
+          value: stats?.events || 0,
+          href: '/admin/events',
+          gradient: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+          icon: EventsIcon,
+        },
+        {
+          title: 'Event Regions',
+          value: stats?.eventRegions || 0,
+          href: '/admin/event-regions',
+          gradient: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+          icon: RegionsIcon,
+        },
+      ]
+    : isPublisherAdmin
+    ? [
+        {
+          title: 'Posts',
+          value: stats?.posts || 0,
+          href: '/admin/posts',
+          gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          icon: PostsIcon,
+        },
+        {
+          title: 'Categories',
+          value: stats?.categories || 0,
+          href: '/admin/categories',
+          gradient: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
+          icon: CategoriesIcon,
+        },
+        {
+          title: 'Authors',
+          value: stats?.authors || 0,
+          href: '/admin/authors',
+          gradient: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+          icon: AuthorsIcon,
+        },
+      ]
+    : [
+        {
+          title: 'Posts',
+          value: stats?.posts || 0,
+          href: '/admin/posts',
+          gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          icon: PostsIcon,
+        },
+        {
+          title: 'Events',
+          value: stats?.events || 0,
+          href: '/admin/events',
+          gradient: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+          icon: EventsIcon,
+        },
+        {
+          title: 'Categories',
+          value: stats?.categories || 0,
+          href: '/admin/categories',
+          gradient: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
+          icon: CategoriesIcon,
+        },
+        {
+          title: 'Users',
+          value: stats?.users || 0,
+          href: '/admin/users',
+          gradient: 'linear-gradient(135deg, #9f7aea 0%, #805ad5 100%)',
+          icon: DashboardIcon,
+        },
+      ];
+
+  const quickActions = isEventAdmin
+    ? [
+        { href: '/admin/events/create', label: 'Create New Event', color1: '#48bb78', color2: '#38a169', shadow: 'rgba(72, 187, 120, 0.3)', shadowHover: 'rgba(72, 187, 120, 0.4)' },
+        { href: '/admin/event-regions', label: 'Manage Event Regions', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
+        { href: '/admin/banners/create', label: 'Create Banner', color1: '#9f7aea', color2: '#805ad5', shadow: 'rgba(159, 122, 234, 0.3)', shadowHover: 'rgba(159, 122, 234, 0.4)' },
+      ]
+    : isPublisherAdmin
+    ? [
+        { href: '/admin/posts/create', label: 'Create New Post', color1: '#667eea', color2: '#764ba2', shadow: 'rgba(102, 126, 234, 0.3)', shadowHover: 'rgba(102, 126, 234, 0.4)' },
+        { href: '/admin/categories/create', label: 'Create Category', color1: '#ed8936', color2: '#dd6b20', shadow: 'rgba(237, 137, 54, 0.3)', shadowHover: 'rgba(237, 137, 54, 0.4)' },
+        { href: '/admin/authors', label: 'Manage Authors', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
+      ]
+    : [
+        { href: '/admin/posts/create', label: 'Create New Post', color1: '#667eea', color2: '#764ba2', shadow: 'rgba(102, 126, 234, 0.3)', shadowHover: 'rgba(102, 126, 234, 0.4)' },
+        { href: '/admin/events/create', label: 'Create New Event', color1: '#48bb78', color2: '#38a169', shadow: 'rgba(72, 187, 120, 0.3)', shadowHover: 'rgba(72, 187, 120, 0.4)' },
+        { href: '/admin/categories/create', label: 'Create Category', color1: '#ed8936', color2: '#dd6b20', shadow: 'rgba(237, 137, 54, 0.3)', shadowHover: 'rgba(237, 137, 54, 0.4)' },
+        { href: '/admin/rss-feeds/create', label: 'Add RSS Feed', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
+      ];
 
   return (
     <AdminErrorBoundary>
@@ -344,206 +432,117 @@ export default function AdminDashboard() {
             gap: '1rem',
             flexWrap: 'wrap',
           }}>
-            <Link
-              href="/admin/posts/create"
-              style={{
-                padding: '0.875rem 1.75rem',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                fontSize: '0.9375rem',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Create New Post
-            </Link>
-            <Link
-              href="/admin/events/create"
-              style={{
-                padding: '0.875rem 1.75rem',
-                background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
-                color: 'white',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                fontSize: '0.9375rem',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(72, 187, 120, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(72, 187, 120, 0.3)';
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Create New Event
-            </Link>
-            <Link
-              href="/admin/categories/create"
-              style={{
-                padding: '0.875rem 1.75rem',
-                background: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
-                color: 'white',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                fontSize: '0.9375rem',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 4px 12px rgba(237, 137, 54, 0.3)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(237, 137, 54, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(237, 137, 54, 0.3)';
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Create Category
-            </Link>
-            <Link
-              href="/admin/rss-feeds/create"
-              style={{
-                padding: '0.875rem 1.75rem',
-                background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                color: 'white',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                fontSize: '0.9375rem',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(14, 165, 233, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(14, 165, 233, 0.3)';
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M4 11a9 9 0 0 1 9 9"></path>
-                <path d="M4 4a16 16 0 0 1 16 16"></path>
-                <circle cx="5" cy="19" r="1"></circle>
-              </svg>
-              Add RSS Feed
-            </Link>
-          </div>
-        </div>
-
-        <div style={{
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          padding: '2rem',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-          border: '1px solid rgba(0, 0, 0, 0.04)',
-          marginTop: '1.5rem',
-        }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            marginBottom: '0.5rem',
-            color: '#0f172a',
-            letterSpacing: '-0.01em',
-          }}>
-            Footer Settings
-          </h2>
-          <p style={{
-            color: '#64748b',
-            fontSize: '0.9375rem',
-            marginBottom: '1rem',
-          }}>
-            Update the copyright text shown at the bottom of the website footer. Use <strong>{'{{year}}'}</strong> for automatic current year.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <label htmlFor="footer-copyright-text" style={{ fontWeight: 600, color: '#334155' }}>
-              Footer Copyright Text
-            </label>
-            <textarea
-              id="footer-copyright-text"
-              value={copyrightText}
-              onChange={(e) => setCopyrightText(e.target.value)}
-              disabled={settingsLoading || savingSettings}
-              rows={3}
-              maxLength={500}
-              style={{
-                width: '100%',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '0.75rem',
-                fontSize: '0.95rem',
-                lineHeight: 1.5,
-                resize: 'vertical',
-                boxSizing: 'border-box',
-              }}
-              placeholder="© {{year}} Dotfyi Media Ventures Pvt Ltd"
-            />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{copyrightText.length}/500</span>
-              <button
-                type="button"
-                onClick={saveFooterSetting}
-                disabled={settingsLoading || savingSettings}
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
                 style={{
-                  padding: '0.7rem 1.2rem',
-                  background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                  color: '#fff',
-                  border: 'none',
+                  padding: '0.875rem 1.75rem',
+                  background: `linear-gradient(135deg, ${action.color1} 0%, ${action.color2} 100%)`,
+                  color: 'white',
                   borderRadius: '8px',
-                  fontWeight: 600,
-                  cursor: settingsLoading || savingSettings ? 'not-allowed' : 'pointer',
-                  opacity: settingsLoading || savingSettings ? 0.7 : 1,
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  fontSize: '0.9375rem',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: `0 4px 12px ${action.shadow}`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = `0 6px 20px ${action.shadowHover}`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = `0 4px 12px ${action.shadow}`;
                 }}
               >
-                {savingSettings ? 'Saving...' : 'Save Footer Text'}
-              </button>
-            </div>
-            {settingsMessage && <p style={{ margin: 0, color: '#166534', fontSize: '0.9rem' }}>{settingsMessage}</p>}
-            {settingsError && <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.9rem' }}>{settingsError}</p>}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                {action.label}
+              </Link>
+            ))}
           </div>
         </div>
+
+        {!isEventAdmin && !isPublisherAdmin && (
+          <div style={{
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+            padding: '2rem',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+            border: '1px solid rgba(0, 0, 0, 0.04)',
+            marginTop: '1.5rem',
+          }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: '600',
+              marginBottom: '0.5rem',
+              color: '#0f172a',
+              letterSpacing: '-0.01em',
+            }}>
+              Footer Settings
+            </h2>
+            <p style={{
+              color: '#64748b',
+              fontSize: '0.9375rem',
+              marginBottom: '1rem',
+            }}>
+              Update the copyright text shown at the bottom of the website footer. Use <strong>{'{{year}}'}</strong> for automatic current year.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <label htmlFor="footer-copyright-text" style={{ fontWeight: 600, color: '#334155' }}>
+                Footer Copyright Text
+              </label>
+              <textarea
+                id="footer-copyright-text"
+                value={copyrightText}
+                onChange={(e) => setCopyrightText(e.target.value)}
+                disabled={settingsLoading || savingSettings}
+                rows={3}
+                maxLength={500}
+                style={{
+                  width: '100%',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.5,
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                }}
+                placeholder="© {{year}} Dotfyi Media Ventures Pvt Ltd"
+              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{copyrightText.length}/500</span>
+                <button
+                  type="button"
+                  onClick={saveFooterSetting}
+                  disabled={settingsLoading || savingSettings}
+                  style={{
+                    padding: '0.7rem 1.2rem',
+                    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    cursor: settingsLoading || savingSettings ? 'not-allowed' : 'pointer',
+                    opacity: settingsLoading || savingSettings ? 0.7 : 1,
+                  }}
+                >
+                  {savingSettings ? 'Saving...' : 'Save Footer Text'}
+                </button>
+              </div>
+              {settingsMessage && <p style={{ margin: 0, color: '#166534', fontSize: '0.9rem' }}>{settingsMessage}</p>}
+              {settingsError && <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.9rem' }}>{settingsError}</p>}
+            </div>
+          </div>
+        )}
       </div>
     </AdminErrorBoundary>
   );

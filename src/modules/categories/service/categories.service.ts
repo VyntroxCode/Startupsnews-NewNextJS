@@ -132,6 +132,7 @@ export class CategoriesService {
     imageUrl?: string;
     parentId?: number;
     sortOrder?: number;
+    createdBy?: string;
   }): Promise<Category> {
     // Check if slug exists
     const slugExists = await this.repository.slugExists(data.slug);

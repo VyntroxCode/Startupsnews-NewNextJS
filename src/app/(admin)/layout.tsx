@@ -11,6 +11,7 @@ import {
   isSessionIdle,
   getIdleTimeoutMs,
 } from '@/lib/admin-auth';
+import { isPathAllowed, defaultPathForRole } from '@/lib/admin-role-access';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 
@@ -58,6 +59,13 @@ export default function AdminLayout({
         clearAdminSession();
         setLoading(false);
         router.replace('/admin/login');
+        return;
+      }
+
+      if (!isPathAllowed(verifiedUser.role, pathname)) {
+        setUser(verifiedUser);
+        setLoading(false);
+        router.replace(defaultPathForRole(verifiedUser.role));
         return;
       }
 

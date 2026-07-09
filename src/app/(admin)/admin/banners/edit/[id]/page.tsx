@@ -139,23 +139,25 @@ export default function EditBannerPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
+      <div style={{ marginBottom: '2.5rem' }}>
         <Link
           href="/admin/banners"
           style={{
             color: '#48bb78',
             textDecoration: 'none',
-            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            marginBottom: '0.75rem',
             display: 'inline-block',
           }}
         >
           ← Back to Banners
         </Link>
         <h2 style={{
-          fontSize: '2rem',
-          fontWeight: 'bold',
-          color: '#1a202c',
-          marginTop: '0.5rem',
+          fontSize: '2.25rem',
+          fontWeight: '700',
+          color: '#0f172a',
+          margin: 0,
+          letterSpacing: '-0.02em',
         }}>
           Edit Banner
         </h2>
@@ -314,37 +316,6 @@ export default function EditBannerPage() {
           />
         </div>
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Display Order
-          </label>
-          <input
-            type="number"
-            value={formData.order}
-            onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value, 10) || 0 })}
-            min="0"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-            }}
-          />
-          <p style={{
-            marginTop: '0.5rem',
-            fontSize: '0.875rem',
-            color: '#718096',
-          }}>
-            Lower numbers appear first in the carousel
-          </p>
-        </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{

@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
     const connection = await conn.getConnection();
     try {
       const result = await connection.query(
-        'INSERT INTO newsletter_categories (name, slug, description, color, sort_order) VALUES (?, ?, ?, ?, ?)',
-        [name.trim(), slug.trim(), description?.trim() || null, color?.trim() || '#6366f1', sort_order ?? 0]
+        'INSERT INTO newsletter_categories (name, slug, description, color, sort_order, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [name.trim(), slug.trim(), description?.trim() || null, color?.trim() || '#6366f1', sort_order ?? 0, auth.user.email, auth.user.email]
       ) as { insertId?: number };
 
       const row = await queryOne<NewsletterCategory>(

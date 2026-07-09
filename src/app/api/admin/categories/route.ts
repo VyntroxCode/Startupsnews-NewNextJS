@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { CONTENT_ROLES, CONTENT_MANAGE_ROLES } from '@/shared/middleware/roles';
 import { CategoriesService } from '@/modules/categories/service/categories.service';
 import { CategoriesRepository } from '@/modules/categories/repository/categories.repository';
 export const maxDuration = 60;
@@ -13,7 +14,7 @@ const categoriesService = new CategoriesService(categoriesRepository);
  * Get all categories with pagination
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireAnyRole(request, CONTENT_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
  * Create new category
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const category = await categoriesService.createCategory(body);
+    const category = await categoriesService.createCategory({ ...body, createdBy: auth.user.email });
 
     return NextResponse.json({
       success: true,

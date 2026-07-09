@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { CONTENT_MANAGE_ROLES } from '@/shared/middleware/roles';
 import { UsersRepository } from '@/modules/users/repository/users.repository';
 import { UsersService } from '@/modules/users/service/users.service';
 import { query, queryOne } from '@/shared/database/connection';
@@ -34,7 +35,7 @@ function mapAuthor(user: {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -98,7 +99,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       authorDescription?: string;
       isActive?: boolean;
       isDefaultAuthor?: boolean;
-    } = { id: authorId };
+      updatedBy?: string;
+    } = { id: authorId, updatedBy: auth.user.email };
 
     if (body.name !== undefined) updateData.name = String(body.name).trim();
     if (body.avatarUrl !== undefined) updateData.avatarUrl = String(body.avatarUrl).trim();
@@ -125,7 +127,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

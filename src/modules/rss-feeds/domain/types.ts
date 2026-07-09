@@ -19,6 +19,8 @@ export interface RssFeedEntity {
   feed_for: string;
   created_at: Date | string;
   updated_at: Date | string;
+  created_by?: string;
+  updated_by?: string;
 }
 
 export interface RssFeedItemEntity {

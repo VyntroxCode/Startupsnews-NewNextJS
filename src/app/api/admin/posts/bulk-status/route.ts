@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAdmin } from '@/shared/middleware/auth.middleware';
 import { query, queryOne } from '@/shared/database/connection';
 
 type SelectionMode = 'selected' | 'byStatus';
@@ -73,7 +73,7 @@ function buildWhere(body: BulkBody, params: Array<string | number>): string {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

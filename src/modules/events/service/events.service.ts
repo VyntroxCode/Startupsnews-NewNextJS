@@ -142,6 +142,7 @@ export class EventsService {
     if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
     if (data.externalUrl !== undefined) updateData.external_url = data.externalUrl;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.updatedBy !== undefined) updateData.updated_by = data.updatedBy;
 
     const entity = await this.repository.update(id, updateData);
 

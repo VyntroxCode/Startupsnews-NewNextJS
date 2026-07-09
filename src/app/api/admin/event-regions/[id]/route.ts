@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { EventRegionsRepository } from '@/modules/events/repository/event-regions.repository';
 
 const repo = new EventRegionsRepository();
@@ -9,7 +10,7 @@ const repo = new EventRegionsRepository();
  * Update an event region name or sort_order
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
@@ -20,7 +21,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const body = await request.json();
-    const updates: { name?: string; sort_order?: number } = {};
+    const updates: { name?: string; sort_order?: number; updated_by?: string } = { updated_by: auth.user.email };
 
     if (body.name !== undefined) {
       const name = body.name.trim();
@@ -50,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  * Delete an event region
  */
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;

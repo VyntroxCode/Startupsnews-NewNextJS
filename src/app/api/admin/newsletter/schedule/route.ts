@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await query<{ insertId: bigint }>(
-      'INSERT INTO newsletter_schedules (subject, html, recipient_filter, scheduled_at) VALUES (?, ?, ?, ?)',
-      [body.subject.trim(), body.html.trim(), JSON.stringify(body.recipientFilter), scheduledAt]
+      'INSERT INTO newsletter_schedules (subject, html, recipient_filter, scheduled_at, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?)',
+      [body.subject.trim(), body.html.trim(), JSON.stringify(body.recipientFilter), scheduledAt, auth.user.email, auth.user.email]
     );
 
     const id = Number((result as unknown as { insertId: bigint }).insertId);

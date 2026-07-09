@@ -16,6 +16,9 @@ export interface EventRegion {
   name: string;
   sort_order: number;
   created_at: string;
+  updated_at?: string;
+  created_by?: string;
+  updated_by?: string;
 }
 
 export class EventRegionsRepository {
@@ -29,6 +32,9 @@ export class EventRegionsRepository {
         name VARCHAR(100) NOT NULL,
         sort_order INT NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        created_by VARCHAR(255) NULL,
+        updated_by VARCHAR(255) NULL,
         UNIQUE KEY unique_name (name)
       )
     `);
@@ -60,15 +66,15 @@ export class EventRegionsRepository {
     return queryOne<EventRegion>('SELECT * FROM event_regions WHERE id = ?', [id]);
   }
 
-  async create(name: string, sortOrder?: number): Promise<EventRegion> {
+  async create(name: string, sortOrder?: number, createdBy?: string): Promise<EventRegion> {
     await this.ensureTable();
     const order =
       sortOrder !== undefined
         ? sortOrder
         : await this.nextSortOrder();
     await query(
-      'INSERT INTO event_regions (name, sort_order) VALUES (?, ?)',
-      [name.trim(), order]
+      'INSERT INTO event_regions (name, sort_order, created_by, updated_by) VALUES (?, ?, ?, ?)',
+      [name.trim(), order, createdBy || null, createdBy || null]
     );
     const region = await queryOne<EventRegion>(
       'SELECT * FROM event_regions WHERE name = ?',
@@ -77,7 +83,7 @@ export class EventRegionsRepository {
     return region!;
   }
 
-  async update(id: number, data: { name?: string; sort_order?: number }): Promise<EventRegion> {
+  async update(id: number, data: { name?: string; sort_order?: number; updated_by?: string }): Promise<EventRegion> {
     await this.ensureTable();
     const fields: string[] = [];
     const params: (string | number)[] = [];
@@ -88,6 +94,10 @@ export class EventRegionsRepository {
     if (data.sort_order !== undefined) {
       fields.push('sort_order = ?');
       params.push(data.sort_order);
+    }
+    if (data.updated_by !== undefined) {
+      fields.push('updated_by = ?');
+      params.push(data.updated_by);
     }
     if (fields.length > 0) {
       params.push(id);

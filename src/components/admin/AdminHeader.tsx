@@ -9,6 +9,14 @@ interface AdminHeaderProps {
   onToggleSidebar: () => void;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrator',
+  editor: 'Editor',
+  author: 'Author',
+  event_admin: 'Event Admin',
+  publisher_admin: 'Publisher Admin',
+};
+
 export default function AdminHeader({ user, sidebarOpen, onToggleSidebar }: AdminHeaderProps) {
   const router = useRouter();
 
@@ -110,7 +118,7 @@ export default function AdminHeader({ user, sidebarOpen, onToggleSidebar }: Admi
               fontWeight: '400',
             }}
           >
-            {user?.role || 'Administrator'}
+            {(user?.role && ROLE_LABELS[user.role]) || user?.role || 'Administrator'}
           </p>
         </div>
       </div>

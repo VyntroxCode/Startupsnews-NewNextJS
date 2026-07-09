@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { CONTENT_MANAGE_ROLES } from '@/shared/middleware/roles';
 import { CategoriesService } from '@/modules/categories/service/categories.service';
 import { CategoriesRepository } from '@/modules/categories/repository/categories.repository';
 import { CategoryEntity } from '@/modules/categories/domain/types';
@@ -20,7 +21,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -73,7 +74,7 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -99,6 +100,7 @@ export async function PUT(
     if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl;
     if (body.parentId !== undefined) updateData.parent_id = body.parentId;
     if (body.sortOrder !== undefined) updateData.sort_order = body.sortOrder;
+    updateData.updated_by = auth.user.email;
 
     const category = await categoriesService.updateCategory(categoryId, updateData);
 
@@ -126,7 +128,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

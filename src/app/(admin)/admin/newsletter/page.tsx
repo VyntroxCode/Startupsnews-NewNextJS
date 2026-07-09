@@ -535,13 +535,13 @@ export default function NewsletterPage() {
 
   return (
     <AdminErrorBoundary>
-      <div style={{ width: '100%', maxWidth: '100%', padding: 'clamp(1rem, 2vw, 2rem)', boxSizing: 'border-box' as const }}>
+      <div>
 
         {/* ── Page Header ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap' as const, gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap' as const, gap: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)', fontWeight: 700, marginBottom: '0.25rem', color: '#0f172a' }}>Newsletter</h2>
-            <p style={{ color: '#64748b', fontSize: '0.9375rem', margin: 0 }}>Manage feeds, configure mail, and send newsletters to your subscribers.</p>
+            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Newsletter</h2>
+            <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>Manage feeds, configure mail, and send newsletters to your subscribers.</p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' as const }}>
             <Link href="/admin/newsletter/categories" style={{ padding: '0.75rem 1.25rem', background: '#ede9fe', color: '#6366f1', borderRadius: '8px', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', whiteSpace: 'nowrap' as const }}>

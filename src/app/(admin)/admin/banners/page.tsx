@@ -116,19 +116,24 @@ export default function BannersPage() {
           <Link
             href="/admin/banners/create"
             style={{
-              background: '#48bb78',
+              padding: '0.875rem 1.75rem',
+              background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
               color: 'white',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '6px',
+              borderRadius: '8px',
               textDecoration: 'none',
-              fontWeight: '500',
-              display: 'inline-block',
-              transition: 'background 0.2s',
+              fontWeight: '600',
+              fontSize: '0.9375rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#38a169'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#48bb78'}
           >
-            + Create Banner
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Create Banner
           </Link>
         </div>
 
@@ -257,14 +262,6 @@ export default function BannersPage() {
                       color: '#4a5568',
                       fontSize: '0.875rem',
                       textTransform: 'uppercase',
-                    }}>Order</th>
-                    <th style={{
-                      padding: '1rem',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#4a5568',
-                      fontSize: '0.875rem',
-                      textTransform: 'uppercase',
                     }}>Status</th>
                     <th style={{
                       padding: '1rem',
@@ -324,9 +321,6 @@ export default function BannersPage() {
                         }}>
                           {banner.title}
                         </td>
-                        <td style={{ padding: '1rem', color: '#4a5568' }}>
-                          {banner.order}
-                        </td>
                         <td style={{ padding: '1rem' }}>
                           {(() => {
                             const status = getScheduleStatus(banner);
@@ -381,11 +375,12 @@ export default function BannersPage() {
                               href={`/admin/banners/edit/${banner.id}`}
                               style={{
                                 padding: '0.5rem 1rem',
-                                background: '#edf2f7',
-                                color: '#4a5568',
-                                borderRadius: '4px',
+                                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                color: 'white',
+                                borderRadius: '6px',
                                 textDecoration: 'none',
-                                fontSize: '0.875rem',
+                                fontSize: '0.8125rem',
+                                fontWeight: '600',
                               }}
                             >
                               Edit
@@ -394,12 +389,13 @@ export default function BannersPage() {
                               onClick={() => handleDelete(banner.id)}
                               style={{
                                 padding: '0.5rem 1rem',
-                                background: '#fed7d7',
-                                color: '#c53030',
+                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                color: 'white',
                                 border: 'none',
-                                borderRadius: '4px',
+                                borderRadius: '6px',
                                 cursor: 'pointer',
-                                fontSize: '0.875rem',
+                                fontSize: '0.8125rem',
+                                fontWeight: '600',
                               }}
                             >
                               Delete

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { EventsService } from '@/modules/events/service/events.service';
 import { EventsRepository } from '@/modules/events/repository/events.repository';
 import { entityToEvent } from '@/modules/events/utils/events.utils';
@@ -58,7 +59,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -113,7 +114,7 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -218,6 +219,7 @@ export async function PUT(
       imageUrl: string | undefined;
       externalUrl: string;
       status: 'draft' | 'upcoming' | 'completed' | 'cancelled';
+      updatedBy: string;
     }> = {};
 
     if (body.title !== undefined) updateData.title = String(body.title);
@@ -276,6 +278,7 @@ export async function PUT(
     }
     if (body.externalUrl !== undefined) updateData.externalUrl = String(body.externalUrl);
     if (body.status !== undefined) updateData.status = body.status as 'draft' | 'upcoming' | 'completed' | 'cancelled';
+    updateData.updatedBy = auth.user.email;
 
     const entity = await eventsService.updateEvent(eventId, updateData);
     const event = entityToEvent(entity);
@@ -304,7 +307,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

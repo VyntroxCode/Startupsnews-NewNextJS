@@ -90,6 +90,8 @@ export class ReportsRepository {
     await this.ensureColumn('section_id', 'section_id INT NULL DEFAULT NULL');
     await this.ensureColumn('created_at', 'created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
     await this.ensureColumn('updated_at', 'updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    await this.ensureColumn('created_by', 'created_by VARCHAR(255) NULL');
+    await this.ensureColumn('updated_by', 'updated_by VARCHAR(255) NULL');
     await this.ensureIndex('idx_reports_active_created', 'INDEX idx_reports_active_created (is_active, created_at)');
 
     this.migrated = true;
@@ -128,8 +130,8 @@ export class ReportsRepository {
     const isActive = isFuture ? 0 : (input.isActive === false ? 0 : 1);
     // Always store the user-entered date; only fall back to NOW() when no date given
     await query(
-      `INSERT INTO reports (title, description, file_url, thumbnail_url, file_name, file_size, page_count, mime_type, is_active, publish_at, section_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW()), ?)`,
+      `INSERT INTO reports (title, description, file_url, thumbnail_url, file_name, file_size, page_count, mime_type, is_active, publish_at, section_id, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW()), ?, ?, ?)`,
       [
         input.title,
         input.description,
@@ -142,6 +144,8 @@ export class ReportsRepository {
         isActive,
         rawPublishAt,
         input.sectionId ?? null,
+        input.createdBy || null,
+        input.createdBy || null,
       ]
     );
 
@@ -158,7 +162,7 @@ export class ReportsRepository {
     await query(
       `UPDATE reports
        SET title = ?, description = ?, file_url = ?, thumbnail_url = ?, file_name = ?, file_size = ?, page_count = ?, mime_type = ?, is_active = ?,
-           publish_at = COALESCE(?, publish_at), section_id = ?
+           publish_at = COALESCE(?, publish_at), section_id = ?, updated_by = ?
        WHERE id = ?`,
       [
         input.title,
@@ -172,6 +176,7 @@ export class ReportsRepository {
         isActive,
         rawPublishAt,
         input.sectionId ?? null,
+        input.updatedBy || null,
         id,
       ]
     );

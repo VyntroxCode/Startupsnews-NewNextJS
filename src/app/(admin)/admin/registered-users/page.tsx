@@ -164,15 +164,9 @@ export default function RegisteredUsersPage() {
 	};
 
 	return (
-		<div
-			style={{
-				padding: "2rem 2rem 3rem",
-				minHeight: "100vh",
-				background: "#f8fafc",
-			}}
-		>
+		<div>
 			{/* ── Header ── */}
-			<div style={{ marginBottom: "1.75rem" }}>
+			<div style={{ marginBottom: "2.5rem" }}>
 				<div
 					style={{
 						display: "flex",
@@ -185,16 +179,16 @@ export default function RegisteredUsersPage() {
 					<div>
 						<h1
 							style={{
-								fontSize: "1.6rem",
-								fontWeight: 800,
+								fontSize: "2.25rem",
+								fontWeight: 700,
 								color: "#0f172a",
-								margin: "0 0 4px",
+								margin: "0 0 0.5rem",
 								letterSpacing: "-0.02em",
 							}}
 						>
 							Registered Users
 						</h1>
-						<p style={{ fontSize: 13.5, color: "#64748b", margin: 0 }}>
+						<p style={{ fontSize: "1rem", color: "#64748b", margin: 0 }}>
 							Public sign-ups from StartupNews.fyi
 						</p>
 					</div>
@@ -438,11 +432,11 @@ export default function RegisteredUsersPage() {
 			{/* ── Table ── */}
 			<div
 				style={{
-					background: "#fff",
-					borderRadius: 16,
-					border: "1px solid #e2e8f0",
+					background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+					borderRadius: 12,
+					border: "1px solid rgba(0,0,0,0.04)",
 					overflow: "hidden",
-					boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
+					boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
 				}}
 			>
 				{loading ? (
@@ -491,8 +485,8 @@ export default function RegisteredUsersPage() {
 							<thead>
 								<tr
 									style={{
-										background: "linear-gradient(90deg, #f8fafc, #f1f5f9)",
-										borderBottom: "2px solid #e2e8f0",
+										background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+										borderBottom: "1px solid rgba(0,0,0,0.06)",
 									}}
 								>
 									{[

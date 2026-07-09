@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { REPORTS_ROLES } from '@/shared/middleware/roles';
 import { ReportsRepository } from '@/modules/reports/repository/reports.repository';
 
 const repo = new ReportsRepository();
@@ -21,7 +22,7 @@ function normalizeBody(body: Record<string, unknown>) {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, REPORTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, REPORTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Title, description, and file are required' }, { status: 400 });
     }
 
-    const report = await repo.create(body);
+    const report = await repo.create({ ...body, createdBy: auth.user.email });
     return NextResponse.json({ success: true, data: report }, { status: 201 });
   } catch (err) {
     console.error('POST /api/admin/reports error:', err);

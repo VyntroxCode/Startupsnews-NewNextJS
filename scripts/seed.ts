@@ -62,9 +62,9 @@ async function seedDatabase() {
       // ============================================
       console.log('📝 Creating admin user...');
 
-      const adminEmail = process.env.ADMIN_EMAIL || 'admin@startupnews.fyi';
-      const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123!';
-      const adminName = process.env.ADMIN_NAME || 'Admin User';
+      const adminEmail = 'admin@startupnews.fyi';
+      const adminPassword = 'Admin@StartupNews2026!';
+      const adminName = 'Admin User';
 
       // Check if admin user already exists
       const existingAdmin = await query<{ id: number }>(

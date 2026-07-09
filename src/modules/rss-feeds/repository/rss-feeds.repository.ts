@@ -37,13 +37,14 @@ export class RssFeedsRepository {
     max_items_per_fetch?: number;
     auto_publish?: number;
     feed_for?: string;
+    created_by?: string;
   }): Promise<RssFeedEntity> {
     const conn = await getDbConnection();
     const connection = await conn.getConnection();
     try {
       const sql = `
-        INSERT INTO rss_feeds (name, url, category_id, author_id, enabled, fetch_interval_minutes, max_items_per_fetch, auto_publish, feed_for)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO rss_feeds (name, url, category_id, author_id, enabled, fetch_interval_minutes, max_items_per_fetch, auto_publish, feed_for, created_by, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const params = [
         data.name,
@@ -55,6 +56,8 @@ export class RssFeedsRepository {
         data.max_items_per_fetch ?? 10,
         data.auto_publish ?? 1,
         data.feed_for ?? 'website',
+        data.created_by || null,
+        data.created_by || null,
       ];
       const result = await connection.query(sql, params) as { insertId?: number };
       const id = result.insertId;
@@ -78,6 +81,7 @@ export class RssFeedsRepository {
     max_items_per_fetch: number;
     auto_publish: number;
     feed_for: string;
+    updated_by: string;
   }>): Promise<RssFeedEntity | null> {
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
@@ -91,6 +95,7 @@ export class RssFeedsRepository {
     if (data.max_items_per_fetch !== undefined) { fields.push('max_items_per_fetch = ?'); values.push(data.max_items_per_fetch); }
     if (data.auto_publish !== undefined) { fields.push('auto_publish = ?'); values.push(data.auto_publish); }
     if (data.feed_for !== undefined) { fields.push('feed_for = ?'); values.push(data.feed_for); }
+    if (data.updated_by !== undefined) { fields.push('updated_by = ?'); values.push(data.updated_by); }
     if (fields.length === 0) return this.findById(id);
     values.push(id);
     await query(`UPDATE rss_feeds SET ${fields.join(', ')} WHERE id = ?`, values);

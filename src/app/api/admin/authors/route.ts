@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/shared/middleware/auth.middleware';
+import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { CONTENT_MANAGE_ROLES } from '@/shared/middleware/roles';
 import { UsersRepository } from '@/modules/users/repository/users.repository';
 import { UsersService } from '@/modules/users/service/users.service';
 import { query, queryOne } from '@/shared/database/connection';
@@ -35,7 +36,7 @@ function mapAuthor(user: {
  * List author users only
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
  * Create a new author user
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
       role: 'author',
       avatarUrl: (body.avatarUrl || '').trim() || undefined,
       authorDescription: (body.authorDescription || '').trim() || undefined,
+      createdBy: auth.user.email,
     });
 
     if (body.isActive === false) {

@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getAuthHeaders } from '@/lib/admin-auth';
+import { getAdminUser, getAuthHeaders } from '@/lib/admin-auth';
+import { isPathAllowed } from '@/lib/admin-role-access';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -116,6 +117,15 @@ const RegisteredUsersIcon = ({ size = 20, color = 'currentColor' }: IconProps) =
   </svg>
 );
 
+const UsersIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+    <circle cx="9" cy="7" r="4"></circle>
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+  </svg>
+);
+
 const menuItems = [
   { href: '/admin', label: 'Dashboard', icon: DashboardIcon },
   { href: '/admin/posts', label: 'Posts', icon: PostsIcon },
@@ -129,12 +139,15 @@ const menuItems = [
   { href: '/admin/tools', label: 'HTML Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/registered-users', label: 'Registered Users', icon: RegisteredUsersIcon },
+  { href: '/admin/users', label: 'Users', icon: UsersIcon },
 ];
 
 export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
   const pathname = usePathname();
   const headerHeight = 60;
   const [tools, setTools] = useState<ToolItem[]>([]);
+  const role = getAdminUser()?.role || '';
+  const visibleMenuItems = menuItems.filter((item) => isPathAllowed(role, item.href));
 
   useEffect(() => {
     const loadTools = async () => {
@@ -169,7 +182,7 @@ export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
       }}
     >
       <nav style={{ padding: '0 0.5rem' }}>
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           const isToolsItem = item.href === '/admin/tools';
           const IconComponent = item.icon;

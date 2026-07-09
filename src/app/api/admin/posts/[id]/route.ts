@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { getAuthUser, requireAuth } from '@/shared/middleware/auth.middleware';
+import { getAuthUser, requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { CONTENT_ROLES, CONTENT_MANAGE_ROLES } from '@/shared/middleware/roles';
 import { PostsService } from '@/modules/posts/service/posts.service';
 import { PostsRepository } from '@/modules/posts/repository/posts.repository';
 import { CategoriesService } from '@/modules/categories/service/categories.service';
@@ -64,7 +65,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request);
+  const auth = await requireAnyRole(request, CONTENT_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -181,6 +182,12 @@ async function handleUpdateRequest(
         { status: 401 }
       );
     }
+    if (!CONTENT_ROLES.includes(auth.user.role as typeof CONTENT_ROLES[number])) {
+      return NextResponse.json(
+        { success: false, error: `Forbidden - Insufficient permissions. Your role: ${auth.user.role}` },
+        { status: 403 }
+      );
+    }
 
     // Check post ownership for authors only
     if (auth.user.role === 'author') {
@@ -224,6 +231,7 @@ async function handleUpdateRequest(
       status: "draft" | "published" | "archived" | "scheduled";
       featured: boolean;
       publishedAt: string;
+      updatedBy: string;
     }> = {};
 
     if (body.title !== undefined) updateData.title = String(body.title);
@@ -298,6 +306,7 @@ async function handleUpdateRequest(
     if (body.status !== undefined) updateData.status = body.status as "draft" | "published" | "archived" | "scheduled";
     if (body.featured !== undefined) updateData.featured = String(body.featured) === 'true' || body.featured === true;
     if (body.publishedAt !== undefined && body.publishedAt) updateData.publishedAt = String(body.publishedAt);
+    updateData.updatedBy = auth.user.email;
 
     const entity = await postsService.updatePost(postId, updateData);
     const post = await entityToPost(entity);
@@ -354,7 +363,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth(request, 'editor');
+  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

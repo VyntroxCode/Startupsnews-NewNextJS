@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser, requireAuth } from '@/shared/middleware/auth.middleware';
+import { getAuthUser, requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { CONTENT_ROLES } from '@/shared/middleware/roles';
 import { query, queryOne } from '@/shared/database/connection';
 import { PostsService } from '@/modules/posts/service/posts.service';
 import { PostsRepository } from '@/modules/posts/repository/posts.repository';
@@ -60,7 +61,7 @@ const postsService = new PostsService(postsRepository, categoriesService);
  * Get all posts (admin view - includes drafts) with pagination
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireAnyRole(request, CONTENT_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -255,6 +256,12 @@ export async function POST(request: NextRequest) {
       { status: 401 }
     );
   }
+  if (!CONTENT_ROLES.includes(auth.user.role as typeof CONTENT_ROLES[number])) {
+    return NextResponse.json(
+      { success: false, error: `Forbidden - Insufficient permissions. Your role: ${auth.user.role}` },
+      { status: 403 }
+    );
+  }
 
   try {
     if (!body || typeof body !== 'object') {
@@ -427,6 +434,7 @@ export async function POST(request: NextRequest) {
       status,
       featured: String(body.featured) === 'true' || body.featured === true,
       ...(status === 'scheduled' && body.publishedAt ? { publishedAt: String(body.publishedAt) } : {}),
+      createdBy: auth.user.email,
     });
 
     if (!entity) {

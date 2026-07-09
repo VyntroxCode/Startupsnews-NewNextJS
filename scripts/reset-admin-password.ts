@@ -1,5 +1,5 @@
 /**
- * Reset admin user to match .env.local (ADMIN_EMAIL, ADMIN_PASSWORD).
+ * Reset/seed the admin login directly in the database (no .env credentials involved).
  * Creates the user if missing; updates password and role if existing.
  * Use when dashboard login fails (wrong password or no admin in DB).
  *
@@ -12,15 +12,14 @@ import bcrypt from 'bcryptjs';
 
 loadEnvConfig(process.cwd());
 
-async function main() {
-  const email = process.env.ADMIN_EMAIL || 'admin@startupnews.fyi';
-  const password = process.env.ADMIN_PASSWORD || 'Admin@StartupNews2026!';
-  const name = process.env.ADMIN_NAME || 'Admin User';
+const ADMIN_EMAIL = 'admin@startupnews.fyi';
+const ADMIN_PASSWORD = 'Admin@StartupNews2026!';
+const ADMIN_NAME = 'Admin User';
 
-  if (!email || !password) {
-    console.error('\n❌ Set ADMIN_EMAIL and ADMIN_PASSWORD in .env.local\n');
-    process.exit(1);
-  }
+async function main() {
+  const email = ADMIN_EMAIL;
+  const password = ADMIN_PASSWORD;
+  const name = ADMIN_NAME;
 
   console.log('\n🔐 Reset admin user for dashboard login\n');
   console.log('   Email:', email);
@@ -33,7 +32,7 @@ async function main() {
       'UPDATE users SET password_hash = ?, name = ?, role = ?, is_active = TRUE WHERE id = ?',
       [passwordHash, name, 'admin', existing[0].id]
     );
-    console.log('   ✅ Admin user updated (password and role synced to .env)\n');
+    console.log('   ✅ Admin user updated\n');
   } else {
     await query(
       `INSERT INTO users (email, password_hash, name, role, is_active) VALUES (?, ?, ?, 'admin', TRUE)`,
@@ -44,7 +43,7 @@ async function main() {
 
   console.log('   Use these credentials to log in at /admin/login');
   console.log('   Email:    ', email);
-  console.log('   Password: (value from ADMIN_PASSWORD in .env.local)\n');
+  console.log('   Password: ', password, '\n');
 }
 
 main()

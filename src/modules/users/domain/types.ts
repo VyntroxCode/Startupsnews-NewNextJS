@@ -2,6 +2,8 @@
  * User domain types
  */
 
+export type UserRole = 'admin' | 'editor' | 'author';
+
 /**
  * User entity (database representation)
  */
@@ -10,7 +12,7 @@ export interface UserEntity {
   email: string;
   password_hash: string;
   name: string;
-  role: 'admin' | 'editor' | 'author';
+  role: UserRole;
   avatar_url?: string;
   author_description?: string;
   is_default_author?: boolean;
@@ -18,6 +20,8 @@ export interface UserEntity {
   updated_at: Date;
   last_login?: Date;
   is_active: boolean;
+  created_by?: string;
+  updated_by?: string;
 }
 
 /**
@@ -27,7 +31,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: 'admin' | 'editor' | 'author';
+  role: UserRole;
   avatarUrl?: string;
   authorDescription?: string;
   isDefaultAuthor?: boolean;
@@ -44,21 +48,23 @@ export interface CreateUserDto {
   email: string;
   password: string;
   name: string;
-  role?: 'admin' | 'editor' | 'author';
+  role?: UserRole;
   avatarUrl?: string;
   authorDescription?: string;
   isDefaultAuthor?: boolean;
+  createdBy?: string;
 }
 
 export interface UpdateUserDto {
   id: number;
   email?: string;
   name?: string;
-  role?: 'admin' | 'editor' | 'author';
+  role?: UserRole;
   avatarUrl?: string;
   authorDescription?: string;
   isDefaultAuthor?: boolean;
   isActive?: boolean;
+  updatedBy?: string;
 }
 
 export interface LoginDto {

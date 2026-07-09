@@ -63,14 +63,6 @@ UPLOAD_MAX_SIZE=5242880
 UPLOAD_DIR=./public/uploads
 
 # ============================================
-# Admin User Configuration
-# ============================================
-# Default admin credentials (created during seed)
-ADMIN_EMAIL=admin@startupnews.fyi
-ADMIN_PASSWORD=Admin@123!
-ADMIN_NAME=Admin User
-
-# ============================================
 # API Configuration
 # ============================================
 API_BASE_URL=http://localhost:3000/api

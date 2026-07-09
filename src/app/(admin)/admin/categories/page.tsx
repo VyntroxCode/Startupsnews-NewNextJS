@@ -197,7 +197,10 @@ export default function CategoriesPage() {
                         key={cat.id}
                         style={{
                           borderBottom: index < categories.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
+                          transition: 'background 0.2s',
                         }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                       >
                         <td style={{ padding: '1.25rem 1.5rem', fontWeight: '600', color: '#0f172a' }}>{cat.name}</td>
                         <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.9375rem' }}>{cat.slug}</td>

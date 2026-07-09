@@ -237,6 +237,7 @@ export class PostsService {
     status?: "draft" | "published" | "scheduled" | "archived";
     featured?: boolean;
     publishedAt?: string;
+    createdBy?: string;
   }): Promise<PostEntity> {
     // Check if slug exists
     const existingPost = await this.repository.findBySlug(data.slug);
@@ -293,6 +294,7 @@ export class PostsService {
     status: "draft" | "published" | "archived" | "scheduled";
     featured: boolean;
     publishedAt: string;
+    updatedBy: string;
   }>): Promise<PostEntity> {
     const existingPost = await this.repository.findById(id);
     if (!existingPost) {
@@ -331,6 +333,7 @@ export class PostsService {
     if (data.format !== undefined) updateData.format = data.format;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.featured !== undefined) updateData.featured = data.featured;
+    if (data.updatedBy !== undefined) updateData.updated_by = data.updatedBy;
     if ((data as { publishedAt?: string }).publishedAt) {
       const scheduledStr = (data as { publishedAt?: string }).publishedAt!;
       const scheduledDate = new Date(scheduledStr);

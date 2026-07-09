@@ -15,6 +15,25 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL,
     is_active BOOLEAN DEFAULT TRUE,
+    created_by VARCHAR(255) NULL,
+    updated_by VARCHAR(255) NULL,
+    INDEX idx_email (email),
+    INDEX idx_role (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Panel admins table (Event Admin / Publisher Admin — scoped admin-panel roles, separate from `users`)
+CREATE TABLE IF NOT EXISTS panel_admins (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    role ENUM('event_admin', 'publisher_admin') NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_login TIMESTAMP NULL,
+    created_by VARCHAR(255) NULL,
+    updated_by VARCHAR(255) NULL,
     INDEX idx_email (email),
     INDEX idx_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -30,6 +49,8 @@ CREATE TABLE IF NOT EXISTS categories (
     sort_order INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NULL,
+    updated_by VARCHAR(255) NULL,
     FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL,
     INDEX idx_slug (slug),
     INDEX idx_parent (parent_id)
@@ -55,6 +76,8 @@ CREATE TABLE IF NOT EXISTS posts (
     published_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NULL,
+    updated_by VARCHAR(255) NULL,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
     FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT,
     INDEX idx_slug (slug),
@@ -93,6 +116,8 @@ CREATE TABLE IF NOT EXISTS events (
     status ENUM('upcoming', 'ongoing', 'past', 'cancelled') DEFAULT 'upcoming',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NULL,
+    updated_by VARCHAR(255) NULL,
     INDEX idx_slug (slug),
     INDEX idx_location (location),
     INDEX idx_date (event_date),
@@ -135,5 +160,20 @@ CREATE TABLE IF NOT EXISTS settings (
     type VARCHAR(50) DEFAULT 'string',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_key (`key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Admin HTML tools table
+CREATE TABLE IF NOT EXISTS admin_tools (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    html_content LONGTEXT NOT NULL,
+    visible_to_event_admin BOOLEAN DEFAULT FALSE,
+    visible_to_publisher_admin BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NULL,
+    updated_by VARCHAR(255) NULL,
+    INDEX idx_slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

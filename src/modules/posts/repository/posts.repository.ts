@@ -716,6 +716,7 @@ export class PostsRepository {
     status?: string;
     featured?: boolean;
     publishedAt?: string;
+    createdBy?: string;
   }): Promise<PostEntity> {
     const status = data.status || 'draft';
     const [hasMetaDescription, hasRobots] = await Promise.all([
@@ -731,6 +732,7 @@ export class PostsRepository {
       'content_follow',
       'content', 'category_id', 'author_id',
       'featured_image_url', 'featured_image_small_url', 'format', 'status', 'featured', 'published_at',
+      'created_by', 'updated_by',
     ];
 
     let publishedAt: string | null = null;
@@ -757,6 +759,8 @@ export class PostsRepository {
       status,
       data.featured ? 1 : 0,
       publishedAt,
+      data.createdBy || null,
+      data.createdBy || null,
     ];
 
     const sql = `INSERT INTO posts (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
