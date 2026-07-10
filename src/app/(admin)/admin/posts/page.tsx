@@ -35,6 +35,7 @@ interface Post {
   category: string;
   source?: 'manual' | 'rss';
   rssFeedName?: string;
+  authorName?: string;
 }
 
 type BulkScope = 'selected' | 'published' | 'draft' | 'archived' | 'unpublished';
@@ -752,7 +753,7 @@ export default function PostsPage() {
         )}
 
         {loading ? (
-          <LoadingSkeleton rows={10} columns={7} />
+          <LoadingSkeleton rows={10} columns={8} />
         ) : posts.length === 0 ? (
           <div style={{
             background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
@@ -885,6 +886,18 @@ export default function PostsPage() {
                         letterSpacing: '0.05em',
                         borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
                       }}>
+                        Author
+                      </th>
+                      <th style={{
+                        padding: '1.25rem 1.5rem',
+                        textAlign: 'left',
+                        fontWeight: '600',
+                        fontSize: '0.75rem',
+                        color: '#475569',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+                      }}>
                         Source
                       </th>
                       <th style={{
@@ -987,6 +1000,9 @@ export default function PostsPage() {
                         </td>
                         <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.9375rem' }}>
                           {post.category}
+                        </td>
+                        <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.9375rem' }}>
+                          {post.authorName || '—'}
                         </td>
                         <td style={{ padding: '1.25rem 1.5rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

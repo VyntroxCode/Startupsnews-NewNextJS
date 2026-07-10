@@ -107,6 +107,20 @@ export class EventsRepository {
   }
 
   /**
+   * Event counts grouped by location — used to show per-region event counts in admin.
+   */
+  async countsByLocation(): Promise<Record<string, number>> {
+    const rows = await query<{ location: string; count: number | bigint }>(
+      'SELECT location, COUNT(*) as count FROM events GROUP BY location'
+    );
+    const result: Record<string, number> = {};
+    for (const row of rows) {
+      result[row.location] = Number(row.count);
+    }
+    return result;
+  }
+
+  /**
    * Set status to 'past' for events whose event_date is before today and status is 'upcoming' or 'ongoing'.
    * Call this so the DB status stays in sync and admin/APIs see correct status.
    */

@@ -9,6 +9,7 @@ interface EventRegion {
   id: number;
   name: string;
   sort_order: number;
+  eventCount: number;
 }
 
 export default function EventRegionsPage() {
@@ -19,7 +20,6 @@ export default function EventRegionsPage() {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
-  const [editOrder, setEditOrder] = useState<number>(0);
   const [saving, setSaving] = useState(false);
 
   const fetchRegions = useCallback(async () => {
@@ -65,7 +65,6 @@ export default function EventRegionsPage() {
   const startEdit = (region: EventRegion) => {
     setEditingId(region.id);
     setEditName(region.name);
-    setEditOrder(region.sort_order);
   };
 
   const cancelEdit = () => {
@@ -82,7 +81,7 @@ export default function EventRegionsPage() {
       const res = await fetch(`/api/admin/event-regions/${id}`, {
         method: 'PUT',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, sort_order: editOrder }),
+        body: JSON.stringify({ name }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Failed to update region');
@@ -184,7 +183,7 @@ export default function EventRegionsPage() {
               <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
                 <thead>
                   <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-                    {['#', 'Region Name', 'Sort Order', 'Actions'].map((h, i) => (
+                    {['#', 'Region Name', 'Event Count', 'Actions'].map((h, i) => (
                       <th key={h} style={{
                         padding: '1.25rem 1.5rem',
                         textAlign: i === 3 ? 'right' : 'left',
@@ -228,16 +227,7 @@ export default function EventRegionsPage() {
                         )}
                       </td>
                       <td style={{ padding: '1rem 1.5rem', width: '140px' }}>
-                        {editingId === region.id ? (
-                          <input
-                            type="number"
-                            value={editOrder}
-                            onChange={(e) => setEditOrder(Number(e.target.value))}
-                            style={{ padding: '0.5rem 0.75rem', border: '2px solid #48bb78', borderRadius: '6px', fontSize: '0.9375rem', outline: 'none', width: 80 }}
-                          />
-                        ) : (
-                          <span style={{ color: '#64748b', fontSize: '0.9375rem' }}>{region.sort_order}</span>
-                        )}
+                        <span style={{ color: '#64748b', fontSize: '0.9375rem' }}>{region.eventCount}</span>
                       </td>
                       <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>

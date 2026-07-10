@@ -3,18 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
+import { getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
-import type { ReportEntity } from '@/modules/reports/domain/types';
-import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
+import type { BrandStoryEntity } from '@/modules/brand-stories/domain/types';
+import type { BrandStorySectionEntity } from '@/modules/brand-stories/domain/section-types';
 import Image from 'next/image';
 
-interface ReportWithMeta extends ReportEntity {
+interface BrandStoryWithMeta extends BrandStoryEntity {
   fileSizeFormatted: string;
   publishedAtFormatted: string;
 }
 
-type Tab = 'reports' | 'sections';
+type Tab = 'stories' | 'sections';
 
 const formatBytes = (bytes: number | null, decimals = 2) => {
   if (bytes === 0 || bytes === null) return '0 Bytes';
@@ -44,9 +44,9 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
-export default function AdminReportsPage() {
+export default function AdminBrandStoriesPage() {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<Tab>('reports');
+  const [activeTab, setActiveTab] = useState<Tab>('stories');
   const [sectionFilter, setSectionFilter] = useState<number | null>(
     searchParams.get('section') ? Number(searchParams.get('section')) : null
   );
@@ -55,37 +55,37 @@ export default function AdminReportsPage() {
   useEffect(() => {
     const id = searchParams.get('section');
     setSectionFilter(id ? Number(id) : null);
-    if (id) setActiveTab('reports');
+    if (id) setActiveTab('stories');
   }, [searchParams]);
 
-  const [reports, setReports] = useState<ReportWithMeta[]>([]);
+  const [stories, setStories] = useState<BrandStoryWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [sections, setSections] = useState<ReportSectionEntity[]>([]);
+  const [sections, setSections] = useState<BrandStorySectionEntity[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
   const [sectionsError, setSectionsError] = useState('');
   const [newSectionTitle, setNewSectionTitle] = useState('');
   const [addingSection, setAddingSection] = useState(false);
-  const [editingSection, setEditingSection] = useState<ReportSectionEntity | null>(null);
+  const [editingSection, setEditingSection] = useState<BrandStorySectionEntity | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [savingSection, setSavingSection] = useState(false);
   const [deletingSection, setDeletingSection] = useState<number | null>(null);
 
-  const fetchReports = useCallback(async () => {
+  const fetchStories = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(withAdminToken('/api/admin/reports'), { headers: getAuthHeaders() });
+      const res = await fetch(withAdminToken('/api/admin/brand-stories'), { headers: getAuthHeaders() });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Failed to load reports');
-      setReports(data.data.map((r: ReportEntity) => ({
+      if (!data.success) throw new Error(data.error || 'Failed to load brand stories');
+      setStories(data.data.map((r: BrandStoryEntity) => ({
         ...r,
         fileSizeFormatted: formatBytes(r.file_size),
         publishedAtFormatted: formatDateTime((r.publish_at || r.created_at).toString().replace(' ', 'T')),
       })));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load reports');
+      setError(err instanceof Error ? err.message : 'Failed to load brand stories');
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ export default function AdminReportsPage() {
     setSectionsLoading(true);
     setSectionsError('');
     try {
-      const res = await fetch(withAdminToken('/api/admin/report-sections'), { headers: getAuthHeaders() });
+      const res = await fetch(withAdminToken('/api/admin/brand-story-sections'), { headers: getAuthHeaders() });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Failed to load sections');
       setSections(data.data);
@@ -107,31 +107,31 @@ export default function AdminReportsPage() {
   }, []);
 
   useEffect(() => {
-    fetchReports();
+    fetchStories();
     fetchSections();
-  }, [fetchReports, fetchSections]);
+  }, [fetchStories, fetchSections]);
 
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        fetchReports();
+        fetchStories();
         fetchSections();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [fetchReports, fetchSections]);
+  }, [fetchStories, fetchSections]);
 
-  const handleDeleteReport = async (id: number, title: string) => {
-    if (!confirm(`Delete report "${title}"? This cannot be undone.`)) return;
+  const handleDeleteStory = async (id: number, title: string) => {
+    if (!confirm(`Delete brand story "${title}"? This cannot be undone.`)) return;
     setError('');
     try {
-      const res = await fetch(withAdminToken(`/api/admin/reports/${id}`), { method: 'DELETE', headers: getAuthHeaders() });
+      const res = await fetch(withAdminToken(`/api/admin/brand-stories/${id}`), { method: 'DELETE', headers: getAuthHeaders() });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Failed to delete report');
-      await fetchReports();
+      if (!data.success) throw new Error(data.error || 'Failed to delete brand story');
+      await fetchStories();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete report');
+      setError(err instanceof Error ? err.message : 'Failed to delete brand story');
     }
   };
 
@@ -141,7 +141,7 @@ export default function AdminReportsPage() {
     setAddingSection(true);
     setSectionsError('');
     try {
-      const res = await fetch(withAdminToken('/api/admin/report-sections'), {
+      const res = await fetch(withAdminToken('/api/admin/brand-story-sections'), {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),
@@ -162,7 +162,7 @@ export default function AdminReportsPage() {
     setSavingSection(true);
     setSectionsError('');
     try {
-      const res = await fetch(withAdminToken(`/api/admin/report-sections/${editingSection.id}`), {
+      const res = await fetch(withAdminToken(`/api/admin/brand-story-sections/${editingSection.id}`), {
         method: 'PUT',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: editTitle.trim(), sortOrder: editingSection.sort_order }),
@@ -179,19 +179,19 @@ export default function AdminReportsPage() {
     }
   };
 
-  const handleDeleteSection = async (section: ReportSectionEntity) => {
-    const count = reports.filter((r) => r.section_id === section.id).length;
+  const handleDeleteSection = async (section: BrandStorySectionEntity) => {
+    const count = stories.filter((r) => r.section_id === section.id).length;
     const msg = count > 0
-      ? `Delete section "${section.title}"? The ${count} report(s) in it will become ungrouped.`
+      ? `Delete section "${section.title}"? The ${count} brand story(s) in it will become ungrouped.`
       : `Delete section "${section.title}"?`;
     if (!confirm(msg)) return;
     setDeletingSection(section.id);
     setSectionsError('');
     try {
-      const res = await fetch(withAdminToken(`/api/admin/report-sections/${section.id}`), { method: 'DELETE', headers: getAuthHeaders() });
+      const res = await fetch(withAdminToken(`/api/admin/brand-story-sections/${section.id}`), { method: 'DELETE', headers: getAuthHeaders() });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Failed to delete section');
-      await Promise.all([fetchSections(), fetchReports()]);
+      await Promise.all([fetchSections(), fetchStories()]);
     } catch (err) {
       setSectionsError(err instanceof Error ? err.message : 'Failed to delete section');
     } finally {
@@ -201,15 +201,13 @@ export default function AdminReportsPage() {
 
   const sectionMap = Object.fromEntries(sections.map((s) => [s.id, s.title]));
 
-  const visibleReports = sectionFilter
-    ? reports.filter((r) => r.section_id === sectionFilter)
-    : reports;
-
-  const isPublisherAdmin = (getAdminUser()?.role || '') === 'publisher_admin';
+  const visibleStories = sectionFilter
+    ? stories.filter((r) => r.section_id === sectionFilter)
+    : stories;
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
-    { id: 'reports', label: 'Reports', count: reports.length },
-    ...(isPublisherAdmin ? [] : [{ id: 'sections' as Tab, label: 'Title Sections', count: sections.length }]),
+    { id: 'stories', label: 'Brand Stories', count: stories.length },
+    { id: 'sections', label: 'Title Sections', count: sections.length },
   ];
 
   return (
@@ -218,8 +216,8 @@ export default function AdminReportsPage() {
 
         {/* ── Page Header ── */}
         <div style={{ marginBottom: '2.5rem' }}>
-          <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Reports</h2>
-          <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>Manage reports and section groupings.</p>
+          <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Brand Stories</h2>
+          <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>Manage brand stories and section groupings.</p>
         </div>
 
         {/* ── Tab Bar ── */}
@@ -271,13 +269,13 @@ export default function AdminReportsPage() {
         </div>
 
         {/* ══════════════════════════════════════
-            TAB: REPORTS
+            TAB: BRAND STORIES
         ══════════════════════════════════════ */}
-        {activeTab === 'reports' && (
+        {activeTab === 'stories' && (
           <>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.25rem' }}>
               <Link
-                href="/admin/reports/create"
+                href="/admin/brand-stories/create"
                 style={{
                   background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
                   color: 'white',
@@ -298,7 +296,7 @@ export default function AdminReportsPage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                Add New Report
+                Add New Brand Story
               </Link>
             </div>
 
@@ -316,7 +314,7 @@ export default function AdminReportsPage() {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                   </button>
                 </span>
-                <span style={{ fontSize: '0.8125rem', color: '#94a3b8' }}>{visibleReports.length} report{visibleReports.length !== 1 ? 's' : ''}</span>
+                <span style={{ fontSize: '0.8125rem', color: '#94a3b8' }}>{visibleStories.length} brand stor{visibleStories.length !== 1 ? 'ies' : 'y'}</span>
               </div>
             )}
 
@@ -327,7 +325,7 @@ export default function AdminReportsPage() {
             )}
 
             {loading ? (
-              <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb' }}>Loading reports...</div>
+              <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb' }}>Loading brand stories...</div>
             ) : (
               <div style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
@@ -342,39 +340,39 @@ export default function AdminReportsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleReports.length === 0 ? (
+                      {visibleStories.length === 0 ? (
                         <tr>
                           <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: '#64748b', fontSize: '1rem' }}>
-                            {sectionFilter ? `No reports in this section yet.` : `No reports yet. Click "Add New Report" to create one.`}
+                            {sectionFilter ? `No brand stories in this section yet.` : `No brand stories yet. Click "Add New Brand Story" to create one.`}
                           </td>
                         </tr>
-                      ) : visibleReports.map((report, index) => (
+                      ) : visibleStories.map((story, index) => (
                         <tr
-                          key={report.id}
-                          style={{ borderBottom: index < visibleReports.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', transition: 'background-color 0.15s' }}
+                          key={story.id}
+                          style={{ borderBottom: index < visibleStories.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', transition: 'background-color 0.15s' }}
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                         >
                           <td style={{ padding: '0.875rem 1.25rem', fontSize: '0.875rem', color: '#64748b' }}>{index + 1}</td>
                           <td style={{ padding: '0.875rem 1.25rem' }}>
-                            {report.thumbnail_url ? (
-                              <Image src={report.thumbnail_url} alt={report.title} width={60} height={60} style={{ objectFit: 'cover', borderRadius: '0.375rem' }} />
+                            {story.thumbnail_url ? (
+                              <Image src={story.thumbnail_url} alt={story.title} width={60} height={60} style={{ objectFit: 'cover', borderRadius: '0.375rem' }} />
                             ) : (
                               <div style={{ width: 60, height: 60, background: '#e2e8f0', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.7rem' }}>No Thumb</div>
                             )}
                           </td>
-                          <td style={{ padding: '0.875rem 1.25rem', fontSize: '0.9375rem', fontWeight: '500', color: '#0f172a' }}>{report.title}</td>
+                          <td style={{ padding: '0.875rem 1.25rem', fontSize: '0.9375rem', fontWeight: '500', color: '#0f172a' }}>{story.title}</td>
                           <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap', fontSize: '0.875rem' }}>
-                            {report.section_id && sectionMap[report.section_id] ? (
+                            {story.section_id && sectionMap[story.section_id] ? (
                               <span style={{ padding: '0.2rem 0.6rem', background: '#eef2ff', color: '#4f46e5', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600' }}>
-                                {sectionMap[report.section_id]}
+                                {sectionMap[story.section_id]}
                               </span>
                             ) : (
                               <span style={{ color: '#cbd5e1', fontSize: '0.8125rem' }}>—</span>
                             )}
                           </td>
                           <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap', fontSize: '0.875rem', color: '#64748b' }}>
-                            {report.file_name || '—'} ({report.fileSizeFormatted})
+                            {story.file_name || '—'} ({story.fileSizeFormatted})
                           </td>
                           <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap' }}>
                             <span style={{
@@ -383,19 +381,19 @@ export default function AdminReportsPage() {
                               fontSize: '0.75rem',
                               fontWeight: '600',
                               borderRadius: '9999px',
-                              background: report.publish_at && report.is_active === 0 ? '#fffbeb' : report.is_active === 1 ? '#ecfdf5' : '#fef2f2',
-                              color: report.publish_at && report.is_active === 0 ? '#92400e' : report.is_active === 1 ? '#047857' : '#991b1b',
+                              background: story.publish_at && story.is_active === 0 ? '#fffbeb' : story.is_active === 1 ? '#ecfdf5' : '#fef2f2',
+                              color: story.publish_at && story.is_active === 0 ? '#92400e' : story.is_active === 1 ? '#047857' : '#991b1b',
                             }}>
-                              {report.publish_at && report.is_active === 0
-                                ? `⏰ ${new Date(report.publish_at!.toString().replace(' ', 'T')).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}`
-                                : report.is_active === 1 ? 'Active' : 'Inactive'}
+                              {story.publish_at && story.is_active === 0
+                                ? `⏰ ${new Date(story.publish_at!.toString().replace(' ', 'T')).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}`
+                                : story.is_active === 1 ? 'Active' : 'Inactive'}
                             </span>
                           </td>
-                          <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap', fontSize: '0.875rem', color: '#64748b' }}>{report.publishedAtFormatted}</td>
+                          <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap', fontSize: '0.875rem', color: '#64748b' }}>{story.publishedAtFormatted}</td>
                           <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                               <Link
-                                href={`/admin/reports/edit/${report.id}`}
+                                href={`/admin/brand-stories/edit/${story.id}`}
                                 style={{
                                   padding: '0.5rem 1rem',
                                   background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -409,7 +407,7 @@ export default function AdminReportsPage() {
                                 Edit
                               </Link>
                               <button
-                                onClick={() => handleDeleteReport(report.id, report.title)}
+                                onClick={() => handleDeleteStory(story.id, story.title)}
                                 style={{
                                   padding: '0.5rem 1rem',
                                   background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
@@ -431,7 +429,7 @@ export default function AdminReportsPage() {
                   </table>
                 </div>
                 <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid rgba(0,0,0,0.04)', color: '#64748b', fontSize: '0.8125rem', background: '#f8fafc' }}>
-                  {visibleReports.length} report{visibleReports.length !== 1 ? 's' : ''}{sectionFilter ? ` in "${sectionMap[sectionFilter]}"` : ' total'}
+                  {visibleStories.length} brand stor{visibleStories.length !== 1 ? 'ies' : 'y'}{sectionFilter ? ` in "${sectionMap[sectionFilter]}"` : ' total'}
                 </div>
               </div>
             )}
@@ -441,12 +439,12 @@ export default function AdminReportsPage() {
         {/* ══════════════════════════════════════
             TAB: TITLE SECTIONS
         ══════════════════════════════════════ */}
-        {activeTab === 'sections' && !isPublisherAdmin && (
+        {activeTab === 'sections' && (
           <div style={{ maxWidth: 720 }}>
             <div style={{ marginBottom: '1.5rem' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>Title Sections</h3>
               <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                Create named section headers that group reports together on the public reports page.
+                Create named section headers that group brand stories together on the public brand stories page.
               </p>
             </div>
 
@@ -462,7 +460,7 @@ export default function AdminReportsPage() {
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="text"
-                  placeholder="Section title (e.g. Featured Reports)"
+                  placeholder="Section title (e.g. Featured Brand Stories)"
                   value={newSectionTitle}
                   onChange={(e) => setNewSectionTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleAddSection(); }}
@@ -514,12 +512,12 @@ export default function AdminReportsPage() {
                       <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
                     </svg>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>No sections yet. Add one above to start grouping reports.</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>No sections yet. Add one above to start grouping brand stories.</p>
                 </div>
               ) : (
                 <div>
                   {sections.map((section, idx) => {
-                    const reportCount = reports.filter((r) => r.section_id === section.id).length;
+                    const storyCount = stories.filter((r) => r.section_id === section.id).length;
                     const isEditing = editingSection?.id === section.id;
                     const isDeleting = deletingSection === section.id;
                     const isLast = idx === sections.length - 1;
@@ -575,7 +573,7 @@ export default function AdminReportsPage() {
                               <span style={{ fontSize: '0.9375rem', fontWeight: '700', color: '#0f172a' }}>{section.title}</span>
                             </div>
                             <span style={{ fontSize: '0.75rem', color: '#64748b', background: '#f1f5f9', padding: '3px 10px', borderRadius: '999px', whiteSpace: 'nowrap', fontWeight: '600' }}>
-                              {reportCount} report{reportCount !== 1 ? 's' : ''}
+                              {storyCount} stor{storyCount !== 1 ? 'ies' : 'y'}
                             </span>
                             <button
                               onClick={() => { setEditingSection(section); setEditTitle(section.title); }}
@@ -606,7 +604,7 @@ export default function AdminReportsPage() {
             </div>
 
             <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem', color: '#94a3b8', lineHeight: 1.6 }}>
-              Tip: Assign a section to each report from the report&apos;s Edit page. Reports without a section appear at the bottom of the public page, ungrouped.
+              Tip: Assign a section to each brand story from the brand story&apos;s Edit page. Brand stories without a section appear at the bottom of the public page, ungrouped.
             </p>
           </div>
         )}

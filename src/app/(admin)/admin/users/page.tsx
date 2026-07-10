@@ -606,10 +606,10 @@ export default function UsersPage() {
             key="users"
             apiBase="/api/admin/users"
             entityLabel="User"
-            subtitle="Manage Admin, Editor, and Author login accounts"
-            roleOptions={['admin', 'editor', 'author']}
+            subtitle="Manage Admin login accounts"
+            roleOptions={['admin']}
             roleLabels={{ admin: 'Admin', editor: 'Editor', author: 'Author' }}
-            defaultRole="author"
+            defaultRole="admin"
             deleteConfirmMessage="Are you sure you want to delete this admin account? This cannot be undone."
           />
         ) : (

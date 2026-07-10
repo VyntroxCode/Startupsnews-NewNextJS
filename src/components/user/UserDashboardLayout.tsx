@@ -30,6 +30,7 @@ const NAV_GROUPS = [
     title: 'RESEARCH',
     items: [
       { href: '/dashboard/reports', label: 'Reports', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
+      { href: '/dashboard/brand-stories', label: 'Brand Stories', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> },
       { href: '/dashboard/newsletter', label: 'Newsletter', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
       { href: '/dashboard/settings', label: 'Profile', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
     ]
@@ -46,11 +47,16 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   const [mounted, setMounted] = useState(false);
   const [reportSections, setReportSections] = useState<ReportSection[]>([]);
   const [reportsExpanded, setReportsExpanded] = useState(false);
+  const [brandStorySections, setBrandStorySections] = useState<ReportSection[]>([]);
+  const [brandStoriesExpanded, setBrandStoriesExpanded] = useState(false);
 
   // Auto-expand when on the reports page
   useEffect(() => {
     if (pathname?.startsWith('/dashboard/reports')) {
       setReportsExpanded(true);
+    }
+    if (pathname?.startsWith('/dashboard/brand-stories')) {
+      setBrandStoriesExpanded(true);
     }
   }, [pathname]);
 
@@ -58,6 +64,10 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
     fetch('/api/report-sections')
       .then((r) => r.json())
       .then((data) => { if (data.success) setReportSections(data.data); })
+      .catch(() => {});
+    fetch('/api/brand-story-sections')
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setBrandStorySections(data.data); })
       .catch(() => {});
   }, []);
 
@@ -195,13 +205,20 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
             )}
             {group.items.map((item) => {
               const isReports = item.href === '/dashboard/reports';
+              const isBrandStories = item.href === '/dashboard/brand-stories';
+              const isExpandable = isReports || isBrandStories;
+              const itemSections = isReports ? reportSections : isBrandStories ? brandStorySections : [];
+              const expanded = isReports ? reportsExpanded : brandStoriesExpanded;
+              const toggleExpanded = isReports
+                ? () => setReportsExpanded((v) => !v)
+                : () => setBrandStoriesExpanded((v) => !v);
               const active = item.href === '/dashboard' ? pathname === '/dashboard' : (item.href !== '#' && pathname?.startsWith(item.href));
-              const hasSections = isReports && reportSections.length > 0;
+              const hasSections = isExpandable && itemSections.length > 0;
 
               return (
                 <div key={item.label}>
-                  {/* Nav row — Reports gets a toggle chevron instead of being a plain link */}
-                  {isReports && !collapsed ? (
+                  {/* Nav row — expandable items get a toggle chevron instead of being a plain link */}
+                  {isExpandable && !collapsed ? (
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
                       <Link
                         href={item.href}
@@ -223,12 +240,12 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                       {hasSections && (
                         <button
                           type="button"
-                          onClick={() => setReportsExpanded((v) => !v)}
+                          onClick={toggleExpanded}
                           style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', borderRadius: 6, flexShrink: 0, transition: 'color 0.15s' }}
                           onMouseEnter={e => { e.currentTarget.style.color = '#374151'; }}
                           onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af'; }}
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: reportsExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
                             <polyline points="6 9 12 15 18 9" />
                           </svg>
                         </button>
@@ -264,12 +281,12 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                     </Link>
                   )}
 
-                  {/* Reports submenu */}
-                  {isReports && !collapsed && reportsExpanded && hasSections && (
+                  {/* Sections submenu */}
+                  {isExpandable && !collapsed && expanded && hasSections && (
                     <div style={{ paddingLeft: 34, marginBottom: 6 }}>
                       {/* One row per section */}
-                      {reportSections.map((section) => {
-                        const sectionHref = `/dashboard/reports?section=${section.id}`;
+                      {itemSections.map((section) => {
+                        const sectionHref = `${item.href}?section=${section.id}`;
                         return (
                           <Link
                             key={section.id}

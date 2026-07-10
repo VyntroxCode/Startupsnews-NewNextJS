@@ -2,20 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { EventRegionsRepository } from '@/modules/events/repository/event-regions.repository';
+import { EventsRepository } from '@/modules/events/repository/events.repository';
 
 const repo = new EventRegionsRepository();
+const eventsRepo = new EventsRepository();
 
 /**
  * GET /api/admin/event-regions
- * List all event regions ordered by sort_order
+ * List all event regions, each with its event count
  */
 export async function GET(request: NextRequest) {
   const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const regions = await repo.findAll();
-    return NextResponse.json({ success: true, data: regions });
+    const [regions, counts] = await Promise.all([repo.findAll(), eventsRepo.countsByLocation()]);
+    const regionsWithCounts = regions.map((region) => ({
+      ...region,
+      eventCount: counts[region.name] || 0,
+    }));
+    return NextResponse.json({ success: true, data: regionsWithCounts });
   } catch (err) {
     console.error('GET /api/admin/event-regions error:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch regions' }, { status: 500 });

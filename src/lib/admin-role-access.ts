@@ -8,7 +8,7 @@ export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   editor: 'all',
   author: 'all',
   event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/banners', '/admin/tools'],
-  publisher_admin: ['/admin', '/admin/posts', '/admin/categories', '/admin/authors', '/admin/tools', '/admin/reports'],
+  publisher_admin: ['/admin', '/admin/posts', '/admin/tools', '/admin/reports', '/admin/brand-stories'],
 };
 
 function matchesPrefix(prefixes: string[], pathname: string): boolean {

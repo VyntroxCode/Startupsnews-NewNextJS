@@ -100,6 +100,13 @@ const ReportsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
+const BrandStoriesIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+  </svg>
+);
+
 const RegionsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"></circle>
@@ -138,6 +145,7 @@ const menuItems = [
   { href: '/admin/newsletter', label: 'Newsletter', icon: NewsletterIcon },
   { href: '/admin/tools', label: 'HTML Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
+  { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },
   { href: '/admin/registered-users', label: 'Registered Users', icon: RegisteredUsersIcon },
   { href: '/admin/users', label: 'Users', icon: UsersIcon },
 ];

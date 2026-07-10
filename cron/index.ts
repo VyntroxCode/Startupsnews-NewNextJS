@@ -19,6 +19,7 @@ import { RssFeedsSchedulerJob } from './jobs/rss-feeds-scheduler.job';
 import { RssFeedWorker } from '@/workers/rss.worker';
 import { MorningSignalJob } from './jobs/morning-signal.job';
 import { ReportSchedulerJob } from './jobs/report-scheduler.job';
+import { BrandStorySchedulerJob } from './jobs/brand-story-scheduler.job';
 
 loadEnvConfig(process.cwd());
 
@@ -147,6 +148,17 @@ async function start(): Promise<void> {
     }
   }, { timezone: 'UTC' });
   log.info('Report scheduler cron registered', { schedule: '*/5 * * * *' });
+
+  // Brand story scheduler: every 5 minutes — publishes brand stories whose publish_at has passed
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const job = new BrandStorySchedulerJob();
+      await job.execute();
+    } catch (err) {
+      log.error('Brand story scheduler failed', err);
+    }
+  }, { timezone: 'UTC' });
+  log.info('Brand story scheduler cron registered', { schedule: '*/5 * * * *' });
 }
 
 start().catch((err) => {
