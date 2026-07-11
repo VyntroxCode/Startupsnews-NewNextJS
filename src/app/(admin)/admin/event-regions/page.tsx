@@ -21,6 +21,7 @@ export default function EventRegionsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [letterFilter, setLetterFilter] = useState<string | null>(null);
 
   const fetchRegions = useCallback(async () => {
     setLoading(true);
@@ -174,8 +175,55 @@ export default function EventRegionsPage() {
           </div>
         )}
 
+        {/* Alphabet filter */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '1.5rem' }}>
+          <button
+            onClick={() => setLetterFilter(null)}
+            style={{
+              padding: '0.375rem 0.75rem',
+              borderRadius: '6px',
+              border: '1px solid ' + (letterFilter === null ? '#48bb78' : '#e2e8f0'),
+              background: letterFilter === null ? 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)' : '#fff',
+              color: letterFilter === null ? '#fff' : '#475569',
+              fontWeight: '600',
+              fontSize: '0.8125rem',
+              cursor: 'pointer',
+            }}
+          >
+            All
+          </button>
+          {Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)).map((letter) => {
+            const hasRegions = regions.some((r) => r.name.trim().charAt(0).toUpperCase() === letter);
+            const active = letterFilter === letter;
+            return (
+              <button
+                key={letter}
+                onClick={() => setLetterFilter(active ? null : letter)}
+                disabled={!hasRegions}
+                style={{
+                  width: '2rem',
+                  height: '2rem',
+                  borderRadius: '6px',
+                  border: '1px solid ' + (active ? '#48bb78' : '#e2e8f0'),
+                  background: active ? 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)' : '#fff',
+                  color: active ? '#fff' : hasRegions ? '#475569' : '#cbd5e1',
+                  fontWeight: '600',
+                  fontSize: '0.8125rem',
+                  cursor: hasRegions ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {letter}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Regions table */}
-        {loading ? (
+        {(() => {
+          const filteredRegions = letterFilter
+            ? regions.filter((r) => r.name.trim().charAt(0).toUpperCase() === letterFilter)
+            : regions;
+          return loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>Loading regions...</div>
         ) : (
           <div style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.04)' }}>
@@ -198,16 +246,16 @@ export default function EventRegionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {regions.length === 0 ? (
+                  {filteredRegions.length === 0 ? (
                     <tr>
                       <td colSpan={4} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                        No regions found. Add one above.
+                        {letterFilter ? `No regions starting with "${letterFilter}".` : 'No regions found. Add one above.'}
                       </td>
                     </tr>
-                  ) : regions.map((region, index) => (
+                  ) : filteredRegions.map((region, index) => (
                     <tr
                       key={region.id}
-                      style={{ borderBottom: index < regions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', transition: 'background 0.2s' }}
+                      style={{ borderBottom: index < filteredRegions.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', transition: 'background 0.2s' }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
@@ -275,10 +323,11 @@ export default function EventRegionsPage() {
               </table>
             </div>
             <div style={{ padding: '0.875rem 1.5rem', borderTop: '1px solid rgba(0,0,0,0.04)', color: '#64748b', fontSize: '0.8125rem', background: '#f8fafc' }}>
-              {regions.length} region{regions.length !== 1 ? 's' : ''} total
+              {filteredRegions.length} region{filteredRegions.length !== 1 ? 's' : ''}{letterFilter ? ` starting with "${letterFilter}"` : ' total'}
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </AdminErrorBoundary>
   );
