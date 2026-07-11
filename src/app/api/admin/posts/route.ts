@@ -131,12 +131,15 @@ export async function GET(request: NextRequest) {
 
     const categoryIds = [...new Set(entities.map((e) => e.category_id))];
     const postIds = entities.map((e) => e.id);
+    const authorIds = [...new Set(entities.map((e) => e.author_id))];
     const categoryMap = new Map<number, { name: string; slug: string }>();
     const tagsByPostId = new Map<number, string[]>();
     const feedNameByPostId = new Map<number, string>();
+    const itemAuthorByPostId = new Map<number, string | null>();
+    const staffNameByAuthorId = new Map<number, string>();
 
     // Run all batch lookups in parallel
-    const [categoryRows, tagRows, rssRows] = await Promise.all([
+    const [categoryRows, tagRows, rssRows, staffRows] = await Promise.all([
       categoryIds.length > 0
         ? query<{ id: number; name: string; slug: string }>(
           `SELECT id, name, slug FROM categories WHERE id IN (${categoryIds.map(() => '?').join(',')})`,
@@ -150,11 +153,17 @@ export async function GET(request: NextRequest) {
         )
         : Promise.resolve([]),
       postIds.length > 0
-        ? query<{ post_id: number; name: string }>(
-          `SELECT i.post_id, f.name FROM rss_feed_items i
+        ? query<{ post_id: number; name: string; item_author: string | null }>(
+          `SELECT i.post_id, f.name, i.author AS item_author FROM rss_feed_items i
              JOIN rss_feeds f ON f.id = i.rss_feed_id
              WHERE i.post_id IS NOT NULL AND i.post_id IN (${postIds.map(() => '?').join(',')})`,
           postIds
+        )
+        : Promise.resolve([]),
+      authorIds.length > 0
+        ? query<{ id: number; name: string }>(
+          `SELECT id, name FROM users WHERE id IN (${authorIds.map(() => '?').join(',')})`,
+          authorIds
         )
         : Promise.resolve([]),
     ]);
@@ -170,17 +179,34 @@ export async function GET(request: NextRequest) {
     for (const row of rssRows) {
       const key = Number(row.post_id);
       if (!feedNameByPostId.has(key)) feedNameByPostId.set(key, row.name);
+      if (!itemAuthorByPostId.has(key)) itemAuthorByPostId.set(key, row.item_author);
+    }
+    for (const row of staffRows) {
+      staffNameByAuthorId.set(row.id, row.name);
     }
 
     let posts = entitiesToAdminListPosts(entities, categoryMap, tagsByPostId);
     if (posts.length > 0) {
-      posts = posts.map((p) => ({
-        ...p,
-        source: feedNameByPostId.has(Number(p.id)) ? ('rss' as const) : ('manual' as const),
-        rssFeedName: feedNameByPostId.get(Number(p.id)),
-        isGone410: Boolean((p as { isGone410?: boolean }).isGone410),
-        httpStatus: (p as { httpStatus?: number }).httpStatus ?? 404,
-      }));
+      const authorIdByPostId = new Map<number, number>(entities.map((e) => [e.id, e.author_id]));
+      posts = posts.map((p) => {
+        const postId = Number(p.id);
+        const isRss = feedNameByPostId.has(postId);
+        const feedName = feedNameByPostId.get(postId);
+        const itemAuthor = itemAuthorByPostId.get(postId);
+        const staffName = staffNameByAuthorId.get(authorIdByPostId.get(postId) ?? -1);
+        const hasRssSource = isRss && feedName !== 'StartupNews Direct Import';
+        const authorName = hasRssSource
+          ? (itemAuthor || feedName || 'Zox News Staff')
+          : (staffName || 'Zox News Staff');
+        return {
+          ...p,
+          source: isRss ? ('rss' as const) : ('manual' as const),
+          rssFeedName: feedName,
+          authorName,
+          isGone410: Boolean((p as { isGone410?: boolean }).isGone410),
+          httpStatus: (p as { httpStatus?: number }).httpStatus ?? 404,
+        };
+      });
     }
 
     const totalPages = Math.ceil(total / limit);
