@@ -1154,8 +1154,8 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .sticky-sidebar-content .startup-events-wrap .startup-events-item {
   margin-bottom: 0;
-  padding-top: 14px;
-  padding-bottom: 14px;
+  /* padding-top: 14px;
+  padding-bottom: 14px; */
   border-bottom: 1px solid #e8e8e8;
   overflow: hidden;
 }
