@@ -101,11 +101,11 @@ export function MoreNewsSection({
                       </div>
                       <h2 className="post-heading-max-3-lines">{post.title}</h2>
                       <p className="post-card-excerpt-max-3-lines">{post.excerpt}</p>
-                      <div className="read-more-link">
-                        <span>
+                      {/* <div className="read-more-link"> */}
+                        {/* <span>
                           View More <i className="fa fa-long-arrow-right" aria-hidden="true" />
-                        </span>
-                      </div>
+                        </span> */}
+                      {/* </div> */}
                     </div>
                   </div>
                 </div>
