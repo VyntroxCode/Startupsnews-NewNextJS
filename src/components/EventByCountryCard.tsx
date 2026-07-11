@@ -30,17 +30,12 @@ export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps)
         aria-label={`View event: ${event.title}`}
       >
         <div className="event-by-country-card-img">
-          <div
-            className="event-by-country-card-img-bg"
-            style={{ backgroundImage: `url(${imageUrl})` }}
-            aria-hidden
-          />
           <Image
             src={imageUrl}
             alt={event.title}
             fill
             sizes="(max-width: 600px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            style={{ objectFit: "contain" }}
+            style={{ objectFit: "cover" }}
             className="event-by-country-card-img-main"
           />
         </div>

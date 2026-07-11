@@ -79,20 +79,15 @@ export default async function StartupEventPage({
           <article className="event-detail-article">
             <header className="event-detail-header">
               <div className="event-detail-hero">
-                <div
-                  className="event-detail-hero-bg"
-                  style={{ backgroundImage: `url(${imageUrl})` }}
-                  aria-hidden
-                />
                 <Image
                   src={imageUrl}
                   alt={event.title}
                   width={1200}
-                  height={560}
+                  height={630}
                   className="event-detail-hero-img"
                   sizes="(max-width: 768px) 100vw, 1200px"
                   priority
-                  style={{ objectFit: "contain" }}
+                  style={{ objectFit: "cover" }}
                 />
               </div>
               <h2 className="event-detail-title">{event.title}</h2>
