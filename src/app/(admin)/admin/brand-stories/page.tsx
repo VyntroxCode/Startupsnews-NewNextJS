@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
+import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import type { BrandStoryEntity } from '@/modules/brand-stories/domain/types';
 import type { BrandStorySectionEntity } from '@/modules/brand-stories/domain/section-types';
@@ -205,9 +205,11 @@ export default function AdminBrandStoriesPage() {
     ? stories.filter((r) => r.section_id === sectionFilter)
     : stories;
 
+  const isPublisherAdmin = (getAdminUser()?.role || '') === 'publisher_admin';
+
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: 'stories', label: 'Brand Stories', count: stories.length },
-    { id: 'sections', label: 'Title Sections', count: sections.length },
+    ...(isPublisherAdmin ? [] : [{ id: 'sections' as Tab, label: 'Title Sections', count: sections.length }]),
   ];
 
   return (
@@ -439,7 +441,7 @@ export default function AdminBrandStoriesPage() {
         {/* ══════════════════════════════════════
             TAB: TITLE SECTIONS
         ══════════════════════════════════════ */}
-        {activeTab === 'sections' && (
+        {activeTab === 'sections' && !isPublisherAdmin && (
           <div style={{ maxWidth: 720 }}>
             <div style={{ marginBottom: '1.5rem' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>Title Sections</h3>
