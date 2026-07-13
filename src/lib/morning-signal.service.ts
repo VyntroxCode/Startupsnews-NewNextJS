@@ -21,7 +21,7 @@ interface NewsletterItem {
   published_at: Date | string | null;
 }
 
-interface Recipient { id: number; name: string; email: string; newsletter_category_slugs: string | null; timezone: string | null; last_newsletter_sent_date: string | null; }
+interface Recipient { id: number; name: string; email: string; newsletter_category_slugs: string | null; timezone: string | null; last_newsletter_sent_date: string | null; city: string | null; country: string | null; }
 
 const SECTOR_META: Record<string, { label: string; emoji: string }> = {
   'ai-deeptech':     { label: 'AI & Deeptech',     emoji: '🤖' },
@@ -45,7 +45,7 @@ const SECTOR_META: Record<string, { label: string; emoji: string }> = {
 
 interface UpcomingEvent { title: string; url: string | null; location: string; event_date: string; event_time?: string | null; image_url?: string | null; }
 
-async function getUpcomingEvents(limit = 2): Promise<UpcomingEvent[]> {
+export async function getUpcomingEvents(limit = 2): Promise<UpcomingEvent[]> {
   try {
     return await query<UpcomingEvent>(
       `SELECT title, external_url AS url, location, event_date, event_time, image_url FROM events WHERE status = 'upcoming' AND event_date >= CURDATE() ORDER BY event_date ASC LIMIT ?`,
@@ -54,7 +54,35 @@ async function getUpcomingEvents(limit = 2): Promise<UpcomingEvent[]> {
   } catch { return []; }
 }
 
-function buildEventsBlock(events: UpcomingEvent[]): string {
+/**
+ * Picks events near the recipient's "Location" (the same city/country fields shown
+ * in the admin Registered Users table), matched as a normalized substring against
+ * `location`, which is a free-text field drawn from the event_regions vocabulary.
+ * Tries city first, then country, then falls back to the soonest global events —
+ * there's no real geo-distance data, just city/country names.
+ */
+export function pickEventsForCity(allUpcomingEvents: UpcomingEvent[], city: string | null | undefined, limit = 2, country?: string | null): UpcomingEvent[] {
+  const matches = (needle: string) => allUpcomingEvents.filter(ev => {
+    const loc = (ev.location || '').toLowerCase();
+    return loc.includes(needle) || needle.includes(loc);
+  });
+
+  const normalizedCity = (city || '').trim().toLowerCase();
+  if (normalizedCity) {
+    const nearby = matches(normalizedCity);
+    if (nearby.length > 0) return nearby.slice(0, limit);
+  }
+
+  const normalizedCountry = (country || '').trim().toLowerCase();
+  if (normalizedCountry) {
+    const nearby = matches(normalizedCountry);
+    if (nearby.length > 0) return nearby.slice(0, limit);
+  }
+
+  return allUpcomingEvents.slice(0, limit);
+}
+
+export function buildEventsBlock(events: UpcomingEvent[]): string {
   if (!events.length) return '';
   const cards = events.map(ev => {
     const d = new Date(ev.event_date);
@@ -142,7 +170,7 @@ const SECTOR_COLORS: Record<string, { bg: string; color: string; link: string }>
 };
 const DEFAULT_SECTOR_COLOR = { bg: '#FCE8EF', color: '#9C2A57', link: '#C13E70' };
 
-function buildSectorBlock(slug: string, items: NewsletterItem[]): string {
+export function buildSectorBlock(slug: string, items: NewsletterItem[]): string {
   if (!items.length) return '';
   const meta = SECTOR_META[slug] || { label: slug, emoji: '📰' };
   const sc = SECTOR_COLORS[slug] || DEFAULT_SECTOR_COLOR;
@@ -203,7 +231,7 @@ function buildSectorBlock(slug: string, items: NewsletterItem[]): string {
       </tr>` : ''}`;
 }
 
-function buildNewsletterHtml(name: string, date: string, sectorBlocks: string, amazonNativeBlock: string, eventsBlock: string, amazonBannerBlock: string, unsubscribeUrl = 'https://startupnews.fyi/unsubscribe'): string {
+export function buildNewsletterHtml(name: string, date: string, sectorBlocks: string, amazonNativeBlock: string, eventsBlock: string, amazonBannerBlock: string, unsubscribeUrl = 'https://startupnews.fyi/unsubscribe'): string {
   const safeName = esc(name);
   const safeDate = esc(date);
   return `<!DOCTYPE html>
@@ -334,13 +362,12 @@ export async function runMorningSignal(options?: { bypassEnabledCheck?: boolean;
   const [allItems, allRecipients, upcomingEvents, amazonProducts] = await Promise.all([
     rssRepo.findNewsletterItems(400),
     query<Recipient>(
-      'SELECT id, name, email, newsletter_category_slugs, timezone, last_newsletter_sent_date FROM public_registrations WHERE is_active = 1 AND (newsletter_unsubscribed IS NULL OR newsletter_unsubscribed = 0)'
+      'SELECT id, name, email, newsletter_category_slugs, timezone, last_newsletter_sent_date, city, country FROM public_registrations WHERE is_active = 1 AND (newsletter_unsubscribed IS NULL OR newsletter_unsubscribed = 0)'
     ),
-    getUpcomingEvents(2),
+    getUpcomingEvents(50),
     getAmazonProducts(3),
   ]);
 
-  const eventsBlock = buildEventsBlock(upcomingEvents);
   const amazonNativeBlock = amazonProducts.length ? buildAmazonNativeBlock(amazonProducts[0]) : '';
   const amazonBannerBlock = buildAmazonBannerBlock(amazonProducts.slice(1));
 
@@ -425,6 +452,7 @@ export async function runMorningSignal(options?: { bypassEnabledCheck?: boolean;
       if (slugsToSend.length === 0) continue;
 
       const sectorBlocks = slugsToSend.map(s => buildSectorBlock(s, itemsBySlug[s])).join('');
+      const eventsBlock = buildEventsBlock(pickEventsForCity(upcomingEvents, r.city, 2, r.country));
       const html = buildNewsletterHtml(r.name || 'there', date, sectorBlocks, amazonNativeBlock, eventsBlock, amazonBannerBlock);
       await transporter.sendMail({ from: fromSetting, to: r.email, subject, html });
       sentIds.push(r.id);

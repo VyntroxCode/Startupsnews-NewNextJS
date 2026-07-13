@@ -218,7 +218,7 @@ export default function AdminReportsPage() {
 
         {/* ── Page Header ── */}
         <div style={{ marginBottom: '2.5rem' }}>
-          <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Reports</h2>
+          <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '1rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Reports</h2>
           <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>Manage reports and section groupings.</p>
         </div>
 

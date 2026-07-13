@@ -117,13 +117,13 @@ export default function EventRegionsPage() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <Link href="/admin/events" style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-block', marginBottom: '0.75rem' }}>
+            <Link href="/admin/events" style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-block', marginBottom: '1rem' }}>
               ← Back to Events
             </Link>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>
+            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem', marginBottom: '1rem',color: '#0f172a', letterSpacing: '-0.02em' }}>
               Event Regions
             </h2>
-            <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>
+            <p style={{ color: '#64748b', fontSize: '1rem', marginTop: '2rem',margin: 0 }}>
               Manage the country/region list used in events. Changes appear immediately in the event create &amp; edit forms.
             </p>
           </div>

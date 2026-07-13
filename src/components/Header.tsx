@@ -24,6 +24,7 @@ export function Header() {
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
+  const avatarClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Handle search icon click - on mobile expand input first; do not open overlay
   const handleSearchClick = (e: React.MouseEvent) => {
@@ -121,6 +122,13 @@ export function Header() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [userMenuOpen]);
+
+  // Clean up pending avatar click timer on unmount
+  useEffect(() => {
+    return () => {
+      if (avatarClickTimer.current) clearTimeout(avatarClickTimer.current);
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('pub_auth_token');
@@ -251,8 +259,20 @@ export function Header() {
                     {authUser ? (
                       <>
                         <button
-                          onClick={() => setUserMenuOpen(prev => !prev)}
-                          title={authUser.name}
+                          onClick={() => {
+                            if (avatarClickTimer.current) clearTimeout(avatarClickTimer.current);
+                            avatarClickTimer.current = setTimeout(() => {
+                              window.location.href = '/dashboard';
+                            }, 250);
+                          }}
+                          onDoubleClick={() => {
+                            if (avatarClickTimer.current) {
+                              clearTimeout(avatarClickTimer.current);
+                              avatarClickTimer.current = null;
+                            }
+                            setUserMenuOpen(prev => !prev);
+                          }}
+                          title={`${authUser.name} — click for dashboard, double-click to sign out`}
                           style={{
                             width: 34, height: 34, borderRadius: '50%',
                             background: avatarColor(authUser.name),

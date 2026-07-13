@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -66,6 +66,7 @@ interface AuthUser {
 
 export default function AuthModal() {
 	const pathname = usePathname();
+	const router = useRouter();
 	const isAdmin =
 		pathname?.startsWith("/admin") || pathname?.startsWith("/dashboard");
 
@@ -192,10 +193,12 @@ export default function AuthModal() {
 				: false;
 			if (!hasCategories && nlCategories.length > 0 && morningSignalEnabled) {
 				setShowCategoryPicker(true);
+			} else {
+				router.push("/dashboard");
 			}
 		}, 3000);
 		return () => clearTimeout(t);
-	}, [showWelcome, nlCategories, user, morningSignalEnabled]);
+	}, [showWelcome, nlCategories, user, morningSignalEnabled, router]);
 
 	/* ── Mount & session check ──────────────────────────────── */
 	useEffect(() => {
@@ -530,7 +533,7 @@ export default function AuthModal() {
 						<button
 							onClick={() => {
 								setShowCategoryPicker(false);
-								setShowWelcome(true);
+								router.push("/dashboard");
 							}}
 							style={{
 								position: "absolute",
@@ -590,6 +593,7 @@ export default function AuthModal() {
 											} catch { /* best-effort */ }
 											setCatSaving(false);
 											setShowCategoryPicker(false);
+											router.push("/dashboard");
 										}}
 										disabled={selectedCats.length === 0 || catSaving}
 										style={{
@@ -702,6 +706,7 @@ export default function AuthModal() {
 										} catch { /* best-effort */ }
 										setCatSaving(false);
 										setShowCategoryPicker(false);
+										router.push("/dashboard");
 									}}
 									disabled={selectedCats.length === 0 || catSaving}
 									style={{

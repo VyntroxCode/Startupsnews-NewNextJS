@@ -51,7 +51,7 @@ export default function ToolViewPage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            HTML Tools
+             Tools
           </Link>
           <span style={{ color: '#cbd5e1' }}>›</span>
           <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a' }}>{tool?.name ?? '…'}</span>

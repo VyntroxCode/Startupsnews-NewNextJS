@@ -233,7 +233,7 @@ export default function AdminDashboard() {
           icon: PostsIcon,
         },
         {
-          title: 'Categories',
+          title: 'Industry',
           value: stats?.categories || 0,
           href: '/admin/categories',
           gradient: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
@@ -282,18 +282,18 @@ export default function AdminDashboard() {
     ? [
         { href: '/admin/events/create', label: 'Create New Event', color1: '#48bb78', color2: '#38a169', shadow: 'rgba(72, 187, 120, 0.3)', shadowHover: 'rgba(72, 187, 120, 0.4)' },
         { href: '/admin/event-regions', label: 'Manage Event Regions', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
-        { href: '/admin/banners/create', label: 'Create Banner', color1: '#9f7aea', color2: '#805ad5', shadow: 'rgba(159, 122, 234, 0.3)', shadowHover: 'rgba(159, 122, 234, 0.4)' },
+        { href: '/admin/banners/create', label: 'Manage Banner', color1: '#9f7aea', color2: '#805ad5', shadow: 'rgba(159, 122, 234, 0.3)', shadowHover: 'rgba(159, 122, 234, 0.4)' },
       ]
     : isPublisherAdmin
     ? [
         { href: '/admin/posts/create', label: 'Create New Post', color1: '#667eea', color2: '#764ba2', shadow: 'rgba(102, 126, 234, 0.3)', shadowHover: 'rgba(102, 126, 234, 0.4)' },
-        { href: '/admin/categories/create', label: 'Create Category', color1: '#ed8936', color2: '#dd6b20', shadow: 'rgba(237, 137, 54, 0.3)', shadowHover: 'rgba(237, 137, 54, 0.4)' },
+        { href: '/admin/categories/create', label: 'Create Industry', color1: '#ed8936', color2: '#dd6b20', shadow: 'rgba(237, 137, 54, 0.3)', shadowHover: 'rgba(237, 137, 54, 0.4)' },
         { href: '/admin/authors', label: 'Manage Authors', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
       ]
     : [
         { href: '/admin/posts/create', label: 'Create New Post', color1: '#667eea', color2: '#764ba2', shadow: 'rgba(102, 126, 234, 0.3)', shadowHover: 'rgba(102, 126, 234, 0.4)' },
         { href: '/admin/events/create', label: 'Create New Event', color1: '#48bb78', color2: '#38a169', shadow: 'rgba(72, 187, 120, 0.3)', shadowHover: 'rgba(72, 187, 120, 0.4)' },
-        { href: '/admin/categories/create', label: 'Create Category', color1: '#ed8936', color2: '#dd6b20', shadow: 'rgba(237, 137, 54, 0.3)', shadowHover: 'rgba(237, 137, 54, 0.4)' },
+        { href: '/admin/categories/create', label: 'Create Industry', color1: '#ed8936', color2: '#dd6b20', shadow: 'rgba(237, 137, 54, 0.3)', shadowHover: 'rgba(237, 137, 54, 0.4)' },
         { href: '/admin/rss-feeds/create', label: 'Add RSS Feed', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
       ];
 
@@ -304,7 +304,7 @@ export default function AdminDashboard() {
           <h2 style={{
             fontSize: '2.25rem',
             fontWeight: '700',
-            marginBottom: '0.5rem',
+            marginTop:'1rem',
             color: '#0f172a',
             letterSpacing: '-0.02em',
           }}>
@@ -314,6 +314,7 @@ export default function AdminDashboard() {
             color: '#64748b',
             fontSize: '1rem',
             margin: 0,
+            marginTop:'1rem',
           }}>
             Overview of your content and statistics
           </p>

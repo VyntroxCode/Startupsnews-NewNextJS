@@ -122,9 +122,9 @@ export default function AdminToolsPage() {
 
         {/* Header */}
         <div style={{ marginBottom: '2.5rem' }}>
-          <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>HTML Tools</h2>
+          <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '1rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Tools</h2>
           <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>
-            Upload any self-contained HTML tool — it will be saved to the database and accessible instantly from this page.
+            Upload any self-contained tool — it will be saved to the database and accessible instantly from this page.
           </p>
         </div>
 

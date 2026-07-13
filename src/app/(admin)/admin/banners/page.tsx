@@ -100,7 +100,7 @@ export default function BannersPage() {
             <h2 style={{
               fontSize: '2.25rem',
               fontWeight: '700',
-              marginBottom: '0.5rem',
+              marginBottom: '1rem',
               color: '#0f172a',
               letterSpacing: '-0.02em',
             }}>

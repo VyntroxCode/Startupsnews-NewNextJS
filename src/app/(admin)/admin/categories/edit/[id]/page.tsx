@@ -54,12 +54,12 @@ export default function EditCategoryPage() {
             const res = await fetch(`/api/admin/categories/${categoryId}`, { headers: getAuthHeaders() });
             const data = await res.json();
             if (!data.success) {
-                console.error('Failed to fetch category:', {
+                console.error('Failed to fetch Industry:', {
                     categoryId,
                     status: res.status,
                     response: data,
                 });
-                setError(data.error || 'Failed to fetch category');
+                setError(data.error || 'Failed to fetch Industry');
                 setLoading(false);
                 return;
             }
@@ -73,8 +73,8 @@ export default function EditCategoryPage() {
                 sortOrder: cat.sortOrder || 0,
             });
         } catch (err) {
-            console.error('Error fetching category:', err);
-            setError('An error occurred while fetching category');
+            console.error('Error fetching Industry:', err);
+            setError('An error occurred while fetching Industry');
         } finally {
             setLoading(false);
         }
@@ -164,7 +164,7 @@ export default function EditCategoryPage() {
             const parentId = formData.parentId ? parseInt(formData.parentId, 10) : undefined;
             // if trying to set parentId to itself
             if (parentId === parseInt(categoryId, 10)) {
-                setError('A category cannot be its own parent.');
+                setError('A Industry cannot be its own parent.');
                 setSaving(false);
                 return;
             }
@@ -192,13 +192,13 @@ export default function EditCategoryPage() {
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                console.error('Failed to update category:', {
+                console.error('Failed to update Industry:', {
                     categoryId,
                     status: response.status,
                     payload,
                     response: data,
                 });
-                setError(data.error || `Failed to update category (${response.status})`);
+                setError(data.error || `Failed to update Industry (${response.status})`);
                 setSaving(false);
                 return;
             }
@@ -212,14 +212,14 @@ export default function EditCategoryPage() {
             await new Promise(resolve => setTimeout(resolve, 100));
             router.push('/admin/categories');
         } catch (err) {
-            console.error('Error updating category:', err);
-            setError(err instanceof Error ? err.message : 'An error occurred while updating the category');
+            console.error('Error updating Industry:', err);
+            setError(err instanceof Error ? err.message : 'An error occurred while updating the Industry');
             setSaving(false);
         }
     };
 
     if (loading) {
-        return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading category...</div>;
+        return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading Industry...</div>;
     }
 
     return (
@@ -227,12 +227,12 @@ export default function EditCategoryPage() {
             <div style={{ marginBottom: '2.5rem' }}>
                 <Link
                     href="/admin/categories"
-                    style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '0.75rem', display: 'inline-block' }}
+                    style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-block' }}
                 >
-                    ← Back to Categories
+                    ← Back to Industry
                 </Link>
                 <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
-                    Edit Category
+                    Edit Industry
                 </h2>
             </div>
 
@@ -256,13 +256,13 @@ export default function EditCategoryPage() {
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Parent Category</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Parent Industry</label>
                     <select value={formData.parentId} onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                         style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}>
-                        <option value="">None (Top-level category)</option>
+                        <option value="">None (Top-level Industry)</option>
                         {categories.map((c) => (
                             <option key={c.id} value={c.id} disabled={c.id === parseInt(categoryId, 10)}>
-                                {c.name} {c.id === parseInt(categoryId, 10) ? '(Current Category)' : ''}
+                                {c.name} {c.id === parseInt(categoryId, 10) ? '(Current Industry)' : ''}
                             </option>
                         ))}
                     </select>
@@ -279,13 +279,13 @@ export default function EditCategoryPage() {
                     <RichTextEditor
                         value={formData.description}
                         onChange={(description) => setFormData({ ...formData, description })}
-                        placeholder="Category description (formatting supported)..."
+                        placeholder="Industry description (formatting supported)..."
                         minHeight={150}
                     />
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Category Image</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Industry Image</label>
                     {formData.imageUrl && (
                         <div style={{ marginBottom: '1rem', position: 'relative', display: 'inline-block' }}>
                             <img src={formData.imageUrl} alt="Preview" style={{ maxWidth: 300, maxHeight: 200, borderRadius: 4, border: '1px solid #e2e8f0' }} />

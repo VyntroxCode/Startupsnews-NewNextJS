@@ -204,7 +204,7 @@ export default function CreateEventPage() {
       <div style={{ marginBottom: '2.5rem' }}>
         <Link
           href="/admin/events"
-          style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '0.75rem', display: 'inline-block' }}
+          style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-block' }}
         >
           ← Back to Events
         </Link>

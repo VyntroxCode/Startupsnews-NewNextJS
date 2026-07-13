@@ -334,10 +334,10 @@ export default function AdminReportEditPage() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <Link href="/admin/reports" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-block', marginBottom: '0.75rem' }}>
+            <Link href="/admin/reports" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-block', marginBottom: '1rem' }}>
               ← Back to Reports
             </Link>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>
+            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem', color: '#0f172a', letterSpacing: '-0.02em' ,marginBottom: '1rem'}}>
               Edit Report: {report.title}
             </h2>
             <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>

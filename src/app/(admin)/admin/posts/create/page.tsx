@@ -332,7 +332,7 @@ export default function CreatePostPage() {
             color: '#667eea',
             textDecoration: 'none',
             fontSize: '0.875rem',
-            marginBottom: '0.75rem',
+            marginBottom: '1rem',
             display: 'inline-block',
           }}
         >

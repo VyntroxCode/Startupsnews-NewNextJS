@@ -114,7 +114,7 @@ export default function CreateRssFeedPage() {
   return (
     <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       <div style={{ marginBottom: '2.5rem' }}>
-        <Link href="/admin/rss-feeds" style={{ color: '#ed8936', textDecoration: 'none', display: 'inline-block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>← Back to RSS Feeds</Link>
+        <Link href="/admin/rss-feeds" style={{ color: '#ed8936', textDecoration: 'none', display: 'inline-block', marginBottom: '1rem', fontSize: '0.875rem' }}>← Back to RSS Feeds</Link>
         <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Add RSS Feed</h2>
       </div>
       {error && <div style={{ background: '#fed7d7', color: '#c53030', padding: 'clamp(0.75rem, 2vw, 1rem)', borderRadius: '4px', marginBottom: '1rem', fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>{error}</div>}

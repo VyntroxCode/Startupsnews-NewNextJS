@@ -184,6 +184,7 @@ export default function RegisteredUsersPage() {
 								color: "#0f172a",
 								margin: "0 0 0.5rem",
 								letterSpacing: "-0.02em",
+								marginBottom:'1.5rem',
 							}}
 						>
 							Registered Users

@@ -540,7 +540,7 @@ export default function NewsletterPage() {
         {/* ── Page Header ── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap' as const, gap: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Newsletter</h2>
+            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', marginBottom: '1rem', color: '#0f172a', letterSpacing: '-0.02em' }}>Newsletter</h2>
             <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>Manage feeds, configure mail, and send newsletters to your subscribers.</p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' as const }}>

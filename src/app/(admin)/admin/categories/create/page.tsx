@@ -148,14 +148,14 @@ export default function CreateCategoryPage() {
             }
 
             if (!response.ok || !data.success) {
-                setError(data.error || `Failed to create category (${response.status})`);
+                setError(data.error || `Failed to create industry (${response.status})`);
                 setLoading(false);
                 return;
             }
 
             router.push('/admin/categories');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred while creating the category');
+            setError(err instanceof Error ? err.message : 'An error occurred while creating the industry');
             setLoading(false);
         }
     };
@@ -165,12 +165,12 @@ export default function CreateCategoryPage() {
             <div style={{ marginBottom: '2.5rem' }}>
                 <Link
                     href="/admin/categories"
-                    style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '0.75rem', display: 'inline-block' }}
+                    style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-block' }}
                 >
-                    ← Back to Categories
+                    ← Back to Industry
                 </Link>
                 <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
-                    Create New Category
+                    Create New Industry
                 </h2>
             </div>
 
@@ -194,10 +194,10 @@ export default function CreateCategoryPage() {
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Parent Category</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Parent Industry</label>
                     <select value={formData.parentId} onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                         style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}>
-                        <option value="">None (Top-level category)</option>
+                        <option value="">None (Top-level Industry)</option>
                         {categories.map((c) => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
@@ -215,13 +215,13 @@ export default function CreateCategoryPage() {
                     <RichTextEditor
                         value={formData.description}
                         onChange={(description) => setFormData({ ...formData, description })}
-                        placeholder="Category description (formatting supported)..."
+                        placeholder="Industry description (formatting supported)..."
                         minHeight={150}
                     />
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Category Image</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>Industry Image</label>
                     {formData.imageUrl && (
                         <div style={{ marginBottom: '1rem', position: 'relative', display: 'inline-block' }}>
                             <img src={formData.imageUrl} alt="Preview" style={{ maxWidth: 300, maxHeight: 200, borderRadius: 4, border: '1px solid #e2e8f0' }} />
@@ -253,7 +253,7 @@ export default function CreateCategoryPage() {
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button type="submit" disabled={loading || uploading}
                         style={{ padding: '0.75rem 2rem', background: loading || uploading ? '#a0aec0' : '#48bb78', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: '500', cursor: loading || uploading ? 'not-allowed' : 'pointer' }}>
-                        {loading ? 'Creating...' : 'Create Category'}
+                        {loading ? 'Creating...' : 'Create Industry'}
                     </button>
                     <Link href="/admin/categories"
                         style={{ padding: '0.75rem 2rem', background: '#e2e8f0', color: '#4a5568', borderRadius: '4px', textDecoration: 'none', fontSize: '1rem', fontWeight: '500', display: 'inline-block' }}>

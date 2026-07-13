@@ -232,7 +232,7 @@ export default function EditEventPage() {
             color: '#48bb78',
             textDecoration: 'none',
             fontSize: '0.875rem',
-            marginBottom: '0.75rem',
+            marginBottom: '1rem',
             display: 'inline-block',
           }}
         >

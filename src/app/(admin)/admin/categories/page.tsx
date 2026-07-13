@@ -34,7 +34,7 @@ export default function CategoriesPage() {
   });
 
   const handleDelete = useCallback(async (id: number) => {
-    if (!confirm('Are you sure you want to delete this category? Posts and RSS feeds using it may need to be reassigned first.')) {
+    if (!confirm('Are you sure you want to delete this Industry? Posts and RSS feeds using it may need to be reassigned first.')) {
       return;
     }
     try {
@@ -44,11 +44,11 @@ export default function CategoriesPage() {
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        console.error('Failed to delete category:', { id, status: response.status, response: data });
-        alert(data.error || `Failed to delete category (${response.status})`);
+        console.error('Failed to delete Industry:', { id, status: response.status, response: data });
+        alert(data.error || `Failed to delete Industry (${response.status})`);
         return;
       }
-      console.log('Category deleted successfully, refetching list.');
+      console.log('Industry deleted successfully, refetching list.');
       // Broadcast data refresh event
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('admin:data-updated'));
@@ -57,8 +57,8 @@ export default function CategoriesPage() {
       await new Promise(resolve => setTimeout(resolve, 100));
       await refetch();
     } catch (err) {
-      console.error('Error deleting category:', err);
-      alert('An error occurred while deleting the category');
+      console.error('Error deleting Industry:', err);
+      alert('An error occurred while deleting the Industry');
     }
   }, [refetch]);
 
@@ -77,18 +77,18 @@ export default function CategoriesPage() {
             <h2 style={{
               fontSize: '2.25rem',
               fontWeight: '700',
-              marginBottom: '0.5rem',
+              marginBottom: '1rem',
               color: '#0f172a',
               letterSpacing: '-0.02em',
             }}>
-              Categories
+              Industry 
             </h2>
             <p style={{
               color: '#64748b',
               fontSize: '1rem',
               margin: 0,
             }}>
-              Manage news categories (used by posts and RSS feeds)
+              Manage news industry (used by posts and RSS feeds)
             </p>
           </div>
           <Link
@@ -111,7 +111,7 @@ export default function CategoriesPage() {
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            Create Category
+            Create Industry
           </Link>
         </div>
 
@@ -153,7 +153,7 @@ export default function CategoriesPage() {
             border: '1px solid rgba(0, 0, 0, 0.04)',
           }}>
             <h3 style={{ color: '#0f172a', fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>No categories found</h3>
-            <p style={{ color: '#64748b', marginBottom: '1.5rem', fontSize: '0.9375rem' }}>Create the 15 canonical categories or add your first category.</p>
+            <p style={{ color: '#64748b', marginBottom: '1.5rem', fontSize: '0.9375rem' }}>Create the 15 canonical categories or add your first Industry.</p>
             <Link
               href="/admin/categories/create"
               style={{
@@ -169,7 +169,7 @@ export default function CategoriesPage() {
                 gap: '0.5rem',
               }}
             >
-              Create Category
+              Create Industry
             </Link>
           </div>
         ) : (
@@ -187,7 +187,6 @@ export default function CategoriesPage() {
                     <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
                       <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Name</th>
                       <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Slug</th>
-                      <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Sort</th>
                       <th style={{ padding: '1.25rem 1.5rem', textAlign: 'right', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Actions</th>
                     </tr>
                   </thead>
@@ -204,7 +203,6 @@ export default function CategoriesPage() {
                       >
                         <td style={{ padding: '1.25rem 1.5rem', fontWeight: '600', color: '#0f172a' }}>{cat.name}</td>
                         <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.9375rem' }}>{cat.slug}</td>
-                        <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.9375rem' }}>{cat.sortOrder ?? 0}</td>
                         <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                             <Link

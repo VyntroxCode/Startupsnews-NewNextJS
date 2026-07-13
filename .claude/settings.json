@@ -151,7 +151,12 @@
       "Bash(curl -s \"http://localhost:3000/_next/static/css/\")",
       "Bash(curl -s \"http://localhost:3000/events\" -o /dev/null -w \"%{http_code}\\\\n\")",
       "Bash(curl -s \"http://localhost:3000/_next/static/css/d4a1b8a40bb42b55.css\")",
-      "Bash(curl -s \"http://localhost:3000/events?x=$\\(date +%s\\)\" -o /dev/null -w \"%{http_code}\\\\n\")"
+      "Bash(curl -s \"http://localhost:3000/events?x=$\\(date +%s\\)\" -o /dev/null -w \"%{http_code}\\\\n\")",
+      "Bash(node -e \"console.log\\(require\\('nodemailer/package.json'\\).version\\)\")",
+      "Bash(grep -rn \"CREATE TABLE.*events\\\\b\\\\|CREATE TABLE IF NOT EXISTS \\\\`events\\\\`\\\\|CREATE TABLE IF NOT EXISTS events\" --include=\"*.ts\" --include=\"*.sql\" .)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(systemctl list-units *)",
+      "Bash(crontab -l)"
     ],
     "additionalDirectories": [
       "/home/tech/Startupsnews-NewNextJS-main/src",
