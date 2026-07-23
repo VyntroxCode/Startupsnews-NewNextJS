@@ -19,9 +19,10 @@ export async function generateMetadata({
   if (!event)
     return { title: "Event not found | StartupNews.fyi" };
   const title = `${event.title} | Startup Events`;
-  // Use excerpt if available, otherwise sanitize description (exclude CSS code)
+  // Use excerpt if available, otherwise strip HTML from description for a plain-text meta description
   const sanitizedDesc = sanitizeContent(event.description);
-  const description = (event.excerpt || sanitizedDesc || "").slice(0, 160);
+  const plainDesc = sanitizedDesc?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const description = (event.excerpt || plainDesc || "").slice(0, 160);
   const image = getEventImage(event);
   const canonicalUrl = `${SITE_BASE}/startup-events/${slug}`;
   return {

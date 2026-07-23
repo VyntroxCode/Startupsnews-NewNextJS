@@ -250,7 +250,7 @@ export function Header() {
                       aria-label="Search"
                       onClick={handleSearchClick}
                     >
-                      <i className="fa fa-search" aria-hidden></i>
+                      {/* <i className="fa fa-search" aria-hidden></i> */}
                     </button>
                   </form>
 

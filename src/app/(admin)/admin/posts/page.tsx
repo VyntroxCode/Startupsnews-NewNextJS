@@ -50,6 +50,7 @@ export default function PostsPage() {
   const [targetHttpCode, setTargetHttpCode] = useState<TargetHttpCode>('410');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const isAdmin = getAdminUser()?.role === 'admin';
+  const isEventAdmin = getAdminUser()?.role === 'event_admin';
 
   const {
     data: posts,
@@ -510,35 +511,37 @@ export default function PostsPage() {
             <option value="manual">Manual Posts</option>
             <option value="rss">RSS Posts</option>
           </select>
-          <select
-            value={String(filters.categoryId ?? '')}
-            onChange={(e) => handleCategoryFilter(e.target.value || null)}
-            style={{
-              padding: '0.75rem 1rem',
-              border: '2px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '0.9375rem',
-              background: 'white',
-              cursor: 'pointer',
-              color: '#475569',
-              minWidth: '150px',
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#6366f1';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#e2e8f0';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={String(cat.id)}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+          {!isEventAdmin && (
+            <select
+              value={String(filters.categoryId ?? '')}
+              onChange={(e) => handleCategoryFilter(e.target.value || null)}
+              style={{
+                padding: '0.75rem 1rem',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.9375rem',
+                background: 'white',
+                cursor: 'pointer',
+                color: '#475569',
+                minWidth: '150px',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#6366f1';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#e2e8f0';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <option value="">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={String(cat.id)}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={String(filters.authorId ?? '')}
             onChange={(e) => handleAuthorFilter(e.target.value || null)}
@@ -978,7 +981,7 @@ export default function PostsPage() {
                           <div style={{ fontWeight: '600', color: '#0f172a', marginBottom: '0.25rem' }}>
                             {post.title}
                           </div>
-                          {post.featured && (
+                          {Boolean(post.featured) && (
                             <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',

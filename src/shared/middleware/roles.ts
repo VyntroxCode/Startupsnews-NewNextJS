@@ -5,14 +5,14 @@ export const EVENTS_ROLES = ['admin', 'editor', 'event_admin'] as const;
 /** Home page banners — given to Event Admin alongside Events/Event Regions. */
 export const BANNERS_ROLES = ['admin', 'editor', 'event_admin'] as const;
 
-/** View/create/edit content (posts, categories, authors). */
-export const CONTENT_ROLES = ['admin', 'editor', 'author', 'publisher_admin'] as const;
+/** View/create/edit content (posts, categories, authors). Event Admin is scoped to the Press Release category only (enforced in the posts API). */
+export const CONTENT_ROLES = ['admin', 'editor', 'author', 'publisher_admin', 'event_admin'] as const;
 
 /** Delete/bulk-mutate content, and manage categories/authors. */
 export const CONTENT_MANAGE_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 
-/** View categories/authors — Publisher Admin no longer manages these directly. */
-export const CATEGORIES_AUTHORS_VIEW_ROLES = ['admin', 'editor', 'author'] as const;
+/** View categories/authors — Publisher Admin no longer manages these directly. Event Admin needs read access to resolve the Press Release category. */
+export const CATEGORIES_AUTHORS_VIEW_ROLES = ['admin', 'editor', 'author', 'publisher_admin','event_admin'] as const;
 
 /** Create/edit/delete categories/authors. */
 export const CATEGORIES_AUTHORS_MANAGE_ROLES = ['admin', 'editor'] as const;
@@ -28,3 +28,6 @@ export const BRAND_STORIES_ROLES = ['admin', 'editor', 'publisher_admin'] as con
 
 /** Every admin-panel role — dashboard/stats and other cross-cutting read-only surfaces. */
 export const ALL_ADMIN_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin'] as const;
+
+/** Network Manager (contacts CRM) — super admin only, standalone tool. */
+export const CONTACTS_ROLES = ['admin'] as const;

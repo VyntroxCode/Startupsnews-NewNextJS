@@ -18,6 +18,7 @@ import {
 } from '@/modules/rss-feeds/utils/image-to-s3';
 import { extractImageUrlsFromHtml } from '@/modules/rss-feeds/utils/content-extract';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
+import { getPressReleaseCategoryId } from '@/shared/utils/press-release';
 
 const CONTENT_TYPES: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -116,6 +117,13 @@ export async function GET(request: NextRequest) {
       const catId = parseInt(categoryId, 10);
       if (!isNaN(catId)) filters.categoryId = catId;
     }
+
+    // Event Admin is scoped to the Press Release category only — override any client-supplied category filter.
+    if (auth.user.role === 'event_admin') {
+      const pressReleaseCategoryId = await getPressReleaseCategoryId();
+      filters.categoryId = pressReleaseCategoryId ?? -1;
+    }
+
     if (authorId) {
       const aId = parseInt(authorId, 10);
       if (!isNaN(aId)) filters.authorId = aId;
@@ -308,8 +316,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const categoryId = typeof body.categoryId === 'number' ? body.categoryId : parseInt(String(body.categoryId ?? ''), 10);
+    let categoryId = typeof body.categoryId === 'number' ? body.categoryId : parseInt(String(body.categoryId ?? ''), 10);
     const authorId = typeof body.authorId === 'number' ? body.authorId : parseInt(String(body.authorId ?? ''), 10);
+
+    // Event Admin can only create posts in the Press Release category — ignore any other category sent by the client.
+    if (auth.user.role === 'event_admin') {
+      const pressReleaseCategoryId = await getPressReleaseCategoryId();
+      if (!pressReleaseCategoryId) {
+        return NextResponse.json(
+          { success: false, error: 'Press Release category is not configured.' },
+          { status: 400 }
+        );
+      }
+      categoryId = pressReleaseCategoryId;
+    }
+
     if (isNaN(categoryId) || isNaN(authorId)) {
       return NextResponse.json(
         {

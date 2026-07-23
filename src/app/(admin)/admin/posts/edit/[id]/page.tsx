@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { getAuthHeaders, getAdminToken, withAdminToken } from '@/lib/admin-auth';
+import { getAuthHeaders, getAdminToken, withAdminToken, getAdminUser } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { normalizeRssHtmlForEditor } from '@/shared/utils/editor-html';
 
@@ -22,7 +22,8 @@ export default function EditPostPage() {
   const router = useRouter();
   const params = useParams();
   const postId = params.id as string;
-  
+  const isEventAdmin = getAdminUser()?.role === 'event_admin';
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
@@ -525,6 +526,7 @@ export default function EditPostPage() {
             value={formData.categoryId}
             onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
             required
+            disabled={isEventAdmin}
             style={{
               width: '100%',
               padding: '0.75rem',
@@ -532,15 +534,22 @@ export default function EditPostPage() {
               borderRadius: '4px',
               fontSize: '1rem',
               boxSizing: 'border-box',
+              background: isEventAdmin ? '#f1f5f9' : undefined,
+              cursor: isEventAdmin ? 'not-allowed' : undefined,
             }}
           >
             <option value="">Select a category</option>
-            {categories.map((cat) => (
+            {(isEventAdmin ? categories.filter((c) => c.slug === 'press-release') : categories).map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
               </option>
             ))}
           </select>
+          {isEventAdmin && (
+            <span style={{ fontSize: '0.8rem', color: '#718096', marginTop: '0.35rem', display: 'block' }}>
+              Event Admin accounts can only manage Press Release posts.
+            </span>
+          )}
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>

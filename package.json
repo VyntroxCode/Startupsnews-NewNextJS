@@ -68,6 +68,7 @@
 		"react-pdf": "^10.4.1",
 		"redis": "^5.10.0",
 		"rss-parser": "^3.13.0",
+		"xlsx": "^0.18.5",
 		"xmlbuilder": "^15.1.1"
 	},
 	"devDependencies": {

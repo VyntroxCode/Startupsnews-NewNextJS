@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getAuthHeaders, getAdminToken, withAdminToken } from '@/lib/admin-auth';
+import { getAuthHeaders, getAdminToken, withAdminToken, getAdminUser } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 
 interface Category {
@@ -20,6 +20,7 @@ interface Author {
 
 export default function CreatePostPage() {
   const router = useRouter();
+  const isEventAdmin = getAdminUser()?.role === 'event_admin';
   const [categories, setCategories] = useState<Category[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,7 +57,14 @@ export default function CreatePostPage() {
       });
       const data = await response.json();
       if (data.success) {
-        setCategories(data.data || []);
+        const fetched: Category[] = data.data || [];
+        setCategories(fetched);
+        if (isEventAdmin) {
+          const pressRelease = fetched.find((c) => c.slug === 'press-release');
+          if (pressRelease) {
+            setFormData((prev) => ({ ...prev, categoryId: String(pressRelease.id) }));
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching categories:', err);
@@ -416,13 +424,19 @@ export default function CreatePostPage() {
             value={formData.categoryId}
             onChange={(e) => setFormData((prev) => ({ ...prev, categoryId: e.target.value }))}
             required
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
+            disabled={isEventAdmin}
+            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box', background: isEventAdmin ? '#f1f5f9' : undefined, cursor: isEventAdmin ? 'not-allowed' : undefined }}
           >
             <option value="">Select a category</option>
-            {categories.map((cat) => (
+            {(isEventAdmin ? categories.filter((c) => c.slug === 'press-release') : categories).map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
+          {isEventAdmin && (
+            <span style={{ fontSize: '0.8rem', color: '#718096', marginTop: '0.35rem', display: 'block' }}>
+              Event Admin accounts can only create Press Release posts.
+            </span>
+          )}
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>

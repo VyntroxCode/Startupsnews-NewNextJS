@@ -20,6 +20,15 @@ export function FlyMenuProvider({ children }: { children: React.ReactNode }) {
   const toggle = useCallback(() => setOpen((o) => !o), []);
 
   useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
+  useEffect(() => {
     const wrap = document.getElementById("mvp-fly-wrap");
     const fade = document.querySelector(".mvp-fly-fade");
     const site = document.getElementById("mvp-site");

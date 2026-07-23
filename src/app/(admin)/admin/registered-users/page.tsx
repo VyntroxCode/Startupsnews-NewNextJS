@@ -24,6 +24,13 @@ interface Pagination {
 	totalPages: number;
 }
 
+interface Stats {
+	total: number;
+	emailCount: number;
+	googleCount: number;
+	activeToday: number;
+}
+
 const AVATAR_COLORS = [
 	["#6366f1", "#818cf8"],
 	["#ec4899", "#f472b6"],
@@ -72,6 +79,12 @@ export default function RegisteredUsersPage() {
 	const [search, setSearch] = useState("");
 	const [filter, setFilter] = useState<"all" | "email" | "google">("all");
 	const [loading, setLoading] = useState(true);
+	const [stats, setStats] = useState<Stats>({
+		total: 0,
+		emailCount: 0,
+		googleCount: 0,
+		activeToday: 0,
+	});
 
 	const fetchUsers = useCallback(async (page = 1) => {
 		setLoading(true);
@@ -82,10 +95,12 @@ export default function RegisteredUsersPage() {
 				success: boolean;
 				data: RegisteredUser[];
 				pagination: Pagination;
+				stats: Stats;
 			};
 			if (d.success) {
 				setUsers(d.data);
 				setPagination(d.pagination);
+				setStats(d.stats);
 			}
 		} finally {
 			setLoading(false);
@@ -109,8 +124,6 @@ export default function RegisteredUsersPage() {
 		return matchSearch && matchFilter;
 	});
 
-	const emailCount = users.filter((u) => u.auth_provider === "email").length;
-	const googleCount = users.filter((u) => u.auth_provider === "google").length;
 
 	const exportCSV = () => {
 		const headers = [
@@ -311,25 +324,21 @@ export default function RegisteredUsersPage() {
 					},
 					{
 						label: "Email Sign-ups",
-						value: emailCount,
+						value: stats.emailCount,
 						icon: "✉️",
 						color: "#8b5cf6",
 						bg: "#f5f3ff",
 					},
 					{
 						label: "Google Sign-ups",
-						value: googleCount,
+						value: stats.googleCount,
 						icon: "🔵",
 						color: "#0ea5e9",
 						bg: "#f0f9ff",
 					},
 					{
 						label: "Active Today",
-						value: users.filter(
-							(u) =>
-								u.last_login &&
-								Date.now() - new Date(u.last_login).getTime() < 86400000,
-						).length,
+						value: stats.activeToday,
 						icon: "🟢",
 						color: "#10b981",
 						bg: "#ecfdf5",
@@ -410,10 +419,10 @@ export default function RegisteredUsersPage() {
 						}}
 					>
 						{f === "all"
-							? `All (${users.length})`
+							? `All (${stats.total})`
 							: f === "email"
-								? `Email (${emailCount})`
-								: `Google (${googleCount})`}
+								? `Email (${stats.emailCount})`
+								: `Google (${stats.googleCount})`}
 					</button>
 				))}
 				<div

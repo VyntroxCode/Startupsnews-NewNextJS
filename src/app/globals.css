@@ -3021,6 +3021,7 @@ img.mvp-big-img {
   border: none;
   margin: 0;
   min-width: 0;
+  cursor: pointer;
 }
 
 /* Toggle Button - inside menu bounds */
@@ -7534,4 +7535,28 @@ body .banner-carousel-container,
   .mvp-author-info-wrap {
     gap: 6px !important;
   }
+}
+
+/* Admin Sidebar — always-visible thin scrollbar so the nav list scrolls
+   instead of clipping items on short viewports */
+.admin-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

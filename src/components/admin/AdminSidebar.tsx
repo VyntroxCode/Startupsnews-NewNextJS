@@ -133,6 +133,16 @@ const UsersIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
+const ContactsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+    <circle cx="9" cy="10" r="2"></circle>
+    <path d="M5 17c.5-2 2-3 4-3s3.5 1 4 3"></path>
+    <line x1="14" y1="9" x2="19" y2="9"></line>
+    <line x1="14" y1="13" x2="19" y2="13"></line>
+  </svg>
+);
+
 const menuItems = [
   { href: '/admin', label: 'Dashboard', icon: DashboardIcon },
   { href: '/admin/posts', label: 'Posts', icon: PostsIcon },
@@ -147,6 +157,7 @@ const menuItems = [
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },
   { href: '/admin/registered-users', label: 'Registered Users', icon: RegisteredUsersIcon },
+  { href: '/admin/contacts', label: 'Contacts', icon: ContactsIcon },
   { href: '/admin/users', label: 'Users', icon: UsersIcon },
 ];
 
@@ -173,12 +184,13 @@ export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
 
   return (
     <aside
+      className="admin-sidebar-scroll"
       style={{
         position: 'fixed',
         left: 0,
         top: `${headerHeight}px`,
         width: isOpen ? '260px' : '70px',
-        height: `calc(100vh - ${headerHeight}px)`,
+        height: `calc(100dvh - ${headerHeight}px)`,
         background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
         borderRight: '1px solid rgba(0, 0, 0, 0.06)',
         padding: '1.25rem 0',
@@ -189,7 +201,7 @@ export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
         boxShadow: '2px 0 8px rgba(0, 0, 0, 0.02)',
       }}
     >
-      <nav style={{ padding: '0 0.5rem' }}>
+      <nav style={{ padding: '0 0.5rem 1.5rem' }}>
         {visibleMenuItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           const isToolsItem = item.href === '/admin/tools';

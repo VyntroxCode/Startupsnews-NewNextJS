@@ -68,7 +68,20 @@ export function FlyMenu() {
                           {item.label}
                         </Link>
                       )) : (
-                        <span className="startupnews-fly-label">{item.label}</span>
+                        <span
+                          className="startupnews-fly-label"
+                          onClick={() => setExpandedId(isOpen ? null : item.id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setExpandedId(isOpen ? null : item.id);
+                            }
+                          }}
+                        >
+                          {item.label}
+                        </span>
                       )}
                       <button
                         type="button"

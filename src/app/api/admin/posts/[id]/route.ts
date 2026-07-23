@@ -17,6 +17,7 @@ import {
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { getPostPath } from '@/lib/post-utils';
 import { queryOne } from '@/shared/database/connection';
+import { getPressReleaseCategoryId } from '@/shared/utils/press-release';
 
 const CONTENT_TYPES: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -94,6 +95,16 @@ export async function GET(
         },
         { status: 404 }
       );
+    }
+
+    if (auth.user.role === 'event_admin') {
+      const pressReleaseCategoryId = await getPressReleaseCategoryId();
+      if (postEntity.category_id !== pressReleaseCategoryId) {
+        return NextResponse.json(
+          { success: false, error: 'You can only view Press Release posts.' },
+          { status: 403 }
+        );
+      }
     }
 
     const post = await entityToPost(postEntity);
@@ -208,6 +219,25 @@ async function handleUpdateRequest(
     }
     // admins and editors can edit any post
 
+    // Event Admin can only edit Press Release posts, and can never move a post out of that category.
+    let pressReleaseCategoryId: number | null = null;
+    if (auth.user.role === 'event_admin') {
+      pressReleaseCategoryId = await getPressReleaseCategoryId();
+      const existingPost = await postsRepository.findById(postId);
+      if (!existingPost) {
+        return NextResponse.json(
+          { success: false, error: 'Post not found' },
+          { status: 404 }
+        );
+      }
+      if (existingPost.category_id !== pressReleaseCategoryId) {
+        return NextResponse.json(
+          { success: false, error: 'You can only edit Press Release posts.' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Main update logic
     if (!body || typeof body !== 'object') {
       return NextResponse.json(
@@ -242,6 +272,9 @@ async function handleUpdateRequest(
     if (body.contentFollow != null) updateData.contentFollow = String(body.contentFollow).trim() || 'nofollow';
     if (body.content !== undefined) updateData.content = String(body.content);
     if (body.categoryId !== undefined) updateData.categoryId = parseInt(String(body.categoryId), 10);
+    if (auth.user.role === 'event_admin' && pressReleaseCategoryId != null) {
+      updateData.categoryId = pressReleaseCategoryId;
+    }
     if (body.authorId !== undefined) updateData.authorId = parseInt(String(body.authorId), 10);
 
     // Same as RSS: upload featured image file to S3 server-side when sent via multipart
@@ -363,7 +396,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAnyRole(request, CONTENT_MANAGE_ROLES);
+  const auth = await requireAnyRole(request, [...CONTENT_MANAGE_ROLES, 'event_admin']);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -378,6 +411,24 @@ export async function DELETE(
         },
         { status: 400 }
       );
+    }
+
+    // Event Admin can only delete Press Release posts.
+    if (auth.user.role === 'event_admin') {
+      const existingPost = await postsRepository.findById(postId);
+      if (!existingPost) {
+        return NextResponse.json(
+          { success: false, error: 'Post not found' },
+          { status: 404 }
+        );
+      }
+      const pressReleaseCategoryId = await getPressReleaseCategoryId();
+      if (existingPost.category_id !== pressReleaseCategoryId) {
+        return NextResponse.json(
+          { success: false, error: 'You can only delete Press Release posts.' },
+          { status: 403 }
+        );
+      }
     }
 
     await postsService.deletePost(postId);

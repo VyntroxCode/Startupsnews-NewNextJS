@@ -57,6 +57,24 @@ export async function findAll(page = 1, limit = 20): Promise<{ rows: PublicUserE
   return { rows, total: Number(countRow?.total ?? 0) };
 }
 
+export async function getStats(): Promise<{ total: number; emailCount: number; googleCount: number; activeToday: number }> {
+  await ensureTable();
+  const row = await queryOne<{ total: bigint | number; emailCount: bigint | number; googleCount: bigint | number; activeToday: bigint | number }>(
+    `SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN auth_provider = 'email' THEN 1 ELSE 0 END) as emailCount,
+      SUM(CASE WHEN auth_provider = 'google' THEN 1 ELSE 0 END) as googleCount,
+      SUM(CASE WHEN last_login >= NOW() - INTERVAL 1 DAY THEN 1 ELSE 0 END) as activeToday
+    FROM public_registrations`
+  );
+  return {
+    total: Number(row?.total ?? 0),
+    emailCount: Number(row?.emailCount ?? 0),
+    googleCount: Number(row?.googleCount ?? 0),
+    activeToday: Number(row?.activeToday ?? 0),
+  };
+}
+
 export async function findByEmail(email: string): Promise<PublicUserEntity | null> {
   await ensureTable();
   return queryOne<PublicUserEntity>('SELECT * FROM public_registrations WHERE email = ? LIMIT 1', [email]);

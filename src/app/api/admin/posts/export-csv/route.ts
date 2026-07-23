@@ -3,6 +3,7 @@ import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { CONTENT_ROLES } from '@/shared/middleware/roles';
 import { query } from '@/shared/database/connection';
 import { convertToCsv } from '@/shared/utils/csv-utils';
+import { getPressReleaseCategoryId } from '@/shared/utils/press-release';
 
 interface PostRow {
   id: number;
@@ -31,9 +32,18 @@ export async function GET(request: NextRequest) {
     const auth = await requireAnyRole(request, CONTENT_ROLES);
     if (auth instanceof NextResponse) return auth;
 
+    // Event Admin can only export Press Release posts.
+    let categoryFilterSql = '';
+    const params: number[] = [];
+    if (auth.user.role === 'event_admin') {
+      const pressReleaseCategoryId = await getPressReleaseCategoryId();
+      categoryFilterSql = 'WHERE p.category_id = ?';
+      params.push(pressReleaseCategoryId ?? -1);
+    }
+
     // Fetch posts with all details
     const posts = await query<PostRow>(`
-      SELECT 
+      SELECT
         p.id,
         p.title,
         p.slug,
@@ -55,8 +65,9 @@ export async function GET(request: NextRequest) {
       FROM posts p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.author_id = u.id
+      ${categoryFilterSql}
       ORDER BY p.id DESC
-    `);
+    `, params);
 
     const columns = [
       'id',

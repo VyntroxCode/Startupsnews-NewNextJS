@@ -1,13 +1,14 @@
 /** Client-side path scoping for the Event Admin / Publisher Admin panels (mirrors the API guards). */
 
-// Only the super admin can manage other admin-panel accounts.
-const ADMIN_ONLY_PATHS = ['/admin/users'];
+// Only the super admin can manage other admin-panel accounts, or use the standalone Network Manager (contacts CRM).
+const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts'];
 
 export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   admin: 'all',
   editor: 'all',
   author: 'all',
-  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/banners', '/admin/tools'],
+  // Event Admin's post access is scoped server-side to the Press Release category only (see posts API routes).
+  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/banners', '/admin/tools', '/admin/posts'],
   publisher_admin: ['/admin', '/admin/posts', '/admin/tools', '/admin/reports', '/admin/brand-stories'],
 };
 

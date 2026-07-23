@@ -623,7 +623,7 @@ export class PostsRepository {
     // 1) Substring match — fixes pasted full titles; BOOLEAN +short* / stopwords often return zero rows.
     const direct = await query<PostEntity>(
       `SELECT * FROM posts
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
+       WHERE status = 'published'${HAS_BODY_AND_IMAGE}
          AND (title LIKE ? ESCAPE '\\\\' OR slug LIKE ? ESCAPE '\\\\' OR excerpt LIKE ? ESCAPE '\\\\')
        ORDER BY
          CASE WHEN title LIKE ? ESCAPE '\\\\' THEN 0 ELSE 1 END,

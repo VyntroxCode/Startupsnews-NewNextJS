@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -744,7 +743,7 @@ export default function AuthModal() {
 						display: "flex",
 						justifyContent: "center",
 						alignItems: "flex-end",
-						padding: isMobileBanner ? "0 10px 10px" : "0 12px 12px",
+						padding: 0,
 						boxSizing: "border-box",
 						pointerEvents: "none",
 					}}
@@ -752,10 +751,10 @@ export default function AuthModal() {
 					<div
 						onClick={(e) => e.stopPropagation()}
 						style={{
-							background: `linear-gradient(0deg, #fff6ee 0%, ${modalTheme.panelStrong} 34%, ${modalTheme.panel} 100%)`,
-							borderRadius: isMobileBanner ? 18 : 22,
+							background: `linear-gradient(90deg, #f2b8cc 0%, ${modalTheme.brandSoft} 30%, ${modalTheme.panel} 50%, ${modalTheme.brandSoft} 72%, #f2b8cc 100%)`,
+							borderRadius: "12px 12px 0 0",
 							width: "100%",
-							maxWidth: 1180,
+							maxWidth: isMobileBanner ? 1200 : "none",
 							boxShadow: "0 -4px 18px rgba(17,17,17,0.08)",
 							overflow: "hidden",
 							position: "relative",
@@ -767,16 +766,39 @@ export default function AuthModal() {
 							overflowY: isMobileBanner ? "auto" : "hidden",
 						}}
 					>
+						{/* Dot pattern decoration, fading from the left edge into the content */}
+						{!isMobileBanner && (
+							<div
+								aria-hidden
+								style={{
+									position: "absolute",
+									top: 0,
+									bottom: 0,
+									left: 0,
+									width: 300,
+									backgroundImage:
+										"radial-gradient(rgba(0,0,0,0.85) 2px, transparent 2px)",
+									backgroundSize: "17px 17px",
+									backgroundPosition: "20px 20px",
+									WebkitMaskImage:
+										"linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 55%, transparent 100%)",
+									maskImage:
+										"linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 55%, transparent 100%)",
+									pointerEvents: "none",
+								}}
+							/>
+						)}
 						<div
 							aria-hidden
 							style={{
 								position: "absolute",
 								inset: 0,
 								background:
-									"linear-gradient(0deg, rgba(255,220,226,0.55) 0%, rgba(252,228,236,0.22) 18%, rgba(255,255,255,0) 40%)",
+									"radial-gradient(120% 140% at 15% 0%, rgba(255,220,226,0.55) 0%, rgba(255,255,255,0) 55%)",
 								pointerEvents: "none",
 							}}
 						/>
+
 						<button
 							onClick={closeModal}
 							style={{
@@ -803,380 +825,158 @@ export default function AuthModal() {
 
 						<div
 							style={{
-								padding: isMobileBanner
-									? "14px 14px 12px"
-									: "22px 56px 20px 96px",
+								padding: isMobileBanner ? "22px 20px 20px" : "26px 60px 24px",
+								position: "relative",
+								textAlign: "center",
 							}}
 						>
-							<div
+							<p
 								style={{
-									display: "flex",
-									flexDirection: isMobileBanner ? "column" : "row",
-									flexWrap: "wrap",
-									alignItems: isMobileBanner ? "stretch" : "center",
-									justifyContent: "space-between",
-									gap: isMobileBanner ? 10 : 20,
+									fontFamily: "Georgia, 'Times New Roman', serif",
+									fontWeight: 700,
+									fontSize: isMobileBanner ? 20 : 34,
+									lineHeight: 1.2,
+									color: modalTheme.ink,
+									margin: "0 auto 8px",
+									maxWidth: isMobileBanner ? 640 : "none",
+									whiteSpace: isMobileBanner ? "normal" : "nowrap",
 								}}
 							>
+								Sign-In for Free
+							</p>
+							<p
+								style={{
+									fontSize: isMobileBanner ? 14.5 : 17,
+									fontWeight: 700,
+									lineHeight: 1.45,
+									color: modalTheme.inkSoft,
+									margin: isMobileBanner ? "0 auto 10px" : "0 auto 16px",
+									maxWidth: isMobileBanner ? 520 : "none",
+									whiteSpace: isMobileBanner ? "normal" : "nowrap",
+								}}
+							>
+								Unlock unlimited access to News, Articles, Special Reports, Curated Newsletters built for You & Your Business.
+							</p>
+
+							{error && (
 								<div
 									style={{
-										flex: isMobileBanner ? "0 0 auto" : "1 1 320px",
-										minWidth: 0,
-										maxWidth: isMobileBanner ? "100%" : 650,
-										paddingRight: isMobileBanner ? 34 : 0,
+										background: "rgba(255,255,255,0.94)",
+										border: "1px solid #fecdd3",
+										borderRadius: 14,
+										padding: "10px 14px",
+										marginBottom: 16,
+										fontSize: 13,
+										color: "#b42318",
+										display: "inline-flex",
+										gap: 8,
+										alignItems: "flex-start",
+										maxWidth: 380,
 									}}
 								>
-									<Image
-										src="/logo.png"
-										alt="StartupNews.fyi"
-										width={130}
-										height={44}
-										style={{
-											objectFit: "contain",
-											height: isMobileBanner ? 24 : 34,
-											width: "auto",
-											marginBottom: isMobileBanner ? 6 : 10,
-										}}
-									/>
-									{loggedIn && user ? (
-										<p
-											style={{
-												fontSize: 14,
-												color: modalTheme.inkSoft,
-												margin: 0,
-											}}
-										>
-											You&apos;re signed in
-										</p>
-									) : (
-										<>
-											<p
-												style={{
-													fontSize: isMobileBanner ? 12 : 14,
-													lineHeight: 1.2,
-													fontWeight: 700,
-													color: modalTheme.brand,
-													margin: "0 0 4px",
-													letterSpacing: "0.08em",
-													textTransform: "uppercase",
-												}}
-											>
-												Keep reading
-											</p>
-											<p
-												style={{
-													fontSize: isMobileBanner ? 18 : 34,
-													lineHeight: isMobileBanner ? 1.08 : 1.05,
-													fontWeight: 800,
-													color: modalTheme.ink,
-													margin: "0 0 6px",
-													display: "-webkit-box",
-													WebkitLineClamp: isMobileBanner ? 2 : "unset",
-													WebkitBoxOrient: "vertical",
-													overflow: isMobileBanner ? "hidden" : "visible",
-												}}
-											>
-												Sign-In for Free
-											</p>
-											<p
-												style={{
-													fontSize: isMobileBanner ? 13 : 18,
-													lineHeight: isMobileBanner ? 1.3 : 1.4,
-													color: modalTheme.inkSoft,
-													margin: 0,
-													...(isMobileBanner ? {
-														display: "-webkit-box",
-														WebkitLineClamp: 2,
-														WebkitBoxOrient: "vertical",
-														overflow: "hidden",
-													} : {}),
-												}}
-											>
-												<span style={{ display: isMobileBanner ? "inline" : "block", whiteSpace: isMobileBanner ? "normal" : "nowrap" }}>
-													Unlock unlimited access to News, Articles, Special Reports,{isMobileBanner ? " " : ""}
-												</span>
-												<span style={{ display: isMobileBanner ? "inline" : "block", whiteSpace: isMobileBanner ? "normal" : "nowrap" }}>
-													Curated News Letters build for You & Your Business.
-												</span>
-											</p>
-										</>
-									)}
+									<span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span>
+									{error}
 								</div>
+							)}
+							{success && (
+								<div
+									style={{
+										background: "rgba(255,255,255,0.94)",
+										border: "1px solid #bbf7d0",
+										borderRadius: 14,
+										padding: "10px 14px",
+										marginBottom: 16,
+										fontSize: 13,
+										color: "#15803d",
+										display: "inline-flex",
+										gap: 8,
+										alignItems: "flex-start",
+										maxWidth: 380,
+									}}
+								>
+									<span style={{ flexShrink: 0, marginTop: 1 }}>✓</span>
+									{success}
+								</div>
+							)}
 
-								{loggedIn && user ? (
-									<div
-										style={{
-											flex: "0 1 320px",
-											minWidth: 260,
-											textAlign: "center",
-										}}
-									>
-										<div
-											style={{
-												width: 64,
-												height: 64,
-												borderRadius: "50%",
-												background: modalTheme.brand,
-												display: "flex",
-												alignItems: "center",
-												justifyContent: "center",
-												color: "#fff",
-												fontWeight: 700,
-												fontSize: 26,
-												margin: "0 auto 12px",
-											}}
-										>
-											{user.name.charAt(0).toUpperCase()}
-										</div>
-										<p
-											style={{
-												fontWeight: 700,
-												fontSize: 17,
-												color: modalTheme.ink,
-												margin: "0 0 4px",
-											}}
-										>
-											{user.name}
-										</p>
-										<p
-											style={{
-												fontSize: 13,
-												color: modalTheme.inkSoft,
-												margin: "0 0 20px",
-											}}
-										>
-											{user.email}
-										</p>
-										<button
-											onClick={handleLogout}
-											style={{
-												width: "100%",
-												padding: "10px 0",
-												borderRadius: 14,
-												border: "1.5px solid rgba(233,30,99,0.18)",
-												background: modalTheme.brandSoft,
-												color: modalTheme.brand,
-												fontWeight: 600,
-												fontSize: 14,
-												cursor: "pointer",
-											}}
-										>
-											Sign Out
-										</button>
-									</div>
-								) : (
-									<div
-										style={{
-											flex: isMobileBanner ? "0 0 auto" : "1 1 420px",
-											minWidth: isMobileBanner ? 0 : 300,
-											maxWidth: isMobileBanner ? "100%" : 420,
-											width: isMobileBanner ? "100%" : "auto",
-											marginTop: isMobileBanner ? 0 : 18,
-											paddingRight: isMobileBanner ? 0 : 36,
-										}}
-									>
-										{error && (
-											<div
-												style={{
-													background: "#fff1f2",
-													border: "1px solid #fecdd3",
-													borderRadius: 14,
-													padding: "10px 14px",
-													marginBottom: 14,
-													fontSize: 13,
-													color: "#b42318",
-													display: "flex",
-													gap: 8,
-													alignItems: "flex-start",
-												}}
-											>
-												<span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span>
-												{error}
-											</div>
-										)}
-										{success && (
-											<div
-												style={{
-													background: "#f0fdf4",
-													border: "1px solid #bbf7d0",
-													borderRadius: 14,
-													padding: "10px 14px",
-													marginBottom: 14,
-													fontSize: 13,
-													color: "#15803d",
-													display: "flex",
-													gap: 8,
-													alignItems: "flex-start",
-												}}
-											>
-												<span style={{ flexShrink: 0, marginTop: 1 }}>✓</span>
-												{success}
-											</div>
-										)}
-
-										<div
-											style={{
-												display: "flex",
-												justifyContent: "center",
-												width: "100%",
-											}}
-										>
-											{/* Unified Button Style: onClick directly triggers Google sign-in */}
-											<div
-												onClick={handleGoogleButtonClick}
-												style={{
-													display: "flex",
-													alignItems: "center",
-													justifyContent: "center",
-													gap: 14,
-													width: "100%",
-													maxWidth: isMobileBanner ? "100%" : 340,
-													height: 54,
-													borderRadius: 14,
-													background: "#ffffff",
-													boxShadow:
-														"0 1px 4px rgba(0,0,0,0.12), 0 0 0 1.5px #dadce0",
-													fontSize: 15,
-													fontWeight: 700,
-													color: "#3c4043",
-													fontFamily:
-														"'Google Sans', Roboto, Arial, sans-serif",
-													letterSpacing: "0.3px",
-													cursor: "pointer",
-													transition: "background-color 0.2s, box-shadow 0.2s",
-												}}
-												onMouseEnter={(e) => {
-													e.currentTarget.style.backgroundColor = "#f8f9fa";
-													e.currentTarget.style.boxShadow =
-														"0 2px 6px rgba(0,0,0,0.16), 0 0 0 1.5px #dadce0";
-												}}
-												onMouseLeave={(e) => {
-													e.currentTarget.style.backgroundColor = "#ffffff";
-													e.currentTarget.style.boxShadow =
-														"0 1px 4px rgba(0,0,0,0.12), 0 0 0 1.5px #dadce0";
-												}}
-											>
-												{/* Google icon container */}
-												<div
-													style={{
-														width: 30,
-														height: 30,
-														borderRadius: "50%",
-														background: "#f1f3f4",
-														display: "flex",
-														alignItems: "center",
-														justifyContent: "center",
-														flexShrink: 0,
-													}}
-												>
-													<svg
-														xmlns="http://www.w3.org/2000/svg"
-														viewBox="0 0 48 48"
-														width="18"
-														height="18"
-													>
-														<path
-															fill="#EA4335"
-															d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-														/>
-														<path
-															fill="#4285F4"
-															d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-														/>
-														<path
-															fill="#FBBC05"
-															d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-														/>
-														<path
-															fill="#34A853"
-															d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-														/>
-														<path fill="none" d="M0 0h48v48H0z" />
-													</svg>
-												</div>
-												<span>Continue with Google</span>
-											</div>
-										</div>
-
-										{/* LinkedIn sign-in — temporarily disabled
-                <div style={{ display: 'flex', justifyContent: isMobileBanner ? 'center' : 'flex-start', width: '100%' }}>
-                  <a
-                    href="/api/public-auth/linkedin/login"
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                      width: isMobileBanner ? 290 : 320, maxWidth: '100%', height: 40,
-                      padding: '0 12px', borderRadius: 999,
-                      border: '1px solid #dadce0', background: '#ffffff',
-                      fontSize: 14, fontWeight: 500, color: '#3c4043',
-                      textDecoration: 'none', cursor: 'pointer', boxSizing: 'border-box',
-                      fontFamily: "'Google Sans', Roboto, Arial, sans-serif",
-                      letterSpacing: '0.25px',
-                      transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s',
-                    }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLAnchorElement).style.background = '#f7f8f9';
-                      (e.currentTarget as HTMLAnchorElement).style.borderColor = '#d2d3d4';
-                      (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 1px 4px rgba(0,0,0,0.1)';
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLAnchorElement).style.background = '#ffffff';
-                      (e.currentTarget as HTMLAnchorElement).style.borderColor = '#dadce0';
-                      (e.currentTarget as HTMLAnchorElement).style.boxShadow = 'none';
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-                      <rect width="24" height="24" rx="3" fill="#0A66C2"/>
-                      <path d="M7.5 9.5H5v9h2.5v-9zm-1.25-4a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM19 18.5h-2.5v-4.5c0-1.1-.4-1.8-1.35-1.8-.74 0-1.15.5-1.35 1-.07.17-.09.4-.09.64v4.66H11s.03-7.57 0-8.96H13.7v1.27c.33-.52.93-1.26 2.27-1.26 1.65 0 2.89 1.08 2.89 3.4l.14 5.55z" fill="#fff"/>
-                    </svg>
-                    <span>Sign in with LinkedIn</span>
-                  </a>
-                </div>
-                */}
-									</div>
-								)}
+							<div
+								onClick={handleGoogleButtonClick}
+								style={{
+									display: "inline-flex",
+									alignItems: "center",
+									justifyContent: "center",
+									gap: 16,
+									padding: isMobileBanner ? "11px 30px" : "18px 58px",
+									borderRadius: 999,
+									background: modalTheme.ink,
+									color: "#fff",
+									fontWeight: 700,
+									fontSize: isMobileBanner ? 14 : 22,
+									letterSpacing: "0.01em",
+									cursor: "pointer",
+									boxShadow: "0 8px 22px rgba(0,0,0,0.3)",
+									transition: "transform 0.15s, box-shadow 0.15s",
+								}}
+								onMouseEnter={(e) => {
+									e.currentTarget.style.transform = "translateY(-1px)";
+									e.currentTarget.style.boxShadow = "0 10px 26px rgba(0,0,0,0.36)";
+								}}
+								onMouseLeave={(e) => {
+									e.currentTarget.style.transform = "translateY(0)";
+									e.currentTarget.style.boxShadow = "0 8px 22px rgba(0,0,0,0.3)";
+								}}
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width={isMobileBanner ? 18 : 28} height={isMobileBanner ? 18 : 28} style={{ flexShrink: 0 }}>
+									<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+									<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+									<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+									<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+									<path fill="none" d="M0 0h48v48H0z" />
+								</svg>
+								Continue with Google
 							</div>
 
 							{/* Footer */}
-							{!loggedIn && (
-								<p
+							<p
+								style={{
+									textAlign: isMobileBanner ? "center" : "right",
+									fontSize: isMobileBanner ? 11 : 10,
+									lineHeight: isMobileBanner ? 1.35 : 1.5,
+									color: modalTheme.inkSoft,
+									marginTop: isMobileBanner ? 10 : 0,
+									marginBottom: 0,
+									...(isMobileBanner
+										? {}
+										: { position: "absolute", right: 60, bottom: 20 }),
+								}}
+							>
+								By continuing you agree to our{" "}
+								<a
+									href="/terms-and-conditions"
+									target="_blank"
+									rel="noopener noreferrer"
 									style={{
-										textAlign: "center",
-										fontSize: isMobileBanner ? 11 : 13,
-										lineHeight: isMobileBanner ? 1.35 : 1.5,
-										color: modalTheme.inkSoft,
-										marginTop: isMobileBanner ? 10 : 18,
-										marginBottom: 0,
-										paddingRight: isMobileBanner ? 18 : 0,
+										color: modalTheme.ink,
+										textDecoration: "underline",
+										fontWeight: 600,
 									}}
 								>
-									By continuing you agree to our{" "}
-									<a
-										href="/terms-and-conditions"
-										target="_blank"
-										rel="noopener noreferrer"
-										style={{
-											color: modalTheme.ink,
-											textDecoration: "underline",
-											fontWeight: 600,
-										}}
-									>
-										Terms
-									</a>{" "}
-									&{" "}
-									<a
-										href="/privacy-policy"
-										target="_blank"
-										rel="noopener noreferrer"
-										style={{
-											color: modalTheme.ink,
-											textDecoration: "underline",
-											fontWeight: 600,
-										}}
-									>
-										Privacy Policy
-									</a>
-								</p>
-							)}
+									Terms
+								</a>{" "}
+								&{" "}
+								<a
+									href="/privacy-policy"
+									target="_blank"
+									rel="noopener noreferrer"
+									style={{
+										color: modalTheme.ink,
+										textDecoration: "underline",
+										fontWeight: 600,
+									}}
+								>
+									Privacy Policy
+								</a>
+							</p>
 						</div>
 					</div>
 				</div>

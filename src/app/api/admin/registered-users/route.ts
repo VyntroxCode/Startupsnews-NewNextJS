@@ -11,10 +11,14 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
 
   try {
-    const { rows, total } = await repo.findAll(page, limit);
+    const [{ rows, total }, stats] = await Promise.all([
+      repo.findAll(page, limit),
+      repo.getStats(),
+    ]);
     return NextResponse.json({
       success: true,
       data: rows,
+      stats,
       pagination: {
         page,
         limit,
