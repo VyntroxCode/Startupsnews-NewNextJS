@@ -18,6 +18,10 @@ interface Author {
   name: string;
 }
 
+// Staff authors event admins are allowed to publish press releases under.
+// Keep in sync with STAFF_AUTHOR_SLUGS in src/app/sitemap.ts.
+const EVENT_ADMIN_AUTHOR_IDS = [38, 221, 223, 224, 37];
+
 export default function EditPostPage() {
   const router = useRouter();
   const params = useParams();
@@ -83,7 +87,12 @@ export default function EditPostPage() {
       });
       const data = await response.json();
       if (data.success) {
-        setAuthors(data.data || []);
+        const fetchedAuthors: Author[] = data.data || [];
+        setAuthors(
+          isEventAdmin
+            ? fetchedAuthors.filter((a) => EVENT_ADMIN_AUTHOR_IDS.includes(a.id))
+            : fetchedAuthors
+        );
       }
     } catch (err) {
       console.error('Error fetching authors:', err);

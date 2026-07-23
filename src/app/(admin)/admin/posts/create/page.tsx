@@ -18,6 +18,10 @@ interface Author {
   isDefaultAuthor?: boolean;
 }
 
+// Staff authors event admins are allowed to publish press releases under.
+// Keep in sync with STAFF_AUTHOR_SLUGS in src/app/sitemap.ts.
+const EVENT_ADMIN_AUTHOR_IDS = [38, 221, 223, 224, 37];
+
 export default function CreatePostPage() {
   const router = useRouter();
   const isEventAdmin = getAdminUser()?.role === 'event_admin';
@@ -78,7 +82,10 @@ export default function CreatePostPage() {
       });
       const data = await response.json();
       if (data.success) {
-        const nextAuthors: Author[] = data.data || [];
+        const fetchedAuthors: Author[] = data.data || [];
+        const nextAuthors = isEventAdmin
+          ? fetchedAuthors.filter((a) => EVENT_ADMIN_AUTHOR_IDS.includes(a.id))
+          : fetchedAuthors;
         setAuthors(nextAuthors);
         setFormData((prev) => {
           if (prev.authorId) return prev;
