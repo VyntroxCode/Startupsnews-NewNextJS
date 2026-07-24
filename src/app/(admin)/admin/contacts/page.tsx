@@ -239,7 +239,7 @@ export default function ContactsPage() {
   }
 
   async function loadContacts() {
-    const res = await api<Contact[]>('/api/admin/contacts?limit=5000');
+    const res = await api<Contact[]>('/api/admin/contacts?limit=30000');
     if (res.success && res.data) setContacts(res.data);
     else showToast(res.error || 'Failed to load contacts', 'error');
   }

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || undefined;
     const tag = searchParams.get('tag') || undefined;
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '500'), 5000);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '500'), 30000);
     const offset = (page - 1) * limit;
 
     const filters = { search, city, country, type, tag };

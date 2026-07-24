@@ -148,6 +148,7 @@ const menuItems = [
   { href: '/admin/posts', label: 'Posts', icon: PostsIcon },
   { href: '/admin/events', label: 'Events', icon: EventsIcon },
   { href: '/admin/event-regions', label: 'Event Regions', icon: RegionsIcon },
+  { href: '/admin/partnership-tracker', label: 'Partnership Tracker', icon: EventsIcon },
   { href: '/admin/categories', label: 'Industry', icon: CategoriesIcon },
   { href: '/admin/authors', label: 'Authors', icon: AuthorsIcon },
   { href: '/admin/banners', label: 'Banners', icon: BannersIcon },
@@ -157,7 +158,7 @@ const menuItems = [
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },
   { href: '/admin/registered-users', label: 'Registered Users', icon: RegisteredUsersIcon },
-  { href: '/admin/contacts', label: 'Contacts', icon: ContactsIcon },
+  { href: '/admin/contacts', label: 'Database', icon: ContactsIcon },
   { href: '/admin/users', label: 'Users', icon: UsersIcon },
 ];
 

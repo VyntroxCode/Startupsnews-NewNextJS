@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
-import { CONTACTS_ROLES } from '@/shared/middleware/roles';
-import { ContactsService } from '@/modules/contacts/service/contacts.service';
-import { ContactsRepository } from '@/modules/contacts/repository/contacts.repository';
+import { EVENTS_ROLES } from '@/shared/middleware/roles';
+import { PartnershipEventsService } from '@/modules/partnership-events/service/partnership-events.service';
+import { PartnershipEventsRepository } from '@/modules/partnership-events/repository/partnership-events.repository';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
-import { ContactInput } from '@/modules/contacts/domain/types';
+import { PartnershipEventInput } from '@/modules/partnership-events/domain/types';
 
-const contactsRepository = new ContactsRepository();
-const contactsService = new ContactsService(contactsRepository);
+const partnershipEventsRepository = new PartnershipEventsRepository();
+const partnershipEventsService = new PartnershipEventsService(partnershipEventsRepository);
 
 export const maxDuration = 900;
 
 interface ImportBody {
-  rows: ContactInput[];
+  rows: PartnershipEventInput[];
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAnyRole(request, CONTACTS_ROLES);
+  const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Import is limited to 30000 rows at a time' }, { status: 400 });
     }
 
-    const result = await contactsService.importContacts(body.rows, auth.user.email);
+    const result = await partnershipEventsService.importEvents(body.rows, auth.user.email);
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    console.error('Error importing contacts:', error);
+    console.error('Error importing partnership events:', error);
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Import failed' },
       { status: 500 }
