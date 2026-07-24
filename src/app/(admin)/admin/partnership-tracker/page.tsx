@@ -361,13 +361,16 @@ export default function PartnershipTrackerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importPanelRef = useRef<HTMLDivElement>(null);
 
+  interface ImportProgress { label: string; current: number; total: number }
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
+
   function showToast(msg: string, kind: 'success' | 'error' = 'success') {
     setToast({ msg, kind });
     setTimeout(() => setToast(null), 2800);
   }
 
   async function loadEvents() {
-    const res = await api<PartnershipEvent[]>('/api/admin/partnership-events?limit=30000');
+    const res = await api<PartnershipEvent[]>('/api/admin/partnership-events?limit=50000');
     if (res.success && res.data) setEvents(res.data);
     else showToast(res.error || 'Failed to load events', 'error');
   }
@@ -573,8 +576,12 @@ export default function PartnershipTrackerPage() {
   }
 
   /* ---------------- Import ---------------- */
+  const IMPORT_BATCH_SIZE = 300;
+
   async function handleImportFiles(fileList: FileList) {
     setBusy(true);
+    const files = Array.from(fileList);
+    setImportProgress({ label: files.length > 1 ? `Reading file 1 of ${files.length}…` : `Reading ${files[0].name}…`, current: 0, total: files.length });
     const seen = new Set<string>();
     events.forEach((e) => { const k = dedupKey(e); if (k) seen.add(k); });
 
@@ -584,7 +591,9 @@ export default function PartnershipTrackerPage() {
     const sheetsSkipped: { name: string; reason: string }[] = [];
     let dropped = 0, duplicates = 0;
 
-    for (const file of Array.from(fileList)) {
+    for (let fi = 0; fi < files.length; fi++) {
+      const file = files[fi];
+      setImportProgress({ label: files.length > 1 ? `Reading file ${fi + 1} of ${files.length} — ${file.name}` : `Reading ${file.name}…`, current: fi, total: files.length });
       try {
         const buf = await file.arrayBuffer();
         const wb = XLSX.read(buf, { type: 'array', cellDates: true });
@@ -630,31 +639,54 @@ export default function PartnershipTrackerPage() {
 
     if (!allDrafts.length) {
       setBusy(false);
+      setImportProgress(null);
       setImportLog((prev) => [{ imported: 0, dropped, duplicates, unparseableDates: stats.unparseableDates, locationsGuessed: stats.locationsGuessed, sheetsRead, sheetsSkipped }, ...prev]);
       setImportPanelOpen(true);
       showToast('No importable rows found in the selected file(s).', 'error');
       return;
     }
 
-    const res = await api<{ imported: number; dropped: number; duplicates: number }>('/api/admin/partnership-events/import', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: allDrafts }),
-    });
-    setBusy(false);
-    if (res.success && res.data) {
-      setImportLog((prev) => [{
-        imported: res.data!.imported,
-        dropped: res.data!.dropped + dropped,
-        duplicates: res.data!.duplicates + duplicates,
-        unparseableDates: stats.unparseableDates,
-        locationsGuessed: stats.locationsGuessed,
-        sheetsRead, sheetsSkipped,
-      }, ...prev]);
-      setImportPanelOpen(true);
-      showToast(`Imported ${res.data.imported} event(s).`);
-      await loadEvents();
-    } else {
-      showToast(res.error || 'Import failed.', 'error');
+    const totalRows = allDrafts.length;
+    let imported = 0;
+    let serverDropped = 0;
+    let serverDuplicates = 0;
+    let uploadFailed = false;
+
+    for (let offset = 0; offset < totalRows; offset += IMPORT_BATCH_SIZE) {
+      const batch = allDrafts.slice(offset, offset + IMPORT_BATCH_SIZE);
+      setImportProgress({ label: `Uploading events — ${offset} of ${totalRows}…`, current: offset, total: totalRows });
+      try {
+        const res = await api<{ imported: number; dropped: number; duplicates: number }>('/api/admin/partnership-events/import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: batch }),
+        });
+        if (res.success && res.data) {
+          imported += res.data.imported;
+          serverDropped += res.data.dropped;
+          serverDuplicates += res.data.duplicates;
+        } else {
+          uploadFailed = true;
+          showToast(res.error || 'Import failed partway through.', 'error');
+          break;
+        }
+      } catch (err) {
+        uploadFailed = true;
+        showToast(`Import failed partway through: ${err instanceof Error ? err.message : 'network error'}`, 'error');
+        break;
+      }
     }
+    setBusy(false);
+    setImportProgress(null);
+    setImportLog((prev) => [{
+      imported,
+      dropped: serverDropped + dropped,
+      duplicates: serverDuplicates + duplicates,
+      unparseableDates: stats.unparseableDates,
+      locationsGuessed: stats.locationsGuessed,
+      sheetsRead, sheetsSkipped,
+    }, ...prev]);
+    setImportPanelOpen(true);
+    if (!uploadFailed) showToast(`Imported ${imported} event(s).`);
+    await loadEvents();
   }
 
   /* ---------------- Render ---------------- */
@@ -701,7 +733,9 @@ export default function PartnershipTrackerPage() {
                 )}
               </div>
             )}
-            <button className="btn" disabled={busy} onClick={() => fileInputRef.current?.click()}>Upload / merge Excel</button>
+            <button className="btn" disabled={busy} onClick={() => fileInputRef.current?.click()}>
+              {busy ? (<span className="pt-btn-loading"><svg className="pt-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg>Uploading…</span>) : 'Upload / merge Excel'}
+            </button>
             <button className="btn btn-green" onClick={() => downloadEventsExcel(filtered, `partnership-tracker-${new Date().toISOString().slice(0, 10)}.xlsx`)}>Download Excel</button>
             <button className="btn btn-accent" onClick={openAddModal}>+ Add event</button>
           </div>
@@ -989,6 +1023,25 @@ export default function PartnershipTrackerPage() {
           </>
         )}
 
+        {/* Import progress modal */}
+        {importProgress && (
+          <div className="pt-overlay open">
+            <div className="pt-progress-modal">
+              <div className="pt-progress-title">Uploading Excel…</div>
+              <div className="pt-progress-label">{importProgress.label}</div>
+              <div className="pt-progress-track">
+                <div
+                  className="pt-progress-fill"
+                  style={{ width: `${importProgress.total ? Math.min(100, (importProgress.current / importProgress.total) * 100) : 0}%` }}
+                />
+              </div>
+              <div className="pt-progress-pct">
+                {importProgress.total ? Math.min(100, Math.round((importProgress.current / importProgress.total) * 100)) : 0}%
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Add / Edit modal */}
         <div className={`pt-overlay ${modalOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}>
           <div className="pt-modal">
@@ -1158,6 +1211,9 @@ export default function PartnershipTrackerPage() {
         .pt-subtitle { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
         .pt-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .pt-loading { padding: 40px; text-align: center; color: var(--muted); }
+        .pt-btn-loading { display: inline-flex; align-items: center; gap: 6px; }
+        .pt-spinner { animation: pt-spin 1s linear infinite; }
+        @keyframes pt-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         .btn { height: 36px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
         .btn:hover { background: var(--surface-2); }
@@ -1277,6 +1333,13 @@ export default function PartnershipTrackerPage() {
         .pt-add-line { font-size: 11px; color: var(--accent); cursor: pointer; font-weight: 600; display: inline-block; margin-top: 2px; }
         .pt-modal-error { color: #C22B44; font-size: 12px; margin-top: 10px; }
         .pt-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+
+        .pt-progress-modal { background: var(--surface); border-radius: 14px; width: 420px; max-width: 100%; padding: 24px; box-shadow: 0 24px 48px rgba(16,26,43,0.25); }
+        .pt-progress-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+        .pt-progress-label { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pt-progress-track { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+        .pt-progress-fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
+        .pt-progress-pct { margin-top: 8px; font-size: 12px; color: var(--muted); text-align: right; }
 
         .pt-toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 2000; box-shadow: 0 8px 24px rgba(16,26,43,0.25); }
         .pt-toast.success { background: #1E9E64; }

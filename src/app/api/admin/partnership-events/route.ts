@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || undefined;
     const status = searchParams.get('status') || undefined;
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '2000'), 30000);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '2000'), 50000);
     const offset = (page - 1) * limit;
 
     const filters = { search, status };

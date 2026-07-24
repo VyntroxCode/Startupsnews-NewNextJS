@@ -38,9 +38,11 @@ const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
 ];
 
 const JSON_COLUMNS = new Set<keyof PartnershipEventInput>(['speakers', 'socialCreatives']);
+const DATE_COLUMNS = new Set<keyof PartnershipEventInput>(['initiatedDate', 'eventStartDate', 'eventEndDate', 'lastUpdatedDate']);
 
 function toParam(key: keyof PartnershipEventInput, value: unknown): SqlParam {
   if (JSON_COLUMNS.has(key)) return JSON.stringify(value || []);
+  if (DATE_COLUMNS.has(key) && value === '') return null;
   return (value as string | null | undefined) ?? null;
 }
 

@@ -230,6 +230,7 @@ export default function ContactsPage() {
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [mapSelections, setMapSelections] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ label: string; current: number; total: number } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -239,7 +240,7 @@ export default function ContactsPage() {
   }
 
   async function loadContacts() {
-    const res = await api<Contact[]>('/api/admin/contacts?limit=30000');
+    const res = await api<Contact[]>('/api/admin/contacts?limit=50000');
     if (res.success && res.data) setContacts(res.data);
     else showToast(res.error || 'Failed to load contacts', 'error');
   }
@@ -401,8 +402,33 @@ export default function ContactsPage() {
   }
 
   /* ---- EXCEL IMPORT ---- */
+  const IMPORT_BATCH_SIZE = 300;
+
+  async function uploadDraftsInBatches(drafts: ContactDraft[]): Promise<{ imported: number; dropped: number } | null> {
+    const totalRows = drafts.length;
+    let imported = 0;
+    let dropped = 0;
+    for (let offset = 0; offset < totalRows; offset += IMPORT_BATCH_SIZE) {
+      const batch = drafts.slice(offset, offset + IMPORT_BATCH_SIZE);
+      setImportProgress({ label: `Uploading contacts — ${offset.toLocaleString()} of ${totalRows.toLocaleString()}…`, current: offset, total: totalRows });
+      const importRes = await api<{ imported: number; dropped: number }>('/api/admin/contacts/import', {
+        method: 'POST',
+        body: JSON.stringify({ rows: batch }),
+      });
+      if (!importRes.success || !importRes.data) {
+        showToast(importRes.error || 'Import failed partway through', 'error');
+        return null;
+      }
+      imported += importRes.data.imported;
+      dropped += importRes.data.dropped;
+    }
+    setImportProgress({ label: `Uploaded ${totalRows.toLocaleString()} of ${totalRows.toLocaleString()}`, current: totalRows, total: totalRows });
+    return { imported, dropped };
+  }
+
   async function handleFileSelected(file: File) {
     setBusy(true);
+    setImportProgress({ label: `Reading ${file.name}…`, current: 0, total: 1 });
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array' });
@@ -431,6 +457,7 @@ export default function ContactsPage() {
 
       if (!allDrafts.length) {
         setBusy(false);
+        setImportProgress(null);
         if (firstUnmapped) {
           setPendingImport({ headers: firstUnmapped.headers, rows: firstUnmapped.rows });
           setMapSelections(buildHeaderMap(firstUnmapped.headers));
@@ -441,18 +468,17 @@ export default function ContactsPage() {
         return;
       }
 
-      const importRes = await api<{ imported: number; dropped: number }>('/api/admin/contacts/import', {
-        method: 'POST',
-        body: JSON.stringify({ rows: allDrafts }),
-      });
+      const result = await uploadDraftsInBatches(allDrafts);
       setBusy(false);
-      if (!importRes.success || !importRes.data) { showToast(importRes.error || 'Import failed', 'error'); return; }
+      setImportProgress(null);
+      if (!result) return;
 
-      setImportReport({ imported: importRes.data.imported, dropped: importRes.data.dropped, mapping: usedMapping, skippedSheets });
-      showToast(`Imported ${importRes.data.imported.toLocaleString()} contacts`);
+      setImportReport({ imported: result.imported, dropped: result.dropped, mapping: usedMapping, skippedSheets });
+      showToast(`Imported ${result.imported.toLocaleString()} contacts`);
       await loadContacts();
     } catch (err) {
       setBusy(false);
+      setImportProgress(null);
       showToast('Could not read file — is it a valid Excel/CSV?', 'error');
       console.error(err);
     }
@@ -473,16 +499,14 @@ export default function ContactsPage() {
     const drafts = pendingImport.rows.map((r) => rowToDraft(r, mapSelections)).filter((d): d is ContactDraft => !!d);
     if (!drafts.length) { showToast('Still no rows with a name value', 'error'); return; }
     setBusy(true);
-    const importRes = await api<{ imported: number; dropped: number }>('/api/admin/contacts/import', {
-      method: 'POST',
-      body: JSON.stringify({ rows: drafts }),
-    });
-    setBusy(false);
     setMapModalOpen(false);
+    const result = await uploadDraftsInBatches(drafts);
+    setBusy(false);
+    setImportProgress(null);
     setPendingImport(null);
-    if (!importRes.success || !importRes.data) { showToast(importRes.error || 'Import failed', 'error'); return; }
-    setImportReport({ imported: importRes.data.imported, dropped: importRes.data.dropped, mapping: mapSelections, skippedSheets: [] });
-    showToast(`Imported ${importRes.data.imported.toLocaleString()} contacts`);
+    if (!result) return;
+    setImportReport({ imported: result.imported, dropped: result.dropped, mapping: mapSelections, skippedSheets: [] });
+    showToast(`Imported ${result.imported.toLocaleString()} contacts`);
     await loadContacts();
   }
 
@@ -496,7 +520,9 @@ export default function ContactsPage() {
             <p className="cm-subtitle">Contacts database — founders, investors, sponsors, venues, media</p>
           </div>
           <div className="cm-header-actions">
-            <button className="btn" onClick={() => fileInputRef.current?.click()} title="Upload an Excel workbook">Upload Excel</button>
+            <button className="btn" disabled={busy} onClick={() => fileInputRef.current?.click()} title="Upload an Excel workbook">
+              {busy ? (<span className="cm-btn-loading"><svg className="cm-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg>Uploading…</span>) : 'Upload Excel'}
+            </button>
             <input
               ref={fileInputRef}
               type="file"
@@ -504,7 +530,7 @@ export default function ContactsPage() {
               style={{ display: 'none' }}
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelected(f); e.target.value = ''; }}
             />
-            <button className="btn" onClick={openRemap} title="Re-assign which Excel column feeds each field">Fix columns</button>
+            <button className="btn" disabled={busy} onClick={openRemap} title="Re-assign which Excel column feeds each field">Fix columns</button>
             <button className="btn btn-green" onClick={() => downloadContactsExcel(filtered, `SNF_contacts_${new Date().toISOString().slice(0, 10)}.xlsx`)}>Export Excel</button>
             <button className="btn btn-accent" onClick={openAddModal}>+ Add contact</button>
           </div>
@@ -713,6 +739,24 @@ export default function ContactsPage() {
             onApply={applyMapping}
             busy={busy}
           />
+        )}
+
+        {importProgress && (
+          <div className="overlay open">
+            <div className="cm-progress-modal">
+              <div className="cm-progress-title">Uploading Excel…</div>
+              <div className="cm-progress-label">{importProgress.label}</div>
+              <div className="cm-progress-track">
+                <div
+                  className="cm-progress-fill"
+                  style={{ width: `${importProgress.total ? Math.min(100, (importProgress.current / importProgress.total) * 100) : 0}%` }}
+                />
+              </div>
+              <div className="cm-progress-pct">
+                {importProgress.total ? Math.min(100, Math.round((importProgress.current / importProgress.total) * 100)) : 0}%
+              </div>
+            </div>
+          </div>
         )}
 
         {toast && <div className={`toast show ${toast.kind}`}>{toast.msg}</div>}
@@ -1039,6 +1083,9 @@ function ContactsStyles() {
       .cm-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2rem; }
       .cm-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
       .cm-loading { padding: 40px; text-align: center; color: var(--text-muted); }
+      .cm-btn-loading { display: inline-flex; align-items: center; gap: 6px; }
+      .cm-spinner { animation: cm-spin 1s linear infinite; }
+      @keyframes cm-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
       .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
       .tab { padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -1139,6 +1186,13 @@ function ContactsStyles() {
       .multi-row input { flex: 1; height: 34px; padding: 0 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; color: var(--text); }
       .multi-row .rm { width: 34px; flex: 0 0 34px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; color: var(--text-muted); font-size: 15px; }
       .add-line { font-size: 11px; color: var(--accent); cursor: pointer; font-weight: 600; display: inline-block; margin-top: 2px; }
+
+      .cm-progress-modal { background: var(--surface); border-radius: var(--radius-lg); width: 420px; max-width: 96vw; padding: 24px; box-shadow: 0 24px 48px rgba(16,26,43,0.25); }
+      .cm-progress-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+      .cm-progress-label { font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .cm-progress-track { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+      .cm-progress-fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
+      .cm-progress-pct { margin-top: 8px; font-size: 12px; color: var(--text-muted); text-align: right; }
 
       .card-modal { position: relative; width: 560px; }
       .card-modal-corner { position: absolute; top: 14px; right: 14px; display: flex; gap: 4px; z-index: 1; }

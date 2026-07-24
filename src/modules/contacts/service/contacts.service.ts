@@ -8,6 +8,22 @@ function cleanArray(value?: string[]): string[] {
   return Array.isArray(value) ? value.map((v) => String(v).trim()).filter(Boolean) : [];
 }
 
+// Matches the VARCHAR limits on the `contacts` table (see add-contacts-table.sql).
+const FIELD_LIMITS: Record<string, number> = {
+  name: 255,
+  company: 255,
+  country: 100,
+  linkedin: 500,
+  instagram: 255,
+  sector: 255,
+  stage: 100,
+};
+
+function clip(value: string, field: keyof typeof FIELD_LIMITS): string {
+  const limit = FIELD_LIMITS[field];
+  return value.length > limit ? value.slice(0, limit) : value;
+}
+
 export class ContactsService {
   constructor(private repository: ContactsRepository) {}
 
@@ -35,8 +51,13 @@ export class ContactsService {
     return this.repository.create(
       {
         ...input,
-        name: input.name.trim(),
-        company: input.company?.trim() || '',
+        name: clip(input.name.trim(), 'name'),
+        company: clip(input.company?.trim() || '', 'company'),
+        country: clip(input.country?.trim() || '', 'country'),
+        linkedin: clip(input.linkedin?.trim() || '', 'linkedin'),
+        instagram: clip(input.instagram?.trim() || '', 'instagram'),
+        sector: clip(input.sector?.trim() || '', 'sector'),
+        stage: clip(input.stage?.trim() || '', 'stage'),
         cities: cleanArray(input.cities),
         emails: cleanArray(input.emails),
         phones: cleanArray(input.phones),
@@ -49,6 +70,13 @@ export class ContactsService {
   async updateContact(id: number, input: Partial<ContactInput>, actor?: string) {
     const patch: Partial<ContactInput> = { ...input };
     if (patch.name !== undefined && !patch.name.trim()) throw new Error('Name is required');
+    if (patch.name !== undefined) patch.name = clip(patch.name.trim(), 'name');
+    if (patch.company !== undefined) patch.company = clip(patch.company.trim(), 'company');
+    if (patch.country !== undefined) patch.country = clip(patch.country.trim(), 'country');
+    if (patch.linkedin !== undefined) patch.linkedin = clip(patch.linkedin.trim(), 'linkedin');
+    if (patch.instagram !== undefined) patch.instagram = clip(patch.instagram.trim(), 'instagram');
+    if (patch.sector !== undefined) patch.sector = clip(patch.sector.trim(), 'sector');
+    if (patch.stage !== undefined) patch.stage = clip(patch.stage.trim(), 'stage');
     if (patch.cities !== undefined) patch.cities = cleanArray(patch.cities);
     if (patch.emails !== undefined) patch.emails = cleanArray(patch.emails);
     if (patch.phones !== undefined) patch.phones = cleanArray(patch.phones);
@@ -72,25 +100,30 @@ export class ContactsService {
         dropped++;
         continue;
       }
-      await this.repository.create(
-        {
-          name: row.name.trim(),
-          company: row.company?.trim() || '',
-          types: cleanArray(row.types),
-          cities: cleanArray(row.cities),
-          country: row.country?.trim() || '',
-          emails: cleanArray(row.emails),
-          phones: cleanArray(row.phones),
-          linkedin: row.linkedin?.trim() || '',
-          instagram: row.instagram?.trim() || '',
-          sector: row.sector?.trim() || '',
-          stage: row.stage?.trim() || '',
-          tags: cleanArray(row.tags),
-          notes: row.notes?.trim() || '',
-        },
-        actor
-      );
-      imported++;
+      try {
+        await this.repository.create(
+          {
+            name: clip(row.name.trim(), 'name'),
+            company: clip(row.company?.trim() || '', 'company'),
+            types: cleanArray(row.types),
+            cities: cleanArray(row.cities),
+            country: clip(row.country?.trim() || '', 'country'),
+            emails: cleanArray(row.emails),
+            phones: cleanArray(row.phones),
+            linkedin: clip(row.linkedin?.trim() || '', 'linkedin'),
+            instagram: clip(row.instagram?.trim() || '', 'instagram'),
+            sector: clip(row.sector?.trim() || '', 'sector'),
+            stage: clip(row.stage?.trim() || '', 'stage'),
+            tags: cleanArray(row.tags),
+            notes: row.notes?.trim() || '',
+          },
+          actor
+        );
+        imported++;
+      } catch (error) {
+        console.error('Error importing contact row:', row.name, error);
+        dropped++;
+      }
     }
     return { imported, dropped };
   }

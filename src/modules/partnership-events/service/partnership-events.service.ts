@@ -2,6 +2,46 @@ import { PartnershipEventsRepository } from '../repository/partnership-events.re
 import { PartnershipEventFilters, PartnershipEventInput } from '../domain/types';
 import { dedupKey } from '../utils/partnership-events.utils';
 
+// Matches the VARCHAR limits on the `partnership_events` table (see
+// add-partnership-events-table.sql / add-partnership-events-lead-details.sql).
+const FIELD_LIMITS: Partial<Record<keyof PartnershipEventInput, number>> = {
+  eventName: 500,
+  city: 255,
+  country: 255,
+  organiser: 255,
+  poc: 255,
+  contact: 100,
+  email: 255,
+  website: 500,
+  eventStartTime: 20,
+  eventEndTime: 20,
+  googleLocationLink: 500,
+  eventType: 20,
+  ticketCurrency: 10,
+  ticketPrice: 50,
+  posterUrl: 500,
+  bannerUrl: 500,
+  partnershipStatus: 100,
+  partnershipType: 50,
+  listing: 50,
+  listingLink: 500,
+  source: 255,
+};
+
+function clip<K extends keyof PartnershipEventInput>(value: string, field: K): string {
+  const limit = FIELD_LIMITS[field];
+  return limit && value.length > limit ? value.slice(0, limit) : value;
+}
+
+function clipInput<T extends Partial<PartnershipEventInput>>(input: T): T {
+  const clipped: T = { ...input };
+  for (const field of Object.keys(FIELD_LIMITS) as (keyof PartnershipEventInput)[]) {
+    const value = clipped[field];
+    if (typeof value === 'string') (clipped[field] as string) = clip(value, field);
+  }
+  return clipped;
+}
+
 export class PartnershipEventsService {
   constructor(private repository: PartnershipEventsRepository) {}
 
@@ -25,12 +65,12 @@ export class PartnershipEventsService {
   async createEvent(input: PartnershipEventInput, actor?: string) {
     const error = this.validateInput(input);
     if (error) throw new Error(error);
-    return this.repository.create({ ...input, eventName: input.eventName.trim() }, actor);
+    return this.repository.create(clipInput({ ...input, eventName: input.eventName.trim() }), actor);
   }
 
   async updateEvent(id: number, input: Partial<PartnershipEventInput>, actor?: string) {
     if (input.eventName !== undefined && !input.eventName.trim()) throw new Error('Event name is required');
-    return this.repository.update(id, input, actor);
+    return this.repository.update(id, clipInput(input), actor);
   }
 
   async deleteEvent(id: number) {
@@ -71,8 +111,13 @@ export class PartnershipEventsService {
         }
         seenKeys.add(key);
       }
-      await this.repository.create({ ...row, eventName: row.eventName.trim() }, actor);
-      imported++;
+      try {
+        await this.repository.create(clipInput({ ...row, eventName: row.eventName.trim() }), actor);
+        imported++;
+      } catch (error) {
+        console.error('Error importing partnership event row:', row.eventName, error);
+        dropped++;
+      }
     }
     return { imported, dropped, duplicates };
   }

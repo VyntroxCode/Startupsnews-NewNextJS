@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
     if (!body || !Array.isArray(body.rows) || !body.rows.length) {
       return NextResponse.json({ success: false, error: 'rows array is required' }, { status: 400 });
     }
-    if (body.rows.length > 30000) {
-      return NextResponse.json({ success: false, error: 'Import is limited to 30000 rows at a time' }, { status: 400 });
+    if (body.rows.length > 50000) {
+      return NextResponse.json({ success: false, error: 'Import is limited to 50000 rows at a time' }, { status: 400 });
     }
 
     const result = await contactsService.importContacts(body.rows, auth.user.email);
