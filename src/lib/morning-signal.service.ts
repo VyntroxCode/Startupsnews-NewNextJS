@@ -3,7 +3,7 @@ import { query, queryOne } from '@/shared/database/connection';
 import { RssFeedsRepository } from '@/modules/rss-feeds/repository/rss-feeds.repository';
 import { markNewsletterSent } from '@/modules/public-users/repository/public-users.repository';
 import { getAmazonProducts, buildAmazonNativeBlock, buildAmazonBannerBlock } from './amazon-affiliate';
-import { buildNewsletterTransporter, getNewsletterFrom } from './newsletter-smtp';
+import { buildNewsletterTransporter, getNewsletterFrom } from './newsletter-mailer';
 
 const log = createLogger('morning-signal');
 const rssRepo = new RssFeedsRepository();

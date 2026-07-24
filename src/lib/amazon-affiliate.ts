@@ -5,23 +5,27 @@ export interface AmazonProduct {
   url: string;
 }
 
-// Curated founder/startup picks on Amazon.in — used when API is unavailable
-const CURATED_PRODUCTS: AmazonProduct[] = [
+// Curated founder/startup picks on Amazon.in — ASINs are looked up live via GetItems;
+// the static fields here are only the fallback used if that call fails.
+const CURATED_PRODUCTS: (AmazonProduct & { asin: string })[] = [
   {
+    asin: '0307887898',
     title: 'The Lean Startup — Eric Ries',
     imageUrl: 'https://m.media-amazon.com/images/I/81-QB7nDh4L._AC_UY218_.jpg',
     price: '₹399',
     url: 'https://www.amazon.in/dp/0307887898?tag=snf-21',
   },
   {
+    asin: '0804139296',
     title: 'Zero to One — Peter Thiel',
-    imageUrl: 'https://m.media-amazon.com/images/I/71RqRPBfQVL._AC_UY218_.jpg',
+    imageUrl: 'https://images-na.ssl-images-amazon.com/images/P/0804139296.01._SCLZZZZZZZ_.jpg',
     price: '₹299',
     url: 'https://www.amazon.in/dp/0804139296?tag=snf-21',
   },
   {
+    asin: '0062273205',
     title: 'The Hard Thing About Hard Things — Ben Horowitz',
-    imageUrl: 'https://m.media-amazon.com/images/I/71YCZmVUBRL._AC_UY218_.jpg',
+    imageUrl: 'https://images-na.ssl-images-amazon.com/images/P/0062273205.01._SCLZZZZZZZ_.jpg',
     price: '₹449',
     url: 'https://www.amazon.in/dp/0062273205?tag=snf-21',
   },
@@ -44,7 +48,7 @@ async function getAccessToken(): Promise<string | null> {
         grant_type: 'client_credentials',
         client_id: clientId,
         client_secret: clientSecret,
-        scope: 'affiliate-marketing:read',
+        scope: 'creatorsapi::default',
       }),
     });
     if (!resp.ok) return null;
@@ -54,31 +58,50 @@ async function getAccessToken(): Promise<string | null> {
   } catch { return null; }
 }
 
+interface GetItemsResponse {
+  items?: Array<{
+    asin?: string;
+    images?: { primary?: { medium?: { url?: string } } };
+    itemInfo?: { title?: { displayValue?: string } };
+    offersV2?: { listings?: Array<{ price?: { money?: { displayAmount?: string } } }> };
+  }>;
+}
+
 export async function getAmazonProducts(limit = 3): Promise<AmazonProduct[]> {
+  const fallback = CURATED_PRODUCTS.slice(0, limit).map(({ asin: _asin, ...p }) => p);
+
   try {
     const token = await getAccessToken();
-    if (!token) return CURATED_PRODUCTS.slice(0, limit);
+    if (!token) return fallback;
 
     const tag = process.env.AMAZON_ASSOCIATE_TAG || 'snf-21';
-    const resp = await fetch(
-      `https://affiliate-program.amazon.in/creatorsapi/v3.2/products/bestsellers?limit=${limit}&tag=${tag}`,
-      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-    );
-    if (!resp.ok) return CURATED_PRODUCTS.slice(0, limit);
+    const items = CURATED_PRODUCTS.slice(0, limit);
+    const resp = await fetch('https://creatorsapi.amazon/catalog/v1/getItems', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'x-marketplace': 'www.amazon.in' },
+      body: JSON.stringify({
+        itemIds: items.map(p => p.asin),
+        itemIdType: 'ASIN',
+        marketplace: 'www.amazon.in',
+        partnerTag: tag,
+        resources: ['images.primary.medium', 'itemInfo.title', 'offersV2.listings.price'],
+      }),
+    });
+    if (!resp.ok) return fallback;
 
-    const data = await resp.json() as {
-      products?: Array<{ title: string; imageUrl: string; price?: string; url: string }>;
-    };
-    if (!data.products?.length) return CURATED_PRODUCTS.slice(0, limit);
+    const data = await resp.json() as GetItemsResponse;
+    if (!data.items?.length) return fallback;
 
-    return data.products.slice(0, limit).map(p => ({
-      title: p.title,
-      imageUrl: p.imageUrl,
-      price: p.price || '',
-      url: p.url,
-    }));
+    return items.map((curated) => {
+      const live = data.items!.find(i => i.asin === curated.asin);
+      const imageUrl = live?.images?.primary?.medium?.url;
+      const title = live?.itemInfo?.title?.displayValue;
+      const price = live?.offersV2?.listings?.[0]?.price?.money?.displayAmount;
+      if (!imageUrl) return curated;
+      return { title: title || curated.title, imageUrl, price: price || curated.price, url: curated.url };
+    });
   } catch {
-    return CURATED_PRODUCTS.slice(0, limit);
+    return fallback;
   }
 }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/shared/middleware/auth.middleware';
 import { query } from '@/shared/database/connection';
-import { buildNewsletterTransporter, getNewsletterFrom } from '@/lib/newsletter-smtp';
+import { buildNewsletterTransporter, getNewsletterFrom } from '@/lib/newsletter-mailer';
 
 interface Recipient { id: number; name: string; email: string; newsletter_category_slugs: string | null; }
 

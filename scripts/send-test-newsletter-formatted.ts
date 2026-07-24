@@ -10,7 +10,7 @@ import { query, closeDbConnection } from '@/shared/database/connection';
 import { closeRedisClient } from '@/shared/cache/redis.client';
 import { RssFeedsRepository } from '@/modules/rss-feeds/repository/rss-feeds.repository';
 import { getAmazonProducts, buildAmazonNativeBlock, buildAmazonBannerBlock } from '@/lib/amazon-affiliate';
-import { buildNewsletterTransporter, getNewsletterFrom } from '@/lib/newsletter-smtp';
+import { buildNewsletterTransporter, getNewsletterFrom } from '@/lib/newsletter-mailer';
 import { getUpcomingEvents, pickEventsForCity, buildEventsBlock, buildSectorBlock, buildNewsletterHtml } from '@/lib/morning-signal.service';
 
 interface Recipient { id: number; name: string; email: string; newsletter_category_slugs: string | null; city: string | null; country: string | null; }
