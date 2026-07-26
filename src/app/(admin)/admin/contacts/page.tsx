@@ -204,6 +204,8 @@ export default function ContactsPage() {
   const [countryFilter, setCountryFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [tagFilter, setTagFilter] = useState('');
+  const [sortKey, setSortKey] = useState<'name' | 'company' | 'city' | 'country'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
@@ -224,7 +226,7 @@ export default function ContactsPage() {
   const [newCity, setNewCity] = useState('');
   const [newCountry, setNewCountry] = useState('');
 
-  const [importReport, setImportReport] = useState<{ imported: number; dropped: number; mapping: Record<string, string> | null; skippedSheets: { name: string; rows: number }[] } | null>(null);
+  const [importReport, setImportReport] = useState<{ imported: number; updated: number; dropped: number; mapping: Record<string, string> | null; skippedSheets: { name: string; rows: number }[] } | null>(null);
   const [pendingImport, setPendingImport] = useState<{ headers: string[]; rows: Record<string, unknown>[] } | null>(null);
   const [lastImportSheets, setLastImportSheets] = useState<SheetRows[]>([]);
   const [mapModalOpen, setMapModalOpen] = useState(false);
@@ -283,11 +285,28 @@ export default function ContactsPage() {
     });
   }, [contacts, deferredSearch, cityFilter, typeFilter, countryFilter, tagFilter]);
 
-  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(filtered.length / pageSize));
+  const sorted = useMemo(() => {
+    const getVal = (c: Contact) => {
+      if (sortKey === 'name') return c.name;
+      if (sortKey === 'company') return c.company;
+      if (sortKey === 'city') return c.cities[0] || '';
+      return c.country;
+    };
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => getVal(a).localeCompare(getVal(b), undefined, { sensitivity: 'base' }) * dir);
+  }, [filtered, sortKey, sortDir]);
+
+  function toggleSort(key: 'name' | 'company' | 'city' | 'country') {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
+    setPage(1);
+  }
+
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const pageStart = pageSize === 'all' ? 0 : (currentPage - 1) * pageSize;
-  const pageEnd = pageSize === 'all' ? filtered.length : Math.min(pageStart + pageSize, filtered.length);
-  const pageSlice = filtered.slice(pageStart, pageEnd);
+  const pageEnd = pageSize === 'all' ? sorted.length : Math.min(pageStart + pageSize, sorted.length);
+  const pageSlice = sorted.slice(pageStart, pageEnd);
 
   function clearFilters() {
     setSearch(''); setCityFilter(''); setCountryFilter(''); setTypeFilter(''); setTagFilter('');
@@ -404,14 +423,15 @@ export default function ContactsPage() {
   /* ---- EXCEL IMPORT ---- */
   const IMPORT_BATCH_SIZE = 300;
 
-  async function uploadDraftsInBatches(drafts: ContactDraft[]): Promise<{ imported: number; dropped: number } | null> {
+  async function uploadDraftsInBatches(drafts: ContactDraft[]): Promise<{ imported: number; updated: number; dropped: number } | null> {
     const totalRows = drafts.length;
     let imported = 0;
+    let updated = 0;
     let dropped = 0;
     for (let offset = 0; offset < totalRows; offset += IMPORT_BATCH_SIZE) {
       const batch = drafts.slice(offset, offset + IMPORT_BATCH_SIZE);
       setImportProgress({ label: `Uploading contacts — ${offset.toLocaleString()} of ${totalRows.toLocaleString()}…`, current: offset, total: totalRows });
-      const importRes = await api<{ imported: number; dropped: number }>('/api/admin/contacts/import', {
+      const importRes = await api<{ imported: number; updated: number; dropped: number }>('/api/admin/contacts/import', {
         method: 'POST',
         body: JSON.stringify({ rows: batch }),
       });
@@ -420,10 +440,11 @@ export default function ContactsPage() {
         return null;
       }
       imported += importRes.data.imported;
+      updated += importRes.data.updated;
       dropped += importRes.data.dropped;
     }
     setImportProgress({ label: `Uploaded ${totalRows.toLocaleString()} of ${totalRows.toLocaleString()}`, current: totalRows, total: totalRows });
-    return { imported, dropped };
+    return { imported, updated, dropped };
   }
 
   async function handleFileSelected(file: File) {
@@ -473,8 +494,8 @@ export default function ContactsPage() {
       setImportProgress(null);
       if (!result) return;
 
-      setImportReport({ imported: result.imported, dropped: result.dropped, mapping: usedMapping, skippedSheets });
-      showToast(`Imported ${result.imported.toLocaleString()} contacts`);
+      setImportReport({ imported: result.imported, updated: result.updated, dropped: result.dropped, mapping: usedMapping, skippedSheets });
+      showToast(`Imported ${result.imported.toLocaleString()} contacts${result.updated ? `, updated ${result.updated.toLocaleString()} duplicates` : ''}`);
       await loadContacts();
     } catch (err) {
       setBusy(false);
@@ -505,8 +526,8 @@ export default function ContactsPage() {
     setImportProgress(null);
     setPendingImport(null);
     if (!result) return;
-    setImportReport({ imported: result.imported, dropped: result.dropped, mapping: mapSelections, skippedSheets: [] });
-    showToast(`Imported ${result.imported.toLocaleString()} contacts`);
+    setImportReport({ imported: result.imported, updated: result.updated, dropped: result.dropped, mapping: mapSelections, skippedSheets: [] });
+    showToast(`Imported ${result.imported.toLocaleString()} contacts${result.updated ? `, updated ${result.updated.toLocaleString()} duplicates` : ''}`);
     await loadContacts();
   }
 
@@ -620,11 +641,11 @@ export default function ContactsPage() {
                           onChange={(e) => toggleSelectAllVisible(e.target.checked)}
                         />
                       </th>
-                      <th className="col-name">Name</th>
-                      <th className="col-co">Company</th>
+                      <th className="col-name sortable" onClick={() => toggleSort('name')}>Name{sortKey === 'name' && <span className="sort-arrow">{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}</th>
+                      <th className="col-co sortable" onClick={() => toggleSort('company')}>Company{sortKey === 'company' && <span className="sort-arrow">{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}</th>
                       <th className="col-type">Type</th>
-                      <th className="col-city">City</th>
-                      <th className="col-country">Country</th>
+                      <th className="col-city sortable" onClick={() => toggleSort('city')}>City{sortKey === 'city' && <span className="sort-arrow">{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}</th>
+                      <th className="col-country sortable" onClick={() => toggleSort('country')}>Country{sortKey === 'country' && <span className="sort-arrow">{sortDir === 'asc' ? ' ▲' : ' ▼'}</span>}</th>
                       <th className="col-tags">Tags</th>
                       <th className="col-email">Email</th>
                       <th className="col-phone">Phone</th>
@@ -936,7 +957,7 @@ function ContactCardModal({ contact, onClose, onEdit, onDelete }: {
    IMPORT REPORT + COLUMN MAPPING MODALS
    ============================================================ */
 function ImportReportModal({ report, onClose, onFix }: {
-  report: { imported: number; dropped: number; mapping: Record<string, string> | null; skippedSheets: { name: string; rows: number }[] };
+  report: { imported: number; updated: number; dropped: number; mapping: Record<string, string> | null; skippedSheets: { name: string; rows: number }[] };
   onClose: () => void; onFix: () => void;
 }) {
   return (
@@ -944,7 +965,11 @@ function ImportReportModal({ report, onClose, onFix }: {
       <div className="modal" style={{ width: 560 }}>
         <div className="modal-header"><h2>Import report</h2><button className="btn btn-ghost icon-btn" onClick={onClose}>×</button></div>
         <div className="modal-body">
-          <p><b>{report.imported.toLocaleString()}</b> contacts imported{report.dropped ? <>, <b>{report.dropped.toLocaleString()}</b> rows dropped (missing name)</> : '.'}</p>
+          <p>
+            <b>{report.imported.toLocaleString()}</b> new contacts imported
+            {report.updated ? <>, <b>{report.updated.toLocaleString()}</b> existing duplicates updated (matched by email/phone)</> : ''}
+            {report.dropped ? <>, <b>{report.dropped.toLocaleString()}</b> rows dropped (missing name)</> : ''}.
+          </p>
           {report.skippedSheets.length > 0 && (
             <p style={{ color: '#b3261e', marginTop: 10 }}>
               <b>Skipped sheets (headers not recognized):</b> {report.skippedSheets.map((s) => `${s.name} (~${s.rows} rows)`).join(', ')}. Use &quot;Fix columns&quot; to map them manually.
@@ -1098,10 +1123,12 @@ function ContactsStyles() {
       .stat.accent .n { color: var(--accent); } .stat.green .n { color: var(--green); }
       .stat.blue .n { color: var(--blue); } .stat.amber .n { color: var(--amber); } .stat.purple .n { color: var(--purple); }
 
-      .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
-      .search-wrap { flex: 1; width: 150px; }
-      .search-wrap input { width: 100%; height: 36px; padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; outline: none; }
-      .cm-wrap select { height: 36px; padding: 0 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
+      .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+      .search-wrap { flex: 1 1 200px; max-width: 280px; min-width: 160px; }
+      .search-wrap input { box-sizing: border-box; width: 100%; height: 36px; padding: 0 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; outline: none; transition: border-color 0.12s ease; }
+      .search-wrap input:focus { border-color: var(--accent); }
+      .cm-wrap select { box-sizing: border-box; height: 36px; padding: 0 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
+      .toolbar select { flex: 0 0 auto; min-width: 110px; }
       .btn { height: 36px; padding: 0 14px; border-radius: var(--radius); font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
       .btn:hover { background: var(--surface2); }
       .btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -1118,6 +1145,9 @@ function ContactsStyles() {
       .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
       .cm-wrap table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .cm-wrap th { padding: 11px 14px; font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; background: var(--surface2); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 var(--border); text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 2; }
+      .cm-wrap th.sortable { cursor: pointer; user-select: none; }
+      .cm-wrap th.sortable:hover { color: var(--text); }
+      .sort-arrow { color: var(--accent); }
       .cm-wrap td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; transition: background-color 0.12s ease; }
       .cm-wrap tbody tr:nth-child(even) td { background: rgba(128,128,128,0.035); }
       .cm-wrap tr:hover td { background: var(--surface2); }

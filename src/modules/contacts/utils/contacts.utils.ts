@@ -1,6 +1,6 @@
 import { Contact, ContactEntity } from '../domain/types';
 
-function parseArray(value: unknown): string[] {
+export function parseArray(value: unknown): string[] {
   if (!value) return [];
   // The `mariadb` driver may return JSON columns as an already-parsed array, a raw
   // JSON string, or a Buffer (when the connection isn't in string mode) — handle all three.

@@ -337,7 +337,7 @@ export default function PartnershipTrackerPage() {
   const [monthFilter, setMonthFilter] = useState<string | null>(null);
   const [chartsExpanded, setChartsExpanded] = useState(false);
 
-  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string | null>('eventName');
   const [sortDir, setSortDir] = useState<1 | -1>(1);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -352,7 +352,7 @@ export default function PartnershipTrackerPage() {
 
   const [busy, setBusy] = useState(false);
   interface ImportLogEntry {
-    imported: number; dropped: number; duplicates: number; unparseableDates: number; locationsGuessed: number;
+    imported: number; updated: number; dropped: number; unparseableDates: number; locationsGuessed: number;
     sheetsRead: { name: string; rows: number }[];
     sheetsSkipped: { name: string; reason: string }[];
   }
@@ -582,14 +582,12 @@ export default function PartnershipTrackerPage() {
     setBusy(true);
     const files = Array.from(fileList);
     setImportProgress({ label: files.length > 1 ? `Reading file 1 of ${files.length}…` : `Reading ${files[0].name}…`, current: 0, total: files.length });
-    const seen = new Set<string>();
-    events.forEach((e) => { const k = dedupKey(e); if (k) seen.add(k); });
 
     const allDrafts: EventDraft[] = [];
     const stats: ImportStats = { unparseableDates: 0, locationsGuessed: 0 };
     const sheetsRead: { name: string; rows: number }[] = [];
     const sheetsSkipped: { name: string; reason: string }[] = [];
-    let dropped = 0, duplicates = 0;
+    let dropped = 0;
 
     for (let fi = 0; fi < files.length; fi++) {
       const file = files[fi];
@@ -622,11 +620,6 @@ export default function PartnershipTrackerPage() {
           for (const row of rows) {
             const d = rowToDraft(row, map, sheetName, stats);
             if (!d) { dropped++; continue; }
-            const key = dedupKey(d);
-            if (key !== null) {
-              if (seen.has(key)) { duplicates++; continue; }
-              seen.add(key);
-            }
             allDrafts.push(d);
             rowsRead++;
           }
@@ -640,7 +633,7 @@ export default function PartnershipTrackerPage() {
     if (!allDrafts.length) {
       setBusy(false);
       setImportProgress(null);
-      setImportLog((prev) => [{ imported: 0, dropped, duplicates, unparseableDates: stats.unparseableDates, locationsGuessed: stats.locationsGuessed, sheetsRead, sheetsSkipped }, ...prev]);
+      setImportLog((prev) => [{ imported: 0, updated: 0, dropped, unparseableDates: stats.unparseableDates, locationsGuessed: stats.locationsGuessed, sheetsRead, sheetsSkipped }, ...prev]);
       setImportPanelOpen(true);
       showToast('No importable rows found in the selected file(s).', 'error');
       return;
@@ -648,21 +641,21 @@ export default function PartnershipTrackerPage() {
 
     const totalRows = allDrafts.length;
     let imported = 0;
+    let updated = 0;
     let serverDropped = 0;
-    let serverDuplicates = 0;
     let uploadFailed = false;
 
     for (let offset = 0; offset < totalRows; offset += IMPORT_BATCH_SIZE) {
       const batch = allDrafts.slice(offset, offset + IMPORT_BATCH_SIZE);
       setImportProgress({ label: `Uploading events — ${offset} of ${totalRows}…`, current: offset, total: totalRows });
       try {
-        const res = await api<{ imported: number; dropped: number; duplicates: number }>('/api/admin/partnership-events/import', {
+        const res = await api<{ imported: number; updated: number; dropped: number }>('/api/admin/partnership-events/import', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: batch }),
         });
         if (res.success && res.data) {
           imported += res.data.imported;
+          updated += res.data.updated;
           serverDropped += res.data.dropped;
-          serverDuplicates += res.data.duplicates;
         } else {
           uploadFailed = true;
           showToast(res.error || 'Import failed partway through.', 'error');
@@ -678,14 +671,14 @@ export default function PartnershipTrackerPage() {
     setImportProgress(null);
     setImportLog((prev) => [{
       imported,
+      updated,
       dropped: serverDropped + dropped,
-      duplicates: serverDuplicates + duplicates,
       unparseableDates: stats.unparseableDates,
       locationsGuessed: stats.locationsGuessed,
       sheetsRead, sheetsSkipped,
     }, ...prev]);
     setImportPanelOpen(true);
-    if (!uploadFailed) showToast(`Imported ${imported} event(s).`);
+    if (!uploadFailed) showToast(`Imported ${imported} event(s)${updated ? `, updated ${updated} duplicate(s)` : ''}.`);
     await loadEvents();
   }
 
@@ -716,7 +709,7 @@ export default function PartnershipTrackerPage() {
                       <div className="pt-import-entry" key={i}>
                         <div>
                           Imported <strong>{log.imported}</strong> new event(s)
-                          {log.duplicates ? <> · <span className="pt-warn">skipped {log.duplicates} duplicate(s)</span></> : null}
+                          {log.updated ? <> · updated <strong>{log.updated}</strong> existing duplicate(s) (matched by name + city + country + start date)</> : null}
                           {log.dropped ? <> · ignored {log.dropped} row(s) with no event name</> : null}
                           {log.locationsGuessed ? <> · <span className="pt-warn">guessed city/country for {log.locationsGuessed} row(s)</span> from the event name — please verify</> : null}
                           {log.unparseableDates ? <> · <span className="pt-warn">{log.unparseableDates} date value(s) couldn&apos;t be read</span> and were left blank</> : null}
@@ -927,21 +920,21 @@ export default function PartnershipTrackerPage() {
                           }}
                         />
                       </th>
-                      <th className="pt-sticky" onClick={() => toggleSort('eventName')}>Event</th>
-                      <th onClick={() => toggleSort('city')}>City</th>
-                      <th onClick={() => toggleSort('country')}>Country</th>
-                      <th onClick={() => toggleSort('organiser')}>Organiser</th>
-                      <th onClick={() => toggleSort('poc')}>POC</th>
+                      <th className="pt-sticky" onClick={() => toggleSort('eventName')}>Event{sortKey === 'eventName' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th onClick={() => toggleSort('city')}>City{sortKey === 'city' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th onClick={() => toggleSort('country')}>Country{sortKey === 'country' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th onClick={() => toggleSort('organiser')}>Organiser{sortKey === 'organiser' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th onClick={() => toggleSort('poc')}>POC{sortKey === 'poc' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Contact</th>
                       <th>Email</th>
                       <th>Website</th>
-                      <th onClick={() => toggleSort('initiatedDate')}>Initiated</th>
-                      <th onClick={() => toggleSort('eventStartDate')}>Start date</th>
-                      <th onClick={() => toggleSort('eventEndDate')}>End date</th>
+                      <th onClick={() => toggleSort('initiatedDate')}>Initiated{sortKey === 'initiatedDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th onClick={() => toggleSort('eventStartDate')}>Start date{sortKey === 'eventStartDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th onClick={() => toggleSort('eventEndDate')}>End date{sortKey === 'eventEndDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Status</th>
-                      <th onClick={() => toggleSort('daysInStatus')}>Days in status</th>
+                      <th onClick={() => toggleSort('daysInStatus')}>Days in status{sortKey === 'daysInStatus' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Type</th>
-                      <th onClick={() => toggleSort('lastUpdatedDate')}>Last updated</th>
+                      <th onClick={() => toggleSort('lastUpdatedDate')}>Last updated{sortKey === 'lastUpdatedDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Listing</th>
                       <th>Comment</th>
                       <th className="pt-col-act">Actions</th>
@@ -1281,6 +1274,7 @@ export default function PartnershipTrackerPage() {
         .pt-tbl-scroll { overflow: auto; max-height: 65vh; }
         .pt-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1750px; }
         .pt-wrap thead th { text-align: left; padding: 11px 14px; color: var(--muted); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); background: var(--surface-2); cursor: pointer; white-space: nowrap; position: sticky; top: 0; z-index: 3; }
+        .pt-sort-arrow { color: var(--accent); }
         .pt-col-chk { width: 38px; cursor: default !important; }
         .pt-sticky { position: sticky; left: 0; background: var(--surface); z-index: 2; box-shadow: 1px 0 0 var(--border); }
         thead .pt-sticky { z-index: 4; background: var(--surface-2); }

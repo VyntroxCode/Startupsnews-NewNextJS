@@ -1,6 +1,7 @@
 import { queryOne, query } from '@/shared/database/connection';
 import { ContactsRepository } from '../repository/contacts.repository';
 import { BulkAction, ContactFilters, ContactInput, ContactsConfig, DEFAULT_CONTACTS_CONFIG } from '../domain/types';
+import { entityToContact } from '../utils/contacts.utils';
 
 const CONFIG_SETTINGS_KEY = 'contacts_config';
 
@@ -22,6 +23,27 @@ const FIELD_LIMITS: Record<string, number> = {
 function clip(value: string, field: keyof typeof FIELD_LIMITS): string {
   const limit = FIELD_LIMITS[field];
   return value.length > limit ? value.slice(0, limit) : value;
+}
+
+function normEmail(e: string): string {
+  return e.trim().toLowerCase();
+}
+
+function normPhone(p: string): string {
+  return p.replace(/\D/g, '');
+}
+
+// Case-insensitive union that keeps the first-seen casing.
+function unionArrays(a: string[], b: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of [...a, ...b]) {
+    const key = v.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(v.trim());
+  }
+  return out;
 }
 
 export class ContactsService {
@@ -92,40 +114,102 @@ export class ContactsService {
     return this.repository.bulkUpdate(ids, action, value, actor);
   }
 
-  async importContacts(rows: ContactInput[], actor?: string): Promise<{ imported: number; dropped: number }> {
+  async importContacts(rows: ContactInput[], actor?: string): Promise<{ imported: number; updated: number; dropped: number }> {
     let imported = 0;
+    let updated = 0;
     let dropped = 0;
+
+    // Existing contacts sharing an email or phone with an imported row are updated
+    // in place instead of creating a duplicate record.
+    const indexRows = await this.repository.findEmailPhoneIndex();
+    const emailIndex = new Map<string, number>();
+    const phoneIndex = new Map<string, number>();
+    for (const r of indexRows) {
+      for (const e of r.emails) { const k = normEmail(e); if (k) emailIndex.set(k, r.id); }
+      for (const p of r.phones) { const k = normPhone(p); if (k.length >= 6) phoneIndex.set(k, r.id); }
+    }
+
     for (const row of rows) {
       if (!row.name || !row.name.trim()) {
         dropped++;
         continue;
       }
+      const emails = cleanArray(row.emails);
+      const phones = cleanArray(row.phones);
+
+      let matchId: number | null = null;
+      for (const e of emails) {
+        const id = emailIndex.get(normEmail(e));
+        if (id) { matchId = id; break; }
+      }
+      if (matchId === null) {
+        for (const p of phones) {
+          const k = normPhone(p);
+          if (k.length < 6) continue;
+          const id = phoneIndex.get(k);
+          if (id) { matchId = id; break; }
+        }
+      }
+
       try {
-        await this.repository.create(
-          {
-            name: clip(row.name.trim(), 'name'),
-            company: clip(row.company?.trim() || '', 'company'),
-            types: cleanArray(row.types),
-            cities: cleanArray(row.cities),
-            country: clip(row.country?.trim() || '', 'country'),
-            emails: cleanArray(row.emails),
-            phones: cleanArray(row.phones),
-            linkedin: clip(row.linkedin?.trim() || '', 'linkedin'),
-            instagram: clip(row.instagram?.trim() || '', 'instagram'),
-            sector: clip(row.sector?.trim() || '', 'sector'),
-            stage: clip(row.stage?.trim() || '', 'stage'),
-            tags: cleanArray(row.tags),
-            notes: row.notes?.trim() || '',
-          },
-          actor
-        );
-        imported++;
+        if (matchId !== null) {
+          const existingEntity = await this.repository.findById(matchId);
+          if (!existingEntity) throw new Error('Matched contact not found');
+          const existing = entityToContact(existingEntity);
+          const mergedEmails = unionArrays(existing.emails, emails);
+          const mergedPhones = unionArrays(existing.phones, phones);
+          await this.repository.update(
+            matchId,
+            {
+              company: row.company?.trim() ? clip(row.company.trim(), 'company') : undefined,
+              country: row.country?.trim() ? clip(row.country.trim(), 'country') : undefined,
+              linkedin: row.linkedin?.trim() ? clip(row.linkedin.trim(), 'linkedin') : undefined,
+              instagram: row.instagram?.trim() ? clip(row.instagram.trim(), 'instagram') : undefined,
+              sector: row.sector?.trim() ? clip(row.sector.trim(), 'sector') : undefined,
+              stage: row.stage?.trim() ? clip(row.stage.trim(), 'stage') : undefined,
+              notes: row.notes?.trim()
+                ? (existing.notes ? `${existing.notes}\n${row.notes.trim()}` : row.notes.trim())
+                : undefined,
+              types: unionArrays(existing.types, cleanArray(row.types)),
+              cities: unionArrays(existing.cities, cleanArray(row.cities)),
+              emails: mergedEmails,
+              phones: mergedPhones,
+              tags: unionArrays(existing.tags, cleanArray(row.tags)),
+            },
+            actor
+          );
+          updated++;
+          mergedEmails.forEach((e) => emailIndex.set(normEmail(e), matchId as number));
+          mergedPhones.forEach((p) => { const k = normPhone(p); if (k.length >= 6) phoneIndex.set(k, matchId as number); });
+        } else {
+          const created = await this.repository.create(
+            {
+              name: clip(row.name.trim(), 'name'),
+              company: clip(row.company?.trim() || '', 'company'),
+              types: cleanArray(row.types),
+              cities: cleanArray(row.cities),
+              country: clip(row.country?.trim() || '', 'country'),
+              emails,
+              phones,
+              linkedin: clip(row.linkedin?.trim() || '', 'linkedin'),
+              instagram: clip(row.instagram?.trim() || '', 'instagram'),
+              sector: clip(row.sector?.trim() || '', 'sector'),
+              stage: clip(row.stage?.trim() || '', 'stage'),
+              tags: cleanArray(row.tags),
+              notes: row.notes?.trim() || '',
+            },
+            actor
+          );
+          imported++;
+          emails.forEach((e) => emailIndex.set(normEmail(e), created.id));
+          phones.forEach((p) => { const k = normPhone(p); if (k.length >= 6) phoneIndex.set(k, created.id); });
+        }
       } catch (error) {
         console.error('Error importing contact row:', row.name, error);
         dropped++;
       }
     }
-    return { imported, dropped };
+    return { imported, updated, dropped };
   }
 
   async getConfig(): Promise<ContactsConfig> {

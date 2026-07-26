@@ -82,21 +82,21 @@ export class PartnershipEventsService {
   }
 
   /**
-   * Mirrors the standalone tool's import behaviour: rows sharing the same
-   * name + city + country + start date as an already-imported row (this batch
-   * or existing DB rows) are skipped rather than creating a duplicate event.
+   * Rows sharing the same name + city + country + start date as an existing
+   * event (this batch or already in the DB) update that event in place
+   * instead of creating a duplicate.
    */
-  async importEvents(rows: PartnershipEventInput[], actor?: string): Promise<{ imported: number; dropped: number; duplicates: number }> {
+  async importEvents(rows: PartnershipEventInput[], actor?: string): Promise<{ imported: number; updated: number; dropped: number }> {
     let imported = 0;
+    let updated = 0;
     let dropped = 0;
-    let duplicates = 0;
 
     const existing = await this.repository.findAll();
-    const seenKeys = new Set(
-      existing
-        .map((e) => dedupKey({ eventName: e.event_name, city: e.city || '', country: e.country || '', eventStartDate: e.event_start_date || '' }))
-        .filter((k): k is string => k !== null)
-    );
+    const keyToId = new Map<string, number>();
+    for (const e of existing) {
+      const key = dedupKey({ eventName: e.event_name, city: e.city || '', country: e.country || '', eventStartDate: e.event_start_date || '' });
+      if (key !== null) keyToId.set(key, e.id);
+    }
 
     for (const row of rows) {
       if (!row.eventName || !row.eventName.trim()) {
@@ -104,21 +104,22 @@ export class PartnershipEventsService {
         continue;
       }
       const key = dedupKey(row);
-      if (key !== null) {
-        if (seenKeys.has(key)) {
-          duplicates++;
-          continue;
-        }
-        seenKeys.add(key);
-      }
+      const matchId = key !== null ? keyToId.get(key) : undefined;
+
       try {
-        await this.repository.create(clipInput({ ...row, eventName: row.eventName.trim() }), actor);
-        imported++;
+        if (matchId !== undefined) {
+          await this.repository.update(matchId, clipInput({ ...row, eventName: row.eventName.trim() }), actor);
+          updated++;
+        } else {
+          const created = await this.repository.create(clipInput({ ...row, eventName: row.eventName.trim() }), actor);
+          imported++;
+          if (key !== null) keyToId.set(key, created.id);
+        }
       } catch (error) {
         console.error('Error importing partnership event row:', row.eventName, error);
         dropped++;
       }
     }
-    return { imported, dropped, duplicates };
+    return { imported, updated, dropped };
   }
 }

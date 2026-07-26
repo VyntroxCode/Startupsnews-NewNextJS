@@ -1,5 +1,6 @@
 import { query, queryOne, getDbConnection } from '@/shared/database/connection';
 import { BulkAction, ContactEntity, ContactFilters, ContactInput } from '../domain/types';
+import { parseArray } from '../utils/contacts.utils';
 
 type SqlParam = string | number | null;
 
@@ -54,6 +55,12 @@ export class ContactsRepository {
 
   async findById(id: number): Promise<ContactEntity | null> {
     return queryOne<ContactEntity>('SELECT * FROM contacts WHERE id = ?', [id]);
+  }
+
+  /** Lightweight id -> emails/phones lookup used to detect duplicates during import, without loading full rows. */
+  async findEmailPhoneIndex(): Promise<{ id: number; emails: string[]; phones: string[] }[]> {
+    const rows = await query<Pick<ContactEntity, 'id' | 'emails' | 'phones'>>('SELECT id, emails, phones FROM contacts');
+    return rows.map((r) => ({ id: r.id, emails: parseArray(r.emails), phones: parseArray(r.phones) }));
   }
 
   async create(input: ContactInput, actor?: string): Promise<ContactEntity> {
