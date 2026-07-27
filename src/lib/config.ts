@@ -23,7 +23,7 @@ export const siteConfig = {
     { label: "EVENTS", href: "/events" },
     { label: "AI SPOTLIGHT ", href: "/ai-deeptech" },
     { label: "PRESS RELEASE", href: "/press-release" },
-    { label: "REPORTS", href: "/report", requiresAuth: true },
+    { label: "REPORTS", href: "/", requiresAuth: true },
   ],
   footerMenu: [
     { label: "FUNDING TRACKER", href: "/funding" },
@@ -69,6 +69,7 @@ export const siteConfig = {
         { label: "Social Media", href: "/social-media" },
         { label: "Tech", href: "/tech" },
         { label: "Web3 & Blockchain", href: "/web3-blockchain" },
+      
       ],
     },
     {
@@ -84,7 +85,7 @@ export const siteConfig = {
       ],
     },
     { label: "SUBMIT YOUR EVENT", href: "https://forms.gle/G4ZxCP3G1gTHJf1v5", dividerBefore: true },
-    { label: "PARTNER WITH US" },
+    { label: "PARTNER WITH US" },{    label: "REPORTS", requiresAuth: true },
     {
       id: "press",
       label: "PRESS RELEASE",

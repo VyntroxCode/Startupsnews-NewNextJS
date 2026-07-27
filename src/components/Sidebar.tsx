@@ -1,4 +1,8 @@
-import { getTrendingPosts, getFeat1ListPosts, getVideoPosts } from "@/lib/data-adapter";
+import {
+  getTrendingPosts,
+  getFeat1ListPosts,
+  getVideoPosts,
+} from "@/lib/data-adapter";
 import { SidebarTabber } from "@/components/SidebarTabber";
 import Link from "next/link";
 
@@ -28,7 +32,10 @@ export async function Sidebar({ excludeIds = [] }: SidebarProps) {
   const latest = (await getFeat1ListPosts(excludeIds)).slice(0, 10);
   const trending = await getTrendingPosts();
   const videoPosts = await getVideoPosts(10);
-  const videos = videoPosts.length > 0 ? videoPosts : (await getFeat1ListPosts(excludeIds)).slice(0, 6);
+  const videos =
+    videoPosts.length > 0
+      ? videoPosts
+      : (await getFeat1ListPosts(excludeIds)).slice(0, 6);
 
   return (
     <>
