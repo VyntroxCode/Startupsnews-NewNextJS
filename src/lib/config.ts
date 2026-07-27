@@ -85,7 +85,8 @@ export const siteConfig = {
       ],
     },
     { label: "SUBMIT YOUR EVENT", href: "https://forms.gle/G4ZxCP3G1gTHJf1v5", dividerBefore: true },
-    { label: "PARTNER WITH US" },{    label: "REPORTS", requiresAuth: true },
+    { label: "PARTNER WITH US" },
+    { label: "REPORTS", href: "/dashboard/reports", requiresAuth: true },
     {
       id: "press",
       label: "PRESS RELEASE",

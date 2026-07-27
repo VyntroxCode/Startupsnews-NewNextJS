@@ -12,6 +12,7 @@ type FlyMenuItem = {
   href?: string;
   children?: { label: string; href: string }[];
   dividerBefore?: boolean;
+  requiresAuth?: boolean;
 };
 
 function isExpandable(item: FlyMenuItem): item is FlyMenuItem & { id: string; children: { label: string; href: string }[] } {
@@ -22,6 +23,17 @@ export function FlyMenu() {
   const { toggle } = useFlyMenu();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const flyMenu = siteConfig.flyMenu as FlyMenuItem[];
+
+  const handleProtectedClick = (e: { preventDefault: () => void }, href: string) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('pub_auth_token') : null;
+    e.preventDefault();
+    toggle();
+    if (!token) {
+      window.dispatchEvent(new CustomEvent('open-auth-modal'));
+    } else {
+      window.location.href = href;
+    }
+  };
 
   return (
     <div id="mvp-fly-wrap" className="startupnews-fly">
@@ -125,6 +137,14 @@ export function FlyMenu() {
                     >
                       {item.label}
                     </a>
+                  ) : item.requiresAuth && item.href ? (
+                    <Link
+                      href={item.href}
+                      onClick={(e) => handleProtectedClick(e, item.href!)}
+                      className="startupnews-fly-label"
+                    >
+                      {item.label}
+                    </Link>
                   ) : (
                     <Link
                       href={item.href ?? "#"}
