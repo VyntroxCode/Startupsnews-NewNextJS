@@ -75,7 +75,7 @@ export default function CreateBannerPage() {
         return;
       }
 
-      router.push('/admin/banners');
+      router.push('/admin/events?tab=banners');
     } catch (err) {
       setError('An error occurred while creating the banner');
       setLoading(false);
@@ -86,7 +86,7 @@ export default function CreateBannerPage() {
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
         <Link
-          href="/admin/banners"
+          href="/admin/events?tab=banners"
           style={{
             color: '#48bb78',
             textDecoration: 'none',

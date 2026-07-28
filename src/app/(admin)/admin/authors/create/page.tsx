@@ -90,7 +90,7 @@ export default function CreateAuthorPage() {
         setLoading(false);
         return;
       }
-      router.push('/admin/authors');
+      router.push('/admin/posts?tab=authors');
     } catch {
       setError('An error occurred while creating the author');
       setLoading(false);
@@ -100,7 +100,7 @@ export default function CreateAuthorPage() {
   return (
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
-        <Link href="/admin/authors" style={{ color: '#0ea5e9', textDecoration: 'none', display: 'inline-block', marginBottom: '2rem', fontSize: '0.875rem' }}>
+        <Link href="/admin/posts?tab=authors" style={{ color: '#0ea5e9', textDecoration: 'none', display: 'inline-block', marginBottom: '2rem', fontSize: '0.875rem' }}>
           ← Back to Authors
         </Link>
         <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Add Author</h2>
@@ -190,7 +190,7 @@ export default function CreateAuthorPage() {
           >
             {loading ? 'Creating...' : 'Create Author'}
           </button>
-          <Link href="/admin/authors" style={{ padding: '0.75rem 1.5rem', borderRadius: 6, background: '#e2e8f0', color: '#334155', textDecoration: 'none', fontWeight: 600 }}>
+          <Link href="/admin/posts?tab=authors" style={{ padding: '0.75rem 1.5rem', borderRadius: 6, background: '#e2e8f0', color: '#334155', textDecoration: 'none', fontWeight: 600 }}>
             Cancel
           </Link>
         </div>

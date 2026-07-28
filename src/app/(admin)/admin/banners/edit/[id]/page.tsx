@@ -122,7 +122,7 @@ export default function EditBannerPage() {
         return;
       }
 
-      router.push('/admin/banners');
+      router.push('/admin/events?tab=banners');
     } catch {
       setError('An error occurred while updating the banner');
       setSaving(false);
@@ -141,7 +141,7 @@ export default function EditBannerPage() {
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
         <Link
-          href="/admin/banners"
+          href="/admin/events?tab=banners"
           style={{
             color: '#48bb78',
             textDecoration: 'none',

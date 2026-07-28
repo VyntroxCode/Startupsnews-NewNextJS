@@ -47,37 +47,6 @@ const EventsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
-const CategoriesIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 7h16M4 12h16M4 17h16"></path>
-  </svg>
-);
-
-const AuthorsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-    <circle cx="9" cy="7" r="4"></circle>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-  </svg>
-);
-
-const RssIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 11a9 9 0 0 1 9 9"></path>
-    <path d="M4 4a16 16 0 0 1 16 16"></path>
-    <circle cx="5" cy="19" r="1"></circle>
-  </svg>
-);
-
-const BannersIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <line x1="3" y1="9" x2="21" y2="9"></line>
-    <line x1="9" y1="21" x2="9" y2="9"></line>
-  </svg>
-);
-
 const NewsletterIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
@@ -104,14 +73,6 @@ const BrandStoriesIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-  </svg>
-);
-
-const RegionsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="2" y1="12" x2="22" y2="12"></line>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
   </svg>
 );
 
@@ -147,12 +108,7 @@ const menuItems = [
   { href: '/admin', label: 'Dashboard', icon: DashboardIcon },
   { href: '/admin/posts', label: 'Posts', icon: PostsIcon },
   { href: '/admin/events', label: 'Events', icon: EventsIcon },
-  { href: '/admin/event-regions', label: 'Event Regions', icon: RegionsIcon },
   { href: '/admin/partnership-tracker', label: 'Partnership Tracker', icon: EventsIcon },
-  { href: '/admin/categories', label: 'Industry', icon: CategoriesIcon },
-  { href: '/admin/authors', label: 'Authors', icon: AuthorsIcon },
-  { href: '/admin/banners', label: 'Banners', icon: BannersIcon },
-  { href: '/admin/rss-feeds', label: 'RSS Feeds', icon: RssIcon },
   { href: '/admin/newsletter', label: 'Newsletter', icon: NewsletterIcon },
   { href: '/admin/tools', label: 'Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },

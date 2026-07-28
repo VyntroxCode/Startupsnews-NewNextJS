@@ -210,7 +210,7 @@ export default function EditCategoryPage() {
 
             // Wait briefly for cache to clear, then navigate
             await new Promise(resolve => setTimeout(resolve, 100));
-            router.push('/admin/categories');
+            router.push('/admin/posts?tab=industry');
         } catch (err) {
             console.error('Error updating Industry:', err);
             setError(err instanceof Error ? err.message : 'An error occurred while updating the Industry');
@@ -226,7 +226,7 @@ export default function EditCategoryPage() {
         <div>
             <div style={{ marginBottom: '2.5rem' }}>
                 <Link
-                    href="/admin/categories"
+                    href="/admin/posts?tab=industry"
                     style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-block' }}
                 >
                     ← Back to Industry
@@ -319,7 +319,7 @@ export default function EditCategoryPage() {
                         style={{ padding: '0.75rem 2rem', background: saving || uploading ? '#a0aec0' : '#48bb78', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: '500', cursor: saving || uploading ? 'not-allowed' : 'pointer' }}>
                         {saving ? 'Saving...' : 'Save Changes'}
                     </button>
-                    <Link href="/admin/categories"
+                    <Link href="/admin/posts?tab=industry"
                         style={{ padding: '0.75rem 2rem', background: '#e2e8f0', color: '#4a5568', borderRadius: '4px', textDecoration: 'none', fontSize: '1rem', fontWeight: '500', display: 'inline-block' }}>
                         Cancel
                     </Link>

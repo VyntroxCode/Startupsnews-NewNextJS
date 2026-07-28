@@ -125,7 +125,7 @@ export default function EditRssFeedPage() {
         }),
       });
       const data = await res.json();
-      if (data.success) router.push('/admin/rss-feeds');
+      if (data.success) router.push('/admin/newsletter?tab=rss-feeds');
       else setError(data.error || 'Failed to update feed');
     } catch {
       setError('Request failed');
@@ -137,7 +137,7 @@ export default function EditRssFeedPage() {
   return (
     <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       <div style={{ marginBottom: '2.5rem' }}>
-        <Link href="/admin/rss-feeds" style={{ color: '#ed8936', textDecoration: 'none', display: 'inline-block', marginBottom: '1rem', fontSize: '0.875rem' }}>← Back to RSS Feeds</Link>
+        <Link href="/admin/newsletter?tab=rss-feeds" style={{ color: '#ed8936', textDecoration: 'none', display: 'inline-block', marginBottom: '1rem', fontSize: '0.875rem' }}>← Back to RSS Feeds</Link>
         <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Edit RSS Feed</h2>
       </div>
       {error && <div style={{ background: '#fed7d7', color: '#c53030', padding: 'clamp(0.75rem, 2vw, 1rem)', borderRadius: '4px', marginBottom: '1rem', fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>{error}</div>}
@@ -211,7 +211,7 @@ export default function EditRssFeedPage() {
           <button type="submit" disabled={loading} style={{ padding: 'clamp(0.625rem, 1.5vw, 0.75rem) clamp(1.5rem, 4vw, 2rem)', background: loading ? '#a0aec0' : '#ed8936', color: 'white', border: 'none', borderRadius: '4px', fontSize: 'clamp(0.875rem, 2vw, 1rem)', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', flex: '1 1 auto', minWidth: '120px' }}>
             {loading ? 'Saving...' : 'Save'}
           </button>
-          <Link href="/admin/rss-feeds" style={{ padding: 'clamp(0.625rem, 1.5vw, 0.75rem) clamp(1.5rem, 4vw, 2rem)', background: '#e2e8f0', color: '#4a5568', borderRadius: '4px', textDecoration: 'none', fontSize: 'clamp(0.875rem, 2vw, 1rem)', fontWeight: 500, display: 'inline-block', flex: '1 1 auto', minWidth: '120px', textAlign: 'center' }}>Cancel</Link>
+          <Link href="/admin/newsletter?tab=rss-feeds" style={{ padding: 'clamp(0.625rem, 1.5vw, 0.75rem) clamp(1.5rem, 4vw, 2rem)', background: '#e2e8f0', color: '#4a5568', borderRadius: '4px', textDecoration: 'none', fontSize: 'clamp(0.875rem, 2vw, 1rem)', fontWeight: 500, display: 'inline-block', flex: '1 1 auto', minWidth: '120px', textAlign: 'center' }}>Cancel</Link>
         </div>
       </form>
     </div>

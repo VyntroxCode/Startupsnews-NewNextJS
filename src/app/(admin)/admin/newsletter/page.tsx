@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 
@@ -11,7 +12,30 @@ interface NewsletterItem { id: number; rss_feed_id: number; feed_name: string; f
 interface NLCategory { id: number; name: string; slug: string; color: string; }
 interface MailConfig { host: string; port: string; secure: string; user: string; pass: string; from: string; source: 'db' | 'env'; }
 
-type Tab = 'overview' | 'mail-config' | 'compose' | 'cron';
+interface RssFeed {
+  id: number;
+  name: string;
+  url: string;
+  category_id: number;
+  author_id: number;
+  enabled: number;
+  fetch_interval_minutes: number;
+  last_fetched_at: string | null;
+  last_error: string | null;
+  error_count: number;
+  max_items_per_fetch: number;
+  auto_publish: number;
+  feed_for: string;
+  category_name?: string;
+}
+
+interface RssCategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+type Tab = 'overview' | 'rss-feeds' | 'mail-config' | 'compose' | 'cron';
 
 /* ─── Shared input style ──────────────────────────────────── */
 const inp: React.CSSProperties = {
@@ -19,8 +43,205 @@ const inp: React.CSSProperties = {
   borderRadius: 8, fontSize: '0.9375rem', outline: 'none', boxSizing: 'border-box',
 };
 
+/* ─── RSS Feeds tab styles ──────────────────────────────────── */
+const rssStyles = {
+  tableWrapper: {
+    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+    border: '1px solid rgba(0,0,0,0.04)',
+    overflowX: 'auto' as const,
+    WebkitOverflowScrolling: 'touch' as const,
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    minWidth: '800px',
+  },
+  tableHeader: {
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+  },
+  tableHeaderCell: {
+    padding: 'clamp(0.75rem, 2vw, 1.25rem) clamp(0.875rem, 2vw, 1.5rem)',
+    textAlign: 'left' as const,
+    fontWeight: 600,
+    fontSize: 'clamp(0.6875rem, 1.5vw, 0.75rem)',
+    color: '#475569',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    whiteSpace: 'nowrap' as const,
+    borderBottom: '1px solid rgba(0,0,0,0.06)',
+  },
+  tableCell: {
+    padding: 'clamp(0.75rem, 2vw, 1rem) clamp(0.875rem, 2vw, 1.25rem)',
+    fontSize: 'clamp(0.8125rem, 1.8vw, 0.875rem)',
+  },
+  urlCell: {
+    maxWidth: 'clamp(150px, 20vw, 280px)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+    color: '#64748b',
+  },
+  statusBadge: {
+    padding: '0.25rem 0.5rem',
+    borderRadius: '4px',
+    fontSize: 'clamp(0.75rem, 1.5vw, 0.8125rem)',
+    display: 'inline-block',
+  },
+  actionsCell: {
+    textAlign: 'right' as const,
+    whiteSpace: 'nowrap' as const,
+  },
+  actionButton: {
+    padding: 'clamp(0.375rem, 1vw, 0.5rem) clamp(0.625rem, 1.5vw, 1rem)',
+    fontSize: 'clamp(0.6875rem, 1.5vw, 0.8125rem)',
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    marginRight: '0.5rem',
+    marginBottom: '0.25rem',
+    whiteSpace: 'nowrap' as const,
+    display: 'inline-block',
+  },
+  actionLink: {
+    padding: 'clamp(0.375rem, 1vw, 0.5rem) clamp(0.625rem, 1.5vw, 1rem)',
+    fontSize: 'clamp(0.6875rem, 1.5vw, 0.8125rem)',
+    fontWeight: 600,
+    borderRadius: '6px',
+    textDecoration: 'none',
+    marginRight: '0.5rem',
+    marginBottom: '0.25rem',
+    whiteSpace: 'nowrap' as const,
+    display: 'inline-block',
+  },
+  emptyState: {
+    padding: 'clamp(2rem, 5vw, 3rem)',
+    textAlign: 'center' as const,
+    background: '#f8fafc',
+    borderRadius: '8px',
+  },
+  errorBox: {
+    background: '#fee2e2',
+    color: '#991b1b',
+    padding: '1rem',
+    borderRadius: '8px',
+    marginBottom: '1rem',
+    fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+  },
+  // Mobile card styles
+  cardContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: '1rem',
+  },
+  card: {
+    background: 'white',
+    borderRadius: '12px',
+    padding: '1.25rem',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+    border: '1px solid #e2e8f0',
+  },
+  cardHeader: {
+    marginBottom: '1rem',
+    paddingBottom: '1rem',
+    borderBottom: '1px solid #e2e8f0',
+  },
+  cardTitle: {
+    fontSize: '1.125rem',
+    fontWeight: 600,
+    color: '#0f172a',
+    marginBottom: '0.5rem',
+    wordBreak: 'break-word' as const,
+  },
+  cardUrl: {
+    fontSize: '0.8125rem',
+    color: '#64748b',
+    wordBreak: 'break-all' as const,
+    marginBottom: '0.5rem',
+  },
+  cardRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.75rem',
+    fontSize: '0.875rem',
+  },
+  cardLabel: {
+    color: '#64748b',
+    fontWeight: 500,
+  },
+  cardValue: {
+    color: '#0f172a',
+    fontWeight: 500,
+  },
+  cardActions: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '0.5rem',
+    marginTop: '1rem',
+    paddingTop: '1rem',
+    borderTop: '1px solid #e2e8f0',
+  },
+  cardButton: {
+    flex: '1 1 auto',
+    minWidth: '80px',
+    padding: '0.5rem 0.75rem',
+    fontSize: '0.8125rem',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontWeight: 600,
+  },
+  cardLink: {
+    flex: '1 1 auto',
+    minWidth: '80px',
+    padding: '0.5rem 0.75rem',
+    fontSize: '0.8125rem',
+    borderRadius: '6px',
+    textDecoration: 'none',
+    textAlign: 'center' as const,
+    fontWeight: 600,
+    display: 'inline-block',
+  },
+};
+
+const FEED_FOR_COLORS: Record<string, { bg: string; color: string }> = {
+  website: { bg: '#dbeafe', color: '#1e40af' },
+  newsletter: { bg: '#fce7f3', color: '#9d174d' },
+};
+
+function FeedForBadges({ feedFor }: { feedFor: string }) {
+  const parts = feedFor ? String(feedFor).split(',').map((v) => v.trim()).filter(Boolean) : ['website'];
+  return (
+    <span style={{ display: 'inline-flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+      {parts.map((p) => {
+        const c = FEED_FOR_COLORS[p] ?? { bg: '#f1f5f9', color: '#475569' };
+        return (
+          <span key={p} style={{ padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, background: c.bg, color: c.color, textTransform: 'capitalize' }}>
+            {p}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+const NEWSLETTER_TABS: { id: Tab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'rss-feeds', label: 'RSS Feeds' },
+  { id: 'mail-config', label: 'Mail Config' },
+  { id: 'compose', label: 'Compose & Send' },
+  { id: 'cron', label: 'Cron Settings' },
+];
+
 export default function NewsletterPage() {
-  const [tab, setTab] = useState<Tab>('overview');
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab') as Tab | null;
+  const initialTab: Tab = requestedTab && NEWSLETTER_TABS.some((t) => t.id === requestedTab) ? requestedTab : 'overview';
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   /* ── Overview state ── */
   const [feeds, setFeeds] = useState<NewsletterFeed[]>([]);
@@ -28,6 +249,17 @@ export default function NewsletterPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [overviewError, setOverviewError] = useState('');
+
+  /* ── RSS Feeds tab state ── */
+  const [rssFeeds, setRssFeeds] = useState<RssFeed[]>([]);
+  const [rssLoading, setRssLoading] = useState(true);
+  const [rssError, setRssError] = useState('');
+  const [fetchingId, setFetchingId] = useState<number | null>(null);
+  const [testingId, setTestingId] = useState<number | null>(null);
+  const [disablingAll, setDisablingAll] = useState(false);
+  const [rssCategories, setRssCategories] = useState<RssCategory[]>([]);
+  const [selectedRssCategoryId, setSelectedRssCategoryId] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
 
   /* ── Mail Config state ── */
   const [config, setConfig] = useState<MailConfig>({ host: '', port: '465', secure: 'true', user: '', pass: '', from: '' , source: 'env' });
@@ -90,6 +322,41 @@ export default function NewsletterPage() {
 
   useEffect(() => { loadOverview(); }, [loadOverview]);
 
+  /* ── Load RSS feeds + categories when tab changes ── */
+  const loadRssFeeds = useCallback(async () => {
+    setRssError('');
+    try {
+      const [feedsRes, categoriesRes] = await Promise.all([
+        fetch('/api/admin/rss-feeds', { headers: getAuthHeaders() }),
+        fetch('/api/admin/categories?limit=500', { headers: getAuthHeaders() }),
+      ]);
+      const feedsData = await feedsRes.json();
+      const categoriesData = await categoriesRes.json();
+
+      if (feedsData.success) setRssFeeds(feedsData.data);
+      else setRssError(feedsData.error || 'Failed to load feeds');
+
+      if (categoriesData.success) setRssCategories(categoriesData.data);
+    } catch {
+      setRssError('Failed to load data');
+    } finally {
+      setRssLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab !== 'rss-feeds') return;
+    loadRssFeeds();
+  }, [tab, loadRssFeeds]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   /* ── Load mail config when tab changes ── */
   useEffect(() => {
     if (tab !== 'mail-config') return;
@@ -151,6 +418,206 @@ export default function NewsletterPage() {
     } catch { setOverviewError('Delete request failed'); }
     finally { setDeleting(false); }
   };
+
+  /* ── RSS Feeds: fetch/test/toggle/disable-all/delete ── */
+  const handleFetch = async (id: number) => {
+    setFetchingId(id);
+    try {
+      const res = await fetch(`/api/admin/rss-feeds/${id}/fetch`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Fetched: ${data.data.postsCreated} posts created, ${data.data.itemsProcessed} items processed.`);
+        loadRssFeeds();
+      } else alert(data.error || 'Fetch failed');
+    } catch {
+      alert('Fetch request failed');
+    } finally {
+      setFetchingId(null);
+    }
+  };
+
+  const handleTest = async (id: number) => {
+    setTestingId(id);
+    try {
+      const res = await fetch(`/api/admin/rss-feeds/${id}/test`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.valid) {
+        alert(`Feed OK: ${data.data.itemCount} items.`);
+      } else {
+        const message = !res.ok ? (data.error || `Test failed (${res.status})`) : (data.data?.error || data.error || 'Test failed');
+        alert(message);
+      }
+    } catch {
+      alert('Test request failed');
+    } finally {
+      setTestingId(null);
+    }
+  };
+
+  const handleToggleEnabled = async (feed: RssFeed) => {
+    try {
+      const res = await fetch(`/api/admin/rss-feeds/${feed.id}`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: feed.enabled ? 0 : 1 }),
+      });
+      const data = await res.json();
+      if (data.success) loadRssFeeds();
+      else alert(data.error || 'Update failed');
+    } catch {
+      alert('Update failed');
+    }
+  };
+
+  const handleDisableAll = async () => {
+    if (!confirm('Disable ALL RSS feeds? This will stop all feeds from fetching.')) return;
+    setDisablingAll(true);
+    try {
+      const res = await fetch('/api/admin/rss-feeds', {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'disable-all' }),
+      });
+      const data = await res.json();
+      if (data.success) loadRssFeeds();
+      else alert(data.error || 'Failed to disable all feeds');
+    } catch {
+      alert('Request failed');
+    } finally {
+      setDisablingAll(false);
+    }
+  };
+
+  const handleDeleteRssFeed = async (id: number) => {
+    if (!confirm('Delete this RSS feed? Items and links will be removed.')) return;
+    try {
+      const res = await fetch(`/api/admin/rss-feeds/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) loadRssFeeds();
+      else alert(data.error || 'Delete failed');
+    } catch {
+      alert('Delete failed');
+    }
+  };
+
+  const filteredRssFeeds = selectedRssCategoryId
+    ? rssFeeds.filter((feed) => String(feed.category_id) === selectedRssCategoryId)
+    : rssFeeds;
+
+  const renderRssFeedCard = (feed: RssFeed) => (
+    <div key={feed.id} style={rssStyles.card}>
+      <div style={rssStyles.cardHeader}>
+        <div style={rssStyles.cardTitle}>{feed.name}</div>
+        <div style={rssStyles.cardUrl} title={feed.url}>{feed.url}</div>
+      </div>
+      <div style={rssStyles.cardRow}>
+        <span style={rssStyles.cardLabel}>Category:</span>
+        <span style={rssStyles.cardValue}>{feed.category_name ?? '—'}</span>
+      </div>
+      <div style={rssStyles.cardRow}>
+        <span style={rssStyles.cardLabel}>Interval:</span>
+        <span style={rssStyles.cardValue}>{feed.fetch_interval_minutes} min</span>
+      </div>
+      <div style={rssStyles.cardRow}>
+        <span style={rssStyles.cardLabel}>Last Fetch:</span>
+        <span style={rssStyles.cardValue}>
+          {feed.last_fetched_at ? new Date(feed.last_fetched_at).toLocaleString() : '—'}
+        </span>
+      </div>
+      <div style={rssStyles.cardRow}>
+        <span style={rssStyles.cardLabel}>Feed For:</span>
+        <span><FeedForBadges feedFor={feed.feed_for} /></span>
+      </div>
+      <div style={rssStyles.cardRow}>
+        <span style={rssStyles.cardLabel}>Status:</span>
+        <span>
+          <span style={{
+            ...rssStyles.statusBadge,
+            background: feed.enabled ? '#dcfce7' : '#f1f5f9',
+            color: feed.enabled ? '#166534' : '#64748b',
+          }}>
+            {feed.enabled ? 'On' : 'Off'}
+          </span>
+          {feed.last_error && (
+            <span style={{ marginLeft: '0.5rem', color: '#b91c1c', fontSize: '0.75rem' }} title={feed.last_error}>
+              ⚠️ Error
+            </span>
+          )}
+        </span>
+      </div>
+      <div style={rssStyles.cardActions}>
+        <button
+          type="button"
+          onClick={() => handleFetch(feed.id)}
+          disabled={!!fetchingId}
+          style={{
+            ...rssStyles.cardButton,
+            background: '#6366f1',
+            color: 'white',
+            cursor: fetchingId ? 'not-allowed' : 'pointer',
+            opacity: fetchingId ? 0.6 : 1,
+          }}
+        >
+          {fetchingId === feed.id ? 'Fetching…' : 'Fetch'}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTest(feed.id)}
+          disabled={!!testingId}
+          style={{
+            ...rssStyles.cardButton,
+            background: '#0ea5e9',
+            color: 'white',
+            cursor: testingId ? 'not-allowed' : 'pointer',
+            opacity: testingId ? 0.6 : 1,
+          }}
+        >
+          {testingId === feed.id ? 'Testing…' : 'Test'}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleToggleEnabled(feed)}
+          style={{
+            ...rssStyles.cardButton,
+            background: '#64748b',
+            color: 'white',
+          }}
+        >
+          {feed.enabled ? 'Disable' : 'Enable'}
+        </button>
+        <Link
+          href={`/admin/rss-feeds/edit/${feed.id}`}
+          style={{
+            ...rssStyles.cardLink,
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            color: 'white',
+          }}
+        >
+          Edit
+        </Link>
+        <button
+          type="button"
+          onClick={() => handleDeleteRssFeed(feed.id)}
+          style={{
+            ...rssStyles.cardButton,
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            color: 'white',
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
 
   /* ── Mail Config: save ── */
   const handleSaveConfig = async () => {
@@ -547,20 +1014,17 @@ export default function NewsletterPage() {
             <Link href="/admin/newsletter/categories" style={{ padding: '0.75rem 1.25rem', background: '#ede9fe', color: '#6366f1', borderRadius: '8px', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
               Categories
             </Link>
-            <Link href="/admin/rss-feeds" style={{ padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', borderRadius: '8px', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
-              Manage RSS Feeds
-            </Link>
+            {tab === 'rss-feeds' && (
+              <Link href="/admin/rss-feeds/create" style={{ padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', borderRadius: '8px', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
+                + Add RSS Feed
+              </Link>
+            )}
           </div>
         </div>
 
         {/* ── Tabs ── */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e2e8f0', marginBottom: '2rem' }}>
-          {([
-            { id: 'overview', label: 'Overview' },
-            { id: 'mail-config', label: 'Mail Config' },
-            { id: 'compose', label: 'Compose & Send' },
-            { id: 'cron', label: 'Cron Settings' },
-          ] as { id: Tab; label: string }[]).map(t => (
+          {NEWSLETTER_TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               padding: '0.75rem 1.5rem', background: 'none', border: 'none',
               borderBottom: tab === t.id ? '2px solid #6366f1' : '2px solid transparent',
@@ -595,7 +1059,7 @@ export default function NewsletterPage() {
                   {feeds.length === 0 ? (
                     <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: '10px', padding: '1.5rem', textAlign: 'center' as const }}>
                       <p style={{ color: '#92400e', fontWeight: 600, marginBottom: '0.5rem' }}>No newsletter feeds configured</p>
-                      <p style={{ color: '#a16207', fontSize: '0.875rem', margin: 0 }}>Go to <Link href="/admin/rss-feeds" style={{ color: '#6366f1', fontWeight: 600 }}>RSS Feeds</Link> and set <strong>Feed For → Newsletter</strong>.</p>
+                      <p style={{ color: '#a16207', fontSize: '0.875rem', margin: 0 }}>Go to <button type="button" onClick={() => setTab('rss-feeds')} style={{ color: '#6366f1', fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>RSS Feeds</button> and set <strong>Feed For → Newsletter</strong>.</p>
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
@@ -669,7 +1133,225 @@ export default function NewsletterPage() {
         )}
 
         {/* ══════════════════════════════════════
-            TAB 2 — MAIL CONFIG
+            TAB 2 — RSS FEEDS
+        ══════════════════════════════════════ */}
+        {tab === 'rss-feeds' && (
+          <>
+            {/* Category Filter */}
+            <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <label htmlFor="rss-category-filter" style={{ fontWeight: 500, color: '#475569', fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                Filter by Category:
+              </label>
+              <select
+                id="rss-category-filter"
+                value={selectedRssCategoryId}
+                onChange={(e) => setSelectedRssCategoryId(e.target.value)}
+                style={{
+                  padding: 'clamp(0.5rem, 1.5vw, 0.625rem) clamp(0.75rem, 2vw, 1rem)',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+                  background: 'white',
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                  minWidth: '200px',
+                }}
+              >
+                <option value="">All Categories</option>
+                {rssCategories.map((cat) => (
+                  <option key={cat.id} value={String(cat.id)}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              {selectedRssCategoryId && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedRssCategoryId('')}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  Clear Filter
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleDisableAll}
+                disabled={disablingAll || rssFeeds.length === 0}
+                style={{
+                  marginLeft: 'auto',
+                  padding: 'clamp(0.625rem, 1.5vw, 0.75rem) clamp(1rem, 2.5vw, 1.5rem)',
+                  background: disablingAll || rssFeeds.length === 0 ? '#94a3b8' : '#dc2626',
+                  color: 'white',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontWeight: 600,
+                  fontSize: 'clamp(0.8125rem, 1.8vw, 0.875rem)',
+                  whiteSpace: 'nowrap' as const,
+                  cursor: disablingAll || rssFeeds.length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {disablingAll ? 'Disabling…' : 'Disable All'}
+              </button>
+            </div>
+
+            {rssError && (
+              <div style={rssStyles.errorBox}>{rssError}</div>
+            )}
+
+            {rssLoading ? (
+              <p style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading...</p>
+            ) : filteredRssFeeds.length === 0 ? (
+              <div style={rssStyles.emptyState}>
+                <p style={{ color: '#64748b', marginBottom: '1rem', fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                  {selectedRssCategoryId ? 'No feeds found in this category.' : 'No RSS feeds yet.'}
+                </p>
+                {!selectedRssCategoryId && (
+                  <Link href="/admin/rss-feeds/create" style={{ color: '#ed8936', fontWeight: 600, fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                    Add your first feed
+                  </Link>
+                )}
+              </div>
+            ) : isMobile ? (
+              // Mobile Card View
+              <div style={rssStyles.cardContainer}>
+                {filteredRssFeeds.map(renderRssFeedCard)}
+              </div>
+            ) : (
+              // Desktop Table View
+              <div style={rssStyles.tableWrapper}>
+                <table style={rssStyles.table}>
+                  <thead style={rssStyles.tableHeader}>
+                    <tr>
+                      <th style={rssStyles.tableHeaderCell}>Name</th>
+                      <th style={rssStyles.tableHeaderCell}>URL</th>
+                      <th style={rssStyles.tableHeaderCell}>Category</th>
+                      <th style={rssStyles.tableHeaderCell}>Interval</th>
+                      <th style={rssStyles.tableHeaderCell}>Last fetch</th>
+                      <th style={rssStyles.tableHeaderCell}>Feed For</th>
+                      <th style={rssStyles.tableHeaderCell}>Status</th>
+                      <th style={{ ...rssStyles.tableHeaderCell, textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRssFeeds.map((feed, i) => (
+                      <tr
+                        key={feed.id}
+                        style={{ borderBottom: i < filteredRssFeeds.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none', transition: 'background 0.2s' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <td style={{ ...rssStyles.tableCell, fontWeight: 500 }}>{feed.name}</td>
+                        <td style={{ ...rssStyles.tableCell, ...rssStyles.urlCell }} title={feed.url}>
+                          {feed.url}
+                        </td>
+                        <td style={{ ...rssStyles.tableCell, color: '#64748b' }}>
+                          {feed.category_name ?? '—'}
+                        </td>
+                        <td style={{ ...rssStyles.tableCell, color: '#64748b' }}>
+                          {feed.fetch_interval_minutes} min
+                        </td>
+                        <td style={{ ...rssStyles.tableCell, color: '#64748b' }}>
+                          {feed.last_fetched_at ? new Date(feed.last_fetched_at).toLocaleString() : '—'}
+                        </td>
+                        <td style={rssStyles.tableCell}>
+                          <FeedForBadges feedFor={feed.feed_for} />
+                        </td>
+                        <td style={rssStyles.tableCell}>
+                          <span style={{
+                            ...rssStyles.statusBadge,
+                            background: feed.enabled ? '#dcfce7' : '#f1f5f9',
+                            color: feed.enabled ? '#166534' : '#64748b',
+                          }}>
+                            {feed.enabled ? 'On' : 'Off'}
+                          </span>
+                          {feed.last_error && (
+                            <span style={{ marginLeft: '0.5rem', color: '#b91c1c', fontSize: '0.75rem' }} title={feed.last_error}>
+                              ⚠️
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ ...rssStyles.tableCell, ...rssStyles.actionsCell }}>
+                          <button
+                            type="button"
+                            onClick={() => handleFetch(feed.id)}
+                            disabled={!!fetchingId}
+                            style={{
+                              ...rssStyles.actionButton,
+                              background: '#6366f1',
+                              color: 'white',
+                              cursor: fetchingId ? 'not-allowed' : 'pointer',
+                              opacity: fetchingId ? 0.6 : 1,
+                            }}
+                          >
+                            {fetchingId === feed.id ? 'Fetching…' : 'Fetch'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTest(feed.id)}
+                            disabled={!!testingId}
+                            style={{
+                              ...rssStyles.actionButton,
+                              background: '#0ea5e9',
+                              color: 'white',
+                              cursor: testingId ? 'not-allowed' : 'pointer',
+                              opacity: testingId ? 0.6 : 1,
+                            }}
+                          >
+                            {testingId === feed.id ? 'Testing…' : 'Test'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleEnabled(feed)}
+                            style={{
+                              ...rssStyles.actionButton,
+                              background: '#64748b',
+                              color: 'white',
+                            }}
+                          >
+                            {feed.enabled ? 'Disable' : 'Enable'}
+                          </button>
+                          <Link
+                            href={`/admin/rss-feeds/edit/${feed.id}`}
+                            style={{
+                              ...rssStyles.actionLink,
+                              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                              color: 'white',
+                            }}
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRssFeed(feed.id)}
+                            style={{
+                              ...rssStyles.actionButton,
+                              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                              color: 'white',
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══════════════════════════════════════
+            TAB 3 — MAIL CONFIG
         ══════════════════════════════════════ */}
         {tab === 'mail-config' && (
           <div style={{ maxWidth: 680 }}>
@@ -750,7 +1432,7 @@ export default function NewsletterPage() {
         )}
 
         {/* ══════════════════════════════════════
-            TAB 3 — COMPOSE & SEND
+            TAB 4 — COMPOSE & SEND
         ══════════════════════════════════════ */}
         {tab === 'compose' && (
           <div>
@@ -1013,7 +1695,7 @@ export default function NewsletterPage() {
         )}
 
         {/* ══════════════════════════════════════
-            TAB 4 — CRON SETTINGS
+            TAB 5 — CRON SETTINGS
         ══════════════════════════════════════ */}
         {tab === 'cron' && (
           <div style={{ maxWidth: 680 }}>
