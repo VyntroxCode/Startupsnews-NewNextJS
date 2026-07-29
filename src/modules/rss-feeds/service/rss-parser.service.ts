@@ -1,5 +1,6 @@
 import Parser from 'rss-parser';
 import type { ParsedRssItem } from '../domain/types';
+import { bestUrlFromSrcset, getAttr } from '../utils/content-extract';
 
 const FETCH_TIMEOUT_MS = Number(process.env.RSS_FETCH_TIMEOUT) || 30000;
 
@@ -87,10 +88,23 @@ export class RssParserService {
       return enclosure.url;
     }
 
-    // last resort: first <img> in content HTML (check content:encoded first, then content)
-    const htmlContent = (item as Record<string, unknown>)['content:encoded'] || item.content || '';
-    const imgMatch = String(htmlContent).match(/<img[^>]+src=["']([^"']+)["']/i);
-    if (imgMatch?.[1]) return imgMatch[1];
+    // last resort: first <img> in content HTML (check content:encoded first, then content).
+    // Prefer srcset/data-src over plain src — lazy-loaded markup often puts a
+    // tiny/blurry placeholder in `src` and the real (or higher-res) image in
+    // `data-src`/`srcset`.
+    const htmlContent = String((item as Record<string, unknown>)['content:encoded'] || item.content || '');
+    const imgTagMatch = htmlContent.match(/<img\b[^>]*>/i);
+    if (imgTagMatch) {
+      const tag = imgTagMatch[0];
+      const candidate =
+        bestUrlFromSrcset(getAttr(tag, 'srcset')) ||
+        bestUrlFromSrcset(getAttr(tag, 'data-srcset')) ||
+        getAttr(tag, 'data-src') ||
+        getAttr(tag, 'data-lazy-src') ||
+        getAttr(tag, 'data-original') ||
+        getAttr(tag, 'src');
+      if (candidate) return candidate;
+    }
 
     return undefined;
   }

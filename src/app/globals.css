@@ -622,6 +622,18 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin-top: 0;
   border: none !important;
   box-shadow: none;
+  position: relative;
+}
+
+/* Continuous dashed red timeline line running behind the dot markers */
+.startup-events-wrap .startup-events-list::before,
+.startup-events-wrap #mvp-feat-tab-col1::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  bottom: 8px;
+  border-left: 2px dashed #d6293e;
 }
 
 /* When no events: keep content area height so box doesn’t collapse */
@@ -631,19 +643,36 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .startup-events-wrap .startup-events-item {
   display: block;
+  position: relative;
   text-decoration: none;
   color: inherit;
   border: none;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px dashed #ccc;
   margin-bottom: 0;
-  padding-top: 2px;
-  padding-bottom: 5px;
+  padding: 10px 0 0 26px;
   border-radius: 0 !important;
   overflow: hidden;
 }
 
+/* Red dot marker sitting on the timeline for each entry */
+.startup-events-wrap .startup-events-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d6293e;
+  z-index: 1;
+}
+
 .startup-events-wrap .startup-events-item:first-child {
-  padding-top: 0;
+  padding-top: 2px;
+}
+
+.startup-events-wrap .startup-events-item:first-child::before {
+  top: 6px;
 }
 
 .startup-events-wrap .startup-events-item:last-child {
@@ -666,13 +695,14 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin-top: 0;
 }
 
-/* First line: smaller, lighter grey – LOCATION / DATE */
+/* Second line: smaller, lighter grey – LOCATION / DATE (below the title, like a timestamp) */
 .startup-events-wrap .mvp-cat-date-wrap {
   font-size: 0.7rem;
   color: #999;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-bottom: 5px;
+  margin-top: 5px;
+  margin-bottom: 0;
   line-height: 1.4;
   overflow: hidden;
 }
@@ -695,10 +725,10 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin: 0 3px;
 }
 
-/* Second line: larger, bolder, dark grey/black – event title */
+/* First line: larger, bolder, dark grey/black – event title */
 .startup-events-wrap .mvp-feat1-list-text h2 {
-  color: #333 !important;
-  font-size: 1rem !important;
+  color: #1a1a1a !important;
+  font-size: 1.05rem !important;
   font-weight: 700 !important;
   line-height: 1.4 !important;
   margin: 0 !important;
@@ -1154,14 +1184,12 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .sticky-sidebar-content .startup-events-wrap .startup-events-item {
   margin-bottom: 0;
-  /* padding-top: 14px;
-  padding-bottom: 14px; */
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px dashed #ccc;
   overflow: hidden;
 }
 
 .sticky-sidebar-content .startup-events-wrap .startup-events-item:first-child {
-  padding-top: 0;
+  padding-top: 2px;
 }
 
 .sticky-sidebar-content .startup-events-wrap .startup-events-item:last-child {

@@ -88,7 +88,7 @@ export default function NewsletterPage() {
           Newsletter Preferences
         </h1>
         <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0 0 8px', lineHeight: 1.6 }}>
-          Pick up to <strong style={{ color: '#0f172a' }}>3 sectors</strong> and your Morning Signal briefing will be curated just for you.
+          Pick up to <strong style={{ color: '#0f172a' }}>3 newsletter categories</strong> and your Morning Signal briefing will be curated just for you.
         </p>
       </div>
 
@@ -107,7 +107,7 @@ export default function NewsletterPage() {
               </div>
               <div>
                 <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Your Interests</h2>
-                <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.78rem' }}>Select sectors you care about</p>
+                <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.78rem' }}>Select newsletter categories you care about</p>
               </div>
             </div>
             {/* Progress indicator */}
@@ -217,7 +217,7 @@ export default function NewsletterPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
                 { icon: '🗓️', text: 'Your Morning Signal arrives daily at 8 AM in your timezone.' },
-                { icon: '🎯', text: 'Pick up to 3 sectors — only matching stories are included.' },
+                { icon: '🎯', text: 'Pick up to 3 newsletter categories — only matching stories are included.' },
                 { icon: '📬', text: 'Change your preferences anytime, it takes effect next send.' },
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>

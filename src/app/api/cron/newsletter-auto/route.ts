@@ -159,10 +159,14 @@ function buildSectorBlock(slug: string, items: NewsletterItem[]): string {
     return `
         <tr>
           <td width="68" valign="top"${isLast ? '' : ' style="padding-bottom:14px;"'}>
-            <img src="${esc(thumb)}" width="64" height="48" alt="" style="display:block;border-radius:6px;width:64px;height:48px;object-fit:cover;">
+            <a href="${esc(item.link)}" style="text-decoration:none;display:block;">
+              <img src="${esc(thumb)}" width="64" height="48" alt="" style="display:block;border-radius:6px;width:64px;height:48px;object-fit:cover;">
+            </a>
           </td>
           <td valign="top" style="padding-left:12px;${isLast ? '' : 'padding-bottom:14px;'}">
-            <p style="margin:0 0 3px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.4;font-weight:bold;color:#1A1A1A;">${esc(item.title)}</p>
+            <a href="${esc(item.link)}" style="text-decoration:none;">
+              <p style="margin:0 0 3px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.4;font-weight:bold;color:#1A1A1A;">${esc(item.title)}</p>
+            </a>
             <span style="font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#9A9A9A;">${esc(item.feed_name)}${ago ? ' &middot; ' + ago : ''}</span>
           </td>
         </tr>`;

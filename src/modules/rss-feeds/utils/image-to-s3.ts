@@ -7,9 +7,9 @@ import { S3Client, PutObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s
 import { imageSize } from 'image-size';
 
 /** Minimum bytes for an image to be used as featured (avoids 1x1 placeholders / tracking pixels). */
-const MIN_FEATURED_BYTES = 2048;
-/** Minimum width/height in pixels for featured image (avoids logos and tiny icons). */
-const MIN_FEATURED_DIMENSION = 200;
+const MIN_FEATURED_BYTES = 8192;
+/** Minimum width/height in pixels for featured image (avoids logos, tiny icons, and blurry lazy-load placeholders). */
+const MIN_FEATURED_DIMENSION = 400;
 
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 const S3_BUCKET = process.env.S3_BUCKET || 'startupnews-media-2026';

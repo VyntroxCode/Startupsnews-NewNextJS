@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import CompleteProfileWizard from './CompleteProfileWizard';
 
 interface AuthUser {
   id: number;
@@ -11,6 +12,8 @@ interface AuthUser {
   email: string;
   phone?: string;
   country?: string;
+  city?: string;
+  linkedin_url?: string;
 }
 
 interface ReportSection {
@@ -50,6 +53,18 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   const [brandStorySections, setBrandStorySections] = useState<ReportSection[]>([]);
   const [brandStoriesExpanded, setBrandStoriesExpanded] = useState(false);
 
+  const [showWizard, setShowWizard] = useState(false);
+  const [profilePercent, setProfilePercent] = useState<number | null>(null);
+
+  const refreshProfilePercent = () => {
+    const token = localStorage.getItem('pub_auth_token');
+    if (!token) return;
+    fetch('/api/public-auth/profile-status', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setProfilePercent(d.data.percent); })
+      .catch(() => {});
+  };
+
   // Auto-expand when on the reports page
   useEffect(() => {
     if (pathname?.startsWith('/dashboard/reports')) {
@@ -85,7 +100,19 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
         router.replace('/');
         return () => window.removeEventListener('resize', checkMobile);
       }
-      setUser(JSON.parse(raw));
+      const parsed = JSON.parse(raw) as AuthUser;
+      setUser(parsed);
+
+      fetch('/api/public-auth/profile-status', { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!d.success) return;
+          setProfilePercent(d.data.percent);
+          if (!d.data.complete && !sessionStorage.getItem('pending_profile_dismissed')) {
+            setShowWizard(true);
+          }
+        })
+        .catch(() => {});
     } catch {
       router.replace('/');
     }
@@ -102,6 +129,7 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   const handleLogout = () => {
     localStorage.removeItem('pub_auth_token');
     localStorage.removeItem('pub_auth_user');
+    sessionStorage.removeItem('pending_profile_dismissed');
     window.dispatchEvent(new Event('pub-auth-changed'));
     window.location.href = '/';
   };
@@ -319,6 +347,51 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
         ))}
       </nav>
 
+      {/* Profile completeness */}
+      {profilePercent !== null && profilePercent < 100 && (
+        <div style={{ padding: collapsed ? '0 10px 12px' : '0 16px 14px' }}>
+          {collapsed ? (
+            <button
+              type="button"
+              onClick={() => setShowWizard(true)}
+              title={`Profile ${profilePercent}% complete`}
+              style={{
+                width: '100%', height: 32, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                fontSize: 10, fontWeight: 800, color: profilePercent >= 100 ? '#16a34a' : '#ee1761',
+              }}
+            >
+              {profilePercent}%
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowWizard(true)}
+              style={{
+                width: '100%', textAlign: 'left', background: '#fff', border: '1px solid #e5e7eb',
+                borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563' }}>Profile</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: profilePercent >= 100 ? '#16a34a' : '#ee1761' }}>
+                  {profilePercent}%
+                </span>
+              </div>
+              <div style={{ height: 5, borderRadius: 3, background: '#f1f5f9', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%', width: `${profilePercent}%`, borderRadius: 3,
+                    background: profilePercent >= 100 ? '#16a34a' : 'linear-gradient(90deg, #ee1761, #f97316)',
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </div>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Logout bottom */}
       <div style={{ padding: collapsed ? '14px 10px' : '0 16px 16px' }}>
         <button
@@ -407,6 +480,13 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
             <main style={{ minHeight: '100vh' }}>{children}</main>
           </div>
         </div>
+      )}
+
+      {showWizard && (
+        <CompleteProfileWizard
+          onClose={() => { setShowWizard(false); refreshProfilePercent(); }}
+          onComplete={() => { setShowWizard(false); refreshProfilePercent(); }}
+        />
       )}
     </div>
   );

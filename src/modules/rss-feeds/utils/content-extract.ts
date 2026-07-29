@@ -23,15 +23,42 @@ function toAbsoluteUrl(raw: string, baseUrl: string): string {
   return src;
 }
 
-function firstUrlFromSrcset(raw: string): string {
+/**
+ * Pick the highest-resolution URL from a srcset attribute.
+ * srcset entries are commonly ordered smallest-first for lazy-loading, so
+ * naively taking the first entry grabs a blurry placeholder instead of the
+ * full-res image. We parse each entry's width (`400w`) or density (`2x`)
+ * descriptor and return the candidate with the largest value.
+ */
+export function bestUrlFromSrcset(raw: string): string {
   const srcset = decodeHtmlEntities(raw || "");
   if (!srcset) return "";
-  const first = srcset.split(",")[0]?.trim() || "";
-  if (!first) return "";
-  return first.split(/\s+/)[0] || "";
+
+  let bestUrl = "";
+  let bestScore = -1;
+
+  for (const entry of srcset.split(",")) {
+    const parts = entry.trim().split(/\s+/);
+    const url = parts[0] || "";
+    if (!url) continue;
+
+    const descriptor = parts[1] || "";
+    let score = 0;
+    const widthMatch = descriptor.match(/^(\d+(?:\.\d+)?)w$/i);
+    const densityMatch = descriptor.match(/^(\d+(?:\.\d+)?)x$/i);
+    if (widthMatch) score = parseFloat(widthMatch[1]);
+    else if (densityMatch) score = parseFloat(densityMatch[1]) * 1000;
+
+    if (score >= bestScore) {
+      bestScore = score;
+      bestUrl = url;
+    }
+  }
+
+  return bestUrl;
 }
 
-function getAttr(tag: string, name: string): string {
+export function getAttr(tag: string, name: string): string {
   const re = new RegExp(`${name}=["']([^"']+)["']`, "i");
   const m = tag.match(re);
   return m?.[1]?.trim() || "";
@@ -55,8 +82,8 @@ export function extractImageUrlsFromHtml(
       getAttr(tag, "data-src"),
       getAttr(tag, "data-lazy-src"),
       getAttr(tag, "data-original"),
-      firstUrlFromSrcset(getAttr(tag, "srcset")),
-      firstUrlFromSrcset(getAttr(tag, "data-srcset")),
+      bestUrlFromSrcset(getAttr(tag, "srcset")),
+      bestUrlFromSrcset(getAttr(tag, "data-srcset")),
     ].filter(Boolean);
 
     for (const candidate of candidates) {

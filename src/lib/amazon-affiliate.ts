@@ -121,21 +121,21 @@ export function buildAmazonNativeBlock(product: AmazonProduct): string {
             <tr>
               <td style="padding:14px 16px;">
                 <span style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:0.5px;text-transform:uppercase;color:#B9B9B9;">Sponsored</span>
+                <a href="${esc(product.url)}" style="display:block;text-decoration:none;color:inherit;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
                   <tr>
                     <td width="64" valign="top">
-                      <a href="${esc(product.url)}" style="display:block;text-decoration:none;">
-                        <img src="${esc(product.imageUrl)}" width="56" height="56" alt="${esc(product.title)}" style="display:block;border-radius:6px;width:56px;height:56px;object-fit:cover;">
-                      </a>
+                      <img src="${esc(product.imageUrl)}" width="56" height="56" alt="${esc(product.title)}" style="display:block;border-radius:6px;width:56px;height:56px;object-fit:cover;">
                     </td>
                     <td valign="top" style="padding-left:12px;">
                       <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;font-weight:bold;color:#1A1A1A;">${esc(product.title)}</p>
                       <span style="font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#9A9A9A;">Amazon.in${product.price ? ' &middot; ' + esc(product.price) : ''}</span>
                       <br>
-                      <a href="${esc(product.url)}" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#C13E70;text-decoration:none;display:inline-block;margin-top:4px;">Shop on Amazon &rarr;</a>
+                      <span style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#C13E70;display:inline-block;margin-top:4px;">Shop on Amazon &rarr;</span>
                     </td>
                   </tr>
                 </table>
+                </a>
               </td>
             </tr>
           </table>
@@ -153,12 +153,12 @@ export function buildAmazonBannerBlock(products: AmazonProduct[]): string {
     const pad = i === 0 ? 'padding-right:6px;' : 'padding-left:6px;';
     return `
                   <td width="50%" valign="top" style="${pad}">
-                    <a href="${esc(p.url)}" style="display:block;text-decoration:none;">
+                    <a href="${esc(p.url)}" style="display:block;text-decoration:none;color:inherit;">
                       <img src="${esc(p.imageUrl)}" width="100%" alt="${esc(p.title)}" style="display:block;border-radius:8px;width:100%;height:auto;">
+                      <p style="margin:6px 0 2px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#1A1A1A;line-height:1.4;">${esc(p.title)}</p>
+                      ${p.price ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#C13E70;">${esc(p.price)}</p>` : ''}
+                      <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#C13E70;">Buy on Amazon &rarr;</span>
                     </a>
-                    <p style="margin:6px 0 2px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#1A1A1A;line-height:1.4;">${esc(p.title)}</p>
-                    ${p.price ? `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#C13E70;">${esc(p.price)}</p>` : ''}
-                    <a href="${esc(p.url)}" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#C13E70;text-decoration:none;">Buy on Amazon &rarr;</a>
                   </td>`;
   }).join('');
 

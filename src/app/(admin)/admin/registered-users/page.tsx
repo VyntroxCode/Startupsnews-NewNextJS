@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { REGISTRATION_CATEGORIES } from "@/constants/registrationCategories";
+
+function categoryLabel(value?: string | null) {
+	if (!value) return null;
+	return REGISTRATION_CATEGORIES.find((c) => c.value === value)?.label || value;
+}
 
 interface RegisteredUser {
 	id: number;
@@ -15,6 +21,8 @@ interface RegisteredUser {
 	last_login?: string;
 	newsletter_category_slugs?: string | null;
 	timezone?: string | null;
+	category?: string | null;
+	website?: string | null;
 }
 
 interface Pagination {
@@ -119,6 +127,7 @@ export default function RegisteredUsersPage() {
 			u.email.toLowerCase().includes(q) ||
 			(u.country || "").toLowerCase().includes(q) ||
 			(u.city || "").toLowerCase().includes(q) ||
+			(u.category || "").toLowerCase().includes(q) ||
 			(u.phone || "").includes(q);
 		const matchFilter = filter === "all" || u.auth_provider === filter;
 		return matchSearch && matchFilter;
@@ -502,6 +511,7 @@ export default function RegisteredUsersPage() {
 									{[
 										"#",
 										"User",
+										"Category",
 										"Contact",
 										"Location",
 										"Timezone",
@@ -606,6 +616,49 @@ export default function RegisteredUsersPage() {
 													</p>
 												</div>
 											</div>
+										</td>
+
+										{/* Category */}
+										<td style={{ padding: "14px 16px", minWidth: 140 }}>
+											{categoryLabel(u.category) ? (
+												<span
+													style={{
+														display: "inline-flex",
+														padding: "4px 10px",
+														borderRadius: 20,
+														background: "#eff6ff",
+														border: "1px solid #bfdbfe",
+														color: "#1d4ed8",
+														fontSize: 11.5,
+														fontWeight: 700,
+														whiteSpace: "nowrap",
+													}}
+												>
+													{categoryLabel(u.category)}
+												</span>
+											) : (
+												<span style={{ color: "#cbd5e1", fontSize: 12 }}>Not set</span>
+											)}
+											{u.website && (
+												<a
+													href={u.website}
+													target="_blank"
+													rel="noopener noreferrer"
+													style={{
+														display: "block",
+														marginTop: 4,
+														fontSize: 11.5,
+														color: "#94a3b8",
+														textDecoration: "none",
+														maxWidth: 140,
+														overflow: "hidden",
+														textOverflow: "ellipsis",
+														whiteSpace: "nowrap",
+													}}
+												>
+													{u.website.replace(/^https?:\/\//, "")}
+												</a>
+											)}
 										</td>
 
 										{/* Contact */}

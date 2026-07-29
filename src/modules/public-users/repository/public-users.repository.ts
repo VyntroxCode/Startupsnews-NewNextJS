@@ -1,6 +1,20 @@
 import { query, queryOne, getDbConnection } from '@/shared/database/connection';
 import bcrypt from 'bcryptjs';
-import type { PublicUserEntity } from '../domain/types';
+import type { PublicUserEntity, RegistrationProfileFields, Founder, FundingRound } from '../domain/types';
+
+const PROFILE_FIELD_KEYS: (keyof RegistrationProfileFields)[] = [
+  'category', 'other_category', 'website',
+  's_name', 's_founded', 's_entity', 's_stage', 's_dpiit', 's_dpiit_number',
+  's_team_size', 's_revenue_status', 's_pitch', 's_raising', 's_amount_seeking', 's_crunchbase', 's_tracxn',
+  'i_firm', 'i_type', 'i_check_size', 'i_stage_focus', 'i_sector_focus', 'i_geo_focus',
+  'a_program_name', 'a_duration', 'a_sector_focus', 'a_equity_taken',
+  'c_platforms', 'c_niche', 'c_mediakit',
+  'l_firm', 'l_practice_areas', 'l_jurisdiction', 'l_years_experience',
+  'cs_firm', 'cs_membership_number', 'cs_services', 'cs_years_experience',
+  'ib_firm', 'ib_years_experience', 'ib_deal_types',
+  'bk_bank_name', 'bk_years_experience', 'bk_vertical',
+  'g_organization', 'g_role',
+];
 
 async function ensureTable() {
   const pool = await getDbConnection();
@@ -36,13 +50,99 @@ async function ensureTable() {
   await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS last_newsletter_sent_date DATE NULL DEFAULT NULL`);
   await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS newsletter_unsubscribed TINYINT(1) NOT NULL DEFAULT 0`);
 
+  // Registration-profile columns (category + per-category detail)
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS category VARCHAR(32) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS other_category VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS website VARCHAR(500) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bio VARCHAR(300) NULL DEFAULT NULL`);
+  // startup
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_name VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_founded INT NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_entity VARCHAR(32) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_stage VARCHAR(32) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_dpiit ENUM('yes','no') NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_dpiit_number VARCHAR(100) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_team_size VARCHAR(16) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_revenue_status VARCHAR(32) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_pitch VARCHAR(140) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_raising ENUM('yes','planning','no') NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_amount_seeking VARCHAR(100) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_crunchbase VARCHAR(500) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_tracxn VARCHAR(500) NULL DEFAULT NULL`);
+  // investor / vc / pe / familyoffice
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_firm VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_type VARCHAR(64) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_check_size VARCHAR(32) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_stage_focus VARCHAR(32) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_sector_focus VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_geo_focus VARCHAR(255) NULL DEFAULT NULL`);
+  // accelerator / incubator
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_program_name VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_duration VARCHAR(100) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_sector_focus VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_equity_taken DECIMAL(5,2) NULL DEFAULT NULL`);
+  // creator / media
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_platforms VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_niche VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_mediakit VARCHAR(500) NULL DEFAULT NULL`);
+  // lawyer
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_firm VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_practice_areas VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_jurisdiction VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_years_experience INT NULL DEFAULT NULL`);
+  // CA/CS
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_firm VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_membership_number VARCHAR(100) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_services VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_years_experience INT NULL DEFAULT NULL`);
+  // investment banker
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_firm VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_years_experience INT NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_deal_types VARCHAR(255) NULL DEFAULT NULL`);
+  // banker
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_bank_name VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_years_experience INT NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_vertical VARCHAR(32) NULL DEFAULT NULL`);
+  // generic (govt / consultant / coworking / university / student / other)
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS g_organization VARCHAR(255) NULL DEFAULT NULL`);
+  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS g_role VARCHAR(255) NULL DEFAULT NULL`);
+
   // Safe way to modify ENUM if not already updated (try-catch because syntax can be tricky if it exists, but MODIFY is usually fine)
   try {
     await conn.query(`ALTER TABLE public_registrations MODIFY COLUMN auth_provider ENUM('email', 'google', 'linkedin') NOT NULL DEFAULT 'email'`);
   } catch (err) {
     // Ignore enum update error if it already has the values
   }
-  
+
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS public_registration_founders (
+      id            INT AUTO_INCREMENT PRIMARY KEY,
+      pub_user_id   INT NOT NULL,
+      name          VARCHAR(255),
+      role          VARCHAR(255),
+      linkedin_url  VARCHAR(500),
+      sort_order    INT NOT NULL DEFAULT 0,
+      created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_pub_user_id (pub_user_id),
+      CONSTRAINT fk_founders_pub_user FOREIGN KEY (pub_user_id) REFERENCES public_registrations(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS public_registration_funding_rounds (
+      id            INT AUTO_INCREMENT PRIMARY KEY,
+      pub_user_id   INT NOT NULL,
+      round_type    VARCHAR(32),
+      amount        VARCHAR(100),
+      lead_investor VARCHAR(255),
+      round_date    VARCHAR(7),
+      sort_order    INT NOT NULL DEFAULT 0,
+      created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_pub_user_id (pub_user_id),
+      CONSTRAINT fk_rounds_pub_user FOREIGN KEY (pub_user_id) REFERENCES public_registrations(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   conn.release();
 }
 
@@ -200,7 +300,10 @@ export async function unsubscribeByEmail(email: string): Promise<{ found: boolea
   return { found: true };
 }
 
-export async function updateProfile(id: number, data: { phone?: string; country?: string; city?: string; linkedin_url?: string }): Promise<void> {
+export async function updateProfile(
+  id: number,
+  data: { phone?: string; country?: string; city?: string; linkedin_url?: string; bio?: string } & Partial<RegistrationProfileFields>
+): Promise<void> {
   const fields: string[] = [];
   const params: (string | number | boolean | null | Date)[] = [];
 
@@ -220,12 +323,67 @@ export async function updateProfile(id: number, data: { phone?: string; country?
     fields.push('linkedin_url = ?');
     params.push(data.linkedin_url || null);
   }
+  if (data.bio !== undefined) {
+    fields.push('bio = ?');
+    params.push(data.bio || null);
+  }
+  for (const key of PROFILE_FIELD_KEYS) {
+    if (data[key] !== undefined) {
+      fields.push(`${key} = ?`);
+      params.push((data[key] as string | number | null) ?? null);
+    }
+  }
 
   if (fields.length === 0) return;
 
+  await ensureTable();
   params.push(id);
   await query(
     `UPDATE public_registrations SET ${fields.join(', ')} WHERE id = ?`,
     params
   );
+}
+
+export async function replaceFounders(pubUserId: number, founders: Founder[]): Promise<void> {
+  await ensureTable();
+  await query('DELETE FROM public_registration_founders WHERE pub_user_id = ?', [pubUserId]);
+  const rows = founders.filter((f) => f.name || f.role || f.linkedin_url);
+  for (let i = 0; i < rows.length; i++) {
+    const f = rows[i];
+    await query(
+      'INSERT INTO public_registration_founders (pub_user_id, name, role, linkedin_url, sort_order) VALUES (?, ?, ?, ?, ?)',
+      [pubUserId, f.name || null, f.role || null, f.linkedin_url || null, i]
+    );
+  }
+}
+
+export async function replaceFundingRounds(pubUserId: number, rounds: FundingRound[]): Promise<void> {
+  await ensureTable();
+  await query('DELETE FROM public_registration_funding_rounds WHERE pub_user_id = ?', [pubUserId]);
+  const rows = rounds.filter((r) => r.round_type || r.amount || r.lead_investor || r.round_date);
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    await query(
+      'INSERT INTO public_registration_funding_rounds (pub_user_id, round_type, amount, lead_investor, round_date, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+      [pubUserId, r.round_type || null, r.amount || null, r.lead_investor || null, r.round_date || null, i]
+    );
+  }
+}
+
+export async function getFounders(pubUserId: number): Promise<Founder[]> {
+  await ensureTable();
+  return query<Founder>('SELECT name, role, linkedin_url FROM public_registration_founders WHERE pub_user_id = ? ORDER BY sort_order ASC', [pubUserId]);
+}
+
+export async function getFundingRounds(pubUserId: number): Promise<FundingRound[]> {
+  await ensureTable();
+  return query<FundingRound>('SELECT round_type, amount, lead_investor, round_date FROM public_registration_funding_rounds WHERE pub_user_id = ? ORDER BY sort_order ASC', [pubUserId]);
+}
+
+export async function getProfileDetail(pubUserId: number): Promise<{ user: PublicUserEntity | null; founders: Founder[]; fundingRounds: FundingRound[] }> {
+  await ensureTable();
+  const user = await queryOne<PublicUserEntity>('SELECT * FROM public_registrations WHERE id = ? LIMIT 1', [pubUserId]);
+  const founders = user?.category === 'startup' ? await getFounders(pubUserId) : [];
+  const fundingRounds = user?.category === 'startup' ? await getFundingRounds(pubUserId) : [];
+  return { user, founders, fundingRounds };
 }
