@@ -5,7 +5,8 @@ const repo = new ReportsRepository();
 
 export async function GET() {
   try {
-    await repo.publishDue().catch(() => {});
+    // Due reports are published by the report-scheduler cron job (every 5 min) —
+    // no need to run the publishDue() write on every read request.
     const reports = await repo.findActive();
     return NextResponse.json({ success: true, data: reports });
   } catch (err) {

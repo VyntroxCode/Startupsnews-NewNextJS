@@ -1,15 +1,25 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/Page/TextLayer.css';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
 import { getPublicToken } from '@/lib/public-auth';
 import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// react-pdf pulls in the ~pdf.js core, only needed once a report preview is opened —
+// load it on demand instead of bundling it into every /dashboard/reports page load.
+const Document = dynamic(() => import('react-pdf').then((m) => {
+  m.pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${m.pdfjs.version}/build/pdf.worker.min.mjs`;
+  return m.Document;
+}), { ssr: false });
+const Page = dynamic(() => import('react-pdf').then((m) => m.Page), { ssr: false });
+
+// Module-level constant so the reference is stable across renders — react-pdf treats a new
+// `options` object identity as "the document changed" and re-fetches from scratch otherwise.
+// A bigger chunk size means fewer round trips to fetch the byte ranges pdf.js needs, which
+// matters most for users far from the S3 bucket's region (high per-request latency).
+const PDF_LOAD_OPTIONS = { rangeChunkSize: 1024 * 1024 };
 
 interface Report {
   id: string;
@@ -57,7 +67,25 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [pdfNumPages, setPdfNumPages] = useState(0);
   const [pdfViewportWidth, setPdfViewportWidth] = useState(0);
+  const [pdfVisiblePages, setPdfVisiblePages] = useState(2);
   const pdfViewportRef = useRef<HTMLDivElement>(null);
+  const pdfSentinelObserver = useRef<IntersectionObserver | null>(null);
+
+  // Render pages incrementally as the user scrolls instead of mounting every page at once —
+  // a full-res canvas per page for a 10+ page PDF is expensive to render all at once.
+  const pdfSentinelRef = useCallback((node: HTMLDivElement | null) => {
+    pdfSentinelObserver.current?.disconnect();
+    pdfSentinelObserver.current = null;
+    if (!node || !pdfViewportRef.current) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) setPdfVisiblePages((c) => c + 2);
+      },
+      { root: pdfViewportRef.current, rootMargin: '600px 0px' }
+    );
+    io.observe(node);
+    pdfSentinelObserver.current = io;
+  }, []);
 
   useEffect(() => {
     const sync = () => setIsMobile(window.innerWidth <= 768);
@@ -68,6 +96,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     setPdfNumPages(0);
+    setPdfVisiblePages(2);
   }, [selectedReport]);
 
   useEffect(() => {
@@ -294,19 +323,30 @@ export default function ReportsPage() {
                 <div ref={pdfViewportRef} onContextMenu={(e) => e.preventDefault()} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', borderRadius: isMobile ? 8 : 12, background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isMobile ? 10 : 16, padding: isMobile ? '10px 0' : '16px 0' }}>
                   <Document
                     file={selectedReport.fileUrl}
+                    options={PDF_LOAD_OPTIONS}
                     onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
-                    loading={<p style={{ padding: 24, color: '#64748b', fontSize: 14 }}>Loading document…</p>}
+                    loading={
+                      selectedReport.thumbnailUrl ? (
+                        <div style={{ position: 'relative', width: '100%', maxWidth: 480, aspectRatio: '3 / 4' }}>
+                          <Image src={selectedReport.thumbnailUrl} alt="" fill sizes="480px" style={{ objectFit: 'contain' }} />
+                        </div>
+                      ) : (
+                        <p style={{ padding: 24, color: '#64748b', fontSize: 14 }}>Loading document…</p>
+                      )
+                    }
                     error={<p style={{ padding: 24, color: '#dc2626', fontSize: 14 }}>Failed to load PDF.</p>}
                   >
-                    {pdfViewportWidth > 0 && Array.from({ length: pdfNumPages }, (_, i) => (
+                    {pdfViewportWidth > 0 && Array.from({ length: Math.min(pdfVisiblePages, pdfNumPages) }, (_, i) => (
                       <div key={i} style={{ marginBottom: isMobile ? 10 : 16, boxShadow: '0 1px 6px rgba(15,23,42,0.12)' }}>
                         <Page
                           pageNumber={i + 1}
                           width={pdfViewportWidth}
                           renderAnnotationLayer={false}
+                          renderTextLayer={false}
                         />
                       </div>
                     ))}
+                    {pdfVisiblePages < pdfNumPages && <div ref={pdfSentinelRef} style={{ height: 1 }} />}
                   </Document>
                 </div>
               ) : isImage ? (
