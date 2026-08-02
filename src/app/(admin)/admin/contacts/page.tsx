@@ -62,7 +62,9 @@ const emptyDraft = (): ContactDraft => ({
    EXCEL COLUMN MATCHING (ported from the standalone prototype)
    ============================================================ */
 const FIELD_ALIASES: Record<string, string[]> = {
-  name: ['name', 'fullname', 'contactname', 'contact', 'foundername', 'founder', 'person', 'personname', 'contactperson', 'poc'],
+  // No bare 'contact' here — sheets commonly use a "Contact" column to mean the phone
+  // number, not the person's name; 'contactname'/'contactperson' cover the real intent.
+  name: ['name', 'fullname', 'contactname', 'foundername', 'founder', 'person', 'personname', 'contactperson', 'poc'],
   company: ['company', 'companyname', 'startup', 'startupname', 'organisation', 'organization', 'org', 'firm', 'brand', 'companystartup'],
   types: ['types', 'type', 'category', 'categories', 'segment', 'role', 'contacttype'],
   cities: ['cities', 'city', 'location', 'citytown', 'town', 'citypresence', 'basedin', 'baselocation', 'currentcity', 'homecity', 'hqcity', 'cityname', 'locations'],
@@ -78,7 +80,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
 };
 const MULTI_FIELDS = new Set(['types', 'cities', 'emails', 'phones', 'tags']);
 const FIELD_LABELS: Record<string, string> = {
-  name: 'Name *', company: 'Company', types: 'Types', cities: 'Cities', country: 'Country',
+  name: 'Name', company: 'Company', types: 'Types', cities: 'Cities', country: 'Country',
   emails: 'Emails', phones: 'Phones', linkedin: 'LinkedIn', instagram: 'Instagram',
   sector: 'Sector', stage: 'Stage', tags: 'Tags', notes: 'Notes',
 };
@@ -113,12 +115,14 @@ function buildHeaderMap(headers: string[]): Record<string, string> {
 }
 function rowToDraft(row: Record<string, unknown>, map: Record<string, string>): ContactDraft | null {
   const get = (f: string) => (map[f] !== undefined ? row[map[f]] : '');
-  let name = String(get('name') || '').trim();
+  // Every field comes straight from its own mapped column — a blank cell stays blank, never
+  // backfilled from another field (e.g. a blank Name never gets filled in from Email/Company).
+  const name = String(get('name') || '').trim();
   const company = String(get('company') || '').trim();
   const emailRaw = String(get('emails') || '').trim();
   const phoneRaw = String(get('phones') || '').trim();
-  if (!name) name = company || (emailRaw ? emailRaw.split(/[;,]/)[0].trim() : '') || (phoneRaw ? phoneRaw.split(/[;,]/)[0].trim() : '');
-  if (!name) return null;
+  // Drop the row only if there's nothing at all to identify the contact by.
+  if (!name && !company && !emailRaw && !phoneRaw) return null;
   const draft = emptyDraft();
   draft.name = name;
   for (const f of Object.keys(FIELD_ALIASES)) {
@@ -130,6 +134,15 @@ function rowToDraft(row: Record<string, unknown>, map: Record<string, string>): 
   return draft;
 }
 interface SheetRows { name: string; headers: string[]; rows: Record<string, unknown>[]; }
+function rowsFromAoa(aoa: unknown[][], headers: string[], startIdx: number): Record<string, unknown>[] {
+  const rows: Record<string, unknown>[] = [];
+  for (let i = startIdx; i < aoa.length; i++) {
+    const obj: Record<string, unknown> = {};
+    headers.forEach((h, ci) => { if (h !== '') obj[h] = (aoa[i] as unknown[])[ci]; });
+    if (Object.values(obj).some((v) => String(v).trim() !== '')) rows.push(obj);
+  }
+  return rows;
+}
 function readSheetRows(ws: XLSX.WorkSheet): { rows: Record<string, unknown>[]; headers: string[] } {
   const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false, defval: '' });
   if (!aoa.length) return { rows: [], headers: [] };
@@ -144,14 +157,45 @@ function readSheetRows(ws: XLSX.WorkSheet): { rows: Record<string, unknown>[]; h
     }
     if (score > bestScore) { bestScore = score; headerIdx = i; }
   }
-  const headers = aoa[headerIdx].map((h) => String(h).trim());
-  const rows: Record<string, unknown>[] = [];
-  for (let i = headerIdx + 1; i < aoa.length; i++) {
-    const obj: Record<string, unknown> = {};
-    headers.forEach((h, ci) => { if (h !== '') obj[h] = (aoa[i] as unknown[])[ci]; });
-    if (Object.values(obj).some((v) => String(v).trim() !== '')) rows.push(obj);
+  // No row scored as a recognizable header (e.g. a plain list of phone numbers with no
+  // title row) — don't guess one of the data rows is a header and silently lose it.
+  // Treat the whole sheet as headerless: synthetic column labels, every row is data.
+  if (bestScore <= 0) {
+    const width = aoa.reduce((max, r) => Math.max(max, r.length), 0);
+    const headers = Array.from({ length: width }, (_, i) => `Column ${i + 1}`);
+    return { rows: rowsFromAoa(aoa, headers, 0), headers };
   }
-  return { rows, headers };
+  const headers = aoa[headerIdx].map((h) => String(h).trim());
+  return { rows: rowsFromAoa(aoa, headers, headerIdx + 1), headers };
+}
+
+/** Field types we can confidently infer from cell content alone, without a recognizable header. */
+function looksLikeEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+function looksLikePhone(v: string): boolean {
+  const t = v.trim();
+  if (!t) return false;
+  const digits = t.replace(/\D/g, '');
+  if (digits.length < 6 || digits.length > 15) return false;
+  return /^[+\d][\d\s().-]*$/.test(t);
+}
+/**
+ * For columns a header-text match couldn't identify (blank/unrecognized header, e.g. a
+ * headerless "Column N" sheet), sample real cell values to guess emails/phones — the two
+ * field types with an unambiguous content signature. Never guessed this way: name/company
+ * (free text looks like anything), so those stay unmapped rather than risk a wrong guess.
+ */
+function detectColumnsByValue(headers: string[], rows: Record<string, unknown>[], map: Record<string, string>): void {
+  const used = new Set(Object.values(map));
+  const sample = rows.slice(0, 25);
+  for (const header of headers) {
+    if (!header || used.has(header)) continue;
+    const values = sample.map((r) => String(r[header] ?? '').trim()).filter(Boolean);
+    if (values.length < 3) continue;
+    if (!map.emails && values.every(looksLikeEmail)) { map.emails = header; used.add(header); continue; }
+    if (!map.phones && values.every(looksLikePhone)) { map.phones = header; used.add(header); continue; }
+  }
 }
 
 const EXPORT_COLUMNS = ['Name', 'Company', 'Types', 'Cities', 'Country', 'Emails', 'Phones', 'LinkedIn', 'Instagram', 'Sector', 'Stage', 'Tags', 'Notes'];
@@ -226,15 +270,8 @@ export default function ContactsPage() {
   const [newCity, setNewCity] = useState('');
   const [newCountry, setNewCountry] = useState('');
 
-  const [importReport, setImportReport] = useState<{ imported: number; updated: number; dropped: number; mapping: Record<string, string> | null; skippedSheets: { name: string; rows: number }[] } | null>(null);
-  const [pendingImport, setPendingImport] = useState<{ headers: string[]; rows: Record<string, unknown>[] } | null>(null);
-  const [lastImportSheets, setLastImportSheets] = useState<SheetRows[]>([]);
-  const [mapModalOpen, setMapModalOpen] = useState(false);
-  const [mapSelections, setMapSelections] = useState<Record<string, string>>({});
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [importProgress, setImportProgress] = useState<{ label: string; current: number; total: number } | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function showToast(msg: string, kind: 'success' | 'error' = 'success') {
     setToast({ msg, kind });
@@ -267,13 +304,20 @@ export default function ContactsPage() {
   const tagOptions = useMemo(() => [...new Set([...config.tags, ...contacts.flatMap((c) => c.tags)].filter(Boolean))].sort(), [config.tags, contacts]);
   const typeOptions = useMemo(() => [...new Set([...config.types, ...contacts.flatMap((c) => c.types)].filter(Boolean))].sort(), [config.types, contacts]);
 
+  // Built once per contacts change, not per keystroke — search then just does a cheap lookup
+  // instead of re-concatenating every contact's fields on every render.
+  const searchIndex = useMemo(() => {
+    const map = new Map<number, string>();
+    contacts.forEach((c) => {
+      map.set(c.id, `${c.name} ${c.company} ${c.cities.join(' ')} ${c.country} ${c.sector} ${c.tags.join(' ')} ${c.emails.join(' ')} ${c.phones.join(' ')} ${c.notes}`.toLowerCase());
+    });
+    return map;
+  }, [contacts]);
+
   const filtered = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
     return contacts.filter((c) => {
-      if (q) {
-        const hay = `${c.name} ${c.company} ${c.cities.join(' ')} ${c.country} ${c.sector} ${c.tags.join(' ')} ${c.emails.join(' ')} ${c.phones.join(' ')} ${c.notes}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+      if (q && !(searchIndex.get(c.id) ?? '').includes(q)) return false;
       if (cityFilter && !c.cities.includes(cityFilter)) return false;
       if (typeFilter) {
         if (typeFilter === 'Investor') { if (!contactIsInvestor(c)) return false; }
@@ -283,7 +327,7 @@ export default function ContactsPage() {
       if (tagFilter && !c.tags.includes(tagFilter)) return false;
       return true;
     });
-  }, [contacts, deferredSearch, cityFilter, typeFilter, countryFilter, tagFilter]);
+  }, [contacts, searchIndex, deferredSearch, cityFilter, typeFilter, countryFilter, tagFilter]);
 
   const sorted = useMemo(() => {
     const getVal = (c: Contact) => {
@@ -293,7 +337,15 @@ export default function ContactsPage() {
       return c.country;
     };
     const dir = sortDir === 'asc' ? 1 : -1;
-    return [...filtered].sort((a, b) => getVal(a).localeCompare(getVal(b), undefined, { sensitivity: 'base' }) * dir);
+    // Blank values (e.g. a phone-only import with no name) always sort to the very end,
+    // regardless of sort direction — they're not part of the A-Z/Z-A ordering.
+    return [...filtered].sort((a, b) => {
+      const av = getVal(a), bv = getVal(b);
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      return av.localeCompare(bv, undefined, { sensitivity: 'base' }) * dir;
+    });
   }, [filtered, sortKey, sortDir]);
 
   function toggleSort(key: 'name' | 'company' | 'city' | 'country') {
@@ -420,117 +472,6 @@ export default function ContactsPage() {
     await loadContacts();
   }
 
-  /* ---- EXCEL IMPORT ---- */
-  const IMPORT_BATCH_SIZE = 300;
-
-  async function uploadDraftsInBatches(drafts: ContactDraft[]): Promise<{ imported: number; updated: number; dropped: number } | null> {
-    const totalRows = drafts.length;
-    let imported = 0;
-    let updated = 0;
-    let dropped = 0;
-    for (let offset = 0; offset < totalRows; offset += IMPORT_BATCH_SIZE) {
-      const batch = drafts.slice(offset, offset + IMPORT_BATCH_SIZE);
-      setImportProgress({ label: `Uploading contacts — ${offset.toLocaleString()} of ${totalRows.toLocaleString()}…`, current: offset, total: totalRows });
-      const importRes = await api<{ imported: number; updated: number; dropped: number }>('/api/admin/contacts/import', {
-        method: 'POST',
-        body: JSON.stringify({ rows: batch }),
-      });
-      if (!importRes.success || !importRes.data) {
-        showToast(importRes.error || 'Import failed partway through', 'error');
-        return null;
-      }
-      imported += importRes.data.imported;
-      updated += importRes.data.updated;
-      dropped += importRes.data.dropped;
-    }
-    setImportProgress({ label: `Uploaded ${totalRows.toLocaleString()} of ${totalRows.toLocaleString()}`, current: totalRows, total: totalRows });
-    return { imported, updated, dropped };
-  }
-
-  async function handleFileSelected(file: File) {
-    setBusy(true);
-    setImportProgress({ label: `Reading ${file.name}…`, current: 0, total: 1 });
-    try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array' });
-      const sheets: SheetRows[] = [];
-      for (const name of wb.SheetNames) {
-        const { rows, headers } = readSheetRows(wb.Sheets[name]);
-        if (rows.length) sheets.push({ name, headers, rows });
-      }
-      setLastImportSheets(sheets);
-
-      const allDrafts: ContactDraft[] = [];
-      let usedMapping: Record<string, string> | null = null;
-      const skippedSheets: { name: string; rows: number }[] = [];
-      let firstUnmapped: SheetRows | null = null;
-
-      for (const sheet of sheets) {
-        const map = buildHeaderMap(sheet.headers);
-        if (!map.name && !map.company && !map.emails && !map.phones) {
-          skippedSheets.push({ name: sheet.name, rows: sheet.rows.length });
-          if (!firstUnmapped) firstUnmapped = sheet;
-          continue;
-        }
-        usedMapping = map;
-        sheet.rows.forEach((r) => { const d = rowToDraft(r, map); if (d) allDrafts.push(d); });
-      }
-
-      if (!allDrafts.length) {
-        setBusy(false);
-        setImportProgress(null);
-        if (firstUnmapped) {
-          setPendingImport({ headers: firstUnmapped.headers, rows: firstUnmapped.rows });
-          setMapSelections(buildHeaderMap(firstUnmapped.headers));
-          setMapModalOpen(true);
-        } else {
-          showToast('No readable rows found in the file', 'error');
-        }
-        return;
-      }
-
-      const result = await uploadDraftsInBatches(allDrafts);
-      setBusy(false);
-      setImportProgress(null);
-      if (!result) return;
-
-      setImportReport({ imported: result.imported, updated: result.updated, dropped: result.dropped, mapping: usedMapping, skippedSheets });
-      showToast(`Imported ${result.imported.toLocaleString()} contacts${result.updated ? `, updated ${result.updated.toLocaleString()} duplicates` : ''}`);
-      await loadContacts();
-    } catch (err) {
-      setBusy(false);
-      setImportProgress(null);
-      showToast('Could not read file — is it a valid Excel/CSV?', 'error');
-      console.error(err);
-    }
-  }
-
-  function openRemap() {
-    if (!lastImportSheets.length) { showToast('Upload an Excel file first', 'error'); return; }
-    const main = lastImportSheets.reduce((a, b) => (b.rows.length > a.rows.length ? b : a));
-    const allRows = lastImportSheets.flatMap((sh) => sh.rows);
-    setPendingImport({ headers: main.headers, rows: allRows });
-    setMapSelections(buildHeaderMap(main.headers));
-    setMapModalOpen(true);
-  }
-
-  async function applyMapping() {
-    if (!pendingImport) return;
-    if (!mapSelections.name) { showToast('Please choose which column is the Name', 'error'); return; }
-    const drafts = pendingImport.rows.map((r) => rowToDraft(r, mapSelections)).filter((d): d is ContactDraft => !!d);
-    if (!drafts.length) { showToast('Still no rows with a name value', 'error'); return; }
-    setBusy(true);
-    setMapModalOpen(false);
-    const result = await uploadDraftsInBatches(drafts);
-    setBusy(false);
-    setImportProgress(null);
-    setPendingImport(null);
-    if (!result) return;
-    setImportReport({ imported: result.imported, updated: result.updated, dropped: result.dropped, mapping: mapSelections, skippedSheets: [] });
-    showToast(`Imported ${result.imported.toLocaleString()} contacts${result.updated ? `, updated ${result.updated.toLocaleString()} duplicates` : ''}`);
-    await loadContacts();
-  }
-
   /* ---- RENDER ---- */
   return (
     <AdminErrorBoundary>
@@ -541,19 +482,10 @@ export default function ContactsPage() {
             <p className="cm-subtitle">Contacts database — founders, investors, sponsors, venues, media</p>
           </div>
           <div className="cm-header-actions">
-            <button className="btn" disabled={busy} onClick={() => fileInputRef.current?.click()} title="Upload an Excel workbook">
-              {busy ? (<span className="cm-btn-loading"><svg className="cm-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg>Uploading…</span>) : 'Upload Excel'}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              style={{ display: 'none' }}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelected(f); e.target.value = ''; }}
-            />
-            <button className="btn" disabled={busy} onClick={openRemap} title="Re-assign which Excel column feeds each field">Fix columns</button>
+            <button className="btn" disabled={busy} onClick={() => setImportModalOpen(true)} title="Import contacts from an Excel or CSV file">Import contacts</button>
             <button className="btn btn-green" onClick={() => downloadContactsExcel(filtered, `SNF_contacts_${new Date().toISOString().slice(0, 10)}.xlsx`)}>Export Excel</button>
             <button className="btn btn-accent" onClick={openAddModal}>+ Add contact</button>
+            <button className="btn btn-danger" disabled={busy || !contacts.length} onClick={deleteAllContacts} title="Permanently delete every contact">Delete all</button>
           </div>
         </div>
 
@@ -659,7 +591,7 @@ export default function ContactsPage() {
                       return (
                         <tr key={c.id} className={sel ? 'row-selected' : ''}>
                           <td className="col-chk"><input type="checkbox" checked={sel} onChange={(e) => toggleRow(c.id, e.target.checked)} /></td>
-                          <td className="col-name"><span className="name-cell name-link" onClick={() => setViewingContactId(c.id)}>{c.name}</span></td>
+                          <td className="col-name"><span className="name-cell name-link" onClick={() => setViewingContactId(c.id)}>{c.name || <span className="muted">(no name)</span>}</span></td>
                           <td className="col-co" title={c.company}>{c.company || <span className="muted">—</span>}</td>
                           <td className="col-type">{c.types.length ? c.types.map((t) => <span key={t} className={`badge ${typeBadgeClass(t)}`}>{t}</span>) : <span className="muted">—</span>}</td>
                           <td className="col-city" title={c.cities.join(', ')}>{c.cities.length ? <>{c.cities[0]}{c.cities.length > 1 && <span className="multi-mini">+{c.cities.length - 1}</span>}</> : <span className="muted">—</span>}</td>
@@ -747,37 +679,12 @@ export default function ContactsPage() {
           />
         )}
 
-        {importReport && (
-          <ImportReportModal report={importReport} onClose={() => setImportReport(null)} onFix={() => { setImportReport(null); openRemap(); }} />
-        )}
-
-        {mapModalOpen && pendingImport && (
-          <MappingModal
-            headers={pendingImport.headers}
-            selections={mapSelections}
-            setSelections={setMapSelections}
-            onCancel={() => { setMapModalOpen(false); setPendingImport(null); }}
-            onApply={applyMapping}
-            busy={busy}
+        {importModalOpen && (
+          <ImportContactsModal
+            onClose={() => setImportModalOpen(false)}
+            onImported={loadContacts}
+            showToast={showToast}
           />
-        )}
-
-        {importProgress && (
-          <div className="overlay open">
-            <div className="cm-progress-modal">
-              <div className="cm-progress-title">Uploading Excel…</div>
-              <div className="cm-progress-label">{importProgress.label}</div>
-              <div className="cm-progress-track">
-                <div
-                  className="cm-progress-fill"
-                  style={{ width: `${importProgress.total ? Math.min(100, (importProgress.current / importProgress.total) * 100) : 0}%` }}
-                />
-              </div>
-              <div className="cm-progress-pct">
-                {importProgress.total ? Math.min(100, Math.round((importProgress.current / importProgress.total) * 100)) : 0}%
-              </div>
-            </div>
-          </div>
         )}
 
         {toast && <div className={`toast show ${toast.kind}`}>{toast.msg}</div>}
@@ -954,78 +861,209 @@ function ContactCardModal({ contact, onClose, onEdit, onDelete }: {
 }
 
 /* ============================================================
-   IMPORT REPORT + COLUMN MAPPING MODALS
+   IMPORT CONTACTS MODAL — pick file → map columns (if needed) → progress → report
    ============================================================ */
-function ImportReportModal({ report, onClose, onFix }: {
-  report: { imported: number; updated: number; dropped: number; mapping: Record<string, string> | null; skippedSheets: { name: string; rows: number }[] };
-  onClose: () => void; onFix: () => void;
+const IMPORT_BATCH_SIZE = 300;
+
+function importSummaryText(imported: number, updated: number): string {
+  const parts: string[] = [];
+  if (imported) parts.push(`Imported ${imported.toLocaleString()} new contact${imported === 1 ? '' : 's'}`);
+  if (updated) parts.push(`updated ${updated.toLocaleString()} duplicate${updated === 1 ? '' : 's'}`);
+  return parts.length ? parts.join(', ') : 'No new or matching contacts found';
+}
+
+type ImportStep = 'pick' | 'progress' | 'report';
+type ImportReportData = {
+  imported: number; updated: number; dropped: number;
+  mapping: Record<string, string> | null; skippedSheets: { name: string; rows: number }[];
+};
+
+function ImportContactsModal({ onClose, onImported, showToast }: {
+  onClose: () => void;
+  onImported: () => Promise<void>;
+  showToast: (msg: string, kind?: 'success' | 'error') => void;
 }) {
+  const [step, setStep] = useState<ImportStep>('pick');
+  const [dragOver, setDragOver] = useState(false);
+  const [progress, setProgress] = useState<{ label: string; current: number; total: number } | null>(null);
+  const [report, setReport] = useState<ImportReportData | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function uploadDrafts(drafts: ContactDraft[]): Promise<{ imported: number; updated: number; dropped: number; error?: string }> {
+    const totalRows = drafts.length;
+    let imported = 0, updated = 0, dropped = 0;
+    setStep('progress');
+    for (let offset = 0; offset < totalRows; offset += IMPORT_BATCH_SIZE) {
+      const batch = drafts.slice(offset, offset + IMPORT_BATCH_SIZE);
+      setProgress({ label: `Uploading contacts — ${offset.toLocaleString()} of ${totalRows.toLocaleString()}…`, current: offset, total: totalRows });
+
+      // Each batch is its own request — if one fails partway through (network drop, server
+      // error, non-JSON response), don't let it look like the whole file was invalid. Report
+      // exactly how many rows already committed instead.
+      const progressSoFar = `${offset.toLocaleString()} of ${totalRows.toLocaleString()} rows (${imported.toLocaleString()} imported, ${updated.toLocaleString()} updated) before the failure`;
+      let res: { success: boolean; data?: { imported: number; updated: number; dropped: number }; error?: string };
+      try {
+        res = await api<{ imported: number; updated: number; dropped: number }>('/api/admin/contacts/import', {
+          method: 'POST',
+          body: JSON.stringify({ rows: batch }),
+        });
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : 'connection to the server was lost';
+        return { imported, updated, dropped, error: `Upload stopped after ${progressSoFar} — ${reason}.` };
+      }
+      if (!res.success || !res.data) {
+        return { imported, updated, dropped, error: `Upload stopped after ${progressSoFar} — ${res.error || 'the server rejected this batch'}.` };
+      }
+      imported += res.data.imported;
+      updated += res.data.updated;
+      dropped += res.data.dropped;
+    }
+    setProgress({ label: `Uploaded ${totalRows.toLocaleString()} of ${totalRows.toLocaleString()}`, current: totalRows, total: totalRows });
+    return { imported, updated, dropped };
+  }
+
+  async function handleFile(file: File) {
+    setStep('progress');
+    setProgress({ label: `Reading ${file.name}…`, current: 0, total: 1 });
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const readSheets: SheetRows[] = [];
+      for (const name of wb.SheetNames) {
+        const { rows, headers } = readSheetRows(wb.Sheets[name]);
+        if (rows.length) readSheets.push({ name, headers, rows });
+      }
+
+      const allDrafts: ContactDraft[] = [];
+      let usedMapping: Record<string, string> | null = null;
+      const skippedSheets: { name: string; rows: number }[] = [];
+
+      // No manual mapping step — columns are matched by header text first, then (for
+      // whatever's left unmapped) by sniffing real cell values for an email/phone shape.
+      // A sheet only gets skipped if neither approach finds anything usable at all.
+      for (const sheet of readSheets) {
+        const map = buildHeaderMap(sheet.headers);
+        detectColumnsByValue(sheet.headers, sheet.rows, map);
+        if (!map.name && !map.company && !map.emails && !map.phones) {
+          skippedSheets.push({ name: sheet.name, rows: sheet.rows.length });
+          continue;
+        }
+        usedMapping = map;
+        sheet.rows.forEach((r) => { const d = rowToDraft(r, map); if (d) allDrafts.push(d); });
+      }
+
+      if (!allDrafts.length) {
+        setProgress(null);
+        showToast('No readable rows found in the file', 'error');
+        setStep('pick');
+        return;
+      }
+
+      const result = await uploadDrafts(allDrafts);
+      setProgress(null);
+      if (result.error) {
+        setStep('pick');
+        showToast(result.error, 'error');
+        if (result.imported || result.updated) await onImported();
+        return;
+      }
+
+      setReport({ imported: result.imported, updated: result.updated, dropped: result.dropped, mapping: usedMapping, skippedSheets });
+      setStep('report');
+      showToast(importSummaryText(result.imported, result.updated));
+      await onImported();
+    } catch (err) {
+      setProgress(null);
+      setStep('pick');
+      showToast('Could not read file — is it a valid Excel/CSV?', 'error');
+      console.error(err);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) handleFile(f);
+  }
+
+  const canDismiss = step !== 'progress';
+
   return (
-    <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ width: 560 }}>
-        <div className="modal-header"><h2>Import report</h2><button className="btn btn-ghost icon-btn" onClick={onClose}>×</button></div>
+    <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget && canDismiss) onClose(); }}>
+      <div className="modal" style={{ width: 520 }}>
+        <div className="modal-header">
+          <h2>Import contacts</h2>
+          {canDismiss && <button className="btn btn-ghost icon-btn" onClick={onClose}>×</button>}
+        </div>
         <div className="modal-body">
-          <p>
-            <b>{report.imported.toLocaleString()}</b> new contacts imported
-            {report.updated ? <>, <b>{report.updated.toLocaleString()}</b> existing duplicates updated (matched by email/phone)</> : ''}
-            {report.dropped ? <>, <b>{report.dropped.toLocaleString()}</b> rows dropped (missing name)</> : ''}.
-          </p>
-          {report.skippedSheets.length > 0 && (
-            <p style={{ color: '#b3261e', marginTop: 10 }}>
-              <b>Skipped sheets (headers not recognized):</b> {report.skippedSheets.map((s) => `${s.name} (~${s.rows} rows)`).join(', ')}. Use &quot;Fix columns&quot; to map them manually.
-            </p>
-          )}
-          {report.mapping && (
+          {step === 'pick' && (
             <>
-              <p style={{ marginTop: 12 }}><b>Detected column mapping:</b></p>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <tbody>
-                  {Object.keys(FIELD_LABELS).map((f) => (
-                    <tr key={f}>
-                      <td style={{ padding: '2px 8px', color: 'var(--text-muted)' }}>{FIELD_LABELS[f]}</td>
-                      <td style={{ padding: '2px 8px', color: report.mapping?.[f] ? undefined : '#b3261e' }}>{report.mapping?.[f] || '— not detected —'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button className="btn btn-accent" style={{ marginTop: 10 }} onClick={onFix}>Adjust column mapping</button>
+              <div
+                className={`import-drop ${dragOver ? 'over' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="import-drop-icon">⇪</div>
+                <div className="import-drop-title">Drop an Excel or CSV file here</div>
+                <div className="import-drop-sub">or click to browse — .xlsx, .xls, .csv</div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
+              />
+              <p className="import-hint">Columns are matched automatically (Name, Company, Emails, Phones…). Rows that match an existing contact by email or phone overwrite that contact.</p>
+            </>
+          )}
+
+          {step === 'progress' && progress && (
+            <div className="cm-progress-inline">
+              <div className="cm-progress-label">{progress.label}</div>
+              <div className="cm-progress-track">
+                <div className="cm-progress-fill" style={{ width: `${progress.total ? Math.min(100, (progress.current / progress.total) * 100) : 0}%` }} />
+              </div>
+              <div className="cm-progress-pct">{progress.total ? Math.min(100, Math.round((progress.current / progress.total) * 100)) : 0}%</div>
+            </div>
+          )}
+
+          {step === 'report' && report && (
+            <>
+              <p>
+                <b>{report.imported.toLocaleString()}</b> new contacts imported
+                {report.updated ? <>, <b>{report.updated.toLocaleString()}</b> existing duplicates updated (matched by email/phone)</> : ''}
+                {report.dropped ? <>, <b>{report.dropped.toLocaleString()}</b> rows dropped (no usable data)</> : ''}.
+              </p>
+              {report.skippedSheets.length > 0 && (
+                <p style={{ color: '#b3261e', marginTop: 10 }}>
+                  <b>Skipped sheets (no recognizable columns):</b> {report.skippedSheets.map((s) => `${s.name} (~${s.rows} rows)`).join(', ')}.
+                </p>
+              )}
+              {report.mapping && (
+                <>
+                  <p style={{ marginTop: 12 }}><b>Detected column mapping:</b></p>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <tbody>
+                      {Object.keys(FIELD_LABELS).map((f) => (
+                        <tr key={f}>
+                          <td style={{ padding: '2px 8px', color: 'var(--text-muted)' }}>{FIELD_LABELS[f]}</td>
+                          <td style={{ padding: '2px 8px', color: report.mapping?.[f] ? undefined : '#b3261e' }}>{report.mapping?.[f] || '— not detected —'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
             </>
           )}
         </div>
-        <div className="modal-footer"><button className="btn" onClick={onClose}>Close</button></div>
-      </div>
-    </div>
-  );
-}
-
-function MappingModal({ headers, selections, setSelections, onCancel, onApply, busy }: {
-  headers: string[]; selections: Record<string, string>; setSelections: (s: Record<string, string>) => void;
-  onCancel: () => void; onApply: () => void; busy: boolean;
-}) {
-  return (
-    <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal" style={{ width: 640 }}>
-        <div className="modal-header"><h2>Match your Excel columns</h2><button className="btn btn-ghost icon-btn" onClick={onCancel}>×</button></div>
-        <div className="modal-body">
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>We couldn&apos;t fully auto-detect your columns. Only <b>Name</b> is required.</p>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', marginBottom: 14, wordBreak: 'break-word' }}>
-            Found columns: {headers.join(', ')}
-          </div>
-          <div className="form-grid">
-            {Object.keys(FIELD_LABELS).map((f) => (
-              <div className="fg" key={f}>
-                <label>{FIELD_LABELS[f]}</label>
-                <select value={selections[f] || ''} onChange={(e) => setSelections({ ...selections, [f]: e.target.value })}>
-                  <option value="">— none —</option>
-                  {headers.map((h) => <option key={h} value={h}>{h}</option>)}
-                </select>
-              </div>
-            ))}
-          </div>
-        </div>
         <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-accent" disabled={busy} onClick={onApply}>{busy ? 'Importing…' : 'Import with this mapping'}</button>
+          {step === 'pick' && <button className="btn btn-ghost" onClick={onClose}>Cancel</button>}
+          {step === 'report' && <button className="btn" onClick={onClose}>Close</button>}
         </div>
       </div>
     </div>
@@ -1223,6 +1261,14 @@ function ContactsStyles() {
       .cm-progress-track { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
       .cm-progress-fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
       .cm-progress-pct { margin-top: 8px; font-size: 12px; color: var(--text-muted); text-align: right; }
+      .cm-progress-inline { padding: 12px 0 4px; }
+
+      .import-drop { border: 2px dashed var(--border-hover); border-radius: var(--radius-lg); padding: 36px 20px; text-align: center; cursor: pointer; background: var(--surface2); transition: border-color 0.12s ease, background 0.12s ease; }
+      .import-drop:hover, .import-drop.over { border-color: var(--accent); background: var(--accent-soft); }
+      .import-drop-icon { font-size: 26px; color: var(--accent); margin-bottom: 8px; }
+      .import-drop-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+      .import-drop-sub { font-size: 12px; color: var(--text-muted); }
+      .import-hint { font-size: 11.5px; color: var(--text-dim); margin-top: 12px; line-height: 1.5; }
 
       .card-modal { position: relative; width: 560px; }
       .card-modal-corner { position: absolute; top: 14px; right: 14px; display: flex; gap: 4px; z-index: 1; }

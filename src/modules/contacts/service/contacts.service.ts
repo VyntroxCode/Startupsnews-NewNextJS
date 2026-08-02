@@ -25,25 +25,23 @@ function clip(value: string, field: keyof typeof FIELD_LIMITS): string {
   return value.length > limit ? value.slice(0, limit) : value;
 }
 
+// Placeholder text ("N/A", "-", "tbd"...) is not a real identifier — never let it match two
+// unrelated contacts together during import.
+const PLACEHOLDER_TOKENS = new Set(['n/a', 'na', 'none', 'nil', 'null', 'tbd', 'unknown', 'test', 'xxx', '-', '--', '.']);
+
+/** Returns '' for anything that isn't a plausible, non-placeholder email — '' is never used as a match key. */
 function normEmail(e: string): string {
-  return e.trim().toLowerCase();
+  const v = e.trim().toLowerCase();
+  if (!v.includes('@') || PLACEHOLDER_TOKENS.has(v)) return '';
+  return v;
 }
 
+/** Returns '' for anything that isn't a plausible, non-placeholder phone number (e.g. repeated-digit filler). */
 function normPhone(p: string): string {
-  return p.replace(/\D/g, '');
-}
-
-// Case-insensitive union that keeps the first-seen casing.
-function unionArrays(a: string[], b: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const v of [...a, ...b]) {
-    const key = v.trim().toLowerCase();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push(v.trim());
-  }
-  return out;
+  const digits = p.replace(/\D/g, '');
+  if (digits.length < 6) return '';
+  if (/^(\d)\1+$/.test(digits)) return ''; // e.g. "0000000000", "1111111111"
+  return digits;
 }
 
 export class ContactsService {
@@ -126,16 +124,21 @@ export class ContactsService {
     const phoneIndex = new Map<string, number>();
     for (const r of indexRows) {
       for (const e of r.emails) { const k = normEmail(e); if (k) emailIndex.set(k, r.id); }
-      for (const p of r.phones) { const k = normPhone(p); if (k.length >= 6) phoneIndex.set(k, r.id); }
+      for (const p of r.phones) { const k = normPhone(p); if (k) phoneIndex.set(k, r.id); }
     }
 
     for (const row of rows) {
-      if (!row.name || !row.name.trim()) {
+      const emails = cleanArray(row.emails);
+      const phones = cleanArray(row.phones);
+      const nameVal = row.name?.trim() || '';
+      const companyVal = row.company?.trim() || '';
+      // A row needs at least one identifying value — name, company, email, or phone — to be
+      // worth storing. A blank name alone (e.g. a phone-only sheet) is fine: it imports with
+      // an empty name rather than being dropped or mislabeled with the phone number.
+      if (!nameVal && !companyVal && !emails.length && !phones.length) {
         dropped++;
         continue;
       }
-      const emails = cleanArray(row.emails);
-      const phones = cleanArray(row.phones);
 
       let matchId: number | null = null;
       for (const e of emails) {
@@ -144,9 +147,7 @@ export class ContactsService {
       }
       if (matchId === null) {
         for (const p of phones) {
-          const k = normPhone(p);
-          if (k.length < 6) continue;
-          const id = phoneIndex.get(k);
+          const id = phoneIndex.get(normPhone(p));
           if (id) { matchId = id; break; }
         }
       }
@@ -156,36 +157,48 @@ export class ContactsService {
           const existingEntity = await this.repository.findById(matchId);
           if (!existingEntity) throw new Error('Matched contact not found');
           const existing = entityToContact(existingEntity);
-          const mergedEmails = unionArrays(existing.emails, emails);
-          const mergedPhones = unionArrays(existing.phones, phones);
+
+          // Drop index entries for the old email/phone values before re-indexing under
+          // whatever values end up final below.
+          existing.emails.forEach((e) => { const k = normEmail(e); if (emailIndex.get(k) === matchId) emailIndex.delete(k); });
+          existing.phones.forEach((p) => { const k = normPhone(p); if (phoneIndex.get(k) === matchId) phoneIndex.delete(k); });
+
+          // Same rule for every field: the sheet overwrites a field only when it actually
+          // provides a value for it; a blank cell leaves the existing value untouched. This
+          // makes a re-import behave like a correction pass — fix a cell in the sheet, re-upload,
+          // it takes effect — without a blank column wiping data the contact already had.
+          const types = cleanArray(row.types);
+          const cities = cleanArray(row.cities);
+          const tags = cleanArray(row.tags);
+          const finalEmails = emails.length ? emails : existing.emails;
+          const finalPhones = phones.length ? phones : existing.phones;
           await this.repository.update(
             matchId,
             {
-              company: row.company?.trim() ? clip(row.company.trim(), 'company') : undefined,
+              name: nameVal ? clip(nameVal, 'name') : undefined,
+              company: companyVal ? clip(companyVal, 'company') : undefined,
               country: row.country?.trim() ? clip(row.country.trim(), 'country') : undefined,
               linkedin: row.linkedin?.trim() ? clip(row.linkedin.trim(), 'linkedin') : undefined,
               instagram: row.instagram?.trim() ? clip(row.instagram.trim(), 'instagram') : undefined,
               sector: row.sector?.trim() ? clip(row.sector.trim(), 'sector') : undefined,
               stage: row.stage?.trim() ? clip(row.stage.trim(), 'stage') : undefined,
-              notes: row.notes?.trim()
-                ? (existing.notes ? `${existing.notes}\n${row.notes.trim()}` : row.notes.trim())
-                : undefined,
-              types: unionArrays(existing.types, cleanArray(row.types)),
-              cities: unionArrays(existing.cities, cleanArray(row.cities)),
-              emails: mergedEmails,
-              phones: mergedPhones,
-              tags: unionArrays(existing.tags, cleanArray(row.tags)),
+              notes: row.notes?.trim() ? row.notes.trim() : undefined,
+              types: types.length ? types : undefined,
+              cities: cities.length ? cities : undefined,
+              emails: finalEmails,
+              phones: finalPhones,
+              tags: tags.length ? tags : undefined,
             },
             actor
           );
           updated++;
-          mergedEmails.forEach((e) => emailIndex.set(normEmail(e), matchId as number));
-          mergedPhones.forEach((p) => { const k = normPhone(p); if (k.length >= 6) phoneIndex.set(k, matchId as number); });
+          finalEmails.forEach((e) => { const k = normEmail(e); if (k) emailIndex.set(k, matchId as number); });
+          finalPhones.forEach((p) => { const k = normPhone(p); if (k) phoneIndex.set(k, matchId as number); });
         } else {
           const created = await this.repository.create(
             {
-              name: clip(row.name.trim(), 'name'),
-              company: clip(row.company?.trim() || '', 'company'),
+              name: clip(nameVal, 'name'),
+              company: clip(companyVal, 'company'),
               types: cleanArray(row.types),
               cities: cleanArray(row.cities),
               country: clip(row.country?.trim() || '', 'country'),
@@ -201,11 +214,11 @@ export class ContactsService {
             actor
           );
           imported++;
-          emails.forEach((e) => emailIndex.set(normEmail(e), created.id));
-          phones.forEach((p) => { const k = normPhone(p); if (k.length >= 6) phoneIndex.set(k, created.id); });
+          emails.forEach((e) => { const k = normEmail(e); if (k) emailIndex.set(k, created.id); });
+          phones.forEach((p) => { const k = normPhone(p); if (k) phoneIndex.set(k, created.id); });
         }
       } catch (error) {
-        console.error('Error importing contact row:', row.name, error);
+        console.error('Error importing contact row:', nameVal || companyVal || '(unnamed)', error);
         dropped++;
       }
     }

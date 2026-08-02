@@ -150,18 +150,26 @@ export class PostsRepository {
   /**
    * Publish scheduled posts whose published_at <= NOW()
    */
-  async publishScheduledPosts(): Promise<void> {
+  async publishScheduledPosts(): Promise<number> {
     const result = await query(
       `UPDATE posts SET status = 'published' WHERE status = 'scheduled' AND published_at <= NOW()`,
       []
     ) as { affectedRows?: number };
-    if (result.affectedRows && result.affectedRows > 0) {
+    const published = result.affectedRows || 0;
+    if (published > 0) {
       await invalidatePostsListCache();
-      // Bust Next.js ISR page cache so new posts appear immediately on refresh
-      revalidatePath('/', 'page');
-      revalidatePath('/news', 'page');
-      revalidatePath('/category/[slug]', 'page');
+      // Bust Next.js ISR page cache so new posts appear immediately on refresh.
+      // Swallow errors here: revalidatePath requires a Next.js request context, which
+      // isn't available when this runs from the standalone cron process.
+      try {
+        revalidatePath('/', 'page');
+        revalidatePath('/news', 'page');
+        revalidatePath('/category/[slug]', 'page');
+      } catch {
+        // no-op outside a Next.js request context
+      }
     }
+    return published;
   }
 
   /**

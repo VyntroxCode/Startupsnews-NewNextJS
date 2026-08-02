@@ -20,6 +20,7 @@ import { RssFeedWorker } from '@/workers/rss.worker';
 import { MorningSignalJob } from './jobs/morning-signal.job';
 import { ReportSchedulerJob } from './jobs/report-scheduler.job';
 import { BrandStorySchedulerJob } from './jobs/brand-story-scheduler.job';
+import { PostSchedulerJob } from './jobs/post-scheduler.job';
 
 loadEnvConfig(process.cwd());
 
@@ -159,6 +160,17 @@ async function start(): Promise<void> {
     }
   }, { timezone: 'UTC' });
   log.info('Brand story scheduler cron registered', { schedule: '*/5 * * * *' });
+
+  // Post scheduler: every 5 minutes — publishes posts whose published_at has passed
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const job = new PostSchedulerJob();
+      await job.execute();
+    } catch (err) {
+      log.error('Post scheduler failed', err);
+    }
+  }, { timezone: 'UTC' });
+  log.info('Post scheduler cron registered', { schedule: '*/5 * * * *' });
 }
 
 start().catch((err) => {
