@@ -15,6 +15,19 @@ import { getPostPath } from '@/lib/post-utils';
 
 type Tab = 'posts' | 'industry' | 'authors';
 
+function formatDateTime(iso?: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 interface FilterCategory {
   id: number;
   name: string;
@@ -36,6 +49,7 @@ interface Post {
   isGone410?: boolean;
   featured?: boolean;
   date: string;
+  publishedAt?: string;
   category: string;
   source?: 'manual' | 'rss';
   rssFeedName?: string;
@@ -967,7 +981,7 @@ export default function PostsPage() {
             )}
 
             {loading ? (
-              <LoadingSkeleton rows={10} columns={8} />
+              <LoadingSkeleton rows={10} columns={9} />
             ) : posts.length === 0 ? (
               <div style={{
                 background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
@@ -1148,7 +1162,19 @@ export default function PostsPage() {
                             letterSpacing: '0.05em',
                             borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
                           }}>
-                            Date
+                            Scheduled
+                          </th>
+                          <th style={{
+                            padding: '1.25rem 1.5rem',
+                            textAlign: 'left',
+                            fontWeight: '600',
+                            fontSize: '0.75rem',
+                            color: '#475569',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+                          }}>
+                            Published
                           </th>
                           <th style={{
                             padding: '1.25rem 1.5rem',
@@ -1212,10 +1238,10 @@ export default function PostsPage() {
                                 </span>
                               )}
                             </td>
-                            <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.9375rem' }}>
+                            <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.8125rem' }}>
                               {post.category}
                             </td>
-                            <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.9375rem' }}>
+                            <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.8125rem' }}>
                               {post.authorName || '—'}
                             </td>
                             <td style={{ padding: '1.25rem 1.5rem' }}>
@@ -1225,7 +1251,7 @@ export default function PostsPage() {
                                   alignItems: 'center',
                                   padding: '0.375rem 0.875rem',
                                   borderRadius: '6px',
-                                  fontSize: '0.8125rem',
+                                  fontSize: '0.75rem',
                                   fontWeight: '600',
                                   background: post.source === 'rss'
                                     ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)'
@@ -1236,14 +1262,14 @@ export default function PostsPage() {
                                 }}>
                                   {post.source === 'rss' ? (
                                     <>
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '0.25rem' }}>
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '0.25rem' }}>
                                         <path d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z"/>
                                       </svg>
                                       RSS
                                     </>
                                   ) : (
                                     <>
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.25rem' }}>
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.25rem' }}>
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                         <polyline points="14 2 14 8 20 8"></polyline>
                                         <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -1271,7 +1297,7 @@ export default function PostsPage() {
                                 alignItems: 'center',
                                 padding: '0.375rem 0.875rem',
                                 borderRadius: '6px',
-                                fontSize: '0.8125rem',
+                                fontSize: '0.75rem',
                                 fontWeight: '700',
                                 ...(post.httpStatus === 410
                                   ? { background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }
@@ -1288,7 +1314,7 @@ export default function PostsPage() {
                                 alignItems: 'center',
                                 padding: '0.375rem 0.875rem',
                                 borderRadius: '6px',
-                                fontSize: '0.8125rem',
+                                fontSize: '0.75rem',
                                 fontWeight: '600',
                                 ...(post.status === 'published'
                                   ? { background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', color: '#065f46', border: '1px solid #a7f3d0' }
@@ -1302,23 +1328,26 @@ export default function PostsPage() {
                                 {post.status || 'draft'}
                               </span>
                             </td>
-                            <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.9375rem' }}>
-                              {post.date}
+                            <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.8125rem' }}>
+                              {post.status === 'scheduled' ? formatDateTime(post.publishedAt) : '—'}
+                            </td>
+                            <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.8125rem' }}>
+                              {(post.status === 'published' || post.status === 'archived') ? formatDateTime(post.publishedAt) : '—'}
                             </td>
                             <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                              <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
                                 <a
                                   href={getPostPath(post)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   title="View on website"
                                   style={{
-                                    padding: '0.5rem 0.75rem',
+                                    padding: '0.35rem 0.6rem',
                                     background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                                     color: 'white',
                                     borderRadius: '6px',
                                     textDecoration: 'none',
-                                    fontSize: '0.8125rem',
+                                    fontSize: '0.75rem',
                                     fontWeight: '600',
                                     transition: 'all 0.2s',
                                     boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
@@ -1335,7 +1364,7 @@ export default function PostsPage() {
                                     e.currentTarget.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.2)';
                                   }}
                                 >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                                     <polyline points="15 3 21 3 21 9"></polyline>
                                     <line x1="10" y1="14" x2="21" y2="3"></line>
@@ -1345,12 +1374,12 @@ export default function PostsPage() {
                                 <Link
                                   href={`/admin/posts/edit/${post.id}`}
                                   style={{
-                                    padding: '0.5rem 1rem',
+                                    padding: '0.35rem 0.8rem',
                                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                                     color: 'white',
                                     borderRadius: '6px',
                                     textDecoration: 'none',
-                                    fontSize: '0.8125rem',
+                                    fontSize: '0.75rem',
                                     fontWeight: '600',
                                     transition: 'all 0.2s',
                                     boxShadow: '0 2px 4px rgba(245, 158, 11, 0.2)',
@@ -1369,13 +1398,13 @@ export default function PostsPage() {
                                 <button
                                   onClick={() => handleDeletePost(post.id)}
                                   style={{
-                                    padding: '0.5rem 1rem',
+                                    padding: '0.35rem 0.8rem',
                                     background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
-                                    fontSize: '0.8125rem',
+                                    fontSize: '0.75rem',
                                     fontWeight: '600',
                                     transition: 'all 0.2s',
                                     boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',

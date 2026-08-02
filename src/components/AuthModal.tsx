@@ -517,7 +517,6 @@ export default function AuthModal() {
 						onClick={(e) => e.stopPropagation()}
 						style={{
 							background: `linear-gradient(90deg, #f2b8cc 0%, ${modalTheme.brandSoft} 30%, ${modalTheme.panel} 50%, ${modalTheme.brandSoft} 72%, #f2b8cc 100%)`,
-							borderRadius: "12px 12px 0 0",
 							width: "100%",
 							maxWidth: isMobileBanner ? 1200 : "none",
 							boxShadow: "0 -4px 18px rgba(17,17,17,0.08)",
