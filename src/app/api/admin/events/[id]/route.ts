@@ -227,7 +227,15 @@ export async function PUT(
     if (body.excerpt !== undefined) updateData.excerpt = String(body.excerpt);
     if (body.description !== undefined) updateData.description = String(body.description);
     if (body.location !== undefined) updateData.location = String(body.location);
-    if (body.eventDate !== undefined) updateData.eventDate = body.eventDate as Date | string;
+    if (body.eventDate !== undefined) {
+      if (!String(body.eventDate).trim()) {
+        return NextResponse.json(
+          { success: false, error: 'Event date is required' },
+          { status: 400 }
+        );
+      }
+      updateData.eventDate = body.eventDate as Date | string;
+    }
     if (body.eventEndDate !== undefined) updateData.eventEndDate = (body.eventEndDate && String(body.eventEndDate).trim()) ? body.eventEndDate as Date | string : null;
     if (body.eventTime !== undefined) updateData.eventTime = (body.eventTime && String(body.eventTime).trim()) ? String(body.eventTime).trim() : null;
     if (body.eventEndTime !== undefined) updateData.eventEndTime = (body.eventEndTime && String(body.eventEndTime).trim()) ? String(body.eventEndTime).trim() : null;

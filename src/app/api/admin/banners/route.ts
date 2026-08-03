@@ -87,11 +87,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validation
-    if (!body.title || !body.imageUrl) {
+    if (!body.title || !body.imageUrl || !body.startDate) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Title and image URL are required',
+          error: 'Title, image URL, and start date are required',
         },
         { status: 400 }
       );

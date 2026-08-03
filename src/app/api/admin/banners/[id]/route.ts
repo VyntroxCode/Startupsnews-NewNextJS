@@ -90,6 +90,16 @@ export async function PUT(
 
     const body = await request.json();
 
+    if (body.startDate !== undefined && !String(body.startDate).trim()) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Start date is required',
+        },
+        { status: 400 }
+      );
+    }
+
     const banner = await bannersService.updateBanner({
       id: bannerId,
       title: body.title,

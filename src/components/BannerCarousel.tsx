@@ -13,8 +13,14 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Filter active banners
-  const activeBanners = banners.filter((banner) => banner.isActive);
+  // Filter active banners that are within their start/end date window
+  const now = Date.now();
+  const activeBanners = banners.filter((banner) => {
+    if (!banner.isActive) return false;
+    if (banner.startDate && new Date(banner.startDate).getTime() > now) return false;
+    if (banner.endDate && new Date(banner.endDate).getTime() < now) return false;
+    return true;
+  });
 
   // Auto-play carousel
   useEffect(() => {

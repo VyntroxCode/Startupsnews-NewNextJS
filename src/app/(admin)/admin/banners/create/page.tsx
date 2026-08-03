@@ -290,12 +290,13 @@ export default function CreateBannerPage() {
             fontWeight: '500',
             color: '#4a5568',
           }}>
-            Start Date (Optional)
+            Start Date *
           </label>
           <input
             type="datetime-local"
             value={formData.startDate}
             onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+            required
             style={{
               width: '100%',
               padding: '0.75rem',
@@ -337,7 +338,7 @@ export default function CreateBannerPage() {
           justifyContent: 'flex-end',
         }}>
           <Link
-            href="/admin/banners"
+            href="/admin/events?tab=banners"
             style={{
               padding: '0.75rem 1.5rem',
               border: '1px solid #e2e8f0',

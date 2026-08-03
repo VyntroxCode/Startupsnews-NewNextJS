@@ -282,7 +282,7 @@ export default function AdminDashboard() {
     ? [
         { href: '/admin/events/create', label: 'Create New Event', color1: '#48bb78', color2: '#38a169', shadow: 'rgba(72, 187, 120, 0.3)', shadowHover: 'rgba(72, 187, 120, 0.4)' },
         { href: '/admin/events?tab=regions', label: 'Manage Event Regions', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
-        { href: '/admin/banners/create', label: 'Manage Banner', color1: '#9f7aea', color2: '#805ad5', shadow: 'rgba(159, 122, 234, 0.3)', shadowHover: 'rgba(159, 122, 234, 0.4)' },
+        { href: '/admin/events?tab=banners', label: 'Manage Banner', color1: '#9f7aea', color2: '#805ad5', shadow: 'rgba(159, 122, 234, 0.3)', shadowHover: 'rgba(159, 122, 234, 0.4)' },
       ]
     : isPublisherAdmin
     ? [
