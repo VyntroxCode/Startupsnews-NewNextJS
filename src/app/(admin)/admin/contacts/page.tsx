@@ -4,6 +4,13 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode 
 import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
+import { cleanText } from '@/modules/contacts/utils/text-clean';
+import { extractCity, extractCountry, countryForCity } from '@/modules/contacts/utils/geo';
+import { normalizePhone } from '@/modules/contacts/utils/phone';
+import { normalizeEmail } from '@/modules/contacts/utils/email';
+import { detectType } from '@/modules/contacts/utils/type-detect';
+import { isEventBannerValue, isJunkName, looksLikePhoneNotName, blankRepeatedBannerNames } from '@/modules/contacts/utils/name-clean';
+import { findHeaderRow, type ContactField } from '@/modules/contacts/utils/header-map';
 
 /* ============================================================
    TYPES
@@ -59,114 +66,18 @@ const emptyDraft = (): ContactDraft => ({
 });
 
 /* ============================================================
-   EXCEL COLUMN MATCHING (ported from the standalone prototype)
+   EXCEL COLUMN MATCHING & ROW EXTRACTION
+   (ported from clean_contacts.py: weighted header detection, phone/email
+   validation, city/country canonicalization, junk-name & rescue-swap logic)
    ============================================================ */
-const FIELD_ALIASES: Record<string, string[]> = {
-  // No bare 'contact' here — sheets commonly use a "Contact" column to mean the phone
-  // number, not the person's name; 'contactname'/'contactperson' cover the real intent.
-  name: ['name', 'fullname', 'contactname', 'foundername', 'founder', 'person', 'personname', 'contactperson', 'poc'],
-  company: ['company', 'companyname', 'startup', 'startupname', 'organisation', 'organization', 'org', 'firm', 'brand', 'companystartup'],
-  types: ['types', 'type', 'category', 'categories', 'segment', 'role', 'contacttype'],
-  cities: ['cities', 'city', 'location', 'citytown', 'town', 'citypresence', 'basedin', 'baselocation', 'currentcity', 'homecity', 'hqcity', 'cityname', 'locations'],
-  country: ['country', 'nation', 'countryregion', 'region'],
-  emails: ['emails', 'email', 'emailid', 'emailaddress', 'mail', 'mailid', 'emailids'],
-  phones: ['phones', 'phone', 'mobile', 'mobileno', 'contactno', 'number', 'phoneno', 'whatsapp', 'contactnumber', 'mobilenumber', 'phonewhatsapp'],
-  linkedin: ['linkedin', 'linkedinurl', 'linkedinprofile', 'li'],
-  instagram: ['instagram', 'insta', 'instahandle', 'instagramhandle', 'ig'],
-  sector: ['sector', 'industry', 'vertical', 'domain', 'sectorindustry'],
-  stage: ['stage', 'level', 'round', 'fundingstage', 'stagelevel'],
-  tags: ['tags', 'tag', 'labels', 'label', 'keywords'],
-  notes: ['notes', 'note', 'remarks', 'remark', 'comments', 'comment', 'description', 'details'],
-};
-const MULTI_FIELDS = new Set(['types', 'cities', 'emails', 'phones', 'tags']);
-const FIELD_LABELS: Record<string, string> = {
+const FIELD_LABELS: Record<ContactField, string> = {
   name: 'Name', company: 'Company', types: 'Types', cities: 'Cities', country: 'Country',
   emails: 'Emails', phones: 'Phones', linkedin: 'LinkedIn', instagram: 'Instagram',
   sector: 'Sector', stage: 'Stage', tags: 'Tags', notes: 'Notes',
 };
 
-function normKey(s: unknown): string {
-  return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
-}
 function splitMulti(v: unknown): string[] {
   return String(v == null ? '' : v).split(/[;,/|\n]/).map((s) => s.trim()).filter(Boolean);
-}
-function buildHeaderMap(headers: string[]): Record<string, string> {
-  const normToOrig: Record<string, string> = {};
-  headers.forEach((h) => { normToOrig[normKey(h)] = h; });
-  const used = new Set<string>();
-  const map: Record<string, string> = {};
-  for (const field in FIELD_ALIASES) {
-    for (const alias of FIELD_ALIASES[field]) {
-      const orig = normToOrig[alias];
-      if (orig !== undefined && !used.has(orig)) { map[field] = orig; used.add(orig); break; }
-    }
-  }
-  for (const field in FIELD_ALIASES) {
-    if (map[field]) continue;
-    const hit = headers.find((h) => {
-      if (used.has(h)) return false;
-      const nh = normKey(h);
-      return FIELD_ALIASES[field].some((a) => a.length >= 4 && (nh.includes(a) || a.includes(nh)) && nh.length >= 4);
-    });
-    if (hit) { map[field] = hit; used.add(hit); }
-  }
-  return map;
-}
-function rowToDraft(row: Record<string, unknown>, map: Record<string, string>): ContactDraft | null {
-  const get = (f: string) => (map[f] !== undefined ? row[map[f]] : '');
-  // Every field comes straight from its own mapped column — a blank cell stays blank, never
-  // backfilled from another field (e.g. a blank Name never gets filled in from Email/Company).
-  const name = String(get('name') || '').trim();
-  const company = String(get('company') || '').trim();
-  const emailRaw = String(get('emails') || '').trim();
-  const phoneRaw = String(get('phones') || '').trim();
-  // Drop the row only if there's nothing at all to identify the contact by.
-  if (!name && !company && !emailRaw && !phoneRaw) return null;
-  const draft = emptyDraft();
-  draft.name = name;
-  for (const f of Object.keys(FIELD_ALIASES)) {
-    if (f === 'name') continue;
-    const raw = get(f);
-    if (MULTI_FIELDS.has(f)) (draft as unknown as Record<string, string[]>)[f] = splitMulti(raw);
-    else (draft as unknown as Record<string, string>)[f] = String(raw == null ? '' : raw).trim();
-  }
-  return draft;
-}
-interface SheetRows { name: string; headers: string[]; rows: Record<string, unknown>[]; }
-function rowsFromAoa(aoa: unknown[][], headers: string[], startIdx: number): Record<string, unknown>[] {
-  const rows: Record<string, unknown>[] = [];
-  for (let i = startIdx; i < aoa.length; i++) {
-    const obj: Record<string, unknown> = {};
-    headers.forEach((h, ci) => { if (h !== '') obj[h] = (aoa[i] as unknown[])[ci]; });
-    if (Object.values(obj).some((v) => String(v).trim() !== '')) rows.push(obj);
-  }
-  return rows;
-}
-function readSheetRows(ws: XLSX.WorkSheet): { rows: Record<string, unknown>[]; headers: string[] } {
-  const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false, defval: '' });
-  if (!aoa.length) return { rows: [], headers: [] };
-  let headerIdx = 0, bestScore = -1;
-  const scan = Math.min(aoa.length, 8);
-  for (let i = 0; i < scan; i++) {
-    const cells = aoa[i].map(normKey).filter(Boolean);
-    if (!cells.length) continue;
-    let score = 0;
-    for (const field in FIELD_ALIASES) {
-      if (cells.some((c) => FIELD_ALIASES[field].includes(c) || FIELD_ALIASES[field].some((a) => c.includes(a)))) score++;
-    }
-    if (score > bestScore) { bestScore = score; headerIdx = i; }
-  }
-  // No row scored as a recognizable header (e.g. a plain list of phone numbers with no
-  // title row) — don't guess one of the data rows is a header and silently lose it.
-  // Treat the whole sheet as headerless: synthetic column labels, every row is data.
-  if (bestScore <= 0) {
-    const width = aoa.reduce((max, r) => Math.max(max, r.length), 0);
-    const headers = Array.from({ length: width }, (_, i) => `Column ${i + 1}`);
-    return { rows: rowsFromAoa(aoa, headers, 0), headers };
-  }
-  const headers = aoa[headerIdx].map((h) => String(h).trim());
-  return { rows: rowsFromAoa(aoa, headers, headerIdx + 1), headers };
 }
 
 /** Field types we can confidently infer from cell content alone, without a recognizable header. */
@@ -182,20 +93,149 @@ function looksLikePhone(v: string): boolean {
 }
 /**
  * For columns a header-text match couldn't identify (blank/unrecognized header, e.g. a
- * headerless "Column N" sheet), sample real cell values to guess emails/phones — the two
- * field types with an unambiguous content signature. Never guessed this way: name/company
- * (free text looks like anything), so those stay unmapped rather than risk a wrong guess.
+ * headerless sheet), sample real cell values to guess emails/phones — the two field types
+ * with an unambiguous content signature. Never guessed this way: name/company (free text
+ * looks like anything), so those stay unmapped rather than risk a wrong guess.
  */
-function detectColumnsByValue(headers: string[], rows: Record<string, unknown>[], map: Record<string, string>): void {
-  const used = new Set(Object.values(map));
+function detectColumnsByValue(rows: unknown[][], width: number, cols: Partial<Record<ContactField, number>>): void {
+  const used = new Set(Object.values(cols));
   const sample = rows.slice(0, 25);
-  for (const header of headers) {
-    if (!header || used.has(header)) continue;
-    const values = sample.map((r) => String(r[header] ?? '').trim()).filter(Boolean);
+  for (let ci = 0; ci < width; ci++) {
+    if (used.has(ci)) continue;
+    const values = sample.map((r) => String(r[ci] ?? '').trim()).filter(Boolean);
     if (values.length < 3) continue;
-    if (!map.emails && values.every(looksLikeEmail)) { map.emails = header; used.add(header); continue; }
-    if (!map.phones && values.every(looksLikePhone)) { map.phones = header; used.add(header); continue; }
+    if (!cols.emails && values.every(looksLikeEmail)) { cols.emails = ci; used.add(ci); continue; }
+    if (!cols.phones && values.every(looksLikePhone)) { cols.phones = ci; used.add(ci); continue; }
   }
+}
+
+interface SheetAoa { name: string; aoa: unknown[][]; }
+
+/** Builds one contact draft from a raw row + resolved column map, applying the same
+ * rescue/junk/canonicalization pipeline as clean_contacts.py's extract_from_sheet(). */
+function buildDraftFromRow(row: unknown[], cols: Partial<Record<ContactField, number>>, phoneHeader: string): ContactDraft | null {
+  const get = (f: ContactField): unknown => (cols[f] !== undefined ? row[cols[f]!] : undefined);
+
+  let name = cleanText(get('name'));
+  let company = cleanText(get('company'));
+  const citiesRaw = get('cities');
+  const cities = Array.from(new Set(splitMulti(citiesRaw).map(extractCity).filter(Boolean)));
+  let country = extractCountry(get('country'));
+  if (!country) country = extractCountry(citiesRaw); // a full address in the city cell may name the country
+  if (!country && cities.length) country = countryForCity(cities[0]);
+
+  if (name && isEventBannerValue(name)) name = ''; // event/banner text is not a person's name
+  if (name && isJunkName(name)) name = ''; // hashtag caption / courier code / placeholder dash
+
+  // rescue an email/phone that was placed in Name or Company by mistake
+  let rescuedEmail = '', rescuedPhone = '', rescuedPhoneAmbiguous = '';
+  for (const [fieldVal, isName] of [[name, true], [company, false]] as const) {
+    if (!fieldVal) continue;
+    const emTry = normalizeEmail(fieldVal);
+    if (emTry) {
+      rescuedEmail = rescuedEmail || emTry;
+      if (isName) name = ''; else company = '';
+      continue;
+    }
+    const phTry = normalizePhone(fieldVal, { countryHint: country });
+    if (phTry.value && !phTry.uncertain) {
+      rescuedPhone = rescuedPhone || phTry.value;
+      if (isName) name = ''; else company = '';
+    } else if (phTry.value && isName && looksLikePhoneNotName(fieldVal)) {
+      // ambiguous country, but this Name cell is clearly phone-shaped text --
+      // keep the number as a fallback rather than losing it entirely.
+      rescuedPhoneAmbiguous = rescuedPhoneAmbiguous || phTry.value;
+    }
+  }
+  // final safety net: a Name field that's really just a phone number should
+  // never be shown as if it were a person's name.
+  if (name && looksLikePhoneNotName(name)) name = '';
+
+  let phones = Array.from(new Set(
+    splitMulti(get('phones'))
+      .map((p) => normalizePhone(p, { header: phoneHeader, countryHint: country }))
+      .filter((p) => p.value)
+      .map((p) => p.value)
+  ));
+  let emails = Array.from(new Set(splitMulti(get('emails')).map(normalizeEmail).filter(Boolean)));
+  if (!phones.length && rescuedPhone) phones = [rescuedPhone];
+  if (!phones.length && rescuedPhoneAmbiguous) phones = [rescuedPhoneAmbiguous];
+  if (!emails.length && rescuedEmail) emails = [rescuedEmail];
+
+  // swap recovery: the phone cell actually holds an email & the email cell holds a phone
+  if (!phones.length || !emails.length) {
+    const altPh = normalizePhone(get('emails'), { countryHint: country });
+    const altEm = normalizeEmail(get('phones'));
+    if (altPh.value && altEm) { phones = [altPh.value]; emails = [altEm]; }
+  }
+
+  // Every field a header couldn't map stays blank, never backfilled from another field.
+  // Drop the row only if there's nothing at all to identify the contact by.
+  if (!name && !company && !emails.length && !phones.length) return null;
+
+  const draft = emptyDraft();
+  draft.name = name;
+  draft.company = company;
+  draft.cities = cities;
+  draft.country = country;
+  draft.emails = emails;
+  draft.phones = phones;
+  draft.linkedin = cleanText(get('linkedin'));
+  draft.instagram = cleanText(get('instagram'));
+  draft.sector = cleanText(get('sector'));
+  draft.stage = cleanText(get('stage'));
+  draft.notes = cleanText(get('notes'));
+  const explicitTypes = splitMulti(get('types'));
+  const autoType = explicitTypes.length ? '' : detectType(company, cleanText(get('types')));
+  draft.types = explicitTypes.length ? explicitTypes : autoType ? [autoType] : [];
+  draft.tags = splitMulti(get('tags'));
+  return draft;
+}
+
+/** Parses one worksheet (already read into an array-of-arrays) into contact drafts,
+ * mirroring clean_contacts.py's extract_from_sheet(): detect the header row (or fall
+ * back to value-sniffing a headerless sheet), extract every data row, then blank any
+ * name string that turns out to be repeated banner/event text within this sheet. */
+function extractSheet(aoa: unknown[][]): { drafts: ContactDraft[]; mapping: Partial<Record<ContactField, string>> | null } {
+  if (!aoa.length) return { drafts: [], mapping: null };
+  const { headerIdx, cols } = findHeaderRow(aoa);
+  const width = aoa.reduce((max, r) => Math.max(max, r.length), 0);
+
+  let headerRow: unknown[] | null = null;
+  let startRow: number;
+  const resolvedCols: Partial<Record<ContactField, number>> = { ...cols };
+
+  if (headerIdx === null) {
+    // No row scored as a recognizable header (e.g. a plain list of phone numbers with
+    // no title row) — don't guess one of the data rows is a header. Sniff every column
+    // by value instead; if nothing usable turns up, skip the sheet.
+    detectColumnsByValue(aoa, width, resolvedCols);
+    startRow = 0;
+  } else {
+    headerRow = aoa[headerIdx];
+    startRow = headerIdx + 1;
+    detectColumnsByValue(aoa.slice(startRow), width, resolvedCols);
+  }
+
+  if (resolvedCols.name === undefined && resolvedCols.company === undefined && resolvedCols.emails === undefined && resolvedCols.phones === undefined) {
+    return { drafts: [], mapping: null };
+  }
+
+  const mapping: Partial<Record<ContactField, string>> = {};
+  (Object.keys(resolvedCols) as ContactField[]).forEach((f) => {
+    const idx = resolvedCols[f]!;
+    mapping[f] = headerRow ? cleanText(headerRow[idx]) : `Column ${idx + 1}`;
+  });
+  const phoneHeader = resolvedCols.phones !== undefined ? mapping.phones || '' : '';
+
+  const drafts: ContactDraft[] = [];
+  for (let r = startRow; r < aoa.length; r++) {
+    const row = aoa[r];
+    if (!row || !row.some((v) => String(v ?? '').trim() !== '')) continue;
+    const draft = buildDraftFromRow(row, resolvedCols, phoneHeader);
+    if (draft) drafts.push(draft);
+  }
+  return { drafts: blankRepeatedBannerNames(drafts), mapping };
 }
 
 const EXPORT_COLUMNS = ['Name', 'Company', 'Types', 'Cities', 'Country', 'Emails', 'Phones', 'LinkedIn', 'Instagram', 'Sector', 'Stage', 'Tags', 'Notes'];
@@ -875,7 +915,7 @@ function importSummaryText(imported: number, updated: number): string {
 type ImportStep = 'pick' | 'progress' | 'report';
 type ImportReportData = {
   imported: number; updated: number; dropped: number;
-  mapping: Record<string, string> | null; skippedSheets: { name: string; rows: number }[];
+  mapping: Partial<Record<ContactField, string>> | null; skippedSheets: { name: string; rows: number }[];
 };
 
 function ImportContactsModal({ onClose, onImported, showToast }: {
@@ -928,28 +968,27 @@ function ImportContactsModal({ onClose, onImported, showToast }: {
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array' });
-      const readSheets: SheetRows[] = [];
+      const readSheets: SheetAoa[] = [];
       for (const name of wb.SheetNames) {
-        const { rows, headers } = readSheetRows(wb.Sheets[name]);
-        if (rows.length) readSheets.push({ name, headers, rows });
+        const aoa = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name], { header: 1, blankrows: false, defval: '' });
+        if (aoa.length) readSheets.push({ name, aoa });
       }
 
       const allDrafts: ContactDraft[] = [];
-      let usedMapping: Record<string, string> | null = null;
+      let usedMapping: Partial<Record<ContactField, string>> | null = null;
       const skippedSheets: { name: string; rows: number }[] = [];
 
       // No manual mapping step — columns are matched by header text first, then (for
       // whatever's left unmapped) by sniffing real cell values for an email/phone shape.
       // A sheet only gets skipped if neither approach finds anything usable at all.
       for (const sheet of readSheets) {
-        const map = buildHeaderMap(sheet.headers);
-        detectColumnsByValue(sheet.headers, sheet.rows, map);
-        if (!map.name && !map.company && !map.emails && !map.phones) {
-          skippedSheets.push({ name: sheet.name, rows: sheet.rows.length });
+        const { drafts, mapping } = extractSheet(sheet.aoa);
+        if (!mapping) {
+          skippedSheets.push({ name: sheet.name, rows: Math.max(sheet.aoa.length - 1, 0) });
           continue;
         }
-        usedMapping = map;
-        sheet.rows.forEach((r) => { const d = rowToDraft(r, map); if (d) allDrafts.push(d); });
+        usedMapping = mapping;
+        allDrafts.push(...drafts);
       }
 
       if (!allDrafts.length) {
@@ -1017,7 +1056,7 @@ function ImportContactsModal({ onClose, onImported, showToast }: {
                 style={{ display: 'none' }}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
               />
-              <p className="import-hint">Columns are matched automatically (Name, Company, Emails, Phones…). Rows that match an existing contact by email or phone overwrite that contact.</p>
+              <p className="import-hint">Columns are matched automatically (Name, Company, Emails, Phones…). Phone numbers are validated and cities/countries are canonicalized (e.g. Bangalore → Bengaluru). Rows that match an existing contact by email or phone overwrite that contact — two different people who only share one contact point (e.g. a reception desk) are kept separate unless their names agree.</p>
             </>
           )}
 
@@ -1048,7 +1087,7 @@ function ImportContactsModal({ onClose, onImported, showToast }: {
                   <p style={{ marginTop: 12 }}><b>Detected column mapping:</b></p>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <tbody>
-                      {Object.keys(FIELD_LABELS).map((f) => (
+                      {(Object.keys(FIELD_LABELS) as ContactField[]).map((f) => (
                         <tr key={f}>
                           <td style={{ padding: '2px 8px', color: 'var(--text-muted)' }}>{FIELD_LABELS[f]}</td>
                           <td style={{ padding: '2px 8px', color: report.mapping?.[f] ? undefined : '#b3261e' }}>{report.mapping?.[f] || '— not detected —'}</td>

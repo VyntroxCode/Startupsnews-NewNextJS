@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: "StartupNews.fyi",
-    title: "Startup News | News from Startups India and across the globe",
+    title: "StartupNews.fyi | News from Startups India and across the globe",
     description:
       "Your trusted source for startup news, funding rounds, and tech innovation across AI, fintech, ecommerce, healthtech, and more.",
     images: [

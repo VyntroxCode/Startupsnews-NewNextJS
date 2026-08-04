@@ -2,6 +2,9 @@ import { queryOne, query } from '@/shared/database/connection';
 import { ContactsRepository } from '../repository/contacts.repository';
 import { BulkAction, ContactFilters, ContactInput, ContactsConfig, DEFAULT_CONTACTS_CONFIG } from '../domain/types';
 import { entityToContact } from '../utils/contacts.utils';
+import { normalizeEmail } from '../utils/email';
+import { phoneMatchKey } from '../utils/phone';
+import { normNameForMatch } from '../utils/name-clean';
 
 const CONFIG_SETTINGS_KEY = 'contacts_config';
 
@@ -25,23 +28,41 @@ function clip(value: string, field: keyof typeof FIELD_LIMITS): string {
   return value.length > limit ? value.slice(0, limit) : value;
 }
 
-// Placeholder text ("N/A", "-", "tbd"...) is not a real identifier — never let it match two
-// unrelated contacts together during import.
-const PLACEHOLDER_TOKENS = new Set(['n/a', 'na', 'none', 'nil', 'null', 'tbd', 'unknown', 'test', 'xxx', '-', '--', '.']);
+// '' is never used as a match key.
+const normEmail = normalizeEmail;
+const normPhone = phoneMatchKey;
 
-/** Returns '' for anything that isn't a plausible, non-placeholder email — '' is never used as a match key. */
-function normEmail(e: string): string {
-  const v = e.trim().toLowerCase();
-  if (!v.includes('@') || PLACEHOLDER_TOKENS.has(v)) return '';
-  return v;
+/** One existing/imported contact known to hold a given email or phone value. */
+interface IndexEntry { id: number; name: string; }
+
+function indexGet(index: Map<string, IndexEntry[]>, key: string): IndexEntry[] {
+  return key ? index.get(key) || [] : [];
 }
-
-/** Returns '' for anything that isn't a plausible, non-placeholder phone number (e.g. repeated-digit filler). */
-function normPhone(p: string): string {
-  const digits = p.replace(/\D/g, '');
-  if (digits.length < 6) return '';
-  if (/^(\d)\1+$/.test(digits)) return ''; // e.g. "0000000000", "1111111111"
-  return digits;
+function indexAdd(index: Map<string, IndexEntry[]>, key: string, entry: IndexEntry) {
+  if (!key) return;
+  const bucket = index.get(key);
+  if (!bucket) { index.set(key, [entry]); return; }
+  const existing = bucket.find((b) => b.id === entry.id);
+  if (existing) existing.name = entry.name;
+  else bucket.push(entry);
+}
+function indexRemove(index: Map<string, IndexEntry[]>, key: string, id: number) {
+  const bucket = index.get(key);
+  if (!bucket) return;
+  const next = bucket.filter((b) => b.id !== id);
+  if (next.length) index.set(key, next); else index.delete(key);
+}
+function dedupeById(entries: IndexEntry[]): IndexEntry[] {
+  const seen = new Map<number, IndexEntry>();
+  for (const e of entries) seen.set(e.id, e);
+  return [...seen.values()];
+}
+/** Tier-2 rule: a value shared with exactly one contact only counts as a match when the
+ * names agree, or one/both is blank -- stops two different people who share one contact
+ * point (a reception desk phone, a shared team inbox) from being silently merged. */
+function nameAgrees(rowNameKey: string, candidateName: string): boolean {
+  const candidateKey = normNameForMatch(candidateName);
+  return !rowNameKey || !candidateKey || rowNameKey === candidateKey;
 }
 
 export class ContactsService {
@@ -118,13 +139,20 @@ export class ContactsService {
     let dropped = 0;
 
     // Existing contacts sharing an email or phone with an imported row are updated
-    // in place instead of creating a duplicate record.
+    // in place instead of creating a duplicate record. Matching is tiered, same as the
+    // offline cleaning tool this was ported from:
+    //   - a candidate confirmed by BOTH an email AND a phone match is merged unconditionally
+    //     (name is irrelevant -- two identical contact points is about as certain as it gets).
+    //   - a candidate found via only an email OR only a phone match is merged ONLY when the
+    //     names agree (or one/both is blank), so two different people who happen to share one
+    //     contact point (a reception desk phone, a shared team inbox) are never silently
+    //     collapsed into one record.
     const indexRows = await this.repository.findEmailPhoneIndex();
-    const emailIndex = new Map<string, number>();
-    const phoneIndex = new Map<string, number>();
+    const emailIndex = new Map<string, IndexEntry[]>();
+    const phoneIndex = new Map<string, IndexEntry[]>();
     for (const r of indexRows) {
-      for (const e of r.emails) { const k = normEmail(e); if (k) emailIndex.set(k, r.id); }
-      for (const p of r.phones) { const k = normPhone(p); if (k) phoneIndex.set(k, r.id); }
+      for (const e of r.emails) { const k = normEmail(e); if (k) indexAdd(emailIndex, k, { id: r.id, name: r.name || '' }); }
+      for (const p of r.phones) { const k = normPhone(p); if (k) indexAdd(phoneIndex, k, { id: r.id, name: r.name || '' }); }
     }
 
     for (const row of rows) {
@@ -140,16 +168,18 @@ export class ContactsService {
         continue;
       }
 
+      const emailCandidates = dedupeById(emails.flatMap((e) => indexGet(emailIndex, normEmail(e))));
+      const phoneCandidates = dedupeById(phones.flatMap((p) => indexGet(phoneIndex, normPhone(p))));
+      const phoneCandidateIds = new Set(phoneCandidates.map((c) => c.id));
+      const rowNameKey = normNameForMatch(nameVal);
+
       let matchId: number | null = null;
-      for (const e of emails) {
-        const id = emailIndex.get(normEmail(e));
-        if (id) { matchId = id; break; }
-      }
-      if (matchId === null) {
-        for (const p of phones) {
-          const id = phoneIndex.get(normPhone(p));
-          if (id) { matchId = id; break; }
-        }
+      const confirmedByBoth = emailCandidates.find((c) => phoneCandidateIds.has(c.id));
+      if (confirmedByBoth) {
+        matchId = confirmedByBoth.id;
+      } else {
+        const emailMatch = emailCandidates.find((c) => nameAgrees(rowNameKey, c.name));
+        matchId = emailMatch ? emailMatch.id : (phoneCandidates.find((c) => nameAgrees(rowNameKey, c.name))?.id ?? null);
       }
 
       try {
@@ -160,8 +190,8 @@ export class ContactsService {
 
           // Drop index entries for the old email/phone values before re-indexing under
           // whatever values end up final below.
-          existing.emails.forEach((e) => { const k = normEmail(e); if (emailIndex.get(k) === matchId) emailIndex.delete(k); });
-          existing.phones.forEach((p) => { const k = normPhone(p); if (phoneIndex.get(k) === matchId) phoneIndex.delete(k); });
+          existing.emails.forEach((e) => { const k = normEmail(e); indexRemove(emailIndex, k, matchId as number); });
+          existing.phones.forEach((p) => { const k = normPhone(p); indexRemove(phoneIndex, k, matchId as number); });
 
           // Same rule for every field: the sheet overwrites a field only when it actually
           // provides a value for it; a blank cell leaves the existing value untouched. This
@@ -172,6 +202,7 @@ export class ContactsService {
           const tags = cleanArray(row.tags);
           const finalEmails = emails.length ? emails : existing.emails;
           const finalPhones = phones.length ? phones : existing.phones;
+          const finalName = nameVal || existing.name;
           await this.repository.update(
             matchId,
             {
@@ -192,8 +223,8 @@ export class ContactsService {
             actor
           );
           updated++;
-          finalEmails.forEach((e) => { const k = normEmail(e); if (k) emailIndex.set(k, matchId as number); });
-          finalPhones.forEach((p) => { const k = normPhone(p); if (k) phoneIndex.set(k, matchId as number); });
+          finalEmails.forEach((e) => { const k = normEmail(e); if (k) indexAdd(emailIndex, k, { id: matchId as number, name: finalName }); });
+          finalPhones.forEach((p) => { const k = normPhone(p); if (k) indexAdd(phoneIndex, k, { id: matchId as number, name: finalName }); });
         } else {
           const created = await this.repository.create(
             {
@@ -214,8 +245,8 @@ export class ContactsService {
             actor
           );
           imported++;
-          emails.forEach((e) => { const k = normEmail(e); if (k) emailIndex.set(k, created.id); });
-          phones.forEach((p) => { const k = normPhone(p); if (k) phoneIndex.set(k, created.id); });
+          emails.forEach((e) => { const k = normEmail(e); if (k) indexAdd(emailIndex, k, { id: created.id, name: nameVal }); });
+          phones.forEach((p) => { const k = normPhone(p); if (k) indexAdd(phoneIndex, k, { id: created.id, name: nameVal }); });
         }
       } catch (error) {
         console.error('Error importing contact row:', nameVal || companyVal || '(unnamed)', error);

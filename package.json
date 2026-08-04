@@ -58,6 +58,7 @@
 		"cheerio": "^1.2.0",
 		"image-size": "^2.0.2",
 		"jsonwebtoken": "^9.0.3",
+		"libphonenumber-js": "^1.13.10",
 		"mariadb": "^3.4.5",
 		"next": "16.1.6",
 		"node-cron": "^4.2.1",

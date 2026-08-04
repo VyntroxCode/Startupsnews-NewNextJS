@@ -58,9 +58,9 @@ export class ContactsRepository {
   }
 
   /** Lightweight id -> emails/phones lookup used to detect duplicates during import, without loading full rows. */
-  async findEmailPhoneIndex(): Promise<{ id: number; emails: string[]; phones: string[] }[]> {
-    const rows = await query<Pick<ContactEntity, 'id' | 'emails' | 'phones'>>('SELECT id, emails, phones FROM contacts');
-    return rows.map((r) => ({ id: r.id, emails: parseArray(r.emails), phones: parseArray(r.phones) }));
+  async findEmailPhoneIndex(): Promise<{ id: number; name: string; emails: string[]; phones: string[] }[]> {
+    const rows = await query<Pick<ContactEntity, 'id' | 'name' | 'emails' | 'phones'>>('SELECT id, name, emails, phones FROM contacts');
+    return rows.map((r) => ({ id: r.id, name: r.name || '', emails: parseArray(r.emails), phones: parseArray(r.phones) }));
   }
 
   async create(input: ContactInput, actor?: string): Promise<ContactEntity> {
