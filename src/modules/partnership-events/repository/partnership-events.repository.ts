@@ -12,6 +12,7 @@ const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
   ['contact', 'contact'],
   ['email', 'email'],
   ['website', 'website'],
+  ['emailThread', 'email_thread'],
   ['initiatedDate', 'initiated_date'],
   ['eventStartDate', 'event_start_date'],
   ['eventStartTime', 'event_start_time'],

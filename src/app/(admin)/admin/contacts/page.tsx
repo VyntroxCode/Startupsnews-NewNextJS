@@ -255,6 +255,41 @@ function downloadContactsExcel(list: Contact[], filename: string) {
   XLSX.writeFile(wb, filename);
 }
 
+// Illustrates every field the importer recognizes: multi-value cells separated with ";",
+// a row with no Name (media inbox, identified by company/email instead), and blank
+// optional fields left empty rather than filled with placeholder text.
+const SAMPLE_IMPORT_ROWS: Record<(typeof EXPORT_COLUMNS)[number], string>[] = [
+  {
+    Name: 'Ravi Sharma', Company: 'Acme Robotics', Types: 'Startup', Cities: 'Bengaluru', Country: 'India',
+    Emails: 'ravi@acmerobotics.com', Phones: '+91 98765 43210', LinkedIn: 'linkedin.com/in/ravisharma',
+    Instagram: '@ravisharma', Sector: 'Robotics', Stage: 'Seed', Tags: 'SNF Dubai',
+    Notes: 'Met at SNF Dubai event. Keen on sponsoring Q3.',
+  },
+  {
+    Name: 'Emily Chen', Company: 'Northbridge Capital', Types: 'VC Fund; Investor', Cities: 'Singapore; Dubai',
+    Country: 'Singapore', Emails: 'emily.chen@northbridge.vc; deals@northbridge.vc', Phones: '+65 9123 4567',
+    LinkedIn: 'linkedin.com/in/emilychen', Instagram: '', Sector: 'Fintech, SaaS', Stage: 'Series A',
+    Tags: 'Warm intro; Priority', Notes: '',
+  },
+  {
+    Name: 'Ahmed Al Farsi', Company: 'Gulf Ventures Hub', Types: 'Venue partner', Cities: 'Dubai', Country: 'UAE',
+    Emails: 'ahmed@gulfventureshub.ae', Phones: '+971 50 123 4567', LinkedIn: '', Instagram: '@gulfventureshub',
+    Sector: '', Stage: '', Tags: 'Venue', Notes: 'Offered event space for Q4 meetup.',
+  },
+  {
+    Name: '', Company: 'Daily Founder Digest', Types: 'Media', Cities: '', Country: '',
+    Emails: 'editor@founderdigest.com', Phones: '', LinkedIn: '', Instagram: '', Sector: '', Stage: '',
+    Tags: 'Press', Notes: 'General press inbox — no named contact yet.',
+  },
+];
+function downloadSampleImportTemplate() {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(SAMPLE_IMPORT_ROWS, { header: EXPORT_COLUMNS });
+  ws['!cols'] = EXPORT_COL_W;
+  XLSX.utils.book_append_sheet(wb, ws, 'Contacts');
+  XLSX.writeFile(wb, 'SNF_contacts_import_sample.xlsx');
+}
+
 /* ============================================================
    SMALL PRESENTATIONAL HELPERS
    ============================================================ */
@@ -1057,6 +1092,9 @@ function ImportContactsModal({ onClose, onImported, showToast }: {
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
               />
               <p className="import-hint">Columns are matched automatically (Name, Company, Emails, Phones…). Phone numbers are validated and cities/countries are canonicalized (e.g. Bangalore → Bengaluru). Rows that match an existing contact by email or phone overwrite that contact — two different people who only share one contact point (e.g. a reception desk) are kept separate unless their names agree.</p>
+              <p className="import-hint">
+                Not sure how to format your file? <span className="add-line" style={{ display: 'inline' }} onClick={downloadSampleImportTemplate}>Download a sample template</span>.
+              </p>
             </>
           )}
 

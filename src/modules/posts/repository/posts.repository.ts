@@ -745,10 +745,13 @@ export class PostsRepository {
 
     let publishedAt: string | null = null;
     const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-    if (status === 'published') {
-      publishedAt = new Date(Date.now() + IST_OFFSET).toISOString().slice(0, 19).replace('T', ' ');
-    } else if (status === 'scheduled' && data.publishedAt) {
+    // An explicitly chosen date (from scheduling) always wins, even when the service layer
+    // has already flipped a past-dated "scheduled" post's status to "published" — otherwise
+    // a backdated post loses its chosen date and gets stamped with the current time instead.
+    if (data.publishedAt) {
       publishedAt = new Date(new Date(data.publishedAt).getTime() + IST_OFFSET).toISOString().slice(0, 19).replace('T', ' ');
+    } else if (status === 'published') {
+      publishedAt = new Date(Date.now() + IST_OFFSET).toISOString().slice(0, 19).replace('T', ' ');
     }
 
     const params = [

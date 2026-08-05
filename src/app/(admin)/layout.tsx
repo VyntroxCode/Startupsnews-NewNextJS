@@ -203,7 +203,7 @@ export default function AdminLayout({
   };
 
   // Show loading state
-  if (loading) {
+ if (loading) {
     return (
       <>
         <meta name="robots" content="noindex, nofollow" />

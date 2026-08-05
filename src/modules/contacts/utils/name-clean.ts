@@ -75,7 +75,11 @@ export function blankRepeatedBannerNames<T extends BannerCandidate>(records: T[]
     if (idxs.length < minCount) continue;
     const distinctContacts = new Set(idxs.map((i) => `${records[i].emails.join(',')}|${records[i].phones.join(',')}`));
     if (distinctContacts.size < minCount) continue;
-    if (idxs.length < 8 && idxs.length / Math.max(total, 1) < minRatio) continue;
+    // Banner/event text fills a large share of the column it landed in -- that's the actual
+    // signal. A fixed count alone (e.g. "repeats >= 8 times") isn't: in a real multi-thousand-row
+    // sheet, a common human name (e.g. "Rohan Sharma") will legitimately recur 8+ times across
+    // distinct people, and an unconditional count floor was blanking every one of them.
+    if (idxs.length / Math.max(total, 1) < minRatio) continue;
     for (const i of idxs) records[i].name = '';
   }
   return records;

@@ -41,6 +41,7 @@ export function entityToPartnershipEvent(entity: PartnershipEventEntity): Partne
     contact: entity.contact || '',
     email: entity.email || '',
     website: entity.website || '',
+    emailThread: entity.email_thread || '',
     initiatedDate: entity.initiated_date || '',
     eventStartDate: entity.event_start_date || '',
     eventStartTime: entity.event_start_time || '',
@@ -66,12 +67,14 @@ export function entityToPartnershipEvent(entity: PartnershipEventEntity): Partne
     source: entity.source || '',
     createdAt: entity.created_at,
     updatedAt: entity.updated_at,
+    createdBy: entity.created_by || '',
+    updatedBy: entity.updated_by || '',
   };
 }
 
 export const STANDARD_HEADERS = [
   'Name of the event', 'City', 'Country', 'Organiser/Company Name', 'POC - Name',
-  'Contact No.', 'Email ID', 'Website Link', 'Initiated date', 'Event Start Date',
+  'Contact No.', 'Email ID', 'Website Link', 'Email Thread', 'Initiated date', 'Event Start Date',
   'Event End Date', 'Partnership Status', 'Partnership Type (Domestic or International)',
   'Last Updated Date', 'comment', 'Listing (Yes/In process/No)', 'Listing link (if yes)',
 ] as const;
@@ -86,6 +89,7 @@ export function partnershipEventToExportRow(e: PartnershipEvent): Record<(typeof
     'Contact No.': e.contact,
     'Email ID': e.email,
     'Website Link': e.website,
+    'Email Thread': e.emailThread,
     'Initiated date': e.initiatedDate,
     'Event Start Date': e.eventStartDate,
     'Event End Date': e.eventEndDate,

@@ -13,6 +13,7 @@ const FIELD_LIMITS: Partial<Record<keyof PartnershipEventInput, number>> = {
   contact: 100,
   email: 255,
   website: 500,
+  emailThread: 1000,
   eventStartTime: 20,
   eventEndTime: 20,
   googleLocationLink: 500,

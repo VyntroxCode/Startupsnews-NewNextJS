@@ -18,7 +18,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Startup News | News from Startups India and across the globe",
+    default: "StartupNews.fyi | News from Startups India and across the globe",
     template: "%s | StartupNews.fyi",
   },
   description:

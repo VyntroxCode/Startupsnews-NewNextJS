@@ -18,6 +18,7 @@ export interface PartnershipEventEntity {
   contact: string | null;
   email: string | null;
   website: string | null;
+  email_thread: string | null;
   initiated_date: string | null;
   event_start_date: string | null;
   event_start_time: string | null;
@@ -57,6 +58,7 @@ export interface PartnershipEvent {
   contact: string;
   email: string;
   website: string;
+  emailThread: string;
   initiatedDate: string;
   eventStartDate: string;
   eventStartTime: string;
@@ -82,6 +84,8 @@ export interface PartnershipEvent {
   source: string;
   createdAt: string;
   updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
 }
 
 export interface PartnershipEventInput {
@@ -93,6 +97,7 @@ export interface PartnershipEventInput {
   contact?: string;
   email?: string;
   website?: string;
+  emailThread?: string;
   initiatedDate?: string | null;
   eventStartDate?: string | null;
   eventStartTime?: string;
@@ -125,7 +130,7 @@ export interface PartnershipEventFilters {
   offset?: number;
 }
 
-export const PARTNERSHIP_STATUS_OPTIONS = ['Initiated', 'In Progress', 'Pending', 'Partnership Done', 'Dropped'] as const;
+export const PARTNERSHIP_STATUS_OPTIONS = ['Initiated', 'In Progress', 'On Hold', 'Partnership Done', 'Dropped', 'Only Listed (No Partnership)', 'Expired'] as const;
 export const PARTNERSHIP_TYPE_OPTIONS = ['Domestic', 'International'] as const;
 export const LISTING_OPTIONS = ['No', 'Pending', 'In process', 'Yes'] as const;
 export const EVENT_TICKET_TYPE_OPTIONS = ['Free', 'Paid'] as const;

@@ -1,5 +1,6 @@
 User-agent: *
 Disallow: /search
 Disallow: /api/
+Disallow: /admin
 
 Sitemap: https://startupnews.fyi/sitemap.xml

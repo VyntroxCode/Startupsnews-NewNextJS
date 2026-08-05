@@ -27,7 +27,7 @@ const HEADER_MAP: Record<ContactField, [RegExp, number][]> = {
   ],
   phones: [
     [/contact number/, 90], [/contact no/, 85], [/contact detail/, 80],
-    [/whatsapp/, 80], [/\bmobile\b/, 75], [/\bphone\b/, 75],
+    [/whatsapp/, 80], [/\bmobiles?\b/, 75], [/\bphones?\b/, 75],
     [/\bmob\b/, 55], [/\bph\b/, 50], [/^numbers?$/, 45],
   ],
   emails: [
@@ -35,15 +35,15 @@ const HEADER_MAP: Record<ContactField, [RegExp, number][]> = {
     [/mail id/, 90], [/e[-\s]?mail/, 85], [/\bmail\b/, 45],
   ],
   cities: [
-    [/^city$/, 100], [/^town$/, 95], [/current city/, 90], [/home city/, 90],
-    [/city\/town/, 90], [/\bcity\b/, 80], [/based in/, 70], [/current location/, 65],
+    [/^cit(y|ies)$/, 100], [/^towns?$/, 95], [/current city/, 90], [/home city/, 90],
+    [/city\/town/, 90], [/\bcit(y|ies)\b/, 80], [/based in/, 70], [/current location/, 65],
     [/^location$/, 65], [/\blocation\b/, 55], [/^region$/, 55], [/\bcity\//, 55],
     [/\/city/, 55], [/\bdistrict\b/, 55], [/\blocality\b/, 55], [/resid(ing|ence)/, 50],
     [/living in/, 45], [/^place$/, 45], [/\bplace\b/, 30],
     [/(mailing|postal|correspondence|residential|full) address/, 60],
     [/\baddress\b/, 25],
   ],
-  types: [[/^type$/, 60], [/\btype\b/, 40], [/\bcategory\b/, 40], [/\brole\b/, 35]],
+  types: [[/^types?$/, 60], [/\btypes?\b/, 40], [/\bcategor(y|ies)\b/, 40], [/\brole\b/, 35]],
   country: [[/^country$/, 100], [/\bcountry\b/, 80], [/^nation$/, 60]],
   linkedin: [[/linkedin/, 80], [/^li$/, 40]],
   instagram: [[/instagram/, 80], [/^insta$/, 60], [/^ig$/, 40]],
@@ -60,7 +60,7 @@ const CITY_EXCLUDE = /e-?mail|\bmail\b|phone|mobile|whatsapp|contact\s*no|contac
 // "name" alone is also excluded from city, but only when the header has no
 // city signal of its own -- "City Name" must still match city.
 const CITY_NAME_WORD = /\bname\b/i;
-const CITY_SIGNAL_WORD = /\bcity\b|\btown\b/i;
+const CITY_SIGNAL_WORD = /\bcit(y|ies)\b|\btowns?\b/i;
 
 function matchScore(headerText: unknown, field: ContactField): number {
   if (headerText == null) return 0;

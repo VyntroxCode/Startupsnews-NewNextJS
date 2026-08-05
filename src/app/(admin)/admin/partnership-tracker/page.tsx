@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { getAuthHeaders } from '@/lib/admin-auth';
+import { getAuthHeaders, getAdminUser } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
 import {
@@ -25,6 +25,7 @@ interface PartnershipEvent {
   contact: string;
   email: string;
   website: string;
+  emailThread: string;
   initiatedDate: string;
   eventStartDate: string;
   eventStartTime: string;
@@ -50,14 +51,16 @@ interface PartnershipEvent {
   source: string;
   createdAt: string;
   updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
 }
 
-type EventDraft = Omit<PartnershipEvent, 'id' | 'createdAt' | 'updatedAt'>;
+type EventDraft = Omit<PartnershipEvent, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>;
 
 const emptySpeaker = (): Speaker => ({ name: '', designation: '', company: '' });
 
 const emptyDraft = (): EventDraft => ({
-  eventName: '', city: '', country: '', organiser: '', poc: '', contact: '', email: '', website: '',
+  eventName: '', city: '', country: '', organiser: '', poc: '', contact: '', email: '', website: '', emailThread: '',
   initiatedDate: '', eventStartDate: '', eventStartTime: '', eventEndDate: '', eventEndTime: '',
   venueAddress: '', googleLocationLink: '', description: '', eventType: '', ticketCurrency: '', ticketPrice: '',
   speakers: [], posterUrl: '', bannerUrl: '', socialMediaPosts: '', socialCreatives: [],
@@ -67,8 +70,9 @@ const emptyDraft = (): EventDraft => ({
 
 const STATUS_ORDER = [...PARTNERSHIP_STATUS_OPTIONS] as string[];
 const STATUS_COLOR_HEX: Record<string, string> = {
-  Initiated: '#7C3FE0', 'In Progress': '#2563C7', Pending: '#B9790A',
-  'Partnership Done': '#1E9E64', Dropped: '#C22B44', Unmapped: '#9CA3AF',
+  Initiated: '#7C3FE0', 'In Progress': '#2563C7', 'On Hold': '#B9790A',
+  'Partnership Done': '#1E9E64', Dropped: '#C22B44', 'Only Listed (No Partnership)': '#0E7C8B',
+  Expired: '#3F4552', Unmapped: '#9CA3AF',
 };
 
 /* ============================================================
@@ -103,10 +107,12 @@ function classifyStatus(raw: string): string {
   const s = (raw || '').toLowerCase().trim();
   if (!s) return 'Unmapped';
   if (STATUS_ORDER.includes(raw)) return raw;
+  if (s.includes('only listed') || s.includes('no partnership') || s.includes('listed only')) return 'Only Listed (No Partnership)';
+  if (s.includes('expir')) return 'Expired';
   if (s.includes('done') || s.includes('confirm') || s.includes('complete') || s.includes('executed')) return 'Partnership Done';
   if (s.includes('drop') || s.includes('cancel')) return 'Dropped';
   if (s.includes('progress')) return 'In Progress';
-  if (s.includes('pending')) return 'Pending';
+  if (s.includes('pending') || s.includes('hold')) return 'On Hold';
   if (s.includes('initiat')) return 'Initiated';
   return 'Unmapped';
 }
@@ -114,11 +120,13 @@ function normalizeListing(rawListing: string, rawLink: string, statusBucket: str
   const hasLink = !!(rawLink || '').trim();
   const l = (rawListing || '').toLowerCase().trim();
   if (statusBucket === 'Dropped') return 'No';
-  if (statusBucket === 'Partnership Done' && hasLink) return 'Yes';
+  if ((statusBucket === 'Partnership Done' || statusBucket === 'Only Listed (No Partnership)') && hasLink) return 'Yes';
   if (l.includes('process')) return 'In process';
   if (l === 'no' && !hasLink) return 'No';
   return 'Pending';
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // The Website field should only ever hold the event/organiser's own site — never our own coverage link.
 const WEBSITE_EXCLUDE_DOMAINS = ['startupnews.fyi'];
@@ -182,6 +190,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   contact: ['contactno', 'contactnumber', 'phone', 'mobileno', 'mobile'],
   email: ['emailid', 'email'],
   website: ['websitelink', 'website'],
+  emailThread: ['emailthread', 'emaillink', 'gmaillink', 'maillink'],
   initiatedDate: ['initiateddate', 'initiationdate', 'dateinitiated'],
   eventStartDate: ['eventstartdate', 'startdate', 'eventdate', 'dateofevent'],
   eventEndDate: ['eventenddate', 'enddate'],
@@ -254,7 +263,7 @@ function rowToDraft(row: Record<string, unknown>, map: Record<string, string>, s
   const draft = emptyDraft();
   draft.eventName = eventName;
   draft.source = source;
-  const textFields = ['city', 'country', 'organiser', 'poc', 'contact', 'email', 'website', 'partnershipStatus', 'partnershipType', 'comment', 'listing', 'listingLink'] as const;
+  const textFields = ['city', 'country', 'organiser', 'poc', 'contact', 'email', 'website', 'emailThread', 'partnershipStatus', 'partnershipType', 'comment', 'listing', 'listingLink'] as const;
   for (const f of textFields) draft[f] = String(get(f) || '').trim();
   draft.website = cleanWebsite(draft.website);
 
@@ -289,10 +298,94 @@ function readSheetRows(ws: XLSX.WorkSheet): { rows: Record<string, unknown>[]; h
   return { rows, headers };
 }
 
+function processWorkbookIntoDrafts(
+  wb: XLSX.WorkBook,
+  labelFor: (sheetName: string) => string,
+  allDrafts: EventDraft[],
+  stats: ImportStats,
+  sheetsRead: { name: string; rows: number }[],
+  sheetsSkipped: { name: string; reason: string }[]
+): number {
+  let dropped = 0;
+  for (const sheetName of wb.SheetNames) {
+    const label = labelFor(sheetName);
+    const { rows, headers } = readSheetRows(wb.Sheets[sheetName]);
+    if (!rows.length) {
+      sheetsSkipped.push({ name: label, reason: 'Empty, or only a header row with no data below it.' });
+      continue;
+    }
+    const map = buildHeaderMap(headers);
+    const headerPreview = headers.filter((h) => h.trim()).join(' | ') || '(blank header row)';
+    if (map.eventName === undefined && map.partnershipStatus === undefined) {
+      sheetsSkipped.push({ name: label, reason: `No column recognisable as "Name of the event" or "Partnership Status". Headers found: ${headerPreview}` });
+      continue;
+    }
+    if (map.eventName === undefined) {
+      sheetsSkipped.push({ name: label, reason: `Found a Partnership Status column, but no "Name of the event" column. Headers found: ${headerPreview}` });
+      continue;
+    }
+    if (map.partnershipStatus === undefined) {
+      sheetsSkipped.push({ name: label, reason: `Found a "Name of the event" column, but no Partnership Status column. Headers found: ${headerPreview}` });
+      continue;
+    }
+    let rowsRead = 0;
+    for (const row of rows) {
+      const d = rowToDraft(row, map, sheetName, stats);
+      if (!d) { dropped++; continue; }
+      allDrafts.push(d);
+      rowsRead++;
+    }
+    sheetsRead.push({ name: label, rows: rowsRead });
+  }
+  return dropped;
+}
+
+// Loading one tab directly from a public Google Sheet — reads via Google's gviz CSV export
+// (works for sheets shared as "Anyone with the link can view"), one tab (gid) per link.
+function extractSheetIdAndGid(url: string): { id: string; gid: string } | null {
+  const idMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (!idMatch) return null;
+  const gidMatch = url.match(/[#&]gid=([0-9]+)/);
+  return { id: idMatch[1], gid: gidMatch ? gidMatch[1] : '0' };
+}
+
+// Columns beyond the "standard" 18 — the richer lead-detail fields (venue, description,
+// ticketing, speakers, poster/banner, social content) captured via the Add/Edit modal.
+// Export-only: these aren't part of the import header-mapping (STANDARD_HEADERS/FIELD_ALIASES).
+const EXPORT_EXTRA_HEADERS = [
+  'Event Start Time', 'Event End Time', 'Venue Address', 'Google Location Link', 'Event Description',
+  'Event Type', 'Ticket Currency', 'Ticket Starts From', 'Key Speakers/Guests',
+  'Event Poster Link', 'Event Banner Link', 'Social Media Post Content', 'Social Media Creative Link',
+];
+function speakersExportText(list: Speaker[]): string {
+  if (!list || !list.length) return '';
+  return list.map((sp) => [sp.name, sp.designation, sp.company].filter(Boolean).join(', ')).join(' | ');
+}
+function creativesExportText(list: string[]): string {
+  if (!list || !list.length) return '';
+  return list.join(' | ');
+}
 function downloadEventsExcel(list: PartnershipEvent[], filename: string) {
+  const allHeaders = [...STANDARD_HEADERS, ...EXPORT_EXTRA_HEADERS];
+  const rows = list.map((e) => ({
+    ...partnershipEventToExportRow(e),
+    'Event Start Time': e.eventStartTime || '',
+    'Event End Time': e.eventEndTime || '',
+    'Venue Address': e.venueAddress || '',
+    'Google Location Link': e.googleLocationLink || '',
+    'Event Description': e.description || '',
+    'Event Type': e.eventType || '',
+    'Ticket Currency': e.ticketCurrency || '',
+    'Ticket Starts From': e.ticketPrice || '',
+    'Key Speakers/Guests': speakersExportText(e.speakers),
+    'Event Poster Link': e.posterUrl || '',
+    'Event Banner Link': e.bannerUrl || '',
+    'Social Media Post Content': e.socialMediaPosts || '',
+    'Social Media Creative Link': creativesExportText(e.socialCreatives),
+  }));
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(list.map(partnershipEventToExportRow), { header: STANDARD_HEADERS as unknown as string[] });
-  ws['!cols'] = STANDARD_HEADERS.map(() => ({ wch: 20 }));
+  const ws = XLSX.utils.json_to_sheet(rows, { header: allHeaders });
+  ws['!cols'] = allHeaders.map(() => ({ wch: 20 }));
   XLSX.utils.book_append_sheet(wb, ws, 'Events');
   XLSX.writeFile(wb, filename);
 }
@@ -312,6 +405,60 @@ function monthKey(ymd: string): string {
 function monthLabel(key: string): string {
   const [y, m] = key.split('-').map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+}
+// DB timestamps come back as "YYYY-MM-DD HH:MM:SS" (no "T", no offset — see dateStrings/timezone
+// config in shared/database/connection.ts), which some browsers won't parse as-is.
+function parseDbDatetime(s: string): number | null {
+  if (!s) return null;
+  const d = new Date(s.includes('T') ? s : s.replace(' ', 'T'));
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+function fmtDateTime(ms: number): string {
+  return new Date(ms).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+/* ============================================================
+   DAILY REPORT — activity log, WhatsApp send, 5pm bell reminder
+   (mirrors the original standalone tool; "Your Name" comes from the
+   real logged-in admin session instead of a browser-only name prompt)
+   ============================================================ */
+// Replace with the team's dedicated WhatsApp number for daily reports —
+// country code + number, digits only, no "+" or spaces (e.g. India: '91XXXXXXXXXX').
+const DAILY_REPORT_WHATSAPP_NUMBER = '919625952588';
+
+const ACTIVITY_KEY = 'pt_activity_log';
+const BELL_DISMISSED_KEY = 'pt_bell_dismissed_date';
+const BELL_LAST_RING_KEY = 'pt_bell_last_ring';
+const BELL_SNOOZE_MS = 15 * 60 * 1000;
+const BELL_RINGTONE_URL = 'https://assets.mixkit.co/active_storage/sfx/1356/1356.wav';
+
+// "Live" = not expired. "Partner" events are the subset actually in the partnership
+// pipeline — Dropped and Only Listed (No Partnership) events don't count as a partner event.
+const PARTNER_PIPELINE_STATUSES = ['Initiated', 'In Progress', 'On Hold', 'Partnership Done'];
+
+interface ActivityEntry { ts: number; type: string; eventName: string; actor: string; detail: string }
+
+// Renders "Name (n)" counts sorted busiest-first, e.g. "Priya (3), John (1)" — used for the
+// created-by/updated-by breakdown lines in the WhatsApp report text.
+function personCounts<T>(list: T[], getPerson: (item: T) => string): string {
+  const counts = new Map<string, number>();
+  list.forEach((item) => {
+    const p = getPerson(item) || 'Unknown';
+    counts.set(p, (counts.get(p) || 0) + 1);
+  });
+  if (!counts.size) return 'None';
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => `${name} (${count})`).join(', ');
+}
+
+function dayStamp(d?: Date): string {
+  const x = d || new Date();
+  return `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`;
+}
+function loadActivityLog(): ActivityEntry[] {
+  try {
+    const raw = localStorage.getItem(ACTIVITY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
 }
 
 async function api<T = unknown>(url: string, init?: RequestInit): Promise<{ success: boolean; data?: T; error?: string }> {
@@ -361,12 +508,111 @@ export default function PartnershipTrackerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importPanelRef = useRef<HTMLDivElement>(null);
 
+  const [sheetLinkOpen, setSheetLinkOpen] = useState(false);
+  const [sheetLinkValue, setSheetLinkValue] = useState('');
+  const [sheetLinkLoading, setSheetLinkLoading] = useState(false);
+  const sheetLinkRef = useRef<HTMLDivElement>(null);
+
+  const [, setActivityLog] = useState<ActivityEntry[]>([]);
+  const [dailyReportOpen, setDailyReportOpen] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [reportError, setReportError] = useState('');
+  const [activityPersonFilter, setActivityPersonFilter] = useState('all');
+  const [bellDue, setBellDue] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
   interface ImportProgress { label: string; current: number; total: number }
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
 
   function showToast(msg: string, kind: 'success' | 'error' = 'success') {
     setToast({ msg, kind });
     setTimeout(() => setToast(null), 2800);
+  }
+
+  function logActivity(type: string, eventName: string, detail?: string) {
+    const entry: ActivityEntry = {
+      ts: Date.now(), type, eventName: eventName || '(untitled event)',
+      actor: getAdminUser()?.name || getAdminUser()?.email || 'Unnamed', detail: detail || '',
+    };
+    setActivityLog((prev) => {
+      const next = [...prev, entry];
+      try { localStorage.setItem(ACTIVITY_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+      return next;
+    });
+  }
+
+  function playBellSound() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play()?.catch((err) => console.warn('Bell sound could not play:', err));
+  }
+  function dismissBellForToday() {
+    localStorage.setItem(BELL_DISMISSED_KEY, dayStamp());
+    localStorage.removeItem(BELL_LAST_RING_KEY);
+    setBellDue(false);
+  }
+  // Once the report is due (past 5pm and not dismissed today), keep re-ringing every 15
+  // minutes — a snooze reminder — instead of ringing once and going quiet, so it nags
+  // until the report actually gets sent.
+  function checkBell() {
+    const now = new Date();
+    const dismissedToday = localStorage.getItem(BELL_DISMISSED_KEY) === dayStamp();
+    const due = now.getHours() >= 17 && !dismissedToday;
+    setBellDue(due);
+    if (due) {
+      const lastRing = Number(localStorage.getItem(BELL_LAST_RING_KEY) || 0);
+      if (now.getTime() - lastRing >= BELL_SNOOZE_MS) {
+        playBellSound();
+        localStorage.setItem(BELL_LAST_RING_KEY, String(now.getTime()));
+      }
+    }
+  }
+
+  function buildDailyReportText(): string {
+    const today = startOfToday();
+    const totalLiveEvents = events.filter((e) => !derivedById.get(e.id)!.isExpired).length;
+    const totalLivePartnerEvents = events.filter((e) => !derivedById.get(e.id)!.isExpired && PARTNER_PIPELINE_STATUSES.includes(derivedById.get(e.id)!.statusBucket)).length;
+    const newPartnershipsInitiatedToday = events.filter((e) => parseYmd(e.initiatedDate) === today).length;
+    const partnershipsDoneToday = events.filter((e) => derivedById.get(e.id)!.statusBucket === 'Partnership Done' && parseYmd(e.lastUpdatedDate) === today).length;
+    const inProgressCount = events.filter((e) => derivedById.get(e.id)!.statusBucket === 'In Progress').length;
+
+    const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const who = getAdminUser()?.name || getAdminUser()?.email || 'Team Member';
+
+    return [
+      `*Partnership Tracker — Daily Report*`,
+      `Date: ${dateStr}`,
+      `Submitted By: ${who}`,
+      '',
+      `📢 Total Live Events: ${totalLiveEvents}`,
+      `🤝 Total Live Partner Events: ${totalLivePartnerEvents}`,
+      `🆕 New Partnerships Initiated Today: ${newPartnershipsInitiatedToday}`,
+      `✅ Total Partnerships Done Today: ${partnershipsDoneToday}`,
+      `🔄 In Progress: ${inProgressCount}`,
+      '',
+      `👤 Created Today by: ${personCounts(todayActivity.created, (x) => x.event.createdBy)}`,
+      `✏️ Updated Today by: ${personCounts(todayActivity.updated, (x) => x.event.updatedBy)}`,
+      '',
+      `📝 Additional Comments:`,
+      `(Add Any Notes Here Before Sending)`,
+    ].join('\n');
+  }
+  function openDailyReportModal() {
+    setReportText(buildDailyReportText());
+    setReportError('');
+    setActivityPersonFilter('all');
+    setDailyReportOpen(true);
+  }
+  function sendReportOnWhatsApp() {
+    if (DAILY_REPORT_WHATSAPP_NUMBER.includes('X')) {
+      setReportError('No report number set yet — ask an admin to fill in DAILY_REPORT_WHATSAPP_NUMBER in the file.');
+      return;
+    }
+    const url = `https://wa.me/${DAILY_REPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(reportText)}`;
+    window.open(url, '_blank');
+    dismissBellForToday();
+    setDailyReportOpen(false);
   }
 
   async function loadEvents() {
@@ -393,6 +639,23 @@ export default function PartnershipTrackerPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, [importPanelOpen]);
 
+  useEffect(() => {
+    if (!sheetLinkOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!sheetLinkRef.current?.contains(e.target as Node)) setSheetLinkOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [sheetLinkOpen]);
+
+  useEffect(() => {
+    setActivityLog(loadActivityLog());
+    checkBell();
+    const id = setInterval(checkBell, 30000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const derivedById = useMemo(() => {
     const map = new Map<number, Derived>();
     events.forEach((e) => map.set(e.id, computeDerived(e)));
@@ -401,22 +664,46 @@ export default function PartnershipTrackerPage() {
 
   const counts = useMemo(() => {
     const byStatus: Record<string, number> = {};
-    let listed = 0, expired = 0, unmapped = 0;
+    let listed = 0, unmapped = 0;
     events.forEach((e) => {
       const d = derivedById.get(e.id)!;
       byStatus[d.statusBucket] = (byStatus[d.statusBucket] || 0) + 1;
       if (d.listingResolved.toLowerCase() === 'yes') listed++;
-      if (d.isExpired) expired++;
       if (d.statusBucket === 'Unmapped') unmapped++;
     });
-    return { byStatus, listed, expired, unmapped, total: events.length };
+    return { byStatus, listed, unmapped, total: events.length };
   }, [events, derivedById]);
+
+  // Who created/updated what today, with exact datetime — feeds the Daily Report's
+  // filterable "today's activity" breakdown. An event just-created shares the same
+  // created_at/updated_at, so it's excluded from "updated" to avoid double-counting.
+  const todayActivity = useMemo(() => {
+    const start = startOfToday();
+    const end = start + 24 * 60 * 60 * 1000;
+    const created: { event: PartnershipEvent; at: number }[] = [];
+    const updated: { event: PartnershipEvent; at: number }[] = [];
+    events.forEach((e) => {
+      const cAt = parseDbDatetime(e.createdAt);
+      const uAt = parseDbDatetime(e.updatedAt);
+      if (cAt !== null && cAt >= start && cAt < end) created.push({ event: e, at: cAt });
+      if (uAt !== null && uAt >= start && uAt < end && uAt !== cAt) updated.push({ event: e, at: uAt });
+    });
+    created.sort((a, b) => b.at - a.at);
+    updated.sort((a, b) => b.at - a.at);
+    return { created, updated };
+  }, [events]);
+
+  const activityPeople = useMemo(() => {
+    const set = new Set<string>();
+    todayActivity.created.forEach((x) => x.event.createdBy && set.add(x.event.createdBy));
+    todayActivity.updated.forEach((x) => x.event.updatedBy && set.add(x.event.updatedBy));
+    return [...set].sort();
+  }, [todayActivity]);
 
   const filtered = useMemo(() => {
     let list = events.slice();
     if (monthFilter) list = list.filter((e) => e.eventStartDate && monthKey(e.eventStartDate) === monthFilter);
     if (cardFilter === 'Listed') list = list.filter((e) => derivedById.get(e.id)!.listingResolved.toLowerCase() === 'yes');
-    else if (cardFilter === 'Expired') list = list.filter((e) => derivedById.get(e.id)!.isExpired);
     else if (cardFilter) list = list.filter((e) => derivedById.get(e.id)!.statusBucket === cardFilter);
 
     const q = deferredSearch.trim().toLowerCase();
@@ -505,14 +792,32 @@ export default function PartnershipTrackerPage() {
   }
   function openEditModal(e: PartnershipEvent) {
     setEditingId(e.id);
-    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = e;
-    void _id; void _createdAt; void _updatedAt;
+    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, createdBy: _createdBy, updatedBy: _updatedBy, ...rest } = e;
+    void _id; void _createdAt; void _updatedAt; void _createdBy; void _updatedBy;
     setDraft(rest);
     setModalError('');
     setModalOpen(true);
   }
   async function saveModal() {
     if (!draft.eventName.trim()) { setModalError('Event name is required.'); return; }
+    const emailVal = draft.email.trim();
+    if (emailVal && !EMAIL_RE.test(emailVal)) {
+      setModalError('Email ID looks invalid — enter a valid address (e.g. name@example.com).');
+      return;
+    }
+    if (draft.listing === 'Yes' && !draft.listingLink.trim()) {
+      setModalError('Listing link is required when Listing is set to Yes.');
+      return;
+    }
+    if (draft.partnershipStatus === 'Partnership Done' && !draft.listingLink.trim()) {
+      setModalError('Add a Listing link before marking this Partnership Done.');
+      return;
+    }
+    const descVal = draft.description.trim();
+    if (descVal && descVal.length < EVENT_DESCRIPTION_MIN_LENGTH) {
+      setModalError(`Event Description needs at least ${EVENT_DESCRIPTION_MIN_LENGTH} characters (currently ${descVal.length}).`);
+      return;
+    }
     const key = dedupKey(draft);
     const clashesWithOther = key !== null && events.some((x) => x.id !== editingId && dedupKey(x) === key);
     if (clashesWithOther) {
@@ -528,6 +833,7 @@ export default function PartnershipTrackerPage() {
     setSaving(false);
     if (res.success) {
       showToast(editingId ? 'Event updated.' : 'Event added.');
+      logActivity(editingId ? 'edited' : 'added', draft.eventName);
       setModalOpen(false);
       await loadEvents();
     } else {
@@ -539,6 +845,7 @@ export default function PartnershipTrackerPage() {
     const res = await api(`/api/admin/partnership-events/${id}`, { method: 'DELETE' });
     if (res.success) {
       showToast('Event deleted.');
+      logActivity('deleted', name);
       setEvents((prev) => prev.filter((e) => e.id !== id));
     } else {
       showToast(res.error || 'Delete failed.', 'error');
@@ -549,6 +856,7 @@ export default function PartnershipTrackerPage() {
     const patch: Partial<EventDraft> = { partnershipStatus: newStatus };
     if (target && classifyStatus(target.partnershipStatus) !== newStatus) {
       patch.lastUpdatedDate = new Date().toISOString().slice(0, 10);
+      logActivity('status', target.eventName, `Status → ${newStatus}`);
     }
     setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
     const res = await api(`/api/admin/partnership-events/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
@@ -568,6 +876,7 @@ export default function PartnershipTrackerPage() {
     setBusy(false);
     if (res.success) {
       showToast(`${selectedIds.size} event(s) deleted.`);
+      logActivity('deleted', `${selectedIds.size} events (bulk)`);
       setSelectedIds(new Set());
       await loadEvents();
     } else {
@@ -578,64 +887,20 @@ export default function PartnershipTrackerPage() {
   /* ---------------- Import ---------------- */
   const IMPORT_BATCH_SIZE = 300;
 
-  async function handleImportFiles(fileList: FileList) {
-    setBusy(true);
-    const files = Array.from(fileList);
-    setImportProgress({ label: files.length > 1 ? `Reading file 1 of ${files.length}…` : `Reading ${files[0].name}…`, current: 0, total: files.length });
-
-    const allDrafts: EventDraft[] = [];
-    const stats: ImportStats = { unparseableDates: 0, locationsGuessed: 0 };
-    const sheetsRead: { name: string; rows: number }[] = [];
-    const sheetsSkipped: { name: string; reason: string }[] = [];
-    let dropped = 0;
-
-    for (let fi = 0; fi < files.length; fi++) {
-      const file = files[fi];
-      setImportProgress({ label: files.length > 1 ? `Reading file ${fi + 1} of ${files.length} — ${file.name}` : `Reading ${file.name}…`, current: fi, total: files.length });
-      try {
-        const buf = await file.arrayBuffer();
-        const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-        for (const sheetName of wb.SheetNames) {
-          const label = fileList.length > 1 ? `${file.name} — ${sheetName}` : sheetName;
-          const { rows, headers } = readSheetRows(wb.Sheets[sheetName]);
-          if (!rows.length) {
-            sheetsSkipped.push({ name: label, reason: 'Empty, or only a header row with no data below it.' });
-            continue;
-          }
-          const map = buildHeaderMap(headers);
-          const headerPreview = headers.filter((h) => h.trim()).join(' | ') || '(blank header row)';
-          if (map.eventName === undefined && map.partnershipStatus === undefined) {
-            sheetsSkipped.push({ name: label, reason: `No column recognisable as "Name of the event" or "Partnership Status". Headers found: ${headerPreview}` });
-            continue;
-          }
-          if (map.eventName === undefined) {
-            sheetsSkipped.push({ name: label, reason: `Found a Partnership Status column, but no "Name of the event" column. Headers found: ${headerPreview}` });
-            continue;
-          }
-          if (map.partnershipStatus === undefined) {
-            sheetsSkipped.push({ name: label, reason: `Found a "Name of the event" column, but no Partnership Status column. Headers found: ${headerPreview}` });
-            continue;
-          }
-          let rowsRead = 0;
-          for (const row of rows) {
-            const d = rowToDraft(row, map, sheetName, stats);
-            if (!d) { dropped++; continue; }
-            allDrafts.push(d);
-            rowsRead++;
-          }
-          sheetsRead.push({ name: label, rows: rowsRead });
-        }
-      } catch (err) {
-        sheetsSkipped.push({ name: file.name, reason: `Could not read this file: ${err instanceof Error ? err.message : 'unknown error'}` });
-      }
-    }
-
+  async function finalizeImport(
+    allDrafts: EventDraft[],
+    stats: ImportStats,
+    sheetsRead: { name: string; rows: number }[],
+    sheetsSkipped: { name: string; reason: string }[],
+    dropped: number,
+    emptyMessage: string
+  ) {
     if (!allDrafts.length) {
       setBusy(false);
       setImportProgress(null);
       setImportLog((prev) => [{ imported: 0, updated: 0, dropped, unparseableDates: stats.unparseableDates, locationsGuessed: stats.locationsGuessed, sheetsRead, sheetsSkipped }, ...prev]);
       setImportPanelOpen(true);
-      showToast('No importable rows found in the selected file(s).', 'error');
+      showToast(emptyMessage, 'error');
       return;
     }
 
@@ -682,6 +947,73 @@ export default function PartnershipTrackerPage() {
     await loadEvents();
   }
 
+  async function handleImportFiles(fileList: FileList) {
+    setBusy(true);
+    const files = Array.from(fileList);
+    setImportProgress({ label: files.length > 1 ? `Reading file 1 of ${files.length}…` : `Reading ${files[0].name}…`, current: 0, total: files.length });
+
+    const allDrafts: EventDraft[] = [];
+    const stats: ImportStats = { unparseableDates: 0, locationsGuessed: 0 };
+    const sheetsRead: { name: string; rows: number }[] = [];
+    const sheetsSkipped: { name: string; reason: string }[] = [];
+    let dropped = 0;
+
+    for (let fi = 0; fi < files.length; fi++) {
+      const file = files[fi];
+      setImportProgress({ label: files.length > 1 ? `Reading file ${fi + 1} of ${files.length} — ${file.name}` : `Reading ${file.name}…`, current: fi, total: files.length });
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+        dropped += processWorkbookIntoDrafts(wb, (sheetName) => (fileList.length > 1 ? `${file.name} — ${sheetName}` : sheetName), allDrafts, stats, sheetsRead, sheetsSkipped);
+      } catch (err) {
+        sheetsSkipped.push({ name: file.name, reason: `Could not read this file: ${err instanceof Error ? err.message : 'unknown error'}` });
+      }
+    }
+
+    await finalizeImport(allDrafts, stats, sheetsRead, sheetsSkipped, dropped, 'No importable rows found in the selected file(s).');
+  }
+
+  async function loadFromSheetLink() {
+    const parsed = extractSheetIdAndGid(sheetLinkValue.trim());
+    if (!parsed) {
+      showToast("Couldn't find a sheet ID in that link — paste the full Google Sheets URL.", 'error');
+      return;
+    }
+    setBusy(true);
+    setSheetLinkLoading(true);
+    setImportProgress({ label: 'Fetching that tab…', current: 0, total: 1 });
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${parsed.id}/gviz/tq?tqx=out:csv&gid=${parsed.gid}`;
+    try {
+      const res = await fetch(csvUrl);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const csvText = await res.text();
+      if (/^\s*<(!DOCTYPE|html)/i.test(csvText)) throw new Error('Got a login/HTML page back — this sheet is probably not public.');
+      const wb = XLSX.read(csvText, { type: 'string', cellDates: true });
+      const rawSheetName = wb.SheetNames[0];
+      const label = `Google Sheet (gid ${parsed.gid})`;
+      wb.Sheets[label] = wb.Sheets[rawSheetName];
+      wb.SheetNames = [label];
+
+      const allDrafts: EventDraft[] = [];
+      const stats: ImportStats = { unparseableDates: 0, locationsGuessed: 0 };
+      const sheetsRead: { name: string; rows: number }[] = [];
+      const sheetsSkipped: { name: string; reason: string }[] = [];
+      const dropped = processWorkbookIntoDrafts(wb, (sn) => sn, allDrafts, stats, sheetsRead, sheetsSkipped);
+      await finalizeImport(allDrafts, stats, sheetsRead, sheetsSkipped, dropped, 'No importable rows found in that sheet tab.');
+      setSheetLinkValue('');
+      setSheetLinkOpen(false);
+    } catch (err) {
+      setBusy(false);
+      setImportProgress(null);
+      showToast(`Couldn't load that tab (${err instanceof Error ? err.message : 'unknown error'}). Make sure it's shared as "Anyone with the link can view".`, 'error');
+    } finally {
+      setSheetLinkLoading(false);
+    }
+  }
+
+  const activityCreatedFiltered = todayActivity.created.filter((x) => activityPersonFilter === 'all' || x.event.createdBy === activityPersonFilter);
+  const activityUpdatedFiltered = todayActivity.updated.filter((x) => activityPersonFilter === 'all' || x.event.updatedBy === activityPersonFilter);
+
   /* ---------------- Render ---------------- */
   return (
     <AdminErrorBoundary>
@@ -726,11 +1058,37 @@ export default function PartnershipTrackerPage() {
                 )}
               </div>
             )}
+            <div className="pt-popover-wrap" ref={sheetLinkRef}>
+              <button className="btn btn-sm" onClick={() => setSheetLinkOpen((o) => !o)}>🔗 Load from link</button>
+              {sheetLinkOpen && (
+                <div className="pt-popover-panel pt-sheetlink-panel">
+                  <input
+                    type="text"
+                    placeholder="Paste a Google Sheet link…"
+                    value={sheetLinkValue}
+                    onChange={(e) => setSheetLinkValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && sheetLinkValue.trim() && !sheetLinkLoading) loadFromSheetLink(); }}
+                    style={{ width: '100%', marginBottom: 8 }}
+                  />
+                  <button className="btn btn-sm btn-accent" style={{ width: '100%' }} disabled={sheetLinkLoading || !sheetLinkValue.trim()} onClick={loadFromSheetLink}>
+                    {sheetLinkLoading ? 'Loading…' : 'Load this tab'}
+                  </button>
+                  <div className="pt-link-note">
+                    Sheet must be shared as &quot;Anyone with the link can view.&quot; Open the specific tab first so the link includes its <span className="pt-mono">#gid=</span> — paste again for each additional tab.
+                  </div>
+                </div>
+              )}
+            </div>
             <button className="btn" disabled={busy} onClick={() => fileInputRef.current?.click()}>
               {busy ? (<span className="pt-btn-loading"><svg className="pt-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg>Uploading…</span>) : 'Upload / merge Excel'}
             </button>
             <button className="btn btn-green" onClick={() => downloadEventsExcel(filtered, `partnership-tracker-${new Date().toISOString().slice(0, 10)}.xlsx`)}>Download Excel</button>
             <button className="btn btn-accent" onClick={openAddModal}>+ Add event</button>
+            <button className="btn btn-sm" onClick={openDailyReportModal}>📋 Daily Report</button>
+            <button className="btn btn-sm pt-bell-btn" title="Daily report reminder" onClick={openDailyReportModal}>
+              🔔{bellDue && <span className="pt-bell-dot" />}
+            </button>
+            <audio ref={audioRef} preload="auto" src={BELL_RINGTONE_URL} style={{ display: 'none' }} />
           </div>
         </div>
 
@@ -752,10 +1110,6 @@ export default function PartnershipTrackerPage() {
               <div className={`pt-card ${cardFilter === 'Listed' ? 'active' : ''}`} style={{ ['--dot' as string]: '#7C3FE0' }} onClick={() => setCard('Listed')}>
                 <div className="pt-card-label"><span className="pt-dot" />Listed</div>
                 <div className="pt-card-count">{counts.listed}</div>
-              </div>
-              <div className={`pt-card ${cardFilter === 'Expired' ? 'active' : ''}`} style={{ ['--dot' as string]: '#3F4552' }} onClick={() => setCard('Expired')}>
-                <div className="pt-card-label"><span className="pt-dot" />Expired</div>
-                <div className="pt-card-count">{counts.expired}</div>
               </div>
               {counts.unmapped > 0 && (
                 <div className={`pt-card ${cardFilter === 'Unmapped' ? 'active' : ''}`} style={{ ['--dot' as string]: '#9CA3AF' }} onClick={() => setCard('Unmapped')}>
@@ -928,6 +1282,7 @@ export default function PartnershipTrackerPage() {
                       <th>Contact</th>
                       <th>Email</th>
                       <th>Website</th>
+                      <th>Email Thread</th>
                       <th onClick={() => toggleSort('initiatedDate')}>Initiated{sortKey === 'initiatedDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th onClick={() => toggleSort('eventStartDate')}>Start date{sortKey === 'eventStartDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th onClick={() => toggleSort('eventEndDate')}>End date{sortKey === 'eventEndDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
@@ -942,7 +1297,7 @@ export default function PartnershipTrackerPage() {
                   </thead>
                   <tbody>
                     {pageList.length === 0 ? (
-                      <tr><td colSpan={18} className="pt-empty">No events match these filters.</td></tr>
+                      <tr><td colSpan={20} className="pt-empty">No events match these filters.</td></tr>
                     ) : pageList.map((e) => {
                       const d = derivedById.get(e.id)!;
                       const color = STATUS_COLOR_HEX[d.statusBucket] || '#9CA3AF';
@@ -971,6 +1326,7 @@ export default function PartnershipTrackerPage() {
                           <td>{e.contact || <span className="pt-muted">—</span>}</td>
                           <td>{e.email || <span className="pt-muted">—</span>}</td>
                           <td>{e.website ? <a className="pt-link" href={e.website} target="_blank" rel="noopener">{e.website}</a> : <span className="pt-muted">—</span>}</td>
+                          <td>{e.emailThread ? <a className="pt-link" href={e.emailThread} target="_blank" rel="noopener">Open thread</a> : <span className="pt-muted">—</span>}</td>
                           <td className="pt-mono">{fmtDisplay(e.initiatedDate)}</td>
                           <td className="pt-mono">{fmtDisplay(e.eventStartDate)}</td>
                           <td className="pt-mono">
@@ -985,7 +1341,13 @@ export default function PartnershipTrackerPage() {
                               onChange={(ev) => updateStatusInline(e.id, ev.target.value)}
                             >
                               {d.statusBucket === 'Unmapped' && <option value="" disabled>Unmapped</option>}
-                              {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
+                              {STATUS_ORDER.map((s) => (
+                                <option
+                                  key={s} value={s}
+                                  disabled={s === 'Partnership Done' && !e.listingLink.trim()}
+                                  title={s === 'Partnership Done' && !e.listingLink.trim() ? 'Add a Listing link before marking this Partnership Done' : undefined}
+                                >{s}</option>
+                              ))}
                             </select>
                           </td>
                           <td>{d.daysInStatus !== null ? <span className="pt-mono">{d.daysInStatus}d</span> : <span className="pt-muted">—</span>}</td>
@@ -1054,8 +1416,13 @@ export default function PartnershipTrackerPage() {
                 <div className="pt-fg"><label>Country</label><input value={draft.country} onChange={(e) => setDraft({ ...draft, country: e.target.value })} /></div>
                 <div className="pt-fg"><label>Organiser/Company Name</label><input value={draft.organiser} onChange={(e) => setDraft({ ...draft, organiser: e.target.value })} /></div>
                 <div className="pt-fg"><label>POC - Name</label><input value={draft.poc} onChange={(e) => setDraft({ ...draft, poc: e.target.value })} /></div>
-                <div className="pt-fg"><label>Contact No.</label><input value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} /></div>
-                <div className="pt-fg"><label>Email ID</label><input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></div>
+                <div className="pt-fg"><label>Contact No.</label><input type="tel" value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} /></div>
+                <div className="pt-fg"><label>Email ID</label><input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value.replace(/\s/g, '') })} /></div>
+                <div className="pt-fg pt-full">
+                  <label>Email Thread</label>
+                  <input placeholder="https://mail.google.com/mail/u/0/#inbox/…" value={draft.emailThread} onChange={(e) => setDraft({ ...draft, emailThread: e.target.value })} />
+                  <div className="pt-hint">Paste the direct Gmail thread link for this conversation.</div>
+                </div>
                 <div className="pt-fg pt-full"><label>Website Link</label><input value={draft.website} onChange={(e) => setDraft({ ...draft, website: e.target.value })} /></div>
               </div>
 
@@ -1151,7 +1518,13 @@ export default function PartnershipTrackerPage() {
                   <label>Partnership Status</label>
                   <select value={draft.partnershipStatus} onChange={(e) => setDraft({ ...draft, partnershipStatus: e.target.value })}>
                     <option value="">—</option>
-                    {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {STATUS_ORDER.map((s) => (
+                      <option
+                        key={s} value={s}
+                        disabled={s === 'Partnership Done' && !draft.listingLink.trim()}
+                        title={s === 'Partnership Done' && !draft.listingLink.trim() ? 'Add a Listing link before marking this Partnership Done' : undefined}
+                      >{s}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="pt-fg">
@@ -1168,7 +1541,10 @@ export default function PartnershipTrackerPage() {
                     {LISTING_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </div>
-                <div className="pt-fg"><label>Listing link (if yes)</label><input value={draft.listingLink} onChange={(e) => setDraft({ ...draft, listingLink: e.target.value })} /></div>
+                <div className="pt-fg">
+                  <label>Listing link (if yes){draft.listing === 'Yes' && <span style={{ color: '#C22B44' }}> *</span>}</label>
+                  <input value={draft.listingLink} onChange={(e) => setDraft({ ...draft, listingLink: e.target.value })} />
+                </div>
                 <div className="pt-fg pt-full"><label>Internal comment</label><textarea value={draft.comment} onChange={(e) => setDraft({ ...draft, comment: e.target.value })} /></div>
               </div>
               {modalError && <div className="pt-modal-error">{modalError}</div>}
@@ -1185,6 +1561,69 @@ export default function PartnershipTrackerPage() {
               )}
               <button className="btn" onClick={() => setModalOpen(false)}>Cancel</button>
               <button className="btn btn-accent" disabled={saving} onClick={saveModal}>{saving ? 'Saving…' : editingId ? 'Save changes' : 'Add event'}</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Daily report modal */}
+        <div className={`pt-overlay ${dailyReportOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setDailyReportOpen(false); }}>
+          <div className="pt-modal" style={{ width: 560 }}>
+            <div className="pt-modal-header">
+              <h2>Daily Report</h2>
+              <button className="pt-modal-close" onClick={() => setDailyReportOpen(false)}>✕</button>
+            </div>
+            <div className="pt-modal-body">
+              <div className="pt-form-grid">
+                <div className="pt-fg pt-full">
+                  <label>Your Name</label>
+                  <div className="pt-readonly-field">{getAdminUser()?.name || getAdminUser()?.email || 'Not signed in'}</div>
+                </div>
+                <div className="pt-fg pt-full">
+                  <label>Preview — edit freely before sending</label>
+                  <textarea rows={12} value={reportText} onChange={(e) => setReportText(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="pt-section-title">Today&apos;s activity</div>
+              <div className="pt-form-grid">
+                <div className="pt-fg pt-full">
+                  <label>Filter by team member</label>
+                  <select value={activityPersonFilter} onChange={(e) => setActivityPersonFilter(e.target.value)}>
+                    <option value="all">All team members</option>
+                    {activityPeople.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="pt-activity-grid">
+                <div className="pt-activity-col">
+                  <div className="pt-activity-col-title">Created today ({activityCreatedFiltered.length})</div>
+                  {activityCreatedFiltered.length === 0 ? (
+                    <div className="pt-muted">None</div>
+                  ) : activityCreatedFiltered.map(({ event, at }) => (
+                    <div key={event.id} className="pt-activity-row">
+                      <span className="pt-activity-name">{event.eventName}</span>
+                      <span className="pt-activity-meta">{event.createdBy || 'Unknown'} · {fmtDateTime(at)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-activity-col">
+                  <div className="pt-activity-col-title">Updated today ({activityUpdatedFiltered.length})</div>
+                  {activityUpdatedFiltered.length === 0 ? (
+                    <div className="pt-muted">None</div>
+                  ) : activityUpdatedFiltered.map(({ event, at }) => (
+                    <div key={event.id} className="pt-activity-row">
+                      <span className="pt-activity-name">{event.eventName}</span>
+                      <span className="pt-activity-meta">{event.updatedBy || 'Unknown'} · {fmtDateTime(at)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {reportError && <div className="pt-modal-error">{reportError}</div>}
+            </div>
+            <div className="pt-modal-footer">
+              <span style={{ fontSize: 11.5, color: 'var(--faint)', marginRight: 'auto' }}>Sends via WhatsApp to the team&apos;s daily-report number</span>
+              <button className="btn btn-accent" onClick={sendReportOnWhatsApp}>Send on WhatsApp</button>
             </div>
           </div>
         </div>
@@ -1216,6 +1655,9 @@ export default function PartnershipTrackerPage() {
         .btn-danger { color: #C22B44; border-color: #C22B44; }
         .btn-danger:hover { background: rgba(194,43,68,0.08); }
         .btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
+        .pt-bell-btn { position: relative; }
+        .pt-bell-dot { position: absolute; top: 2px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: #C22B44; animation: pt-bellpulse 1.3s infinite; }
+        @keyframes pt-bellpulse { 0% { box-shadow: 0 0 0 0 rgba(194,43,68,.65); } 70% { box-shadow: 0 0 0 8px rgba(194,43,68,0); } 100% { box-shadow: 0 0 0 0 rgba(194,43,68,0); } }
 
         .pt-popover-wrap { position: relative; }
         .pt-popover-panel {
@@ -1228,6 +1670,9 @@ export default function PartnershipTrackerPage() {
         .pt-import-entry:last-child { border-bottom: none; }
         .pt-import-line { padding: 3px 0; }
         .pt-warn { color: #B9790A; }
+        .pt-sheetlink-panel { width: 340px; }
+        .pt-sheetlink-panel input[type=text] { height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 13px; outline: none; }
+        .pt-link-note { font-size: 11px; color: var(--faint); line-height: 1.5; margin-top: 8px; }
 
         .pt-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
         .pt-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; cursor: pointer; transition: border-color .15s, transform .15s; }
@@ -1326,6 +1771,15 @@ export default function PartnershipTrackerPage() {
         .pt-speaker-row .pt-rm { width: 34px; height: 36px; flex: 0 0 34px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 14px; }
         .pt-add-line { font-size: 11px; color: var(--accent); cursor: pointer; font-weight: 600; display: inline-block; margin-top: 2px; }
         .pt-modal-error { color: #C22B44; font-size: 12px; margin-top: 10px; }
+        .pt-readonly-field { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+        .pt-activity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+        @media (max-width: 640px) { .pt-activity-grid { grid-template-columns: 1fr; } }
+        .pt-activity-col { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; max-height: 180px; overflow-y: auto; }
+        .pt-activity-col-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 8px; }
+        .pt-activity-row { display: flex; flex-direction: column; gap: 1px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+        .pt-activity-row:last-child { border-bottom: none; }
+        .pt-activity-name { font-weight: 600; }
+        .pt-activity-meta { color: var(--faint); font-size: 11px; }
         .pt-modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
 
         .pt-progress-modal { background: var(--surface); border-radius: 14px; width: 420px; max-width: 100%; padding: 24px; box-shadow: 0 24px 48px rgba(16,26,43,0.25); }
