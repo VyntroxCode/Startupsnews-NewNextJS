@@ -205,22 +205,30 @@ export default function AdminLayout({
   // Show loading state
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div>Loading...</div>
-      </div>
+      <>
+        <meta name="robots" content="noindex, nofollow" />
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div>Loading...</div>
+        </div>
+      </>
     );
   }
 
   // Login page doesn't need layout
   if (pathname === '/admin/login') {
-    return <>{children}</>;
+    return (
+      <>
+        <meta name="robots" content="noindex, nofollow" />
+        {children}
+      </>
+    );
   }
 
   // Header height constant (must match AdminSidebar)
@@ -235,6 +243,7 @@ export default function AdminLayout({
         background: '#f7fafc',
       }}
     >
+      <meta name="robots" content="noindex, nofollow" />
       {/* Fixed Header */}
       <AdminHeader
         user={user}
