@@ -814,7 +814,12 @@ export default function PartnershipTrackerPage() {
     setModalOpen(true);
   }
   async function saveModal() {
-    if (!draft.eventName.trim()) { setModalError('Event name is required.'); return; }
+    const closed = classifyStatus(draft.partnershipStatus) === 'Dropped';
+    const effectiveDraft = closed ? { ...draft, listing: 'No', listingLink: '' } : draft;
+    if (closed && (draft.listing !== 'No' || draft.listingLink.trim())) {
+      setDraft((d) => ({ ...d, listing: 'No', listingLink: '' }));
+    }
+    if (!effectiveDraft.eventName.trim()) { setModalError('Event name is required.'); return; }
     if (!draft.venueAddress.trim()) { setModalError('Complete Address is required.'); return; }
     if (!draft.googleLocationLink.trim()) { setModalError('Google Location (Maps link) is required.'); return; }
     const missingSpeakerIdx = draft.speakers.findIndex((sp) => !sp.name.trim());
@@ -827,7 +832,7 @@ export default function PartnershipTrackerPage() {
       setModalError('Email ID looks invalid — enter a valid address (e.g. name@example.com).');
       return;
     }
-    if (draft.listing === 'Yes' && !draft.listingLink.trim()) {
+    if (effectiveDraft.listing === 'Yes' && !effectiveDraft.listingLink.trim()) {
       setModalError('Listing link is required when Listing is set to Yes.');
       return;
     }
@@ -848,7 +853,7 @@ export default function PartnershipTrackerPage() {
     }
     setSaving(true);
     setModalError('');
-    const payload = { ...draft, website: cleanWebsite(draft.website), socialCreatives: draft.socialCreatives.filter((c) => c.image.trim()) };
+    const payload = { ...effectiveDraft, website: cleanWebsite(effectiveDraft.website), socialCreatives: effectiveDraft.socialCreatives.filter((c) => c.image.trim()) };
     try {
       const res = editingId
         ? await api(`/api/admin/partnership-events/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -881,6 +886,10 @@ export default function PartnershipTrackerPage() {
   async function updateStatusInline(id: number, newStatus: string) {
     const target = events.find((e) => e.id === id);
     const patch: Partial<EventDraft> = { partnershipStatus: newStatus };
+    if (classifyStatus(newStatus) === 'Dropped') {
+      patch.listing = 'No';
+      patch.listingLink = '';
+    }
     if (target && classifyStatus(target.partnershipStatus) !== newStatus) {
       patch.lastUpdatedDate = new Date().toISOString().slice(0, 10);
       logActivity('status', target.eventName, `Status → ${newStatus}`);
@@ -1570,7 +1579,14 @@ export default function PartnershipTrackerPage() {
               <div className="pt-form-grid">
                 <div className="pt-fg">
                   <label>Partnership Status</label>
-                  <select value={draft.partnershipStatus} onChange={(e) => setDraft({ ...draft, partnershipStatus: e.target.value })}>
+                  <select
+                    value={draft.partnershipStatus}
+                    onChange={(e) => {
+                      const nextStatus = e.target.value;
+                      const closed = classifyStatus(nextStatus) === 'Dropped';
+                      setDraft({ ...draft, partnershipStatus: nextStatus, ...(closed ? { listing: 'No', listingLink: '' } : {}) });
+                    }}
+                  >
                     <option value="">—</option>
                     {STATUS_ORDER.map((s) => (
                       <option

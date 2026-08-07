@@ -11,6 +11,62 @@ interface ImageUploadProps {
   accept?: string;
 }
 
+// Formats a canvas re-encode would just bloat (already-compressed/vector/animated) — upload as-is.
+const SKIP_COMPRESSION_TYPES = new Set(['image/gif', 'image/svg+xml']);
+// Uploads are a straight-through <img> preview/original-quality link elsewhere in the admin
+// panel, so this caps the longest edge generously rather than to any one feature's exact spec —
+// large enough that print/hero use still looks sharp, small enough that a 12MB phone photo
+// (routinely 4000px+ on the long edge) doesn't cross the wire at full size for no visual gain.
+const MAX_DIMENSION = 2400;
+const JPEG_QUALITY = 0.85;
+
+/** Best-effort downscale + re-encode. Returns the original file untouched if anything about this fails or wouldn't help. */
+async function compressImageFile(file: File): Promise<File> {
+  if (SKIP_COMPRESSION_TYPES.has(file.type) || file.size < 300 * 1024) return file;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
+    if (!blob || blob.size >= file.size) return file;
+
+    const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], newName, { type: 'image/jpeg' });
+  } catch (err) {
+    console.warn('[ImageUpload] Compression skipped, uploading original:', err);
+    return file;
+  }
+}
+
+/** PUT via XHR (not fetch) so real upload-progress events are available for the progress bar. */
+function uploadWithProgress(uploadUrl: string, file: File, onProgress: (pct: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'image/jpeg');
+    xhr.upload.onprogress = (evt) => {
+      if (evt.lengthComputable) onProgress(Math.round((evt.loaded / evt.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`S3 upload failed (${xhr.status}). ${xhr.responseText || 'Please try again.'}`));
+    };
+    xhr.onerror = () => reject(new Error('S3 upload failed — network error. Please try again.'));
+    xhr.send(file);
+  });
+}
+
 export default function ImageUpload({
   value,
   onChange,
@@ -19,6 +75,7 @@ export default function ImageUpload({
   accept = 'image/*',
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<string | null>(value || null);
 
@@ -41,6 +98,7 @@ export default function ImageUpload({
 
     setError('');
     setUploading(true);
+    setUploadProgress(0);
 
     try {
       const token = getAdminToken();
@@ -49,7 +107,9 @@ export default function ImageUpload({
         return;
       }
 
-      const safeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const uploadFile = await compressImageFile(file);
+
+      const safeFilename = uploadFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const presignResponse = await fetch('/api/admin/presign', {
         method: 'POST',
         headers: {
@@ -58,7 +118,7 @@ export default function ImageUpload({
         },
         body: JSON.stringify({
           filename: safeFilename,
-          contentType: file.type || 'image/jpeg',
+          contentType: uploadFile.type || 'image/jpeg',
           _token: token,
         }),
       });
@@ -75,18 +135,7 @@ export default function ImageUpload({
         throw new Error('Upload URL was not returned by the server.');
       }
 
-      const s3Response = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'image/jpeg',
-        },
-        body: file,
-      });
-
-      if (!s3Response.ok) {
-        const txt = await s3Response.text().catch(() => '');
-        throw new Error(`S3 upload failed (${s3Response.status}). ${txt || 'Please try again.'}`);
-      }
+      await uploadWithProgress(uploadUrl, uploadFile, setUploadProgress);
 
       setPreview(fileUrl);
       onChange(fileUrl);
@@ -99,6 +148,7 @@ export default function ImageUpload({
       setError(errorMessage);
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -111,6 +161,27 @@ export default function ImageUpload({
     setPreview(null);
     onChange('');
     setError('');
+  };
+
+  const handleDownload = async () => {
+    if (!value) return;
+    const filename = value.split('/').pop()?.split('?')[0] || 'image';
+    try {
+      const response = await fetch(value);
+      if (!response.ok) throw new Error(`Fetch failed (${response.status})`);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.warn('[ImageUpload] Direct download failed, opening in a new tab instead:', err);
+      window.open(value, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
@@ -188,7 +259,7 @@ export default function ImageUpload({
           onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.backgroundColor = '#4f46e5'; }}
           onMouseLeave={(e) => { if (!uploading) e.currentTarget.style.backgroundColor = '#6366f1'; }}
         >
-          {uploading ? 'Uploading...' : 'Upload Image'}
+          {uploading ? `Uploading… ${uploadProgress}%` : 'Upload Image'}
           <input
             type="file"
             accept={accept}
@@ -236,13 +307,28 @@ export default function ImageUpload({
       )}
 
       {value && !error && (
-        <p style={{
-          marginTop: '0.5rem',
-          fontSize: '0.75rem',
-          color: '#64748b',
-        }}>
-          Current: <a href={value} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1', textDecoration: 'underline' }}>{value}</a>
-        </p>
+        <button
+          type="button"
+          onClick={handleDownload}
+          style={{
+            marginTop: '0.5rem',
+            padding: '0.5rem 1rem',
+            background: '#fff',
+            color: '#4a5568',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '0.8125rem',
+            fontWeight: '600',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.color = '#6366f1'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#4a5568'; }}
+        >
+          ⬇ Download image
+        </button>
       )}
     </div>
   );
