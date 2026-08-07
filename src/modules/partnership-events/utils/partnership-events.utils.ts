@@ -1,4 +1,4 @@
-import { PartnershipEvent, PartnershipEventEntity, Speaker } from '../domain/types';
+import { PartnershipEvent, PartnershipEventEntity, Speaker, SocialCreative, SOCIAL_CREATIVE_PLATFORMS } from '../domain/types';
 
 function parseJsonArray(value: unknown): unknown[] {
   if (!value) return [];
@@ -23,11 +23,26 @@ function parseSpeakers(value: unknown): Speaker[] {
       name: typeof v.name === 'string' ? v.name : '',
       designation: typeof v.designation === 'string' ? v.designation : '',
       company: typeof v.company === 'string' ? v.company : '',
+      others: typeof v.others === 'string' ? v.others : '',
     }))
     .filter((s) => s.name.trim().length > 0);
 }
-function parseStringArray(value: unknown): string[] {
-  return parseJsonArray(value).filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+// Legacy rows stored a flat array of image URL strings (no platform grouping); bucket those
+// under 'other' so they still surface in the edit modal instead of silently disappearing.
+function parseSocialCreatives(value: unknown): SocialCreative[] {
+  const result: SocialCreative[] = [];
+  for (const item of parseJsonArray(value)) {
+    if (typeof item === 'string' && item.trim()) {
+      result.push({ platform: 'other', image: item.trim() });
+      continue;
+    }
+    if (item && typeof item === 'object' && typeof (item as Record<string, unknown>).image === 'string') {
+      const rec = item as Record<string, unknown>;
+      const platform = typeof rec.platform === 'string' && (SOCIAL_CREATIVE_PLATFORMS as readonly string[]).includes(rec.platform) ? rec.platform : 'other';
+      if ((rec.image as string).trim()) result.push({ platform, image: rec.image as string });
+    }
+  }
+  return result;
 }
 
 export function entityToPartnershipEvent(entity: PartnershipEventEntity): PartnershipEvent {
@@ -57,7 +72,7 @@ export function entityToPartnershipEvent(entity: PartnershipEventEntity): Partne
     posterUrl: entity.poster_url || '',
     bannerUrl: entity.banner_url || '',
     socialMediaPosts: entity.social_media_posts || '',
-    socialCreatives: parseStringArray(entity.social_creatives),
+    socialCreatives: parseSocialCreatives(entity.social_creatives),
     partnershipStatus: entity.partnership_status || '',
     partnershipType: entity.partnership_type || '',
     lastUpdatedDate: entity.last_updated_date || '',

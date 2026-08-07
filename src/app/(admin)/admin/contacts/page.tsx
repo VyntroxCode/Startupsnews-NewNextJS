@@ -553,7 +553,7 @@ export default function ContactsPage() {
       <div className="cm-wrap">
         <div className="cm-header">
           <div>
-            <h2 className="cm-title">Network Manager</h2>
+            <h2 className="cm-title">Directory</h2>
             <p className="cm-subtitle">Contacts database — founders, investors, sponsors, venues, media</p>
           </div>
           <div className="cm-header-actions">

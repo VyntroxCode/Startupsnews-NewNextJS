@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders, getAdminUser } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
@@ -8,9 +9,14 @@ import ImageUpload from '@/components/admin/ImageUpload';
 import {
   PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, LISTING_OPTIONS,
   EVENT_TICKET_TYPE_OPTIONS, CURRENCY_OPTIONS, EVENT_DESCRIPTION_MIN_LENGTH,
-  POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, type Speaker,
+  POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
+  type Speaker, type SocialCreative,
 } from '@/modules/partnership-events/domain/types';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey } from '@/modules/partnership-events/utils/partnership-events.utils';
+
+const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-pt-display' });
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-pt-body' });
+const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-pt-mono' });
 
 /* ============================================================
    TYPES
@@ -41,7 +47,7 @@ interface PartnershipEvent {
   posterUrl: string;
   bannerUrl: string;
   socialMediaPosts: string;
-  socialCreatives: string[];
+  socialCreatives: SocialCreative[];
   partnershipStatus: string;
   partnershipType: string;
   lastUpdatedDate: string;
@@ -57,7 +63,7 @@ interface PartnershipEvent {
 
 type EventDraft = Omit<PartnershipEvent, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>;
 
-const emptySpeaker = (): Speaker => ({ name: '', designation: '', company: '' });
+const emptySpeaker = (): Speaker => ({ name: '', designation: '', company: '', others: '' });
 
 const emptyDraft = (): EventDraft => ({
   eventName: '', city: '', country: '', organiser: '', poc: '', contact: '', email: '', website: '', emailThread: '',
@@ -359,11 +365,11 @@ const EXPORT_EXTRA_HEADERS = [
 ];
 function speakersExportText(list: Speaker[]): string {
   if (!list || !list.length) return '';
-  return list.map((sp) => [sp.name, sp.designation, sp.company].filter(Boolean).join(', ')).join(' | ');
+  return list.map((sp) => [sp.name, sp.designation, sp.company, sp.others].filter(Boolean).join(', ')).join(' | ');
 }
-function creativesExportText(list: string[]): string {
+function creativesExportText(list: SocialCreative[]): string {
   if (!list || !list.length) return '';
-  return list.join(' | ');
+  return list.map((item) => `${SOCIAL_CREATIVE_PLATFORM_LABELS[item.platform] || item.platform}: ${item.image}`).join(' | ');
 }
 function downloadEventsExcel(list: PartnershipEvent[], filename: string) {
   const allHeaders = [...STANDARD_HEADERS, ...EXPORT_EXTRA_HEADERS];
@@ -462,8 +468,12 @@ function loadActivityLog(): ActivityEntry[] {
 }
 
 async function api<T = unknown>(url: string, init?: RequestInit): Promise<{ success: boolean; data?: T; error?: string }> {
-  const res = await fetch(url, { ...init, headers: { ...getAuthHeaders(), ...(init?.headers || {}) } });
-  return res.json();
+  try {
+    const res = await fetch(url, { ...init, headers: { ...getAuthHeaders(), ...(init?.headers || {}) } });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: `Request failed: ${err instanceof Error ? err.message : 'network error'}. If this page was open before a recent update, try reloading it.` };
+  }
 }
 
 /* ============================================================
@@ -496,6 +506,8 @@ export default function PartnershipTrackerPage() {
   const [draft, setDraft] = useState<EventDraft>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState('');
+  // Which social-creative platform panels are expanded in the Add/Edit modal — reset per open.
+  const [openCreativePlatforms, setOpenCreativePlatforms] = useState<Set<string>>(new Set());
 
   const [busy, setBusy] = useState(false);
   interface ImportLogEntry {
@@ -788,6 +800,7 @@ export default function PartnershipTrackerPage() {
     setEditingId(null);
     setDraft(emptyDraft());
     setModalError('');
+    setOpenCreativePlatforms(new Set());
     setModalOpen(true);
   }
   function openEditModal(e: PartnershipEvent) {
@@ -796,10 +809,19 @@ export default function PartnershipTrackerPage() {
     void _id; void _createdAt; void _updatedAt; void _createdBy; void _updatedBy;
     setDraft(rest);
     setModalError('');
+    // Auto-expand any platform that already has images, so editing an event doesn't hide its own data.
+    setOpenCreativePlatforms(new Set(SOCIAL_CREATIVE_PLATFORMS.filter((p) => e.socialCreatives.some((c) => c.platform === p))));
     setModalOpen(true);
   }
   async function saveModal() {
     if (!draft.eventName.trim()) { setModalError('Event name is required.'); return; }
+    if (!draft.venueAddress.trim()) { setModalError('Complete Address is required.'); return; }
+    if (!draft.googleLocationLink.trim()) { setModalError('Google Location (Maps link) is required.'); return; }
+    const missingSpeakerIdx = draft.speakers.findIndex((sp) => !sp.name.trim());
+    if (missingSpeakerIdx !== -1) {
+      setModalError(`Speaker/guest #${missingSpeakerIdx + 1}: Name is required (or remove that row).`);
+      return;
+    }
     const emailVal = draft.email.trim();
     if (emailVal && !EMAIL_RE.test(emailVal)) {
       setModalError('Email ID looks invalid — enter a valid address (e.g. name@example.com).');
@@ -826,18 +848,23 @@ export default function PartnershipTrackerPage() {
     }
     setSaving(true);
     setModalError('');
-    const payload = { ...draft, website: cleanWebsite(draft.website) };
-    const res = editingId
-      ? await api(`/api/admin/partnership-events/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      : await api('/api/admin/partnership-events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    setSaving(false);
-    if (res.success) {
-      showToast(editingId ? 'Event updated.' : 'Event added.');
-      logActivity(editingId ? 'edited' : 'added', draft.eventName);
-      setModalOpen(false);
-      await loadEvents();
-    } else {
-      setModalError(res.error || 'Save failed.');
+    const payload = { ...draft, website: cleanWebsite(draft.website), socialCreatives: draft.socialCreatives.filter((c) => c.image.trim()) };
+    try {
+      const res = editingId
+        ? await api(`/api/admin/partnership-events/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        : await api('/api/admin/partnership-events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (res.success) {
+        showToast(editingId ? 'Event updated.' : 'Event added.');
+        logActivity(editingId ? 'edited' : 'added', draft.eventName);
+        setModalOpen(false);
+        await loadEvents();
+      } else {
+        setModalError(res.error || 'Save failed.');
+      }
+    } catch (err) {
+      setModalError(`Save failed: ${err instanceof Error ? err.message : 'network error'}. If this page was open before a recent update, try reloading it.`);
+    } finally {
+      setSaving(false);
     }
   }
   async function deleteEvent(id: number, name: string) {
@@ -1017,7 +1044,7 @@ export default function PartnershipTrackerPage() {
   /* ---------------- Render ---------------- */
   return (
     <AdminErrorBoundary>
-      <div className="pt-wrap">
+      <div className={`pt-wrap ${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
         <div className="pt-header">
           <div>
             <div className="pt-title">Partnership Tracker</div>
@@ -1088,6 +1115,7 @@ export default function PartnershipTrackerPage() {
             <button className="btn btn-sm pt-bell-btn" title="Daily report reminder" onClick={openDailyReportModal}>
               🔔{bellDue && <span className="pt-bell-dot" />}
             </button>
+            <button className="btn btn-sm" title="Preview the reminder ringtone" onClick={playBellSound}>🔊</button>
             <audio ref={audioRef} preload="auto" src={BELL_RINGTONE_URL} style={{ display: 'none' }} />
           </div>
         </div>
@@ -1282,8 +1310,8 @@ export default function PartnershipTrackerPage() {
                       <th>Contact</th>
                       <th>Email</th>
                       <th>Website</th>
-                      <th>Email Thread</th>
                       <th onClick={() => toggleSort('initiatedDate')}>Initiated{sortKey === 'initiatedDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th>Email Thread</th>
                       <th onClick={() => toggleSort('eventStartDate')}>Start date{sortKey === 'eventStartDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th onClick={() => toggleSort('eventEndDate')}>End date{sortKey === 'eventEndDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Status</th>
@@ -1291,13 +1319,15 @@ export default function PartnershipTrackerPage() {
                       <th>Type</th>
                       <th onClick={() => toggleSort('lastUpdatedDate')}>Last updated{sortKey === 'lastUpdatedDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Listing</th>
+                      <th>Listing link</th>
                       <th>Comment</th>
+                      <th>Speakers / Guests</th>
                       <th className="pt-col-act">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageList.length === 0 ? (
-                      <tr><td colSpan={20} className="pt-empty">No events match these filters.</td></tr>
+                      <tr><td colSpan={22} className="pt-empty">No events match these filters.</td></tr>
                     ) : pageList.map((e) => {
                       const d = derivedById.get(e.id)!;
                       const color = STATUS_COLOR_HEX[d.statusBucket] || '#9CA3AF';
@@ -1326,8 +1356,8 @@ export default function PartnershipTrackerPage() {
                           <td>{e.contact || <span className="pt-muted">—</span>}</td>
                           <td>{e.email || <span className="pt-muted">—</span>}</td>
                           <td>{e.website ? <a className="pt-link" href={e.website} target="_blank" rel="noopener">{e.website}</a> : <span className="pt-muted">—</span>}</td>
-                          <td>{e.emailThread ? <a className="pt-link" href={e.emailThread} target="_blank" rel="noopener">Open thread</a> : <span className="pt-muted">—</span>}</td>
                           <td className="pt-mono">{fmtDisplay(e.initiatedDate)}</td>
+                          <td>{e.emailThread ? <a className="pt-link" href={e.emailThread} target="_blank" rel="noopener">Open thread</a> : <span className="pt-muted">—</span>}</td>
                           <td className="pt-mono">{fmtDisplay(e.eventStartDate)}</td>
                           <td className="pt-mono">
                             {fmtDisplay(e.eventEndDate)}
@@ -1354,7 +1384,9 @@ export default function PartnershipTrackerPage() {
                           <td>{d.partnershipTypeResolved || <span className="pt-muted">—</span>}</td>
                           <td className="pt-mono">{fmtDisplay(e.lastUpdatedDate)}</td>
                           <td>{d.listingResolved}</td>
+                          <td>{e.listingLink ? <a className="pt-link" href={e.listingLink} target="_blank" rel="noopener">link</a> : <span className="pt-muted">—</span>}</td>
                           <td title={e.comment}>{e.comment || <span className="pt-muted">—</span>}</td>
+                          <td title={speakersExportText(e.speakers)}>{speakersExportText(e.speakers) || <span className="pt-muted">—</span>}</td>
                           <td className="pt-row-actions">
                             <button onClick={() => openEditModal(e)}>Edit</button>
                             <button className="del" onClick={() => deleteEvent(e.id, e.eventName)}>Delete</button>
@@ -1438,8 +1470,8 @@ export default function PartnershipTrackerPage() {
 
               <div className="pt-section-title">3. Venue</div>
               <div className="pt-form-grid">
-                <div className="pt-fg pt-full"><label>Complete Address</label><textarea value={draft.venueAddress} onChange={(e) => setDraft({ ...draft, venueAddress: e.target.value })} /></div>
-                <div className="pt-fg pt-full"><label>Google Location (Maps link)</label><input value={draft.googleLocationLink} onChange={(e) => setDraft({ ...draft, googleLocationLink: e.target.value })} placeholder="https://maps.google.com/…" /></div>
+                <div className="pt-fg pt-full"><label>Complete Address *</label><textarea value={draft.venueAddress} onChange={(e) => setDraft({ ...draft, venueAddress: e.target.value })} /></div>
+                <div className="pt-fg pt-full"><label>Google Location (Maps link) *</label><input value={draft.googleLocationLink} onChange={(e) => setDraft({ ...draft, googleLocationLink: e.target.value })} placeholder="https://maps.google.com/…" /></div>
               </div>
 
               <div className="pt-section-title">4. Event description</div>
@@ -1481,6 +1513,7 @@ export default function PartnershipTrackerPage() {
                   <input placeholder="Name *" value={sp.name} onChange={(e) => { const next = [...draft.speakers]; next[i] = { ...next[i], name: e.target.value }; setDraft({ ...draft, speakers: next }); }} />
                   <input placeholder="Designation" value={sp.designation} onChange={(e) => { const next = [...draft.speakers]; next[i] = { ...next[i], designation: e.target.value }; setDraft({ ...draft, speakers: next }); }} />
                   <input placeholder="Company" value={sp.company} onChange={(e) => { const next = [...draft.speakers]; next[i] = { ...next[i], company: e.target.value }; setDraft({ ...draft, speakers: next }); }} />
+                  <input placeholder="Others" value={sp.others} onChange={(e) => { const next = [...draft.speakers]; next[i] = { ...next[i], others: e.target.value }; setDraft({ ...draft, speakers: next }); }} />
                   <button type="button" className="pt-rm" onClick={() => setDraft({ ...draft, speakers: draft.speakers.filter((_, idx) => idx !== i) })}>✕</button>
                 </div>
               ))}
@@ -1501,16 +1534,37 @@ export default function PartnershipTrackerPage() {
               </div>
 
               <div className="pt-section-title">10. Social media creatives</div>
-              <div className="pt-hint" style={{ marginBottom: 6 }}>{SOCIAL_CREATIVE_SPEC}</div>
-              {draft.socialCreatives.map((url, i) => (
-                <div className="pt-speaker-row" key={i}>
-                  <div style={{ flex: 1 }}>
-                    <ImageUpload value={url} onChange={(v) => { const next = [...draft.socialCreatives]; next[i] = v; setDraft({ ...draft, socialCreatives: next }); }} label={`Creative ${i + 1}`} />
+              <div className="pt-hint" style={{ marginBottom: 6 }}>{SOCIAL_CREATIVE_SPEC} Pick a platform below, then add as many images as you like for it.</div>
+              <div className="pt-platform-toggle-row">
+                {SOCIAL_CREATIVE_PLATFORMS.map((p) => (
+                  <button
+                    key={p} type="button"
+                    className={`pt-platform-toggle-btn ${openCreativePlatforms.has(p) ? 'open' : ''}`}
+                    onClick={() => setOpenCreativePlatforms((prev) => { const next = new Set(prev); if (next.has(p)) next.delete(p); else next.add(p); return next; })}
+                  >{SOCIAL_CREATIVE_PLATFORM_LABELS[p]}</button>
+                ))}
+              </div>
+              {[...SOCIAL_CREATIVE_PLATFORMS.filter((p) => openCreativePlatforms.has(p)), ...(draft.socialCreatives.some((c) => c.platform === 'other') ? ['other'] : [])].map((platform) => (
+                <div className="pt-creative-platform-block" key={platform}>
+                  <div className="pt-creative-platform-label">
+                    <span>{SOCIAL_CREATIVE_PLATFORM_LABELS[platform] || platform}</span>
+                    {platform === 'other' && (
+                      <button type="button" className="pt-remove-social-btn" onClick={() => setDraft({ ...draft, socialCreatives: draft.socialCreatives.filter((c) => c.platform !== 'other') })}>Clear</button>
+                    )}
                   </div>
-                  <button type="button" className="pt-rm" onClick={() => setDraft({ ...draft, socialCreatives: draft.socialCreatives.filter((_, idx) => idx !== i) })}>✕</button>
+                  {draft.socialCreatives.map((c, i) => c.platform !== platform ? null : (
+                    <div className="pt-speaker-row" key={i}>
+                      <div style={{ flex: 1 }}>
+                        <ImageUpload value={c.image} onChange={(v) => { const next = [...draft.socialCreatives]; next[i] = { ...next[i], image: v }; setDraft({ ...draft, socialCreatives: next }); }} label={`${SOCIAL_CREATIVE_PLATFORM_LABELS[platform] || platform} image`} />
+                      </div>
+                      <button type="button" className="pt-rm" onClick={() => setDraft({ ...draft, socialCreatives: draft.socialCreatives.filter((_, idx) => idx !== i) })}>✕</button>
+                    </div>
+                  ))}
+                  {platform !== 'other' && (
+                    <span className="pt-add-line" onClick={() => setDraft({ ...draft, socialCreatives: [...draft.socialCreatives, { platform, image: '' }] })}>+ Add image</span>
+                  )}
                 </div>
               ))}
-              <span className="pt-add-line" onClick={() => setDraft({ ...draft, socialCreatives: [...draft.socialCreatives, ''] })}>+ Add creative</span>
 
               <div className="pt-section-title" style={{ marginTop: 18 }}>Partnership tracking</div>
               <div className="pt-form-grid">
@@ -1635,11 +1689,11 @@ export default function PartnershipTrackerPage() {
         .pt-wrap {
           --bg: #F5F6F8; --surface: #FFFFFF; --surface-2: #EEF0F3; --border: #DCE0E6;
           --text: #1B1F26; --muted: #5B6472; --faint: #71798A; --accent: #2563C7;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          font-family: var(--font-pt-body), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           font-size: 14px; color: var(--text);
         }
         .pt-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
-        .pt-title { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.3px; }
+        .pt-title { font-family: var(--font-pt-display), sans-serif; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.3px; }
         .pt-subtitle { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
         .pt-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .pt-loading { padding: 40px; text-align: center; color: var(--muted); }
@@ -1681,7 +1735,7 @@ export default function PartnershipTrackerPage() {
         .pt-card-all { background: linear-gradient(135deg, var(--surface), var(--surface-2)); }
         .pt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); display: inline-block; margin-right: 6px; }
         .pt-card-label { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; }
-        .pt-card-count { font-size: 24px; font-weight: 700; margin-top: 5px; }
+        .pt-card-count { font-family: var(--font-pt-display), sans-serif; font-size: 24px; font-weight: 700; margin-top: 5px; }
 
         .pt-chart-toggle { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 16px; margin-bottom: 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; transition: border-color .15s; }
         .pt-chart-toggle:hover { border-color: var(--faint); }
@@ -1689,7 +1743,7 @@ export default function PartnershipTrackerPage() {
         .pt-charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
         @media (max-width: 900px) { .pt-charts-grid { grid-template-columns: 1fr; } }
         .pt-chart-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
-        .pt-chart-title { font-size: 13px; font-weight: 600; }
+        .pt-chart-title { font-family: var(--font-pt-display), sans-serif; font-size: 13px; font-weight: 600; }
         .pt-chart-sub { color: var(--muted); font-size: 11.5px; margin-bottom: 12px; }
         .pt-chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 140px; }
         .pt-chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
@@ -1717,7 +1771,7 @@ export default function PartnershipTrackerPage() {
 
         .pt-tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
         .pt-tbl-scroll { overflow: auto; max-height: 65vh; }
-        .pt-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1750px; }
+        .pt-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 2000px; }
         .pt-wrap thead th { text-align: left; padding: 11px 14px; color: var(--muted); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); background: var(--surface-2); cursor: pointer; white-space: nowrap; position: sticky; top: 0; z-index: 3; }
         .pt-sort-arrow { color: var(--accent); }
         .pt-col-chk { width: 38px; cursor: default !important; }
@@ -1733,7 +1787,7 @@ export default function PartnershipTrackerPage() {
         .pt-name-link:hover { color: var(--accent); text-decoration: underline; }
         .pt-ev-sub { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
         .pt-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; border: 1px solid currentColor; padding: 2px 7px; border-radius: 20px; margin-left: 6px; white-space: nowrap; }
-        .pt-mono { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 12px; }
+        .pt-mono { font-family: var(--font-pt-mono), ui-monospace, monospace; font-size: 12px; }
         .pt-muted { color: var(--faint); }
         .pt-link { color: var(--accent); }
         .pt-status-select { border-radius: 20px; font-size: 11.5px; font-weight: 500; padding: 3px 8px; border: 1px solid currentColor; cursor: pointer; background: var(--surface); }
@@ -1770,6 +1824,14 @@ export default function PartnershipTrackerPage() {
         .pt-speaker-row input { flex: 1; height: 36px; padding: 0 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); }
         .pt-speaker-row .pt-rm { width: 34px; height: 36px; flex: 0 0 34px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 14px; }
         .pt-add-line { font-size: 11px; color: var(--accent); cursor: pointer; font-weight: 600; display: inline-block; margin-top: 2px; }
+        .pt-platform-toggle-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .pt-platform-toggle-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 7px 13px; border-radius: 20px; font-size: 12.5px; font-family: inherit; cursor: pointer; }
+        .pt-platform-toggle-btn:hover { border-color: var(--faint); }
+        .pt-platform-toggle-btn.open { border-color: var(--accent); color: var(--accent); background: var(--surface-2); font-weight: 600; }
+        .pt-creative-platform-block { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-2); margin-bottom: 10px; }
+        .pt-creative-platform-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+        .pt-remove-social-btn { background: none; border: none; color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 0; }
+        .pt-remove-social-btn:hover { color: #C22B44; }
         .pt-modal-error { color: #C22B44; font-size: 12px; margin-top: 10px; }
         .pt-readonly-field { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 13px; }
         .pt-activity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }

@@ -2,6 +2,13 @@ export interface Speaker {
   name: string;
   designation: string;
   company: string;
+  others: string;
+}
+
+/** platform is one of SOCIAL_CREATIVE_PLATFORMS, or 'other' for legacy pre-grouping uploads. */
+export interface SocialCreative {
+  platform: string;
+  image: string;
 }
 
 // JSON columns: the `mariadb` driver auto-parses these into arrays, but the raw
@@ -74,7 +81,7 @@ export interface PartnershipEvent {
   posterUrl: string;
   bannerUrl: string;
   socialMediaPosts: string;
-  socialCreatives: string[];
+  socialCreatives: SocialCreative[];
   partnershipStatus: string;
   partnershipType: string;
   lastUpdatedDate: string;
@@ -113,7 +120,7 @@ export interface PartnershipEventInput {
   posterUrl?: string;
   bannerUrl?: string;
   socialMediaPosts?: string;
-  socialCreatives?: string[];
+  socialCreatives?: SocialCreative[];
   partnershipStatus?: string;
   partnershipType?: string;
   lastUpdatedDate?: string | null;
@@ -134,6 +141,10 @@ export const PARTNERSHIP_STATUS_OPTIONS = ['Initiated', 'In Progress', 'On Hold'
 export const PARTNERSHIP_TYPE_OPTIONS = ['Domestic', 'International'] as const;
 export const LISTING_OPTIONS = ['No', 'Pending', 'In process', 'Yes'] as const;
 export const EVENT_TICKET_TYPE_OPTIONS = ['Free', 'Paid'] as const;
+export const SOCIAL_CREATIVE_PLATFORMS = ['instagram', 'facebook', 'linkedin', 'whatsapp'] as const;
+export const SOCIAL_CREATIVE_PLATFORM_LABELS: Record<string, string> = {
+  instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', whatsapp: 'WhatsApp', other: 'Other (from before)',
+};
 export const CURRENCY_OPTIONS = ['INR', 'USD', 'AED', 'GBP', 'EUR', 'SGD'] as const;
 
 /** Guidance shown next to each upload/text field in the Add/Edit modal. */
