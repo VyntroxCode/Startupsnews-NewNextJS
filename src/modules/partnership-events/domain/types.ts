@@ -137,7 +137,7 @@ export interface PartnershipEventFilters {
   offset?: number;
 }
 
-export const PARTNERSHIP_STATUS_OPTIONS = ['Initiated', 'In Progress', 'On Hold', 'Partnership Done', 'Dropped', 'Only Listed (No Partnership)', 'Expired'] as const;
+export const PARTNERSHIP_STATUS_OPTIONS = ['Draft', 'Initiated', 'In Progress', 'On Hold', 'Partnership Done', 'Dropped', 'Only Listed (No Partnership)', 'Expired'] as const;
 export const PARTNERSHIP_TYPE_OPTIONS = ['Domestic', 'International'] as const;
 export const LISTING_OPTIONS = ['No', 'Pending', 'In process', 'Yes'] as const;
 export const EVENT_TICKET_TYPE_OPTIONS = ['Free', 'Paid'] as const;

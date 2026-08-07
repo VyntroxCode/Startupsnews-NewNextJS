@@ -4,6 +4,7 @@ import {
   getVideoPosts,
 } from "@/lib/data-adapter";
 import { SidebarTabber } from "@/components/SidebarTabber";
+import { SubmitEventPromo } from "@/components/submit-event/SubmitEventPromo";
 import Link from "next/link";
 
 const SIDEBAR_CATEGORIES = [
@@ -42,6 +43,7 @@ export async function Sidebar({ excludeIds = [] }: SidebarProps) {
       <section className="mvp-side-widget">
         <SidebarTabber latest={latest} trending={trending} videos={videos} />
       </section>
+      <SubmitEventPromo />
     </>
   );
 }

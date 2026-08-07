@@ -113,7 +113,7 @@ export function Footer() {
                <li><Link href="/events/singapore">Tech Events in Singapore</Link></li>
                <li><Link href="/events/bengaluru">Startup Events in Bengaluru </Link></li>
               <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Partner / Sponsor an Event</a></li>
-              <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Submit Your Event</a></li>
+              <li><Link href="/submit-event">Submit Your Event</Link></li>
             </ul>
           </div>
 

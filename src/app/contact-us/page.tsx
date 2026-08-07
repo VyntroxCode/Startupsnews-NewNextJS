@@ -51,13 +51,13 @@ export default function ContactUsPage() {
 
             <div className="contact-us-section-item">
               <h2 className="contact-us-section-item-title">Website Support</h2>
-              <p className="contact-us-section-item-body">
+              {/* <p className="contact-us-section-item-body">
                 To report a technical issue with <a className="contact-us-section-item-link" href="https://startupnews.fyi">StartupNews.fyi</a>, please email{" "}
                 <a href="mailto:tech@startupnews.fyi">
                   tech@startupnews.fyi
                 </a>{" "}
                 with a summary of the issue along with a screenshot, the url, your browser version, browser extensions enabled, operating system, and the make &amp; model of your device.
-              </p>
+              </p> */}
             </div>
           </div>
         </section>

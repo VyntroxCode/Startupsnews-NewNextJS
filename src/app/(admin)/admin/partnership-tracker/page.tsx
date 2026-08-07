@@ -76,7 +76,7 @@ const emptyDraft = (): EventDraft => ({
 
 const STATUS_ORDER = [...PARTNERSHIP_STATUS_OPTIONS] as string[];
 const STATUS_COLOR_HEX: Record<string, string> = {
-  Initiated: '#7C3FE0', 'In Progress': '#2563C7', 'On Hold': '#B9790A',
+  Draft: '#9333EA', Initiated: '#7C3FE0', 'In Progress': '#2563C7', 'On Hold': '#B9790A',
   'Partnership Done': '#1E9E64', Dropped: '#C22B44', 'Only Listed (No Partnership)': '#0E7C8B',
   Expired: '#3F4552', Unmapped: '#9CA3AF',
 };

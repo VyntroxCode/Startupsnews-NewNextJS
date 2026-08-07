@@ -84,7 +84,7 @@ export const siteConfig = {
         { label: "Mumbai", href: "/events/mumbai" },
       ],
     },
-    { label: "SUBMIT YOUR EVENT", href: "https://forms.gle/G4ZxCP3G1gTHJf1v5", dividerBefore: true },
+    { label: "SUBMIT YOUR EVENT", href: "/submit-event" },
     { label: "PARTNER WITH US" },
     { label: "REPORTS", href: "/dashboard/reports", requiresAuth: true },
     {
