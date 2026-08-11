@@ -110,6 +110,8 @@ const menuItems = [
   { href: '/admin/events', label: 'Events', icon: EventsIcon },
   { href: '/admin/partnership-tracker', label: 'Partnership Tracker', icon: EventsIcon },
   { href: '/admin/newsletter', label: 'Newsletter', icon: NewsletterIcon },
+  { href: '/admin/sales-tracker', label: 'Sales Tracker', icon: ReportsIcon },
+  { href: '/admin/hr-tool', label: 'HR Management', icon: RegisteredUsersIcon },
   { href: '/admin/tools', label: 'Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },
