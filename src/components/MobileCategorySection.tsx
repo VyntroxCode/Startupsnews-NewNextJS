@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PostImage } from "@/components/PostImage";
 import { getPostImage, type Post } from "@/lib/data-adapter";
 import { getPostPath } from "@/lib/post-utils";
+import { ArrowRightIcon } from "@/components/icons";
 
 interface MobileCategorySectionProps {
     title: string;
@@ -29,7 +30,7 @@ export function MobileCategorySection({ title, posts, slug }: MobileCategorySect
              {/* View More Link - Right Aligned */}
             <div className="startupnews-mobile-category-view-more">
                 <Link href={`/${slug}`} className="startupnews-mobile-category-view-more-link">
-                    MORE <i className="fa fa-long-arrow-right" aria-hidden="true" />
+                    MORE <ArrowRightIcon aria-hidden="true" />
                 </Link>
             </div>
             </div>
@@ -132,7 +133,7 @@ export function MobileCategorySection({ title, posts, slug }: MobileCategorySect
             {/* View More Link - Right Aligned */}
             {/* <div className="startupnews-mobile-category-view-more">
                 <Link href={`/${slug}`} className="startupnews-mobile-category-view-more-link">
-                    View More <i className="fa fa-long-arrow-right" aria-hidden="true" />
+                    View More <ArrowRightIcon aria-hidden="true" />
                 </Link>
             </div> */}
         </section>

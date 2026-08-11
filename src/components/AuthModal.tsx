@@ -271,7 +271,7 @@ export default function AuthModal() {
 	/* ─────────────── SINGLE RETURN ─────────────── */
 	return (
 		<>
-			{GOOGLE_CLIENT_ID && (
+			{GOOGLE_CLIENT_ID && open && (
 				<Script
 					src="https://accounts.google.com/gsi/client"
 					onLoad={initGIS}

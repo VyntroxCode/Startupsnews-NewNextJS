@@ -12,6 +12,23 @@ import { siteConfig } from "@/lib/config";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import AuthModal from "@/components/AuthModal";
 import Script from "next/script";
+import { BannersService } from "@/modules/banners/service/banners.service";
+import { BannersRepository } from "@/modules/banners/repository/banners.repository";
+import { entityToBanner } from "@/modules/banners/utils/banners.utils";
+import type { Banner } from "@/modules/banners/domain/types";
+
+const bannersRepository = new BannersRepository();
+const bannersService = new BannersService(bannersRepository);
+
+async function getActiveBanners(): Promise<Banner[]> {
+  try {
+    const entities = await bannersService.getActiveBanners();
+    return entities.map(entityToBanner);
+  } catch (error) {
+    console.error("Error fetching banners for layout:", error);
+    return [];
+  }
+}
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -196,15 +213,15 @@ const graphJsonLd = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const banners = await getActiveBanners();
   return (
     <html lang="en">
       <head>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(graphJsonLd) }}
@@ -212,13 +229,13 @@ export default function RootLayout({
       </head>
       <body>
         <TopLoader />
-        <ConditionalLayout>
+        <ConditionalLayout banners={banners}>
           {children}
         </ConditionalLayout>
         <AuthModal />
         <ThemeScript />
-        <Script src="https://www.googletagmanager.com/gtag/js?id=G-WNYV9VGC9N" strategy="afterInteractive" />
-        <Script id="gtag-init" strategy="afterInteractive">{`
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-WNYV9VGC9N" strategy="lazyOnload" />
+        <Script id="gtag-init" strategy="lazyOnload">{`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());

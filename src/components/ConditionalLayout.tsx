@@ -7,11 +7,15 @@ import { FlyMenuFade } from "@/components/FlyMenuFade";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BannerCarouselClient } from "@/components/BannerCarouselClient";
+import { AngleUpIcon } from "@/components/icons";
+import type { Banner } from "@/modules/banners/domain/types";
 
 export default function ConditionalLayout({
   children,
+  banners,
 }: {
   children: React.ReactNode;
+  banners: Banner[];
 }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
@@ -33,7 +37,7 @@ export default function ConditionalLayout({
         <div id="mvp-site-wall" className="left relative">
           <div id="mvp-site-main" className="left relative">
             <Header />
-            {showBanner && <BannerCarouselClient />}
+            {showBanner && <BannerCarouselClient initialBanners={banners} />}
             <div id="mvp-main-body-wrap" className="left relative">
               {children}
             </div>
@@ -42,7 +46,7 @@ export default function ConditionalLayout({
         </div>
       </div>
       <div className="mvp-fly-top back-to-top">
-        <i className="fa fa-angle-up fa-3"></i>
+        <AngleUpIcon />
       </div>
       <FlyMenuFade />
     </FlyMenuProvider>

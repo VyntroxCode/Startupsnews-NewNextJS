@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
+import { HeadphonesIcon, ArrowRightIcon } from "@/components/icons";
 
 export default function AdvertisePage() {
     const [formData, setFormData] = useState({
@@ -153,14 +154,14 @@ const ProgressBar = ({ value }: { value: number }) => {
 
                    <div className="advertise-with-us-cta" style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" ,padding: "50px 20px", background: "#fff", border: "1px solid #000",  borderRadius: "8px", display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" }}>
                        <div className="icon" style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", width: "60px", height: "60px", background: "#dbeafe", borderRadius: "50%", fontSize: "24px" }}>
-                        <i className="fa-solid fa-headphones"></i>
+                        <HeadphonesIcon aria-hidden="true" />
                                 </div>
                         <p className="adv-cta-heading">
                         Ready to Advertise with StartupNews?
                     </p>
 
                     <a className="btn btn-primary" href="#sn-form" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "220px", padding: "16px 24px", background: "#000", color: "#fff", textDecoration: "none", fontWeight: 700, borderRadius: "4px" }}>
-                            🚀 Submit Your Advertising Enquiry &nbsp; <i className="fa-solid fa-arrow-right"></i>
+                            🚀 Submit Your Advertising Enquiry &nbsp; <ArrowRightIcon aria-hidden="true" />
                         </a>
 
                     <p style={{ fontSize: "14px", marginTop: "10px", color: "#444" }}>

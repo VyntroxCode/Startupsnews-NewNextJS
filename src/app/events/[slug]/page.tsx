@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getEventsByRegion, getEventImage } from "@/lib/data-adapter";
 import { EventByCountryCard } from "@/components/EventByCountryCard";
+import { ArrowRightIcon } from "@/components/icons";
 
 // Helper to convert region name to slug (e.g. "Delhi NCR" -> "delhi-ncr")
 function slugify(text: string) {
@@ -98,7 +99,7 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
                                     )}
                                     <div style={{ marginTop: "40px", textAlign: "center" }}>
                                         <Link href="/events" className="event-detail-back">
-                                            Back to Events <i className="fa fa-long-arrow-right" aria-hidden="true" style={{ marginLeft: "5px" }} />
+                                            Back to Events <ArrowRightIcon aria-hidden="true" style={{ marginLeft: "5px" }} />
                                         </Link>
                                     </div>
                                 </section>

@@ -62,7 +62,6 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
                 className="banner-carousel-image"
                 priority={currentIndex === 0}
                 sizes="100vw"
-                unoptimized
               />
               <div className="banner-carousel-overlay">
                 <div className="banner-carousel-content">
@@ -85,7 +84,6 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
                 className="banner-carousel-image"
                 priority={currentIndex === 0}
                 sizes="100vw"
-                unoptimized
               />
               <div className="banner-carousel-overlay">
                 <div className="banner-carousel-content">

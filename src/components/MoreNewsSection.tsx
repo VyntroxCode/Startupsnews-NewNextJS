@@ -103,7 +103,7 @@ export function MoreNewsSection({
                       <p className="post-card-excerpt-max-3-lines">{post.excerpt}</p>
                       {/* <div className="read-more-link"> */}
                         {/* <span>
-                          View More <i className="fa fa-long-arrow-right" aria-hidden="true" />
+                          View More <ArrowRightIcon aria-hidden="true" />
                         </span> */}
                       {/* </div> */}
                     </div>

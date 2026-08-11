@@ -91,7 +91,6 @@ export function PostImage({
               height={height}
               fill={fill}
               className={className}
-              unoptimized
               style={{
                 objectFit: "cover",
                 objectPosition: "center",
@@ -109,7 +108,6 @@ export function PostImage({
             height={height}
             fill={fill}
             className={className}
-            unoptimized
             onError={() => {
               if (imgSrc !== FALLBACK_POST_IMAGE) {
                 setImgSrc(FALLBACK_POST_IMAGE);

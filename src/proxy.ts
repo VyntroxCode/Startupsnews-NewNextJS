@@ -13,26 +13,41 @@ function toInternalOrigin(origin: string): string {
   return origin.replace(/^https:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, (_, host, port) => `http://${host}${port || ''}`);
 }
 
-// Lightweight in-process cache for robots + httpStatus (5 min TTL)
+// Lightweight in-process cache for robots + httpStatus.
+// Posts almost never flip between published/410 after the first hour, so a
+// long TTL is safe and keeps most requests off the extra network round-trip.
 const robotsCache = new Map<string, { robots: string; httpStatus: number; expiresAt: number }>();
-const ROBOTS_TTL_MS = 5 * 60 * 1000;
+const ROBOTS_TTL_MS = 60 * 60 * 1000;
+// De-dupe concurrent lookups for the same slug (e.g. a traffic spike on one
+// article) so they share a single in-flight fetch instead of each firing one.
+const inFlight = new Map<string, Promise<{ robots: string; httpStatus: number }>>();
 
 async function getPostMeta(slug: string, origin: string): Promise<{ robots: string; httpStatus: number }> {
   const now = Date.now();
   const cached = robotsCache.get(slug);
   if (cached && cached.expiresAt > now) return { robots: cached.robots, httpStatus: cached.httpStatus };
-  try {
-    const url = `${toInternalOrigin(origin)}/api/posts/robots?slug=${encodeURIComponent(slug)}`;
-    const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
-    if (!res.ok) return { robots: 'index,follow', httpStatus: 200 };
-    const data = await res.json() as { robots?: string; httpStatus?: number };
-    const robots = data?.robots || 'index,follow';
-    const httpStatus = data?.httpStatus || 200;
-    robotsCache.set(slug, { robots, httpStatus, expiresAt: now + ROBOTS_TTL_MS });
-    return { robots, httpStatus };
-  } catch {
-    return { robots: 'index,follow', httpStatus: 200 };
-  }
+
+  const pending = inFlight.get(slug);
+  if (pending) return pending;
+
+  const promise = (async () => {
+    try {
+      const url = `${toInternalOrigin(origin)}/api/posts/robots?slug=${encodeURIComponent(slug)}`;
+      const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
+      if (!res.ok) return { robots: 'index,follow', httpStatus: 200 };
+      const data = await res.json() as { robots?: string; httpStatus?: number };
+      const robots = data?.robots || 'index,follow';
+      const httpStatus = data?.httpStatus || 200;
+      robotsCache.set(slug, { robots, httpStatus, expiresAt: now + ROBOTS_TTL_MS });
+      return { robots, httpStatus };
+    } catch {
+      return { robots: 'index,follow', httpStatus: 200 };
+    } finally {
+      inFlight.delete(slug);
+    }
+  })();
+  inFlight.set(slug, promise);
+  return promise;
 }
 
 function renderGoneHtml(slug: string): string {

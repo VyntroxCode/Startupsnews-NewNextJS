@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { PostImage } from "@/components/PostImage";
 import {
@@ -36,8 +37,6 @@ export const metadata: Metadata = {
 
 // ISR: serve cached HTML for 60s so CDN/edge can serve in ~0.01s when cached
 export const revalidate = 60;
-// Prevent build-time DB access; render at request time.
-export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const categorySlugs = [
@@ -158,7 +157,6 @@ export default async function HomePage() {
                 className="mvp-reg-img"
                 sizes="100vw"
                 style={{ objectFit: "cover" }}
-                priority
               />
               <PostImage
                 src={getPostImage(main)}
@@ -168,6 +166,7 @@ export default async function HomePage() {
                 height={300}
                 style={{ width: "100%", height: "auto", objectFit: "cover" }}
                 priority
+                fetchPriority="high"
               />
             </div>
             <div className="startupnews-mobile-featured-content">
@@ -381,10 +380,14 @@ export default async function HomePage() {
                       <Link key={post.id} href={getPostPath(post)} rel="bookmark">
                         <div className="mvp-feat1-pop-cont left relative">
                           <div className="mvp-feat1-pop-img home-trending-pop-img left relative">
-                            <div
-                              className="home-trending-pop-img-bg"
-                              style={{ backgroundImage: `url(${trendingImage})` }}
+                            <Image
+                              src={trendingImage}
+                              alt=""
+                              fill
                               aria-hidden
+                              className="home-trending-pop-img-bg"
+                              sizes="(max-width: 767px) 100vw, 400px"
+                              style={{ objectFit: "cover", objectPosition: "center" }}
                             />
                             <PostImage
                               src={trendingImage}

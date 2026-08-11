@@ -1465,7 +1465,8 @@ ul.mvp-mega-list li:hover .mvp-mega-img img {
 	transform: translate3d(0, 0, 0);
 }
 
-.mvp-fly-top i {
+.mvp-fly-top i,
+.mvp-fly-top svg {
 	font-size: 40px;
 	line-height: 100%;
 	position: absolute;

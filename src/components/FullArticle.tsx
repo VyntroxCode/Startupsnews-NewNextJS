@@ -5,6 +5,7 @@ import Image from "next/image";
 import { PostImage } from "@/components/PostImage";
 import type { Post } from "@/lib/data-adapter";
 import { getPostImage, hasThumbnail, toNewsBrief, stripFeaturedImageFromContent, getPostPath } from "@/lib/post-utils";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 interface FullArticleProps {
     post: Post;
@@ -327,7 +328,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                             {prev && prev.id !== post.id && (
                                                                 <div className="mvp-prev-post-wrap left relative">
                                                                     <Link href={getPostPath(prev)} rel="bookmark" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-                                                                        <span className="mvp-prev-arr fa fa-chevron-left left" aria-hidden="true" style={{ fontSize: "2rem", color: "#ccc", marginRight: "15px" }}></span>
+                                                                        <span className="mvp-prev-arr left" aria-hidden="true" style={{ fontSize: "2rem", color: "#ccc", marginRight: "15px" }}><ChevronLeftIcon /></span>
                                                                         <div className="mvp-prev-next-text left relative">
                                                                             <span className="mvp-prev-next-label left relative">Don&apos;t Miss</span>
                                                                             <p>{prev.title}</p>
@@ -342,7 +343,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                                             <span className="mvp-prev-next-label left relative" style={{ textAlign: "right", width: "100%" }}>Up Next</span>
                                                                             <p>{next.title}</p>
                                                                         </div>
-                                                                        <span className="mvp-next-arr fa fa-chevron-right right" aria-hidden="true" style={{ fontSize: "2rem", color: "#ccc", marginLeft: "15px" }}></span>
+                                                                        <span className="mvp-next-arr right" aria-hidden="true" style={{ fontSize: "2rem", color: "#ccc", marginLeft: "15px" }}><ChevronRightIcon /></span>
                                                                     </Link>
                                                                 </div>
                                                             )}

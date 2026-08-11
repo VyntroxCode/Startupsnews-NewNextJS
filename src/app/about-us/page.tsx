@@ -1,5 +1,7 @@
 "use client";
 
+import { LinkedInIcon } from "@/components/icons";
+
 /**
  * AboutPage - Redesigned to match Step 2054 visual reference.
  */
@@ -129,7 +131,7 @@ export default function AboutPage() {
 								href="https://www.linkedin.com/in/madhurmohanmalik/"
 								style={{ color: "#0077b5", fontSize: "20px" }}
 							>
-								<i className="fa-brands fa-linkedin"></i>
+								<LinkedInIcon aria-hidden="true" />
 							</a>
 						</div>
 						<p
@@ -188,7 +190,7 @@ export default function AboutPage() {
 								style={{ color: "#0077b5", fontSize: "20px" }}
 								aria-label="Kapil Suri on LinkedIn"
 							>
-								<i className="fa-brands fa-linkedin"></i>
+								<LinkedInIcon aria-hidden="true" />
 							</a>
 						</div>
 						<p

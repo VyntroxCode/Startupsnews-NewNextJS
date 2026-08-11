@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PostImage } from "@/components/PostImage";
 import type { Post } from "@/lib/data-adapter";
 import { getPostPath } from "@/lib/post-utils";
+import { ArrowRightIcon } from "@/components/icons";
 
 interface HomeDarkSectionProps {
   title: string;
@@ -80,7 +81,7 @@ export function HomeDarkSection({ title, categorySlug, featured, list,url }: Hom
               <Link href={`/${categorySlug}`}>
                   <div className="mvp-widget-feat2-side-more-but left relative">
                     <span className="mvp-widget-feat2-side-more">Read More</span>
-                    <i className="fa fa-long-arrow-right" aria-hidden="true"></i>
+                    <ArrowRightIcon aria-hidden="true" />
                   </div>
                 </Link>
             </div>

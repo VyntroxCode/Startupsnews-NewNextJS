@@ -1,41 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { BannerCarousel } from "./BannerCarousel";
 import type { Banner } from "@/modules/banners/domain/types";
 
-export function BannerCarouselClient() {
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchBanners() {
-      try {
-        const response = await fetch("/api/banners");
-        if (!response.ok) {
-          console.error("Banner API error:", response.status, response.statusText);
-          setLoading(false);
-          return;
-        }
-        const data = await response.json();
-        if (data.success) {
-          setBanners(data.data || []);
-        } else {
-          console.error("Banner API returned error:", data.error);
-        }
-      } catch (error) {
-        console.error("Error fetching banners:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchBanners();
-  }, []);
-
-  if (loading) {
-    return null;
-  }
+export function BannerCarouselClient({ initialBanners }: { initialBanners: Banner[] }) {
+  const banners = initialBanners;
 
   if (banners.length === 0) {
     return (

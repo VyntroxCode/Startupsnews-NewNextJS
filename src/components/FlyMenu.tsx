@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { siteConfig } from "@/lib/config";
 import { useFlyMenu } from "@/components/FlyMenuContext";
+
+const FONT_AWESOME_HREF = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css";
 
 type FlyMenuItem = {
   id?: string;
@@ -20,9 +22,21 @@ function isExpandable(item: FlyMenuItem): item is FlyMenuItem & { id: string; ch
 }
 
 export function FlyMenu() {
-  const { toggle } = useFlyMenu();
+  const { open, toggle } = useFlyMenu();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const flyMenu = siteConfig.flyMenu as FlyMenuItem[];
+
+  // Load Font Awesome only once the fly-out menu is actually opened, so its
+  // icons (plus/minus toggle, social row) render without paying the cost on
+  // every page load.
+  useEffect(() => {
+    if (!open) return;
+    if (document.querySelector(`link[href="${FONT_AWESOME_HREF}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = FONT_AWESOME_HREF;
+    document.head.appendChild(link);
+  }, [open]);
 
   const handleProtectedClick = (e: { preventDefault: () => void }, href: string) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('pub_auth_token') : null;

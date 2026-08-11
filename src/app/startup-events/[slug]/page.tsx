@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getEventBySlug, getEventImage } from "@/lib/data-adapter";
 import { sanitizeContent, isValidContent } from "@/lib/content-utils";
+import { ArrowRightIcon } from "@/components/icons";
 
 const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -143,7 +144,7 @@ export default async function StartupEventPage({
                   </a>
                 )}
                 <Link href="/events" className="event-detail-back">
-                  Back to Events <i className="fa fa-long-arrow-right" aria-hidden="true" />
+                  Back to Events <ArrowRightIcon aria-hidden="true" />
                 </Link>
               </div>
             </div>
