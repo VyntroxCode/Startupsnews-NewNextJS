@@ -1,7 +1,15 @@
 'use client';
 
-import AdminIframeTool from '@/components/admin/AdminIframeTool';
+import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
+import { HrToolProvider } from '@/components/admin/hr-tool/HrToolContext';
+import HrToolApp from '@/components/admin/hr-tool/HrToolApp';
 
 export default function HrToolPage() {
-  return <AdminIframeTool src="/api/admin-tools/hr-tool/index.html" title="HR Management" />;
+  return (
+    <AdminErrorBoundary>
+      <HrToolProvider>
+        <HrToolApp />
+      </HrToolProvider>
+    </AdminErrorBoundary>
+  );
 }

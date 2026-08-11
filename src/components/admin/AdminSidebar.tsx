@@ -116,7 +116,7 @@ const menuItems = [
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },
   { href: '/admin/registered-users', label: 'Registered Users', icon: RegisteredUsersIcon },
-  { href: '/admin/contacts', label: 'Database', icon: ContactsIcon },
+  { href: '/admin/contacts', label: 'Directory', icon: ContactsIcon },
   { href: '/admin/users', label: 'Users', icon: UsersIcon },
 ];
 

@@ -1,0 +1,211 @@
+'use client';
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { hrApi } from './api';
+import { currentMonthLabel } from './utils';
+import type {
+  HrTeam, HrOrgStructure, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
+  HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrRules,
+  HrAuditLogEntry, HrRole, HrView,
+} from './types';
+
+interface HrState {
+  role: HrRole | null;
+  view: HrView;
+  currentUser: HrEmployee | null;
+  teams: HrTeam[];
+  orgStructure: HrOrgStructure;
+  employees: HrEmployee[];
+  onboarding: HrOnboarding[];
+  attendance: HrAttendanceRecord[];
+  attendanceOverrides: Record<string, string>;
+  punchLog: Record<string, HrPunch>;
+  regularizations: HrRegularization[];
+  leaveRequests: HrLeaveRequest[];
+  expenses: HrExpense[];
+  tickets: HrTicket[];
+  compliance: HrComplianceTask[];
+  payrollRun: HrPayrollRun;
+  templates: Record<string, { content: string }>;
+  rules: HrRules;
+  auditLog: HrAuditLogEntry[];
+}
+
+const DEFAULT_RULES: HrRules = {
+  workingDaysPattern: 'Mon–Sat, alternate Saturdays off', shiftStartTime: '10:00', shiftEndTime: '19:00',
+  shiftGraceMinutes: 15, halfDayThresholdHours: 4, regularizationWindowDays: 5, regularizationOverride: false,
+  salaryPeriodFrom: 1, salaryPeriodTo: 'last', ctcSplit: { basic: 50, hra: 20, allowances: 30 },
+  leaveTypes: { Casual: true, Sick: true, Earned: true, Maternity: true, Paternity: true, 'Comp-off': true },
+  twoLevelApproval: { leave: true, attendance: true, expense: true },
+  lateMarkPenalty: false, geoFencing: false, selfieCheckin: false, pfEsi: false,
+  optionalHolidayChoice: true, assetChecklist: true,
+};
+
+function initialState(): HrState {
+  return {
+    role: null, view: 'dashboard', currentUser: null, teams: [],
+    orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
+    employees: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
+    regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
+    payrollRun: { month: currentMonthLabel(), status: 'not_run' },
+    templates: {}, rules: DEFAULT_RULES, auditLog: [],
+  };
+}
+
+function warnSaveFailed(): void { alert("Could not save that change. It's only kept until you reload — please try again."); }
+
+interface HrToolContextValue {
+  state: HrState;
+  loading: boolean;
+  loadError: boolean;
+  setView: (v: HrView) => void;
+  login: (emp: HrEmployee) => void;
+  logout: () => void;
+  logRuleChange: (text: string) => void;
+
+  persistTeams: (v: HrTeam[]) => Promise<void>;
+  persistDesignations: (v: string[]) => Promise<void>;
+  persistExpenseCategories: (v: string[]) => Promise<void>;
+  persistRequiredDocuments: (v: string[]) => Promise<void>;
+  persistHolidays: (v: { date: string; name: string }[]) => Promise<void>;
+  persistEmployees: (v: HrEmployee[]) => Promise<void>;
+  persistOnboarding: (v: HrOnboarding[]) => Promise<void>;
+  persistRegularizations: (v: HrRegularization[]) => Promise<void>;
+  persistLeaveRequests: (v: HrLeaveRequest[]) => Promise<void>;
+  persistExpenses: (v: HrExpense[]) => Promise<void>;
+  persistTickets: (v: HrTicket[]) => Promise<void>;
+  persistRules: (v: HrRules) => Promise<void>;
+  persistAttendance: (rec: HrAttendanceRecord) => Promise<void>;
+  persistAttendanceOverride: (o: HrAttendanceOverride) => Promise<void>;
+  persistPunch: (p: HrPunch) => Promise<void>;
+  persistPayrollRun: (v: HrPayrollRun) => Promise<void>;
+  persistTemplate: (name: string, content: string) => Promise<void>;
+  resetSampleData: () => Promise<boolean>;
+}
+
+const HrToolContext = createContext<HrToolContextValue | null>(null);
+
+export function useHrTool(): HrToolContextValue {
+  const ctx = useContext(HrToolContext);
+  if (!ctx) throw new Error('useHrTool must be used within HrToolProvider');
+  return ctx;
+}
+
+export function HrToolProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<HrState>(initialState);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await hrApi.bootstrap();
+        const attendanceOverrides: Record<string, string> = {};
+        (data.attendanceOverrides || []).forEach((o) => { attendanceOverrides[o.emp + '|' + o.date] = o.status; });
+        const punchLog: Record<string, HrPunch> = {};
+        (data.punchLog || []).forEach((p) => { punchLog[p.emp] = p; });
+        const templates: Record<string, { content: string }> = {};
+        (data.templates || []).forEach((t) => { templates[t.name] = { content: t.content }; });
+
+        setState((s) => {
+          const currentMonthRun = (data.payrollRuns || []).find((r) => r.month === s.payrollRun.month);
+          return {
+            ...s,
+            teams: data.teams, orgStructure: data.orgStructure, employees: data.employees,
+            onboarding: data.onboarding, attendance: data.attendance, attendanceOverrides, punchLog,
+            regularizations: data.regularizations, leaveRequests: data.leaveRequests, expenses: data.expenses,
+            tickets: data.tickets, compliance: data.compliance,
+            payrollRun: currentMonthRun || s.payrollRun,
+            templates, rules: data.rules || s.rules, auditLog: data.auditLog || [],
+          };
+        });
+      } catch {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const setView = useCallback((v: HrView) => setState((s) => ({ ...s, view: v })), []);
+  const login = useCallback((emp: HrEmployee) => setState((s) => ({ ...s, currentUser: emp, role: emp.sysRole as HrRole, view: 'dashboard' })), []);
+  const logout = useCallback(() => setState((s) => ({ ...s, currentUser: null, role: null, view: 'dashboard' })), []);
+
+  const logRuleChange = useCallback((text: string) => {
+    setState((s) => {
+      const entry: HrAuditLogEntry = { ts: new Date().toISOString().slice(0, 10), who: `${s.currentUser ? s.currentUser.name : 'HR'} (${s.role})`, change: text };
+      hrApi.appendAuditLog(entry);
+      return { ...s, auditLog: [entry, ...s.auditLog] };
+    });
+  }, []);
+
+  const persistTeams = useCallback(async (v: HrTeam[]) => { setState((s) => ({ ...s, teams: v })); try { await hrApi.saveTeams(v); } catch { warnSaveFailed(); } }, []);
+  const persistDesignations = useCallback(async (v: string[]) => { setState((s) => ({ ...s, orgStructure: { ...s.orgStructure, designations: v } })); try { await hrApi.saveDesignations(v); } catch { warnSaveFailed(); } }, []);
+  const persistExpenseCategories = useCallback(async (v: string[]) => { setState((s) => ({ ...s, orgStructure: { ...s.orgStructure, expenseCategories: v } })); try { await hrApi.saveExpenseCategories(v); } catch { warnSaveFailed(); } }, []);
+  const persistRequiredDocuments = useCallback(async (v: string[]) => { setState((s) => ({ ...s, orgStructure: { ...s.orgStructure, requiredDocuments: v } })); try { await hrApi.saveRequiredDocuments(v); } catch { warnSaveFailed(); } }, []);
+  const persistHolidays = useCallback(async (v: { date: string; name: string }[]) => { setState((s) => ({ ...s, orgStructure: { ...s.orgStructure, holidays: v } })); try { await hrApi.saveHolidays(v); } catch { warnSaveFailed(); } }, []);
+  const persistEmployees = useCallback(async (v: HrEmployee[]) => {
+    setState((s) => ({ ...s, employees: v, currentUser: s.currentUser ? v.find((e) => e.id === s.currentUser!.id) || s.currentUser : null }));
+    try { await hrApi.saveEmployees(v); } catch { warnSaveFailed(); }
+  }, []);
+  const persistOnboarding = useCallback(async (v: HrOnboarding[]) => { setState((s) => ({ ...s, onboarding: v })); try { await hrApi.saveOnboarding(v); } catch { warnSaveFailed(); } }, []);
+  const persistRegularizations = useCallback(async (v: HrRegularization[]) => { setState((s) => ({ ...s, regularizations: v })); try { await hrApi.saveRegularizations(v); } catch { warnSaveFailed(); } }, []);
+  const persistLeaveRequests = useCallback(async (v: HrLeaveRequest[]) => { setState((s) => ({ ...s, leaveRequests: v })); try { await hrApi.saveLeaveRequests(v); } catch { warnSaveFailed(); } }, []);
+  const persistExpenses = useCallback(async (v: HrExpense[]) => { setState((s) => ({ ...s, expenses: v })); try { await hrApi.saveExpenses(v); } catch { warnSaveFailed(); } }, []);
+  const persistTickets = useCallback(async (v: HrTicket[]) => { setState((s) => ({ ...s, tickets: v })); try { await hrApi.saveTickets(v); } catch { warnSaveFailed(); } }, []);
+  const persistRules = useCallback(async (v: HrRules) => { setState((s) => ({ ...s, rules: v })); try { await hrApi.saveRules(v); } catch { warnSaveFailed(); } }, []);
+  const persistAttendance = useCallback(async (rec: HrAttendanceRecord) => {
+    setState((s) => {
+      const idx = s.attendance.findIndex((a) => a.emp === rec.emp && a.date === rec.date);
+      const attendance = idx >= 0 ? s.attendance.map((a, i) => (i === idx ? rec : a)) : [...s.attendance, rec];
+      return { ...s, attendance };
+    });
+    try { await hrApi.recordAttendance(rec); } catch { warnSaveFailed(); }
+  }, []);
+  const persistAttendanceOverride = useCallback(async (o: HrAttendanceOverride) => {
+    setState((s) => ({ ...s, attendanceOverrides: { ...s.attendanceOverrides, [o.emp + '|' + o.date]: o.status } }));
+    try { await hrApi.recordAttendanceOverride(o); } catch { warnSaveFailed(); }
+  }, []);
+  const persistPunch = useCallback(async (p: HrPunch) => {
+    setState((s) => ({ ...s, punchLog: { ...s.punchLog, [p.emp]: p } }));
+    try { await hrApi.recordPunch(p); } catch { warnSaveFailed(); }
+  }, []);
+  const persistPayrollRun = useCallback(async (v: HrPayrollRun) => { setState((s) => ({ ...s, payrollRun: v })); try { await hrApi.savePayrollRun(v); } catch { warnSaveFailed(); } }, []);
+  const persistTemplate = useCallback(async (name: string, content: string) => {
+    setState((s) => ({ ...s, templates: { ...s.templates, [name]: { content } } }));
+    try { await hrApi.saveTemplate(name, content); } catch { warnSaveFailed(); }
+  }, []);
+  const resetSampleData = useCallback(async (): Promise<boolean> => {
+    const me = state.currentUser;
+    if (!me) return false;
+    try { await hrApi.resetSampleData(me.id); } catch { warnSaveFailed(); return false; }
+    const clearedTeams = state.teams.map((t) => (t.manager && t.manager !== me.name ? { ...t, manager: null } : t));
+    setState((s) => ({
+      ...s,
+      employees: [{ ...me, manager: null, ctcSplitOverride: null }],
+      teams: clearedTeams,
+      onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
+      regularizations: [], leaveRequests: [], expenses: [], tickets: [],
+      payrollRun: { month: s.payrollRun.month, status: 'not_run' },
+    }));
+    await hrApi.saveTeams(clearedTeams).catch(() => warnSaveFailed());
+    logRuleChange('Reset all sample data (kept Teams, Org Structure, Rules, and Templates)');
+    return true;
+  }, [state.currentUser, state.teams, logRuleChange]);
+
+  const value = useMemo<HrToolContextValue>(() => ({
+    state, loading, loadError, setView, login, logout, logRuleChange,
+    persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
+    persistEmployees, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
+    persistTickets, persistRules, persistAttendance, persistAttendanceOverride, persistPunch,
+    persistPayrollRun, persistTemplate, resetSampleData,
+  }), [
+    state, loading, loadError, setView, login, logout, logRuleChange,
+    persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
+    persistEmployees, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
+    persistTickets, persistRules, persistAttendance, persistAttendanceOverride, persistPunch,
+    persistPayrollRun, persistTemplate, resetSampleData,
+  ]);
+
+  return <HrToolContext.Provider value={value}>{children}</HrToolContext.Provider>;
+}

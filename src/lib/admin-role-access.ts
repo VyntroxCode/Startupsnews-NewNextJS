@@ -1,7 +1,9 @@
 /** Client-side path scoping for the Event Admin / Publisher Admin panels (mirrors the API guards). */
 
-// Only the super admin can manage other admin-panel accounts, or use the standalone Network Manager (contacts CRM).
-const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts'];
+// Only the super admin can manage other admin-panel accounts, or use the standalone Network
+// Manager (contacts CRM), HR tool, or Sales tracker — matches HR_TOOL_ROLES/SALES_TRACKER_ROLES
+// in shared/middleware/roles.ts, which already gate their APIs to 'admin' only.
+const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts', '/admin/hr-tool', '/admin/sales-tracker'];
 
 export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   admin: 'all',
