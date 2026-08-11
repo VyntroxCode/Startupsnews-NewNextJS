@@ -31,3 +31,9 @@ export const ALL_ADMIN_ROLES = ['admin', 'editor', 'author', 'event_admin', 'pub
 
 /** Network Manager (contacts CRM) — super admin only, standalone tool. */
 export const CONTACTS_ROLES = ['admin'] as const;
+
+/** Sales Tracker — super admin only, standalone tool. */
+export const SALES_TRACKER_ROLES = ['admin'] as const;
+
+/** HR Tool — super admin only, standalone tool (has its own internal role system for HR Head/Manager/Employee). */
+export const HR_TOOL_ROLES = ['admin'] as const;

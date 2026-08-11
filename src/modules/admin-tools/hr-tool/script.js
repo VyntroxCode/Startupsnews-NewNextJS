@@ -1,122 +1,32 @@
 const TODAY = "2026-08-05";
 
 /* ---------------------------------------------------------
-   In-memory data store (no backend — resets on reload)
+   Data store — hydrated from the DB via loadAll() at boot,
+   kept in memory during the session, written back through the
+   persist* helpers below after every mutation.
 --------------------------------------------------------- */
 const state = {
   role: null,
   view: "dashboard",
   currentUser: null,
-
-  // Teams — each has one Reporting Manager (by employee name). HR can add/remove from Rules & Org Structure.
-  teams: [
-    { name: "Leadership", manager: null },
-    { name: "Content", manager: "Vikram Seth" },
-    { name: "Partnerships & BD", manager: "Kunal Verma" },
-  ],
-
-  // Org Structure — HR-managed master lists. Every dropdown across the tool (onboarding, expenses, leave) pulls from here.
-  orgStructure: {
-    designations: [
-      "Founder & CEO", "Co-founder & COO", "People Ops Head", "Content Lead", "Senior Content Writer", "Content Writer",
-      "Video Editor", "Graphic Designer", "Social Media Executive", "Partnerships Lead", "BD Associate", "Tech Lead"
-    ],
-    expenseCategories: ["Travel", "Meals", "Office Supplies", "Client Entertainment", "Software/Subscription", "Other"],
-    requiredDocuments: ["PAN Card", "Aadhar", "Education Certificates", "Previous Employment Proof", "Bank Proof"],
-    holidays: [
-      { date: "2026-08-15", name: "Independence Day" },
-      { date: "2026-10-02", name: "Gandhi Jayanti" },
-      { date: "2026-10-20", name: "Diwali" },
-      { date: "2027-01-26", name: "Republic Day" },
-    ],
-  },
-
-  employees: [
-    { id: "E-100", name: "Rohan Kapoor", email: "rohan.kapoor@snf.co", designation: "Founder & CEO", team: "Leadership", manager: null, status: "active", doj: "2018-04-01", sysRole: "Founder", ctc: 1800000, leaveBalance: { Casual: 8, Sick: 8, Earned: 18 }, documents: [], signedDocs: [] },
-    { id: "E-101", name: "Ananya Rao", email: "ananya.rao@snf.co", designation: "Senior Content Writer", team: "Content", manager: "Vikram Seth", status: "active", doj: "2022-03-14", sysRole: "Employee", ctc: 640000, leaveBalance: { Casual: 6, Sick: 8, Earned: 12 }, documents: [], signedDocs: [] },
-    { id: "E-102", name: "Ravi Kulkarni", email: "ravi.k@snf.co", designation: "Video Editor", team: "Content", manager: "Vikram Seth", status: "active", doj: "2021-07-01", sysRole: "Employee", ctc: 560000, leaveBalance: { Casual: 4, Sick: 5, Earned: 9 }, documents: [], signedDocs: [] },
-    { id: "E-103", name: "Meera Iyer", email: "meera.iyer@snf.co", designation: "Social Media Executive", team: "Partnerships & BD", manager: "Kunal Verma", status: "probation", doj: "2026-06-01", sysRole: "Employee", ctc: 380000, leaveBalance: { Casual: 0, Sick: 2, Earned: 0 }, documents: [], signedDocs: [] },
-    { id: "E-104", name: "Vikram Seth", email: "vikram.seth@snf.co", designation: "Content Lead", team: "Content", manager: null, status: "active", doj: "2019-11-20", sysRole: "Reporting Manager", ctc: 920000, leaveBalance: { Casual: 7, Sick: 6, Earned: 15 }, documents: [], signedDocs: [] },
-    { id: "E-105", name: "Divya Menon", email: "divya.menon@snf.co", designation: "People Ops Head", team: "Leadership", manager: null, status: "active", doj: "2020-01-15", sysRole: "HR Head", ctc: 980000, leaveBalance: { Casual: 5, Sick: 7, Earned: 10 }, documents: [], signedDocs: [] },
-    { id: "E-106", name: "Arjun Nair", email: "arjun.nair@snf.co", designation: "Graphic Designer", team: "Content", manager: "Vikram Seth", status: "exited", doj: "2020-05-10", sysRole: "Employee", ctc: 520000, leaveBalance: { Casual: 0, Sick: 0, Earned: 0 }, documents: [], signedDocs: [] },
-    { id: "E-107", name: "Priya Chandran", email: "priya.chandran@snf.co", designation: "Content Writer", team: "Content", manager: "Vikram Seth", status: "onboarding", doj: "2026-07-29", sysRole: "Employee", ctc: 520000, leaveBalance: { Casual: 0, Sick: 0, Earned: 0 }, documents: [], signedDocs: [] },
-    { id: "E-108", name: "Sanjay Bhatt", email: "sanjay.bhatt@snf.co", designation: "BD Associate", team: "Partnerships & BD", manager: "Kunal Verma", status: "onboarding", doj: "2026-07-26", sysRole: "Employee", ctc: 420000, leaveBalance: { Casual: 0, Sick: 0, Earned: 0 }, documents: [], signedDocs: [] },
-    { id: "E-109", name: "Kunal Verma", email: "kunal.verma@snf.co", designation: "Partnerships Lead", team: "Partnerships & BD", manager: null, status: "active", doj: "2020-09-01", sysRole: "Reporting Manager", ctc: 860000, leaveBalance: { Casual: 6, Sick: 6, Earned: 14 }, documents: [], signedDocs: [] },
-  ],
-
-  // Onboarding pipeline — offer sent -> signed (login issued) -> doc upload -> HR review -> agreement drafted/signed -> complete
-  onboarding: [
-    {
-      id: "O-1", name: "Priya Chandran", personalEmail: "priya.chandran@gmail.com", designation: "Content Writer", team: "Content", ctc: 520000, stage: "doc_review",
-      offerSentDate: "2026-07-28", signedDate: "2026-07-29", uploadDeadline: "2026-08-05", employeeId: "E-107", agreementStage: "not_started",
-      docs: [
-        { name: "PAN Card", status: "pending" }, { name: "Aadhar", status: "approved" }, { name: "Education Certificates", status: "pending" }, { name: "Previous Employment Proof", status: "pending" }, { name: "Bank Proof", status: "approved" }
-      ]
-    },
-    {
-      id: "O-2", name: "Sanjay Bhatt", personalEmail: "sanjay.bhatt@gmail.com", designation: "BD Associate", team: "Partnerships & BD", ctc: 420000, stage: "doc_review",
-      offerSentDate: "2026-07-25", signedDate: "2026-07-26", uploadDeadline: "2026-08-02", employeeId: "E-108", agreementStage: "pending_employee_signature",
-      docs: [
-        { name: "PAN Card", status: "approved" }, { name: "Aadhar", status: "approved" }, { name: "Education Certificates", status: "approved" }, { name: "Previous Employment Proof", status: "approved" }, { name: "Bank Proof", status: "approved" }
-      ]
-    },
-    {
-      id: "O-3", name: "Kavita Rao", personalEmail: "kavita.rao@gmail.com", designation: "Social Media Executive", team: "Partnerships & BD", ctc: 380000, stage: "awaiting_signature",
-      offerSentDate: "2026-08-03", signedDate: null, uploadDeadline: null, employeeId: null, agreementStage: "not_started", docs: []
-    },
-  ],
-
-  attendance: [
-    { emp: "Ananya Rao", date: "2026-08-04", status: "Present", inTime: "09:02", outTime: "18:05" },
-    { emp: "Ravi Kulkarni", date: "2026-08-04", status: "Present", inTime: "08:58", outTime: "17:59" },
-    { emp: "Meera Iyer", date: "2026-08-04", status: "Missed Punch", inTime: "09:10", outTime: "—" },
-  ],
-
-  // Two-level approval: stage "rm" (awaiting reporting manager) -> "hr" (RM-cleared, awaiting HR) -> "done"
-  regularizations: [
-    { id: "R-1", emp: "Meera Iyer", date: "2026-08-04", reason: "Forgot to punch out", stage: "rm", status: "pending", rmRemarks: "", hrRemarks: "" },
-    { id: "R-2", emp: "Ravi Kulkarni", date: "2026-08-03", reason: "System/network issue", stage: "hr", status: "pending", rmRemarks: "Confirmed with Vikram — approved.", hrRemarks: "" },
-  ],
-  leaveRequests: [
-    { id: "L-1", emp: "Ravi Kulkarni", type: "Casual", from: "2026-08-12", to: "2026-08-12", remarks: "Family function", stage: "rm", status: "pending", rmRemarks: "", hrRemarks: "" },
-    { id: "L-2", emp: "Ananya Rao", type: "Earned", from: "2026-08-20", to: "2026-08-22", remarks: "", stage: "done", status: "approved", rmRemarks: "Approved.", hrRemarks: "Approved." },
-  ],
-  expenses: [
-    { id: "X-1", emp: "Divya Menon", category: "Travel", amount: 1450, stage: "hr", status: "pending", rmRemarks: "", hrRemarks: "" },
-    { id: "X-2", emp: "Vikram Seth", category: "Client Entertainment", amount: 2200, stage: "done", status: "approved", rmRemarks: "", hrRemarks: "Approved." },
-    { id: "X-3", emp: "Meera Iyer", category: "Office Supplies", amount: 640, stage: "rm", status: "pending", rmRemarks: "", hrRemarks: "" },
-  ],
-
-  tickets: [
-    { id: "T-1", emp: "Meera Iyer", category: "Leave Query", status: "open", note: "Why is my probation leave balance zero?" },
-    { id: "T-2", emp: "Ravi Kulkarni", category: "Payroll Query", status: "progress", note: "August payslip shows wrong HRA." },
-  ],
-  compliance: [
-    { task: "Monthly TDS deposit", due: "2026-08-07", status: "upcoming" },
-    { task: "Professional Tax payment", due: "2026-08-20", status: "upcoming" },
-    { task: "POSH IC quarterly review", due: "2026-09-15", status: "upcoming" },
-    { task: "Form 16 issuance (annual)", due: "2027-06-15", status: "scheduled" },
-    { task: "Gratuity liability review", due: "2026-10-01", status: "scheduled" },
-  ],
+  teams: [],
+  orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
+  employees: [],
+  onboarding: [],
+  attendance: [],
+  regularizations: [],
+  leaveRequests: [],
+  expenses: [],
+  tickets: [],
+  compliance: [],
   payrollRun: { month: "August 2026", status: "not_run" },
   attendanceOverrides: {}, // key "empName|date" -> manually corrected status (present/absent/leave/off)
   // Real-clock punch in/out state, keyed by employee name — separate from the simulated
   // TODAY used everywhere else, since "disable until 11:59 PM" needs an actual clock.
   punchLog: {},
-
-  templates: {
-    "Offer Letter": { content: "Dear {{employee_name}},\n\nWe are pleased to offer you the position of {{designation}} in the {{team}} team at DOTFYI Media Ventures Pvt. Ltd. (StartupNews.fyi), with an annual CTC of {{ctc}}.\n\nPlease review and sign below to confirm your acceptance." },
-    "Employment Agreement": { content: "This Employment Agreement is entered into between DOTFYI Media Ventures Pvt. Ltd. and {{employee_name}}, appointed as {{designation}} in the {{team}} team, effective {{doj}}.\n\nAnnual CTC: {{ctc}} — Basic {{basic}}, HRA {{hra}}, Allowances {{allowances}}.\n\nStandard SNF terms of employment apply." },
-    "Relieving Letter": { content: "" },
-    "Experience Letter": { content: "" },
-    "Increment Letter": { content: "" },
-    "Promotion Letter": { content: "" },
-    "Warning Letter": { content: "" },
-  },
-
+  templates: {},
   rules: {
     workingDaysPattern: "Mon–Sat, alternate Saturdays off",
-    // Official punch-in/punch-out window — editable by HR Head from Rules & Org Structure.
     shiftStartTime: "10:00",
     shiftEndTime: "19:00",
     shiftGraceMinutes: 15,
@@ -126,9 +36,7 @@ const state = {
     salaryPeriodFrom: 1,
     salaryPeriodTo: "last",
     ctcSplit: { basic: 50, hra: 20, allowances: 30 },
-    leaveTypes: {
-      "Casual": true, "Sick": true, "Earned": true, "Maternity": true, "Paternity": true, "Comp-off": true,
-    },
+    leaveTypes: { "Casual": true, "Sick": true, "Earned": true, "Maternity": true, "Paternity": true, "Comp-off": true },
     twoLevelApproval: { leave: true, attendance: true, expense: true },
     lateMarkPenalty: false,
     geoFencing: false,
@@ -137,11 +45,85 @@ const state = {
     optionalHolidayChoice: true,
     assetChecklist: true,
   },
-  auditLog: [
-    { ts: "2026-08-01 10:12", who: "Divya Menon (HR Head)", change: "Enabled two-level approval for Leave, Attendance, Expense" },
-    { ts: "2026-07-20 15:40", who: "Divya Menon (HR Head)", change: "Set regularization window to 5 days" },
-  ],
+  auditLog: [],
 };
+
+/* ---------------------------------------------------------
+   API layer — every mutation below writes through to the DB.
+   Errors surface as an alert; the local `state` change already
+   happened by the time these are called, so a failure means the
+   change won't survive a reload (rather than being silently lost).
+--------------------------------------------------------- */
+const API_BASE = "/api/admin/hr-tool";
+async function apiGet(path) {
+  const res = await fetch(API_BASE + path);
+  if (!res.ok) throw new Error("Request failed");
+  return (await res.json()).data;
+}
+async function apiPut(path, body) {
+  const res = await fetch(API_BASE + path, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error("Request failed");
+}
+async function apiPost(path, body) {
+  const res = await fetch(API_BASE + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error("Request failed");
+}
+function warnSaveFailed() { alert("Could not save that change. It's only kept until you reload — please try again."); }
+
+async function persistTeams() { try { await apiPut("/teams", state.teams); } catch (e) { warnSaveFailed(); } }
+async function persistDesignations() { try { await apiPut("/designations", state.orgStructure.designations); } catch (e) { warnSaveFailed(); } }
+async function persistExpenseCategories() { try { await apiPut("/expense-categories", state.orgStructure.expenseCategories); } catch (e) { warnSaveFailed(); } }
+async function persistRequiredDocuments() { try { await apiPut("/required-documents", state.orgStructure.requiredDocuments); } catch (e) { warnSaveFailed(); } }
+async function persistHolidays() { try { await apiPut("/holidays", state.orgStructure.holidays); } catch (e) { warnSaveFailed(); } }
+async function persistEmployees() { try { await apiPut("/employees", state.employees); } catch (e) { warnSaveFailed(); } }
+async function persistOnboarding() { try { await apiPut("/onboarding", state.onboarding); } catch (e) { warnSaveFailed(); } }
+async function persistRegularizations() { try { await apiPut("/regularizations", state.regularizations); } catch (e) { warnSaveFailed(); } }
+async function persistLeaveRequests() { try { await apiPut("/leave-requests", state.leaveRequests); } catch (e) { warnSaveFailed(); } }
+async function persistExpenses() { try { await apiPut("/expenses", state.expenses); } catch (e) { warnSaveFailed(); } }
+async function persistTickets() { try { await apiPut("/tickets", state.tickets); } catch (e) { warnSaveFailed(); } }
+async function persistRules() { try { await apiPut("/rules", state.rules); } catch (e) { warnSaveFailed(); } }
+async function persistAttendance(rec) { try { await apiPost("/attendance", rec); } catch (e) { warnSaveFailed(); } }
+async function persistAttendanceOverride(o) { try { await apiPost("/attendance-overrides", o); } catch (e) { warnSaveFailed(); } }
+async function persistPunch(p) { try { await apiPost("/punch-log", p); } catch (e) { warnSaveFailed(); } }
+async function persistPayrollRun() { try { await apiPost("/payroll-runs", state.payrollRun); } catch (e) { warnSaveFailed(); } }
+async function persistTemplate(name) { try { await apiPut("/templates/" + encodeURIComponent(name), { content: state.templates[name].content }); } catch (e) { warnSaveFailed(); } }
+function persistAuditEntry(entry) { apiPost("/audit-log", entry).catch(() => {}); } // best-effort, doesn't block the UI
+
+function nextEmployeeId() {
+  const nums = state.employees.map(e => parseInt(String(e.id || "").replace(/^E-/, ""), 10)).filter(n => !isNaN(n));
+  const max = nums.length ? Math.max(...nums, 100) : 100;
+  return "E-" + (max + 1);
+}
+
+async function loadAll() {
+  document.getElementById("loginRoot").innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:\'Space Grotesk\';">Loading…</div>';
+  try {
+    const data = await apiGet("/bootstrap");
+    state.teams = data.teams;
+    state.orgStructure = data.orgStructure;
+    state.employees = data.employees;
+    state.onboarding = data.onboarding;
+    state.attendance = data.attendance;
+    state.attendanceOverrides = {};
+    (data.attendanceOverrides || []).forEach(o => { state.attendanceOverrides[o.emp + "|" + o.date] = o.status; });
+    state.punchLog = {};
+    (data.punchLog || []).forEach(p => { state.punchLog[p.emp] = { date: p.date, inTime: p.inTime, inMinutes: p.inMinutes, outTime: p.outTime }; });
+    state.regularizations = data.regularizations;
+    state.leaveRequests = data.leaveRequests;
+    state.expenses = data.expenses;
+    state.tickets = data.tickets;
+    state.compliance = data.compliance;
+    const currentMonthRun = (data.payrollRuns || []).find(r => r.month === state.payrollRun.month);
+    if (currentMonthRun) state.payrollRun = currentMonthRun;
+    state.templates = {};
+    (data.templates || []).forEach(t => { state.templates[t.name] = { content: t.content }; });
+    if (data.rules) state.rules = data.rules;
+    state.auditLog = data.auditLog || [];
+  } catch (e) {
+    document.getElementById("loginRoot").innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--red);font-family:\'Space Grotesk\';">Could not load HR data. Please refresh the page.</div>';
+    throw e;
+  }
+}
 
 function initials(name) { return name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase(); }
 function isAdmin(role) { return role === "HR Head" || role === "Founder"; }
@@ -404,16 +386,18 @@ function renderOfferPreview() {
     <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px;" onclick="signOffer('${o.id}')">✓ Confirm, looks correct — sign offer letter</button>
   `;
 }
-function signOffer(id) {
+async function signOffer(id) {
   const o = state.onboarding.find(x => x.id === id);
   const today = TODAY;
   o.signedDate = today; o.uploadDeadline = addDays(today, 7); o.stage = "doc_upload";
   o.docs = state.orgStructure.requiredDocuments.map(name => ({ name, status: "not_uploaded" }));
-  const newId = "E-" + (100 + state.employees.length + 1);
+  const newId = nextEmployeeId();
   o.employeeId = newId;
   const teamManager = (state.teams.find(t => t.name === o.team) || {}).manager || null;
   const offerMerged = mergeTemplate(state.templates["Offer Letter"].content, { employee_name: o.name, designation: o.designation, team: o.team, ctc: "₹" + o.ctc.toLocaleString("en-IN") });
   state.employees.push({ id: newId, name: o.name, email: o.name.toLowerCase().replace(/\s+/g, ".") + "@snf.co", designation: o.designation, team: o.team, manager: teamManager, status: "onboarding", doj: today, sysRole: "Employee", ctc: o.ctc, leaveBalance: { Casual: 0, Sick: 0, Earned: 0 }, documents: [], signedDocs: [{ type: "Offer Letter", content: offerMerged, signedDate: today }] });
+  await persistOnboarding();
+  await persistEmployees();
   document.getElementById("loginRoot").innerHTML = `
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#FFF 0%,#EEF2FF 60%,#C7D2FE 100%);padding:20px;">
       <div class="card pad" style="max-width:420px;text-align:center;">
@@ -574,9 +558,10 @@ function renderMyOnboardingCard(o) {
     <div class="notice good">You've signed your Employment Agreement. ${o.agreementStage === "signed" ? "Countersigned by HR — on file. You can download it anytime from My Documents." : "Waiting on HR's countersignature."}</div>` : ""}
   `;
 }
-function myDocUpload(oid, idx) {
+async function myDocUpload(oid, idx) {
   const o = state.onboarding.find(x => x.id === oid);
   o.docs[idx].status = "pending"; o.docs[idx].uploaded = true;
+  await persistOnboarding();
   render();
 }
 
@@ -668,42 +653,47 @@ function editEmployeeCtcSplit(id) {
       Allowances <input class="mini-input" type="number" id="empCtcAllow" value="${cs.allowances}">%
     </div>
   `, [
-    { label: "Reset to company default", cls: "btn", action: () => { e.ctcSplitOverride = null; logRuleChange(`Reset ${e.name}'s CTC split to company default`); closeModal(); openEmployeeProfile(id); } },
+    { label: "Reset to company default", cls: "btn", action: async () => { e.ctcSplitOverride = null; logRuleChange(`Reset ${e.name}'s CTC split to company default`); await persistEmployees(); closeModal(); openEmployeeProfile(id); } },
     { label: "Cancel", cls: "btn", action: closeModal },
     {
-      label: "Save", cls: "btn primary", action: () => {
+      label: "Save", cls: "btn primary", action: async () => {
         const b = Number(document.getElementById("empCtcBasic").value) || 0;
         const h = Number(document.getElementById("empCtcHra").value) || 0;
         const a = Number(document.getElementById("empCtcAllow").value) || 0;
         if (b + h + a !== 100) { alert(`Basic + HRA + Allowances must add up to 100%. Currently: ${b + h + a}%`); return; }
         e.ctcSplitOverride = { basic: b, hra: h, allowances: a };
         logRuleChange(`Set custom CTC split for ${e.name}: Basic ${b}% / HRA ${h}% / Allowances ${a}%`);
+        await persistEmployees();
         closeModal(); openEmployeeProfile(id);
       }
     }
   ]);
 }
-function removeEmployeeRecord(id) {
+async function removeEmployeeRecord(id) {
   const e = state.employees.find(x => x.id === id);
   if (!confirm(`Remove ${e.name} from the Directory? This is for correcting mistaken entries — for a real exit, use Offboarding instead. This can't be undone.`)) return;
   state.teams.forEach(t => { if (t.manager === e.name) t.manager = null; });
   state.employees = state.employees.filter(x => x.id !== id);
   logRuleChange(`Removed employee record: ${e.name}`);
+  await persistEmployees();
+  await persistTeams();
   closeModal(); setView("directory");
 }
-function confirmProbation(id) {
+async function confirmProbation(id) {
   const e = state.employees.find(x => x.id === id);
   e.status = "active";
   e.leaveBalance = { Casual: 6, Sick: 6, Earned: 10 };
   logRuleChange(`Confirmed ${e.name} — moved from Probation to Active`);
+  await persistEmployees();
   closeModal(); render();
 }
-function extendProbation(id) {
+async function extendProbation(id) {
   const days = prompt("Extend probation by how many days?", "30");
   if (!days || isNaN(Number(days))) return;
   const e = state.employees.find(x => x.id === id);
   e.probationExtendedBy = (e.probationExtendedBy || 0) + Number(days);
   logRuleChange(`Extended ${e.name}'s probation by ${days} days`);
+  await persistEmployees();
   closeModal(); render();
 }
 
@@ -762,11 +752,12 @@ function previewOfferDraft(draft) {
   `, [
     { label: "Back to edit", cls: "btn", action: () => { closeModal(); openAddEmployee(); } },
     {
-      label: "Approve & Send", cls: "btn primary", action: () => {
+      label: "Approve & Send", cls: "btn primary", action: async () => {
         state.onboarding.push({
-          id: "O-" + (Date.now() % 1000), name: draft.name, personalEmail: draft.personalEmail, designation: draft.designation, team: draft.team, ctc: draft.ctc,
+          id: "O-" + Date.now(), name: draft.name, personalEmail: draft.personalEmail, designation: draft.designation, team: draft.team, ctc: draft.ctc,
           stage: "awaiting_signature", offerSentDate: TODAY, signedDate: null, uploadDeadline: null, employeeId: null, agreementStage: "not_started", docs: []
         });
+        await persistOnboarding();
         closeModal(); setView("onboarding");
       }
     }
@@ -782,19 +773,20 @@ Kavita Rao,kavita.rao@snf.co,Social Media Executive,Partnerships & BD,Kunal Verm
   `, [
     { label: "Cancel", cls: "btn", action: closeModal },
     {
-      label: "Import employees", cls: "btn primary", action: () => {
+      label: "Import employees", cls: "btn primary", action: async () => {
         const raw = document.getElementById("csvData").value.trim();
         if (!raw) { alert("Paste CSV data first."); return; }
         const lines = raw.split("\n").filter(l => l.trim() && !l.toLowerCase().startsWith("name,"));
         let count = 0;
-        lines.forEach(line => {
+        for (const line of lines) {
           const [name, email, designation, team, manager, doj, ctc] = line.split(",").map(s => s.trim());
-          if (!name) return;
-          if (designation) addDesignation(designation, true);
-          const newId = "E-" + (100 + state.employees.length + 1);
+          if (!name) continue;
+          if (designation && !state.orgStructure.designations.includes(designation)) await addDesignation(designation, true);
+          const newId = nextEmployeeId();
           state.employees.push({ id: newId, name, email: email || "—", designation: designation || "—", team: team || state.teams[0].name, manager: manager || null, status: "active", doj: doj || TODAY, sysRole: "Employee", ctc: Number(ctc) || 0, leaveBalance: { Casual: 6, Sick: 6, Earned: 10 }, documents: [], signedDocs: [] });
           count++;
-        });
+        }
+        await persistEmployees();
         closeModal();
         alert(count + " employee(s) imported. Logins auto-created; they can be asked to upload missing documents into the Document Vault.");
         setView("directory");
@@ -830,20 +822,20 @@ function drawDocUpdates() {
       <button class="btn reject sm" onclick="empDocAction('${e.id}',${i},'rejected')">Reject with remarks</button></td></tr>` : "").filter(Boolean)).join("")}
   </tbody></table>`;
 }
-function empDocAction(empId, idx, status) {
+async function empDocAction(empId, idx, status) {
   const e = state.employees.find(x => x.id === empId);
   if (status === "rejected") {
     showModal("Reject document", `<div class="field"><label class="field-label">Remarks (required)</label><textarea id="rejRemarks2"></textarea></div>`, [
       { label: "Cancel", cls: "btn", action: closeModal },
       {
-        label: "Reject", cls: "btn reject", action: () => {
+        label: "Reject", cls: "btn reject", action: async () => {
           const r = document.getElementById("rejRemarks2").value.trim();
           if (!r) { alert("Remarks are required on rejection."); return; }
-          e.documents[idx].status = "rejected"; closeModal(); drawDocUpdates();
+          e.documents[idx].status = "rejected"; await persistEmployees(); closeModal(); drawDocUpdates();
         }
       }
     ]);
-  } else { e.documents[idx].status = "approved"; drawDocUpdates(); }
+  } else { e.documents[idx].status = "approved"; await persistEmployees(); drawDocUpdates(); }
 }
 const stageLabel = { awaiting_signature: "Awaiting candidate's e-signature", doc_upload: "Document upload window open", doc_review: "Documents under HR review", completed: "Completed" };
 function drawOnboarding() {
@@ -886,20 +878,20 @@ function drawOnboarding() {
       </div></section>`;
   }).join("");
 }
-function docAction(oid, idx, status) {
+async function docAction(oid, idx, status) {
   const o = state.onboarding.find(x => x.id === oid);
   if (status === "rejected") {
     showModal("Reject document", `<div class="field"><label class="field-label">Remarks (required)</label><textarea id="rejRemarks"></textarea></div>`, [
       { label: "Cancel", cls: "btn", action: closeModal },
       {
-        label: "Reject", cls: "btn reject", action: () => {
+        label: "Reject", cls: "btn reject", action: async () => {
           const r = document.getElementById("rejRemarks").value.trim();
           if (!r) { alert("Remarks are required on rejection."); return; }
-          o.docs[idx].status = "rejected"; closeModal(); drawOnboarding();
+          o.docs[idx].status = "rejected"; await persistOnboarding(); closeModal(); drawOnboarding();
         }
       }
     ]);
-  } else { o.docs[idx].status = "approved"; drawOnboarding(); }
+  } else { o.docs[idx].status = "approved"; await persistOnboarding(); drawOnboarding(); }
 }
 function agreementMerged(o) {
   const emp = o.employeeId ? state.employees.find(e => e.id === o.employeeId) : null;
@@ -954,10 +946,11 @@ function renderAgreementBlock(o) {
   }
   return "";
 }
-function toggleAsset(oid, key, val) {
+async function toggleAsset(oid, key, val) {
   const o = state.onboarding.find(x => x.id === oid);
   o.assets = o.assets || { laptop: false, idCard: false, accessCard: false };
   o.assets[key] = val;
+  await persistOnboarding();
   drawOnboarding();
 }
 function draftAgreement(oid) {
@@ -965,23 +958,27 @@ function draftAgreement(oid) {
   showModal("Preview — Employment Agreement", `${agreementPreviewHtml(o)}
     <div class="meta">This is exactly what ${o.name.split(" ")[0]} will see as a pending action on their dashboard. Nothing is sent by email. You'll countersign after they sign.</div>`, [
     { label: "Cancel", cls: "btn", action: closeModal },
-    { label: "Approve & Send", cls: "btn primary", action: () => { o.agreementStage = "pending_employee_signature"; closeModal(); drawOnboarding(); } }
+    { label: "Approve & Send", cls: "btn primary", action: async () => { o.agreementStage = "pending_employee_signature"; await persistOnboarding(); closeModal(); drawOnboarding(); } }
   ]);
 }
-function employeeSignAgreement(oid) { state.onboarding.find(x => x.id === oid).agreementStage = "pending_employer_signature"; render(); }
-function employerSignAgreement(oid) {
+async function employeeSignAgreement(oid) { state.onboarding.find(x => x.id === oid).agreementStage = "pending_employer_signature"; await persistOnboarding(); render(); }
+async function employerSignAgreement(oid) {
   const o = state.onboarding.find(x => x.id === oid);
   o.agreementStage = "signed";
   const emp = state.employees.find(e => e.id === o.employeeId);
   if (emp) { emp.signedDocs = emp.signedDocs || []; emp.signedDocs.push({ type: "Employment Agreement", content: agreementMerged(o), signedDate: TODAY }); }
+  await persistOnboarding();
+  if (emp) await persistEmployees();
   drawOnboarding();
 }
-function completeOnboarding(oid) {
+async function completeOnboarding(oid) {
   const o = state.onboarding.find(x => x.id === oid);
   const emp = state.employees.find(e => e.id === o.employeeId);
   if (emp) { emp.status = "probation"; emp.leaveBalance = { Casual: 0, Sick: 2, Earned: 0 }; emp.documents = o.docs.map(d => ({ name: d.name, status: d.status })); }
   o.stage = "completed";
   state.onboarding = state.onboarding.filter(x => x.id !== oid);
+  if (emp) await persistEmployees();
+  await persistOnboarding();
   drawOnboarding(); render();
 }
 
@@ -1034,7 +1031,7 @@ function latenessInfo(inMinutes) {
   parts.push(mins + " min");
   return { late: true, text: parts.join(" ") + " late" };
 }
-function syncAttendanceRecord(empName) {
+async function syncAttendanceRecord(empName) {
   const punch = getTodayPunch(empName);
   if (!punch) return;
   let rec = state.attendance.find(a => a.emp === empName && a.date === TODAY);
@@ -1046,28 +1043,31 @@ function syncAttendanceRecord(empName) {
     rec.inTime = punch.inTime || "—";
     rec.outTime = punch.outTime || "—";
   }
+  await persistAttendance(rec);
 }
 // Punch In and Punch Out are independent — an employee can use either one first (e.g. punch
 // out without having punched in, if they forgot earlier), so neither button waits on the other.
-function punchIn() {
+async function punchIn() {
   const me = state.currentUser;
   const existing = getTodayPunch(me.name);
   if (existing && existing.inTime) return; // already punched in today, button should be disabled
   const time = nowTimeStr();
   const minutes = nowMinutesSinceMidnight();
   state.punchLog[me.name] = { date: todayRealDateStr(), inTime: time, inMinutes: minutes, outTime: existing ? existing.outTime : null };
-  syncAttendanceRecord(me.name);
+  await persistPunch({ emp: me.name, ...state.punchLog[me.name] });
+  await syncAttendanceRecord(me.name);
   const lateness = latenessInfo(minutes);
   alert("Punched in at " + time + " — " + lateness.text + ". Geolocation captured.");
   renderAttendance();
 }
-function punchOut() {
+async function punchOut() {
   const me = state.currentUser;
   const existing = getTodayPunch(me.name);
   if (existing && existing.outTime) return; // already punched out today, button should be disabled
   const time = nowTimeStr();
   state.punchLog[me.name] = { date: todayRealDateStr(), inTime: existing ? existing.inTime : null, inMinutes: existing ? existing.inMinutes : null, outTime: time };
-  syncAttendanceRecord(me.name);
+  await persistPunch({ emp: me.name, ...state.punchLog[me.name] });
+  await syncAttendanceRecord(me.name);
   alert("Punched out at " + time + (existing && existing.inTime ? "." : " — no punch-in recorded today."));
   renderAttendance();
 }
@@ -1118,15 +1118,17 @@ function approvalActionButtons(req, kind) {
 }
 function listFor(kind) { return kind === 'reg' ? state.regularizations : kind === 'leave' ? state.leaveRequests : state.expenses; }
 function redrawFor(kind) { if (kind === 'reg') renderAttendance(); else if (kind === 'leave') drawLeave(); else drawExpenses(); }
+function persistFor(kind) { return kind === 'reg' ? persistRegularizations() : kind === 'leave' ? persistLeaveRequests() : persistExpenses(); }
 function approvalAction(kind, id, level, decision) {
   const list = listFor(kind);
   const req = list.find(x => x.id === id);
-  const proceed = (remarks) => {
+  const proceed = async (remarks) => {
     if (level === 'rm') {
       req.rmRemarks = remarks || "";
       if (decision === 'rejected') { req.status = 'rejected'; req.stage = 'done'; }
       else { req.stage = state.rules.twoLevelApproval[kind === 'reg' ? 'attendance' : kind] ? 'hr' : 'done'; if (req.stage === 'done') req.status = 'approved'; }
     } else { req.hrRemarks = remarks || ""; req.status = decision; req.stage = 'done'; }
+    await persistFor(kind);
     redrawFor(kind);
   };
   if (decision === 'rejected') {
@@ -1160,7 +1162,7 @@ function openRegularize(prefillDate) {
   `, [
     { label: "Cancel", cls: "btn", action: closeModal },
     {
-      label: "Submit", cls: "btn primary", action: () => {
+      label: "Submit", cls: "btn primary", action: async () => {
         const dateVal = document.getElementById("regDate").value;
         const diff = Math.round((new Date(TODAY) - new Date(dateVal)) / (1000 * 60 * 60 * 24));
         if (!state.rules.regularizationOverride && diff > state.rules.regularizationWindowDays) {
@@ -1171,6 +1173,7 @@ function openRegularize(prefillDate) {
         if (!reason) { alert("Please describe the reason."); return; }
         const stage = state.rules.twoLevelApproval.attendance ? 'rm' : 'hr';
         state.regularizations.unshift({ id: "R-" + Date.now(), emp: state.currentUser.name, date: dateVal, reason, stage, status: "pending", rmRemarks: "", hrRemarks: "" });
+        await persistRegularizations();
         closeModal(); renderAttendance();
       }
     }
@@ -1220,7 +1223,7 @@ function openApplyLeave() {
   `, [
     { label: "Cancel", cls: "btn", action: closeModal },
     {
-      label: "Submit request", cls: "btn primary", action: () => {
+      label: "Submit request", cls: "btn primary", action: async () => {
         const typeSelect = document.getElementById("lvType").value;
         const type = typeSelect === "__other__" ? document.getElementById("lvTypeOther").value.trim() : typeSelect;
         if (!type) { alert("Please specify the leave type."); return; }
@@ -1231,6 +1234,7 @@ function openApplyLeave() {
           from: document.getElementById("lvFrom").value || "2026-08-10", to: document.getElementById("lvTo").value || document.getElementById("lvFrom").value || "2026-08-10",
           remarks: document.getElementById("lvRem").value, stage, status: "pending", rmRemarks: "", hrRemarks: ""
         });
+        await persistLeaveRequests();
         closeModal(); drawLeave();
       }
     }
@@ -1325,10 +1329,11 @@ function openDayDetail(empName, dateStr, day) {
     ${overrideBlock}
   `, [{ label: "Close", cls: "btn", action: closeModal }]);
 }
-function setManualAttendance(empName, dateStr, day) {
+async function setManualAttendance(empName, dateStr, day) {
   const val = document.getElementById("manualAttStatus").value;
   state.attendanceOverrides[attendanceKey(empName, dateStr)] = val;
   logRuleChange(`Manually set ${empName}'s attendance on ${dateStr} to ${val}`);
+  await persistAttendanceOverride({ emp: empName, date: dateStr, status: val });
   closeModal();
   render();
 }
@@ -1386,7 +1391,7 @@ function renderPayroll() {
   `;
 }
 function drawCalPicker() { document.getElementById("calBox").innerHTML = attendanceCalendarHtml(document.getElementById("calEmpPicker").value); }
-function runPayroll() { state.payrollRun.status = "run"; renderPayroll(); }
+async function runPayroll() { state.payrollRun.status = "run"; await persistPayrollRun(); renderPayroll(); }
 function exportPayroll(fmt) {
   const payable = state.employees.filter(e => e.status !== "exited");
   const rows = [["Employee", "Gross", "Deductions", "Net Pay"]];
@@ -1422,9 +1427,10 @@ function openSubmitExpense() {
   `, [
     { label: "Cancel", cls: "btn", action: closeModal },
     {
-      label: "Submit", cls: "btn primary", action: () => {
+      label: "Submit", cls: "btn primary", action: async () => {
         const stage = state.rules.twoLevelApproval.expense && rmOf(state.currentUser.name) ? 'rm' : 'hr';
         state.expenses.unshift({ id: "X-" + Date.now(), emp: state.currentUser.name, category: document.getElementById("exCat").value, amount: Number(document.getElementById("exAmt").value) || 0, stage, status: "pending", rmRemarks: "", hrRemarks: "" });
+        await persistExpenses();
         closeModal(); drawExpenses();
       }
     }
@@ -1495,14 +1501,15 @@ function openRaiseTicket() {
   `, [
     { label: "Cancel", cls: "btn", action: closeModal },
     {
-      label: "Submit", cls: "btn primary", action: () => {
+      label: "Submit", cls: "btn primary", action: async () => {
         state.tickets.unshift({ id: "T-" + Date.now(), emp: state.currentUser ? state.currentUser.name : "You", category: document.getElementById("tkCat").value, status: "open", note: document.getElementById("tkNote").value || "—" });
+        await persistTickets();
         closeModal(); drawTickets();
       }
     }
   ]);
 }
-function updateTicket(id, status) { state.tickets.find(t => t.id === id).status = status; drawTickets(); }
+async function updateTicket(id, status) { state.tickets.find(t => t.id === id).status = status; await persistTickets(); drawTickets(); }
 
 /* ---------------------------------------------------------
    COMPANY PROFILE — letter templates HR uploads
@@ -1548,9 +1555,10 @@ function editTemplate(type) {
   `, [
     { label: "Cancel", cls: "btn", action: closeModal },
     {
-      label: "Save draft", cls: "btn primary", action: () => {
+      label: "Save draft", cls: "btn primary", action: async () => {
         state.templates[type].content = document.getElementById("tmplContent").value;
         logRuleChange(`Updated "${type}" template draft`);
+        await persistTemplate(type);
         closeModal(); renderCompany();
       }
     }
@@ -1582,108 +1590,119 @@ function previewTemplateSample() {
 --------------------------------------------------------- */
 function toggle(checked, onchange) { return `<label class="toggle-switch"><input type="checkbox" ${checked ? "checked" : ""} onchange="${onchange}"><span class="toggle-slider"></span></label>`; }
 
-function addDesignation(name, silent) {
+async function addDesignation(name, silent) {
   name = name.trim();
   if (!name) return;
   if (!state.orgStructure.designations.includes(name)) {
     state.orgStructure.designations.push(name);
     if (!silent) logRuleChange(`Added designation: ${name}`);
+    await persistDesignations();
   }
 }
-function removeDesignation(name) {
+async function removeDesignation(name) {
   const count = state.employees.filter(e => e.designation === name).length;
   const msg = count > 0 ? `${count} employee(s) currently hold "${name}". Remove it from the list anyway? Their existing records won't change.` : `Remove "${name}" from Organisation Structure?`;
   if (!confirm(msg)) return;
   state.orgStructure.designations = state.orgStructure.designations.filter(d => d !== name);
   logRuleChange(`Removed designation: ${name}`);
+  await persistDesignations();
   renderRules();
 }
-function addDesignationFromRules() {
+async function addDesignationFromRules() {
   const input = document.getElementById("newDesigInput");
-  if (input.value.trim()) { addDesignation(input.value, false); renderRules(); }
+  if (input.value.trim()) { await addDesignation(input.value, false); renderRules(); }
 }
-function addTeamFromRules() {
+async function addTeamFromRules() {
   const input = document.getElementById("newTeamInput");
   const name = input.value.trim();
   if (!name) return;
   if (state.teams.some(t => t.name === name)) { alert("That team already exists."); return; }
   state.teams.push({ name, manager: null });
   logRuleChange(`Added team: ${name}`);
+  await persistTeams();
   renderRules();
 }
-function removeTeam(name) {
+async function removeTeam(name) {
   if (state.employees.some(e => e.team === name && e.status !== "exited")) {
     alert("Can't remove a team that still has employees assigned. Move them to another team first.");
     return;
   }
   state.teams = state.teams.filter(t => t.name !== name);
   logRuleChange(`Removed team: ${name}`);
+  await persistTeams();
   renderRules();
 }
-function setTeamManager(name, manager) {
+async function setTeamManager(name, manager) {
   state.teams.find(t => t.name === name).manager = manager || null;
   logRuleChange(`Set Reporting Manager for ${name} to ${manager || "none"}`);
+  await persistTeams();
   renderRules();
 }
-function addExpenseCategory() {
+async function addExpenseCategory() {
   const input = document.getElementById("newExpCatInput");
   const name = input.value.trim();
   if (!name) return;
-  if (!state.orgStructure.expenseCategories.includes(name)) { state.orgStructure.expenseCategories.push(name); logRuleChange(`Added expense category: ${name}`); }
+  if (!state.orgStructure.expenseCategories.includes(name)) { state.orgStructure.expenseCategories.push(name); logRuleChange(`Added expense category: ${name}`); await persistExpenseCategories(); }
   renderRules();
 }
-function removeExpenseCategory(name) {
+async function removeExpenseCategory(name) {
   const count = state.expenses.filter(x => x.category === name).length;
   const msg = count > 0 ? `${count} expense record(s) use "${name}". Remove it from the list anyway? Their existing records won't change.` : `Remove "${name}" from Organisation Structure?`;
   if (!confirm(msg)) return;
   state.orgStructure.expenseCategories = state.orgStructure.expenseCategories.filter(c => c !== name);
   logRuleChange(`Removed expense category: ${name}`);
+  await persistExpenseCategories();
   renderRules();
 }
-function addRequiredDocFromRules() {
+async function addRequiredDocFromRules() {
   const input = document.getElementById("newReqDocInput");
   const name = input.value.trim();
   if (!name) return;
-  if (!state.orgStructure.requiredDocuments.includes(name)) { state.orgStructure.requiredDocuments.push(name); logRuleChange(`Added required onboarding document: ${name}`); }
+  if (!state.orgStructure.requiredDocuments.includes(name)) { state.orgStructure.requiredDocuments.push(name); logRuleChange(`Added required onboarding document: ${name}`); await persistRequiredDocuments(); }
   renderRules();
 }
-function removeRequiredDoc(name) {
+async function removeRequiredDoc(name) {
   state.orgStructure.requiredDocuments = state.orgStructure.requiredDocuments.filter(d => d !== name);
   logRuleChange(`Removed required onboarding document: ${name}`);
+  await persistRequiredDocuments();
   renderRules();
 }
-function addHolidayFromRules() {
+async function addHolidayFromRules() {
   const date = document.getElementById("newHolidayDate").value;
   const name = document.getElementById("newHolidayName").value.trim();
   if (!date || !name) { alert("Both a date and a name are needed."); return; }
   state.orgStructure.holidays.push({ date, name });
   state.orgStructure.holidays.sort((a, b) => a.date.localeCompare(b.date));
   logRuleChange(`Added holiday: ${name} (${date})`);
+  await persistHolidays();
   renderRules();
 }
-function removeHoliday(date, name) {
+async function removeHoliday(date, name) {
   state.orgStructure.holidays = state.orgStructure.holidays.filter(h => !(h.date === date && h.name === name));
   logRuleChange(`Removed holiday: ${name} (${date})`);
+  await persistHolidays();
   renderRules();
 }
-function updateSalaryFrom(val) { state.rules.salaryPeriodFrom = Number(val); logRuleChange(`Set salary period start day to ${val}`); renderRules(); }
-function updateSalaryTo(val) { state.rules.salaryPeriodTo = val === "last" ? "last" : Number(val); logRuleChange(`Set salary period end to ${val === "last" ? "last day of month" : val}`); renderRules(); }
-function updateCtcSplit() {
+async function updateSalaryFrom(val) { state.rules.salaryPeriodFrom = Number(val); logRuleChange(`Set salary period start day to ${val}`); await persistRules(); renderRules(); }
+async function updateSalaryTo(val) { state.rules.salaryPeriodTo = val === "last" ? "last" : Number(val); logRuleChange(`Set salary period end to ${val === "last" ? "last day of month" : val}`); await persistRules(); renderRules(); }
+async function updateCtcSplit() {
   const b = Number(document.getElementById("ctcBasicPct").value) || 0;
   const h = Number(document.getElementById("ctcHraPct").value) || 0;
   const a = Number(document.getElementById("ctcAllowPct").value) || 0;
   if (b + h + a !== 100) { alert(`Basic + HRA + Allowances must add up to 100%. Currently: ${b + h + a}%`); return; }
   state.rules.ctcSplit = { basic: b, hra: h, allowances: a };
   logRuleChange(`Updated CTC split to Basic ${b}% / HRA ${h}% / Allowances ${a}%`);
+  await persistRules();
   renderRules();
 }
-function addLeaveTypeFromRules() {
+async function addLeaveTypeFromRules() {
   const input = document.getElementById("newLeaveTypeInput");
   const name = input.value.trim();
   if (!name) return;
   if (state.rules.leaveTypes[name] !== undefined) { alert("That leave type already exists."); return; }
   state.rules.leaveTypes[name] = true;
   logRuleChange(`Added leave type: ${name}`);
+  await persistRules();
   renderRules();
 }
 
@@ -1867,29 +1886,36 @@ function renderRules() {
     </section>
   `;
 }
-function resetSampleData() {
+async function resetSampleData() {
   const typed = prompt('This deletes all sample employees and records except your own login. Type "RESET" to confirm.');
   if (typed !== "RESET") { if (typed !== null) alert('Not confirmed — type RESET exactly to proceed.'); return; }
   const me = state.currentUser;
+  try { await apiPost("/reset-sample-data", { keepEmployeeId: me.id }); } catch (e) { warnSaveFailed(); return; }
   state.employees = [{ ...me, manager: null, ctcSplitOverride: null }];
   state.teams.forEach(t => { if (t.manager && t.manager !== me.name) t.manager = null; });
   state.onboarding = [];
   state.attendance = [];
   state.attendanceOverrides = {};
+  state.punchLog = {};
   state.regularizations = [];
   state.leaveRequests = [];
   state.expenses = [];
   state.tickets = [];
   state.payrollRun = { month: state.payrollRun.month, status: "not_run" };
+  await persistTeams();
   logRuleChange("Reset all sample data (kept Teams, Org Structure, Rules, and Templates)");
   alert("Sample data cleared. Your Directory now has just your own account — add real employees from here.");
   renderRules();
 }
-function logRuleChange(text) { state.auditLog.unshift({ ts: TODAY, who: (state.currentUser ? state.currentUser.name : "HR") + " (" + state.role + ")", change: text }); }
-function updateRule(key, value) { state.rules[key] = value; logRuleChange(`Set ${key} to "${value}"`); renderRules(); }
-function updateRuleBool(key, value) { state.rules[key] = value; logRuleChange(`${value ? "Enabled" : "Disabled"} ${key}`); renderRules(); }
-function updateApprovalRule(mod, value) { state.rules.twoLevelApproval[mod] = value; logRuleChange(`${value ? "Enabled" : "Disabled"} two-level approval for ${mod}`); renderRules(); }
-function updateLeaveType(type, value) { state.rules.leaveTypes[type] = value; logRuleChange(`${value ? "Enabled" : "Disabled"} leave type: ${type}`); renderRules(); }
+function logRuleChange(text) {
+  const entry = { ts: TODAY, who: (state.currentUser ? state.currentUser.name : "HR") + " (" + state.role + ")", change: text };
+  state.auditLog.unshift(entry);
+  persistAuditEntry(entry);
+}
+async function updateRule(key, value) { state.rules[key] = value; logRuleChange(`Set ${key} to "${value}"`); await persistRules(); renderRules(); }
+async function updateRuleBool(key, value) { state.rules[key] = value; logRuleChange(`${value ? "Enabled" : "Disabled"} ${key}`); await persistRules(); renderRules(); }
+async function updateApprovalRule(mod, value) { state.rules.twoLevelApproval[mod] = value; logRuleChange(`${value ? "Enabled" : "Disabled"} two-level approval for ${mod}`); await persistRules(); renderRules(); }
+async function updateLeaveType(type, value) { state.rules.leaveTypes[type] = value; logRuleChange(`${value ? "Enabled" : "Disabled"} leave type: ${type}`); await persistRules(); renderRules(); }
 
 /* ---------------------------------------------------------
    MY DOCUMENTS — upload/re-upload anytime, download signed letters
@@ -1923,11 +1949,12 @@ function renderDocuments() {
     <div class="footnote">Payslips live under Payroll. Nothing here is ever emailed — download a copy directly whenever you need one.</div>
   `;
 }
-function myDocUploadOrReplace(name) {
+async function myDocUploadOrReplace(name) {
   const me = state.currentUser;
   me.documents = me.documents || [];
   const existing = me.documents.find(d => d.name === name);
   if (existing) { existing.status = "pending"; } else { me.documents.push({ name, status: "pending" }); }
+  await persistEmployees();
   renderDocuments();
 }
 function downloadSignedDoc(idx) {
@@ -1957,4 +1984,8 @@ function showModal(title, bodyHtml, buttons) {
 }
 function closeModal() { document.getElementById("modalRoot").innerHTML = ""; }
 
-render();
+async function boot() {
+  try { await loadAll(); } catch (e) { return; }
+  render();
+}
+boot();

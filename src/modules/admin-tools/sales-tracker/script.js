@@ -242,66 +242,57 @@ contactNumberEl.addEventListener('input', ()=>{
 let leads = [];
 let team = [];
 
-/* ---- Storage layer: uses Claude's shared storage when available (inside Claude.ai),
-   falls back to this browser's local storage when opened as a plain file ---- */
+// `window.storage` is only present inside Claude.ai's artifact sandbox — used purely to
+// gate the AI extraction feature below (extractFromClaude), which relies on that sandbox's
+// proxied fetch to api.anthropic.com. Real data storage always goes through the API layer.
 const hasCloudStorage = (typeof window.storage !== 'undefined' && window.storage !== null);
 
-async function storageGet(key){
-  if(hasCloudStorage){
-    try{ const r = await window.storage.get(key, true); return r ? r.value : null; }
-    catch(e){ return null; }
-  }
-  return localStorage.getItem(key);
+const API_BASE = '/api/admin/sales-tracker';
+
+async function apiGetLeads(){
+  const res = await fetch(`${API_BASE}/leads`);
+  if(!res.ok) throw new Error('Failed to load leads');
+  const json = await res.json();
+  return json.data || [];
 }
-async function storageSet(key, value){
-  if(hasCloudStorage){
-    try{ await window.storage.set(key, value, true); return; }catch(e){}
-  }
-  localStorage.setItem(key, value);
+async function apiSaveLead(lead){
+  const res = await fetch(`${API_BASE}/leads`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(lead) });
+  if(!res.ok) throw new Error('Failed to save lead');
+  const json = await res.json();
+  return json.data;
+}
+async function apiDeleteLead(id){
+  const res = await fetch(`${API_BASE}/leads/${encodeURIComponent(id)}`, { method:'DELETE' });
+  if(!res.ok) throw new Error('Failed to delete lead');
+}
+async function apiDeleteAllLeads(){
+  const res = await fetch(`${API_BASE}/leads`, { method:'DELETE' });
+  if(!res.ok) throw new Error('Failed to delete leads');
+}
+async function apiGetTeam(){
+  const res = await fetch(`${API_BASE}/team`);
+  if(!res.ok) throw new Error('Failed to load team');
+  const json = await res.json();
+  return json.data || [];
+}
+async function apiAddTeamMember(name){
+  const res = await fetch(`${API_BASE}/team`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+  if(!res.ok) throw new Error('Failed to add team member');
+  const json = await res.json();
+  return json.data || [];
+}
+async function apiRemoveTeamMember(name){
+  const res = await fetch(`${API_BASE}/team?name=${encodeURIComponent(name)}`, { method:'DELETE' });
+  if(!res.ok) throw new Error('Failed to remove team member');
 }
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 
-function sampleTeam(){
-  return ["Aisha Khan","Rohan Desai","Meera Pillai","Vikram Rao"];
-}
-
-function sampleLeads(){
-  const t = todayStr();
-  const team = sampleTeam();
-  return [
-    {id:"lead_s1", date:t, name:"Rhea Kapoor", company:"Nimbus Foods", contact:"+91 98200 11223", email:"rhea@nimbusfoods.in", source:"IG DM @nimbusfoods", type:"Social Media", otherType:"", query:"Wants to be featured in a startup funding roundup after their seed round announcement.", assignedTo:team[0], status:"Query received"},
-    {id:"lead_s2", date:t, name:"Arjun Mehta", company:"Voltix Energy", contact:"+91 90040 55667", email:"arjun@voltix.io", source:"Startup Mahakumbh booth", type:"Events", otherType:"", query:"Interested in event coverage and a press release for their EV charging launch.", assignedTo:team[1], status:"Initiated", nextFollowUpDate:t, lastConnectDate:t, lastCallDiscussion:"Confirmed launch date, waiting on final press kit before we draft the release."},
-    {id:"lead_s3", date:t, name:"Sana Iyer", company:"CloudNest Technologies", contact:"+91 88888 44556", email:"sana@cloudnest.com", source:"press@cloudnest.com", type:"PR-National", otherType:"", query:"Series A funding announcement, needs coverage before their embargo lifts this week.", assignedTo:team[2], status:"Under discussion", nextFollowUpDate:t, lastConnectDate:t, lastCallDiscussion:"Discussed embargo timing on call, they'll share final numbers a day before lift."},
-    {id:"lead_s4", date:t, name:"Daniel Osei", company:"PayBridge Africa", contact:"+233 24 555 1122", email:"daniel@paybridge.africa", source:"LinkedIn message", type:"PR-International", otherType:"", query:"Cross-border payments startup expanding to India, wants market-entry press coverage.", assignedTo:team[3], status:"On hold"},
-    {id:"lead_s5", date:t, name:"Neha Verma", company:"Freelance consultant", contact:"+91 99110 22334", email:"neha.verma@gmail.com", source:"WhatsApp forward", type:"Others", otherType:"Referral from investor", query:"General query about partnership and advertising opportunities.", assignedTo:team[0], status:"No response"},
-    {id:"lead_s6", date:t, name:"Kabir Shah", company:"Loopwave Tech", contact:"+91 97110 33445", email:"kabir@loopwave.io", source:"Instagram reel comment", type:"Social Media", otherType:"", query:"Wanted a brand mention after their product reel went viral - feature published and closed.", assignedTo:team[1], status:"Successfully closed"},
-    {id:"lead_s7", date:t, name:"Priya Nair", company:"GreenCart", contact:"+91 96660 22110", email:"priya@greencart.in", source:"Referral - investor demo day", type:"Events", otherType:"", query:"Follow-up from demo day; decided to go with another publication.", assignedTo:team[2], status:"Dropped"},
-    {id:"lead_s8", date:t, name:"Farhan Ali", company:"MedixCare", contact:"+91 91234 56780", email:"farhan@medixcare.in", source:"Email inquiry", type:"PR-National", otherType:"", query:"Healthtech startup launching in tier-2 cities, wants a founder interview feature.", assignedTo:team[3], status:"Successfully closed"},
-    {id:"lead_s9", date:t, name:"Ishita Bose", company:"Bloom Learning", contact:"+91 90909 12345", email:"ishita@bloomlearning.co", source:"Instagram DM", type:"Social Media", otherType:"", query:"Edtech app crossed 1M downloads, wants a milestone story covered.", assignedTo:"", status:"Will reach when needed"}
-  ];
-}
-
 async function loadAll(){
-  const rawLeads = await storageGet('leads');
-  if(rawLeads){
-    try{ leads = JSON.parse(rawLeads); }catch(e){ leads = sampleLeads(); }
-  } else {
-    leads = sampleLeads();
-    await saveLeads();
-  }
-  const rawTeam = await storageGet('team');
-  if(rawTeam){
-    try{ team = JSON.parse(rawTeam); }catch(e){ team = sampleTeam(); }
-  } else {
-    team = sampleTeam();
-    await saveTeam();
-  }
-
+  try{ leads = await apiGetLeads(); }catch(e){ leads = []; }
+  try{ team = await apiGetTeam(); }catch(e){ team = []; }
   renderTeam(); renderFilters(); renderTable(); renderSummary();
 }
-async function saveLeads(){ await storageSet('leads', JSON.stringify(leads)); }
-async function saveTeam(){ await storageSet('team', JSON.stringify(team)); }
 
 function fillSelect(sel, options, placeholder){
   sel.innerHTML='';
@@ -318,7 +309,11 @@ function renderTeam(){
   team.forEach((name,i)=>{
     const chip=document.createElement('span'); chip.className='team-chip';
     chip.innerHTML = `${name} <button data-i="${i}" title="Remove">&times;</button>`;
-    chip.querySelector('button').onclick=async()=>{ team.splice(i,1); await saveTeam(); renderTeam(); };
+    chip.querySelector('button').onclick=async()=>{
+      try{ await apiRemoveTeamMember(name); }catch(e){ alert('Could not remove team member. Try again.'); return; }
+      team = team.filter(t=> t!==name);
+      renderTeam();
+    };
     wrap.appendChild(chip);
   });
 }
@@ -394,9 +389,8 @@ function renderTable(){
     applyStatusColor(statusSel, l.status);
     statusSel.addEventListener('change', async ()=>{
       l.status = statusSel.value;
-      l.updatedAt = new Date().toISOString();
       applyStatusColor(statusSel, l.status);
-      await saveLeads();
+      try{ await apiSaveLead(l); }catch(e){ alert('Could not save the status change. Try again.'); }
       renderSummary();
     });
     tr.querySelector('.cell-status').appendChild(statusSel);
@@ -408,7 +402,7 @@ function renderTable(){
     followupInput.value = l.nextFollowUpDate || '';
     followupInput.addEventListener('change', async ()=>{
       l.nextFollowUpDate = followupInput.value;
-      await saveLeads();
+      try{ await apiSaveLead(l); }catch(e){ alert('Could not save the follow-up date. Try again.'); }
     });
     tr.querySelector('.cell-followup').appendChild(followupInput);
 
@@ -419,7 +413,7 @@ function renderTable(){
     lastConnectInput.value = l.lastConnectDate || '';
     lastConnectInput.addEventListener('change', async ()=>{
       l.lastConnectDate = lastConnectInput.value;
-      await saveLeads();
+      try{ await apiSaveLead(l); }catch(e){ alert('Could not save the last connect date. Try again.'); }
     });
     tr.querySelector('.cell-lastconnect').appendChild(lastConnectInput);
 
@@ -431,7 +425,7 @@ function renderTable(){
     discussionInput.value = l.lastCallDiscussion || '';
     discussionInput.addEventListener('change', async ()=>{
       l.lastCallDiscussion = discussionInput.value;
-      await saveLeads();
+      try{ await apiSaveLead(l); }catch(e){ alert('Could not save the notes. Try again.'); }
     });
     tr.querySelector('.cell-calldiscussion').appendChild(discussionInput);
 
@@ -448,8 +442,9 @@ function renderTable(){
 
   body.querySelectorAll('[data-edit]').forEach(b=> b.onclick = ()=> editLead(b.dataset.edit));
   body.querySelectorAll('[data-del]').forEach(b=> b.onclick = async ()=>{
+    try{ await apiDeleteLead(b.dataset.del); }catch(e){ alert('Could not delete the lead. Try again.'); return; }
     leads = leads.filter(l=>l.id!==b.dataset.del);
-    await saveLeads(); renderTable(); renderSummary();
+    renderTable(); renderSummary();
   });
 }
 
@@ -616,14 +611,19 @@ document.getElementById('saveBtn').onclick = async ()=>{
     nextFollowUpDate: document.getElementById('f_nextFollowUp').value || '',
     lastConnectDate: document.getElementById('f_lastConnect').value || '',
     lastCallDiscussion: document.getElementById('f_lastCallDiscussion').value.trim(),
-    updatedAt: new Date().toISOString()
   };
-  if(id){
-    leads = leads.map(l=> l.id===id ? lead : l);
-  } else {
-    leads.push(lead);
+  let saved;
+  try{
+    saved = await apiSaveLead(lead);
+  }catch(e){
+    msg.innerHTML = '<div class="msg err">Could not save the lead. Try again.</div>';
+    return;
   }
-  await saveLeads();
+  if(id){
+    leads = leads.map(l=> l.id===id ? saved : l);
+  } else {
+    leads.push(saved);
+  }
   renderTable(); renderSummary();
   clearForm();
   closeLeadModal();
@@ -632,10 +632,10 @@ document.getElementById('saveBtn').onclick = async ()=>{
 document.getElementById('addTeamBtn').onclick = async ()=>{
   const inp = document.getElementById('teamInput');
   const name = inp.value.trim();
-  if(!name) return;
-  if(!team.includes(name)) team.push(name);
+  if(!name || team.includes(name)) return;
+  try{ team = await apiAddTeamMember(name); }catch(e){ alert('Could not add team member. Try again.'); return; }
   inp.value='';
-  await saveTeam(); renderTeam();
+  renderTeam();
 };
 document.getElementById('teamInput').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addTeamBtn').click(); });
 
@@ -650,8 +650,8 @@ document.getElementById('deleteAllBtn').onclick = async ()=>{
   if(!leads.length){ alert('There are no leads to delete.'); return; }
   const confirmed = confirm(`Delete ALL ${leads.length} lead(s) from this table? This cannot be undone.`);
   if(!confirmed) return;
+  try{ await apiDeleteAllLeads(); }catch(e){ alert('Could not delete leads. Try again.'); return; }
   leads = [];
-  await saveLeads();
   renderTable();
   renderSummary();
 };
