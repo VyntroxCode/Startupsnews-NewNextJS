@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
+import { trackEvent } from "@/lib/analytics";
 
 const SITE_FONT_FAMILY = '"Garnett", Helvetica, Arial, sans-serif';
 
@@ -102,6 +103,7 @@ export default function AdvertisePage() {
 			return;
 		}
 
+		trackEvent("generate_lead", { form: "advertise_enquiry" });
 		alert("Thank you for your enquiry. Your message has been sent to office@startupnews.fyi.");
 		setFormData({
 			firstName: "",

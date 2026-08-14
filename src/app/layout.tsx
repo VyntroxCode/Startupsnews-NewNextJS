@@ -11,7 +11,7 @@ import { TopLoader } from "@/components/TopLoader";
 import { siteConfig } from "@/lib/config";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import AuthModal from "@/components/AuthModal";
-import Script from "next/script";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { BannersService } from "@/modules/banners/service/banners.service";
 import { BannersRepository } from "@/modules/banners/repository/banners.repository";
 import { entityToBanner } from "@/modules/banners/utils/banners.utils";
@@ -234,13 +234,7 @@ export default async function RootLayout({
         </ConditionalLayout>
         <AuthModal />
         <ThemeScript />
-        <Script src="https://www.googletagmanager.com/gtag/js?id=G-WNYV9VGC9N" strategy="lazyOnload" />
-        <Script id="gtag-init" strategy="lazyOnload">{`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-WNYV9VGC9N');
-        `}</Script>
+        <GoogleAnalytics />
       </body>
     </html>
   );

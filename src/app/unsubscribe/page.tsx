@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { trackEvent } from "@/lib/analytics";
 
 function UnsubscribeContent() {
   const searchParams = useSearchParams();
@@ -22,6 +23,7 @@ function UnsubscribeContent() {
         if (data.success) {
           setStatus("success");
           setMessage(data.email ? `${data.email}` : "");
+          trackEvent("unsubscribe", { method: "email_link" });
         } else {
           setStatus("error");
           setMessage(data.error || "The unsubscribe link is invalid or has expired.");
@@ -48,6 +50,7 @@ function UnsubscribeContent() {
       if (data.success) {
         setStatus("success");
         setMessage(trimmed);
+        trackEvent("unsubscribe", { method: "form" });
       } else {
         setStatus("error");
         setMessage(data.error || "Failed to unsubscribe. Please try again.");

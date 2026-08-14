@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 declare global {
 	interface Window {
@@ -146,6 +147,9 @@ export default function AuthModal() {
 							setWelcomeUser(d.data.user);
 							setShowWelcome(true);
 							window.dispatchEvent(new Event("pub-auth-changed"));
+							if (!isAdmin) {
+								trackEvent(d.data.isNew ? "sign_up" : "login", { method: "google" });
+							}
 						} else {
 							setError(d.error || "Google sign-in failed");
 						}
@@ -159,7 +163,7 @@ export default function AuthModal() {
 			console.error("Error creating Google Token Client:", err);
 			setError("Google Sign-In initialization failed: " + (err.message || err));
 		}
-	}, []);
+	}, [isAdmin]);
 
 	/* ── Mount & session check ──────────────────────────────── */
 	useEffect(() => {
