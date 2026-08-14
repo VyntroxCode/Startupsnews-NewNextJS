@@ -1,379 +1,429 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRef, useState } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
-import { HeadphonesIcon, ArrowRightIcon } from "@/components/icons";
+
+const SITE_FONT_FAMILY = '"Garnett", Helvetica, Arial, sans-serif';
+
+const STATS = [
+	{ value: "90.3M", label: "Google search impressions" },
+	{ value: "10M+", label: "Monthly impressions" },
+	{ value: "15M+", label: "Instagram organic reach" },
+	{ value: "445K+", label: "Instagram followers" },
+	{ value: "22K+", label: "WhatsApp community members" },
+	{ value: "24", label: "Countries reached" },
+	{ value: "250+", label: "Global media partners" },
+	{ value: "100's", label: "Advertisers who trust us" },
+];
+
+const WAYS = [
+	"Original, sponsored editorial content",
+	"Press release publishing and distribution",
+	"Targeted ad campaigns across sectors",
+	"Event sponsorship and media partnership",
+	"Social and WhatsApp community amplification",
+];
+
+const WHY_CARDS = [
+	{
+		label: "TARGET",
+		title: "Precise Targeting",
+		body: "Reach the right audience using geo-demo segmentation across TV and digital.",
+	},
+	{
+		label: "STRATEGY",
+		title: "Expert Media Strategy",
+		body: "Get comprehensive campaign planning and advertising guidance across our premium portfolio.",
+	},
+	{
+		label: "ANALYSIS",
+		title: "Professional Consultation",
+		body: "Comprehensive media consultation and post-campaign performance analysis.",
+	},
+	{
+		label: "SUPPORT",
+		title: "Expert Guidance",
+		body: "Dedicated Relationship Managers for personalised planning and support.",
+	},
+];
+
+const FIELD_LABEL = "block text-[13px] font-semibold text-adv-ink mb-2";
+
+const FIELD_INPUT =
+	"block w-full font-[inherit] text-[15px] leading-[1.4] px-4 py-3 border border-adv-line-2 rounded-xl bg-white text-adv-ink placeholder:text-adv-muted-2 transition-colors focus:outline-none focus:border-adv-red focus:ring-2 focus:ring-adv-red/15";
 
 export default function AdvertisePage() {
-    const [formData, setFormData] = useState({
-            firstName: "",
-            companyName: "",
-            email: "",
-            phone: "",
-            budgetRate: "",
-            campaignGoal: "",
-            objective: "",
-        });
-    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-    const [submitting, setSubmitting] = useState(false);
-    const turnstileRef = useRef<TurnstileInstance>(null);
+	const [formData, setFormData] = useState({
+		firstName: "",
+		companyName: "",
+		email: "",
+		phone: "",
+		budgetRate: "",
+		campaignGoal: "",
+		objective: "",
+	});
+	const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+	const [submitting, setSubmitting] = useState(false);
+	const turnstileRef = useRef<TurnstileInstance>(null);
 
-        const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-            const { name, value } = e.target;
-            setFormData((prev) => ({ ...prev, [name]: value }));
-        };
+	const handleChange = (
+		e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+	) => {
+		const { name, value } = e.target;
+		setFormData((prev) => ({ ...prev, [name]: value }));
+	};
 
-        const handleSubmit = async (e: React.FormEvent) => {
-            e.preventDefault();
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
 
-            if (!turnstileToken) {
-                alert('Please complete the CAPTCHA verification.');
-                return;
-            }
+		if (!turnstileToken) {
+			alert("Please complete the CAPTCHA verification.");
+			return;
+		}
 
-            setSubmitting(true);
-            const response = await fetch('/api/advertise', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, turnstileToken }),
-            });
+		setSubmitting(true);
+		const response = await fetch("/api/advertise", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ ...formData, turnstileToken }),
+		});
 
-            const result = await response.json().catch(() => null);
-            setSubmitting(false);
+		const result = await response.json().catch(() => null);
+		setSubmitting(false);
 
-            if (!response.ok || !result?.success) {
-                const errorMessage = result?.error || 'Failed to send your enquiry. Please try again.';
-                alert(errorMessage);
-                turnstileRef.current?.reset();
-                setTurnstileToken(null);
-                return;
-            }
+		if (!response.ok || !result?.success) {
+			const errorMessage = result?.error || "Failed to send your enquiry. Please try again.";
+			alert(errorMessage);
+			turnstileRef.current?.reset();
+			setTurnstileToken(null);
+			return;
+		}
 
-            alert('Thank you for your enquiry. Your message has been sent to office@startupnews.fyi.');
-            setFormData({
-                firstName: '',
-                companyName: '',
-                email: '',
-                phone: '',
-                budgetRate: '',
-                campaignGoal: '',
-                objective: '',
-            });
-            turnstileRef.current?.reset();
-            setTurnstileToken(null);
-        };
+		alert("Thank you for your enquiry. Your message has been sent to office@startupnews.fyi.");
+		setFormData({
+			firstName: "",
+			companyName: "",
+			email: "",
+			phone: "",
+			budgetRate: "",
+			campaignGoal: "",
+			objective: "",
+		});
+		turnstileRef.current?.reset();
+		setTurnstileToken(null);
+	};
 
-    const audienceData = [
-  { label: "Startup founders & co-founders", value: 38 },
-  { label: "Investors & VCs", value: 18 },
-  { label: "Tech & product professionals", value: 22 },
-  { label: "Corporate decision-makers", value: 12 },
-  { label: "Students & aspiring founders", value: 10 },
-];
+	return (
+		<div className="bg-white text-adv-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
+			{/* Eyebrow */}
+			<div className="px-5 sm:px-8 lg:px-10 pt-6 text-center">
+				<h1 className="text-[28px] sm:text-[36px] font-bold tracking-[0.04em] uppercase text-adv-ink">
+					Advertise with us
+				</h1>
+			</div>
 
-const geoData = [
+			{/* HERO */}
+			<section className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-7 lg:gap-[72px] items-center px-5 sm:px-8 lg:px-10 py-6 sm:py-10 lg:py-[52px]">
+				<div className="relative h-[380px] sm:h-[480px] lg:h-[620px] min-w-0 rounded-[24px] overflow-hidden">
+					<Image
+						src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1920&q=80&auto=format&fit=crop"
+						alt="StartupNews.fyi advertising and media team"
+						fill
+						sizes="(min-width: 1024px) 45vw, 100vw"
+						className="object-cover"
+						priority
+					/>
+				</div>
+				<div className="relative flex flex-col gap-0.5 min-w-0">
+					<div className="absolute -top-[54px] right-[6%] w-[116px] h-[116px] rounded-full bg-[#ffe8e8] pointer-events-none" />
+					<div className="absolute -bottom-10 right-[2%] w-[72px] h-[72px] rounded-full border-[10px] border-adv-ink pointer-events-none" />
+					<span className="relative text-[clamp(48px,8.2vw,128px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-ink">
+						Make
+					</span>
+					<span className="relative text-[clamp(48px,8.2vw,128px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-ink">
+						Your Brand
+					</span>
+					<span className="relative text-[clamp(48px,8.2vw,128px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-red">
+						Stand Out.
+					</span>
+				</div>
+			</section>
 
-  { label: "USA", value: 70 },
-  { label: "UAE / MENA", value: 10 },
-  { label: "UK", value: 10 },
-  { label: "SEA & others", value: 10 },
-];
+			{/* REACH THE MOST ENGAGED AUDIENCE */}
+			<section className="grid grid-cols-1 lg:grid-cols-2 gap-7 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 py-9 sm:py-14 lg:py-[88px] bg-adv-panel border-t border-adv-line">
+				<h2 className="text-adv-ink text-[26px] sm:text-[34px] lg:text-[44px] font-extrabold tracking-[-0.02em] leading-[1.14] uppercase max-w-[18ch]">
+					Reach the most engaged startup &amp; tech audience
+				</h2>
+				<div className="flex flex-col gap-7 items-start min-w-0">
+					<p className="text-lg leading-[1.65] text-adv-muted max-w-[58ch]">
+						StartupNews.fyi connects your brand with 10M+ monthly readers — founders,
+						investors, and tech decision-makers across India and 24 countries. AI-curated,
+						founder-first, globally distributed.
+					</p>
+					<div className="flex flex-wrap gap-3.5">
+						<a
+							href="#sn-form"
+							className="bg-adv-red hover:bg-adv-red-deep !text-white text-[15px] font-bold px-8 py-[15px] rounded-full"
+						>
+							Submit Your Advertising Enquiry
+						</a>
+						<Link
+							href="/contact-us"
+							className="border-[1.5px] border-adv-ink text-adv-ink text-[15px] font-bold px-8 py-[15px] rounded-full"
+						>
+							Contact Us
+						</Link>
+					</div>
+					<p className="text-sm text-adv-muted">
+						Takes 5–7 minutes · Get expert media consultation within 24 hours
+					</p>
+				</div>
+			</section>
 
-const ProgressBar = ({ value }: { value: number }) => {
-  return (
-    <div className="progress-bar">
-      <div
-        className="progress-fill"
-        style={{ width: `${value}%` }}
-      />
-    </div>
-  );
-};
-    return (
-        <div className="advertise-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", fontFamily: "Arial, sans-serif", color: "#111" }}>
-            <style>{`
-                .adv-main-heading { font-size: 38px; font-weight: 700; color: #111; padding-bottom: 20px; }
-                .adv-cta-heading { font-size: 22px; font-weight: 600; color: #111; margin-bottom: 16px; }
-                .adv-stats-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
-                .adv-logos-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
-                .adv-why-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-                .adv-cta-row { display: flex; flex-direction: row; align-items: center; gap: 70px; margin-bottom: 32px; margin-top: 32px; justify-content: center; color: #5c5959; font-size: 13px; font-weight: 600; }
-                .adv-hero-sec { padding: 80px 20px; background: #fff; }
-                .adv-stats-sec { padding: 60px 20px; }
-                .adv-logos-sec { padding: 60px 20px; }
-                .adv-who-inner { margin: 48px; text-align: center; }
-                .adv-form-sec { padding: 80px 20px; background: #f7f7f7; }
-                .adv-form-box { padding: 30px 0; background: #fff; }
-                .adv-sec-title { font-size: 30px; font-weight: 600; color: #111; margin-bottom: 16px; }
-                .adv-why-title { font-size: 36px; font-weight: 800; margin-bottom: 16px; color: #000; }
-                .adv-form-title { font-size: 32px; font-weight: 800; margin-bottom: 12px; color: #000; }
-                .adv-logo-tile { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-                .adv-stat-tile { background: #fff; border-radius: 16px; padding: 30px 24px; box-shadow: 0 16px 45px rgba(0,0,0,0.08); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-                @media (max-width: 768px) {
-                    .adv-main-heading { font-size: 20px; }
-                    .adv-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-                    .adv-logos-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-                    .adv-why-grid { grid-template-columns: 1fr; }
-                    .adv-cta-row { flex-direction: column; gap: 12px; text-align: center; }
-                    .adv-hero-sec { padding: 40px 28px; }
-                    .adv-stats-sec, .adv-logos-sec { padding: 32px 24px; }
-                    .adv-who-inner { margin: 16px 24px; }
-                    .adv-form-sec { padding: 40px 24px; }
-                    .adv-form-box { padding: 20px 0; }
-                    .adv-sec-title { font-size: 22px; }
-                    .adv-why-title { font-size: 24px; }
-                    .adv-form-title { font-size: 22px; }
-                    .adv-stat-tile { padding: 20px 16px; }
-                    .adv-logo-tile { padding: 12px 8px; }
-                    .adv-cta-heading { font-size: 17px; }
-                }
-                @media (max-width: 480px) {
-                    .adv-main-heading { font-size: 18px; }
-                    .adv-logos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-                    .adv-hero-sec { padding: 32px 20px; }
-                    .adv-stats-sec, .adv-logos-sec { padding: 28px 20px; }
-                    .adv-who-inner { margin: 12px 20px; }
-                    .adv-form-sec { padding: 32px 20px; }
-                    .adv-form-box { padding: 16px 0; }
-                    .adv-sec-title { font-size: 18px; }
-                    .adv-why-title, .adv-form-title { font-size: 20px; }
-                    .adv-cta-heading { font-size: 16px; }
-                }
-            `}</style>
-            <section className="advertise-with-us-section adv-hero-sec">
-                <div className="advertise-with-us-main" style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
+			{/* STATS */}
+			<section className="px-5 sm:px-8 lg:px-10 py-9 sm:py-14 lg:py-[88px]">
+				<span className="text-xs font-bold tracking-[0.16em] uppercase text-adv-red">
+					Reach that matters
+				</span>
+				<h2 className="text-adv-ink mt-3.5 text-[26px] sm:text-[34px] lg:text-[44px] font-extrabold tracking-[-0.02em] leading-[1.16] max-w-[26ch]">
+					StartupNews&apos;s unparalleled scale across India&apos;s most trusted media
+					platforms
+				</h2>
+				<div className="mt-10 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-px bg-adv-line border border-adv-line rounded-[20px] overflow-hidden">
+					{STATS.map((s) => (
+						<div key={s.label} className="bg-white px-6 py-[30px] flex flex-col gap-1.5 min-w-0">
+							<span className="text-[26px] sm:text-[32px] lg:text-[38px] font-black tracking-[-0.03em] text-adv-red">
+								{s.value}
+							</span>
+							<span className="text-[13px] font-semibold text-adv-muted leading-[1.4]">
+								{s.label}
+							</span>
+						</div>
+					))}
+				</div>
+			</section>
 
-                    <h2 className="adv-main-heading">
-                        Reach The Most Engaged Startup & Tech Audience
-                    </h2>
-                    <p style={{ fontSize: "18px", lineHeight: "1.8", maxWidth: "760px", margin: "0 auto 30px", color: "#444" }}>
-                        StartupNews.fyi connects your brand with 10M+ monthly readers — founders, investors, and tech decision-makers across India and 24 countries. AI-curated, founder-first, globally distributed.
-                    </p>
-                   </div>
+			{/* WAYS TO WORK WITH US */}
+			<section className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-20 items-center px-5 sm:px-8 lg:px-10 py-12 lg:py-[104px] bg-adv-panel border-t border-adv-line">
+				<div className="min-w-0">
+					<h2 className="text-adv-ink text-[34px] sm:text-[48px] lg:text-[62px] font-black tracking-[-0.035em] leading-[1.02] uppercase">
+						Ways to work
+						<br />
+						<span className="text-adv-red">with us</span>
+					</h2>
+					<ul className="list-none p-0 mt-10 grid gap-0">
+						{WAYS.map((w, i) => (
+							<li
+								key={w}
+								className={`grid grid-cols-[44px_1fr] gap-4 items-baseline py-5 border-t border-adv-line-2 ${
+									i === WAYS.length - 1 ? "border-b" : ""
+								}`}
+							>
+								<span className="text-[13px] font-extrabold text-adv-red tracking-[0.08em]">
+									{String(i + 1).padStart(2, "0")}
+								</span>
+								<span className="text-base sm:text-lg lg:text-xl font-bold tracking-[-0.01em] uppercase leading-[1.35]">
+									{w}
+								</span>
+							</li>
+						))}
+					</ul>
+					<a
+						href="#sn-form"
+						className="inline-block mt-8 bg-adv-red hover:bg-adv-red-deep !text-white text-[15px] font-bold px-8 py-[15px] rounded-full"
+					>
+						Learn More
+					</a>
+				</div>
+				<div className="relative h-[380px] sm:h-[460px] lg:h-[600px] min-w-0 rounded-[24px] overflow-hidden">
+					<Image
+						src="https://images.unsplash.com/photo-1600880292089-90a7e086ee0c?w=1400&q=80&auto=format&fit=crop"
+						alt="Ways to work with StartupNews.fyi"
+						fill
+						sizes="(min-width: 1024px) 40vw, 100vw"
+						className="object-cover"
+					/>
+				</div>
+			</section>
 
-                   <div className="advertise-with-us-cta" style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" ,padding: "50px 20px", background: "#fff", border: "1px solid #000",  borderRadius: "8px", display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" }}>
-                       <div className="icon" style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", width: "60px", height: "60px", background: "#dbeafe", borderRadius: "50%", fontSize: "24px" }}>
-                        <HeadphonesIcon aria-hidden="true" />
-                                </div>
-                        <p className="adv-cta-heading">
-                        Ready to Advertise with StartupNews?
-                    </p>
+			{/* WHY CHOOSE STARTUPNEWS */}
+			<section className="px-5 sm:px-8 lg:px-10 py-12 lg:py-[104px] bg-adv-ink text-white">
+				<h2 className="text-white text-[34px] sm:text-[48px] lg:text-[62px] font-black tracking-[-0.035em] leading-[1.02] uppercase">
+					Why choose <span className="text-adv-red">StartupNews?</span>
+				</h2>
+				<p className="mt-5 text-lg leading-[1.65] text-[#a8aeb6] max-w-[62ch]">
+					India&apos;s most credible media powerhouse, offering unmatched reach, precision,
+					and performance. Experience the difference with our comprehensive media solutions
+					and expert guidance.
+				</p>
+				<div className="mt-12 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-5">
+					{WHY_CARDS.map((c) => (
+						<article
+							key={c.title}
+							className="border border-[#23272e] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0"
+						>
+							<span className="text-[30px] sm:text-[38px] lg:text-[46px] font-black tracking-[-0.04em] leading-none text-[#3d434c]">
+								{c.label}
+							</span>
+							<h3 className="text-white text-[22px] font-extrabold tracking-[-0.02em] leading-[1.35]">{c.title}</h3>
+							<p className="text-base leading-[1.6] text-[#a8aeb6]">{c.body}</p>
+						</article>
+					))}
+				</div>
+			</section>
 
-                    <a className="btn btn-primary" href="#sn-form" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "220px", padding: "16px 24px", background: "#000", color: "#fff", textDecoration: "none", fontWeight: 700, borderRadius: "4px" }}>
-                            🚀 Submit Your Advertising Enquiry &nbsp; <ArrowRightIcon aria-hidden="true" />
-                        </a>
+			{/* ENQUIRY FORM */}
+			<section
+				id="sn-form"
+				className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 py-12 lg:py-[104px]"
+			>
+				<div className="min-w-0">
+					<h2 className="text-adv-ink text-[30px] sm:text-[40px] lg:text-[52px] font-black tracking-[-0.035em] leading-[1.05]">
+						Ready to start your advertising journey?
+					</h2>
+					<p className="mt-5 text-lg leading-[1.65] text-adv-muted max-w-[46ch]">
+						Tell us about your brand and campaign goals. Our team will get back to you
+						within 24 hours with a custom media plan.
+					</p>
+					<p className="mt-6 text-[15px] leading-[1.6] text-adv-muted-2 max-w-[46ch]">
+						Submit your advertising requirements and get expert media guidance across
+						StartupNews&apos;s premium media portfolio.
+					</p>
+				</div>
 
-                    <p style={{ fontSize: "14px", marginTop: "10px", color: "#444" }}>
-                        ⏱️ Takes 5-7 minutes • Get expert media consultation within 24 hours
-                    </p>
-                   </div>
-            </section>
-
-
-            <section className="adv-stats-sec">
-                <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
-                    <p className="adv-sec-title">
-                        Reach That Matters
-                    </p>
-                    <h2 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
-                       StartupNews's unparalleled scale across India's most trusted media platforms
-                    </h2>
-                </div>
-                <div className="adv-stats-grid">
-                    {[{ value: "90.3M", label: "Google search Impressions" },
-                        { value: "10M+", label: "Monthly Impressions" },
-                        { value: "15M+", label: "Instagram organic Reach" },
-                        { value: "22K+", label: "WhatsApp Community Members" },
-                        { value: "445K+", label: "Instagram followers" },
-                        { value: "24", label: "Countries Reached" },
-                        { value: "250+", label: "Global media partners" },
-                    ].map((item, idx) => (
-                        <div key={idx} className="adv-stat-tile">
-                            <div style={{ color: "#e91e63", fontSize: "28px", fontWeight: 600, marginBottom: "10px" }}>{item.value}</div>
-                            <div style={{ color: "#333", fontSize: "14px", fontWeight: 400, letterSpacing: "0.05em" }}>{item.label}</div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            <section className="adv-logos-sec">
-                <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: "1px", background: "#fff", padding: "8px 12px", borderRadius: "999px", margin: "0 auto 18px", border: "1px solid #e6e4e2", color: "#000", fontSize: "12px", fontWeight: 600 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "20px", borderRadius: "50%" }}>❤️</span>
-                        Trusted By
-                    </div>
-                    <p className="adv-sec-title">
-                        Leading brands across India
-                    </p>
-                    <h2 style={{ fontSize: "18px", lineHeight: "1.05", fontWeight: 400, margin: "0 auto 24px", maxWidth: "860px", color: "#000" }}>
-                       Join 100’s advertisers who trust StartupNews for their media campaigns
-                    </h2>
-
-                    <div className="adv-logos-grid">
-                    {[
-                        { url: "https://m.media-amazon.com/images/I/31epF-8N9LL.png"  },
-                        { url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpvVJfhRhMR4rDhLCiyw63AuPPQAuvh-lgIQ&s" },
-                        { url: "https://miro.medium.com/v2/resize:fit:2000/1*Nehq1KYRgFWTanqsLwWeFQ.png"},
-                        { url: "https://assets1.cleartax-cdn.com/finfo/wg-utils/retool/51623de7-2149-40da-9fdc-699a83c29e87.png" },
-                        { url: "https://upload.wikimedia.org/wikipedia/commons/f/fc/Naukri.png" },
-                        { url: "https://images.squarespace-cdn.com/content/v1/58d67c53f5e231abb445a1c5/1530714471513-BDO4R6ZR8ZH9GOBWQ42U/Dot-_-Key-Logo.jpg"},
-                        { url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSQLg_5l55lYNEMEef4GEcBl1A7j1VxVTRjZg&s"},
-                        { url: "https://awards.brandingforum.org/wp-content/uploads/2020/12/milton-logo-833sq.jpg"},
-                        { url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Tecno_Mobile_logo.svg/3840px-Tecno_Mobile_logo.svg.png"},
-                        { url: "https://www.pngkey.com/png/detail/335-3359234_danube-properties-logo.png"},
-                        { url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSyUPu_2EkfYW1frULtF3QJlFdb33ApLOoRFw&s"},
-                        { url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTTn_uizyorPXLjrVJR8JKCJ4j81iu-TUSG_w&s"},
-                        { url: "https://cdn.prod.website-files.com/64c295253c28617fbde07f94/64de660c31e4244876231cf7_karan-invite-logo%20(1).png"},
-                        { url: "https://vectorseek.com/wp-content/uploads/2025/08/Ramayana-Logo-PNG-SVG-Vector.jpg"},
-                        { url: "https://svatantramhfc.com/images/svatantra-logo-new.png"},
-                        { url: "https://trymintly-companylogo.s3.amazonaws.com/1695713117642_new-09.jpg.png"},
-                        { url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7hiz9GvkrUOwd3A-kFUd8o0DFHB1RJJ8XPg&s"},
-                        { url: "https://cdn.shopify.com/s/files/1/0690/7723/7977/files/Logo_BLACK.png?v=1715307205"},
-                        { url: "https://1000logos.net/wp-content/uploads/2023/03/Paytm-logo.png"},
-                        { url: "https://www.sticckiz.com/cdn/shop/files/14.DiljitDosanjhSticker_Singer.png?v=1745327901"},
-                    ].map((item, idx) => (
-                        <div key={idx} className="adv-logo-tile">
-                            <div style={{ width: "110px", height: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <img src={item.url} alt={`logo-${idx}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                    <div className="adv-cta-row">
-                        <p>100’s Advertisers</p>
-                        <p>Multi-Continent Coverage</p>
-                        <p>Multi-Language</p>
-                    </div>
-                </div>
-            </section>
-
-            <section style={{ padding: "50px 20px", background: "#fff" }}>
-                <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-                    <div style={{ marginBottom: "48px", textAlign: "center" }}>
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: "1px", background: "#fff", padding: "8px 12px", borderRadius: "999px", margin: "0 auto 18px", border: "1px solid #e6e4e2", color: "#000", fontSize: "12px", fontWeight: 600 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "20px", borderRadius: "50%" }}>❤️</span>
-                        Why Choose Us
-                    </div>
-                        <h2 className="adv-why-title">Why Choose StartupNews?</h2>
-                        <p style={{ fontSize: "18px", lineHeight: "1.7", maxWidth: "760px", margin: "0 auto", color: "#555" }}>
-                            India&rsquo;s most credible media powerhouse, offering unmatched reach, precision, and performance. Experience the difference with our comprehensive media solutions and expert guidance.
-                        </p>
-                    </div>
-                    <div className="adv-why-grid">
-                        {[
-                            { title: "Precise Targeting", description: "Reach the right audience using geo-demo segmentation across TV and digital.", icon: "🎯" },
-                            { title: "Expert Media Strategy", description: "Get comprehensive campaign planning and advertising guidance across our premium portfolio.", icon: "📊" },
-                            { title: "Professional Consultation", description: "Comprehensive media consultation and post-campaign performance analysis.", icon: "✓" },
-                            { title: "Expert Guidance", description: "Dedicated Relationship Managers for personalized planning and support.", icon: "🎧" },
-                        ].map((item, idx) => (
-                            <div key={idx} style={{ background: "#fff", border: "1px solid #e5e7eb", borderLeft: "5px solid #3b82f6", borderRadius: "8px", padding: "32px", display: "flex", gap: "20px" }}>
-                                <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", width: "60px", height: "60px", background: "#dbeafe", borderRadius: "8px", fontSize: "24px" }}>
-                                    {item.icon}
-                                </div>
-                                <div>
-                                    <h3 style={{ fontSize: "20px", fontWeight: 600, marginBottom: "10px", color: "#000", margin: "0 0 10px 0" }}>{item.title}</h3>
-                                    <p style={{ fontSize: "15px", lineHeight: "1.6", color: "#6b7280", margin: 0 }}>{item.description}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section id="advertise-form" className="adv-form-sec">
-                <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 20px" }}>
-                    <div style={{ textAlign: "center", marginBottom: "40px" }}>
-                        <h2 className="adv-form-title">Ready to Start Your Advertising Journey?</h2>
-                        <p style={{ fontSize: "18px", lineHeight: "1.7", color: "#555", maxWidth: "760px", margin: "0 auto" }}>
-                          Join 100’s of advertisers who trust StartupNews for expert media guidance across India.
-                        </p>
-                    </div>
-
-                     <div id="sn-form" className="sn-row-form adv-form-box">
-                <div className="kt-row-column-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
-
-                    <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#000", marginBottom: "12px", textTransform: "none" }}>Get in Touch</h2>
-                    <p style={{ fontSize: "14px", color: "#555", marginBottom: "50px" }}>
-                        Tell us about your brand and campaign goals. Our team will get back to you within 24 hours with a custom media plan.
-                    </p>
-
-                    <form onSubmit={handleSubmit} className="sn-advertise-form" style={{ width: "100%", maxWidth: "1100px" }}>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Your Name *</label>
-                                <input type="text" name="firstName" required value={formData.firstName} onChange={handleChange} />
-                            </div>
-                            <div className="form-group">
-                                <label>Company Name *</label>
-                                <input type="text" name="companyName" required value={formData.companyName} onChange={handleChange} />
-                            </div>
-                        </div>
-
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Email *</label>
-                                <input type="email" name="email" required value={formData.email} onChange={handleChange} />
-                            </div>
-                            <div className="form-group">
-                                <label>Phone / Whatsapp *</label>
-                                <input type="tel" name="phone" required value={formData.phone} onChange={handleChange} />
-                            </div>
-                        </div>
-
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Budget Rate *</label>
-                                <input type="text" name="budgetRate" required placeholder="Under $ 500" value={formData.budgetRate} onChange={handleChange} />
-                            </div>
-                            <div className="form-group">
-                                <label>Campaign Goal *</label>
-                                <input type="text" name="campaignGoal" required placeholder="Brand awareness" value={formData.campaignGoal} onChange={handleChange} />
-                            </div>
-                        </div>
-
-                        <div className="form-group form-row-single">
-                            <label>Tell us more *</label>
-                            <textarea name="objective" required value={formData.objective} onChange={handleChange} rows={5} placeholder="Describe your campaign, target audience, goals, or any specific requirements..." />
-                        </div>
-
-                        <div style={{ paddingTop: "10px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
-                            <Turnstile
-                                ref={turnstileRef}
-                                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                                onSuccess={(token) => setTurnstileToken(token)}
-                                onExpire={() => setTurnstileToken(null)}
-                                onError={() => setTurnstileToken(null)}
-                            />
-                            <button
-                                type="submit"
-                                disabled={submitting || !turnstileToken}
-                                style={{ display: "inline-block", width: "100%", maxWidth: "320px", margin: "0 auto", padding: "18px 24px", background: submitting || !turnstileToken ? "#666" : "#000", color: "#fff", textDecoration: "none", textAlign: "center", fontWeight: 700, borderRadius: "6px", cursor: submitting || !turnstileToken ? "not-allowed" : "pointer", border: "none" }}
-                            >
-                                {submitting ? "Sending..." : "Submit Your Enquiry Today"}
-                            </button>
-                        </div>
-
-                        <p style={{ fontSize: "11px", color: "#000", marginTop: "40px", lineHeight: "1.5", maxWidth: "800px" }}>
-                            By submitting this form, I agree to StartupNews.fyi contacting me in relation to this enquiry. Your message will be sent to office@startupnews.fyi as described in our <a href="/privacy-policy" style={{ color: "#0077b5" }}>Privacy Policy</a>.
-                        </p>
-                    </form>
-                </div>
-            </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "24px", marginTop: "30px" }}>
-                        <div style={{ background: "#fff", borderRadius: "18px", padding: "40px", boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}>
-                            <h3 style={{ fontSize: "24px", fontWeight: 800, color: "#000", marginBottom: "16px" }}>Connect directly with an expert</h3>
-                            <p style={{ fontSize: "15px", color: "#666", marginBottom: "32px" }}>
-                                Enquiries are sent to <a href="mailto:office@StartupNews.fyi" style={{ color: "#0077b5", fontWeight: 600 }}>office@StartupNews.fyi</a>.
-                            </p>
-                            <p style={{ color: "#555", lineHeight: "1.8", margin: 0 }}>
-                                Submit your advertising requirements and get expert media guidance across StartupNews&rsquo;s premium media portfolio.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-    );
+				<div className="min-w-0 border border-adv-line rounded-[24px] p-6 sm:p-8">
+					<form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+						<div className="min-w-0">
+							<label htmlFor="firstName" className={FIELD_LABEL}>
+								Your Name *
+							</label>
+							<input
+								id="firstName"
+								name="firstName"
+								required
+								value={formData.firstName}
+								onChange={handleChange}
+								placeholder="Jane Doe"
+								className={FIELD_INPUT}
+							/>
+						</div>
+						<div className="min-w-0">
+							<label htmlFor="companyName" className={FIELD_LABEL}>
+								Company Name *
+							</label>
+							<input
+								id="companyName"
+								name="companyName"
+								required
+								value={formData.companyName}
+								onChange={handleChange}
+								placeholder="Acme Inc."
+								className={FIELD_INPUT}
+							/>
+						</div>
+						<div className="min-w-0">
+							<label htmlFor="email" className={FIELD_LABEL}>
+								Email *
+							</label>
+							<input
+								id="email"
+								type="email"
+								name="email"
+								required
+								value={formData.email}
+								onChange={handleChange}
+								placeholder="you@company.com"
+								className={FIELD_INPUT}
+							/>
+						</div>
+						<div className="min-w-0">
+							<label htmlFor="phone" className={FIELD_LABEL}>
+								Phone / WhatsApp *
+							</label>
+							<input
+								id="phone"
+								type="tel"
+								name="phone"
+								required
+								value={formData.phone}
+								onChange={handleChange}
+								placeholder="+1 555 000 0000"
+								className={FIELD_INPUT}
+							/>
+						</div>
+						<div className="min-w-0">
+							<label htmlFor="budgetRate" className={FIELD_LABEL}>
+								Budget Range *
+							</label>
+							<input
+								id="budgetRate"
+								name="budgetRate"
+								required
+								value={formData.budgetRate}
+								onChange={handleChange}
+								placeholder="$5,000 – $10,000"
+								className={FIELD_INPUT}
+							/>
+						</div>
+						<div className="min-w-0">
+							<label htmlFor="campaignGoal" className={FIELD_LABEL}>
+								Campaign Goal *
+							</label>
+							<input
+								id="campaignGoal"
+								name="campaignGoal"
+								required
+								value={formData.campaignGoal}
+								onChange={handleChange}
+								placeholder="Brand awareness"
+								className={FIELD_INPUT}
+							/>
+						</div>
+						<div className="min-w-0 sm:col-span-2 lg:col-span-3">
+							<label htmlFor="objective" className={FIELD_LABEL}>
+								Tell us more *
+							</label>
+							<textarea
+								id="objective"
+								name="objective"
+								required
+								value={formData.objective}
+								onChange={handleChange}
+								placeholder="Share campaign details, timelines, and goals..."
+								rows={5}
+								className={`${FIELD_INPUT} min-h-[130px] resize-y`}
+							/>
+						</div>
+						<div className="min-w-0 sm:col-span-2 lg:col-span-3 flex flex-col items-start gap-4 pt-1">
+							<Turnstile
+								ref={turnstileRef}
+								siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+								onSuccess={(token) => setTurnstileToken(token)}
+								onExpire={() => setTurnstileToken(null)}
+								onError={() => setTurnstileToken(null)}
+							/>
+							<button
+								type="submit"
+								disabled={submitting || !turnstileToken}
+								className="font-[inherit] text-[15px] font-bold px-8 py-[15px] rounded-full border-0 bg-adv-red hover:bg-adv-red-deep disabled:bg-adv-muted-2 text-white cursor-pointer disabled:cursor-not-allowed transition-colors"
+							>
+								{submitting ? "Sending..." : "Submit Your Enquiry Today"}
+							</button>
+						</div>
+						<p className="sm:col-span-2 lg:col-span-3 text-[13px] leading-[1.6] text-adv-muted-2">
+							By submitting this form, I agree to StartupNews.fyi contacting me in
+							relation to this enquiry, as described in our{" "}
+							<Link href="/privacy-policy" className="text-adv-red hover:text-adv-red-deep">
+								Privacy Policy
+							</Link>
+							.
+						</p>
+					</form>
+				</div>
+			</section>
+		</div>
+	);
 }

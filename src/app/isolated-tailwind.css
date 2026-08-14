@@ -1,0 +1,57 @@
+/* Shared Tailwind stylesheet for the small set of routes that use real Tailwind utility
+   classes in an otherwise non-Tailwind project (currently /about-us, /advertise-with-us, and
+   /ecosystem-partners). This file IS the source AND the thing each route's layout.tsx imports
+   directly (`import "../isolated-tailwind.css"`) — no separate compile step, no manually-
+   regenerated output file, no per-route CSS file. Editing className usage in any of these
+   page.tsx files and running `npm run dev` / `npm run build` is enough; @tailwindcss/postcss
+   (enabled in the project's postcss.config.mjs) compiles this file automatically as part of
+   Next's normal webpack CSS pipeline, exactly like any other Tailwind project. See
+   postcss.config.mjs's own comment for why @tailwindcss/postcss is safe to have enabled
+   project-wide (it only activates on files with Tailwind directives; globals.css/style.css/
+   media-queries.css pass through unaffected) and for the required plugin ordering.
+
+   `source(none)` on both imports below + the explicit `@source` lines scope automatic
+   class-detection to just the specific page.tsx files listed — remove `source(none)` or an
+   `@source` line and Tailwind falls back to scanning the whole repo for candidate classes,
+   which once picked up bracket-syntax example text in agent.md's prose and generated broken
+   CSS that crashed the build. Keep both, and add a new `@source` line (not a whole new file,
+   not a manual-CLI-compiled pair of files) if a future route wants to join this shared
+   Tailwind setup.
+
+   Only imports the theme + utilities layers (skipping Preflight, Tailwind's base element
+   reset) so it can never affect the shared Header/Footer rendered on these same pages.
+
+   Deliberately NOT wrapped in layer(...): the site's legacy globals.css (Zox News theme reset)
+   declares its `div, span, p, ... { margin:0; padding:0; border:0 }` reset unlayered. Per the
+   CSS Cascade Layers spec, unlayered rules always beat layered ones regardless of specificity or
+   source order — so a layered Tailwind utility here would silently lose every margin/padding/
+   border/gap declaration to that reset. Keeping this output unlayered lets normal
+   specificity/source-order rules apply instead, where our single-class utility selectors
+   (0,1,0) beat the reset's bare element selectors (0,0,1). */
+@import "tailwindcss/theme.css" source(none);
+@import "tailwindcss/utilities.css" source(none);
+@source "./about-us/page.tsx";
+@source "./advertise-with-us/page.tsx";
+@source "./ecosystem-partners/page.tsx";
+
+@theme {
+  /* About Us page tokens */
+  --color-au-pink: #FF2158;
+  --color-au-pink-deep: #D8134A;
+  --color-au-ink: #161018;
+  --color-au-muted: #847E86;
+  --color-au-line: #DAD4C8;
+  --color-au-bg: #F4F1EA;
+  --color-au-panel: #FAF8F3;
+  --color-au-fade: #9A9399;
+
+  /* Advertise With Us page tokens */
+  --color-adv-red: #E8232A;
+  --color-adv-red-deep: #B8151B;
+  --color-adv-ink: #0F1115;
+  --color-adv-muted: #6B7280;
+  --color-adv-muted-2: #9AA1A9;
+  --color-adv-line: #E9EBEE;
+  --color-adv-line-2: #DFE3E7;
+  --color-adv-panel: #F6F7F8;
+}

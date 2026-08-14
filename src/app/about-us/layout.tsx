@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "../isolated-tailwind.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 		siteName: "StartupNews.fyi",
 		type: "website",
 	},
-};
+}; 
 
 export default function AboutLayout({
 	children,

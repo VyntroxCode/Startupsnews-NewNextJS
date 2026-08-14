@@ -32,6 +32,7 @@
 		"@aws-sdk/client-s3": "^3.987.0",
 		"@aws-sdk/s3-request-presigner": "^3.987.0",
 		"@marsidev/react-turnstile": "^1.5.2",
+		"@tailwindcss/vite": "^4.3.3",
 		"@tiptap/extension-character-count": "^3.22.5",
 		"@tiptap/extension-color": "^3.22.5",
 		"@tiptap/extension-highlight": "^3.22.5",
@@ -73,6 +74,7 @@
 		"xmlbuilder": "^15.1.1"
 	},
 	"devDependencies": {
+		"@tailwindcss/cli": "^4.3.3",
 		"@tailwindcss/postcss": "^4",
 		"@types/bcryptjs": "^2.4.6",
 		"@types/cheerio": "^0.22.35",
@@ -85,7 +87,7 @@
 		"eslint": "^9",
 		"eslint-config-next": "16.1.6",
 		"postcss-import": "^16.1.1",
-		"tailwindcss": "^4",
+		"tailwindcss": "^4.3.3",
 		"tsx": "^4.21.0",
 		"typescript": "^5"
 	},

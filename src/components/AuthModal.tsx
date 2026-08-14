@@ -35,7 +35,7 @@ const LINKEDIN_ICON =
 	"https://yt3.googleusercontent.com/i6KNxiy3gME-BulL4WnuGkTGqHuSYF8jl1WRn0rXftcJdSYK7dHKcJ3gLAaPc-KfhmLSYPwf824=s900-c-k-c0x00ffffff-no-rj";
 
 const modalTheme = {
-	brand: "#e91e63",
+	brand: "#E72262",
 	brandSoft: "#fce4ec",
 	brandGlow: "#fce4ec",
 	ink: "#111111",
@@ -73,8 +73,10 @@ export default function AuthModal() {
 	const [welcomeUser, setWelcomeUser] = useState<AuthUser | null>(null);
 	const [isMobileBanner, setIsMobileBanner] = useState(false);
 
-	const [scrollSlideY, setScrollSlideY] = useState(100);
 	const [scrollVisible, setScrollVisible] = useState(false);
+	const [openedByScroll, setOpenedByScroll] = useState(false);
+	const sheetRef = useRef<HTMLDivElement>(null);
+	const rafRef = useRef<number | null>(null);
 
 	/* ── Google OAuth2 ──────────────────────────────────────── */
 	const initGIS = useCallback(() => {
@@ -203,6 +205,7 @@ export default function AuthModal() {
 		const handler = () => {
 			setError("");
 			setSuccess("");
+			setOpenedByScroll(false);
 			setOpen(true);
 		};
 		window.addEventListener("open-auth-modal", handler);
@@ -220,23 +223,31 @@ export default function AuthModal() {
 		const searchParams = new URLSearchParams(window.location.search);
 		if (searchParams.get("auth") === "login") return;
 
-		const onScroll = () => {
-			if (loggedInRef.current) return;
-			const scrolled = window.scrollY;
-
+		const applySlide = (scrolled: number) => {
 			if (scrolled < 50) {
 				setScrollVisible(false);
-				setScrollSlideY(100);
 				return;
 			}
 
 			setScrollVisible(true);
-			// 50px → 600px of scroll = full reveal
-			const progress = Math.min(1, (scrolled - 50) / 550);
-			setScrollSlideY(Math.round((1 - progress) * 100));
+			// Reveal over 50px → 600px of scroll, but never later than the actual
+			// bottom of the page — on short pages scrollY may never reach 600.
+			const maxScroll = Math.max(
+				1,
+				document.documentElement.scrollHeight - window.innerHeight
+			);
+			const revealEnd = Math.min(600, maxScroll);
+			const progress =
+				scrolled >= maxScroll - 1
+					? 1
+					: Math.min(1, (scrolled - 50) / Math.max(1, revealEnd - 50));
+			if (sheetRef.current) {
+				sheetRef.current.style.transform = `translateY(${(1 - progress) * 100}%)`;
+			}
 
 			if (progress >= 1) {
 				setScrollVisible(false);
+				setOpenedByScroll(true);
 				setError("");
 				setSuccess("");
 				setOpen(true);
@@ -244,8 +255,20 @@ export default function AuthModal() {
 			}
 		};
 
+		const onScroll = () => {
+			if (loggedInRef.current) return;
+			if (rafRef.current !== null) return;
+			rafRef.current = requestAnimationFrame(() => {
+				rafRef.current = null;
+				applySlide(window.scrollY);
+			});
+		};
+
 		window.addEventListener("scroll", onScroll, { passive: true });
-		return () => window.removeEventListener("scroll", onScroll);
+		return () => {
+			window.removeEventListener("scroll", onScroll);
+			if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+		};
 	}, [mounted, isAdmin]);
 
 	const handleLogout = () => {
@@ -255,6 +278,7 @@ export default function AuthModal() {
 		setUser(null);
 		setLoggedIn(false);
 		setOpen(false);
+		setOpenedByScroll(false);
 		setError("");
 		setSuccess("");
 		window.dispatchEvent(new Event("pub-auth-changed"));
@@ -262,6 +286,7 @@ export default function AuthModal() {
 
 	const closeModal = () => {
 		setOpen(false);
+		setOpenedByScroll(false);
 		setError("");
 		setSuccess("");
 	};
@@ -319,7 +344,7 @@ export default function AuthModal() {
 								left: 0,
 								right: 0,
 								height: 5,
-								background: "linear-gradient(90deg, #e91e63 0%, #f97316 100%)",
+								background: "#E72262",
 								borderRadius: "28px 28px 0 0",
 							}}
 						/>
@@ -330,7 +355,7 @@ export default function AuthModal() {
 								margin: "0 0 28px",
 								fontSize: 22,
 								fontWeight: 800,
-								color: "#e91e63",
+								color: "#E72262",
 								letterSpacing: "-0.01em",
 							}}
 						>
@@ -344,15 +369,14 @@ export default function AuthModal() {
 									width: 88,
 									height: 88,
 									borderRadius: "50%",
-									background:
-										"linear-gradient(135deg, #e91e63 0%, #f97316 100%)",
+									background: "#E72262",
 									display: "flex",
 									alignItems: "center",
 									justifyContent: "center",
 									color: "#fff",
 									fontWeight: 800,
 									fontSize: 34,
-									boxShadow: "0 8px 32px rgba(233,30,99,0.35)",
+									boxShadow: "0 8px 32px rgba(231,34,98,0.35)",
 									animation:
 										"avatarPop 0.6s 0.15s cubic-bezier(0.34,1.56,0.64,1) both",
 								}}
@@ -365,7 +389,7 @@ export default function AuthModal() {
 									position: "absolute",
 									inset: -6,
 									borderRadius: "50%",
-									border: "2.5px solid rgba(233,30,99,0.25)",
+									border: "2.5px solid rgba(231,34,98,0.25)",
 									animation: "pulseRing 1.5s ease-out 0.3s infinite",
 								}}
 							/>
@@ -377,7 +401,7 @@ export default function AuthModal() {
 								margin: "0 0 6px",
 								fontSize: 13,
 								fontWeight: 600,
-								color: "#e91e63",
+								color: "#E72262",
 								letterSpacing: "0.1em",
 								textTransform: "uppercase",
 							}}
@@ -419,12 +443,12 @@ export default function AuthModal() {
 								alignItems: "center",
 								gap: 8,
 								background: "#fff7fb",
-								border: "1px solid rgba(233,30,99,0.15)",
+								border: "1px solid rgba(231,34,98,0.15)",
 								borderRadius: 50,
 								padding: "7px 18px",
 								fontSize: 14,
 								fontWeight: 600,
-								color: "#e91e63",
+								color: "#E72262",
 							}}
 						>
 							<span
@@ -432,7 +456,7 @@ export default function AuthModal() {
 									width: 8,
 									height: 8,
 									borderRadius: "50%",
-									background: "#e91e63",
+									background: "#E72262",
 									display: "inline-block",
 									animation: "dotBlink 1.2s ease-in-out infinite",
 								}}
@@ -452,17 +476,17 @@ export default function AuthModal() {
 									flex: 1,
 									padding: "12px 10px",
 									borderRadius: 12,
-									border: "1.5px solid rgba(233,30,99,0.25)",
+									border: "1.5px solid rgba(231,34,98,0.25)",
 									background: "#fff",
-									color: "#e91e63",
+									color: "#E72262",
 									fontWeight: 700,
 									fontSize: 13.5,
 									cursor: "pointer",
 									fontFamily: "inherit",
 									transition: "background 0.15s, border-color 0.15s",
 								}}
-								onMouseEnter={(e) => { e.currentTarget.style.background = "#fff7fb"; e.currentTarget.style.borderColor = "#e91e63"; }}
-								onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "rgba(233,30,99,0.25)"; }}
+								onMouseEnter={(e) => { e.currentTarget.style.background = "#fff7fb"; e.currentTarget.style.borderColor = "#E72262"; }}
+								onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "rgba(231,34,98,0.25)"; }}
 							>
 								Continue to Reports
 							</button>
@@ -477,17 +501,17 @@ export default function AuthModal() {
 									padding: "12px 10px",
 									borderRadius: 12,
 									border: "none",
-									background: "linear-gradient(135deg, #e91e63 0%, #f97316 100%)",
+									background: "#E72262",
 									color: "#fff",
 									fontWeight: 700,
 									fontSize: 13.5,
 									cursor: "pointer",
 									fontFamily: "inherit",
-									boxShadow: "0 6px 16px rgba(233,30,99,0.3)",
+									boxShadow: "0 6px 16px rgba(231,34,98,0.3)",
 									transition: "transform 0.12s, box-shadow 0.12s",
 								}}
-								onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(233,30,99,0.4)"; }}
-								onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(233,30,99,0.3)"; }}
+								onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(231,34,98,0.4)"; }}
+								onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(231,34,98,0.3)"; }}
 							>
 								Continue to News
 							</button>
@@ -514,6 +538,7 @@ export default function AuthModal() {
 					}}
 				>
 					<div
+						ref={sheetRef}
 						onClick={(e) => e.stopPropagation()}
 						style={{
 							background: `linear-gradient(90deg, #f2b8cc 0%, ${modalTheme.brandSoft} 30%, ${modalTheme.panel} 50%, ${modalTheme.brandSoft} 72%, #f2b8cc 100%)`,
@@ -522,8 +547,20 @@ export default function AuthModal() {
 							boxShadow: "0 -4px 18px rgba(17,17,17,0.08)",
 							overflow: "hidden",
 							position: "relative",
-							animation: scrollVisible ? "none" : "authSlideUp 0.4s cubic-bezier(0.16,1,0.3,1)",
-							transform: scrollVisible ? `translateY(${scrollSlideY}%)` : undefined,
+							animation:
+								scrollVisible || openedByScroll
+									? "none"
+									: "authSlideUp 0.4s cubic-bezier(0.16,1,0.3,1)",
+							transform: scrollVisible
+								? "translateY(100%)"
+								: openedByScroll
+								? "translateY(0)"
+								: undefined,
+							transition:
+								scrollVisible || openedByScroll
+									? "transform 0.45s cubic-bezier(0.16,1,0.3,1)"
+									: undefined,
+							willChange: scrollVisible || openedByScroll ? "transform" : undefined,
 							border: `1px solid ${modalTheme.line}`,
 							pointerEvents: "auto",
 							maxHeight: isMobileBanner ? "82vh" : "none",

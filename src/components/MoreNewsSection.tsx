@@ -88,7 +88,7 @@ export function MoreNewsSection({
                         alt={post.title}
                         width={400}
                         height={240}
-                        style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                        style={{ width: "100%", height: "auto", objectFit: "contain" }}
                         sizes="(max-width: 767px) 100vw, 400px"
                       />
                     </div>

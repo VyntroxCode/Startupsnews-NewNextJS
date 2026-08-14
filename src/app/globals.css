@@ -1945,8 +1945,9 @@ img.mvp-big-img {
   height: 100% !important;
   object-fit: cover !important;
   object-position: center !important;
-  position: relative;
-  z-index: 1;
+  border-radius: inherit;
+  /* Safari fails to clip position/object-fit children to a rounded, overflow-hidden
+     parent once they get their own compositing layer — round the img itself too. */
 }
 
 .event-detail-badge {

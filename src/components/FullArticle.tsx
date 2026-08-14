@@ -276,7 +276,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                             alt={post.title}
                                             width={1200}
                                             height={630}
-                                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                                            style={{ width: "100%", height: "auto", objectFit: "contain" }}
                                         />
                                         <meta itemProp="url" content={post.image} />
                                         <meta itemProp="width" content="1200" />
