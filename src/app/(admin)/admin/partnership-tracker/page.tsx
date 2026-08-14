@@ -6,11 +6,12 @@ import * as XLSX from 'xlsx';
 import { getAuthHeaders, getAdminUser } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
+import EventsManagementTabs from '@/components/admin/events/EventsManagementTabs';
 import {
-  PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, LISTING_OPTIONS,
+  PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, LISTING_OPTIONS, SITE_STATUS_OPTIONS,
   EVENT_TICKET_TYPE_OPTIONS, CURRENCY_OPTIONS, EVENT_DESCRIPTION_MIN_LENGTH,
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
-  type Speaker, type SocialCreative,
+  type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey } from '@/modules/partnership-events/utils/partnership-events.utils';
 
@@ -23,6 +24,8 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500'
    ============================================================ */
 interface PartnershipEvent {
   id: number;
+  eventId: number | null;
+  linkedEvent: LinkedEventSummary | null;
   eventName: string;
   city: string;
   country: string;
@@ -61,7 +64,12 @@ interface PartnershipEvent {
   updatedBy: string;
 }
 
-type EventDraft = Omit<PartnershipEvent, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>;
+type EventDraft = Omit<PartnershipEvent, 'id' | 'eventId' | 'linkedEvent' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'> & {
+  /** Not a partnership_events column — drives the linked public Event (location). */
+  region: string;
+  /** Not a partnership_events column — drives the linked public Event's real status. No "Completed" here; that's automatic (see markPastEventsAsExpired). */
+  siteStatus: 'draft' | 'upcoming' | 'cancelled';
+};
 
 const emptySpeaker = (): Speaker => ({ name: '', designation: '', company: '', others: '' });
 
@@ -72,7 +80,15 @@ const emptyDraft = (): EventDraft => ({
   speakers: [], posterUrl: '', bannerUrl: '', socialMediaPosts: '', socialCreatives: [],
   partnershipStatus: '', partnershipType: '',
   lastUpdatedDate: '', comment: '', listing: '', listingLink: '', source: 'Manually added',
+  region: '', siteStatus: 'draft',
 });
+
+const SITE_STATUS_BADGE: Record<string, { label: string; color: string }> = {
+  draft: { label: 'Draft', color: '#6B7280' },
+  upcoming: { label: 'Published', color: '#1E9E64' },
+  completed: { label: 'Completed', color: '#2563C7' },
+  cancelled: { label: 'Cancelled', color: '#C22B44' },
+};
 
 const STATUS_ORDER = [...PARTNERSHIP_STATUS_OPTIONS] as string[];
 const STATUS_COLOR_HEX: Record<string, string> = {
@@ -362,6 +378,7 @@ const EXPORT_EXTRA_HEADERS = [
   'Event Start Time', 'Event End Time', 'Venue Address', 'Google Location Link', 'Event Description',
   'Event Type', 'Ticket Currency', 'Ticket Starts From', 'Key Speakers/Guests',
   'Event Poster Link', 'Event Banner Link', 'Social Media Post Content', 'Social Media Creative Link',
+  'Website Region', 'Website Listing Status', 'Website Event Link',
 ];
 function speakersExportText(list: Speaker[]): string {
   if (!list || !list.length) return '';
@@ -388,6 +405,9 @@ function downloadEventsExcel(list: PartnershipEvent[], filename: string) {
     'Event Banner Link': e.bannerUrl || '',
     'Social Media Post Content': e.socialMediaPosts || '',
     'Social Media Creative Link': creativesExportText(e.socialCreatives),
+    'Website Region': e.linkedEvent?.location || '',
+    'Website Listing Status': e.linkedEvent ? (SITE_STATUS_BADGE[e.linkedEvent.status]?.label || e.linkedEvent.status) : 'Not listed yet',
+    'Website Event Link': e.linkedEvent ? `/startup-events/${e.linkedEvent.slug}` : '',
   }));
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(rows, { header: allHeaders });
@@ -479,8 +499,12 @@ async function api<T = unknown>(url: string, init?: RequestInit): Promise<{ succ
 /* ============================================================
    PAGE
    ============================================================ */
+interface EventRegion { id: number; name: string; sort_order: number; }
+
 export default function PartnershipTrackerPage() {
   const [events, setEvents] = useState<PartnershipEvent[]>([]);
+  const [regions, setRegions] = useState<EventRegion[]>([]);
+  const [regionsLoadError, setRegionsLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; kind: 'success' | 'error' } | null>(null);
 
@@ -502,6 +526,7 @@ export default function PartnershipTrackerPage() {
   const [pageSize, setPageSize] = useState(50);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [mainTab, setMainTab] = useState<'tracker' | 'events'>('tracker');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<EventDraft>(emptyDraft());
   const [saving, setSaving] = useState(false);
@@ -640,6 +665,13 @@ export default function PartnershipTrackerPage() {
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/admin/event-regions', { headers: getAuthHeaders() })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setRegions(d.data); else setRegionsLoadError(true); })
+      .catch(() => setRegionsLoadError(true));
   }, []);
 
   useEffect(() => {
@@ -805,9 +837,15 @@ export default function PartnershipTrackerPage() {
   }
   function openEditModal(e: PartnershipEvent) {
     setEditingId(e.id);
-    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, createdBy: _createdBy, updatedBy: _updatedBy, ...rest } = e;
-    void _id; void _createdAt; void _updatedAt; void _createdBy; void _updatedBy;
-    setDraft(rest);
+    const { id: _id, eventId: _eventId, linkedEvent, createdAt: _createdAt, updatedAt: _updatedAt, createdBy: _createdBy, updatedBy: _updatedBy, ...rest } = e;
+    void _id; void _eventId; void _createdAt; void _updatedAt; void _createdBy; void _updatedBy;
+    setDraft({
+      ...rest,
+      region: linkedEvent?.location || '',
+      // "Completed" is automatic, never a dropdown option — reopening a published-then-auto-completed
+      // event should still show/resave as "Published", not silently reset to Draft.
+      siteStatus: linkedEvent?.status === 'completed' ? 'upcoming' : (linkedEvent?.status || 'draft'),
+    });
     setModalError('');
     // Auto-expand any platform that already has images, so editing an event doesn't hide its own data.
     setOpenCreativePlatforms(new Set(SOCIAL_CREATIVE_PLATFORMS.filter((p) => e.socialCreatives.some((c) => c.platform === p))));
@@ -820,6 +858,11 @@ export default function PartnershipTrackerPage() {
       setDraft((d) => ({ ...d, listing: 'No', listingLink: '' }));
     }
     if (!effectiveDraft.eventName.trim()) { setModalError('Event name is required.'); return; }
+    if (!draft.region.trim()) { setModalError('Region is required.'); return; }
+    if (draft.siteStatus !== 'draft' && !draft.eventStartDate.trim()) {
+      setModalError('Event Start Date is required to Publish or Cancel this on the website — fill it in, or leave Website Listing Status as Draft for now.');
+      return;
+    }
     if (!draft.venueAddress.trim()) { setModalError('Complete Address is required.'); return; }
     if (!draft.googleLocationLink.trim()) { setModalError('Google Location (Maps link) is required.'); return; }
     const missingSpeakerIdx = draft.speakers.findIndex((sp) => !sp.name.trim());
@@ -873,7 +916,11 @@ export default function PartnershipTrackerPage() {
     }
   }
   async function deleteEvent(id: number, name: string) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const linked = events.find((e) => e.id === id)?.linkedEvent;
+    const warning = linked
+      ? ` Its linked website event ("${SITE_STATUS_BADGE[linked.status]?.label || linked.status}") will NOT be deleted automatically — go to the Events tab if you also want to remove or unpublish it.`
+      : '';
+    if (!confirm(`Delete "${name}"? This cannot be undone.${warning}`)) return;
     const res = await api(`/api/admin/partnership-events/${id}`, { method: 'DELETE' });
     if (res.success) {
       showToast('Event deleted.');
@@ -1129,7 +1176,14 @@ export default function PartnershipTrackerPage() {
           </div>
         </div>
 
-        {loading ? (
+        <div className="pt-main-tabs">
+          <button className={mainTab === 'tracker' ? 'active' : ''} onClick={() => setMainTab('tracker')}>Partnership Tracker</button>
+          <button className={mainTab === 'events' ? 'active' : ''} onClick={() => setMainTab('events')}>Events, Regions &amp; Banners</button>
+        </div>
+
+        {mainTab === 'events' && <EventsManagementTabs />}
+
+        {mainTab === 'tracker' && (loading ? (
           <div className="pt-loading">Loading…</div>
         ) : (
           <>
@@ -1331,12 +1385,13 @@ export default function PartnershipTrackerPage() {
                       <th>Listing link</th>
                       <th>Comment</th>
                       <th>Speakers / Guests</th>
+                      <th>Site Status</th>
                       <th className="pt-col-act">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageList.length === 0 ? (
-                      <tr><td colSpan={22} className="pt-empty">No events match these filters.</td></tr>
+                      <tr><td colSpan={23} className="pt-empty">No events match these filters.</td></tr>
                     ) : pageList.map((e) => {
                       const d = derivedById.get(e.id)!;
                       const color = STATUS_COLOR_HEX[d.statusBucket] || '#9CA3AF';
@@ -1396,6 +1451,20 @@ export default function PartnershipTrackerPage() {
                           <td>{e.listingLink ? <a className="pt-link" href={e.listingLink} target="_blank" rel="noopener">link</a> : <span className="pt-muted">—</span>}</td>
                           <td title={e.comment}>{e.comment || <span className="pt-muted">—</span>}</td>
                           <td title={speakersExportText(e.speakers)}>{speakersExportText(e.speakers) || <span className="pt-muted">—</span>}</td>
+                          <td>
+                            {e.linkedEvent ? (
+                              <a
+                                className="pt-badge"
+                                style={{ color: SITE_STATUS_BADGE[e.linkedEvent.status]?.color || '#6B7280', textDecoration: 'none' }}
+                                href={`/startup-events/${e.linkedEvent.slug}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="View on site"
+                              >
+                                {SITE_STATUS_BADGE[e.linkedEvent.status]?.label || e.linkedEvent.status}
+                              </a>
+                            ) : <span className="pt-muted">Not listed yet</span>}
+                          </td>
                           <td className="pt-row-actions">
                             <button onClick={() => openEditModal(e)}>Edit</button>
                             <button className="del" onClick={() => deleteEvent(e.id, e.eventName)}>Delete</button>
@@ -1417,7 +1486,7 @@ export default function PartnershipTrackerPage() {
               )}
             </div>
           </>
-        )}
+        ))}
 
         {/* Import progress modal */}
         {importProgress && (
@@ -1452,6 +1521,18 @@ export default function PartnershipTrackerPage() {
                   <label>Name of the event *</label>
                   <input placeholder="e.g. Startup Mixer | Mumbai | 14 Mar 2026" value={draft.eventName} onChange={(e) => setDraft({ ...draft, eventName: e.target.value })} />
                   <div className="pt-hint">Format: Event Name | City | Date</div>
+                </div>
+                <div className="pt-fg">
+                  <label>Region (for website listing) *</label>
+                  <select value={draft.region} onChange={(e) => setDraft({ ...draft, region: e.target.value })}>
+                    <option value="">Select region</option>
+                    {regions.map((r) => <option key={r.id} value={r.name}>{r.name}</option>)}
+                  </select>
+                  {regionsLoadError ? (
+                    <div className="pt-hint" style={{ color: '#C22B44' }}>Couldn&apos;t load regions — reload the page and try again.</div>
+                  ) : (
+                    <div className="pt-hint">Not listed? <a href="/admin/events?tab=regions" target="_blank">Add it in Event Regions →</a></div>
+                  )}
                 </div>
                 <div className="pt-fg"><label>City</label><input value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} /></div>
                 <div className="pt-fg"><label>Country</label><input value={draft.country} onChange={(e) => setDraft({ ...draft, country: e.target.value })} /></div>
@@ -1616,6 +1697,16 @@ export default function PartnershipTrackerPage() {
                   <input value={draft.listingLink} onChange={(e) => setDraft({ ...draft, listingLink: e.target.value })} />
                 </div>
                 <div className="pt-fg pt-full"><label>Internal comment</label><textarea value={draft.comment} onChange={(e) => setDraft({ ...draft, comment: e.target.value })} /></div>
+                <div className="pt-fg pt-full">
+                  <label>Website Listing Status *</label>
+                  <select value={draft.siteStatus} onChange={(e) => setDraft({ ...draft, siteStatus: e.target.value as EventDraft['siteStatus'] })}>
+                    {SITE_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  <div className="pt-hint">
+                    Controls whether this shows as a real event on the website. Published = live now. There&apos;s no manual &quot;Completed&quot; option — once the Event End Date (or Event Start Date, if no end date is set) has passed, it flips to Completed on its own.
+                    {!draft.eventStartDate && <><br />Needs an Event Start Date filled in above before it can actually go live.</>}
+                  </div>
+                </div>
               </div>
               {modalError && <div className="pt-modal-error">{modalError}</div>}
             </div>
@@ -1774,6 +1865,10 @@ export default function PartnershipTrackerPage() {
         .pt-yoy-point { cursor: pointer; }
 
         .pt-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+        .pt-main-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 18px; }
+        .pt-main-tabs button { padding: 10px 18px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 500; color: var(--muted); cursor: pointer; font-size: 13.5px; font-family: inherit; }
+        .pt-main-tabs button.active { font-weight: 700; color: var(--accent); border-bottom-color: var(--accent); }
+        .pt-main-tabs button:hover:not(.active) { color: var(--text); }
         .pt-search-wrap input { width: 240px; height: 36px; padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; }
         .pt-wrap select { height: 36px; padding: 0 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 12.5px; outline: none; cursor: pointer; }
         .pt-clear { color: var(--muted); font-size: 12.5px; cursor: pointer; text-decoration: underline; }

@@ -15,8 +15,17 @@ export interface SocialCreative {
 // mysql JSON type is untyped from our side, so we accept either shape defensively.
 type JsonArrayColumn = unknown[] | string | null;
 
+/** Summary of the auto-managed public Event linked to a partnership record (from the `events` table, read live — never duplicated). */
+export interface LinkedEventSummary {
+  id: number;
+  slug: string;
+  status: 'draft' | 'upcoming' | 'completed' | 'cancelled';
+  location: string;
+}
+
 export interface PartnershipEventEntity {
   id: number;
+  event_id: number | null;
   event_name: string;
   city: string | null;
   country: string | null;
@@ -57,6 +66,7 @@ export interface PartnershipEventEntity {
 
 export interface PartnershipEvent {
   id: number;
+  eventId: number | null;
   eventName: string;
   city: string;
   country: string;
@@ -128,6 +138,9 @@ export interface PartnershipEventInput {
   listing?: string;
   listingLink?: string;
   source?: string;
+  /** Drives the linked public Event — not a partnership_events column, consumed by the create/update sync. */
+  region?: string;
+  siteStatus?: 'draft' | 'upcoming' | 'cancelled';
 }
 
 export interface PartnershipEventFilters {
@@ -138,6 +151,12 @@ export interface PartnershipEventFilters {
 }
 
 export const PARTNERSHIP_STATUS_OPTIONS = ['Draft', 'Initiated', 'In Progress', 'On Hold', 'Partnership Done', 'Dropped', 'Only Listed (No Partnership)', 'Expired'] as const;
+/** The real, public-site-facing status — separate from PARTNERSHIP_STATUS_OPTIONS (deal stage) and the existing, unwired `listing` field. No "Completed" here — that's automatic, driven by event date (see EventsRepository.markPastEventsAsExpired). */
+export const SITE_STATUS_OPTIONS: { value: 'draft' | 'upcoming' | 'cancelled'; label: string }[] = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'upcoming', label: 'Published' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
 export const PARTNERSHIP_TYPE_OPTIONS = ['Domestic', 'International'] as const;
 export const LISTING_OPTIONS = ['No', 'Pending', 'In process', 'Yes'] as const;
 export const EVENT_TICKET_TYPE_OPTIONS = ['Free', 'Paid'] as const;

@@ -136,6 +136,11 @@ export class PartnershipEventsRepository {
     return this.findById(id);
   }
 
+  /** Records the id of the auto-created linked Event the first time one gets created for this record. */
+  async setEventId(id: number, eventId: number): Promise<void> {
+    await query('UPDATE partnership_events SET event_id = ? WHERE id = ?', [eventId, id]);
+  }
+
   async delete(id: number): Promise<void> {
     await query('DELETE FROM partnership_events WHERE id = ?', [id]);
   }

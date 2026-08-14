@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { PanelAdminsRepository } from '../repository/panel-admins.repository';
 import { PanelAdminEntity, PanelAdmin, CreatePanelAdminDto, UpdatePanelAdminDto, PanelAdminLoginDto } from '../domain/types';
 import { entityToPanelAdmin } from '../utils/panel-admins.utils';
@@ -63,6 +64,13 @@ export class PanelAdminsService {
       throw new Error('Account is inactive');
     }
 
+    // Once an Employee ID is assigned via HR Management, the original email/password
+    // login for this account is retired in favour of Employee ID + password.
+    const hasEmployeeCredential = await this.repository.hasActiveEmployeeCredential(entity.id);
+    if (hasEmployeeCredential) {
+      throw new Error('This account now signs in with an Employee ID. Contact your admin for your Employee ID and password.');
+    }
+
     const isValidPassword = await this.repository.verifyPassword(entity, credentials.password);
     if (!isValidPassword) {
       throw new Error('Invalid email or password');
@@ -72,5 +80,23 @@ export class PanelAdminsService {
 
     const admin = entityToPanelAdmin(entity);
     return { admin, entity };
+  }
+
+  /** Alternate login for accounts assigned an Employee ID via HR Management's Assigning IDs. */
+  async loginWithEmployeeId(employeeCode: string, password: string): Promise<{ admin: PanelAdmin; entity: PanelAdminEntity }> {
+    const linked = await this.repository.findLinkedByEmployeeCode(employeeCode.trim().toUpperCase());
+    if (!linked) {
+      throw new Error('Invalid Employee ID or password');
+    }
+
+    const isValidPassword = await bcrypt.compare(password, linked.credentialPasswordHash);
+    if (!isValidPassword) {
+      throw new Error('Invalid Employee ID or password');
+    }
+
+    await this.repository.updateLastLogin(linked.panelAdmin.id);
+
+    const admin = entityToPanelAdmin(linked.panelAdmin);
+    return { admin, entity: linked.panelAdmin };
   }
 }

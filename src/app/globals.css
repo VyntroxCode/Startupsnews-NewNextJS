@@ -1424,7 +1424,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   position: relative;
   width: 100%;
   aspect-ratio: 1260 / 630;
-  background: #eee;
+  background: #ffffff;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -1439,7 +1439,9 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .event-by-country-card-img img,
 .event-by-country-card-img picture img {
-  object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
   object-position: center !important;
 }
 
@@ -1911,7 +1913,7 @@ img.mvp-big-img {
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 24px;
-  background: #f0f0f0;
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1943,7 +1945,7 @@ img.mvp-big-img {
   max-height: 100% !important;
   width: 100% !important;
   height: 100% !important;
-  object-fit: cover !important;
+  object-fit: contain !important;
   object-position: center !important;
   border-radius: inherit;
   /* Safari fails to clip position/object-fit children to a rounded, overflow-hidden
@@ -2460,8 +2462,12 @@ img.mvp-big-img {
   height: 100% !important;
 }
 
+.sector-hero-image-fg [data-post-image-wrapper] img,
+.sector-thumb-image-fg [data-post-image-wrapper] img,
 .sector-hero-image-fg img,
 .sector-thumb-image-fg img {
+  width: 100% !important;
+  height: 100% !important;
   object-fit: contain !important;
   object-position: center !important;
 }
@@ -5976,31 +5982,35 @@ footer.footer {
   display: none !important;
 }
 
-/* Single post featured image: preserve natural aspect ratio (no forced crop) */
+/* Single post featured image: fixed 2:1 frame, full image visible, letterboxed on white */
 #mvp-post-feat-img {
   width: 100%;
+  aspect-ratio: 1200 / 600;
   max-height: 600px;
+  background-color: #ffffff !important;
+}
+
+#mvp-post-feat-img span[data-post-image-wrapper] {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
 }
 
 #mvp-post-feat-img img,
 #mvp-post-feat-img span img {
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
   display: block !important;
   vertical-align: middle;
 }
 
-#mvp-post-feat-img span[data-post-image-wrapper] {
-  height: auto !important;
-  position: relative !important;
-  display: block !important;
-}
-
 #mvp-post-feat-img span[data-post-image-wrapper] img {
-  position: relative !important;
-  inset: auto !important;
-  object-fit: unset !important;
-  /* natural aspect ratio, no crop */
+  position: absolute !important;
+  inset: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
 }
 
 /* Desktop: fixed image container 1200px x 600px on single post inner page */
@@ -6027,7 +6037,8 @@ footer.footer {
     inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    object-fit: cover !important;
+    object-fit: contain !important;
+    object-position: center !important;
   }
 }
 
@@ -8463,4 +8474,214 @@ body .banner-carousel-container,
 
 .se-promo-cta:hover {
   background: #C42952;
+}
+
+/* ========================================
+   HOMEPAGE THUMBNAILS: LETTERBOX ON WHITE (not cropped)
+   Kept last so equal-specificity ties beat the earlier `object-fit: cover !important`
+   catch-alls above (incl. the [data-post-image-wrapper] img one and the 5n+0 rule).
+   Scope: homepage category widgets (desktop #mvp-home-widget-wrap + mobile
+   MobileCategorySection), and the hero Trending column (desktop + its mobile
+   "Most Popular" equivalent). Hero featured/sub images, the sidebar, and
+   listing pages (/news, /search, category, related) are intentionally left
+   cropped. More News (mobile + desktop) stretches to fill instead — see below.
+   ======================================== */
+
+/* --- More News (mobile + desktop): stretch to fill frame, not letterboxed --- */
+.startupnews-mobile-more-news .mvp-blog-story-img,
+.startupnews-desktop-featured .mvp-blog-story-img {
+  background-color: #ffffff !important;
+}
+
+.startupnews-mobile-more-news .mvp-blog-story-img [data-post-image-wrapper],
+.startupnews-mobile-more-news .mvp-blog-story-img span,
+.startupnews-desktop-featured .mvp-blog-story-img [data-post-image-wrapper],
+.startupnews-desktop-featured .mvp-blog-story-img span {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.startupnews-mobile-more-news .mvp-blog-story-img img,
+.startupnews-mobile-more-news .mvp-blog-story-img span img,
+.startupnews-mobile-more-news .mvp-blog-story-img picture img,
+.startupnews-desktop-featured .mvp-blog-story-img img,
+.startupnews-desktop-featured .mvp-blog-story-img span img,
+.startupnews-desktop-featured .mvp-blog-story-img picture img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: fill !important;
+  object-position: center !important;
+}
+
+/* More News: the theme's "every 5th card" rule outranks the plain override above */
+.startupnews-mobile-more-news .infinite-content .mvp-blog-story-wrap:nth-child(5n+0) .mvp-blog-story-img,
+.startupnews-desktop-featured .infinite-content .mvp-blog-story-wrap:nth-child(5n+0) .mvp-blog-story-img {
+  background-color: #ffffff !important;
+}
+
+.startupnews-mobile-more-news .infinite-content .mvp-blog-story-wrap:nth-child(5n+0) .mvp-blog-story-img [data-post-image-wrapper],
+.startupnews-mobile-more-news .infinite-content .mvp-blog-story-wrap:nth-child(5n+0) .mvp-blog-story-img span,
+.startupnews-desktop-featured .infinite-content .mvp-blog-story-wrap:nth-child(5n+0) .mvp-blog-story-img [data-post-image-wrapper],
+.startupnews-desktop-featured .infinite-content .mvp-blog-story-wrap:nth-child(5n+0) .mvp-blog-story-img span {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.startupnews-mobile-more-news .infinite-content .mvp-blog-story-wrap:nth-child(5n+0) .mvp-blog-story-img img,
+.startupnews-desktop-featured .infinite-content .mvp-blog-story-wrap:nth-child(5n+0) .mvp-blog-story-img img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: fill !important;
+  object-position: center !important;
+}
+
+/* --- Category widgets: desktop (7 sections inside #mvp-home-widget-wrap).
+   #mvp-home-widget-wrap is a unique id, so this can't leak onto the hero, which
+   reuses .mvp-feat1-feat-img outside this wrapper. --- */
+#mvp-home-widget-wrap .mvp-feat1-feat-img,
+#mvp-home-widget-wrap .mvp-widget-feat2-right-img,
+#mvp-home-widget-wrap .mvp-feat1-list-img,
+#mvp-home-widget-wrap .mvp-widget-feat1-top-img,
+#mvp-home-widget-wrap .mvp-widget-feat1-bot-img,
+#mvp-home-widget-wrap .mvp-widget-dark-feat-img,
+#mvp-home-widget-wrap .mvp-widget-dark-sub-img {
+  background-color: #ffffff !important;
+}
+
+#mvp-home-widget-wrap .mvp-feat1-feat-img [data-post-image-wrapper],
+#mvp-home-widget-wrap .mvp-feat1-feat-img span,
+#mvp-home-widget-wrap .mvp-widget-feat2-right-img [data-post-image-wrapper],
+#mvp-home-widget-wrap .mvp-widget-feat2-right-img span,
+#mvp-home-widget-wrap .mvp-feat1-list-img [data-post-image-wrapper],
+#mvp-home-widget-wrap .mvp-feat1-list-img span,
+#mvp-home-widget-wrap .mvp-widget-feat1-top-img [data-post-image-wrapper],
+#mvp-home-widget-wrap .mvp-widget-feat1-top-img span,
+#mvp-home-widget-wrap .mvp-widget-feat1-bot-img [data-post-image-wrapper],
+#mvp-home-widget-wrap .mvp-widget-feat1-bot-img span,
+#mvp-home-widget-wrap .mvp-widget-dark-feat-img [data-post-image-wrapper],
+#mvp-home-widget-wrap .mvp-widget-dark-feat-img span,
+#mvp-home-widget-wrap .mvp-widget-dark-sub-img [data-post-image-wrapper],
+#mvp-home-widget-wrap .mvp-widget-dark-sub-img span {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#mvp-home-widget-wrap .mvp-widget-dark-feat-img img,
+#mvp-home-widget-wrap .mvp-widget-dark-feat-img span img,
+#mvp-home-widget-wrap .mvp-widget-dark-feat-img picture img,
+#mvp-home-widget-wrap .mvp-widget-dark-sub-img img,
+#mvp-home-widget-wrap .mvp-widget-dark-sub-img span img,
+#mvp-home-widget-wrap .mvp-widget-dark-sub-img picture img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+/* HomeWidgetSection (AI/Deeptech, Social Media, Ecommerce, Fintech widgets) +
+   HomeFeat1Section (EV & Mobility / Web3 & Blockchain widgets): stretch to fill frame */
+#mvp-home-widget-wrap .mvp-feat1-feat-img img,
+#mvp-home-widget-wrap .mvp-feat1-feat-img span img,
+#mvp-home-widget-wrap .mvp-feat1-feat-img picture img,
+#mvp-home-widget-wrap .mvp-widget-feat2-right-img img,
+#mvp-home-widget-wrap .mvp-widget-feat2-right-img span img,
+#mvp-home-widget-wrap .mvp-widget-feat2-right-img picture img,
+#mvp-home-widget-wrap .mvp-feat1-list-img img,
+#mvp-home-widget-wrap .mvp-feat1-list-img span img,
+#mvp-home-widget-wrap .mvp-feat1-list-img picture img,
+#mvp-home-widget-wrap .mvp-widget-feat1-top-img img,
+#mvp-home-widget-wrap .mvp-widget-feat1-top-img span img,
+#mvp-home-widget-wrap .mvp-widget-feat1-top-img picture img,
+#mvp-home-widget-wrap .mvp-widget-feat1-bot-img img,
+#mvp-home-widget-wrap .mvp-widget-feat1-bot-img span img,
+#mvp-home-widget-wrap .mvp-widget-feat1-bot-img picture img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: fill !important;
+  object-position: center !important;
+}
+
+/* --- Category widgets: mobile (MobileCategorySection only). Its two frame classes
+   are reused verbatim by the true mobile hero at the top of the page, so scope via
+   .startupnews-mobile-section-flex — the "MORE" header row that only widgets render —
+   as a sibling marker instead of a class the hero also carries. --- */
+.startupnews-mobile-section-flex ~ .startupnews-mobile-featured .startupnews-mobile-featured-image,
+.startupnews-mobile-section-flex ~ .mvp-main-box .startupnews-article-image {
+  background-color: #ffffff !important;
+}
+
+.startupnews-mobile-section-flex ~ .startupnews-mobile-featured .startupnews-mobile-featured-image [data-post-image-wrapper],
+.startupnews-mobile-section-flex ~ .startupnews-mobile-featured .startupnews-mobile-featured-image span,
+.startupnews-mobile-section-flex ~ .mvp-main-box .startupnews-article-image [data-post-image-wrapper],
+.startupnews-mobile-section-flex ~ .mvp-main-box .startupnews-article-image span {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.startupnews-mobile-section-flex ~ .startupnews-mobile-featured .startupnews-mobile-featured-image img,
+.startupnews-mobile-section-flex ~ .startupnews-mobile-featured .startupnews-mobile-featured-image span img,
+.startupnews-mobile-section-flex ~ .startupnews-mobile-featured .startupnews-mobile-featured-image picture img,
+.startupnews-mobile-section-flex ~ .mvp-main-box .startupnews-article-image img,
+.startupnews-mobile-section-flex ~ .mvp-main-box .startupnews-article-image span img,
+.startupnews-mobile-section-flex ~ .mvp-main-box .startupnews-article-image picture img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+/* --- Trending column (hero, desktop): stretch image to fill the frame exactly --- */
+.mvp-feat1-mid-wrap .home-trending-pop-img {
+  background-color: #ffffff !important;
+}
+
+.mvp-feat1-mid-wrap .home-trending-pop-img-bg {
+  display: none !important;
+}
+
+.mvp-feat1-mid-wrap .home-trending-pop-img [data-post-image-wrapper],
+.mvp-feat1-mid-wrap .home-trending-pop-img span {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.mvp-feat1-mid-wrap .home-trending-pop-img img,
+.mvp-feat1-mid-wrap .home-trending-pop-img span img,
+.mvp-feat1-mid-wrap .home-trending-pop-img picture img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: fill !important;
+  object-position: center !important;
+}
+
+/* --- Trending column (hero, mobile equivalent: "Most Popular") --- */
+.startupnews-popular-image-wrapper {
+  background-color: #ffffff !important;
+}
+
+.startupnews-popular-image-wrapper .startupnews-popular-image [data-post-image-wrapper],
+.startupnews-popular-image-wrapper .startupnews-popular-image span {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.startupnews-popular-image-wrapper .startupnews-popular-image img,
+.startupnews-popular-image-wrapper .startupnews-popular-image span img,
+.startupnews-popular-image-wrapper .startupnews-popular-image picture img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
 }

@@ -349,7 +349,7 @@ export default function EditEventPage() {
           </select>
           <p style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: '#64748b' }}>
             Region not listed?{' '}
-            <a href="/admin/event-regions" target="_blank" style={{ color: '#48bb78', textDecoration: 'none' }}>
+            <a href="/admin/events?tab=regions" target="_blank" style={{ color: '#48bb78', textDecoration: 'none' }}>
               Add it in Event Regions →
             </a>
           </p>

@@ -122,6 +122,14 @@ export class HrToolRepository {
     const rows = await findAllRows<AttendanceRow>('hr_attendance', 'attendance_date ASC');
     return rows.map((r) => ({ emp: r.emp, date: r.attendance_date, status: r.status, inTime: r.in_time || '—', outTime: r.out_time || '—' }));
   }
+  /** Recent attendance history for a single employee, most recent first — used by the Publisher/Event Admin punch widget's own history table. */
+  async findAttendanceForEmployee(emp: string, limit: number): Promise<HrAttendanceRecord[]> {
+    const rows = await query<AttendanceRow>(
+      'SELECT * FROM hr_attendance WHERE emp = ? ORDER BY attendance_date DESC LIMIT ?',
+      [emp, limit]
+    );
+    return rows.map((r) => ({ emp: r.emp, date: r.attendance_date, status: r.status, inTime: r.in_time || '—', outTime: r.out_time || '—' }));
+  }
   async upsertAttendance(rec: HrAttendanceRecord): Promise<void> {
     await query(
       `INSERT INTO hr_attendance (emp, attendance_date, status, in_time, out_time) VALUES (?, ?, ?, ?, ?)
@@ -145,6 +153,12 @@ export class HrToolRepository {
   async findPunchLog(): Promise<HrPunch[]> {
     const rows = await findAllRows<PunchRow>('hr_punch_log');
     return rows.map((r) => ({ emp: r.emp, date: r.punch_date, inTime: r.in_time, inMinutes: r.in_minutes, outTime: r.out_time }));
+  }
+  /** The single punch-log row for one employee (hr_punch_log is keyed only by emp) — may be stale (a previous day's punch) if they haven't punched today. */
+  async findPunchByEmp(emp: string): Promise<HrPunch | null> {
+    const row = await queryOne<PunchRow>('SELECT * FROM hr_punch_log WHERE emp = ?', [emp]);
+    if (!row) return null;
+    return { emp: row.emp, date: row.punch_date, inTime: row.in_time, inMinutes: row.in_minutes, outTime: row.out_time };
   }
   async upsertPunch(p: HrPunch): Promise<void> {
     await query(

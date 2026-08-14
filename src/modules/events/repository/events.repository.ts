@@ -137,6 +137,12 @@ export class EventsRepository {
     return queryOne<EventEntity>('SELECT * FROM events WHERE id = ?', [id]);
   }
 
+  /** Batch lookup — used by Partnership Tracker to attach each record's linked Event summary without an N+1. */
+  async findByIds(ids: number[]): Promise<EventEntity[]> {
+    if (!ids.length) return [];
+    return query<EventEntity>(`SELECT * FROM events WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+  }
+
   async findBySlug(slug: string): Promise<EventEntity | null> {
     return queryOne<EventEntity>('SELECT * FROM events WHERE slug = ?', [slug]);
   }

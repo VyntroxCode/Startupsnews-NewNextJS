@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { siteConfig } from '@/lib/config';
 import { setAdminSession } from '@/lib/admin-auth';
+import { setEmployeeSession } from '@/lib/employee-auth';
 
 // Force dynamic rendering for login page
 export const dynamic = 'force-dynamic';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [loginMode, setLoginMode] = useState<'email' | 'employeeId'>('email');
   const [email, setEmail] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +31,9 @@ export default function AdminLoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(
+          loginMode === 'employeeId' ? { employeeId, password } : { email, password }
+        ),
       });
 
       const data = await response.json();
@@ -36,6 +41,12 @@ export default function AdminLoginPage() {
       if (!data.success) {
         setError(data.error || 'Login failed');
         setLoading(false);
+        return;
+      }
+
+      if (data.data?.accountType === 'employee') {
+        setEmployeeSession(data.data.token, data.data.user);
+        router.push('/employee/attendance');
         return;
       }
 
@@ -105,41 +116,102 @@ export default function AdminLoginPage() {
           </div>
         )}
 
+          {/* Login mode toggle */}
+          <div className="admin-login-mode-toggle" role="tablist" aria-label="Sign-in method">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={loginMode === 'email'}
+              className={`admin-login-mode-tab${loginMode === 'email' ? ' active' : ''}`}
+              onClick={() => { setLoginMode('email'); setError(''); }}
+              disabled={loading}
+            >
+              Email
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={loginMode === 'employeeId'}
+              className={`admin-login-mode-tab${loginMode === 'employeeId' ? ' active' : ''}`}
+              onClick={() => { setLoginMode('employeeId'); setError(''); }}
+              disabled={loading}
+            >
+              Employee ID
+            </button>
+          </div>
+
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="admin-login-form">
-            {/* Email Input */}
-            <div className="admin-login-input-group">
-              <label htmlFor="email" className="admin-login-label">
-              Email Address
-            </label>
-              <div className="admin-login-input-wrapper">
-                <svg
-                  className="admin-login-input-icon"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-            <input
-                  id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-                  className="admin-login-input"
-              placeholder="admin@startupnews.fyi"
-                  autoComplete="email"
-                  disabled={loading}
-            />
-              </div>
-          </div>
+            {loginMode === 'email' ? (
+              /* Email Input */
+              <div className="admin-login-input-group">
+                <label htmlFor="email" className="admin-login-label">
+                Email Address
+              </label>
+                <div className="admin-login-input-wrapper">
+                  <svg
+                    className="admin-login-input-icon"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+              <input
+                    id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                    className="admin-login-input"
+                placeholder="admin@startupnews.fyi"
+                    autoComplete="email"
+                    disabled={loading}
+              />
+                </div>
+            </div>
+            ) : (
+              /* Employee ID Input */
+              <div className="admin-login-input-group">
+                <label htmlFor="employeeId" className="admin-login-label">
+                Employee ID
+              </label>
+                <div className="admin-login-input-wrapper">
+                  <svg
+                    className="admin-login-input-icon"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                    <circle cx="9" cy="10" r="2"></circle>
+                    <path d="M15 8h2M15 12h2M7 16h10"></path>
+                  </svg>
+              <input
+                    id="employeeId"
+                type="text"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                required
+                    className="admin-login-input"
+                placeholder="e.g. A-101"
+                    autoComplete="username"
+                    disabled={loading}
+              />
+                </div>
+            </div>
+            )}
 
             {/* Password Input */}
             <div className="admin-login-input-group">
@@ -446,6 +518,43 @@ export default function AdminLoginPage() {
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
+        }
+
+        .admin-login-mode-toggle {
+          display: flex;
+          gap: 0.25rem;
+          background: #f1f5f9;
+          border-radius: 12px;
+          padding: 0.25rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .admin-login-mode-tab {
+          flex: 1;
+          padding: 0.625rem;
+          border: none;
+          border-radius: 9px;
+          background: transparent;
+          color: #64748b;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .admin-login-mode-tab:hover:not(:disabled):not(.active) {
+          color: #334155;
+        }
+
+        .admin-login-mode-tab.active {
+          background: #ffffff;
+          color: #667eea;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-login-mode-tab:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
         }
 
         .admin-login-input-group {

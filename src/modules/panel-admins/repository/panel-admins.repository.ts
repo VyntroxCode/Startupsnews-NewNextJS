@@ -110,4 +110,34 @@ export class PanelAdminsRepository {
   async verifyPassword(admin: PanelAdminEntity, password: string): Promise<boolean> {
     return bcrypt.compare(password, admin.password_hash);
   }
+
+  /**
+   * Resolves a panel_admins row via an Assigning-IDs Employee ID (hr_employee_credentials),
+   * for the alternate Employee ID + password login path. Returns the linked panel admin plus
+   * the credential's own password hash (auth is checked against the credential, not the
+   * panel admin's original password_hash).
+   */
+  async findLinkedByEmployeeCode(employeeCode: string): Promise<{ panelAdmin: PanelAdminEntity; credentialPasswordHash: string } | null> {
+    const sql = `
+      SELECT pa.id, pa.email, pa.password_hash, pa.name, pa.role, pa.is_active, pa.created_at, pa.updated_at, pa.last_login,
+             hec.password_hash AS credential_password_hash
+      FROM hr_employee_credentials hec
+      JOIN panel_admins pa ON pa.id = hec.linked_panel_admin_id
+      WHERE hec.employee_code = ? AND hec.is_active = 1 AND pa.is_active = 1
+      LIMIT 1
+    `;
+    const row = await queryOne<PanelAdminEntity & { credential_password_hash: string }>(sql, [employeeCode]);
+    if (!row) return null;
+    const { credential_password_hash: credentialPasswordHash, ...panelAdminFields } = row;
+    return { panelAdmin: panelAdminFields as PanelAdminEntity, credentialPasswordHash };
+  }
+
+  /** True if this panel_admins row has an active Employee ID credential linked to it — used to retire its original email/password login. */
+  async hasActiveEmployeeCredential(panelAdminId: number): Promise<boolean> {
+    const result = await queryOne<{ count: number | bigint }>(
+      'SELECT COUNT(*) as count FROM hr_employee_credentials WHERE linked_panel_admin_id = ? AND is_active = 1',
+      [panelAdminId]
+    );
+    return result?.count ? Number(result.count) > 0 : false;
+  }
 }

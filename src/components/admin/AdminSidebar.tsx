@@ -104,14 +104,33 @@ const ContactsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
-const menuItems = [
+const AttendanceIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"></circle>
+    <polyline points="12 7 12 12 15.5 14"></polyline>
+  </svg>
+);
+
+interface MenuItem {
+  href: string;
+  label: string;
+  icon: (props: IconProps) => React.JSX.Element;
+  /** Extra restriction on top of isPathAllowed — only these roles see it in the sidebar
+   * even if the path itself is technically open to everyone (e.g. 'all' roles). */
+  roles?: string[];
+}
+
+const menuItems: MenuItem[] = [
   { href: '/admin', label: 'Dashboard', icon: DashboardIcon },
   { href: '/admin/posts', label: 'Posts', icon: PostsIcon },
-  { href: '/admin/events', label: 'Events', icon: EventsIcon },
+  // Events no longer has its own sidebar item — Partnership Tracker (below) is now the
+  // primary entry point and links out to /admin/events, /events?tab=regions and
+  // /events?tab=banners itself ("View:" row) for anyone who needs those tables directly.
   { href: '/admin/partnership-tracker', label: 'Partnership Tracker', icon: EventsIcon },
   { href: '/admin/newsletter', label: 'Newsletter', icon: NewsletterIcon },
   { href: '/admin/sales-tracker', label: 'Sales Tracker', icon: ReportsIcon },
   { href: '/admin/hr-tool', label: 'HR Management', icon: RegisteredUsersIcon },
+  { href: '/admin/attendance', label: 'Attendance', icon: AttendanceIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/tools', label: 'Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },
@@ -125,7 +144,7 @@ export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
   const headerHeight = 60;
   const [tools, setTools] = useState<ToolItem[]>([]);
   const role = getAdminUser()?.role || '';
-  const visibleMenuItems = menuItems.filter((item) => isPathAllowed(role, item.href));
+  const visibleMenuItems = menuItems.filter((item) => isPathAllowed(role, item.href) && (!item.roles || item.roles.includes(role)));
 
   useEffect(() => {
     const loadTools = async () => {

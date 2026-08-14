@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
 import { ApprovalBadge, StatusBadge, applyApprovalDecision, isAdmin, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
+import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
+import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 
 const REG_REASONS = ['Forgot to punch out', 'Forgot to punch in', 'System/network issue', 'Worked from a client site'];
+const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin' };
 
 function nowTimeStr(): string { return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }); }
 function nowMinutesSinceMidnight(): number { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
@@ -26,6 +29,12 @@ export default function Attendance() {
       : (empName: string) => empName === state.currentUser?.name;
   const attRows = state.attendance.filter((a) => a.date === todayStr() && scopeFilter(a.emp));
   const regRows = scopedApprovals(state.regularizations, state.role, state.currentUser?.name, state.employees);
+  const employeeCredentials = state.employeeCredentials;
+  const credentialByName = useMemo(() => {
+    const map = new Map<string, HrEmployeeCredential>();
+    employeeCredentials.forEach((c) => map.set(c.name, c));
+    return map;
+  }, [employeeCredentials]);
 
   const myPunch = isEmployeeOnly && state.currentUser ? state.punchLog[state.currentUser.name] : null;
   const punchedInToday = !!(myPunch && myPunch.date === new Date().toISOString().slice(0, 10) && myPunch.inTime);
@@ -97,10 +106,22 @@ export default function Attendance() {
       )}
       <section className="block">
         <div className="block-head"><h2>Today — {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</h2></div>
-        <div className="card"><table><thead><tr><th>Employee</th><th>Status</th><th>In</th><th>Out</th></tr></thead>
+        <div className="card"><table><thead><tr><th>Employee</th><th>Employee ID</th><th>Role</th><th>Status</th><th>In</th><th>Out</th></tr></thead>
           <tbody>
-            {attRows.map((a) => <tr key={a.emp}><td>{a.emp}</td><td><StatusBadge status={a.status === 'Present' ? 'active' : 'pending'} /></td><td>{a.inTime}</td><td>{a.outTime}</td></tr>)}
-            {attRows.length === 0 && <tr><td colSpan={4}><div className="empty">No attendance recorded yet today.</div></td></tr>}
+            {attRows.map((a) => {
+              const cred = credentialByName.get(a.emp);
+              return (
+                <tr key={a.emp}>
+                  <td>{a.emp}</td>
+                  <td>{cred ? <code>{cred.employeeCode}</code> : <span className="meta">—</span>}</td>
+                  <td>{cred?.panelRole ? PANEL_ROLE_LABEL[cred.panelRole] : <span className="meta">—</span>}</td>
+                  <td><StatusBadge status={a.status === 'Present' ? 'active' : 'pending'} /></td>
+                  <td>{a.inTime}</td>
+                  <td>{a.outTime}</td>
+                </tr>
+              );
+            })}
+            {attRows.length === 0 && <tr><td colSpan={6}><div className="empty">No attendance recorded yet today.</div></td></tr>}
           </tbody>
         </table></div>
       </section>

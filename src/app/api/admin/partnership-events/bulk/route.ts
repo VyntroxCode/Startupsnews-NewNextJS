@@ -4,9 +4,11 @@ import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { PartnershipEventsService } from '@/modules/partnership-events/service/partnership-events.service';
 import { PartnershipEventsRepository } from '@/modules/partnership-events/repository/partnership-events.repository';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
+import { EventsService } from '@/modules/events/service/events.service';
+import { EventsRepository } from '@/modules/events/repository/events.repository';
 
 const partnershipEventsRepository = new PartnershipEventsRepository();
-const partnershipEventsService = new PartnershipEventsService(partnershipEventsRepository);
+const partnershipEventsService = new PartnershipEventsService(partnershipEventsRepository, new EventsService(new EventsRepository()));
 
 interface BulkBody {
   ids: number[];

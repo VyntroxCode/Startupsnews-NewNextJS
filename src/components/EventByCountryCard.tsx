@@ -35,7 +35,7 @@ export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps)
             alt={event.title}
             fill
             sizes="(max-width: 600px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            style={{ objectFit: "cover" }}
+            style={{ objectFit: "contain" }}
             className="event-by-country-card-img-main"
           />
         </div>

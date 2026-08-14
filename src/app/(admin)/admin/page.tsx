@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
+import AttendanceWidget from '@/components/admin/AttendanceWidget';
 
 interface DashboardStats {
   posts: number;
@@ -469,6 +470,8 @@ export default function AdminDashboard() {
             ))}
           </div>
         </div>
+
+        {(isEventAdmin || isPublisherAdmin) && <AttendanceWidget />}
 
         {!isEventAdmin && !isPublisherAdmin && (
           <div style={{

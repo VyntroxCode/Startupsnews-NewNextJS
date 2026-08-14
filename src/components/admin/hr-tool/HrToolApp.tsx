@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 import { useHrTool } from './HrToolContext';
-import Login from './views/Login';
 import Dashboard from './views/Dashboard';
 import Directory from './views/Directory';
+import AssigningIds from './views/AssigningIds';
 import Onboarding from './views/Onboarding';
 import Offboarding from './views/Offboarding';
 import Attendance from './views/Attendance';
@@ -21,7 +21,7 @@ import { isAdmin, pendingEmployeeDocUpdates, rmOf, scopedApprovals } from './uti
 import { VIEW_ACCESS, type HrView } from './types';
 
 const VIEWS: Record<HrView, () => React.JSX.Element> = {
-  dashboard: Dashboard, directory: Directory, onboarding: Onboarding, offboarding: Offboarding,
+  dashboard: Dashboard, directory: Directory, 'assigning-ids': AssigningIds, onboarding: Onboarding, offboarding: Offboarding,
   attendance: Attendance, leave: Leave, payroll: Payroll, expenses: Expenses,
   compliance: Compliance, posh: Posh, helpdesk: Helpdesk, company: Company, rules: Rules, documents: Documents,
 };
@@ -33,6 +33,7 @@ const NAV_GROUPS: NavGroup[] = [
   { label: 'Overview', items: [{ view: 'dashboard', label: 'Dashboard', icon: '◆' }] },
   { label: 'People', items: [
     { view: 'directory', label: 'Employee Directory', icon: '☰' },
+    { view: 'assigning-ids', label: 'Assigning IDs', icon: '🆔' },
     { view: 'onboarding', label: 'Onboarding', icon: '→' },
     { view: 'offboarding', label: 'Offboarding', icon: '←' },
   ] },
@@ -87,7 +88,7 @@ function pendingCountFor(view: HrView, state: ReturnType<typeof useHrTool>['stat
 }
 
 export default function HrToolApp() {
-  const { state, loading, loadError } = useHrTool();
+  const { loading, loadError } = useHrTool();
 
   if (loading) {
     return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontFamily: "'Space Grotesk'" }}>Loading…</div>;
@@ -95,10 +96,6 @@ export default function HrToolApp() {
   if (loadError) {
     return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', fontFamily: "'Space Grotesk'" }}>Could not load HR data. Please refresh the page.</div>;
   }
-  if (!state.currentUser || !state.role) {
-    return <div className="hr-tool-app"><Login /><HrToolStyles /></div>;
-  }
-
   return <HrToolShell />;
 }
 
@@ -243,10 +240,13 @@ function HrToolStyles() {
       .hr-tool-app .btn.sm { padding: 5px 10px; font-size: 11.5px; }
       .hr-tool-app .btn:disabled { opacity: 0.45; cursor: not-allowed; }
       .hr-tool-app select, .hr-tool-app input[type=text], .hr-tool-app input[type=number], .hr-tool-app input[type=date],
-      .hr-tool-app input[type=time], .hr-tool-app textarea { font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); width: 100%; }
+      .hr-tool-app input[type=time], .hr-tool-app input[type=password], .hr-tool-app input[type=email], .hr-tool-app input[type=url],
+      .hr-tool-app textarea { font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); width: 100%; }
       .hr-tool-app textarea { resize: vertical; min-height: 56px; }
       .hr-tool-app label.field-label { font-size: 11.5px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 5px; }
       .hr-tool-app .field { margin-bottom: 12px; }
+      .hr-tool-app .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+      @media (max-width: 480px) { .hr-tool-app .field-grid-2 { grid-template-columns: 1fr; } }
       .hr-tool-app .empty { padding: 30px 10px; text-align: center; color: var(--muted); font-size: 13px; }
       .hr-tool-app .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
       .hr-tool-app .search { max-width: 220px; }
@@ -300,6 +300,11 @@ function HrToolStyles() {
       .hr-tool-app .chip button:hover { background: var(--red-soft); color: var(--red); }
       .hr-tool-app .add-inline { display: flex; gap: 8px; }
       .hr-tool-app .add-inline input { flex: 1; }
+      .hr-tool-app .avatar-upload-circle { display: flex; flex-direction: column; align-items: center; }
+      .hr-tool-app .avatar-upload-circle img {
+        width: 84px !important; height: 84px !important; max-width: 84px !important; max-height: 84px !important;
+        border-radius: 50% !important; object-fit: cover !important; border: 2px solid var(--line) !important;
+      }
     `}</style>
   );
 }

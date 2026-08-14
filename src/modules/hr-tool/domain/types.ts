@@ -1,3 +1,5 @@
+import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
+
 export interface HrTeam { name: string; manager: string | null; }
 
 export interface HrHoliday { date: string; name: string; }
@@ -114,4 +116,6 @@ export interface HrBootstrap {
   templates: HrTemplate[];
   rules: HrRules;
   auditLog: HrAuditLogEntry[];
+  /** Assigning-IDs credentials — used to show Employee ID/Role alongside attendance rows for Publisher/Event Admin punches. */
+  employeeCredentials: HrEmployeeCredential[];
 }

@@ -48,6 +48,11 @@ export class EventsService {
     return this.repository.count(filters);
   }
 
+  /** No caching — small admin-only batch read (Partnership Tracker attaching linked-event summaries). */
+  async getEventsByIds(ids: number[]): Promise<EventEntity[]> {
+    return this.repository.findByIds(ids);
+  }
+
   async getEventById(id: number): Promise<EventEntity | null> {
     const cacheKey = `event:id:${id}`;
 

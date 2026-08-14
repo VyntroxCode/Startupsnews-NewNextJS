@@ -3,6 +3,14 @@ import {
   HrBootstrap, HrTeam, HrHoliday, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrPayrollRun, HrRules, HrAuditLogEntry,
 } from '../domain/types';
+import { todayStr, nowTimeStr, nowMinutesSinceMidnight } from '../utils/time';
+
+export interface PunchResult {
+  ok: boolean;
+  error?: string;
+  today?: { inTime: string | null; outTime: string | null };
+  note?: string;
+}
 
 const DEFAULT_RULES: HrRules = {
   workingDaysPattern: 'Mon–Sat, alternate Saturdays off',
@@ -28,7 +36,9 @@ const DEFAULT_RULES: HrRules = {
 export class HrToolService {
   constructor(private repository: HrToolRepository) {}
 
-  async getBootstrap(): Promise<HrBootstrap> {
+  // employeeCredentials (hr_employee_credentials) lives in a separate module and is merged
+  // in by the bootstrap route, not fetched here — keeps this service decoupled from hr-credentials.
+  async getBootstrap(): Promise<Omit<HrBootstrap, 'employeeCredentials'>> {
     const [
       teams, designations, expenseCategories, requiredDocuments, holidays,
       employees, onboarding, attendance, attendanceOverrides, punchLog,
@@ -85,6 +95,49 @@ export class HrToolService {
   recordAttendance(rec: HrAttendanceRecord) { return this.repository.upsertAttendance(rec); }
   recordAttendanceOverride(o: HrAttendanceOverride) { return this.repository.upsertAttendanceOverride(o); }
   recordPunch(p: HrPunch) { return this.repository.upsertPunch(p); }
+  getPunchByEmp(emp: string) { return this.repository.findPunchByEmp(emp); }
+  getAttendanceForEmployee(emp: string, limit: number) { return this.repository.findAttendanceForEmployee(emp, limit); }
+
+  /**
+   * Once-per-calendar-day punch in/out, shared by every punch-capable role (Publisher/Event
+   * Admin, plain employees). The single place that enforces "can't punch twice today" so
+   * every caller gets identical, real server-side enforcement instead of separate copies.
+   */
+  async punchEmployee(emp: string, type: 'in' | 'out'): Promise<PunchResult> {
+    const today = todayStr();
+    const existing = await this.getPunchByEmp(emp);
+    const todaysPunch = existing?.date === today ? existing : null;
+
+    let note: string | undefined;
+    const time = nowTimeStr();
+
+    if (type === 'in') {
+      if (todaysPunch?.inTime) {
+        return { ok: false, error: 'Already punched in today.' };
+      }
+      await this.recordPunch({
+        emp, date: today, inTime: time, inMinutes: nowMinutesSinceMidnight(),
+        outTime: todaysPunch?.outTime || null,
+      });
+    } else {
+      if (todaysPunch?.outTime) {
+        return { ok: false, error: 'Already punched out today.' };
+      }
+      if (!todaysPunch?.inTime) note = 'No punch-in recorded today.';
+      await this.recordPunch({
+        emp, date: today, inTime: todaysPunch?.inTime || null,
+        inMinutes: todaysPunch?.inMinutes ?? null, outTime: time,
+      });
+    }
+
+    const updated = await this.getPunchByEmp(emp);
+    await this.recordAttendance({
+      emp, date: today, status: 'Present',
+      inTime: updated?.inTime || '—', outTime: updated?.outTime || '—',
+    });
+
+    return { ok: true, today: { inTime: updated?.inTime || null, outTime: updated?.outTime || null }, note };
+  }
   saveRegularizations(items: HrRegularization[]) { return this.repository.replaceRegularizations(items); }
   saveLeaveRequests(items: HrLeaveRequest[]) { return this.repository.replaceLeaveRequests(items); }
   saveExpenses(items: HrExpense[]) { return this.repository.replaceExpenses(items); }

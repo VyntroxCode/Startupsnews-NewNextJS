@@ -2,7 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { hrApi } from './api';
-import { currentMonthLabel } from './utils';
+import { currentMonthLabel, todayStr } from './utils';
+import { getAdminUser } from '@/lib/admin-auth';
+import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 import type {
   HrTeam, HrOrgStructure, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrRules,
@@ -16,6 +18,7 @@ interface HrState {
   teams: HrTeam[];
   orgStructure: HrOrgStructure;
   employees: HrEmployee[];
+  employeeCredentials: HrEmployeeCredential[];
   onboarding: HrOnboarding[];
   attendance: HrAttendanceRecord[];
   attendanceOverrides: Record<string, string>;
@@ -45,7 +48,7 @@ function initialState(): HrState {
   return {
     role: null, view: 'dashboard', currentUser: null, teams: [],
     orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
-    employees: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
+    employees: [], employeeCredentials: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
     regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
     payrollRun: { month: currentMonthLabel(), status: 'not_run' },
     templates: {}, rules: DEFAULT_RULES, auditLog: [],
@@ -53,6 +56,30 @@ function initialState(): HrState {
 }
 
 function warnSaveFailed(): void { alert("Could not save that change. It's only kept until you reload — please try again."); }
+
+// HR Management is only reachable by the outer admin panel's super-admin role
+// (see HR_TOOL_ROLES in shared/middleware/roles.ts), so anyone who gets here is
+// already a verified admin — they always land as Founder, no separate internal login.
+function resolveFounder(employees: HrEmployee[]): HrEmployee {
+  const existing = employees.find((e) => e.sysRole === 'Founder');
+  if (existing) return existing;
+  const adminUser = getAdminUser();
+  return {
+    id: 'FOUNDER',
+    name: adminUser?.name || 'Founder',
+    email: adminUser?.email || '',
+    designation: 'Founder & CEO',
+    team: 'Leadership',
+    manager: null,
+    status: 'active',
+    doj: todayStr(),
+    sysRole: 'Founder',
+    ctc: 0,
+    leaveBalance: {},
+    documents: [],
+    signedDocs: [],
+  };
+}
 
 interface HrToolContextValue {
   state: HrState;
@@ -112,11 +139,14 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
           return {
             ...s,
             teams: data.teams, orgStructure: data.orgStructure, employees: data.employees,
+            employeeCredentials: data.employeeCredentials || [],
             onboarding: data.onboarding, attendance: data.attendance, attendanceOverrides, punchLog,
             regularizations: data.regularizations, leaveRequests: data.leaveRequests, expenses: data.expenses,
             tickets: data.tickets, compliance: data.compliance,
             payrollRun: currentMonthRun || s.payrollRun,
             templates, rules: data.rules || s.rules, auditLog: data.auditLog || [],
+            currentUser: resolveFounder(data.employees),
+            role: 'Founder',
           };
         });
       } catch {
@@ -129,7 +159,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
 
   const setView = useCallback((v: HrView) => setState((s) => ({ ...s, view: v })), []);
   const login = useCallback((emp: HrEmployee) => setState((s) => ({ ...s, currentUser: emp, role: emp.sysRole as HrRole, view: 'dashboard' })), []);
-  const logout = useCallback(() => setState((s) => ({ ...s, currentUser: null, role: null, view: 'dashboard' })), []);
+  const logout = useCallback(() => setState((s) => ({ ...s, currentUser: resolveFounder(s.employees), role: 'Founder', view: 'dashboard' })), []);
 
   const logRuleChange = useCallback((text: string) => {
     setState((s) => {

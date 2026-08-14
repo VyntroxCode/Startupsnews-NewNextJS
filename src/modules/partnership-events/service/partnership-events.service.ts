@@ -1,6 +1,7 @@
 import { PartnershipEventsRepository } from '../repository/partnership-events.repository';
-import { PartnershipEventFilters, PartnershipEventInput } from '../domain/types';
-import { dedupKey } from '../utils/partnership-events.utils';
+import { PartnershipEventEntity, PartnershipEventFilters, PartnershipEventInput, LinkedEventSummary } from '../domain/types';
+import { dedupKey, autoExcerpt } from '../utils/partnership-events.utils';
+import { EventsService } from '@/modules/events/service/events.service';
 
 // Matches the VARCHAR limits on the `partnership_events` table (see
 // add-partnership-events-table.sql / add-partnership-events-lead-details.sql).
@@ -44,10 +45,25 @@ function clipInput<T extends Partial<PartnershipEventInput>>(input: T): T {
 }
 
 export class PartnershipEventsService {
-  constructor(private repository: PartnershipEventsRepository) {}
+  constructor(
+    private repository: PartnershipEventsRepository,
+    private eventsService: EventsService
+  ) {}
 
   async getAllEvents(filters?: PartnershipEventFilters) {
     return this.repository.findAll(filters);
+  }
+
+  /** Batch-fetches the linked Event summary for every record that has one — for the table/list to show real site status without an N+1. */
+  async getLinkedEventSummaries(entities: PartnershipEventEntity[]): Promise<Map<number, LinkedEventSummary>> {
+    const ids = [...new Set(entities.map((e) => e.event_id).filter((id): id is number => !!id))];
+    const map = new Map<number, LinkedEventSummary>();
+    if (!ids.length) return map;
+    const events = await this.eventsService.getEventsByIds(ids);
+    for (const ev of events) {
+      map.set(ev.id, { id: ev.id, slug: ev.slug, status: ev.status, location: ev.location });
+    }
+    return map;
   }
 
   async countEvents(filters?: PartnershipEventFilters) {
@@ -66,12 +82,79 @@ export class PartnershipEventsService {
   async createEvent(input: PartnershipEventInput, actor?: string) {
     const error = this.validateInput(input);
     if (error) throw new Error(error);
-    return this.repository.create(clipInput({ ...input, eventName: input.eventName.trim() }), actor);
+    const entity = await this.repository.create(clipInput({ ...input, eventName: input.eventName.trim() }), actor);
+    return this.syncLinkedEvent(entity, input, actor);
   }
 
   async updateEvent(id: number, input: Partial<PartnershipEventInput>, actor?: string) {
     if (input.eventName !== undefined && !input.eventName.trim()) throw new Error('Event name is required');
-    return this.repository.update(id, clipInput(input), actor);
+    const entity = await this.repository.update(id, clipInput(input), actor);
+    if (!entity) return null;
+    return this.syncLinkedEvent(entity, input, actor);
+  }
+
+  /**
+   * Creates or updates the linked public Event from the same submit that saves the
+   * partnership record — this is the whole point of the merge, no second form to fill.
+   * Only runs when the form actually sent region/siteStatus (i.e. the real modal, not
+   * bulk CSV import, which calls the repository directly and is left untouched on purpose —
+   * importing hundreds of rows shouldn't silently spawn hundreds of draft Events).
+   *
+   * Deliberately never lets a sync failure fail the whole save — the partnership record
+   * the admin just carefully filled in must never be lost just because the website-listing
+   * half of this had a problem. Errors are logged server-side; the record simply keeps
+   * (or ends up with) no linked event, visible in the UI as "Not listed yet", and the next
+   * edit+save retries the sync.
+   */
+  private async syncLinkedEvent(
+    entity: PartnershipEventEntity,
+    input: Partial<PartnershipEventInput>,
+    actor?: string
+  ): Promise<PartnershipEventEntity> {
+    if (input.region === undefined && input.siteStatus === undefined) return entity;
+    const region = input.region?.trim();
+    if (!region) return entity;
+
+    const eventFields = {
+      title: entity.event_name,
+      description: entity.description || undefined,
+      excerpt: autoExcerpt(entity.description),
+      location: region,
+      eventEndDate: entity.event_end_date || null,
+      eventTime: entity.event_start_time || undefined,
+      eventEndTime: entity.event_end_time || null,
+      imageUrl: entity.poster_url || undefined,
+      externalUrl: entity.website || undefined,
+      status: input.siteStatus || 'draft',
+    };
+
+    try {
+      if (entity.event_id) {
+        try {
+          await this.eventsService.updateEvent(entity.event_id, { ...eventFields, updatedBy: actor });
+          return entity;
+        } catch (err) {
+          // The linked event may have been deleted independently (e.g. from the Events tab) —
+          // the stored event_id is now stale. Fall through and create a fresh one instead of
+          // leaving this record permanently unable to sync.
+          console.warn(`Partnership event ${entity.id}: linked event ${entity.event_id} update failed, recreating instead:`, err);
+        }
+      }
+
+      if (!entity.event_start_date) return entity; // creating a new linked event needs a date; updating an existing one doesn't need it re-supplied
+
+      const created = await this.eventsService.createEvent({
+        ...eventFields,
+        slug: '',
+        eventDate: entity.event_start_date,
+        createdBy: actor,
+      });
+      await this.repository.setEventId(entity.id, created.id);
+      return { ...entity, event_id: created.id };
+    } catch (err) {
+      console.error(`Partnership event ${entity.id}: failed to sync linked event:`, err);
+      return entity;
+    }
   }
 
   async deleteEvent(id: number) {

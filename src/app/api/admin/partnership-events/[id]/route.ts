@@ -6,9 +6,12 @@ import { PartnershipEventsRepository } from '@/modules/partnership-events/reposi
 import { entityToPartnershipEvent } from '@/modules/partnership-events/utils/partnership-events.utils';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { PartnershipEventInput } from '@/modules/partnership-events/domain/types';
+import { EventsService } from '@/modules/events/service/events.service';
+import { EventsRepository } from '@/modules/events/repository/events.repository';
 
 const partnershipEventsRepository = new PartnershipEventsRepository();
-const partnershipEventsService = new PartnershipEventsService(partnershipEventsRepository);
+const eventsService = new EventsService(new EventsRepository());
+const partnershipEventsService = new PartnershipEventsService(partnershipEventsRepository, eventsService);
 
 function parseId(idParam: string): number | null {
   const id = parseInt(idParam, 10);
@@ -31,7 +34,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const entity = await partnershipEventsService.updateEvent(id, body, auth.user.email);
     if (!entity) return NextResponse.json({ success: false, error: 'Partnership event not found' }, { status: 404 });
 
-    return NextResponse.json({ success: true, data: entityToPartnershipEvent(entity) });
+    const linkedMap = await partnershipEventsService.getLinkedEventSummaries([entity]);
+    const linkedEvent = entity.event_id ? linkedMap.get(entity.event_id) || null : null;
+
+    return NextResponse.json({ success: true, data: { ...entityToPartnershipEvent(entity), linkedEvent } });
   } catch (error) {
     console.error('Error updating partnership event:', error);
     return NextResponse.json(

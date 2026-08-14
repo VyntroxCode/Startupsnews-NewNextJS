@@ -234,6 +234,10 @@ export default function AdminLayout({
   // Header height constant (must match AdminSidebar)
   const headerHeight = 60;
   const sidebarWidth = sidebarOpen ? 260 : 70;
+  // HR Management renders its own full-bleed app shell (sidebar, header, rounded card) —
+  // the standard 2rem content padding left a visible gap around it instead of the widget
+  // sitting flush against the real admin header/sidebar.
+  const contentPadding = pathname === '/admin/hr-tool' ? '0' : '2rem';
 
   // Admin pages with layout
   return (
@@ -266,7 +270,7 @@ export default function AdminLayout({
         <main
           key={contentRefreshKey}
           style={{
-            padding: '2rem',
+            padding: contentPadding,
           }}
         >
           {children}

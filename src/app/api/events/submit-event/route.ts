@@ -4,11 +4,13 @@ import { PartnershipEventsService } from '@/modules/partnership-events/service/p
 import { PartnershipEventsRepository } from '@/modules/partnership-events/repository/partnership-events.repository';
 import { EventSubmissionService } from '@/modules/event-submission/service/event-submission.service';
 import { SubmitEventPayload, SubmitEventValidationError } from '@/modules/event-submission/domain/types';
+import { EventsService } from '@/modules/events/service/events.service';
+import { EventsRepository } from '@/modules/events/repository/events.repository';
 
 export const runtime = 'nodejs';
 
 const eventSubmissionService = new EventSubmissionService(
-  new PartnershipEventsService(new PartnershipEventsRepository())
+  new PartnershipEventsService(new PartnershipEventsRepository(), new EventsService(new EventsRepository()))
 );
 
 export async function POST(request: NextRequest) {

@@ -120,6 +120,24 @@ export class AuthService {
   }
 
   /**
+   * Login with an HR-assigned Employee ID + password (Assigning IDs) instead of email.
+   * Only resolves event_admin/publisher_admin accounts linked to a credential —
+   * there's no employee-ID path into the `users` table.
+   */
+  async loginWithEmployeeId(employeeId: string, password: string): Promise<{
+    user: PanelAdmin;
+    token: string;
+    refreshToken: string;
+  }> {
+    const { admin } = await this.panelAdminsService.loginWithEmployeeId(employeeId, password);
+    return {
+      user: admin,
+      token: this.generateToken(admin),
+      refreshToken: this.generateRefreshToken(admin),
+    };
+  }
+
+  /**
    * Verify if user has required role
    */
   hasRole(user: AuthPrincipal, requiredRole: 'admin' | 'editor' | 'author'): boolean {

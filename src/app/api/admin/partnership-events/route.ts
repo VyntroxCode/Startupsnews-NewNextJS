@@ -6,15 +6,23 @@ import { PartnershipEventsRepository } from '@/modules/partnership-events/reposi
 import { entityToPartnershipEvent } from '@/modules/partnership-events/utils/partnership-events.utils';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { PartnershipEventInput } from '@/modules/partnership-events/domain/types';
+import { EventsService } from '@/modules/events/service/events.service';
+import { EventsRepository } from '@/modules/events/repository/events.repository';
 
 const partnershipEventsRepository = new PartnershipEventsRepository();
-const partnershipEventsService = new PartnershipEventsService(partnershipEventsRepository);
+const eventsRepository = new EventsRepository();
+const eventsService = new EventsService(eventsRepository);
+const partnershipEventsService = new PartnershipEventsService(partnershipEventsRepository, eventsService);
 
 export async function GET(request: NextRequest) {
   const auth = await requireAnyRole(request, EVENTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
+    // Keep linked-event status in sync (same lazy refresh the Events admin list already does)
+    // so "Completed" shows correctly here too, without a separate cron job.
+    await eventsRepository.markPastEventsAsExpired();
+
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || undefined;
     const status = searchParams.get('status') || undefined;
@@ -29,9 +37,15 @@ export async function GET(request: NextRequest) {
       partnershipEventsService.getAllEvents({ ...filters, limit, offset }),
     ]);
 
+    const linkedMap = await partnershipEventsService.getLinkedEventSummaries(entities);
+    const data = entities.map((e) => ({
+      ...entityToPartnershipEvent(e),
+      linkedEvent: e.event_id ? linkedMap.get(e.event_id) || null : null,
+    }));
+
     return NextResponse.json({
       success: true,
-      data: entities.map(entityToPartnershipEvent),
+      data,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
@@ -53,7 +67,10 @@ export async function POST(request: NextRequest) {
     if (!body) return NextResponse.json({ success: false, error: 'Request body is required' }, { status: 400 });
 
     const entity = await partnershipEventsService.createEvent({ ...body, source: body.source || 'Manually added' }, auth.user.email);
-    return NextResponse.json({ success: true, data: entityToPartnershipEvent(entity) }, { status: 201 });
+    const linkedMap = await partnershipEventsService.getLinkedEventSummaries([entity]);
+    const linkedEvent = entity.event_id ? linkedMap.get(entity.event_id) || null : null;
+
+    return NextResponse.json({ success: true, data: { ...entityToPartnershipEvent(entity), linkedEvent } }, { status: 201 });
   } catch (error) {
     console.error('Error creating partnership event:', error);
     return NextResponse.json(

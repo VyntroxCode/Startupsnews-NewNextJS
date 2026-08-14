@@ -89,7 +89,7 @@ export default async function StartupEventPage({
                   className="event-detail-hero-img"
                   sizes="(max-width: 768px) 100vw, 1200px"
                   priority
-                  style={{ objectFit: "cover" }}
+                  style={{ objectFit: "contain" }}
                 />
               </div>
               <h2 className="event-detail-title">{event.title}</h2>

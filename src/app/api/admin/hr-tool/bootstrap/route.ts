@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { HR_TOOL_ROLES } from '@/shared/middleware/roles';
 import { hrToolService } from '../_lib';
+import { hrCredentialsService } from '../employee-credentials/_lib';
 
 export async function GET(request: NextRequest) {
   const auth = await requireAnyRole(request, HR_TOOL_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const data = await hrToolService.getBootstrap();
-    return NextResponse.json({ success: true, data });
+    const [data, employeeCredentials] = await Promise.all([
+      hrToolService.getBootstrap(),
+      hrCredentialsService.getAll(),
+    ]);
+    return NextResponse.json({ success: true, data: { ...data, employeeCredentials } });
   } catch (error) {
     console.error('Error fetching HR tool bootstrap data:', error);
     return NextResponse.json(

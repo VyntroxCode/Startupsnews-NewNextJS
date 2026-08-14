@@ -48,6 +48,7 @@ function parseSocialCreatives(value: unknown): SocialCreative[] {
 export function entityToPartnershipEvent(entity: PartnershipEventEntity): PartnershipEvent {
   return {
     id: entity.id,
+    eventId: entity.event_id ?? null,
     eventName: entity.event_name || '',
     city: entity.city || '',
     country: entity.country || '',
@@ -115,6 +116,14 @@ export function partnershipEventToExportRow(e: PartnershipEvent): Record<(typeof
     'Listing (Yes/In process/No)': e.listing,
     'Listing link (if yes)': e.listingLink,
   };
+}
+
+/** Short plain-text excerpt for the linked Event, derived from the partnership record's description (Events has its own excerpt field; Partnership Tracker doesn't, so this avoids asking for it twice). */
+export function autoExcerpt(description: string | null | undefined, maxLength = 200): string | undefined {
+  if (!description) return undefined;
+  const text = description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!text) return undefined;
+  return text.length > maxLength ? `${text.slice(0, maxLength).trim()}…` : text;
 }
 
 /** Same identity rule as the original standalone tool: name + city + country + start date. */
