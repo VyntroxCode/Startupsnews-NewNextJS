@@ -180,7 +180,7 @@ export default function Rules() {
       <section className="block">
         <div className="block-head"><h2>Designations</h2></div>
         <div className="card pad">
-          <div className="rule-desc" style={{ marginBottom: 10 }}>This list feeds the Designation dropdown everywhere — offer letters, onboarding, directory.</div>
+          <div className="rule-desc" style={{ marginBottom: 10 }}>This list feeds the Designation dropdown everywhere — offer letters, onboarding, directory, and Assigning IDs.</div>
           <div className="chip-list">{state.orgStructure.designations.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeDesignation(d)} title="Remove">×</button></span>)}</div>
           <div className="add-inline">
             <input type="text" placeholder="e.g. Growth Marketer" value={newDesig} onChange={(e) => setNewDesig(e.target.value)} />
@@ -267,6 +267,18 @@ export default function Rules() {
           <div className="rule-row">
             <div><div className="rule-name">Admin override past window</div><div className="rule-desc">Allow HR to manually accept a regularization request submitted after the window has closed.</div></div>
             <Toggle checked={r.regularizationOverride} onChange={(v) => updateRuleBool('regularizationOverride', v)} />
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">Regularization monthly limit</div><div className="rule-desc">How many regularization requests an employee may submit per calendar month. Shown to employees on Rules &amp; Policy; the Apply button only appears on a late or grace-period punch-in.</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" value={r.regularizationMonthlyQuota} onChange={(e) => updateRule('regularizationMonthlyQuota', Number(e.target.value))} /> / month</div>
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">Short leave — max duration</div><div className="rule-desc">Time away from shift up to this many hours counts as a Short Leave rather than a half/full-day absence.</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" step="0.5" value={r.shortLeaveMaxHours} onChange={(e) => updateRule('shortLeaveMaxHours', Number(e.target.value))} /> hrs</div>
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month.</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" value={r.shortLeaveMonthlyQuota} onChange={(e) => updateRule('shortLeaveMonthlyQuota', Number(e.target.value))} /> / month</div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">Salary calculation period</div><div className="rule-desc">Defines the payroll cycle used across payroll, attendance-linked pay, and reports.</div></div>

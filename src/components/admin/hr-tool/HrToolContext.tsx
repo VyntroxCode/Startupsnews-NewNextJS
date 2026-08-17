@@ -37,6 +37,7 @@ interface HrState {
 const DEFAULT_RULES: HrRules = {
   workingDaysPattern: 'Mon–Sat, alternate Saturdays off', shiftStartTime: '10:00', shiftEndTime: '19:00',
   shiftGraceMinutes: 15, halfDayThresholdHours: 4, regularizationWindowDays: 5, regularizationOverride: false,
+  regularizationMonthlyQuota: 5, shortLeaveMaxHours: 2, shortLeaveMonthlyQuota: 2,
   salaryPeriodFrom: 1, salaryPeriodTo: 'last', ctcSplit: { basic: 50, hra: 20, allowances: 30 },
   leaveTypes: { Casual: true, Sick: true, Earned: true, Maternity: true, Paternity: true, 'Comp-off': true },
   twoLevelApproval: { leave: true, attendance: true, expense: true },

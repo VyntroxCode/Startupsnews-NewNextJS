@@ -101,20 +101,11 @@ export function exportExcel(filename: string, rows: (string | number)[][]): void
 
 /* ---------------------------------------------------------
    Attendance lateness — compares a punch-in's clock-minutes against
-   the configured shift start + grace period.
+   the configured shift start + grace period. Shared with the isolated
+   Publisher/Event Admin and plain-employee attendance widgets — see
+   src/modules/hr-tool/utils/lateness.ts for the actual implementation.
 --------------------------------------------------------- */
-export function latenessInfo(inMinutes: number | null, rules: HrRules): { late: boolean; text: string } | null {
-  if (inMinutes == null) return null;
-  const [h, m] = rules.shiftStartTime.split(':').map(Number);
-  const graceEnd = h * 60 + m + Number(rules.shiftGraceMinutes || 0);
-  const diff = inMinutes - graceEnd;
-  if (diff <= 0) return { late: false, text: 'On time' };
-  const hrs = Math.floor(diff / 60), mins = diff % 60;
-  const parts: string[] = [];
-  if (hrs > 0) parts.push(hrs + ' hr');
-  parts.push(mins + ' min');
-  return { late: true, text: parts.join(' ') + ' late' };
-}
+export { latenessInfo, latenessBucket } from '@/modules/hr-tool/utils/lateness';
 
 export const STAGE_LABEL: Record<string, string> = {
   awaiting_signature: "Awaiting candidate's e-signature",

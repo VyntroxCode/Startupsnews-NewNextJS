@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: result.error }, { status: 409 });
     }
 
-    return NextResponse.json({ success: true, data: { today: result.today, note: result.note } });
+    const policy = await hrToolService.getPolicySummary();
+    const shiftRules = { shiftStartTime: policy.shiftStartTime, shiftEndTime: policy.shiftEndTime, shiftGraceMinutes: policy.shiftGraceMinutes };
+    return NextResponse.json({ success: true, data: { today: result.today, note: result.note, shiftRules } });
   } catch (error) {
     console.error('Error recording employee punch:', error);
     return NextResponse.json(

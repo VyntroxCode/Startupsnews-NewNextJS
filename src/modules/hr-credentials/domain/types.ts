@@ -1,6 +1,7 @@
 import { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 
-export type HrCredentialDesignation = 'HR Head' | 'Reporting Manager' | 'Employee';
+/** Free text now — driven by the admin-managed Designations list in Rules & Org Structure (hr_designations), not a fixed set. */
+export type HrCredentialDesignation = string;
 
 export interface HrEmployeeCredentialEntity {
   id: number;

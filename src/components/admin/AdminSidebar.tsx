@@ -111,6 +111,16 @@ const AttendanceIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
+const RulesPolicyIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 2h6a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path>
+    <path d="M9 4h6"></path>
+    <line x1="8" y1="10" x2="16" y2="10"></line>
+    <line x1="8" y1="14" x2="16" y2="14"></line>
+    <line x1="8" y1="18" x2="12" y2="18"></line>
+  </svg>
+);
+
 interface MenuItem {
   href: string;
   label: string;
@@ -131,6 +141,7 @@ const menuItems: MenuItem[] = [
   { href: '/admin/sales-tracker', label: 'Sales Tracker', icon: ReportsIcon },
   { href: '/admin/hr-tool', label: 'HR Management', icon: RegisteredUsersIcon },
   { href: '/admin/attendance', label: 'Attendance', icon: AttendanceIcon, roles: ['event_admin', 'publisher_admin'] },
+  { href: '/admin/rules-policy', label: 'Rules & Policy', icon: RulesPolicyIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/tools', label: 'Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },

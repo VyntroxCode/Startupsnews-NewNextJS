@@ -19,7 +19,7 @@ interface OnboardingRow {
   stage: string; offer_sent_date: string | null; signed_date: string | null; upload_deadline: string | null;
   employee_id: string | null; agreement_stage: string; docs: unknown; assets: unknown;
 }
-interface AttendanceRow { emp: string; attendance_date: string; status: string; in_time: string | null; out_time: string | null; }
+interface AttendanceRow { emp: string; attendance_date: string; status: string; in_time: string | null; in_minutes: number | null; out_time: string | null; }
 interface OverrideRow { emp: string; override_date: string; status: string; }
 interface PunchRow { emp: string; punch_date: string; in_time: string | null; in_minutes: number | null; out_time: string | null; }
 interface ApprovalRow { id: string; emp: string; stage: string; status: string; rm_remarks: string | null; hr_remarks: string | null; }
@@ -32,6 +32,7 @@ interface PayrollRow { month: string; status: string; }
 interface RulesRow {
   working_days_pattern: string; shift_start_time: string; shift_end_time: string; shift_grace_minutes: number;
   half_day_threshold_hours: number; regularization_window_days: number; regularization_override: number;
+  regularization_monthly_quota: number; short_leave_max_hours: number; short_leave_monthly_quota: number;
   salary_period_from: number; salary_period_to: string; ctc_basic_pct: number; ctc_hra_pct: number; ctc_allowances_pct: number;
   leave_types: unknown; two_level_approval_leave: number; two_level_approval_attendance: number; two_level_approval_expense: number;
   late_mark_penalty: number; geo_fencing: number; selfie_checkin: number; pf_esi: number; optional_holiday_choice: number; asset_checklist: number;
@@ -120,21 +121,21 @@ export class HrToolRepository {
   // --- Attendance ---
   async findAttendance(): Promise<HrAttendanceRecord[]> {
     const rows = await findAllRows<AttendanceRow>('hr_attendance', 'attendance_date ASC');
-    return rows.map((r) => ({ emp: r.emp, date: r.attendance_date, status: r.status, inTime: r.in_time || '—', outTime: r.out_time || '—' }));
+    return rows.map((r) => ({ emp: r.emp, date: r.attendance_date, status: r.status, inTime: r.in_time || '—', outTime: r.out_time || '—', inMinutes: r.in_minutes }));
   }
-  /** Recent attendance history for a single employee, most recent first — used by the Publisher/Event Admin punch widget's own history table. */
-  async findAttendanceForEmployee(emp: string, limit: number): Promise<HrAttendanceRecord[]> {
+  /** One employee's attendance within a date range (inclusive) — powers the employee attendance calendar's month view. */
+  async findAttendanceForEmployeeInRange(emp: string, fromDate: string, toDate: string): Promise<HrAttendanceRecord[]> {
     const rows = await query<AttendanceRow>(
-      'SELECT * FROM hr_attendance WHERE emp = ? ORDER BY attendance_date DESC LIMIT ?',
-      [emp, limit]
+      'SELECT * FROM hr_attendance WHERE emp = ? AND attendance_date BETWEEN ? AND ? ORDER BY attendance_date ASC',
+      [emp, fromDate, toDate]
     );
-    return rows.map((r) => ({ emp: r.emp, date: r.attendance_date, status: r.status, inTime: r.in_time || '—', outTime: r.out_time || '—' }));
+    return rows.map((r) => ({ emp: r.emp, date: r.attendance_date, status: r.status, inTime: r.in_time || '—', outTime: r.out_time || '—', inMinutes: r.in_minutes }));
   }
   async upsertAttendance(rec: HrAttendanceRecord): Promise<void> {
     await query(
-      `INSERT INTO hr_attendance (emp, attendance_date, status, in_time, out_time) VALUES (?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE status = VALUES(status), in_time = VALUES(in_time), out_time = VALUES(out_time)`,
-      [rec.emp, rec.date, rec.status, rec.inTime || null, rec.outTime || null]
+      `INSERT INTO hr_attendance (emp, attendance_date, status, in_time, in_minutes, out_time) VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE status = VALUES(status), in_time = VALUES(in_time), in_minutes = VALUES(in_minutes), out_time = VALUES(out_time)`,
+      [rec.emp, rec.date, rec.status, rec.inTime || null, rec.inMinutes ?? null, rec.outTime || null]
     );
   }
 
@@ -178,6 +179,33 @@ export class HrToolRepository {
       'hr_regularizations', ['id', 'emp', 'reg_date', 'reason', 'stage', 'status', 'rm_remarks', 'hr_remarks'], items,
       (r) => [r.id, r.emp, r.date, r.reason || null, r.stage, r.status, r.rmRemarks || null, r.hrRemarks || null]
     );
+  }
+  /** One employee's own regularization requests — used by the isolated Publisher/Event Admin
+   * and plain-employee attendance surfaces, which must never see other employees' requests
+   * (unlike replaceRegularizations' whole-table replace, which is Founder-only). */
+  async findRegularizationsForEmployee(emp: string): Promise<HrRegularization[]> {
+    const rows = await query<RegularizationRow>('SELECT * FROM hr_regularizations WHERE emp = ? ORDER BY created_at DESC', [emp]);
+    return rows.map((r) => ({ id: r.id, emp: r.emp, date: r.reg_date, reason: r.reason || '', stage: r.stage, status: r.status, rmRemarks: r.rm_remarks || '', hrRemarks: r.hr_remarks || '' }));
+  }
+  async findRegularizationByEmpAndDate(emp: string, date: string): Promise<HrRegularization | null> {
+    const row = await queryOne<RegularizationRow>('SELECT * FROM hr_regularizations WHERE emp = ? AND reg_date = ?', [emp, date]);
+    if (!row) return null;
+    return { id: row.id, emp: row.emp, date: row.reg_date, reason: row.reason || '', stage: row.stage, status: row.status, rmRemarks: row.rm_remarks || '', hrRemarks: row.hr_remarks || '' };
+  }
+  /** Single-row insert, safe for an isolated employee session to call directly — unlike
+   * replaceRegularizations, it never touches any other employee's rows. */
+  async insertRegularization(reg: HrRegularization): Promise<void> {
+    await query(
+      'INSERT INTO hr_regularizations (id, emp, reg_date, reason, stage, status, rm_remarks, hr_remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [reg.id, reg.emp, reg.date, reg.reason || null, reg.stage, reg.status, reg.rmRemarks || null, reg.hrRemarks || null]
+    );
+  }
+  async countRegularizationsForEmployeeInMonth(emp: string, fromDate: string, toDate: string): Promise<number> {
+    const rows = await query<{ cnt: number }>(
+      'SELECT COUNT(*) AS cnt FROM hr_regularizations WHERE emp = ? AND reg_date BETWEEN ? AND ?',
+      [emp, fromDate, toDate]
+    );
+    return Number(rows[0]?.cnt || 0);
   }
 
   async findLeaveRequests(): Promise<HrLeaveRequest[]> {
@@ -248,6 +276,8 @@ export class HrToolRepository {
       workingDaysPattern: r.working_days_pattern, shiftStartTime: r.shift_start_time, shiftEndTime: r.shift_end_time,
       shiftGraceMinutes: r.shift_grace_minutes, halfDayThresholdHours: r.half_day_threshold_hours,
       regularizationWindowDays: r.regularization_window_days, regularizationOverride: !!r.regularization_override,
+      regularizationMonthlyQuota: r.regularization_monthly_quota, shortLeaveMaxHours: Number(r.short_leave_max_hours),
+      shortLeaveMonthlyQuota: r.short_leave_monthly_quota,
       salaryPeriodFrom: r.salary_period_from, salaryPeriodTo: r.salary_period_to,
       ctcSplit: { basic: r.ctc_basic_pct, hra: r.ctc_hra_pct, allowances: r.ctc_allowances_pct },
       leaveTypes: parseJsonColumn(r.leave_types, {}),
@@ -259,7 +289,9 @@ export class HrToolRepository {
   async saveRules(rules: HrRules): Promise<void> {
     const params: SqlParam[] = [
       rules.workingDaysPattern, rules.shiftStartTime, rules.shiftEndTime, rules.shiftGraceMinutes, rules.halfDayThresholdHours,
-      rules.regularizationWindowDays, rules.regularizationOverride ? 1 : 0, rules.salaryPeriodFrom, String(rules.salaryPeriodTo),
+      rules.regularizationWindowDays, rules.regularizationOverride ? 1 : 0,
+      rules.regularizationMonthlyQuota, rules.shortLeaveMaxHours, rules.shortLeaveMonthlyQuota,
+      rules.salaryPeriodFrom, String(rules.salaryPeriodTo),
       rules.ctcSplit.basic, rules.ctcSplit.hra, rules.ctcSplit.allowances, JSON.stringify(rules.leaveTypes || {}),
       rules.twoLevelApproval.leave ? 1 : 0, rules.twoLevelApproval.attendance ? 1 : 0, rules.twoLevelApproval.expense ? 1 : 0,
       rules.lateMarkPenalty ? 1 : 0, rules.geoFencing ? 1 : 0, rules.selfieCheckin ? 1 : 0, rules.pfEsi ? 1 : 0,
@@ -267,14 +299,17 @@ export class HrToolRepository {
     ];
     await query(
       `INSERT INTO hr_rules (id, working_days_pattern, shift_start_time, shift_end_time, shift_grace_minutes, half_day_threshold_hours,
-        regularization_window_days, regularization_override, salary_period_from, salary_period_to, ctc_basic_pct, ctc_hra_pct, ctc_allowances_pct,
+        regularization_window_days, regularization_override, regularization_monthly_quota, short_leave_max_hours, short_leave_monthly_quota,
+        salary_period_from, salary_period_to, ctc_basic_pct, ctc_hra_pct, ctc_allowances_pct,
         leave_types, two_level_approval_leave, two_level_approval_attendance, two_level_approval_expense, late_mark_penalty, geo_fencing,
         selfie_checkin, pf_esi, optional_holiday_choice, asset_checklist)
-       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
         working_days_pattern = VALUES(working_days_pattern), shift_start_time = VALUES(shift_start_time), shift_end_time = VALUES(shift_end_time),
         shift_grace_minutes = VALUES(shift_grace_minutes), half_day_threshold_hours = VALUES(half_day_threshold_hours),
         regularization_window_days = VALUES(regularization_window_days), regularization_override = VALUES(regularization_override),
+        regularization_monthly_quota = VALUES(regularization_monthly_quota), short_leave_max_hours = VALUES(short_leave_max_hours),
+        short_leave_monthly_quota = VALUES(short_leave_monthly_quota),
         salary_period_from = VALUES(salary_period_from), salary_period_to = VALUES(salary_period_to),
         ctc_basic_pct = VALUES(ctc_basic_pct), ctc_hra_pct = VALUES(ctc_hra_pct), ctc_allowances_pct = VALUES(ctc_allowances_pct),
         leave_types = VALUES(leave_types), two_level_approval_leave = VALUES(two_level_approval_leave),

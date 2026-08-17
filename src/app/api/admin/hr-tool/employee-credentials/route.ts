@@ -4,9 +4,8 @@ import { HR_TOOL_ROLES } from '@/shared/middleware/roles';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { HrCredentialDesignation } from '@/modules/hr-credentials/domain/types';
 import { PanelAdminRole } from '@/modules/panel-admins/domain/types';
-import { hrCredentialsService } from './_lib';
+import { hrCredentialsService, hrToolService } from './_lib';
 
-const ALLOWED_DESIGNATIONS: HrCredentialDesignation[] = ['HR Head', 'Reporting Manager', 'Employee'];
 const ALLOWED_PANEL_ROLES: PanelAdminRole[] = ['event_admin', 'publisher_admin'];
 
 interface CreateBody {
@@ -57,8 +56,9 @@ export async function POST(request: NextRequest) {
     if (password.length < 8) {
       return NextResponse.json({ success: false, error: 'Password must be at least 8 characters' }, { status: 400 });
     }
-    if (!designation || !ALLOWED_DESIGNATIONS.includes(designation as HrCredentialDesignation)) {
-      return NextResponse.json({ success: false, error: `Designation must be one of: ${ALLOWED_DESIGNATIONS.join(', ')}` }, { status: 400 });
+    const allowedDesignations = await hrToolService.getDesignations();
+    if (!designation || !allowedDesignations.includes(designation)) {
+      return NextResponse.json({ success: false, error: `Designation must be one of: ${allowedDesignations.join(', ')}` }, { status: 400 });
     }
     if (body?.panelRole && !ALLOWED_PANEL_ROLES.includes(body.panelRole as PanelAdminRole)) {
       return NextResponse.json({ success: false, error: `Role must be one of: ${ALLOWED_PANEL_ROLES.join(', ')}` }, { status: 400 });

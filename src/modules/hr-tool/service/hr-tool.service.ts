@@ -3,12 +3,13 @@ import {
   HrBootstrap, HrTeam, HrHoliday, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrPayrollRun, HrRules, HrAuditLogEntry,
 } from '../domain/types';
-import { todayStr, nowTimeStr, nowMinutesSinceMidnight } from '../utils/time';
+import { todayStr, nowTimeStr, nowMinutesSinceMidnight, monthRange } from '../utils/time';
+import { latenessBucket } from '../utils/lateness';
 
 export interface PunchResult {
   ok: boolean;
   error?: string;
-  today?: { inTime: string | null; outTime: string | null };
+  today?: { inTime: string | null; outTime: string | null; inMinutes: number | null };
   note?: string;
 }
 
@@ -20,6 +21,9 @@ const DEFAULT_RULES: HrRules = {
   halfDayThresholdHours: 4,
   regularizationWindowDays: 5,
   regularizationOverride: false,
+  regularizationMonthlyQuota: 5,
+  shortLeaveMaxHours: 2,
+  shortLeaveMonthlyQuota: 2,
   salaryPeriodFrom: 1,
   salaryPeriodTo: 'last',
   ctcSplit: { basic: 50, hra: 20, allowances: 30 },
@@ -87,6 +91,70 @@ export class HrToolService {
 
   saveTeams(teams: HrTeam[]) { return this.repository.replaceTeams(teams); }
   saveDesignations(names: string[]) { return this.repository.replaceNameList('hr_designations', names); }
+  getDesignations(): Promise<string[]> { return this.repository.findNameList('hr_designations'); }
+
+  /** Just the non-sensitive policy numbers from hr_rules — safe to hand to roles that can't
+   * reach the rest of hr_rules (Publisher/Event Admin, plain employees). Powers both the
+   * shift/lateness display on the attendance widgets and the read-only employee-facing
+   * "Rules & Policy" page. */
+  async getPolicySummary(): Promise<{
+    shiftStartTime: string; shiftEndTime: string; shiftGraceMinutes: number;
+    regularizationWindowDays: number; regularizationMonthlyQuota: number;
+    shortLeaveMaxHours: number; shortLeaveMonthlyQuota: number;
+  }> {
+    const rules = await this.repository.findRules();
+    const source = rules || DEFAULT_RULES;
+    return {
+      shiftStartTime: source.shiftStartTime, shiftEndTime: source.shiftEndTime, shiftGraceMinutes: source.shiftGraceMinutes,
+      regularizationWindowDays: source.regularizationWindowDays, regularizationMonthlyQuota: source.regularizationMonthlyQuota,
+      shortLeaveMaxHours: source.shortLeaveMaxHours, shortLeaveMonthlyQuota: source.shortLeaveMonthlyQuota,
+    };
+  }
+  getRegularizationsForEmployee(emp: string) { return this.repository.findRegularizationsForEmployee(emp); }
+  countRegularizationsForEmployeeInMonth(emp: string, fromDate: string, toDate: string) {
+    return this.repository.countRegularizationsForEmployeeInMonth(emp, fromDate, toDate);
+  }
+
+  /**
+   * Employee-submitted regularization request, used by the isolated Publisher/Event Admin and
+   * plain-employee attendance surfaces (the Founder's own submitRegularization in
+   * views/Attendance.tsx is a separate, trusted, whole-array-replace path — this one is a
+   * single scoped insert with full server-side validation, since the caller here isn't trusted
+   * with the rest of the table). Only a late or grace-period punch-in may be regularized, only
+   * within the admin's configured window/override, and only up to the monthly quota.
+   */
+  async submitEmployeeRegularization(emp: string, date: string, reason: string): Promise<{ ok: boolean; error?: string }> {
+    const trimmedReason = (reason || '').trim();
+    if (!trimmedReason) return { ok: false, error: 'A reason is required.' };
+
+    const existing = await this.repository.findRegularizationByEmpAndDate(emp, date);
+    if (existing) return { ok: false, error: 'A regularization request already exists for this date.' };
+
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+
+    const [dayRecord] = await this.repository.findAttendanceForEmployeeInRange(emp, date, date);
+    const bucket = latenessBucket(dayRecord?.inMinutes ?? null, rules);
+    if (bucket !== 'grace' && bucket !== 'late') {
+      return { ok: false, error: 'Only a late or grace-period punch-in can be regularized.' };
+    }
+
+    const diffDays = Math.round((new Date(todayStr()).getTime() - new Date(date).getTime()) / 86400000);
+    if (!rules.regularizationOverride && diffDays > rules.regularizationWindowDays) {
+      return { ok: false, error: `This date is outside the ${rules.regularizationWindowDays}-day regularization window.` };
+    }
+
+    const { from, to } = monthRange(date.slice(0, 7));
+    const used = await this.repository.countRegularizationsForEmployeeInMonth(emp, from, to);
+    if (used >= rules.regularizationMonthlyQuota) {
+      return { ok: false, error: `Monthly regularization limit reached (${rules.regularizationMonthlyQuota} per month).` };
+    }
+
+    const stage = rules.twoLevelApproval.attendance ? 'rm' : 'hr';
+    await this.repository.insertRegularization({
+      id: 'R-' + Date.now(), emp, date, reason: trimmedReason, stage, status: 'pending', rmRemarks: '', hrRemarks: '',
+    });
+    return { ok: true };
+  }
   saveExpenseCategories(names: string[]) { return this.repository.replaceNameList('hr_expense_categories', names); }
   saveRequiredDocuments(names: string[]) { return this.repository.replaceNameList('hr_required_documents', names); }
   saveHolidays(holidays: HrHoliday[]) { return this.repository.replaceHolidays(holidays); }
@@ -96,7 +164,7 @@ export class HrToolService {
   recordAttendanceOverride(o: HrAttendanceOverride) { return this.repository.upsertAttendanceOverride(o); }
   recordPunch(p: HrPunch) { return this.repository.upsertPunch(p); }
   getPunchByEmp(emp: string) { return this.repository.findPunchByEmp(emp); }
-  getAttendanceForEmployee(emp: string, limit: number) { return this.repository.findAttendanceForEmployee(emp, limit); }
+  getAttendanceForEmployeeInRange(emp: string, fromDate: string, toDate: string) { return this.repository.findAttendanceForEmployeeInRange(emp, fromDate, toDate); }
 
   /**
    * Once-per-calendar-day punch in/out, shared by every punch-capable role (Publisher/Event
@@ -133,10 +201,10 @@ export class HrToolService {
     const updated = await this.getPunchByEmp(emp);
     await this.recordAttendance({
       emp, date: today, status: 'Present',
-      inTime: updated?.inTime || '—', outTime: updated?.outTime || '—',
+      inTime: updated?.inTime || '—', outTime: updated?.outTime || '—', inMinutes: updated?.inMinutes ?? null,
     });
 
-    return { ok: true, today: { inTime: updated?.inTime || null, outTime: updated?.outTime || null }, note };
+    return { ok: true, today: { inTime: updated?.inTime || null, outTime: updated?.outTime || null, inMinutes: updated?.inMinutes ?? null }, note };
   }
   saveRegularizations(items: HrRegularization[]) { return this.repository.replaceRegularizations(items); }
   saveLeaveRequests(items: HrLeaveRequest[]) { return this.repository.replaceLeaveRequests(items); }

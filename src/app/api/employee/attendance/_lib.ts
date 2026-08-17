@@ -2,4 +2,4 @@ import { HrToolRepository } from '@/modules/hr-tool/repository/hr-tool.repositor
 import { HrToolService } from '@/modules/hr-tool/service/hr-tool.service';
 
 export const hrToolService = new HrToolService(new HrToolRepository());
-export { todayStr } from '@/modules/hr-tool/utils/time';
+export { todayStr, monthRange } from '@/modules/hr-tool/utils/time';

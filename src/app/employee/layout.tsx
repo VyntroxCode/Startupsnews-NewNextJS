@@ -14,10 +14,23 @@ function AttendanceIcon({ size = 20, color = 'currentColor' }: { size?: number; 
   );
 }
 
-// Single item today — written as a list so future employee-facing sections (Leave, My
-// Documents, etc.) slot in the same way without restructuring the sidebar.
+function RulesPolicyIcon({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2h6a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"></path>
+      <path d="M9 4h6"></path>
+      <line x1="8" y1="10" x2="16" y2="10"></line>
+      <line x1="8" y1="14" x2="16" y2="14"></line>
+      <line x1="8" y1="18" x2="12" y2="18"></line>
+    </svg>
+  );
+}
+
+// Written as a list so future employee-facing sections slot in the same way without
+// restructuring the sidebar.
 const NAV_ITEMS: { href: string; label: string; icon: typeof AttendanceIcon }[] = [
   { href: '/employee/attendance', label: 'Attendance', icon: AttendanceIcon },
+  { href: '/employee/rules-policy', label: 'Rules & Policy', icon: RulesPolicyIcon },
 ];
 
 const SIDEBAR_WIDTH = 260;

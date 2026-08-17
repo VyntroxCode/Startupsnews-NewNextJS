@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireEmployeeAuth } from '@/shared/middleware/employee-auth.middleware';
-import { hrToolService, todayStr } from '../_lib';
+import { hrToolService, todayStr, monthRange } from '../_lib';
 
-const HISTORY_LIMIT = 14;
-
-/** GET /api/employee/attendance/me — the logged-in employee's own status + recent history. */
+/** GET /api/employee/attendance/me?month=YYYY-MM — the logged-in employee's own status + that
+ * month's day-by-day attendance (for the calendar view; defaults to the current month). */
 export async function GET(request: NextRequest) {
   const auth = await requireEmployeeAuth(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
     const { credential } = auth;
-    const [punch, history] = await Promise.all([
+    const { month, from, to } = monthRange(request.nextUrl.searchParams.get('month'));
+    const [punch, calendar, policy, regularizations, usedThisMonth] = await Promise.all([
       hrToolService.getPunchByEmp(credential.name),
-      hrToolService.getAttendanceForEmployee(credential.name, HISTORY_LIMIT),
+      hrToolService.getAttendanceForEmployeeInRange(credential.name, from, to),
+      hrToolService.getPolicySummary(),
+      hrToolService.getRegularizationsForEmployee(credential.name),
+      hrToolService.countRegularizationsForEmployeeInMonth(credential.name, from, to),
     ]);
 
     const today = todayStr();
@@ -25,8 +28,16 @@ export async function GET(request: NextRequest) {
         linked: true,
         employeeCode: credential.employeeCode,
         name: credential.name,
-        today: { inTime: isToday ? punch?.inTime || null : null, outTime: isToday ? punch?.outTime || null : null },
-        history,
+        today: {
+          inTime: isToday ? punch?.inTime || null : null,
+          outTime: isToday ? punch?.outTime || null : null,
+          inMinutes: isToday ? punch?.inMinutes ?? null : null,
+        },
+        month,
+        calendar,
+        shiftRules: { shiftStartTime: policy.shiftStartTime, shiftEndTime: policy.shiftEndTime, shiftGraceMinutes: policy.shiftGraceMinutes },
+        regularizations,
+        regularizationPolicy: { windowDays: policy.regularizationWindowDays, monthlyQuota: policy.regularizationMonthlyQuota, usedThisMonth },
       },
     });
   } catch (error) {

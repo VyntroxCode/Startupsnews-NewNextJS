@@ -875,10 +875,6 @@ export default function PartnershipTrackerPage() {
       setModalError('Email ID looks invalid — enter a valid address (e.g. name@example.com).');
       return;
     }
-    if (effectiveDraft.listing === 'Yes' && !effectiveDraft.listingLink.trim()) {
-      setModalError('Listing link is required when Listing is set to Yes.');
-      return;
-    }
     if (draft.partnershipStatus === 'Partnership Done' && !draft.listingLink.trim()) {
       setModalError('Add a Listing link before marking this Partnership Done.');
       return;
@@ -1693,7 +1689,7 @@ export default function PartnershipTrackerPage() {
                   </select>
                 </div>
                 <div className="pt-fg">
-                  <label>Listing link (if yes){draft.listing === 'Yes' && <span style={{ color: '#C22B44' }}> *</span>}</label>
+                  <label>Listing link (if yes)</label>
                   <input value={draft.listingLink} onChange={(e) => setDraft({ ...draft, listingLink: e.target.value })} />
                 </div>
                 <div className="pt-fg pt-full"><label>Internal comment</label><textarea value={draft.comment} onChange={(e) => setDraft({ ...draft, comment: e.target.value })} /></div>

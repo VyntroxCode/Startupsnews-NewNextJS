@@ -9,7 +9,6 @@ import { initials } from '../utils';
 import type { HrEmployeeCredential, HrCredentialDesignation, LinkedPanelAdminSummary } from '@/modules/hr-credentials/domain/types';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 
-const DESIGNATIONS: HrCredentialDesignation[] = ['HR Head', 'Reporting Manager', 'Employee'];
 const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin' };
 
 const EMPLOYEE_CODE_PREFIX = 'SNFYI-';
@@ -40,7 +39,7 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  id: null, name: '', employeeCode: '', designation: 'Employee', email: '', avatarUrl: '',
+  id: null, name: '', employeeCode: '', designation: '', email: '', avatarUrl: '',
   password: '', confirmPassword: '', panelRole: '', linkedPanelAdminId: '',
 };
 
@@ -74,6 +73,8 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 export default function AssigningIds() {
+  const { state } = useHrTool();
+  const designations = state.orgStructure.designations;
   const [credentials, setCredentials] = useState<HrEmployeeCredential[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -161,6 +162,7 @@ export default function AssigningIds() {
     const isEdit = form.id !== null;
 
     if (!name) { setFormError('Employee name is required'); return; }
+    if (!form.designation.trim()) { setFormError('Designation is required'); return; }
     if (!employeeCode || employeeCode === EMPLOYEE_CODE_PREFIX) { setFormError('Employee ID number is required'); return; }
     if (!/^[A-Za-z0-9-]{3,32}$/.test(employeeCode)) { setFormError('Employee ID must be 3-32 characters: letters, numbers, and hyphens only'); return; }
     if (!isEdit && !form.password) { setFormError('Password is required'); return; }
@@ -301,8 +303,12 @@ export default function AssigningIds() {
             <div className="field">
               <label className="field-label">Designation</label>
               <select value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value as HrCredentialDesignation }))}>
-                {DESIGNATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+                <option value="">— Select —</option>
+                {designations.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
+              {designations.length === 0 && (
+                <div className="meta">No designations set up yet — add some under Rules &amp; Org Structure → Designations.</div>
+              )}
             </div>
 
             <div className="field">

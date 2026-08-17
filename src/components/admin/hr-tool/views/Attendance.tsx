@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
-import { ApprovalBadge, StatusBadge, applyApprovalDecision, isAdmin, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
+import { ApprovalBadge, StatusBadge, applyApprovalDecision, isAdmin, latenessBucket, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 
@@ -44,7 +44,7 @@ export default function Attendance() {
   async function syncAttendanceRecord(empName: string) {
     const punch = state.punchLog[empName];
     if (!punch) return;
-    const rec = { emp: empName, date: todayStr(), status: 'Present', inTime: punch.inTime || '—', outTime: punch.outTime || '—' };
+    const rec = { emp: empName, date: todayStr(), status: 'Present', inTime: punch.inTime || '—', outTime: punch.outTime || '—', inMinutes: punch.inMinutes ?? null };
     await persistAttendance(rec);
   }
 
@@ -106,10 +106,13 @@ export default function Attendance() {
       )}
       <section className="block">
         <div className="block-head"><h2>Today — {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</h2></div>
-        <div className="card"><table><thead><tr><th>Employee</th><th>Employee ID</th><th>Role</th><th>Status</th><th>In</th><th>Out</th></tr></thead>
+        <div className="card"><table><thead><tr><th>Employee</th><th>Employee ID</th><th>Role</th><th>Status</th><th>In</th><th>Out</th><th>Lateness</th></tr></thead>
           <tbody>
             {attRows.map((a) => {
               const cred = credentialByName.get(a.emp);
+              const rowInMinutes = state.punchLog[a.emp]?.inMinutes ?? null;
+              const rowBucket = latenessBucket(rowInMinutes, state.rules);
+              const rowLateness = latenessInfo(rowInMinutes, state.rules);
               return (
                 <tr key={a.emp}>
                   <td>{a.emp}</td>
@@ -118,10 +121,16 @@ export default function Attendance() {
                   <td><StatusBadge status={a.status === 'Present' ? 'active' : 'pending'} /></td>
                   <td>{a.inTime}</td>
                   <td>{a.outTime}</td>
+                  <td>
+                    {rowBucket === null && <span className="meta">—</span>}
+                    {rowBucket === 'on-time' && <span>On time</span>}
+                    {rowBucket === 'grace' && <span style={{ fontWeight: 700, color: 'var(--orange)' }}>⚠ Within grace period</span>}
+                    {rowBucket === 'late' && <span style={{ fontWeight: 700, color: 'var(--red)' }}>⚠ {rowLateness?.text}</span>}
+                  </td>
                 </tr>
               );
             })}
-            {attRows.length === 0 && <tr><td colSpan={6}><div className="empty">No attendance recorded yet today.</div></td></tr>}
+            {attRows.length === 0 && <tr><td colSpan={7}><div className="empty">No attendance recorded yet today.</div></td></tr>}
           </tbody>
         </table></div>
       </section>

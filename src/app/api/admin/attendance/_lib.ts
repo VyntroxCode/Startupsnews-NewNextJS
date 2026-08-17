@@ -13,4 +13,4 @@ export const hrToolService = new HrToolService(new HrToolRepository());
 
 export const ATTENDANCE_ROLES = ['event_admin', 'publisher_admin'] as const;
 
-export { todayStr } from '@/modules/hr-tool/utils/time';
+export { todayStr, monthRange } from '@/modules/hr-tool/utils/time';

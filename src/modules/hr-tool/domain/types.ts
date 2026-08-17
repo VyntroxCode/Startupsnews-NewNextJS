@@ -52,7 +52,7 @@ export interface HrOnboarding {
   assets?: HrOnboardingAssets | null;
 }
 
-export interface HrAttendanceRecord { emp: string; date: string; status: string; inTime: string; outTime: string; }
+export interface HrAttendanceRecord { emp: string; date: string; status: string; inTime: string; outTime: string; inMinutes?: number | null; }
 export interface HrAttendanceOverride { emp: string; date: string; status: string; }
 export interface HrPunch { emp: string; date: string; inTime: string | null; inMinutes: number | null; outTime: string | null; }
 
@@ -84,6 +84,14 @@ export interface HrRules {
   halfDayThresholdHours: number;
   regularizationWindowDays: number;
   regularizationOverride: boolean;
+  /** How many regularization requests an employee may submit per calendar month — separate
+   * from regularizationWindowDays (which governs how many days after the attendance date a
+   * request may still be filed at all). */
+  regularizationMonthlyQuota: number;
+  /** Max hours absent for it to count as a Short Leave rather than a half/full day. */
+  shortLeaveMaxHours: number;
+  /** How many Short Leaves an employee may take per calendar month. */
+  shortLeaveMonthlyQuota: number;
   salaryPeriodFrom: number;
   salaryPeriodTo: string;
   ctcSplit: HrCtcSplit;
