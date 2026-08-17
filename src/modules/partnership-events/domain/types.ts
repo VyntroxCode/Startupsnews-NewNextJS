@@ -168,6 +168,6 @@ export const CURRENCY_OPTIONS = ['INR', 'USD', 'AED', 'GBP', 'EUR', 'SGD'] as co
 
 /** Guidance shown next to each upload/text field in the Add/Edit modal. */
 export const EVENT_DESCRIPTION_MIN_LENGTH = 150;
-export const POSTER_SPEC = 'Portrait, 1080×1350px (4:5), JPG or PNG, under 2MB — used on the event listing page.';
-export const BANNER_SPEC = 'Landscape, 1920×600px, JPG, PNG or WebP, under 2MB — used on the homepage.';
-export const SOCIAL_CREATIVE_SPEC = 'HD, 1080×1080px (square) or 1080×1920px (story), JPG or PNG.';
+export const POSTER_SPEC = '1260×630px, JPG or PNG, under 2MB — used on the event listing page.';
+export const BANNER_SPEC = '2438×413px, JPG, PNG or WebP, under 2MB — used on the homepage.';
+export const SOCIAL_CREATIVE_SPEC = '1080×1440px, JPG or PNG.';
