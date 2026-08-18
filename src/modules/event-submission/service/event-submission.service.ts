@@ -131,7 +131,7 @@ export class EventSubmissionService {
   /** Validates the payload and creates the lead in the Partnership Tracker. */
   async submit(payload: SubmitEventPayload): Promise<{ id: number }> {
     const input = this.toPartnershipEventInput(payload);
-    const entity = await this.partnershipEventsService.createEvent(input);
+    const { entity } = await this.partnershipEventsService.createEvent(input);
     return { id: entity.id };
   }
 }

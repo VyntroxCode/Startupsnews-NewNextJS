@@ -1,7 +1,7 @@
 'use client';
 
 import { useHrTool } from '../HrToolContext';
-import { StatusBadge, ApprovalBadge, agreementMerged, initials, rmOf, STAGE_LABEL, todayStr } from '../utils';
+import { StatusBadge, ApprovalBadge, agreementMerged, initials, rmOf, STAGE_LABEL, todayStr, monthKeyToLabel } from '../utils';
 import type { HrView } from '../types';
 
 function StatTile({ label, num, note, view, onClick }: { label: string; num: string | number; note: string; view: HrView; onClick: (v: HrView) => void }) {
@@ -44,7 +44,7 @@ export default function Dashboard() {
         <StatTile label="Active Employees" num={active} note={`${probation.length} on probation`} view="directory" onClick={setView} />
         <StatTile label="Pending Onboarding" num={pendingOnboard} note="awaiting document/agreement approval" view="onboarding" onClick={setView} />
         <StatTile label="Pending Regularizations" num={pendingReg} note="across manager + HR review" view="attendance" onClick={setView} />
-        <StatTile label="Payroll Cycle" num={state.payrollRun.month} note={state.payrollRun.status === 'not_run' ? 'not yet run' : 'completed'} view="payroll" onClick={setView} />
+        <StatTile label="Payroll Cycle" num={monthKeyToLabel(state.payrollRun.month)} note={state.payrollRun.status === 'not_run' ? 'not yet run' : 'completed'} view="payroll" onClick={setView} />
       </div>
       <div className="grid grid-4" style={{ marginBottom: 26 }}>
         <StatTile label="Leave — awaiting HR" num={pendingLeaveHR} note="RM-cleared, needs your action" view="leave" onClick={setView} />

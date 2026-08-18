@@ -1,7 +1,7 @@
 import { getAuthHeaders } from '@/lib/admin-auth';
 import type {
   HrBootstrap, HrTeam, HrEmployee, HrOnboarding, HrRegularization, HrLeaveRequest, HrExpense,
-  HrTicket, HrRules, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPayrollRun, HrAuditLogEntry,
+  HrTicket, HrRules, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPayrollEntry, HrAuditLogEntry,
 } from './types';
 
 const API_BASE = '/api/admin/hr-tool';
@@ -18,6 +18,24 @@ async function apiPut(path: string, body: unknown): Promise<void> {
 async function apiPost(path: string, body: unknown): Promise<void> {
   const res = await fetch(API_BASE + path, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(body) });
   if (!res.ok) throw new Error('Request failed');
+}
+
+export interface PayrollApiResult {
+  month: string;
+  periodFrom: string;
+  periodTo: string;
+  periodEnded: boolean;
+  runUnlocksAt: string;
+  canRun: boolean;
+  alreadyRun: boolean;
+  entries: HrPayrollEntry[];
+}
+/** Payroll calls preserve the server's specific error message (e.g. "period hasn't ended
+ * yet") instead of the generic apiGet/apiPost "Request failed", since that message is
+ * meaningful to show the admin directly. */
+async function apiRaw<T>(path: string, init?: RequestInit): Promise<{ success: boolean; data?: T; error?: string }> {
+  const res = await fetch(API_BASE + path, { ...init, headers: { ...getAuthHeaders(), ...(init?.headers || {}) } });
+  return res.json();
 }
 
 export const hrApi = {
@@ -37,7 +55,8 @@ export const hrApi = {
   recordAttendance: (v: HrAttendanceRecord) => apiPost('/attendance', v),
   recordAttendanceOverride: (v: HrAttendanceOverride) => apiPost('/attendance-overrides', v),
   recordPunch: (v: HrPunch) => apiPost('/punch-log', v),
-  savePayrollRun: (v: HrPayrollRun) => apiPost('/payroll-runs', v),
+  getPayroll: (month: string) => apiRaw<PayrollApiResult>('/payroll?month=' + encodeURIComponent(month)),
+  runPayroll: (month: string) => apiRaw<{ entries: HrPayrollEntry[] }>('/payroll-runs', { method: 'POST', body: JSON.stringify({ month }) }),
   saveTemplate: (name: string, content: string) => apiPut('/templates/' + encodeURIComponent(name), { content }),
   appendAuditLog: (entry: HrAuditLogEntry) => apiPost('/audit-log', entry).catch(() => {}),
   resetSampleData: (keepEmployeeId: string | null) => apiPost('/reset-sample-data', { keepEmployeeId }),

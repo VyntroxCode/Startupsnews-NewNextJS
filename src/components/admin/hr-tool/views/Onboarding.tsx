@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
-import DraftOfferLetterButton from './DraftOfferLetterButton';
+import HireEmployeeButton from './HireEmployeeButton';
 import { StatusBadge, agreementMerged, daysLeft, downloadDoc, initials, pendingEmployeeDocUpdates, STAGE_LABEL } from '../utils';
 import type { HrOnboarding } from '../types';
 
@@ -79,7 +79,7 @@ export default function Onboarding() {
     <>
       <PageHead />
       <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: 14 }}>
-        <DraftOfferLetterButton label="+ Draft offer letter" className="btn primary" />
+        <HireEmployeeButton label="+ Send offer letter" className="btn primary" />
       </div>
 
       {state.onboarding.length === 0 && <div className="card"><div className="empty">No one currently in the onboarding pipeline.</div></div>}

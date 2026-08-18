@@ -17,6 +17,10 @@ export interface HrCtcSplit { basic: number; hra: number; allowances: number; }
 
 export interface HrEmployee {
   id: string;
+  /** Soft reference to hr_employee_credentials.id (the Employee ID/login record created
+   * alongside this one when hired through Directory's "Send Offer Letter"). Null for older
+   * rows created before this link existed (e.g. CSV import) — those fall back to name-matching. */
+  credentialId?: number | null;
   name: string;
   email: string;
   designation: string;
@@ -72,7 +76,22 @@ export interface HrTicket { id: string; emp: string; category: string; status: s
 
 export interface HrComplianceTask { task: string; due: string; status: string; }
 
-export interface HrPayrollRun { month: string; status: string; }
+export interface HrPayrollRun { month: string; status: string; runAt?: string | null; runBy?: string | null; }
+
+/** One employee's computed payroll for one month — either a live preview (not yet run) or the
+ * frozen record from the last "Run Payroll" (see HrToolService.computePayrollForMonth/runPayroll). */
+export interface HrPayrollEntry {
+  emp: string;
+  workingDays: number;
+  /** Days with an actual punch — does not include approved-leave days (see leaveDays). */
+  presentDays: number;
+  /** Approved-leave days within the period — counted separately from presentDays so "worked"
+   * and "on leave" are never conflated into one number. */
+  leaveDays: number;
+  lopDays: number;
+  monthlyGross: number;
+  netPay: number;
+}
 
 export interface HrTemplate { name: string; content: string; }
 

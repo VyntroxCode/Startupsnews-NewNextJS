@@ -2,12 +2,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { hrApi } from './api';
-import { currentMonthLabel, todayStr } from './utils';
+import { todayStr } from './utils';
+import { currentPayrollMonthKey } from '@/modules/hr-tool/utils/time';
 import { getAdminUser } from '@/lib/admin-auth';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 import type {
   HrTeam, HrOrgStructure, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
-  HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrRules,
+  HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrRules,
   HrAuditLogEntry, HrRole, HrView,
 } from './types';
 
@@ -38,7 +39,7 @@ const DEFAULT_RULES: HrRules = {
   workingDaysPattern: 'Mon–Sat, alternate Saturdays off', shiftStartTime: '10:00', shiftEndTime: '19:00',
   shiftGraceMinutes: 15, halfDayThresholdHours: 4, regularizationWindowDays: 5, regularizationOverride: false,
   regularizationMonthlyQuota: 5, shortLeaveMaxHours: 2, shortLeaveMonthlyQuota: 2,
-  salaryPeriodFrom: 1, salaryPeriodTo: 'last', ctcSplit: { basic: 50, hra: 20, allowances: 30 },
+  salaryPeriodFrom: 26, salaryPeriodTo: '25', ctcSplit: { basic: 50, hra: 20, allowances: 30 },
   leaveTypes: { Casual: true, Sick: true, Earned: true, Maternity: true, Paternity: true, 'Comp-off': true },
   twoLevelApproval: { leave: true, attendance: true, expense: true },
   lateMarkPenalty: false, geoFencing: false, selfieCheckin: false, pfEsi: false,
@@ -51,7 +52,7 @@ function initialState(): HrState {
     orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
     employees: [], employeeCredentials: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
     regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
-    payrollRun: { month: currentMonthLabel(), status: 'not_run' },
+    payrollRun: { month: currentPayrollMonthKey(DEFAULT_RULES), status: 'not_run' },
     templates: {}, rules: DEFAULT_RULES, auditLog: [],
   };
 }
@@ -106,9 +107,10 @@ interface HrToolContextValue {
   persistAttendance: (rec: HrAttendanceRecord) => Promise<void>;
   persistAttendanceOverride: (o: HrAttendanceOverride) => Promise<void>;
   persistPunch: (p: HrPunch) => Promise<void>;
-  persistPayrollRun: (v: HrPayrollRun) => Promise<void>;
+  runPayrollForMonth: (month: string) => Promise<{ success: boolean; data?: { entries: HrPayrollEntry[] }; error?: string }>;
   persistTemplate: (name: string, content: string) => Promise<void>;
   resetSampleData: () => Promise<boolean>;
+  upsertEmployeeCredentialInState: (cred: HrEmployeeCredential) => void;
 }
 
 const HrToolContext = createContext<HrToolContextValue | null>(null);
@@ -201,7 +203,30 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, punchLog: { ...s.punchLog, [p.emp]: p } }));
     try { await hrApi.recordPunch(p); } catch { warnSaveFailed(); }
   }, []);
-  const persistPayrollRun = useCallback(async (v: HrPayrollRun) => { setState((s) => ({ ...s, payrollRun: v })); try { await hrApi.savePayrollRun(v); } catch { warnSaveFailed(); } }, []);
+  /** Computes and freezes real Net Pay for a payroll month (see HrToolService.runPayroll) —
+   * refuses if the period hasn't ended yet. Updates state.payrollRun optimistically on
+   * success so Dashboard's stat tile stays live without a full bootstrap reload. */
+  const runPayrollForMonth = useCallback(async (month: string) => {
+    const res = await hrApi.runPayroll(month);
+    if (res.success) {
+      setState((s) => ({ ...s, payrollRun: { month, status: 'run', runAt: new Date().toISOString(), runBy: state.currentUser?.name || null } }));
+    }
+    return res;
+  }, [state.currentUser]);
+  /** Patches state.employeeCredentials with a just-created/edited credential (the REST
+   * response already has the full row — no need to refetch the whole list). Keeps
+   * Directory's orphan-credential detection and any name-matched lookups (Attendance,
+   * Payroll) fresh immediately after a hire, without a full bootstrap reload. */
+  const upsertEmployeeCredentialInState = useCallback((cred: HrEmployeeCredential) => {
+    setState((s) => {
+      const idx = s.employeeCredentials.findIndex((c) => c.id === cred.id);
+      const employeeCredentials = idx >= 0
+        ? s.employeeCredentials.map((c, i) => (i === idx ? cred : c))
+        : [...s.employeeCredentials, cred];
+      return { ...s, employeeCredentials };
+    });
+  }, []);
+
   const persistTemplate = useCallback(async (name: string, content: string) => {
     setState((s) => ({ ...s, templates: { ...s.templates, [name]: { content } } }));
     try { await hrApi.saveTemplate(name, content); } catch { warnSaveFailed(); }
@@ -229,13 +254,13 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistAttendance, persistAttendanceOverride, persistPunch,
-    persistPayrollRun, persistTemplate, resetSampleData,
+    runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
     state, loading, loadError, setView, login, logout, logRuleChange,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistAttendance, persistAttendanceOverride, persistPunch,
-    persistPayrollRun, persistTemplate, resetSampleData,
+    runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   ]);
 
   return <HrToolContext.Provider value={value}>{children}</HrToolContext.Provider>;

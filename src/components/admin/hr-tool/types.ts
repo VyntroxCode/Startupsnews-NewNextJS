@@ -2,19 +2,18 @@ export type {
   HrTeam, HrHoliday, HrOrgStructure, HrDocRef, HrSignedDoc, HrCtcSplit, HrEmployee,
   HrOnboardingAssets, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrApprovalBase, HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask,
-  HrPayrollRun, HrTemplate, HrRules, HrAuditLogEntry, HrBootstrap,
+  HrPayrollRun, HrPayrollEntry, HrTemplate, HrRules, HrAuditLogEntry, HrBootstrap,
 } from '@/modules/hr-tool/domain/types';
 
 export type HrRole = 'HR Head' | 'Founder' | 'Reporting Manager' | 'Employee';
 
 export type HrView =
-  | 'dashboard' | 'directory' | 'assigning-ids' | 'onboarding' | 'offboarding' | 'attendance' | 'leave'
+  | 'dashboard' | 'directory' | 'onboarding' | 'offboarding' | 'attendance' | 'leave'
   | 'payroll' | 'expenses' | 'compliance' | 'posh' | 'helpdesk' | 'company' | 'rules' | 'documents';
 
 export const VIEW_ACCESS: Record<HrView, HrRole[]> = {
   dashboard: ['HR Head', 'Founder', 'Reporting Manager', 'Employee'],
   directory: ['HR Head', 'Founder', 'Reporting Manager'],
-  'assigning-ids': ['Founder'],
   onboarding: ['HR Head', 'Founder'],
   offboarding: ['HR Head', 'Founder'],
   attendance: ['HR Head', 'Founder', 'Reporting Manager', 'Employee'],

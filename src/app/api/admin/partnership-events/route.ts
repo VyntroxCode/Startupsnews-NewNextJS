@@ -66,11 +66,11 @@ export async function POST(request: NextRequest) {
     if (errorResponse) return errorResponse;
     if (!body) return NextResponse.json({ success: false, error: 'Request body is required' }, { status: 400 });
 
-    const entity = await partnershipEventsService.createEvent({ ...body, source: body.source || 'Manually added' }, auth.user.email);
+    const { entity, warning } = await partnershipEventsService.createEvent({ ...body, source: body.source || 'Manually added' }, auth.user.email);
     const linkedMap = await partnershipEventsService.getLinkedEventSummaries([entity]);
     const linkedEvent = entity.event_id ? linkedMap.get(entity.event_id) || null : null;
 
-    return NextResponse.json({ success: true, data: { ...entityToPartnershipEvent(entity), linkedEvent } }, { status: 201 });
+    return NextResponse.json({ success: true, data: { ...entityToPartnershipEvent(entity), linkedEvent }, warning }, { status: 201 });
   } catch (error) {
     console.error('Error creating partnership event:', error);
     return NextResponse.json(

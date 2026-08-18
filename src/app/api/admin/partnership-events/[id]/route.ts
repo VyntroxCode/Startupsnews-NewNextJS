@@ -31,13 +31,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (errorResponse) return errorResponse;
     if (!body) return NextResponse.json({ success: false, error: 'Request body is required' }, { status: 400 });
 
-    const entity = await partnershipEventsService.updateEvent(id, body, auth.user.email);
-    if (!entity) return NextResponse.json({ success: false, error: 'Partnership event not found' }, { status: 404 });
+    const result = await partnershipEventsService.updateEvent(id, body, auth.user.email);
+    if (!result) return NextResponse.json({ success: false, error: 'Partnership event not found' }, { status: 404 });
+    const { entity, warning } = result;
 
     const linkedMap = await partnershipEventsService.getLinkedEventSummaries([entity]);
     const linkedEvent = entity.event_id ? linkedMap.get(entity.event_id) || null : null;
 
-    return NextResponse.json({ success: true, data: { ...entityToPartnershipEvent(entity), linkedEvent } });
+    return NextResponse.json({ success: true, data: { ...entityToPartnershipEvent(entity), linkedEvent }, warning });
   } catch (error) {
     console.error('Error updating partnership event:', error);
     return NextResponse.json(

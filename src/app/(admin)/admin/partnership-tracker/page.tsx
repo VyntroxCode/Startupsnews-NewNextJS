@@ -6,13 +6,15 @@ import * as XLSX from 'xlsx';
 import { getAuthHeaders, getAdminUser } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
+import RichTextEditor from '@/components/admin/RichTextEditor';
 import EventsManagementTabs from '@/components/admin/events/EventsManagementTabs';
 import {
-  PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, LISTING_OPTIONS, SITE_STATUS_OPTIONS,
-  EVENT_TICKET_TYPE_OPTIONS, CURRENCY_OPTIONS, EVENT_DESCRIPTION_MIN_LENGTH,
+  PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, PARTNERSHIP_KIND_OPTIONS, SITE_STATUS_OPTIONS,
+  EVENT_DESCRIPTION_MIN_LENGTH,
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
   type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
+import { COUNTRY_NAMES, citiesForCountry } from '@/modules/partnership-events/domain/country-city-data';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey } from '@/modules/partnership-events/utils/partnership-events.utils';
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-pt-display' });
@@ -150,6 +152,13 @@ function normalizeListing(rawListing: string, rawLink: string, statusBucket: str
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Event Description is rich-text HTML now (RichTextEditor), not plain text — length checks
+// need the visible character count, not raw markup, or an empty "<p></p>" doc would read as
+// non-empty and a short-but-heavily-formatted description would read as artificially long.
+function stripHtml(html: string): string {
+  return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 // The Website field should only ever hold the event/organiser's own site — never our own coverage link.
 const WEBSITE_EXCLUDE_DOMAINS = ['startupnews.fyi'];
 function cleanWebsite(url: string): string {
@@ -193,8 +202,10 @@ function computeDerived(e: PartnershipEvent): Derived {
   const refMs = effectiveEndMs ?? startMs;
   const isExpired = refMs !== null ? refMs < today : false;
   const dateOrderSuspect = !!(startMs !== null && explicitEndMs !== null && explicitEndMs < startMs);
-  const lastUpdMs = parseYmd(e.lastUpdatedDate) ?? parseYmd(e.initiatedDate);
-  const daysInStatus = lastUpdMs !== null ? daysBetween(today, lastUpdMs) : null;
+  // Total days from Initiated Date to the event's end date (falling back to start date if no
+  // end date is set) — not days-since-last-update, and not open-ended against "today".
+  const initiatedMs = parseYmd(e.initiatedDate);
+  const daysInStatus = (initiatedMs !== null && effectiveEndMs !== null) ? daysBetween(effectiveEndMs, initiatedMs) : null;
   const partnershipTypeResolved = e.partnershipType || (e.country ? (isIndia(e.country) ? 'Domestic' : 'International') : '');
   const listingResolved = normalizeListing(e.listing, e.listingLink, statusBucket);
   return { statusBucket, isExpired, dateOrderSuspect, daysInStatus, listingResolved, partnershipTypeResolved };
@@ -487,7 +498,7 @@ function loadActivityLog(): ActivityEntry[] {
   } catch { return []; }
 }
 
-async function api<T = unknown>(url: string, init?: RequestInit): Promise<{ success: boolean; data?: T; error?: string }> {
+async function api<T = unknown>(url: string, init?: RequestInit): Promise<{ success: boolean; data?: T; error?: string; warning?: string }> {
   try {
     const res = await fetch(url, { ...init, headers: { ...getAuthHeaders(), ...(init?.headers || {}) } });
     return await res.json();
@@ -499,12 +510,17 @@ async function api<T = unknown>(url: string, init?: RequestInit): Promise<{ succ
 /* ============================================================
    PAGE
    ============================================================ */
-interface EventRegion { id: number; name: string; sort_order: number; }
+
+/** Region/Country dropdown options: the static country list, always including the
+ * currently-selected value so editing an older event never silently blanks its region out. */
+function buildRegionOptions(currentValue: string): string[] {
+  const set = new Set<string>(COUNTRY_NAMES);
+  if (currentValue) set.add(currentValue);
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
 
 export default function PartnershipTrackerPage() {
   const [events, setEvents] = useState<PartnershipEvent[]>([]);
-  const [regions, setRegions] = useState<EventRegion[]>([]);
-  const [regionsLoadError, setRegionsLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; kind: 'success' | 'error' } | null>(null);
 
@@ -533,6 +549,14 @@ export default function PartnershipTrackerPage() {
   const [modalError, setModalError] = useState('');
   // Which social-creative platform panels are expanded in the Add/Edit modal — reset per open.
   const [openCreativePlatforms, setOpenCreativePlatforms] = useState<Set<string>>(new Set());
+  // "Others" manual-entry mode for the Region/Country and City fields — reset per open.
+  const [regionOther, setRegionOther] = useState(false);
+  const [cityOther, setCityOther] = useState(false);
+  // Only close an overlay on backdrop click if the mousedown ALSO started on the backdrop —
+  // otherwise selecting/copying text inside the modal and releasing the mouse past its edge
+  // (a normal text-selection drag) was misread as a backdrop click and closed the modal.
+  const modalMouseDownOnBackdrop = useRef(false);
+  const dailyReportMouseDownOnBackdrop = useRef(false);
 
   const [busy, setBusy] = useState(false);
   interface ImportLogEntry {
@@ -665,13 +689,6 @@ export default function PartnershipTrackerPage() {
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/admin/event-regions', { headers: getAuthHeaders() })
-      .then((r) => r.json())
-      .then((d) => { if (d.success) setRegions(d.data); else setRegionsLoadError(true); })
-      .catch(() => setRegionsLoadError(true));
   }, []);
 
   useEffect(() => {
@@ -833,15 +850,18 @@ export default function PartnershipTrackerPage() {
     setDraft(emptyDraft());
     setModalError('');
     setOpenCreativePlatforms(new Set());
+    setRegionOther(false);
+    setCityOther(false);
     setModalOpen(true);
   }
   function openEditModal(e: PartnershipEvent) {
     setEditingId(e.id);
     const { id: _id, eventId: _eventId, linkedEvent, createdAt: _createdAt, updatedAt: _updatedAt, createdBy: _createdBy, updatedBy: _updatedBy, ...rest } = e;
     void _id; void _eventId; void _createdAt; void _updatedAt; void _createdBy; void _updatedBy;
+    const regionValue = linkedEvent?.location || '';
     setDraft({
       ...rest,
-      region: linkedEvent?.location || '',
+      region: regionValue,
       // "Completed" is automatic, never a dropdown option — reopening a published-then-auto-completed
       // event should still show/resave as "Published", not silently reset to Draft.
       siteStatus: linkedEvent?.status === 'completed' ? 'upcoming' : (linkedEvent?.status || 'draft'),
@@ -849,6 +869,9 @@ export default function PartnershipTrackerPage() {
     setModalError('');
     // Auto-expand any platform that already has images, so editing an event doesn't hide its own data.
     setOpenCreativePlatforms(new Set(SOCIAL_CREATIVE_PLATFORMS.filter((p) => e.socialCreatives.some((c) => c.platform === p))));
+    setRegionOther(!!regionValue && !COUNTRY_NAMES.includes(regionValue));
+    const cities = citiesForCountry(regionValue);
+    setCityOther(!!e.city && !!cities && !cities.includes(e.city));
     setModalOpen(true);
   }
   async function saveModal() {
@@ -875,11 +898,7 @@ export default function PartnershipTrackerPage() {
       setModalError('Email ID looks invalid — enter a valid address (e.g. name@example.com).');
       return;
     }
-    if (draft.partnershipStatus === 'Partnership Done' && !draft.listingLink.trim()) {
-      setModalError('Add a Listing link before marking this Partnership Done.');
-      return;
-    }
-    const descVal = draft.description.trim();
+    const descVal = stripHtml(draft.description);
     if (descVal && descVal.length < EVENT_DESCRIPTION_MIN_LENGTH) {
       setModalError(`Event Description needs at least ${EVENT_DESCRIPTION_MIN_LENGTH} characters (currently ${descVal.length}).`);
       return;
@@ -892,13 +911,19 @@ export default function PartnershipTrackerPage() {
     }
     setSaving(true);
     setModalError('');
-    const payload = { ...effectiveDraft, website: cleanWebsite(effectiveDraft.website), socialCreatives: effectiveDraft.socialCreatives.filter((c) => c.image.trim()) };
+    // Country field was removed from the form (point 3) — Region/Country now covers it,
+    // so mirror the selection into `country` for the existing dedup/exports/table columns.
+    const payload = { ...effectiveDraft, country: effectiveDraft.region, website: cleanWebsite(effectiveDraft.website), socialCreatives: effectiveDraft.socialCreatives.filter((c) => c.image.trim()) };
     try {
       const res = editingId
         ? await api(`/api/admin/partnership-events/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         : await api('/api/admin/partnership-events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (res.success) {
-        showToast(editingId ? 'Event updated.' : 'Event added.');
+        if (res.warning) {
+          showToast(res.warning, 'error');
+        } else {
+          showToast(editingId ? 'Event updated.' : 'Event added.');
+        }
         logActivity(editingId ? 'edited' : 'added', draft.eventName);
         setModalOpen(false);
         await loadEvents();
@@ -1092,6 +1117,9 @@ export default function PartnershipTrackerPage() {
 
   const activityCreatedFiltered = todayActivity.created.filter((x) => activityPersonFilter === 'all' || x.event.createdBy === activityPersonFilter);
   const activityUpdatedFiltered = todayActivity.updated.filter((x) => activityPersonFilter === 'all' || x.event.updatedBy === activityPersonFilter);
+
+  const regionOptions = buildRegionOptions(draft.region);
+  const citiesForSelectedCountry = citiesForCountry(draft.region);
 
   /* ---------------- Render ---------------- */
   return (
@@ -1377,8 +1405,6 @@ export default function PartnershipTrackerPage() {
                       <th onClick={() => toggleSort('daysInStatus')}>Days in status{sortKey === 'daysInStatus' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Type</th>
                       <th onClick={() => toggleSort('lastUpdatedDate')}>Last updated{sortKey === 'lastUpdatedDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th>Listing</th>
-                      <th>Listing link</th>
                       <th>Comment</th>
                       <th>Speakers / Guests</th>
                       <th>Site Status</th>
@@ -1387,7 +1413,7 @@ export default function PartnershipTrackerPage() {
                   </thead>
                   <tbody>
                     {pageList.length === 0 ? (
-                      <tr><td colSpan={23} className="pt-empty">No events match these filters.</td></tr>
+                      <tr><td colSpan={21} className="pt-empty">No events match these filters.</td></tr>
                     ) : pageList.map((e) => {
                       const d = derivedById.get(e.id)!;
                       const color = STATUS_COLOR_HEX[d.statusBucket] || '#9CA3AF';
@@ -1431,20 +1457,12 @@ export default function PartnershipTrackerPage() {
                               onChange={(ev) => updateStatusInline(e.id, ev.target.value)}
                             >
                               {d.statusBucket === 'Unmapped' && <option value="" disabled>Unmapped</option>}
-                              {STATUS_ORDER.map((s) => (
-                                <option
-                                  key={s} value={s}
-                                  disabled={s === 'Partnership Done' && !e.listingLink.trim()}
-                                  title={s === 'Partnership Done' && !e.listingLink.trim() ? 'Add a Listing link before marking this Partnership Done' : undefined}
-                                >{s}</option>
-                              ))}
+                              {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
                             </select>
                           </td>
                           <td>{d.daysInStatus !== null ? <span className="pt-mono">{d.daysInStatus}d</span> : <span className="pt-muted">—</span>}</td>
                           <td>{d.partnershipTypeResolved || <span className="pt-muted">—</span>}</td>
                           <td className="pt-mono">{fmtDisplay(e.lastUpdatedDate)}</td>
-                          <td>{d.listingResolved}</td>
-                          <td>{e.listingLink ? <a className="pt-link" href={e.listingLink} target="_blank" rel="noopener">link</a> : <span className="pt-muted">—</span>}</td>
                           <td title={e.comment}>{e.comment || <span className="pt-muted">—</span>}</td>
                           <td title={speakersExportText(e.speakers)}>{speakersExportText(e.speakers) || <span className="pt-muted">—</span>}</td>
                           <td>
@@ -1504,13 +1522,28 @@ export default function PartnershipTrackerPage() {
         )}
 
         {/* Add / Edit modal */}
-        <div className={`pt-overlay ${modalOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}>
+        <div
+          className={`pt-overlay ${modalOpen ? 'open' : ''}`}
+          onMouseDown={(e) => { modalMouseDownOnBackdrop.current = e.target === e.currentTarget; }}
+          onClick={(e) => { if (e.target === e.currentTarget && modalMouseDownOnBackdrop.current) setModalOpen(false); }}
+        >
           <div className="pt-modal">
             <div className="pt-modal-header">
               <h2>{editingId ? 'Edit event' : 'Add event'}</h2>
               <button className="pt-modal-close" onClick={() => setModalOpen(false)}>✕</button>
             </div>
             <div className="pt-modal-body">
+              <div className="pt-form-grid">
+                <div className="pt-fg">
+                  <label>Partnership Type</label>
+                  <select value={draft.eventType} onChange={(e) => setDraft({ ...draft, eventType: e.target.value })}>
+                    <option value="">—</option>
+                    {PARTNERSHIP_KIND_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="pt-fg"><label>Initiated date</label><input type="date" value={draft.initiatedDate} onChange={(e) => setDraft({ ...draft, initiatedDate: e.target.value })} /></div>
+              </div>
+
               <div className="pt-section-title">1. Event basics</div>
               <div className="pt-form-grid">
                 <div className="pt-fg pt-full">
@@ -1519,21 +1552,78 @@ export default function PartnershipTrackerPage() {
                   <div className="pt-hint">Format: Event Name | City | Date</div>
                 </div>
                 <div className="pt-fg">
-                  <label>Region (for website listing) *</label>
-                  <select value={draft.region} onChange={(e) => setDraft({ ...draft, region: e.target.value })}>
-                    <option value="">Select region</option>
-                    {regions.map((r) => <option key={r.id} value={r.name}>{r.name}</option>)}
-                  </select>
-                  {regionsLoadError ? (
-                    <div className="pt-hint" style={{ color: '#C22B44' }}>Couldn&apos;t load regions — reload the page and try again.</div>
+                  <label>Region/Country (for website listing) *</label>
+                  {regionOther ? (
+                    <>
+                      <input
+                        placeholder="Enter region/country"
+                        value={draft.region}
+                        onChange={(e) => setDraft({ ...draft, region: e.target.value })}
+                      />
+                      <div className="pt-hint"><span className="pt-add-line" onClick={() => { setRegionOther(false); setCityOther(false); setDraft({ ...draft, region: '', city: '' }); }}>← Choose from list</span></div>
+                    </>
                   ) : (
-                    <div className="pt-hint">Not listed? <a href="/admin/events?tab=regions" target="_blank">Add it in Event Regions →</a></div>
+                    <>
+                      <select
+                        value={draft.region}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '__other__') {
+                            setRegionOther(true);
+                            setCityOther(false);
+                            setDraft({ ...draft, region: '', city: '' });
+                            return;
+                          }
+                          setCityOther(false);
+                          setDraft({ ...draft, region: value, city: '' });
+                        }}
+                      >
+                        <option value="">Select region/country</option>
+                        {regionOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+                        <option value="__other__">Others…</option>
+                      </select>
+                      <div className="pt-hint">Not listed? Pick &quot;Others…&quot; and type it in.</div>
+                    </>
                   )}
                 </div>
-                <div className="pt-fg"><label>City</label><input value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} /></div>
-                <div className="pt-fg"><label>Country</label><input value={draft.country} onChange={(e) => setDraft({ ...draft, country: e.target.value })} /></div>
+                <div className="pt-fg">
+                  <label>City</label>
+                  {citiesForSelectedCountry ? (
+                    cityOther ? (
+                      <>
+                        <input placeholder="Enter city" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
+                        <div className="pt-hint"><span className="pt-add-line" onClick={() => { setCityOther(false); setDraft({ ...draft, city: '' }); }}>← Choose from list</span></div>
+                      </>
+                    ) : (
+                      <select
+                        value={draft.city}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '__other__') { setCityOther(true); setDraft({ ...draft, city: '' }); return; }
+                          setDraft({ ...draft, city: value });
+                        }}
+                      >
+                        <option value="">Select city</option>
+                        {citiesForSelectedCountry.map((c) => <option key={c} value={c}>{c}</option>)}
+                        <option value="__other__">Others…</option>
+                      </select>
+                    )
+                  ) : (
+                    <input value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
+                  )}
+                </div>
                 <div className="pt-fg"><label>Organiser/Company Name</label><input value={draft.organiser} onChange={(e) => setDraft({ ...draft, organiser: e.target.value })} /></div>
-                <div className="pt-fg"><label>POC - Name</label><input value={draft.poc} onChange={(e) => setDraft({ ...draft, poc: e.target.value })} /></div>
+                <div className="pt-fg">
+                  <label>POC - Name</label>
+                  <input
+                    value={draft.poc}
+                    onChange={(e) => {
+                      const poc = e.target.value;
+                      // Organiser autopicks the POC value until the admin edits Organiser themselves.
+                      setDraft((d) => ({ ...d, poc, organiser: (!d.organiser.trim() || d.organiser === d.poc) ? poc : d.organiser }));
+                    }}
+                  />
+                </div>
                 <div className="pt-fg"><label>Contact No.</label><input type="tel" value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} /></div>
                 <div className="pt-fg"><label>Email ID</label><input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value.replace(/\s/g, '') })} /></div>
                 <div className="pt-fg pt-full">
@@ -1541,7 +1631,7 @@ export default function PartnershipTrackerPage() {
                   <input placeholder="https://mail.google.com/mail/u/0/#inbox/…" value={draft.emailThread} onChange={(e) => setDraft({ ...draft, emailThread: e.target.value })} />
                   <div className="pt-hint">Paste the direct Gmail thread link for this conversation.</div>
                 </div>
-                <div className="pt-fg pt-full"><label>Website Link</label><input value={draft.website} onChange={(e) => setDraft({ ...draft, website: e.target.value })} /></div>
+                <div className="pt-fg pt-full"><label>Registration Link</label><input value={draft.website} onChange={(e) => setDraft({ ...draft, website: e.target.value })} /></div>
               </div>
 
               <div className="pt-section-title">2. Event start &amp; end date/time</div>
@@ -1550,7 +1640,6 @@ export default function PartnershipTrackerPage() {
                 <div className="pt-fg"><label>Event Start Time</label><input type="time" value={draft.eventStartTime} onChange={(e) => setDraft({ ...draft, eventStartTime: e.target.value })} /></div>
                 <div className="pt-fg"><label>Event End Date</label><input type="date" value={draft.eventEndDate} onChange={(e) => setDraft({ ...draft, eventEndDate: e.target.value })} /></div>
                 <div className="pt-fg"><label>Event End Time</label><input type="time" value={draft.eventEndTime} onChange={(e) => setDraft({ ...draft, eventEndTime: e.target.value })} /></div>
-                <div className="pt-fg"><label>Initiated date</label><input type="date" value={draft.initiatedDate} onChange={(e) => setDraft({ ...draft, initiatedDate: e.target.value })} /></div>
                 <div className="pt-fg"><label>Last Updated Date</label><input type="date" value={draft.lastUpdatedDate} onChange={(e) => setDraft({ ...draft, lastUpdatedDate: e.target.value })} /></div>
               </div>
 
@@ -1563,34 +1652,16 @@ export default function PartnershipTrackerPage() {
               <div className="pt-section-title">4. Event description</div>
               <div className="pt-form-grid">
                 <div className="pt-fg pt-full">
-                  <textarea rows={5} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-                  <div className={`pt-hint ${draft.description.trim().length > 0 && draft.description.trim().length < EVENT_DESCRIPTION_MIN_LENGTH ? 'pt-hint-warn' : ''}`}>
-                    {draft.description.trim().length} / {EVENT_DESCRIPTION_MIN_LENGTH} characters minimum
+                  <RichTextEditor
+                    value={draft.description}
+                    onChange={(description) => setDraft({ ...draft, description })}
+                    placeholder="Event description (formatting supported)..."
+                    minHeight={200}
+                  />
+                  <div className={`pt-hint ${stripHtml(draft.description).length > 0 && stripHtml(draft.description).length < EVENT_DESCRIPTION_MIN_LENGTH ? 'pt-hint-warn' : ''}`}>
+                    {stripHtml(draft.description).length} / {EVENT_DESCRIPTION_MIN_LENGTH} characters minimum
                   </div>
                 </div>
-              </div>
-
-              <div className="pt-section-title">5. Event type &amp; ticketing</div>
-              <div className="pt-form-grid">
-                <div className="pt-fg">
-                  <label>Event Type</label>
-                  <select value={draft.eventType} onChange={(e) => setDraft({ ...draft, eventType: e.target.value, ...(e.target.value === 'Free' ? { ticketCurrency: '', ticketPrice: '' } : {}) })}>
-                    <option value="">—</option>
-                    {EVENT_TICKET_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                {draft.eventType === 'Paid' && (
-                  <>
-                    <div className="pt-fg">
-                      <label>Ticket starts from — Currency</label>
-                      <select value={draft.ticketCurrency} onChange={(e) => setDraft({ ...draft, ticketCurrency: e.target.value })}>
-                        <option value="">—</option>
-                        {CURRENCY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    <div className="pt-fg"><label>Ticket starts from — Amount</label><input type="number" min="0" value={draft.ticketPrice} onChange={(e) => setDraft({ ...draft, ticketPrice: e.target.value })} /></div>
-                  </>
-                )}
               </div>
 
               <div className="pt-section-title">6. Key speakers / guests</div>
@@ -1665,32 +1736,15 @@ export default function PartnershipTrackerPage() {
                     }}
                   >
                     <option value="">—</option>
-                    {STATUS_ORDER.map((s) => (
-                      <option
-                        key={s} value={s}
-                        disabled={s === 'Partnership Done' && !draft.listingLink.trim()}
-                        title={s === 'Partnership Done' && !draft.listingLink.trim() ? 'Add a Listing link before marking this Partnership Done' : undefined}
-                      >{s}</option>
-                    ))}
+                    {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="pt-fg">
-                  <label>Partnership Type</label>
+                  <label>Event Type</label>
                   <select value={draft.partnershipType} onChange={(e) => setDraft({ ...draft, partnershipType: e.target.value })}>
                     <option value="">—</option>
                     {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
-                </div>
-                <div className="pt-fg">
-                  <label>Listing</label>
-                  <select value={draft.listing} onChange={(e) => setDraft({ ...draft, listing: e.target.value })}>
-                    <option value="">—</option>
-                    {LISTING_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                </div>
-                <div className="pt-fg">
-                  <label>Listing link (if yes)</label>
-                  <input value={draft.listingLink} onChange={(e) => setDraft({ ...draft, listingLink: e.target.value })} />
                 </div>
                 <div className="pt-fg pt-full"><label>Internal comment</label><textarea value={draft.comment} onChange={(e) => setDraft({ ...draft, comment: e.target.value })} /></div>
                 <div className="pt-fg pt-full">
@@ -1723,7 +1777,11 @@ export default function PartnershipTrackerPage() {
         </div>
 
         {/* Daily report modal */}
-        <div className={`pt-overlay ${dailyReportOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setDailyReportOpen(false); }}>
+        <div
+          className={`pt-overlay ${dailyReportOpen ? 'open' : ''}`}
+          onMouseDown={(e) => { dailyReportMouseDownOnBackdrop.current = e.target === e.currentTarget; }}
+          onClick={(e) => { if (e.target === e.currentTarget && dailyReportMouseDownOnBackdrop.current) setDailyReportOpen(false); }}
+        >
           <div className="pt-modal" style={{ width: 560 }}>
             <div className="pt-modal-header">
               <h2>Daily Report</h2>

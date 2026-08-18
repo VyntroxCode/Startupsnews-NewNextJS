@@ -159,12 +159,12 @@ export const SITE_STATUS_OPTIONS: { value: 'draft' | 'upcoming' | 'cancelled'; l
 ];
 export const PARTNERSHIP_TYPE_OPTIONS = ['Domestic', 'International'] as const;
 export const LISTING_OPTIONS = ['No', 'Pending', 'In process', 'Yes'] as const;
-export const EVENT_TICKET_TYPE_OPTIONS = ['Free', 'Paid'] as const;
+/** Stored in the `eventType`/`event_type` field — repurposed from the old Free/Paid ticketing dropdown. */
+export const PARTNERSHIP_KIND_OPTIONS = ['Media Partnership', 'Ticketing Partnership', 'No Partnership'] as const;
 export const SOCIAL_CREATIVE_PLATFORMS = ['instagram', 'facebook', 'linkedin', 'whatsapp'] as const;
 export const SOCIAL_CREATIVE_PLATFORM_LABELS: Record<string, string> = {
   instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', whatsapp: 'WhatsApp', other: 'Other (from before)',
 };
-export const CURRENCY_OPTIONS = ['INR', 'USD', 'AED', 'GBP', 'EUR', 'SGD'] as const;
 
 /** Guidance shown next to each upload/text field in the Add/Edit modal. */
 export const EVENT_DESCRIPTION_MIN_LENGTH = 150;

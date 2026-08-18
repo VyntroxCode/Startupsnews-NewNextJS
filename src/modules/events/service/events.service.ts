@@ -2,6 +2,16 @@ import { EventsRepository } from '../repository/events.repository';
 import { EventEntity, CreateEventDto, UpdateEventDto } from '../domain/types';
 import { getCache, setCache, deleteCache, deleteCacheByPrefix } from '@/shared/cache/redis.client';
 
+/** Distinguishable from a generic write failure — lets callers like
+ * PartnershipEventsService.syncLinkedEvent tell "this event genuinely no longer exists" apart
+ * from "the update failed for some other reason", instead of treating every error the same. */
+export class EventNotFoundError extends Error {
+  constructor(id: number) {
+    super(`Event with ID ${id} not found`);
+    this.name = 'EventNotFoundError';
+  }
+}
+
 export class EventsService {
   constructor(private repository: EventsRepository) { }
 
@@ -114,7 +124,7 @@ export class EventsService {
   async updateEvent(id: number, data: Partial<CreateEventDto>): Promise<EventEntity> {
     const existingEvent = await this.repository.findById(id);
     if (!existingEvent) {
-      throw new Error(`Event with ID ${id} not found`);
+      throw new EventNotFoundError(id);
     }
 
     // Convert camelCase to snake_case for database

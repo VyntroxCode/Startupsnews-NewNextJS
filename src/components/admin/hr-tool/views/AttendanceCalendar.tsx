@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
 import { applyApprovalDecision, ApprovalBadge, attendanceKey, isAdmin } from '../utils';
+import { isSunday } from '@/modules/hr-tool/utils/time';
 
 const REG_REASONS = ['Forgot to punch out', 'Forgot to punch in', 'System/network issue', 'Worked from a client site'];
 
@@ -26,10 +27,14 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
   const year = now.getFullYear(), month = now.getMonth();
   const totalDays = daysInMonth(year, month);
   const firstDow = new Date(year, month, 1).getDay();
+  const holidaySet = useMemo(() => new Set(state.orgStructure.holidays.map((h) => h.date)), [state.orgStructure.holidays]);
 
   function getDayStatus(dateStr: string): DayStatus {
     const override = state.attendanceOverrides[attendanceKey(empName, dateStr)];
     if (override) return override as DayStatus;
+    // A Sunday or a company holiday is a day off regardless of any punch that happens to
+    // exist for it — it shouldn't be judged present/absent just because nobody worked it.
+    if (isSunday(dateStr) || holidaySet.has(dateStr)) return 'off';
     const real = state.attendance.find((a) => a.emp === empName && a.date === dateStr);
     if (real) {
       const s = real.status.toLowerCase();
@@ -84,7 +89,7 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
 
   const real = state.attendance.find((a) => a.emp === empName && a.date === dateStr);
   const reg = state.regularizations.find((r) => r.emp === empName && r.date === dateStr);
-  const statusLabel = real ? real.status : (status ? { present: 'Present', absent: 'Absent', leave: 'On leave', off: 'Week-off' }[status] : 'Not recorded');
+  const statusLabel = status === 'off' ? 'Week-off' : real ? real.status : (status ? { present: 'Present', absent: 'Absent', leave: 'On leave' }[status] : 'Not recorded');
   const times = real ? { inTime: real.inTime, outTime: real.outTime } : { inTime: '—', outTime: '—' };
 
   async function saveCorrection() {

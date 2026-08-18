@@ -1,7 +1,14 @@
 import { PartnershipEventsRepository } from '../repository/partnership-events.repository';
 import { PartnershipEventEntity, PartnershipEventFilters, PartnershipEventInput, LinkedEventSummary } from '../domain/types';
 import { dedupKey, autoExcerpt } from '../utils/partnership-events.utils';
-import { EventsService } from '@/modules/events/service/events.service';
+import { EventsService, EventNotFoundError } from '@/modules/events/service/events.service';
+
+export interface SyncResult {
+  entity: PartnershipEventEntity;
+  /** Set when the linked event couldn't be synced cleanly — surfaced to the admin instead of
+   * being silently swallowed, so a save that didn't fully do what they expected is visible. */
+  warning?: string;
+}
 
 // Matches the VARCHAR limits on the `partnership_events` table (see
 // add-partnership-events-table.sql / add-partnership-events-lead-details.sql).
@@ -18,7 +25,7 @@ const FIELD_LIMITS: Partial<Record<keyof PartnershipEventInput, number>> = {
   eventStartTime: 20,
   eventEndTime: 20,
   googleLocationLink: 500,
-  eventType: 20,
+  eventType: 50,
   ticketCurrency: 10,
   ticketPrice: 50,
   posterUrl: 500,
@@ -79,14 +86,14 @@ export class PartnershipEventsService {
     return null;
   }
 
-  async createEvent(input: PartnershipEventInput, actor?: string) {
+  async createEvent(input: PartnershipEventInput, actor?: string): Promise<SyncResult> {
     const error = this.validateInput(input);
     if (error) throw new Error(error);
     const entity = await this.repository.create(clipInput({ ...input, eventName: input.eventName.trim() }), actor);
     return this.syncLinkedEvent(entity, input, actor);
   }
 
-  async updateEvent(id: number, input: Partial<PartnershipEventInput>, actor?: string) {
+  async updateEvent(id: number, input: Partial<PartnershipEventInput>, actor?: string): Promise<SyncResult | null> {
     if (input.eventName !== undefined && !input.eventName.trim()) throw new Error('Event name is required');
     const entity = await this.repository.update(id, clipInput(input), actor);
     if (!entity) return null;
@@ -102,18 +109,20 @@ export class PartnershipEventsService {
    *
    * Deliberately never lets a sync failure fail the whole save — the partnership record
    * the admin just carefully filled in must never be lost just because the website-listing
-   * half of this had a problem. Errors are logged server-side; the record simply keeps
-   * (or ends up with) no linked event, visible in the UI as "Not listed yet", and the next
-   * edit+save retries the sync.
+   * half of this had a problem. But it must also never silently create a DUPLICATE live
+   * event: recreating the linked event is only correct when it genuinely no longer exists
+   * (EventNotFoundError — e.g. deleted independently from the Events tab). Any other update
+   * failure (a transient DB error, say) is reported back as a warning instead of triggering
+   * a recreate, so a hiccup can't multiply one event into two.
    */
   private async syncLinkedEvent(
     entity: PartnershipEventEntity,
     input: Partial<PartnershipEventInput>,
     actor?: string
-  ): Promise<PartnershipEventEntity> {
-    if (input.region === undefined && input.siteStatus === undefined) return entity;
+  ): Promise<SyncResult> {
+    if (input.region === undefined && input.siteStatus === undefined) return { entity };
     const region = input.region?.trim();
-    if (!region) return entity;
+    if (!region) return { entity };
 
     const eventFields = {
       title: entity.event_name,
@@ -128,20 +137,29 @@ export class PartnershipEventsService {
       status: input.siteStatus || 'draft',
     };
 
+    let recreateReason: 'deleted' | null = null;
+
     try {
       if (entity.event_id) {
         try {
           await this.eventsService.updateEvent(entity.event_id, { ...eventFields, updatedBy: actor });
-          return entity;
+          return { entity };
         } catch (err) {
-          // The linked event may have been deleted independently (e.g. from the Events tab) —
+          if (!(err instanceof EventNotFoundError)) {
+            // Not "it's gone" — some other failure (DB hiccup, etc). Don't recreate: that
+            // would leave two live events for one partnership record. Report it and stop.
+            console.error(`Partnership event ${entity.id}: linked event ${entity.event_id} update failed:`, err);
+            return { entity, warning: 'Saved, but the linked website event could not be updated — please try saving again.' };
+          }
+          // The linked event really was deleted independently (e.g. from the Events tab) —
           // the stored event_id is now stale. Fall through and create a fresh one instead of
           // leaving this record permanently unable to sync.
-          console.warn(`Partnership event ${entity.id}: linked event ${entity.event_id} update failed, recreating instead:`, err);
+          recreateReason = 'deleted';
+          console.warn(`Partnership event ${entity.id}: linked event ${entity.event_id} no longer exists, recreating:`, err);
         }
       }
 
-      if (!entity.event_start_date) return entity; // creating a new linked event needs a date; updating an existing one doesn't need it re-supplied
+      if (!entity.event_start_date) return { entity }; // creating a new linked event needs a date; updating an existing one doesn't need it re-supplied
 
       const created = await this.eventsService.createEvent({
         ...eventFields,
@@ -150,10 +168,13 @@ export class PartnershipEventsService {
         createdBy: actor,
       });
       await this.repository.setEventId(entity.id, created.id);
-      return { ...entity, event_id: created.id };
+      const warning = recreateReason === 'deleted'
+        ? 'The previously linked website event was missing (likely deleted from the Events tab) and has been recreated.'
+        : undefined;
+      return { entity: { ...entity, event_id: created.id }, warning };
     } catch (err) {
       console.error(`Partnership event ${entity.id}: failed to sync linked event:`, err);
-      return entity;
+      return { entity, warning: 'Saved, but syncing to the live event listing failed — please try saving again.' };
     }
   }
 

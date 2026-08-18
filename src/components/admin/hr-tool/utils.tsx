@@ -9,7 +9,15 @@ import type { HrEmployee, HrOnboarding, HrRole, HrRules } from './types';
    used it now reads the real clock instead.)
 --------------------------------------------------------- */
 export function todayStr(): string { return new Date().toISOString().slice(0, 10); }
-export function currentMonthLabel(): string { return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); }
+/** "YYYY-MM" for the current month — the canonical key HrPayrollRun.month uses, so it's
+ * directly usable in date-range math. */
+export function currentMonthKey(): string { return todayStr().slice(0, 7); }
+/** "YYYY-MM" -> "August 2026", for display only. */
+export function monthKeyToLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  if (!y || !m) return key;
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
 export function daysLeft(deadline: string | null): number | null {
   if (!deadline) return null;
   const ms = new Date(deadline + 'T23:59:59').getTime() - new Date(todayStr()).getTime();

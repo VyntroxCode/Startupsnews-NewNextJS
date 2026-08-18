@@ -2,7 +2,7 @@ import { query, queryOne } from '@/shared/database/connection';
 import { findAllRows, replaceAllRows, parseJsonColumn, SqlParam } from './shared';
 import {
   HrTeam, HrHoliday, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
-  HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrTemplate,
+  HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrTemplate,
   HrRules, HrAuditLogEntry,
 } from '../domain/types';
 
@@ -10,7 +10,7 @@ interface NameRow { name: string; }
 interface HolidayRow { holiday_date: string; name: string; }
 
 interface EmployeeRow {
-  id: string; name: string; email: string | null; designation: string | null; team: string | null; manager: string | null;
+  id: string; credential_id: number | null; name: string; email: string | null; designation: string | null; team: string | null; manager: string | null;
   status: string; doj: string | null; sys_role: string; ctc: number;
   leave_balance: unknown; documents: unknown; signed_docs: unknown; ctc_split_override: unknown; probation_extended_by: number | null;
 }
@@ -28,7 +28,8 @@ interface LeaveRow extends ApprovalRow { type: string; from_date: string; to_dat
 interface ExpenseRow extends ApprovalRow { category: string | null; amount: number; }
 interface TicketRow { id: string; emp: string; category: string | null; status: string; note: string | null; }
 interface ComplianceRow { task: string; due_date: string | null; status: string; }
-interface PayrollRow { month: string; status: string; }
+interface PayrollRow { month: string; status: string; run_at: string | null; run_by: string | null; }
+interface PayrollEntryRow { month: string; emp: string; working_days: number; present_days: number; leave_days: number; lop_days: number; monthly_gross: number; net_pay: number; }
 interface RulesRow {
   working_days_pattern: string; shift_start_time: string; shift_end_time: string; shift_grace_minutes: number;
   half_day_threshold_hours: number; regularization_window_days: number; regularization_override: number;
@@ -68,7 +69,7 @@ export class HrToolRepository {
   // --- Employees ---
   private employeeFromRow(r: EmployeeRow): HrEmployee {
     return {
-      id: r.id, name: r.name, email: r.email || '', designation: r.designation || '', team: r.team || '',
+      id: r.id, credentialId: r.credential_id, name: r.name, email: r.email || '', designation: r.designation || '', team: r.team || '',
       manager: r.manager, status: r.status, doj: r.doj || '', sysRole: r.sys_role, ctc: r.ctc,
       leaveBalance: parseJsonColumn(r.leave_balance, {}), documents: parseJsonColumn(r.documents, []),
       signedDocs: parseJsonColumn(r.signed_docs, []), ctcSplitOverride: parseJsonColumn(r.ctc_split_override, null),
@@ -82,10 +83,10 @@ export class HrToolRepository {
   async replaceEmployees(employees: HrEmployee[]): Promise<void> {
     await replaceAllRows(
       'hr_employees',
-      ['id', 'name', 'email', 'designation', 'team', 'manager', 'status', 'doj', 'sys_role', 'ctc', 'leave_balance', 'documents', 'signed_docs', 'ctc_split_override', 'probation_extended_by'],
+      ['id', 'credential_id', 'name', 'email', 'designation', 'team', 'manager', 'status', 'doj', 'sys_role', 'ctc', 'leave_balance', 'documents', 'signed_docs', 'ctc_split_override', 'probation_extended_by'],
       employees,
       (e) => [
-        e.id, e.name, e.email || null, e.designation || null, e.team || null, e.manager || null, e.status, e.doj || null,
+        e.id, e.credentialId ?? null, e.name, e.email || null, e.designation || null, e.team || null, e.manager || null, e.status, e.doj || null,
         e.sysRole, e.ctc, JSON.stringify(e.leaveBalance || {}), JSON.stringify(e.documents || []), JSON.stringify(e.signedDocs || []),
         e.ctcSplitOverride ? JSON.stringify(e.ctcSplitOverride) : null, e.probationExtendedBy ?? null,
       ]
@@ -212,6 +213,16 @@ export class HrToolRepository {
     const rows = await findAllRows<LeaveRow>('hr_leave_requests', 'created_at DESC');
     return rows.map((r) => ({ id: r.id, emp: r.emp, type: r.type, from: r.from_date, to: r.to_date, remarks: r.remarks || '', stage: r.stage, status: r.status, rmRemarks: r.rm_remarks || '', hrRemarks: r.hr_remarks || '' }));
   }
+  /** One employee's leave requests overlapping a date range — used by payroll to find approved
+   * leave for a payroll period. Leave has two date columns, so this is an interval-overlap
+   * test (from_date <= toDate AND to_date >= fromDate), not a simple single-column BETWEEN. */
+  async findLeaveRequestsForEmployeeInRange(emp: string, fromDate: string, toDate: string): Promise<HrLeaveRequest[]> {
+    const rows = await query<LeaveRow>(
+      'SELECT * FROM hr_leave_requests WHERE emp = ? AND from_date <= ? AND to_date >= ?',
+      [emp, toDate, fromDate]
+    );
+    return rows.map((r) => ({ id: r.id, emp: r.emp, type: r.type, from: r.from_date, to: r.to_date, remarks: r.remarks || '', stage: r.stage, status: r.status, rmRemarks: r.rm_remarks || '', hrRemarks: r.hr_remarks || '' }));
+  }
   async replaceLeaveRequests(items: HrLeaveRequest[]): Promise<void> {
     await replaceAllRows(
       'hr_leave_requests', ['id', 'emp', 'type', 'from_date', 'to_date', 'remarks', 'stage', 'status', 'rm_remarks', 'hr_remarks'], items,
@@ -248,12 +259,32 @@ export class HrToolRepository {
   // --- Payroll runs ---
   async findPayrollRuns(): Promise<HrPayrollRun[]> {
     const rows = await findAllRows<PayrollRow>('hr_payroll_runs');
-    return rows.map((r) => ({ month: r.month, status: r.status }));
+    return rows.map((r) => ({ month: r.month, status: r.status, runAt: r.run_at, runBy: r.run_by }));
   }
   async upsertPayrollRun(run: HrPayrollRun): Promise<void> {
     await query(
-      `INSERT INTO hr_payroll_runs (month, status) VALUES (?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)`,
-      [run.month, run.status]
+      `INSERT INTO hr_payroll_runs (month, status, run_at, run_by) VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE status = VALUES(status), run_at = VALUES(run_at), run_by = VALUES(run_by)`,
+      [run.month, run.status, run.runAt || null, run.runBy || null]
+    );
+  }
+
+  // --- Payroll entries (per-employee-per-month computed payroll) ---
+  async findPayrollEntriesForMonth(month: string): Promise<HrPayrollEntry[]> {
+    const rows = await query<PayrollEntryRow>('SELECT * FROM hr_payroll_entries WHERE month = ? ORDER BY emp ASC', [month]);
+    return rows.map((r) => ({
+      emp: r.emp, workingDays: r.working_days, presentDays: r.present_days, leaveDays: r.leave_days, lopDays: r.lop_days,
+      monthlyGross: r.monthly_gross, netPay: r.net_pay,
+    }));
+  }
+  async upsertPayrollEntry(month: string, entry: HrPayrollEntry): Promise<void> {
+    await query(
+      `INSERT INTO hr_payroll_entries (month, emp, working_days, present_days, leave_days, lop_days, monthly_gross, net_pay)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE working_days = VALUES(working_days), present_days = VALUES(present_days),
+        leave_days = VALUES(leave_days), lop_days = VALUES(lop_days), monthly_gross = VALUES(monthly_gross), net_pay = VALUES(net_pay),
+        computed_at = CURRENT_TIMESTAMP`,
+      [month, entry.emp, entry.workingDays, entry.presentDays, entry.leaveDays, entry.lopDays, entry.monthlyGross, entry.netPay]
     );
   }
 

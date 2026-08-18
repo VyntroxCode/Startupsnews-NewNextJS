@@ -3,9 +3,12 @@
 import { useMemo, useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
-import DraftOfferLetterButton from './DraftOfferLetterButton';
+import HireEmployeeButton from './HireEmployeeButton';
+import EditCredentialModal from './EditCredentialModal';
+import { PANEL_ROLE_LABEL } from './CredentialFields';
 import { StatusBadge, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
 import type { HrEmployee } from '../types';
+import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 
 function PageHead({ title, sub }: { title: string; sub: string }) {
   const { state } = useHrTool();
@@ -18,7 +21,7 @@ function PageHead({ title, sub }: { title: string; sub: string }) {
 }
 
 export default function Directory() {
-  const { state, persistEmployees, persistTeams, persistDesignations, logRuleChange } = useHrTool();
+  const { state, persistEmployees, persistTeams, persistDesignations, logRuleChange, upsertEmployeeCredentialInState } = useHrTool();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
@@ -26,8 +29,12 @@ export default function Directory() {
   const [ctcSplitId, setCtcSplitId] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [csvData, setCsvData] = useState('');
+  const [editingCredential, setEditingCredential] = useState<HrEmployeeCredential | null>(null);
+  const [issuingCredentialFor, setIssuingCredentialFor] = useState<HrEmployee | null>(null);
+  const [addingOrphanId, setAddingOrphanId] = useState<number | null>(null);
 
   const admin = isAdmin(state.role);
+  const founder = state.role === 'Founder';
 
   const visibleEmployees = useMemo(() => {
     if (admin) return state.employees;
@@ -39,6 +46,27 @@ export default function Directory() {
     (e.name.toLowerCase().includes(search.toLowerCase()) || e.designation.toLowerCase().includes(search.toLowerCase())) &&
     (!statusFilter || e.status === statusFilter) && (!teamFilter || e.team === teamFilter)
   ), [visibleEmployees, search, statusFilter, teamFilter]);
+
+  // Employee IDs issued (e.g. via the old Assigning IDs flow, or a partial failure right after
+  // hiring) that never got a matching Directory record — the exact bug class this merge fixes,
+  // made self-healing instead of silently recurring. Matches by credentialId first, name second.
+  const orphanCredentials = useMemo(() => founder
+    ? state.employeeCredentials.filter((c) => c.isActive &&
+        !state.employees.some((e) => e.credentialId === c.id || e.name === c.name))
+    : [], [state.employeeCredentials, state.employees, founder]);
+
+  async function addOrphanToDirectory(c: HrEmployeeCredential) {
+    setAddingOrphanId(c.id);
+    const newEmployee: HrEmployee = {
+      id: nextEmployeeId(state.employees), credentialId: c.id, name: c.name, email: c.email || '—',
+      designation: c.designation, team: state.teams[0]?.name || '', manager: null, status: 'active',
+      doj: new Date(c.createdAt).toISOString().slice(0, 10), sysRole: 'Employee', ctc: 0,
+      leaveBalance: { Casual: 6, Sick: 6, Earned: 10 }, documents: [], signedDocs: [],
+    };
+    await persistEmployees([...state.employees, newEmployee]);
+    logRuleChange(`Added ${c.name} to Directory from an existing Employee ID (${c.employeeCode})`);
+    setAddingOrphanId(null);
+  }
 
   function exportDirectory(fmt: 'csv' | 'excel') {
     const exportRows: (string | number)[][] = [['Name', 'Email', 'Designation', 'Team', 'Status', 'DOJ', 'Annual CTC']];
@@ -94,7 +122,7 @@ export default function Directory() {
     if (designations !== state.orgStructure.designations) await persistDesignations(designations);
     await persistEmployees(employees);
     setBulkOpen(false);
-    alert(`${count} employee(s) imported. Logins auto-created; they can be asked to upload missing documents into the Document Vault.`);
+    alert(`${count} employee(s) imported. No login was created — open each profile and click "Issue Employee ID" to give them one.`);
   }
 
   const profile = profileId ? state.employees.find((e) => e.id === profileId) || null : null;
@@ -102,6 +130,22 @@ export default function Directory() {
   return (
     <>
       <PageHead title="Employee Directory" sub={admin ? "Search, filter, and open any employee's full profile." : "Your team only — sibling departments aren't visible here."} />
+
+      {orphanCredentials.length > 0 && (
+        <div className="notice" style={{ marginBottom: 16 }}>
+          <div>
+            <strong>{orphanCredentials.length} Employee ID{orphanCredentials.length > 1 ? 's have' : ' has'} no Directory record.</strong> Someone was issued a login but never got a Directory entry — add them to finish setup (you can set their salary afterwards from Payroll).
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            {orphanCredentials.map((c) => (
+              <button key={c.id} className="btn sm" disabled={addingOrphanId === c.id} onClick={() => addOrphanToDirectory(c)}>
+                {addingOrphanId === c.id ? 'Adding…' : `+ Add ${c.name}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="toolbar" style={{ marginBottom: 16, justifyContent: 'space-between' }}>
         <div className="toolbar">
           <input className="search" type="text" placeholder="Search by name or designation" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -117,7 +161,7 @@ export default function Directory() {
             <button className="btn sm" onClick={() => exportDirectory('csv')}>⇩ CSV</button>
             <button className="btn sm" onClick={() => exportDirectory('excel')}>⇩ Excel</button>
             <button className="btn" onClick={() => setBulkOpen(true)}>⇧ Bulk import (CSV)</button>
-            <DraftOfferLetterButton label="+ Send offer letter" className="btn primary" />
+            <HireEmployeeButton label="+ Add Employee" className="btn primary" />
           </div>
         )}
       </div>
@@ -138,16 +182,38 @@ export default function Directory() {
         <EmployeeProfileModal
           employee={profile}
           admin={admin}
+          founder={founder}
           onClose={() => setProfileId(null)}
           onEditCtcSplit={() => setCtcSplitId(profile.id)}
           onRemove={() => removeEmployeeRecord(profile)}
           onConfirmProbation={() => confirmProbation(profile)}
           onExtendProbation={() => extendProbation(profile)}
           onMarkExited={() => markExited(profile)}
+          onEditCredential={(c) => setEditingCredential(c)}
+          onIssueCredential={() => setIssuingCredentialFor(profile)}
         />
       )}
       {ctcSplitId && (
         <CtcSplitModal employeeId={ctcSplitId} onClose={() => setCtcSplitId(null)} />
+      )}
+      {editingCredential && (
+        <EditCredentialModal
+          credential={editingCredential}
+          existingCredentials={state.employeeCredentials}
+          onClose={() => setEditingCredential(null)}
+          onSaved={(updated) => upsertEmployeeCredentialInState(updated)}
+        />
+      )}
+      {issuingCredentialFor && (
+        <EditCredentialModal
+          seed={{ name: issuingCredentialFor.name, designation: issuingCredentialFor.designation, email: issuingCredentialFor.email }}
+          existingCredentials={state.employeeCredentials}
+          onClose={() => setIssuingCredentialFor(null)}
+          onSaved={async (created) => {
+            upsertEmployeeCredentialInState(created);
+            await persistEmployees(state.employees.map((e) => (e.id === issuingCredentialFor.id ? { ...e, credentialId: created.id } : e)));
+          }}
+        />
       )}
 
       {bulkOpen && (
@@ -166,12 +232,16 @@ export default function Directory() {
   );
 }
 
-function EmployeeProfileModal({ employee, admin, onClose, onEditCtcSplit, onRemove, onConfirmProbation, onExtendProbation, onMarkExited }: {
-  employee: HrEmployee; admin: boolean; onClose: () => void; onEditCtcSplit: () => void;
+function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSplit, onRemove, onConfirmProbation, onExtendProbation, onMarkExited, onEditCredential, onIssueCredential }: {
+  employee: HrEmployee; admin: boolean; founder: boolean; onClose: () => void; onEditCtcSplit: () => void;
   onRemove: () => void; onConfirmProbation: () => void; onExtendProbation: () => void; onMarkExited: () => void;
+  onEditCredential: (c: HrEmployeeCredential) => void; onIssueCredential: () => void;
 }) {
   const { state } = useHrTool();
   const canSeeCTC = admin || state.currentUser?.id === employee.id;
+  const credential = employee.credentialId
+    ? state.employeeCredentials.find((c) => c.id === employee.credentialId)
+    : state.employeeCredentials.find((c) => c.name === employee.name);
   const cs = employee.ctcSplitOverride || state.rules.ctcSplit;
   const buttons = [{ label: 'Close', cls: 'btn', onClick: onClose }];
   if (admin && employee.id !== state.currentUser?.id) buttons.unshift({ label: 'Remove employee', cls: 'btn reject', onClick: onRemove });
@@ -199,6 +269,24 @@ function EmployeeProfileModal({ employee, admin, onClose, onEditCtcSplit, onRemo
         {Object.entries(employee.leaveBalance).filter(([k]) => state.rules.leaveTypes[k] !== false).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>)}
       </div>
       <div className="field"><label className="field-label">Document vault</label><span className="meta">Restricted — visible only to HR Head/Founder and the employee.</span></div>
+      {founder && (
+        <div className="field">
+          <label className="field-label">Login &amp; credentials</label>
+          {credential ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <code>{credential.employeeCode}</code>
+              {credential.panelRole && <span className="badge active">{PANEL_ROLE_LABEL[credential.panelRole]}</span>}
+              <span className={`badge ${credential.isActive ? 'active' : 'exited'}`}>{credential.isActive ? 'Active' : 'Inactive'}</span>
+              <button className="btn ghost sm" onClick={() => onEditCredential(credential)}>Edit</button>
+            </div>
+          ) : (
+            <div>
+              <span className="meta">No login issued yet.</span>{' '}
+              <button className="btn ghost sm" onClick={onIssueCredential}>Issue Employee ID</button>
+            </div>
+          )}
+        </div>
+      )}
     </ModalShell>
   );
 }

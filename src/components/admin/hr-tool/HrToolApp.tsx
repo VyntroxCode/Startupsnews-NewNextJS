@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { useHrTool } from './HrToolContext';
 import Dashboard from './views/Dashboard';
 import Directory from './views/Directory';
-import AssigningIds from './views/AssigningIds';
 import Onboarding from './views/Onboarding';
 import Offboarding from './views/Offboarding';
 import Attendance from './views/Attendance';
@@ -21,7 +20,7 @@ import { isAdmin, pendingEmployeeDocUpdates, rmOf, scopedApprovals } from './uti
 import { VIEW_ACCESS, type HrView } from './types';
 
 const VIEWS: Record<HrView, () => React.JSX.Element> = {
-  dashboard: Dashboard, directory: Directory, 'assigning-ids': AssigningIds, onboarding: Onboarding, offboarding: Offboarding,
+  dashboard: Dashboard, directory: Directory, onboarding: Onboarding, offboarding: Offboarding,
   attendance: Attendance, leave: Leave, payroll: Payroll, expenses: Expenses,
   compliance: Compliance, posh: Posh, helpdesk: Helpdesk, company: Company, rules: Rules, documents: Documents,
 };
@@ -33,7 +32,6 @@ const NAV_GROUPS: NavGroup[] = [
   { label: 'Overview', items: [{ view: 'dashboard', label: 'Dashboard', icon: '◆' }] },
   { label: 'People', items: [
     { view: 'directory', label: 'Employee Directory', icon: '☰' },
-    { view: 'assigning-ids', label: 'Assigning IDs', icon: '🆔' },
     { view: 'onboarding', label: 'Onboarding', icon: '→' },
     { view: 'offboarding', label: 'Offboarding', icon: '←' },
   ] },
