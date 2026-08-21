@@ -11,9 +11,29 @@ export interface HrOrgStructure {
   holidays: HrHoliday[];
 }
 
-export interface HrDocRef { name: string; status: string; }
+export interface HrDocRef {
+  name: string;
+  status: string;
+  url?: string | null;
+  uploadedAt?: string | null;
+  /** Admin's reason on rejection — shown back to the employee so a rejected doc isn't a dead end. */
+  remarks?: string | null;
+}
 export interface HrSignedDoc { type: string; content: string; signedDate: string; }
-export interface HrCtcSplit { basic: number; hra: number; allowances: number; }
+export interface HrCtcSplit {
+  /** Basic Salary as a % of monthly salary (ctc ÷ 12). */
+  basicPct: number;
+  /** HRA as a % of Basic — not of total salary directly. */
+  hraPctOfBasic: number;
+  /** Whether convenienceValue below is a flat monthly Rupee amount or a % of monthly salary. */
+  convenienceType: 'amount' | 'percent';
+  /** Convenience Allowance — Rupees/month if convenienceType is 'amount', else a % of monthly salary. */
+  convenienceValue: number;
+}
+/** Basic/HRA/Convenience in Rupees for one month, plus Special Allowance — always the
+ * remainder (monthly salary − Basic − HRA − Convenience), never stored as its own percentage.
+ * See computeCtcBreakdown in components/admin/hr-tool/utils.tsx. */
+export interface HrCtcBreakdown { basic: number; hra: number; convenience: number; specialAllowance: number; }
 
 export interface HrEmployee {
   id: string;
@@ -23,6 +43,7 @@ export interface HrEmployee {
   credentialId?: number | null;
   name: string;
   email: string;
+  phone: string | null;
   designation: string;
   team: string;
   manager: string | null;
@@ -32,6 +53,8 @@ export interface HrEmployee {
   ctc: number;
   leaveBalance: Record<string, number>;
   documents: HrDocRef[];
+  /** Deadline for submitting the required-documents checklist — set at hire time (doj + 5 days). */
+  documentsDeadline?: string | null;
   signedDocs: HrSignedDoc[];
   ctcSplitOverride?: HrCtcSplit | null;
   probationExtendedBy?: number | null;
@@ -56,9 +79,9 @@ export interface HrOnboarding {
   assets?: HrOnboardingAssets | null;
 }
 
-export interface HrAttendanceRecord { emp: string; date: string; status: string; inTime: string; outTime: string; inMinutes?: number | null; }
+export interface HrAttendanceRecord { emp: string; date: string; status: string; inTime: string; outTime: string; inMinutes?: number | null; outMinutes?: number | null; }
 export interface HrAttendanceOverride { emp: string; date: string; status: string; }
-export interface HrPunch { emp: string; date: string; inTime: string | null; inMinutes: number | null; outTime: string | null; }
+export interface HrPunch { emp: string; date: string; inTime: string | null; inMinutes: number | null; outTime: string | null; outMinutes: number | null; }
 
 export interface HrApprovalBase {
   id: string;
@@ -68,7 +91,8 @@ export interface HrApprovalBase {
   rmRemarks: string;
   hrRemarks: string;
 }
-export interface HrRegularization extends HrApprovalBase { date: string; reason: string; }
+export type HrRegularizationPunchType = 'in' | 'out';
+export interface HrRegularization extends HrApprovalBase { date: string; reason: string; punchType: HrRegularizationPunchType; requestedTime: string | null; }
 export interface HrLeaveRequest extends HrApprovalBase { type: string; from: string; to: string; remarks: string; }
 export interface HrExpense extends HrApprovalBase { category: string; amount: number; }
 
@@ -82,14 +106,45 @@ export interface HrPayrollRun { month: string; status: string; runAt?: string | 
  * frozen record from the last "Run Payroll" (see HrToolService.computePayrollForMonth/runPayroll). */
 export interface HrPayrollEntry {
   emp: string;
+  /** All calendar days in the cycle — workingDays + weekOffDays. The display column "Total Days". */
+  totalDays: number;
+  /** Non-working days in the cycle (Sundays + the admin's Holiday calendar) — displayed as
+   * "Week Off". Not judged present/absent/leave at all, same as before this column existed. */
+  weekOffDays: number;
+  /** Working days in the cycle (totalDays minus weekOffDays) — kept for internal day-rate math
+   * (see periodDays in computePayrollForMonth); not its own display column anymore. */
   workingDays: number;
-  /** Days with an actual punch — does not include approved-leave days (see leaveDays). */
+  /** Days with an on-time or grace-period punch-in — does not include approved-leave days
+   * (see leaveDays) or Short Leave / Half Day / Absent days (see absentDays). */
   presentDays: number;
   /** Approved-leave days within the period — counted separately from presentDays so "worked"
    * and "on leave" are never conflated into one number. */
   leaveDays: number;
+  /** Every working day that's neither Present nor Leave nor Week Off — i.e. Short Leave, Half
+   * Day, and fully-Absent days combined, a whole-day count for the "Absent Days" display column.
+   * Distinct from lopDays, which is the fractional pay-impact those same days actually cost
+   * (a Half Day here counts as 1 whole absent day but only 0.5 lopDays). */
+  absentDays: number;
+  /** Punch-ins that landed in the Short Leave window that month — the raw count for THIS
+   * cycle only (not counting whatever carried in from last month). Internal bookkeeping for the
+   * Short Leave → Half Day conversion; not its own display column anymore (folded into
+   * absentDays for the day-count, and into lopDays for the pay-impact via shortLeaveCarryOut). */
+  shortLeaveDays: number;
+  /** Short Leaves left over after this month's every-3rd-one conversion (carryIn + shortLeaveDays,
+   * mod 3) — carries forward as next month's starting balance, so leftover Short Leaves are never
+   * lost at a cycle boundary. Persisted per employee-per-month so the next cycle's calculation
+   * can read it back (see computePayrollForMonth's prevByEmp lookup). */
+  shortLeaveCarryOut: number;
+  /** Punch-ins that landed in the Half Day window that month — each costs half a day's pay.
+   * Internal bookkeeping (see absentDays); not its own display column anymore. */
+  halfDayDays: number;
+  /** The actual pay-impact figure driving Net Pay — fully-absent days count 1 each, Half Day
+   * (explicit or converted from Short Leave) counts 0.5 each. Can be fractional (e.g. 2.5). The
+   * display column "LOP Days" — distinct from absentDays, which is a whole-day status count. */
   lopDays: number;
   monthlyGross: number;
+  /** Tax deducted at source — placeholder (always 0) until a calculation rule is defined. */
+  tds: number;
   netPay: number;
 }
 
@@ -100,6 +155,8 @@ export interface HrRules {
   shiftStartTime: string;
   shiftEndTime: string;
   shiftGraceMinutes: number;
+  /** Hours after shift start marking the end of the Half Day punch-in window — a punch-in
+   * later than shiftStart + this many hours counts as Absent for the day. */
   halfDayThresholdHours: number;
   regularizationWindowDays: number;
   regularizationOverride: boolean;
@@ -107,10 +164,21 @@ export interface HrRules {
    * from regularizationWindowDays (which governs how many days after the attendance date a
    * request may still be filed at all). */
   regularizationMonthlyQuota: number;
-  /** Max hours absent for it to count as a Short Leave rather than a half/full day. */
+  /** Hours after shift start marking the end of the Short Leave punch-in window (grace period
+   * ends, Short Leave begins; this many hours after shift start, Half Day begins). */
   shortLeaveMaxHours: number;
   /** How many Short Leaves an employee may take per calendar month. */
   shortLeaveMonthlyQuota: number;
+  /** Secondary rule alongside the punch-in-time buckets above: total hours worked (punch-out
+   * minus punch-in) that day, below which it's an Absent day regardless of arrival time. The
+   * worse of the two rules wins — see HrToolService.computePayrollForMonth. */
+  halfDayMinWorkedHours: number;
+  /** Hours worked at/above which the day is a Half Day rather than Absent (still below
+   * shortLeaveMinWorkedHours). */
+  shortLeaveMinWorkedHours: number;
+  /** Hours worked at/above which the day is a full, undocked day — below this (but at/above
+   * shortLeaveMinWorkedHours) it's a Short Leave. */
+  fullDayMinWorkedHours: number;
   salaryPeriodFrom: number;
   salaryPeriodTo: string;
   ctcSplit: HrCtcSplit;

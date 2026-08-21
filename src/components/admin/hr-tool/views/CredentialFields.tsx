@@ -55,15 +55,62 @@ export interface CredentialFormState {
   linkedPanelAdminId: number | '';
 }
 
-export function CredentialFields({ form, onChange, isEdit, excludeCredentialId, showAvatar = true, idRowExtra }: {
+/** The Employee ID field alone — a prefixed ("SNFYI-") numeric input when creating, read-only
+ * once created. Exported standalone so a caller can place it somewhere other than
+ * CredentialFields' own default position (e.g. HireEmployeeButton puts it in a top banner) —
+ * pass `hideId` to CredentialFields in that case so it isn't rendered twice. */
+export function EmployeeIdField({ form, onChange, isEdit }: {
+  form: Pick<CredentialFormState, 'employeeCode'>;
+  onChange: (patch: Partial<CredentialFormState>) => void;
+  isEdit: boolean;
+}) {
+  return (
+    <div className="field">
+      <label className="field-label">Employee ID</label>
+      {isEdit ? (
+        <input type="text" value={form.employeeCode} disabled />
+      ) : (
+        <div style={{ display: 'flex' }}>
+          <span style={{
+            display: 'flex', alignItems: 'center', padding: '0 10px', fontSize: 13, fontWeight: 600,
+            color: 'var(--muted)', background: '#F1F5F9', border: '1px solid var(--line)', borderRight: 'none',
+            borderRadius: '7px 0 0 7px', whiteSpace: 'nowrap', flexShrink: 0,
+          }}>{EMPLOYEE_CODE_PREFIX}</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={form.employeeCode.startsWith(EMPLOYEE_CODE_PREFIX) ? form.employeeCode.slice(EMPLOYEE_CODE_PREFIX.length) : form.employeeCode}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/[^0-9]/g, '');
+              onChange({ employeeCode: EMPLOYEE_CODE_PREFIX + digits });
+            }}
+            placeholder="101"
+            style={{ borderRadius: '0 7px 7px 0', borderLeft: 'none' }}
+          />
+        </div>
+      )}
+      {isEdit && <div className="meta">Can&apos;t be changed after creation.</div>}
+    </div>
+  );
+}
+
+export function CredentialFields({
+  form, onChange, isEdit, excludeCredentialId, showAvatar = true, hideId = false, idRowExtra, sideBySidePasswords = false,
+}: {
   form: CredentialFormState;
   onChange: (patch: Partial<CredentialFormState>) => void;
   isEdit: boolean;
   excludeCredentialId?: number;
   /** Hide the photo upload — used by the Add Employee hire form, which doesn't collect one. */
   showAvatar?: boolean;
-  /** An extra field to place alongside Employee ID in the same row (e.g. Date of joining). */
+  /** Skip rendering the Employee ID field here — used when the caller places EmployeeIdField
+   * itself somewhere else in the layout (e.g. a top banner), so it isn't shown twice. */
+  hideId?: boolean;
+  /** An extra field to place alongside Employee ID in the same row (e.g. Date of joining).
+   * Ignored when hideId is true — there's no Employee ID row here to attach it to. */
   idRowExtra?: ReactNode;
+  /** Password + Confirm password side by side in one row instead of stacked. */
+  sideBySidePasswords?: boolean;
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [availableAdmins, setAvailableAdmins] = useState<LinkedPanelAdminSummary[]>([]);
@@ -102,34 +149,36 @@ export function CredentialFields({ form, onChange, isEdit, excludeCredentialId, 
     if (!ok) alert(`Could not copy automatically — ${label}: ${text}`);
   }
 
-  const idField = (
+  const idField = <EmployeeIdField form={form} onChange={onChange} isEdit={isEdit} />;
+
+  const passwordField = (
     <div className="field">
-      <label className="field-label">Employee ID</label>
-      {isEdit ? (
-        <input type="text" value={form.employeeCode} disabled />
-      ) : (
-        <div style={{ display: 'flex' }}>
-          <span style={{
-            display: 'flex', alignItems: 'center', padding: '0 10px', fontSize: 13, fontWeight: 600,
-            color: 'var(--muted)', background: '#F1F5F9', border: '1px solid var(--line)', borderRight: 'none',
-            borderRadius: '7px 0 0 7px', whiteSpace: 'nowrap', flexShrink: 0,
-          }}>{EMPLOYEE_CODE_PREFIX}</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={form.employeeCode.startsWith(EMPLOYEE_CODE_PREFIX) ? form.employeeCode.slice(EMPLOYEE_CODE_PREFIX.length) : form.employeeCode}
-            onChange={(e) => {
-              const digits = e.target.value.replace(/[^0-9]/g, '');
-              onChange({ employeeCode: EMPLOYEE_CODE_PREFIX + digits });
-            }}
-            placeholder="101"
-            style={{ borderRadius: '0 7px 7px 0', borderLeft: 'none' }}
-          />
+      <label className="field-label">{isEdit ? 'New password (leave blank to keep current)' : 'Password'}</label>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <input type={showPassword ? 'text' : 'password'} value={form.password}
+          style={{ flex: '1 1 160px', minWidth: 0 }}
+          onChange={(e) => onChange({ password: e.target.value })}
+          placeholder={isEdit ? '••••••••' : 'At least 8 characters'} />
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button type="button" className="btn sm" onClick={() => setShowPassword((s) => !s)}>{showPassword ? 'Hide' : 'Show'}</button>
+          <button type="button" className="btn sm" onClick={fillGeneratedPassword}>Generate</button>
+          {form.password && <button type="button" className="btn sm" onClick={() => handleCopy(form.password, 'Password')}>Copy</button>}
         </div>
-      )}
-      {isEdit && <div className="meta">Can&apos;t be changed after creation.</div>}
+      </div>
+      <div className="meta" style={{ marginTop: 6 }}>
+        This person signs in with this Employee ID and password from the admin login page&apos;s &quot;Employee ID&quot; tab.
+      </div>
     </div>
   );
+
+  const confirmPasswordField = (
+    <div className="field">
+      <label className="field-label">Confirm password</label>
+      <input type={showPassword ? 'text' : 'password'} value={form.confirmPassword}
+        onChange={(e) => onChange({ confirmPassword: e.target.value })} placeholder="Re-enter password" />
+    </div>
+  );
+  const showConfirm = form.password || !isEdit;
 
   return (
     <>
@@ -141,37 +190,23 @@ export function CredentialFields({ form, onChange, isEdit, excludeCredentialId, 
         </div>
       )}
 
-      {idRowExtra ? (
+      {!hideId && (idRowExtra ? (
         <div className="field-grid-2">
           {idField}
           {idRowExtra}
         </div>
-      ) : idField}
+      ) : idField)}
 
-      <div className="field">
-        <label className="field-label">{isEdit ? 'New password (leave blank to keep current)' : 'Password'}</label>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input type={showPassword ? 'text' : 'password'} value={form.password}
-            style={{ flex: '1 1 160px', minWidth: 0 }}
-            onChange={(e) => onChange({ password: e.target.value })}
-            placeholder={isEdit ? '••••••••' : 'At least 8 characters'} />
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button type="button" className="btn sm" onClick={() => setShowPassword((s) => !s)}>{showPassword ? 'Hide' : 'Show'}</button>
-            <button type="button" className="btn sm" onClick={fillGeneratedPassword}>Generate</button>
-            {form.password && <button type="button" className="btn sm" onClick={() => handleCopy(form.password, 'Password')}>Copy</button>}
-          </div>
+      {sideBySidePasswords ? (
+        <div className="field-grid-2">
+          {passwordField}
+          {showConfirm && confirmPasswordField}
         </div>
-        <div className="meta" style={{ marginTop: 6 }}>
-          This person signs in with this Employee ID and password from the admin login page&apos;s &quot;Employee ID&quot; tab.
-        </div>
-      </div>
-
-      {(form.password || !isEdit) && (
-        <div className="field">
-          <label className="field-label">Confirm password</label>
-          <input type={showPassword ? 'text' : 'password'} value={form.confirmPassword}
-            onChange={(e) => onChange({ confirmPassword: e.target.value })} placeholder="Re-enter password" />
-        </div>
+      ) : (
+        <>
+          {passwordField}
+          {showConfirm && confirmPasswordField}
+        </>
       )}
 
       <div className="field-grid-2">

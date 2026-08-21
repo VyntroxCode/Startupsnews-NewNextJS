@@ -10,8 +10,8 @@ export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   editor: 'all',
   author: 'all',
   // Event Admin's post access is scoped server-side to the Press Release category only (see posts API routes).
-  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/partnership-tracker', '/admin/banners', '/admin/tools', '/admin/posts', '/admin/attendance', '/admin/rules-policy'],
-  publisher_admin: ['/admin', '/admin/posts', '/admin/tools', '/admin/reports', '/admin/brand-stories', '/admin/attendance', '/admin/rules-policy'],
+  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/partnership-tracker', '/admin/banners', '/admin/tools', '/admin/posts', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents'],
+  publisher_admin: ['/admin', '/admin/posts', '/admin/tools', '/admin/reports', '/admin/brand-stories', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents'],
 };
 
 function matchesPrefix(prefixes: string[], pathname: string): boolean {

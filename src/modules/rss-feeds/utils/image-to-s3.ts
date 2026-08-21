@@ -48,6 +48,16 @@ export function s3KeyForAdminUpload(originalName: string): string {
   return s3KeyWithPrefix(`uploads/${y}/${m}/admin-${unique}.${ext}`);
 }
 
+/** Generate S3 key for an HR onboarding document upload: prefix/uploads/YYYY/MM/hr-doc-{timestamp}-{random}.ext */
+export function s3KeyForHrDocumentUpload(originalName: string): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const ext = (originalName.split('.').pop()?.split(/[?#]/)[0] || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '') || 'pdf';
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return s3KeyWithPrefix(`uploads/${y}/${m}/hr-doc-${unique}.${ext}`);
+}
+
 /** Generate S3 key for a public event-submission upload: prefix/uploads/YYYY/MM/event-submission-{timestamp}-{random}.ext */
 export function s3KeyForEventSubmissionUpload(originalName: string): string {
   const d = new Date();

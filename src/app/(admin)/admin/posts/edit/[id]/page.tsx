@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getAuthHeaders, getAdminToken, withAdminToken, getAdminUser } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { normalizeRssHtmlForEditor } from '@/shared/utils/editor-html';
+import { clearFormDraft, loadFormDraft, useFormDraftAutosave } from '@/lib/formDraftStorage';
 
 interface Category {
   id: number;
@@ -21,6 +22,30 @@ interface Author {
 // Staff authors event admins are allowed to publish press releases under.
 // Keep in sync with STAFF_AUTHOR_SLUGS in src/app/sitemap.ts.
 const EVENT_ADMIN_AUTHOR_IDS = [38, 221, 223, 224, 37];
+
+type EditPostFormData = {
+  title: string; slug: string; excerpt: string; metaDescription: string; robots: string;
+  contentFollow: string; content: string; categoryId: string; authorId: string;
+  featuredImageUrl: string; featuredImageSmallUrl: string; format: 'standard' | 'video' | 'gallery';
+  status: 'draft' | 'published' | 'scheduled' | 'archived'; featured: boolean; scheduledAt: string;
+};
+
+/** Same "how much is actually filled in" heuristic as the create-post page's auto-save — see
+ * completionRatioOf there. An existing post loaded from the server will already clear the
+ * threshold immediately, which is intentional: an accidental navigate-away should protect
+ * in-progress edits just as much as a brand-new post. */
+function completionRatioOf(f: EditPostFormData): number {
+  const contentText = f.content.replace(/<[^>]*>/g, '').trim();
+  const filled = [
+    f.title.trim().length > 0,
+    contentText.length > 10,
+    f.excerpt.trim().length > 0,
+    !!f.categoryId,
+    !!f.authorId,
+    !!f.featuredImageUrl,
+  ];
+  return filled.filter(Boolean).length / filled.length;
+}
 
 export default function EditPostPage() {
   const router = useRouter();
@@ -52,6 +77,11 @@ export default function EditPostPage() {
     featured: false,
     scheduledAt: '',
   });
+  const [restorableDraft, setRestorableDraft] = useState<{ savedAt: number; data: EditPostFormData } | null>(null);
+
+  const draftKey = `admin_post_draft_edit_${postId}`;
+  const completionRatio = completionRatioOf(formData);
+  useFormDraftAutosave(draftKey, formData, completionRatio);
 
   useEffect(() => {
     const loadData = async () => {
@@ -63,8 +93,19 @@ export default function EditPostPage() {
       }
     };
     loadData();
+    if (postId) setRestorableDraft(loadFormDraft<EditPostFormData>(`admin_post_draft_edit_${postId}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
+
+  function restoreDraft() {
+    if (!restorableDraft) return;
+    setFormData(restorableDraft.data);
+    setRestorableDraft(null);
+  }
+  function discardDraft() {
+    clearFormDraft(draftKey);
+    setRestorableDraft(null);
+  }
 
   const fetchCategories = async () => {
     try {
@@ -377,6 +418,7 @@ export default function EditPostPage() {
       // Show success message, then redirect after 1 second
       setError('');
       setSaving(false);
+      clearFormDraft(draftKey);
       // Use a small delay to let user see the form was saved before redirect
       setTimeout(() => {
         router.push('/admin/posts');
@@ -421,6 +463,40 @@ export default function EditPostPage() {
           Edit Post
         </h2>
       </div>
+
+      {restorableDraft && (
+        <div style={{
+          background: '#eef2ff',
+          border: '1px solid #c7d2fe',
+          color: '#3730a3',
+          padding: '1rem 1.25rem',
+          borderRadius: '8px',
+          marginBottom: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          flexWrap: 'wrap',
+        }}>
+          <span>
+            We found unsaved edits from {new Date(restorableDraft.savedAt).toLocaleString('en-IN')} — looks like this form was closed before saving. Restore them?
+          </span>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            <button type="button" onClick={restoreDraft} style={{
+              padding: '0.5rem 1rem', background: '#4f46e5', color: '#fff', border: 'none',
+              borderRadius: '6px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+            }}>
+              Restore
+            </button>
+            <button type="button" onClick={discardDraft} style={{
+              padding: '0.5rem 1rem', background: '#fff', color: '#3730a3', border: '1px solid #c7d2fe',
+              borderRadius: '6px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+            }}>
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{

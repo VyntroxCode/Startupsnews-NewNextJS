@@ -9,6 +9,13 @@ export function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Whole days remaining until (positive) or past (negative/zero) a YYYY-MM-DD deadline,
+ * counting today as day 0. Matches the client-side daysLeft() in components/admin/hr-tool/utils.tsx. */
+export function daysUntil(dateStr: string): number {
+  const ms = new Date(dateStr + 'T23:59:59').getTime() - new Date(todayStr()).getTime();
+  return Math.ceil(ms / (1000 * 60 * 60 * 24));
+}
+
 export function nowTimeStr(): string {
   return new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 }
@@ -40,7 +47,7 @@ function daysInMonthUTC(year: number, month1to12: number): number {
 }
 
 /** "YYYY-MM" + a day delta -> the "YYYY-MM" that many months away (delta may be negative). */
-function shiftMonthKey(monthKey: string, delta: number): string {
+export function shiftMonthKey(monthKey: string, delta: number): string {
   const [year, mon] = monthKey.split('-').map(Number);
   const d = new Date(Date.UTC(year, mon - 1 + delta, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;

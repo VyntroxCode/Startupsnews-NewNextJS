@@ -9,7 +9,9 @@ interface MammothWindow { mammoth?: { extractRawText: (opts: { arrayBuffer: Arra
 
 const SAMPLE_MERGE_DATA = {
   employee_name: 'Jane Doe', designation: 'Content Writer', team: 'Content', doj: '2026-08-05',
-  ctc: '₹6,00,000', basic: '₹3,00,000', hra: '₹1,20,000', allowances: '₹1,80,000',
+  // ₹6,00,000 CTC at the default CTC Structure (Basic 50% of salary, HRA 50% of Basic,
+  // Convenience ₹0, Special Allowance the remainder) — see computeCtcBreakdown.
+  ctc: '₹6,00,000', basic: '₹3,00,000', hra: '₹1,50,000', convenience: '₹0', allowances: '₹1,50,000',
 };
 
 export default function Company() {
@@ -60,7 +62,7 @@ function TemplateEditorModal({ type, onClose, onSaved }: { type: string; onClose
   const { state, persistTemplate } = useHrTool();
   const [content, setContent] = useState(state.templates[type]?.content || '');
   const [preview, setPreview] = useState<string | null>(null);
-  const extraTags = type === 'Employment Agreement' ? ', {{basic}}, {{hra}}, {{allowances}}' : '';
+  const extraTags = type === 'Employment Agreement' ? ', {{basic}}, {{hra}}, {{convenience}}, {{allowances}}' : '';
 
   async function handleDocxUpload(file: File) {
     const reader = new FileReader();

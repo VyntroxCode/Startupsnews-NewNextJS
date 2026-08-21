@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import { trackEvent } from "@/lib/analytics";
@@ -56,6 +56,122 @@ const FIELD_LABEL = "block text-[13px] font-semibold text-adv-ink mb-2";
 const FIELD_INPUT =
 	"block w-full font-[inherit] text-[15px] leading-[1.4] px-4 py-3 border border-adv-line-2 rounded-xl bg-white text-adv-ink placeholder:text-adv-muted-2 transition-colors focus:outline-none focus:border-adv-red focus:ring-2 focus:ring-adv-red/15";
 
+/** Fires `inView` once the element scrolls into the viewport, then stops watching. */
+function useInView<T extends HTMLElement>(threshold = 0.2) {
+	const ref = useRef<T | null>(null);
+	const [inView, setInView] = useState(false);
+
+	useEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry.isIntersecting) {
+					setInView(true);
+					observer.disconnect();
+				}
+			},
+			{ threshold }
+		);
+		observer.observe(el);
+		// Safety net: if the observer never fires (stale bundle, hydration hiccup, etc.),
+		// don't leave this content permanently invisible — force it visible after a few
+		// seconds regardless, so a JS failure can never hide real content forever.
+		const fallback = setTimeout(() => setInView(true), 4000);
+		return () => {
+			observer.disconnect();
+			clearTimeout(fallback);
+		};
+	}, [threshold]);
+
+	return { ref, inView };
+}
+
+/** Counts up from 0 to `target` (as a float — callers round/format) once `active` flips true. */
+function useCountUp(target: number, active: boolean, durationMs = 1400) {
+	const [value, setValue] = useState(0);
+
+	useEffect(() => {
+		if (!active) return;
+		let raf = 0;
+		const start = performance.now();
+		const tick = (now: number) => {
+			const progress = Math.min(1, (now - start) / durationMs);
+			const eased = 1 - Math.pow(1 - progress, 3);
+			setValue(target * eased);
+			if (progress < 1) raf = requestAnimationFrame(tick);
+		};
+		raf = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(raf);
+	}, [active, target, durationMs]);
+
+	return value;
+}
+
+/** Reveal-on-scroll wrapper shared by every text/image block on this page — fades in while
+ * sliding from the left, right, or up, so the page reads as animated rather than static. */
+function Reveal({
+	children,
+	className = "",
+	direction = "up",
+	delay = 0,
+	threshold = 0.2,
+	as: Tag = "div",
+}: {
+	children: React.ReactNode;
+	className?: string;
+	direction?: "up" | "left" | "right";
+	delay?: number;
+	threshold?: number;
+	as?: "div" | "span" | "li";
+}) {
+	const { ref, inView } = useInView<HTMLDivElement>(threshold);
+	const hiddenTransform =
+		direction === "left" ? "-translate-x-16" : direction === "right" ? "translate-x-16" : "translate-y-8";
+	return (
+		<Tag
+			ref={ref as never}
+			className={`transition-all duration-700 ease-out ${
+				inView ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${hiddenTransform}`
+			} ${className}`}
+			style={{ transitionDelay: `${delay}ms` }}
+		>
+			{children}
+		</Tag>
+	);
+}
+
+/** Parses a display string like "90.3M", "445K+", "24", or "100's" into a numeric count-up
+ * target, how many decimal places to preserve, and the trailing suffix to re-append. */
+function parseStatValue(raw: string): { target: number; decimals: number; suffix: string } {
+	const match = raw.match(/^([\d.]+)(.*)$/);
+	if (!match) return { target: 0, decimals: 0, suffix: raw };
+	const [, numStr, suffix] = match;
+	const decimals = numStr.includes(".") ? numStr.split(".")[1]?.length || 0 : 0;
+	return { target: parseFloat(numStr), decimals, suffix };
+}
+
+function StatTile({ stat, index, active }: { stat: { value: string; label: string }; index: number; active: boolean }) {
+	const { target, decimals, suffix } = parseStatValue(stat.value);
+	const value = useCountUp(target, active);
+	const display = decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString();
+
+	return (
+		<div
+			className={`text-center transition-all duration-700 ease-out ${
+				active ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+			}`}
+			style={{ transitionDelay: `${150 + index * 90}ms` }}
+		>
+			<div className="text-[30px] sm:text-[36px] lg:text-[42px] font-black tracking-[-0.03em] text-adv-red leading-none tabular-nums">
+				{display}
+				{suffix}
+			</div>
+			<div className="mt-2.5 text-[13px] font-semibold text-adv-muted leading-[1.4] px-1">{stat.label}</div>
+		</div>
+	);
+}
+
 export default function AdvertisePage() {
 	const [formData, setFormData] = useState({
 		firstName: "",
@@ -69,6 +185,8 @@ export default function AdvertisePage() {
 	const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const turnstileRef = useRef<TurnstileInstance>(null);
+
+	const { ref: statsRef, inView: statsInView } = useInView<HTMLDivElement>(0.15);
 
 	const handleChange = (
 		e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -120,26 +238,37 @@ export default function AdvertisePage() {
 
 	return (
 		<div className="bg-white text-adv-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
+			{/* Breadcrumb */}
+			<div className="px-5 sm:px-8 lg:px-10">
+				<nav className="event-by-country-breadcrumb" aria-label="Breadcrumb">
+					<Link href="/" className="event-by-country-breadcrumb-link">Home</Link>
+					<span className="event-by-country-breadcrumb-separator" aria-hidden="true">/</span>
+					<span className="event-by-country-breadcrumb-current" aria-current="page">Advertise With Us</span>
+				</nav>
+			</div>
+
 			{/* Eyebrow */}
-			<div className="px-5 sm:px-8 lg:px-10 pt-6 text-center">
-				<h1 className="text-[28px] sm:text-[36px] font-bold tracking-[0.04em] uppercase text-adv-ink">
-					Advertise with us
+			<div className="px-5 sm:px-8 lg:px-10 pt-1 pb-4 text-center">
+				<h1 className="text-[26px] sm:text-[32px] font-bold tracking-[-0.01em] text-adv-ink">
+					Advertise With Us
 				</h1>
 			</div>
 
 			{/* HERO */}
-			<section className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-7 lg:gap-[72px] items-center px-5 sm:px-8 lg:px-10 py-6 sm:py-10 lg:py-[52px]">
-				<div className="relative h-[380px] sm:h-[480px] lg:h-[620px] min-w-0 rounded-[24px] overflow-hidden">
-					<Image
-						src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1920&q=80&auto=format&fit=crop"
-						alt="StartupNews.fyi advertising and media team"
-						fill
-						sizes="(min-width: 1024px) 45vw, 100vw"
-						className="object-cover"
-						priority
-					/>
-				</div>
-				<div className="relative flex flex-col gap-0.5 min-w-0">
+			<section className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-7 lg:gap-[72px] items-center px-5 sm:px-8 lg:px-10 py-6 sm:py-8 lg:py-12">
+				<Reveal direction="left">
+					<div className="relative h-[380px] sm:h-[480px] lg:h-[620px] min-w-0 rounded-[24px] overflow-hidden">
+						<Image
+							src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1920&q=80&auto=format&fit=crop"
+							alt="StartupNews.fyi advertising and media team"
+							fill
+							sizes="(min-width: 1024px) 45vw, 100vw"
+							className="object-cover"
+							priority
+						/>
+					</div>
+				</Reveal>
+				<Reveal direction="right" delay={120} className="relative flex flex-col gap-0.5 min-w-0">
 					<div className="absolute -top-[54px] right-[6%] w-[116px] h-[116px] rounded-full bg-[#ffe8e8] pointer-events-none" />
 					<div className="absolute -bottom-10 right-[2%] w-[72px] h-[72px] rounded-full border-[10px] border-adv-ink pointer-events-none" />
 					<span className="relative text-[clamp(48px,8.2vw,128px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-ink">
@@ -151,15 +280,17 @@ export default function AdvertisePage() {
 					<span className="relative text-[clamp(48px,8.2vw,128px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-red">
 						Stand Out.
 					</span>
-				</div>
+				</Reveal>
 			</section>
 
 			{/* REACH THE MOST ENGAGED AUDIENCE */}
-			<section className="grid grid-cols-1 lg:grid-cols-2 gap-7 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 py-9 sm:py-14 lg:py-[88px] bg-adv-panel border-t border-adv-line">
-				<h2 className="text-adv-ink text-[26px] sm:text-[34px] lg:text-[44px] font-extrabold tracking-[-0.02em] leading-[1.14] uppercase max-w-[18ch]">
-					Reach the most engaged startup &amp; tech audience
-				</h2>
-				<div className="flex flex-col gap-7 items-start min-w-0">
+			<section className="grid grid-cols-1 lg:grid-cols-2 gap-7 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 py-8 sm:py-10 lg:py-14 bg-adv-panel">
+				<Reveal direction="left">
+					<h2 className="text-adv-ink text-[26px] sm:text-[34px] lg:text-[44px] font-extrabold tracking-[-0.02em] leading-[1.14] uppercase max-w-[18ch]">
+						Reach the most engaged startup &amp; tech audience
+					</h2>
+				</Reveal>
+				<Reveal direction="right" delay={120} className="flex flex-col gap-7 items-start min-w-0">
 					<p className="text-lg leading-[1.65] text-adv-muted max-w-[58ch]">
 						StartupNews.fyi connects your brand with 10M+ monthly readers — founders,
 						investors, and tech decision-makers across India and 24 countries. AI-curated,
@@ -182,47 +313,49 @@ export default function AdvertisePage() {
 					<p className="text-sm text-adv-muted">
 						Takes 5–7 minutes · Get expert media consultation within 24 hours
 					</p>
-				</div>
+				</Reveal>
 			</section>
 
 			{/* STATS */}
-			<section className="px-5 sm:px-8 lg:px-10 py-9 sm:py-14 lg:py-[88px]">
-				<span className="text-xs font-bold tracking-[0.16em] uppercase text-adv-red">
-					Reach that matters
-				</span>
-				<h2 className="text-adv-ink mt-3.5 text-[26px] sm:text-[34px] lg:text-[44px] font-extrabold tracking-[-0.02em] leading-[1.16] max-w-[26ch]">
-					StartupNews&apos;s unparalleled scale across India&apos;s most trusted media
-					platforms
-				</h2>
-				<div className="mt-10 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-px bg-adv-line border border-adv-line rounded-[20px] overflow-hidden">
-					{STATS.map((s) => (
-						<div key={s.label} className="bg-white px-6 py-[30px] flex flex-col gap-1.5 min-w-0">
-							<span className="text-[26px] sm:text-[32px] lg:text-[38px] font-black tracking-[-0.03em] text-adv-red">
-								{s.value}
-							</span>
-							<span className="text-[13px] font-semibold text-adv-muted leading-[1.4]">
-								{s.label}
-							</span>
-						</div>
+			<section ref={statsRef} className="px-5 sm:px-8 lg:px-10 py-8 sm:py-10 lg:py-14">
+				<div className="text-center max-w-[720px] mx-auto">
+					<Reveal>
+						<span className="text-xs font-bold tracking-[0.16em] uppercase text-adv-red">
+							Reach that matters
+						</span>
+					</Reveal>
+					<Reveal delay={100}>
+						<h2 className="text-adv-ink mt-3.5 text-[26px] sm:text-[34px] lg:text-[44px] font-extrabold tracking-[-0.02em] leading-[1.16]">
+							StartupNews&apos;s unparalleled scale across India&apos;s most trusted media
+							platforms
+						</h2>
+					</Reveal>
+				</div>
+				<div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-y-10 gap-x-6 sm:gap-x-8 max-w-[1100px] mx-auto">
+					{STATS.map((s, i) => (
+						<StatTile key={s.label} stat={s} index={i} active={statsInView} />
 					))}
 				</div>
 			</section>
 
 			{/* WAYS TO WORK WITH US */}
-			<section className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-20 items-center px-5 sm:px-8 lg:px-10 py-12 lg:py-[104px] bg-adv-panel border-t border-adv-line">
+			<section className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-20 items-center px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-adv-panel">
 				<div className="min-w-0">
-					<h2 className="text-adv-ink text-[34px] sm:text-[48px] lg:text-[62px] font-black tracking-[-0.035em] leading-[1.02] uppercase">
-						Ways to work
-						<br />
-						<span className="text-adv-red">with us</span>
-					</h2>
+					<Reveal direction="left">
+						<h2 className="text-adv-ink text-[34px] sm:text-[48px] lg:text-[62px] font-black tracking-[-0.035em] leading-[1.02] uppercase">
+							Ways to work
+							<br />
+							<span className="text-adv-red">with us</span>
+						</h2>
+					</Reveal>
 					<ul className="list-none p-0 mt-10 grid gap-0">
 						{WAYS.map((w, i) => (
-							<li
+							<Reveal
 								key={w}
-								className={`grid grid-cols-[44px_1fr] gap-4 items-baseline py-5 border-t border-adv-line-2 ${
-									i === WAYS.length - 1 ? "border-b" : ""
-								}`}
+								as="li"
+								direction="left"
+								delay={150 + i * 100}
+								className="grid grid-cols-[44px_1fr] gap-4 items-baseline py-5 border-t border-adv-line-2"
 							>
 								<span className="text-[13px] font-extrabold text-adv-red tracking-[0.08em]">
 									{String(i + 1).padStart(2, "0")}
@@ -230,49 +363,56 @@ export default function AdvertisePage() {
 								<span className="text-base sm:text-lg lg:text-xl font-bold tracking-[-0.01em] uppercase leading-[1.35]">
 									{w}
 								</span>
-							</li>
+							</Reveal>
 						))}
 					</ul>
-					<a
-						href="#sn-form"
-						className="inline-block mt-8 bg-adv-red hover:bg-adv-red-deep !text-white text-[15px] font-bold px-8 py-[15px] rounded-full"
-					>
-						Learn More
-					</a>
+					<Reveal delay={150 + WAYS.length * 100 + 100}>
+						<a
+							href="#sn-form"
+							className="inline-block mt-8 bg-adv-red hover:bg-adv-red-deep !text-white text-[15px] font-bold px-8 py-[15px] rounded-full"
+						>
+							Learn More
+						</a>
+					</Reveal>
 				</div>
-				<div className="relative h-[380px] sm:h-[460px] lg:h-[600px] min-w-0 rounded-[24px] overflow-hidden">
-					<Image
-						src="https://images.unsplash.com/photo-1600880292089-90a7e086ee0c?w=1400&q=80&auto=format&fit=crop"
-						alt="Ways to work with StartupNews.fyi"
-						fill
-						sizes="(min-width: 1024px) 40vw, 100vw"
-						className="object-cover"
-					/>
-				</div>
+				<Reveal direction="right" delay={120}>
+					<div className="relative h-[380px] sm:h-[460px] lg:h-[600px] min-w-0 rounded-[24px] overflow-hidden">
+						<Image
+							src="https://images.unsplash.com/photo-1600880292089-90a7e086ee0c?w=1400&q=80&auto=format&fit=crop"
+							alt="Ways to work with StartupNews.fyi"
+							fill
+							sizes="(min-width: 1024px) 40vw, 100vw"
+							className="object-cover"
+						/>
+					</div>
+				</Reveal>
 			</section>
 
 			{/* WHY CHOOSE STARTUPNEWS */}
-			<section className="px-5 sm:px-8 lg:px-10 py-12 lg:py-[104px] bg-adv-ink text-white">
-				<h2 className="text-white text-[34px] sm:text-[48px] lg:text-[62px] font-black tracking-[-0.035em] leading-[1.02] uppercase">
-					Why choose <span className="text-adv-red">StartupNews?</span>
-				</h2>
-				<p className="mt-5 text-lg leading-[1.65] text-[#a8aeb6] max-w-[62ch]">
-					India&apos;s most credible media powerhouse, offering unmatched reach, precision,
-					and performance. Experience the difference with our comprehensive media solutions
-					and expert guidance.
-				</p>
+			<section className="px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-adv-ink text-white">
+				<Reveal direction="left">
+					<h2 className="text-white text-[34px] sm:text-[48px] lg:text-[62px] font-black tracking-[-0.035em] leading-[1.02] uppercase">
+						Why choose <span className="text-adv-red">StartupNews?</span>
+					</h2>
+				</Reveal>
+				<Reveal delay={120}>
+					<p className="mt-5 text-lg leading-[1.65] text-[#a8aeb6] max-w-[900px]">
+						India&apos;s most credible media powerhouse, offering unmatched reach, precision,
+						and performance. Experience the difference with our comprehensive media solutions
+						and expert guidance.
+					</p>
+				</Reveal>
 				<div className="mt-12 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-5">
-					{WHY_CARDS.map((c) => (
-						<article
-							key={c.title}
-							className="border border-[#23272e] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0"
-						>
-							<span className="text-[30px] sm:text-[38px] lg:text-[46px] font-black tracking-[-0.04em] leading-none text-[#3d434c]">
-								{c.label}
-							</span>
-							<h3 className="text-white text-[22px] font-extrabold tracking-[-0.02em] leading-[1.35]">{c.title}</h3>
-							<p className="text-base leading-[1.6] text-[#a8aeb6]">{c.body}</p>
-						</article>
+					{WHY_CARDS.map((c, i) => (
+						<Reveal key={c.title} delay={150 + i * 100}>
+							<article className="border border-[#23272e] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0 h-full transition-transform duration-300 hover:-translate-y-1.5">
+								<span className="text-[30px] sm:text-[38px] lg:text-[46px] font-black tracking-[-0.04em] leading-none text-[#3d434c]">
+									{c.label}
+								</span>
+								<h3 className="text-white text-[22px] font-extrabold tracking-[-0.02em] leading-[1.35]">{c.title}</h3>
+								<p className="text-base leading-[1.6] text-[#a8aeb6]">{c.body}</p>
+							</article>
+						</Reveal>
 					))}
 				</div>
 			</section>
@@ -280,9 +420,9 @@ export default function AdvertisePage() {
 			{/* ENQUIRY FORM */}
 			<section
 				id="sn-form"
-				className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 py-12 lg:py-[104px]"
+				className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 pt-10 sm:pt-12 lg:pt-16 pb-8 sm:pb-10 lg:pb-12"
 			>
-				<div className="min-w-0">
+				<Reveal direction="left" className="min-w-0">
 					<h2 className="text-adv-ink text-[30px] sm:text-[40px] lg:text-[52px] font-black tracking-[-0.035em] leading-[1.05]">
 						Ready to start your advertising journey?
 					</h2>
@@ -294,9 +434,9 @@ export default function AdvertisePage() {
 						Submit your advertising requirements and get expert media guidance across
 						StartupNews&apos;s premium media portfolio.
 					</p>
-				</div>
+				</Reveal>
 
-				<div className="min-w-0 border border-adv-line rounded-[24px] p-6 sm:p-8">
+				<Reveal direction="right" delay={150} className="min-w-0 border border-adv-line rounded-[24px] p-6 sm:p-8">
 					<form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
 						<div className="min-w-0">
 							<label htmlFor="firstName" className={FIELD_LABEL}>
@@ -400,13 +540,17 @@ export default function AdvertisePage() {
 							/>
 						</div>
 						<div className="min-w-0 sm:col-span-2 lg:col-span-3 flex flex-col items-start gap-4 pt-1">
-							<Turnstile
-								ref={turnstileRef}
-								siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-								onSuccess={(token) => setTurnstileToken(token)}
-								onExpire={() => setTurnstileToken(null)}
-								onError={() => setTurnstileToken(null)}
-							/>
+							<div className="w-full max-w-[360px]">
+								<label className={FIELD_LABEL}>Security Verification *</label>
+								<Turnstile
+									ref={turnstileRef}
+									siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+									options={{ theme: "light", size: "flexible" }}
+									onSuccess={(token) => setTurnstileToken(token)}
+									onExpire={() => setTurnstileToken(null)}
+									onError={() => setTurnstileToken(null)}
+								/>
+							</div>
 							<button
 								type="submit"
 								disabled={submitting || !turnstileToken}
@@ -424,7 +568,7 @@ export default function AdvertisePage() {
 							.
 						</p>
 					</form>
-				</div>
+				</Reveal>
 			</section>
 		</div>
 	);

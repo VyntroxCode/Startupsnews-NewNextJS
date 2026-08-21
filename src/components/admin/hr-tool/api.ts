@@ -29,6 +29,7 @@ export interface PayrollApiResult {
   canRun: boolean;
   alreadyRun: boolean;
   entries: HrPayrollEntry[];
+  missingCtcEmployees: string[];
 }
 /** Payroll calls preserve the server's specific error message (e.g. "period hasn't ended
  * yet") instead of the generic apiGet/apiPost "Request failed", since that message is
@@ -56,7 +57,8 @@ export const hrApi = {
   recordAttendanceOverride: (v: HrAttendanceOverride) => apiPost('/attendance-overrides', v),
   recordPunch: (v: HrPunch) => apiPost('/punch-log', v),
   getPayroll: (month: string) => apiRaw<PayrollApiResult>('/payroll?month=' + encodeURIComponent(month)),
-  runPayroll: (month: string) => apiRaw<{ entries: HrPayrollEntry[] }>('/payroll-runs', { method: 'POST', body: JSON.stringify({ month }) }),
+  runPayroll: (month: string, tds?: Record<string, number>) =>
+    apiRaw<{ entries: HrPayrollEntry[] }>('/payroll-runs', { method: 'POST', body: JSON.stringify({ month, tds }) }),
   saveTemplate: (name: string, content: string) => apiPut('/templates/' + encodeURIComponent(name), { content }),
   appendAuditLog: (entry: HrAuditLogEntry) => apiPost('/audit-log', entry).catch(() => {}),
   resetSampleData: (keepEmployeeId: string | null) => apiPost('/reset-sample-data', { keepEmployeeId }),

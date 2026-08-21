@@ -735,6 +735,10 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   float: none;
   padding: 0;
   transition: color 0.15s ease-in-out;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Event list: smaller, lighter grey – LOCATION / DATE */
@@ -761,6 +765,10 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin: 0 !important;
   float: none;
   padding: 0;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* More News sidebar: CSS sticky so it stays visible and scrolls with page until footer (no disappear) */
@@ -1381,6 +1389,24 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin: 0 0 24px 0;
   color: #222;
   line-height: 1.3;
+}
+
+.event-by-country-city-group {
+  margin-bottom: 32px;
+}
+
+.event-by-country-city-group:last-child {
+  margin-bottom: 0;
+}
+
+.event-by-country-city {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 14px 0;
+  color: #555;
+  line-height: 1.3;
+  border-left: 3px solid #e2e2e2;
+  padding-left: 10px;
 }
 
 .event-by-country-list {
@@ -6862,24 +6888,30 @@ body .banner-carousel-container,
   text-align: left;
 }
 
-.contact-us-header {
-  text-align: left;
-  margin-bottom: 48px;
-}
-
-.contact-us-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #000;
-  text-transform: uppercase;
-  font-family: 'NB International', sans-serif;
-  margin-bottom: 16px;
-  letter-spacing: 1px;
-}
-
 .contact-us-section,
 .contact-us-section-item {
   margin-bottom: 32px;
+}
+
+/* Staggered fade-in-up as the page loads — each support card in turn. */
+@keyframes contactFadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.contact-us-section-item {
+  animation: contactFadeInUp 0.6s ease-out both;
+}
+
+.contact-us-sections .contact-us-section-item:nth-child(1) { animation-delay: 0.15s; }
+.contact-us-sections .contact-us-section-item:nth-child(2) { animation-delay: 0.25s; }
+.contact-us-sections .contact-us-section-item:nth-child(3) { animation-delay: 0.35s; }
+.contact-us-sections .contact-us-section-item:nth-child(4) { animation-delay: 0.45s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-us-section-item {
+    animation: none;
+  }
 }
 
 /* ========================================
@@ -6985,7 +7017,7 @@ body .banner-carousel-container,
 
 
 .contact-us-section-item-title {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: #000;
   margin-bottom: 12px;
@@ -6994,15 +7026,15 @@ body .banner-carousel-container,
 }
 
 .contact-us-section-item-body {
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
   color: #333;
   margin-bottom: 8px;
 }
 
 .contact-us-section-item-link {
   color: #0077b5;
-  font-size: 15px;
+  font-size: 16px;
   text-decoration: none;
 }
 

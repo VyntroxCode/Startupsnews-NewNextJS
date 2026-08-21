@@ -114,6 +114,11 @@ export class PartnershipEventsService {
    * (EventNotFoundError — e.g. deleted independently from the Events tab). Any other update
    * failure (a transient DB error, say) is reported back as a warning instead of triggering
    * a recreate, so a hiccup can't multiply one event into two.
+   *
+   * Whenever there's no confirmed live event_id to update (never linked, or just proved
+   * stale above), title is checked against existing website Events before creating anything
+   * — records saved before event_id linking existed would otherwise recreate a fresh
+   * duplicate on every single edit, forever, since they'd never have an event_id to reuse.
    */
   private async syncLinkedEvent(
     entity: PartnershipEventEntity,
@@ -157,6 +162,16 @@ export class PartnershipEventsService {
           recreateReason = 'deleted';
           console.warn(`Partnership event ${entity.id}: linked event ${entity.event_id} no longer exists, recreating:`, err);
         }
+      }
+
+      // No confirmed linked event at this point. Adopt an existing website Event with the
+      // exact same title if one exists, instead of creating a fresh duplicate — this is the
+      // common case for records saved before event_id linking existed.
+      const titleMatch = await this.eventsService.getEventByTitle(entity.event_name);
+      if (titleMatch) {
+        await this.eventsService.updateEvent(titleMatch.id, { ...eventFields, updatedBy: actor });
+        await this.repository.setEventId(entity.id, titleMatch.id);
+        return { entity: { ...entity, event_id: titleMatch.id } };
       }
 
       if (!entity.event_start_date) return { entity }; // creating a new linked event needs a date; updating an existing one doesn't need it re-supplied

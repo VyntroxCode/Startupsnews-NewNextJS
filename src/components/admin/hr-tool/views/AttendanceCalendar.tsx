@@ -83,12 +83,14 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
 function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string; dateStr: string; status: DayStatus; onClose: () => void }) {
   const { state, persistAttendanceOverride, persistRegularizations, logRuleChange } = useHrTool();
   const [manualStatus, setManualStatus] = useState<DayStatus>(status || 'present');
-  const [showRegForm, setShowRegForm] = useState(false);
+  const [showRegForm, setShowRegForm] = useState<'in' | 'out' | null>(null);
+  const [regTime, setRegTime] = useState('');
   const [regReason, setRegReason] = useState(REG_REASONS[0]);
   const [regReasonOther, setRegReasonOther] = useState('');
 
   const real = state.attendance.find((a) => a.emp === empName && a.date === dateStr);
-  const reg = state.regularizations.find((r) => r.emp === empName && r.date === dateStr);
+  const regIn = state.regularizations.find((r) => r.emp === empName && r.date === dateStr && r.punchType === 'in');
+  const regOut = state.regularizations.find((r) => r.emp === empName && r.date === dateStr && r.punchType === 'out');
   const statusLabel = status === 'off' ? 'Week-off' : real ? real.status : (status ? { present: 'Present', absent: 'Absent', leave: 'On leave' }[status] : 'Not recorded');
   const times = real ? { inTime: real.inTime, outTime: real.outTime } : { inTime: '—', outTime: '—' };
 
@@ -98,20 +100,25 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
     onClose();
   }
   async function submitRegularization() {
+    if (!showRegForm) return;
     const reason = regReason === '__other__' ? regReasonOther.trim() : regReason;
     if (!reason) { alert('Please describe the reason.'); return; }
+    const time = regTime.trim();
+    if (!time) { alert('Please set the time being regularized.'); return; }
     const diff = Math.round((new Date().getTime() - new Date(dateStr).getTime()) / 86400000);
     if (!state.rules.regularizationOverride && diff > state.rules.regularizationWindowDays) {
       alert(`This date is outside the ${state.rules.regularizationWindowDays}-day regularization window. Contact HR for an override.`);
       return;
     }
     const stage = state.rules.twoLevelApproval.attendance ? 'rm' : 'hr';
-    await persistRegularizations([{ id: 'R-' + Date.now(), emp: empName, date: dateStr, reason, stage, status: 'pending', rmRemarks: '', hrRemarks: '' }, ...state.regularizations]);
+    await persistRegularizations([
+      { id: 'R-' + Date.now(), emp: empName, date: dateStr, punchType: showRegForm, requestedTime: time, reason, stage, status: 'pending', rmRemarks: '', hrRemarks: '' },
+      ...state.regularizations,
+    ]);
     onClose();
   }
-  async function decideReg(level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) {
-    if (!reg) return;
-    await persistRegularizations(state.regularizations.map((r) => (r.id === reg.id ? applyApprovalDecision(r, level, decision, remarks, state.rules.twoLevelApproval.attendance) : r)));
+  async function decideReg(id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) {
+    await persistRegularizations(state.regularizations.map((r) => (r.id === id ? applyApprovalDecision(r, level, decision, remarks, state.rules.twoLevelApproval.attendance) : r)));
     onClose();
   }
 
@@ -119,20 +126,37 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
     <ModalShell title={`${empName} — ${new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`} onClose={onClose} actions={[{ label: 'Close', cls: 'btn', onClick: onClose }]}>
       <div className="field"><label className="field-label">Status</label>{statusLabel}</div>
       <div className="field"><label className="field-label">In / Out</label>{times.inTime} – {times.outTime}</div>
-      {reg && (
+      {(regIn || regOut) && (
         <div className="field"><label className="field-label">Regularization</label>
-          {reg.reason} — <ApprovalBadge req={reg} />
-          {reg.rmRemarks && <div className="meta">Manager remarks: {reg.rmRemarks}</div>}
-          {reg.hrRemarks && <div className="meta">HR remarks: {reg.hrRemarks}</div>}
-          <div style={{ marginTop: 8 }}><ApprovalCell req={reg} onDecide={decideReg} /></div>
+          {regIn && (
+            <div style={{ marginBottom: 8 }}>
+              Punch In ({regIn.requestedTime}): {regIn.reason} — <ApprovalBadge req={regIn} />
+              {regIn.rmRemarks && <div className="meta">Manager remarks: {regIn.rmRemarks}</div>}
+              {regIn.hrRemarks && <div className="meta">HR remarks: {regIn.hrRemarks}</div>}
+              <div style={{ marginTop: 8 }}><ApprovalCell req={regIn} onDecide={(level, decision, remarks) => decideReg(regIn.id, level, decision, remarks)} /></div>
+            </div>
+          )}
+          {regOut && (
+            <div>
+              Punch Out ({regOut.requestedTime}): {regOut.reason} — <ApprovalBadge req={regOut} />
+              {regOut.rmRemarks && <div className="meta">Manager remarks: {regOut.rmRemarks}</div>}
+              {regOut.hrRemarks && <div className="meta">HR remarks: {regOut.hrRemarks}</div>}
+              <div style={{ marginTop: 8 }}><ApprovalCell req={regOut} onDecide={(level, decision, remarks) => decideReg(regOut.id, level, decision, remarks)} /></div>
+            </div>
+          )}
         </div>
       )}
-      {!reg && empName === state.currentUser?.name && !showRegForm && (
-        <div className="field"><button className="btn sm" onClick={() => setShowRegForm(true)}>+ Submit regularization request for this day</button></div>
+      {(!regIn || !regOut) && empName === state.currentUser?.name && !showRegForm && (
+        <div className="field" style={{ display: 'flex', gap: 8 }}>
+          {!regIn && <button className="btn sm" onClick={() => { setShowRegForm('in'); setRegTime(''); }}>+ Regularize Punch In</button>}
+          {!regOut && <button className="btn sm" onClick={() => { setShowRegForm('out'); setRegTime(''); }}>+ Regularize Punch Out</button>}
+        </div>
       )}
-      {!reg && showRegForm && (
+      {showRegForm && (
         <div className="field">
-          <label className="field-label">Reason</label>
+          <label className="field-label">{showRegForm === 'out' ? 'Punch Out' : 'Punch In'} time</label>
+          <input type="time" value={regTime} onChange={(e) => setRegTime(e.target.value)} />
+          <label className="field-label" style={{ marginTop: 8 }}>Reason</label>
           <select value={regReason} onChange={(e) => setRegReason(e.target.value)}>
             {REG_REASONS.map((r) => <option key={r}>{r}</option>)}
             <option value="__other__">Other (please specify)</option>

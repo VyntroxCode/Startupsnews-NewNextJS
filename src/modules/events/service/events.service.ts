@@ -76,6 +76,12 @@ export class EventsService {
     return entity;
   }
 
+  /** No caching — admin-only lookup used by Partnership Tracker's linked-event sync to adopt an
+   * existing Event by title instead of creating a duplicate. */
+  async getEventByTitle(title: string): Promise<EventEntity | null> {
+    return this.repository.findByTitle(title);
+  }
+
   async getEventBySlug(slug: string): Promise<EventEntity | null> {
     const cacheKey = `event:slug:${slug}`;
 

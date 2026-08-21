@@ -1,6 +1,6 @@
 /* Shared Tailwind stylesheet for the small set of routes that use real Tailwind utility
-   classes in an otherwise non-Tailwind project (currently /about-us, /advertise-with-us, and
-   /ecosystem-partners). This file IS the source AND the thing each route's layout.tsx imports
+   classes in an otherwise non-Tailwind project (currently /about-us, /advertise-with-us,
+   /ecosystem-partners, and /contact-us). This file IS the source AND the thing each route's layout.tsx imports
    directly (`import "../isolated-tailwind.css"`) — no separate compile step, no manually-
    regenerated output file, no per-route CSS file. Editing className usage in any of these
    page.tsx files and running `npm run dev` / `npm run build` is enough; @tailwindcss/postcss
@@ -33,6 +33,7 @@
 @source "./about-us/page.tsx";
 @source "./advertise-with-us/page.tsx";
 @source "./ecosystem-partners/page.tsx";
+@source "./contact-us/page.tsx";
 
 @theme {
   /* About Us page tokens */

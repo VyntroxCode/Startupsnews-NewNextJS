@@ -42,7 +42,7 @@ export default function Login() {
       docs: state.orgStructure.requiredDocuments.map((name) => ({ name, status: 'not_uploaded' })),
     } : x));
     const newEmployee = {
-      id: newId, name: o.name, email: o.name.toLowerCase().replace(/\s+/g, '.') + '@snf.co', designation: o.designation,
+      id: newId, name: o.name, email: o.name.toLowerCase().replace(/\s+/g, '.') + '@snf.co', phone: null, designation: o.designation,
       team: o.team, manager: teamManager, status: 'onboarding', doj: today, sysRole: 'Employee', ctc: o.ctc,
       leaveBalance: { Casual: 0, Sick: 0, Earned: 0 }, documents: [],
       signedDocs: [{ type: 'Offer Letter', content: offerMerged, signedDate: today }],

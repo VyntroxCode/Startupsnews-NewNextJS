@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useHrTool } from './HrToolContext';
 import Dashboard from './views/Dashboard';
 import Directory from './views/Directory';
-import Onboarding from './views/Onboarding';
+import EmployeeDocuments from './views/EmployeeDocuments';
 import Offboarding from './views/Offboarding';
 import Attendance from './views/Attendance';
 import Leave from './views/Leave';
@@ -16,11 +16,11 @@ import Helpdesk from './views/Helpdesk';
 import Company from './views/Company';
 import Rules from './views/Rules';
 import Documents from './views/Documents';
-import { isAdmin, pendingEmployeeDocUpdates, rmOf, scopedApprovals } from './utils';
+import { isAdmin, rmOf, scopedApprovals } from './utils';
 import { VIEW_ACCESS, type HrView } from './types';
 
 const VIEWS: Record<HrView, () => React.JSX.Element> = {
-  dashboard: Dashboard, directory: Directory, onboarding: Onboarding, offboarding: Offboarding,
+  dashboard: Dashboard, directory: Directory, documentReview: EmployeeDocuments, offboarding: Offboarding,
   attendance: Attendance, leave: Leave, payroll: Payroll, expenses: Expenses,
   compliance: Compliance, posh: Posh, helpdesk: Helpdesk, company: Company, rules: Rules, documents: Documents,
 };
@@ -32,7 +32,7 @@ const NAV_GROUPS: NavGroup[] = [
   { label: 'Overview', items: [{ view: 'dashboard', label: 'Dashboard', icon: '◆' }] },
   { label: 'People', items: [
     { view: 'directory', label: 'Employee Directory', icon: '☰' },
-    { view: 'onboarding', label: 'Onboarding', icon: '→' },
+    { view: 'documentReview', label: 'Employee Documents', icon: '📄' },
     { view: 'offboarding', label: 'Offboarding', icon: '←' },
   ] },
   { label: 'Time', items: [
@@ -58,12 +58,6 @@ const NAV_GROUPS: NavGroup[] = [
 function pendingCountFor(view: HrView, state: ReturnType<typeof useHrTool>['state']): number {
   if (!state.currentUser) return 0;
   const role = state.role, me = state.currentUser;
-  if (view === 'onboarding' && isAdmin(role)) {
-    const docReview = state.onboarding.some((o) => o.docs.some((d) => d.status === 'pending'));
-    const agreementReview = state.onboarding.some((o) => o.agreementStage === 'pending_employer_signature');
-    const docUpdates = pendingEmployeeDocUpdates(state.employees).length > 0;
-    return docReview || agreementReview || docUpdates ? 1 : 0;
-  }
   if (view === 'attendance') {
     return scopedApprovals(state.regularizations, role, me.name, state.employees).filter((r) => r.status === 'pending' &&
       ((role === 'Reporting Manager' && r.stage === 'rm' && rmOf(state.employees, r.emp) === me.name) || (isAdmin(role) && r.stage === 'hr'))).length;
@@ -75,6 +69,9 @@ function pendingCountFor(view: HrView, state: ReturnType<typeof useHrTool>['stat
   if (view === 'expenses') {
     return scopedApprovals(state.expenses, role, me.name, state.employees).filter((x) => x.status === 'pending' &&
       ((role === 'Reporting Manager' && x.stage === 'rm' && rmOf(state.employees, x.emp) === me.name) || (isAdmin(role) && x.stage === 'hr'))).length;
+  }
+  if (view === 'documentReview' && isAdmin(role)) {
+    return state.employees.reduce((n, e) => n + e.documents.filter((d) => d.status === 'pending').length, 0);
   }
   if (view === 'documents' && role === 'Employee') {
     const rejected = (me.documents || []).some((d) => d.status === 'rejected');
@@ -208,7 +205,9 @@ function HrToolStyles() {
       .hr-tool-app section.block { margin-bottom: 26px; }
       .hr-tool-app .block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; gap: 10px; flex-wrap: wrap; }
       .hr-tool-app .block-head h2 { font-size: 15px; margin: 0; font-weight: 700; }
+      .hr-tool-app .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .hr-tool-app table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .hr-tool-app .table-scroll table { min-width: max-content; }
       .hr-tool-app th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; padding: 9px 14px; border-bottom: 1px solid var(--line); }
       .hr-tool-app td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
       .hr-tool-app tr:last-child td { border-bottom: none; }
@@ -245,6 +244,8 @@ function HrToolStyles() {
       .hr-tool-app .field { margin-bottom: 12px; }
       .hr-tool-app .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
       @media (max-width: 480px) { .hr-tool-app .field-grid-2 { grid-template-columns: 1fr; } }
+      .hr-tool-app .field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 14px; }
+      @media (max-width: 640px) { .hr-tool-app .field-grid-3 { grid-template-columns: 1fr; } }
       .hr-tool-app .empty { padding: 30px 10px; text-align: center; color: var(--muted); font-size: 13px; }
       .hr-tool-app .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
       .hr-tool-app .search { max-width: 220px; }

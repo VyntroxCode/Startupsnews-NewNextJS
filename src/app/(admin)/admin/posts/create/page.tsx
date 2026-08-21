@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getAuthHeaders, getAdminToken, withAdminToken, getAdminUser } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
+import { clearFormDraft, loadFormDraft, useFormDraftAutosave } from '@/lib/formDraftStorage';
 
 interface Category {
   id: number;
@@ -21,6 +22,30 @@ interface Author {
 // Staff authors event admins are allowed to publish press releases under.
 // Keep in sync with STAFF_AUTHOR_SLUGS in src/app/sitemap.ts.
 const EVENT_ADMIN_AUTHOR_IDS = [38, 221, 223, 224, 37];
+const DRAFT_KEY = 'admin_post_draft_create';
+
+type CreatePostFormData = {
+  title: string; slug: string; excerpt: string; metaDescription: string; robots: string;
+  contentFollow: string; content: string; categoryId: string; authorId: string;
+  featuredImageUrl: string; featuredImageSmallUrl: string; format: 'standard' | 'video' | 'gallery';
+  status: 'draft' | 'published' | 'scheduled' | 'archived'; featured: boolean; scheduledAt: string;
+};
+
+/** How much of the form counts as "filled in" for auto-save purposes — title, real content,
+ * excerpt, category, author, and a featured image are the fields that actually represent work
+ * worth not losing; slug/format/robots etc. either auto-derive or have sensible defaults. */
+function completionRatioOf(f: CreatePostFormData): number {
+  const contentText = f.content.replace(/<[^>]*>/g, '').trim();
+  const filled = [
+    f.title.trim().length > 0,
+    contentText.length > 10,
+    f.excerpt.trim().length > 0,
+    !!f.categoryId,
+    !!f.authorId,
+    !!f.featuredImageUrl,
+  ];
+  return filled.filter(Boolean).length / filled.length;
+}
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -48,11 +73,26 @@ export default function CreatePostPage() {
     featured: false,
     scheduledAt: '',
   });
+  const [restorableDraft, setRestorableDraft] = useState<{ savedAt: number; data: CreatePostFormData } | null>(null);
+
+  const completionRatio = completionRatioOf(formData);
+  useFormDraftAutosave(DRAFT_KEY, formData, completionRatio);
 
   useEffect(() => {
     fetchCategories();
     fetchAuthors();
+    setRestorableDraft(loadFormDraft<CreatePostFormData>(DRAFT_KEY));
   }, []);
+
+  function restoreDraft() {
+    if (!restorableDraft) return;
+    setFormData(restorableDraft.data);
+    setRestorableDraft(null);
+  }
+  function discardDraft() {
+    clearFormDraft(DRAFT_KEY);
+    setRestorableDraft(null);
+  }
 
   const fetchCategories = async () => {
     try {
@@ -313,6 +353,7 @@ export default function CreatePostPage() {
         return;
       }
 
+      clearFormDraft(DRAFT_KEY);
       router.push('/admin/posts');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred while creating the post';
@@ -346,6 +387,40 @@ export default function CreatePostPage() {
           Create New Post
         </h2>
       </div>
+
+      {restorableDraft && (
+        <div style={{
+          background: '#eef2ff',
+          border: '1px solid #c7d2fe',
+          color: '#3730a3',
+          padding: '1rem 1.25rem',
+          borderRadius: '8px',
+          marginBottom: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          flexWrap: 'wrap',
+        }}>
+          <span>
+            We found unsaved details from {new Date(restorableDraft.savedAt).toLocaleString('en-IN')} — looks like this form was closed before it was published. Restore them?
+          </span>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            <button type="button" onClick={restoreDraft} style={{
+              padding: '0.5rem 1rem', background: '#4f46e5', color: '#fff', border: 'none',
+              borderRadius: '6px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+            }}>
+              Restore
+            </button>
+            <button type="button" onClick={discardDraft} style={{
+              padding: '0.5rem 1rem', background: '#fff', color: '#3730a3', border: '1px solid #c7d2fe',
+              borderRadius: '6px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+            }}>
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{

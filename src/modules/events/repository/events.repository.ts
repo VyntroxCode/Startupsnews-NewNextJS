@@ -147,6 +147,13 @@ export class EventsRepository {
     return queryOne<EventEntity>('SELECT * FROM events WHERE slug = ?', [slug]);
   }
 
+  /** Exact title match (case-insensitive per the column's collation), most recently created
+   * first — used to adopt an already-existing website Event instead of creating a duplicate
+   * when a Partnership Event record has no (or a stale) event_id link. */
+  async findByTitle(title: string): Promise<EventEntity | null> {
+    return queryOne<EventEntity>('SELECT * FROM events WHERE title = ? ORDER BY id DESC LIMIT 1', [title]);
+  }
+
   /**
    * Normalize event date for MySQL DATE column (YYYY-MM-DD string to avoid timezone issues)
    */

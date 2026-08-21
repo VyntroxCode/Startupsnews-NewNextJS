@@ -93,6 +93,10 @@ const SITE_STATUS_BADGE: Record<string, { label: string; color: string }> = {
 };
 
 const STATUS_ORDER = [...PARTNERSHIP_STATUS_OPTIONS] as string[];
+// Trimmed-down status list for just the "All statuses" filter dropdown and the KPI cards row —
+// In Progress/On Hold/Dropped stay fully valid statuses (still assignable per-event, still
+// counted/classified everywhere else), they're just not surfaced as their own quick-filter/card.
+const STATUS_FILTER_ORDER = STATUS_ORDER.filter((s) => !['In Progress', 'On Hold', 'Dropped'].includes(s));
 const STATUS_COLOR_HEX: Record<string, string> = {
   Draft: '#9333EA', Initiated: '#7C3FE0', 'In Progress': '#2563C7', 'On Hold': '#B9790A',
   'Partnership Done': '#1E9E64', Dropped: '#C22B44', 'Only Listed (No Partnership)': '#0E7C8B',
@@ -1216,7 +1220,7 @@ export default function PartnershipTrackerPage() {
                 <div className="pt-card-label"><span className="pt-dot" />All events</div>
                 <div className="pt-card-count">{counts.total}</div>
               </div>
-              {STATUS_ORDER.map((s) => (
+              {STATUS_FILTER_ORDER.map((s) => (
                 <div key={s} className={`pt-card ${cardFilter === s ? 'active' : ''}`} style={{ ['--dot' as string]: STATUS_COLOR_HEX[s] }} onClick={() => setCard(s)}>
                   <div className="pt-card-label"><span className="pt-dot" />{s}</div>
                   <div className="pt-card-count">{counts.byStatus[s] || 0}</div>
@@ -1332,13 +1336,12 @@ export default function PartnershipTrackerPage() {
               </div>
               <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); resetToPage1(); }}>
                 <option value="all">All statuses</option>
-                {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
+                {STATUS_FILTER_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
                 <option value="Unmapped">Unmapped</option>
               </select>
               <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); resetToPage1(); }}>
-                <option value="all">Domestic + International</option>
+                <option value="all">All Events</option>
                 {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-                <option value="">Unspecified</option>
               </select>
               <select value={listingFilter} onChange={(e) => { setListingFilter(e.target.value); resetToPage1(); }}>
                 <option value="all">Any listing status</option>

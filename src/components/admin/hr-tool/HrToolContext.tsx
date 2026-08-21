@@ -37,9 +37,10 @@ interface HrState {
 
 const DEFAULT_RULES: HrRules = {
   workingDaysPattern: 'Mon–Sat, alternate Saturdays off', shiftStartTime: '10:00', shiftEndTime: '19:00',
-  shiftGraceMinutes: 15, halfDayThresholdHours: 4, regularizationWindowDays: 5, regularizationOverride: false,
-  regularizationMonthlyQuota: 5, shortLeaveMaxHours: 2, shortLeaveMonthlyQuota: 2,
-  salaryPeriodFrom: 26, salaryPeriodTo: '25', ctcSplit: { basic: 50, hra: 20, allowances: 30 },
+  shiftGraceMinutes: 15, halfDayThresholdHours: 5.5, regularizationWindowDays: 5, regularizationOverride: false,
+  regularizationMonthlyQuota: 5, shortLeaveMaxHours: 1, shortLeaveMonthlyQuota: 2,
+  halfDayMinWorkedHours: 4.5, shortLeaveMinWorkedHours: 7.5, fullDayMinWorkedHours: 8.25,
+  salaryPeriodFrom: 26, salaryPeriodTo: '25', ctcSplit: { basicPct: 50, hraPctOfBasic: 50, convenienceType: 'amount', convenienceValue: 0 },
   leaveTypes: { Casual: true, Sick: true, Earned: true, Maternity: true, Paternity: true, 'Comp-off': true },
   twoLevelApproval: { leave: true, attendance: true, expense: true },
   lateMarkPenalty: false, geoFencing: false, selfieCheckin: false, pfEsi: false,
@@ -70,6 +71,7 @@ function resolveFounder(employees: HrEmployee[]): HrEmployee {
     id: 'FOUNDER',
     name: adminUser?.name || 'Founder',
     email: adminUser?.email || '',
+    phone: null,
     designation: 'Founder & CEO',
     team: 'Leadership',
     manager: null,
@@ -107,7 +109,7 @@ interface HrToolContextValue {
   persistAttendance: (rec: HrAttendanceRecord) => Promise<void>;
   persistAttendanceOverride: (o: HrAttendanceOverride) => Promise<void>;
   persistPunch: (p: HrPunch) => Promise<void>;
-  runPayrollForMonth: (month: string) => Promise<{ success: boolean; data?: { entries: HrPayrollEntry[] }; error?: string }>;
+  runPayrollForMonth: (month: string, tds?: Record<string, number>) => Promise<{ success: boolean; data?: { entries: HrPayrollEntry[] }; error?: string }>;
   persistTemplate: (name: string, content: string) => Promise<void>;
   resetSampleData: () => Promise<boolean>;
   upsertEmployeeCredentialInState: (cred: HrEmployeeCredential) => void;
@@ -206,8 +208,8 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   /** Computes and freezes real Net Pay for a payroll month (see HrToolService.runPayroll) —
    * refuses if the period hasn't ended yet. Updates state.payrollRun optimistically on
    * success so Dashboard's stat tile stays live without a full bootstrap reload. */
-  const runPayrollForMonth = useCallback(async (month: string) => {
-    const res = await hrApi.runPayroll(month);
+  const runPayrollForMonth = useCallback(async (month: string, tds?: Record<string, number>) => {
+    const res = await hrApi.runPayroll(month, tds);
     if (res.success) {
       setState((s) => ({ ...s, payrollRun: { month, status: 'run', runAt: new Date().toISOString(), runBy: state.currentUser?.name || null } }));
     }

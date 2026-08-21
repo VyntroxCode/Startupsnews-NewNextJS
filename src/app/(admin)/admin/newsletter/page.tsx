@@ -1062,22 +1062,44 @@ export default function NewsletterPage() {
                       <p style={{ color: '#a16207', fontSize: '0.875rem', margin: 0 }}>Go to <button type="button" onClick={() => setTab('rss-feeds')} style={{ color: '#6366f1', fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>RSS Feeds</button> and set <strong>Feed For → Newsletter</strong>.</p>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                      {feeds.map((feed) => (
-                        <div key={feed.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1rem', display: 'flex', gap: '0.875rem', alignItems: 'flex-start', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                          <div style={{ width: 48, height: 48, borderRadius: 8, background: '#f1f5f9', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {feed.logo_url ? <img src={feed.logo_url} alt={feed.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : (
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9" /><path d="M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1" /></svg>
-                            )}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#0f172a', marginBottom: 4 }}>{feed.name}</div>
-                            <div style={{ fontSize: '0.8125rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginBottom: 6 }}>{feed.url}</div>
-                            <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: 4, background: feed.enabled ? '#dcfce7' : '#f1f5f9', color: feed.enabled ? '#166534' : '#64748b', fontWeight: 600 }}>{feed.enabled ? 'Enabled' : 'Disabled'}</span>
-                          </div>
-                          <Link href={`/admin/rss-feeds/edit/${feed.id}`} style={{ fontSize: '0.75rem', color: '#6366f1', textDecoration: 'none', fontWeight: 600, flexShrink: 0 }}>Edit</Link>
-                        </div>
-                      ))}
+                    <div style={rssStyles.tableWrapper}>
+                      <table style={rssStyles.table}>
+                        <thead style={rssStyles.tableHeader}>
+                          <tr>
+                            <th style={rssStyles.tableHeaderCell}>Feed</th>
+                            <th style={rssStyles.tableHeaderCell}>URL</th>
+                            <th style={rssStyles.tableHeaderCell}>Last Fetch</th>
+                            <th style={rssStyles.tableHeaderCell}>Status</th>
+                            <th style={{ ...rssStyles.tableHeaderCell, textAlign: 'right' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {feeds.map((feed) => (
+                            <tr key={feed.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                              <td style={rssStyles.tableCell}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                                  <div style={{ width: 32, height: 32, borderRadius: 6, background: '#f1f5f9', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {feed.logo_url ? <img src={feed.logo_url} alt={feed.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : (
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9" /><path d="M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1" /></svg>
+                                    )}
+                                  </div>
+                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{feed.name}</span>
+                                </div>
+                              </td>
+                              <td style={{ ...rssStyles.tableCell, ...rssStyles.urlCell }} title={feed.url}>{feed.url}</td>
+                              <td style={{ ...rssStyles.tableCell, color: '#64748b' }}>
+                                {feed.last_fetched_at ? new Date(feed.last_fetched_at).toLocaleString() : 'Never'}
+                              </td>
+                              <td style={rssStyles.tableCell}>
+                                <span style={{ ...rssStyles.statusBadge, background: feed.enabled ? '#dcfce7' : '#f1f5f9', color: feed.enabled ? '#166534' : '#64748b' }}>{feed.enabled ? 'Enabled' : 'Disabled'}</span>
+                              </td>
+                              <td style={{ ...rssStyles.tableCell, ...rssStyles.actionsCell }}>
+                                <Link href={`/admin/rss-feeds/edit/${feed.id}`} style={{ ...rssStyles.actionLink, background: '#e0e7ff', color: '#3730a3' }}>Edit</Link>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>

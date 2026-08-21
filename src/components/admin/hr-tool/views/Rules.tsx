@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
+import { computeCtcBreakdown } from '../utils';
 import type { HrRules } from '../types';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -26,10 +27,18 @@ export default function Rules() {
   const [newReqDoc, setNewReqDoc] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState('');
   const [newHolidayName, setNewHolidayName] = useState('');
-  const [ctcBasic, setCtcBasic] = useState(String(r.ctcSplit.basic));
-  const [ctcHra, setCtcHra] = useState(String(r.ctcSplit.hra));
-  const [ctcAllow, setCtcAllow] = useState(String(r.ctcSplit.allowances));
+  const [ctcBasicPct, setCtcBasicPct] = useState(String(r.ctcSplit.basicPct));
+  const [ctcHraPct, setCtcHraPct] = useState(String(r.ctcSplit.hraPctOfBasic));
+  const [ctcConvType, setCtcConvType] = useState<'amount' | 'percent'>(r.ctcSplit.convenienceType);
+  const [ctcConvValue, setCtcConvValue] = useState(String(r.ctcSplit.convenienceValue));
   const [newLeaveType, setNewLeaveType] = useState('');
+
+  // Live preview against the (unsaved) draft values in the fields above, not the saved rules —
+  // so admin sees the effect of an edit before clicking Save.
+  const sampleBreakdown = computeCtcBreakdown(600000, {
+    basicPct: Number(ctcBasicPct) || 0, hraPctOfBasic: Number(ctcHraPct) || 0,
+    convenienceType: ctcConvType, convenienceValue: Number(ctcConvValue) || 0,
+  });
 
   async function updateRule<K extends keyof HrRules>(key: K, value: HrRules[K]) {
     await persistRules({ ...r, [key]: value });
@@ -124,10 +133,13 @@ export default function Rules() {
   }
 
   async function saveCtcSplit() {
-    const b = Number(ctcBasic) || 0, h = Number(ctcHra) || 0, a = Number(ctcAllow) || 0;
-    if (b + h + a !== 100) { alert(`Basic + HRA + Allowances must add up to 100%. Currently: ${b + h + a}%`); return; }
-    await persistRules({ ...r, ctcSplit: { basic: b, hra: h, allowances: a } });
-    logRuleChange(`Updated CTC split to Basic ${b}% / HRA ${h}% / Allowances ${a}%`);
+    const basicPct = Number(ctcBasicPct) || 0, hraPct = Number(ctcHraPct) || 0, convValue = Number(ctcConvValue) || 0;
+    if (basicPct <= 0 || basicPct > 100) { alert('Basic must be between 0 and 100% of monthly salary.'); return; }
+    if (hraPct < 0 || hraPct > 100) { alert('HRA must be between 0 and 100% of Basic.'); return; }
+    if (ctcConvType === 'percent' && (convValue < 0 || convValue > 100)) { alert('Convenience Allowance % must be between 0 and 100.'); return; }
+    if (convValue < 0) { alert('Convenience Allowance cannot be negative.'); return; }
+    await persistRules({ ...r, ctcSplit: { basicPct, hraPctOfBasic: hraPct, convenienceType: ctcConvType, convenienceValue: convValue } });
+    logRuleChange(`Updated CTC structure: Basic ${basicPct}% of salary / HRA ${hraPct}% of Basic / Convenience ${ctcConvType === 'amount' ? '₹' + convValue : convValue + '%'} — Special Allowance auto-computed as the remainder`);
   }
 
   async function addLeaveType() {
@@ -232,12 +244,40 @@ export default function Rules() {
       <section className="block">
         <div className="block-head"><h2>CTC structure</h2></div>
         <div className="card pad">
-          <div className="rule-desc" style={{ marginBottom: 10 }}>Used to split annual CTC into Basic / HRA / Allowances wherever it&apos;s shown. Must add up to 100%.</div>
-          <div className="rule-inputs">
-            Basic <input className="mini-input" type="number" value={ctcBasic} onChange={(e) => setCtcBasic(e.target.value)} />%
-            HRA <input className="mini-input" type="number" value={ctcHra} onChange={(e) => setCtcHra(e.target.value)} />%
-            Allowances <input className="mini-input" type="number" value={ctcAllow} onChange={(e) => setCtcAllow(e.target.value)} />%
-            <button className="btn sm" onClick={saveCtcSplit}>Save split</button>
+          <div className="rule-desc" style={{ marginBottom: 10 }}>
+            Used to split monthly salary into Basic / HRA / Convenience Allowance / Special Allowance wherever it&apos;s shown (offer letters, employment agreements). Special Allowance is never set directly — it&apos;s always whatever&apos;s left after the other three.
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">Basic</div><div className="rule-desc">% of monthly salary (ctc ÷ 12).</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" value={ctcBasicPct} onChange={(e) => setCtcBasicPct(e.target.value)} />%</div>
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">HRA</div><div className="rule-desc">% of Basic — auto-calculated from Basic above, not of salary directly.</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" value={ctcHraPct} onChange={(e) => setCtcHraPct(e.target.value)} />% of Basic</div>
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">Convenience Allowance</div><div className="rule-desc">A flat Rupees/month amount, or a % of monthly salary — your choice.</div></div>
+            <div className="rule-inputs">
+              <select value={ctcConvType} onChange={(e) => setCtcConvType(e.target.value as 'amount' | 'percent')} style={{ marginRight: 8 }}>
+                <option value="amount">Amount</option>
+                <option value="percent">%</option>
+              </select>
+              {ctcConvType === 'amount' && '₹'}
+              <input className="mini-input" type="number" value={ctcConvValue} onChange={(e) => setCtcConvValue(e.target.value)} />
+              {ctcConvType === 'percent' && '%'}
+            </div>
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">Special Allowance</div><div className="rule-desc">Auto-calculated — whatever&apos;s left of monthly salary after Basic, HRA, and Convenience Allowance.</div></div>
+          </div>
+          <div className="rule-inputs" style={{ marginTop: 4 }}>
+            <button className="btn sm" onClick={saveCtcSplit}>Save CTC structure</button>
+          </div>
+          <div className="meta" style={{ marginTop: 10 }}>
+            Example on a ₹6,00,000 annual CTC (₹50,000/month): Basic {sampleBreakdown.basic.toLocaleString('en-IN')}
+            {' · '}HRA {sampleBreakdown.hra.toLocaleString('en-IN')}
+            {' · '}Convenience {sampleBreakdown.convenience.toLocaleString('en-IN')}
+            {' · '}Special Allowance {sampleBreakdown.specialAllowance.toLocaleString('en-IN')} (all ₹/month, using your unsaved edits above)
           </div>
         </div>
       </section>
@@ -257,8 +297,8 @@ export default function Rules() {
             <div className="rule-inputs"><input className="mini-input" type="number" value={r.shiftGraceMinutes} onChange={(e) => updateRule('shiftGraceMinutes', Number(e.target.value))} /> min</div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Half-day threshold</div><div className="rule-desc">Minimum hours worked in a day before it counts as a full day rather than a half day.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={r.halfDayThresholdHours} onChange={(e) => updateRule('halfDayThresholdHours', Number(e.target.value))} /> hrs</div>
+            <div><div className="rule-name">Half day — punch-in cutoff</div><div className="rule-desc">Hours after shift start up to which a punch-in still counts as a Half Day (each costs half a day&apos;s pay). Later than this counts as Absent.</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" step="0.5" value={r.halfDayThresholdHours} onChange={(e) => updateRule('halfDayThresholdHours', Number(e.target.value))} /> hrs after shift start</div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">Regularization window</div><div className="rule-desc">How many days after an attendance date an employee may still request regularization.</div></div>
@@ -273,12 +313,23 @@ export default function Rules() {
             <div className="rule-inputs"><input className="mini-input" type="number" value={r.regularizationMonthlyQuota} onChange={(e) => updateRule('regularizationMonthlyQuota', Number(e.target.value))} /> / month</div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Short leave — max duration</div><div className="rule-desc">Time away from shift up to this many hours counts as a Short Leave rather than a half/full-day absence.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" step="0.5" value={r.shortLeaveMaxHours} onChange={(e) => updateRule('shortLeaveMaxHours', Number(e.target.value))} /> hrs</div>
+            <div><div className="rule-name">Short leave — punch-in cutoff</div><div className="rule-desc">Hours after shift start (past the grace period) up to which a punch-in counts as a Short Leave. Every 3rd Short Leave converts into one Half Day for pay — leftovers that don&apos;t reach 3 carry forward into the next payroll cycle instead of resetting.</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" step="0.5" value={r.shortLeaveMaxHours} onChange={(e) => updateRule('shortLeaveMaxHours', Number(e.target.value))} /> hrs after shift start</div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month.</div></div>
+            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month (shown on Rules &amp; Policy — not yet enforced as a hard cap on punch-in itself).</div></div>
             <div className="rule-inputs"><input className="mini-input" type="number" value={r.shortLeaveMonthlyQuota} onChange={(e) => updateRule('shortLeaveMonthlyQuota', Number(e.target.value))} /> / month</div>
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">Hours worked — secondary rule</div><div className="rule-desc">A day&apos;s status is the WORSE of arrival time (above) and total hours worked (punch-out minus punch-in) — an on-time arrival doesn&apos;t save a day where they left early, and working long hours doesn&apos;t undo a late arrival. Below the first number is Absent, up to the second is Half Day, up to the third is Short Leave, above it is a full day.</div></div>
+            <div className="rule-inputs">
+              <input className="mini-input" type="number" step="0.25" value={r.halfDayMinWorkedHours} onChange={(e) => updateRule('halfDayMinWorkedHours', Number(e.target.value))} style={{ width: 70 }} />
+              {' / '}
+              <input className="mini-input" type="number" step="0.25" value={r.shortLeaveMinWorkedHours} onChange={(e) => updateRule('shortLeaveMinWorkedHours', Number(e.target.value))} style={{ width: 70 }} />
+              {' / '}
+              <input className="mini-input" type="number" step="0.25" value={r.fullDayMinWorkedHours} onChange={(e) => updateRule('fullDayMinWorkedHours', Number(e.target.value))} style={{ width: 70 }} />
+              {' hrs worked'}
+            </div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">Salary calculation period</div><div className="rule-desc">Defines the payroll cycle used across payroll, attendance-linked pay, and reports.</div></div>

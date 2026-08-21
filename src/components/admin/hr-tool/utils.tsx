@@ -1,5 +1,21 @@
 import * as XLSX from 'xlsx';
-import type { HrEmployee, HrOnboarding, HrRole, HrRules } from './types';
+import type { HrCtcBreakdown, HrCtcSplit, HrEmployee, HrOnboarding, HrRole, HrRules } from './types';
+
+/** Basic/HRA/Convenience/Special Allowance for one month, from a CTC Structure config (see
+ * HrCtcSplit) and an employee's annual CTC. Basic is a % of monthly salary; HRA is a % of
+ * BASIC (not of salary directly); Convenience is either a flat ₹/month amount or a % of
+ * monthly salary; Special Allowance is always whatever's left, never its own stored
+ * percentage, so the four always add up to exactly one month's salary. */
+export function computeCtcBreakdown(annualCtc: number, split: HrCtcSplit): HrCtcBreakdown {
+  const monthlySalary = annualCtc / 12;
+  const basic = Math.round((monthlySalary * split.basicPct) / 100);
+  const hra = Math.round((basic * split.hraPctOfBasic) / 100);
+  const convenience = split.convenienceType === 'amount'
+    ? Math.round(split.convenienceValue)
+    : Math.round((monthlySalary * split.convenienceValue) / 100);
+  const specialAllowance = Math.round(monthlySalary - basic - hra - convenience);
+  return { basic, hra, convenience, specialAllowance };
+}
 
 /* ---------------------------------------------------------
    Dates — always the real current date. (The old standalone tool used a
@@ -80,7 +96,7 @@ export function salaryPeriodLabel(rules: HrRules): string {
   return `${rules.salaryPeriodFrom} to ${rules.salaryPeriodTo === 'last' ? 'last day of the month' : rules.salaryPeriodTo}`;
 }
 export function shiftTimingsLabel(rules: HrRules): string {
-  return `${rules.shiftStartTime}–${rules.shiftEndTime} · ${rules.shiftGraceMinutes} min grace · half-day below ${rules.halfDayThresholdHours} hrs`;
+  return `${rules.shiftStartTime}–${rules.shiftEndTime} · ${rules.shiftGraceMinutes} min grace · short leave to ${rules.shortLeaveMaxHours}h · half day to ${rules.halfDayThresholdHours}h`;
 }
 
 /* ---------------------------------------------------------
@@ -180,12 +196,132 @@ export type Role = HrRole;
 export function agreementMerged(o: HrOnboarding, employees: HrEmployee[], templates: Record<string, { content: string }>, rules: HrRules): string {
   const emp = o.employeeId ? employees.find((e) => e.id === o.employeeId) : null;
   const cs = emp?.ctcSplitOverride || rules.ctcSplit;
-  const basic = Math.round((o.ctc * cs.basic) / 100);
-  const hra = Math.round((o.ctc * cs.hra) / 100);
-  const allow = o.ctc - basic - hra;
+  const m = computeCtcBreakdown(o.ctc, cs);
+  // Merge tags are annual figures (matching o.ctc) — the monthly breakdown ×12.
+  const basic = m.basic * 12, hra = m.hra * 12, convenience = m.convenience * 12, allow = m.specialAllowance * 12;
   return mergeTemplate(templates['Employment Agreement']?.content || '', {
     employee_name: o.name, designation: o.designation, team: o.team, doj: o.signedDate || todayStr(),
     ctc: '₹' + o.ctc.toLocaleString('en-IN'), basic: '₹' + basic.toLocaleString('en-IN'),
-    hra: '₹' + hra.toLocaleString('en-IN'), allowances: '₹' + allow.toLocaleString('en-IN'),
+    hra: '₹' + hra.toLocaleString('en-IN'), convenience: '₹' + convenience.toLocaleString('en-IN'),
+    allowances: '₹' + allow.toLocaleString('en-IN'),
   });
+}
+
+/* ---------------------------------------------------------
+   Offer letter
+--------------------------------------------------------- */
+/** Registered-entity details as shown on Company Profile — kept here too since the offer letter
+ * needs them on its letterhead and this module doesn't import from app-level pages. */
+const COMPANY = {
+  name: 'DOTFYI Media Ventures Pvt. Ltd.',
+  brand: 'StartupNews.fyi',
+  cin: 'U74999DL2021PTC123456',
+  address: '1553-A-8 Gali No. 2, West Rohtash Nagar, Shahdara, East Delhi, Delhi 110032, India',
+};
+
+export interface OfferLetterData {
+  employeeName: string;
+  employeeCode: string;
+  /** Their portal login password — included in the letter since, for now, this is the only
+   * place a new hire actually receives it (see HireEmployeeButton's dummy email send). */
+  password: string;
+  designation: string;
+  team: string;
+  manager: string | null;
+  ctc: number;
+  doj: string;
+  documentsDeadline: string | null;
+  requiredDocuments: string[];
+  rules: HrRules;
+}
+
+/** Full, properly formatted offer letter — letterhead, reference, compensation breakdown (per
+ * the configured CTC split), work terms, the document checklist/deadline the new hire will see
+ * on their portal, and an acceptance block. Used as the default "Offer Letter" content whenever
+ * HR hasn't drafted a custom template in Company Profile (a custom draft still wins — see
+ * HireEmployeeButton's use of this alongside mergeTemplate). */
+export function buildOfferLetterContent(d: OfferLetterData): string {
+  const m = computeCtcBreakdown(d.ctc, d.rules.ctcSplit);
+  // The letter shows annual figures (matching d.ctc) — the monthly breakdown ×12.
+  const basic = m.basic * 12, hra = m.hra * 12, convenience = m.convenience * 12, allowances = m.specialAllowance * 12;
+  const fmt = (n: number) => '₹' + n.toLocaleString('en-IN');
+  const dateStr = todayStr();
+  const firstName = d.employeeName.trim().split(/\s+/)[0] || d.employeeName;
+  const docsList = d.requiredDocuments.length
+    ? d.requiredDocuments.map((n, i) => `   ${i + 1}. ${n}`).join('\n')
+    : '   (to be communicated by HR)';
+
+  return `${COMPANY.name}
+${COMPANY.address}
+CIN: ${COMPANY.cin}
+
+Date: ${dateStr}
+Ref: OFFER/${d.employeeCode}/${dateStr.slice(0, 4)}
+
+To,
+${d.employeeName}
+
+Subject: Offer of Employment — ${d.designation}
+
+Dear ${firstName},
+
+We are pleased to offer you employment with ${COMPANY.name} ("the Company"), for the position of ${d.designation} in the ${d.team} team, on the terms and conditions set out below. We were impressed by your background and look forward to having you on board.
+
+1. POSITION & REPORTING
+   Designation        : ${d.designation}
+   Team               : ${d.team}
+   Reporting Manager  : ${d.manager || 'To be assigned'}
+   Employee ID        : ${d.employeeCode}
+
+2. DATE OF JOINING
+   ${d.doj}
+
+3. EMPLOYEE PORTAL LOGIN
+   Use the credentials below to sign in to the Employee Portal, track your onboarding, and upload the documents listed further below. Please change your password after your first login.
+   Employee ID : ${d.employeeCode}
+   Password    : ${d.password}
+
+4. COMPENSATION
+   Your Annual Cost to Company (CTC) will be ${fmt(d.ctc)}, structured as follows:
+     Basic Salary          ${fmt(basic)}
+     House Rent Allowance  ${fmt(hra)}
+     Convenience Allowance ${fmt(convenience)}
+     Special Allowance     ${fmt(allowances)}
+     -----------------------------------------
+     Total Annual CTC      ${fmt(d.ctc)}
+   Salary is paid monthly per the Company's standard payroll cycle (${salaryPeriodLabel(d.rules)}), subject to applicable statutory deductions.
+
+5. WORK LOCATION & HOURS
+   Working days  : ${d.rules.workingDaysPattern}
+   Shift timing  : ${shiftTimingsLabel(d.rules)}
+
+6. PROBATION
+   You will be on probation for 3 months from your date of joining, during which your performance and conduct will be reviewed ahead of confirmation.
+
+7. DOCUMENTS REQUIRED
+   Please submit the following via the Employee Portal ${d.documentsDeadline ? `within 5 days of joining (by ${d.documentsDeadline})` : 'within the timeline HR communicates'}:
+${docsList}
+
+8. TERMS OF EMPLOYMENT
+   a. This offer is contingent on verification of the information and documents you provide.
+   b. You agree to maintain strict confidentiality of the Company's proprietary and business information, both during and after your employment.
+   c. Either party may terminate this employment by providing notice as per Company policy in force at the time.
+   d. You agree to comply with all Company policies, rules, and code of conduct as communicated from time to time.
+
+9. ACCEPTANCE
+   Please confirm your acceptance of this offer by signing and returning a copy of this letter, or by accepting it electronically via the Employee Portal, on or before your date of joining.
+
+We look forward to a successful association with you.
+
+For ${COMPANY.name},
+
+
+_______________________
+Authorised Signatory
+
+
+I, ${d.employeeName}, accept the above offer of employment on the terms and conditions stated above.
+
+Signature: _______________________     Date: _______________
+`;
 }

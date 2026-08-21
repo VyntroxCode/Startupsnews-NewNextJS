@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ModalShell from '../ModalShell';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { CredentialFields, nextEmployeeCode, validateCredentialFields, type CredentialFormState } from './CredentialFields';
@@ -31,6 +31,27 @@ export default function EditCredentialModal({ credential, seed, existingCredenti
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Same staleness concern as HireEmployeeButton's openAdd(): existingCredentials is whatever
+  // Directory's client state happened to hold when this modal opened, which could lag the DB
+  // (long-lived tab, credential created from another tab/session). Silently upgrade the
+  // suggested ID once a fresh list comes back — only matters when issuing a new credential.
+  useEffect(() => {
+    if (isEdit) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/hr-tool/employee-credentials', { headers: getAuthHeaders() });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const fresh = data.data as HrEmployeeCredential[];
+          setForm((f) => ({ ...f, employeeCode: nextEmployeeCode(fresh) }));
+        }
+      } catch {
+        // Keep the client-state-based suggestion already set above.
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function patch(p: Partial<CredentialFormState>) { setForm((f) => ({ ...f, ...p })); }
 

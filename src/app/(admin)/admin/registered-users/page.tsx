@@ -23,6 +23,7 @@ interface RegisteredUser {
 	timezone?: string | null;
 	category?: string | null;
 	website?: string | null;
+	newsletter_unsubscribed?: boolean | number;
 }
 
 interface Pagination {
@@ -49,6 +50,18 @@ const AVATAR_COLORS = [
 	["#ef4444", "#f87171"],
 	["#06b6d4", "#22d3ee"],
 ];
+
+const selectStyle: React.CSSProperties = {
+	padding: "7px 14px",
+	borderRadius: 8,
+	border: "1.5px solid #e2e8f0",
+	background: "#fff",
+	color: "#475569",
+	fontWeight: 600,
+	fontSize: 13,
+	cursor: "pointer",
+	outline: "none",
+};
 
 function avatarGradient(name: string) {
 	const i = name.charCodeAt(0) % AVATAR_COLORS.length;
@@ -86,6 +99,10 @@ export default function RegisteredUsersPage() {
 	});
 	const [search, setSearch] = useState("");
 	const [filter, setFilter] = useState<"all" | "email" | "google">("all");
+	const [categoryFilter, setCategoryFilter] = useState("");
+	const [countryFilter, setCountryFilter] = useState("");
+	const [newsletterFilter, setNewsletterFilter] = useState("");
+	const [subscribedFilter, setSubscribedFilter] = useState<"all" | "subscribed" | "unsubscribed">("all");
 	const [loading, setLoading] = useState(true);
 	const [stats, setStats] = useState<Stats>({
 		total: 0,
@@ -119,6 +136,21 @@ export default function RegisteredUsersPage() {
 		fetchUsers(1);
 	}, [fetchUsers]);
 
+	const countryOptions = Array.from(
+		new Set(users.map((u) => u.country).filter((c): c is string => !!c)),
+	).sort((a, b) => a.localeCompare(b));
+
+	const newsletterOptions = Array.from(
+		new Set(
+			users.flatMap((u) =>
+				(u.newsletter_category_slugs || "")
+					.split(",")
+					.map((s) => s.trim())
+					.filter(Boolean),
+			),
+		),
+	).sort((a, b) => a.localeCompare(b));
+
 	const filtered = users.filter((u) => {
 		const q = search.toLowerCase();
 		const matchSearch =
@@ -130,7 +162,26 @@ export default function RegisteredUsersPage() {
 			(u.category || "").toLowerCase().includes(q) ||
 			(u.phone || "").includes(q);
 		const matchFilter = filter === "all" || u.auth_provider === filter;
-		return matchSearch && matchFilter;
+		const matchCategory = !categoryFilter || u.category === categoryFilter;
+		const matchCountry = !countryFilter || u.country === countryFilter;
+		const matchNewsletter =
+			!newsletterFilter ||
+			(u.newsletter_category_slugs || "")
+				.split(",")
+				.map((s) => s.trim())
+				.includes(newsletterFilter);
+		const isSubscribed = !!u.newsletter_category_slugs && !u.newsletter_unsubscribed;
+		const matchSubscribed =
+			subscribedFilter === "all" ||
+			(subscribedFilter === "subscribed" ? isSubscribed : !isSubscribed);
+		return (
+			matchSearch &&
+			matchFilter &&
+			matchCategory &&
+			matchCountry &&
+			matchNewsletter &&
+			matchSubscribed
+		);
 	});
 
 
@@ -409,7 +460,15 @@ export default function RegisteredUsersPage() {
 			</div>
 
 			{/* ── Filter Tabs ── */}
-			<div style={{ display: "flex", gap: 8, marginBottom: "1.25rem" }}>
+			<div
+				style={{
+					display: "flex",
+					gap: 8,
+					marginBottom: "1.25rem",
+					flexWrap: "wrap",
+					alignItems: "center",
+				}}
+			>
 				{(["all", "email", "google"] as const).map((f) => (
 					<button
 						key={f}
@@ -434,6 +493,58 @@ export default function RegisteredUsersPage() {
 								: `Google (${stats.googleCount})`}
 					</button>
 				))}
+
+				<select
+					value={categoryFilter}
+					onChange={(e) => setCategoryFilter(e.target.value)}
+					style={selectStyle}
+				>
+					<option value="">All Categories</option>
+					{REGISTRATION_CATEGORIES.map((c) => (
+						<option key={c.value} value={c.value}>
+							{c.label}
+						</option>
+					))}
+				</select>
+
+				<select
+					value={countryFilter}
+					onChange={(e) => setCountryFilter(e.target.value)}
+					style={selectStyle}
+				>
+					<option value="">All Countries</option>
+					{countryOptions.map((c) => (
+						<option key={c} value={c}>
+							{c}
+						</option>
+					))}
+				</select>
+
+				<select
+					value={newsletterFilter}
+					onChange={(e) => setNewsletterFilter(e.target.value)}
+					style={selectStyle}
+				>
+					<option value="">All Newsletters</option>
+					{newsletterOptions.map((slug) => (
+						<option key={slug} value={slug}>
+							{slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+						</option>
+					))}
+				</select>
+
+				<select
+					value={subscribedFilter}
+					onChange={(e) =>
+						setSubscribedFilter(e.target.value as "all" | "subscribed" | "unsubscribed")
+					}
+					style={selectStyle}
+				>
+					<option value="all">Subscribed</option>
+					<option value="subscribed">Yes</option>
+					<option value="unsubscribed">No</option>
+				</select>
+
 				<div
 					style={{
 						marginLeft: "auto",

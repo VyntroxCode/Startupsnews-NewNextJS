@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { getAuthHeaders } from '@/lib/admin-auth';
-import { latenessBucket, type ShiftSettings, type LatenessBucket } from '@/modules/hr-tool/utils/lateness';
+import { latenessBucket, combinedAttendanceBucket, type ShiftSettings, type LatenessBucket } from '@/modules/hr-tool/utils/lateness';
 
-interface AttendanceDayRecord { date: string; status: string; inTime: string; outTime: string; inMinutes: number | null; }
-interface RegularizationRecord { id: string; date: string; reason: string; stage: string; status: string; rmRemarks: string; hrRemarks: string; }
+interface AttendanceDayRecord { date: string; status: string; inTime: string; outTime: string; inMinutes: number | null; outMinutes: number | null; }
+interface RegularizationRecord {
+  id: string; date: string; reason: string; punchType: 'in' | 'out'; requestedTime: string | null;
+  stage: string; status: string; rmRemarks: string; hrRemarks: string;
+}
 interface AttendanceMeData {
   linked: boolean;
   employeeCode?: string;
@@ -76,20 +79,25 @@ const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const BUCKET_COLORS: Record<LatenessBucket, { bg: string; border: string; text: string }> = {
   'on-time': { bg: '#dcfce7', border: '#4ade80', text: '#166534' },
-  grace: { bg: '#ffedd5', border: '#fb923c', text: '#c2410c' },
-  late: { bg: '#fee2e2', border: '#f87171', text: '#b91c1c' },
+  grace: { bg: '#fef9c3', border: '#facc15', text: '#854d0e' },
+  'short-leave': { bg: '#ffedd5', border: '#fb923c', text: '#c2410c' },
+  'half-day': { bg: '#fed7aa', border: '#f97316', text: '#9a3412' },
+  absent: { bg: '#fee2e2', border: '#f87171', text: '#b91c1c' },
 };
 
-/** Deliberately doesn't mention "grace period" or expose the exact minute count to
- * employees — HR wants the color to speak for itself without revealing the exact policy
- * threshold. Admin-facing views (the Founder's Attendance table) show the real numbers. */
-const BUCKET_LABEL: Record<LatenessBucket, string> = { 'on-time': 'On time', grace: 'Late', late: 'Very late' };
+/** Short Leave / Half Day / Absent now carry real payroll consequences (see
+ * HrToolService.computePayrollForMonth), so unlike the old 3-way grace/late split these are
+ * shown to employees by their real name, not a vague "late"/"very late". */
+const BUCKET_LABEL: Record<LatenessBucket, string> = {
+  'on-time': 'On time', grace: 'Grace Period', 'short-leave': 'Short Leave', 'half-day': 'Half Day', absent: 'Absent',
+};
 
 /** A date with a regularization request on file shows light blue on the calendar, overriding
  * whatever lateness color it would otherwise have — the request itself is now the more
  * relevant status for that day. */
 const REG_COLORS = { bg: '#dbeafe', border: '#60a5fa', text: '#1e40af' };
 const REG_STATUS_LABEL: Record<string, string> = { pending: 'Pending admin approval', approved: 'Approved', rejected: 'Rejected' };
+const REG_TYPE_LABEL: Record<'in' | 'out', string> = { in: 'Punch In', out: 'Punch Out' };
 
 function LegendDot({ color, border, label }: { color: string; border: string; label: string }) {
   return (
@@ -125,8 +133,9 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [punching, setPunching] = useState<'in' | 'out' | null>(null);
-  const [regFormOpen, setRegFormOpen] = useState(false);
+  const [regFormOpen, setRegFormOpen] = useState<'in' | 'out' | null>(null);
   const [regReason, setRegReason] = useState('');
+  const [regTime, setRegTime] = useState('');
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [regError, setRegError] = useState('');
 
@@ -169,20 +178,25 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   }
 
   async function submitRegularization() {
+    const punchType = regFormOpen;
+    if (!punchType) return;
     const reason = regReason.trim();
     if (!reason) { setRegError('Please describe the reason.'); return; }
+    const time = regTime.trim();
+    if (!time) { setRegError('Please set the time you are regularizing.'); return; }
     setRegSubmitting(true);
     setRegError('');
     try {
       const res = await fetch(`${apiBase}/regularizations`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ date: selectedDate, reason }),
+        body: JSON.stringify({ date: selectedDate, reason, punchType, requestedTime: time }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Failed to submit regularization request');
-      setRegFormOpen(false);
+      setRegFormOpen(null);
       setRegReason('');
+      setRegTime('');
       await load(calendarMonth);
     } catch (err) {
       setRegError(err instanceof Error ? err.message : 'Failed to submit regularization request');
@@ -198,15 +212,16 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   }, [data]);
 
   const regularizationByDate = useMemo(() => {
-    const map = new Map<string, RegularizationRecord>();
-    (data?.regularizations || []).forEach((r) => map.set(r.date, r));
+    const map = new Map<string, RegularizationRecord[]>();
+    (data?.regularizations || []).forEach((r) => map.set(r.date, [...(map.get(r.date) || []), r]));
     return map;
   }, [data]);
 
   function selectDate(dateStr: string) {
     setSelectedDate(dateStr);
-    setRegFormOpen(false);
+    setRegFormOpen(null);
     setRegReason('');
+    setRegTime('');
     setRegError('');
   }
 
@@ -243,11 +258,19 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const hasIn = !!selectedRecord?.inTime && selectedRecord.inTime !== '—';
   const hasOut = !!selectedRecord?.outTime && selectedRecord.outTime !== '—';
   const rowStatus = selectedRecord?.status || (isSelectedToday ? 'Not punched in yet' : 'No record');
-  const selectedBucket = shiftRules ? latenessBucket(selectedRecord?.inMinutes ?? null, shiftRules) : null;
-  const selectedReg = regularizationByDate.get(selectedDate);
+  // Combined bucket (arrival time + hours worked, worse of the two) drives the day's displayed
+  // status/color; the pure arrival-time bucket separately gates punch-in Regularization, since
+  // that's specifically about correcting the punch-in itself, not the day's overall outcome —
+  // an on-time arrival shouldn't become "regularizable" just because they left early.
+  const selectedBucket = shiftRules ? combinedAttendanceBucket(selectedRecord?.inMinutes ?? null, selectedRecord?.outMinutes ?? null, shiftRules, false) : null;
+  const selectedTimeBucket = shiftRules ? latenessBucket(selectedRecord?.inMinutes ?? null, shiftRules) : null;
+  const selectedRegs = regularizationByDate.get(selectedDate) || [];
+  const selectedRegIn = selectedRegs.find((r) => r.punchType === 'in');
+  const selectedRegOut = selectedRegs.find((r) => r.punchType === 'out');
   const regPolicy = data.regularizationPolicy;
   const quotaReached = !!regPolicy && regPolicy.usedThisMonth >= regPolicy.monthlyQuota;
-  const canRequestRegularization = selectedBucket === 'grace' || selectedBucket === 'late';
+  const canRequestInRegularization = !selectedRegIn && !!selectedTimeBucket && selectedTimeBucket !== 'on-time';
+  const canRequestOutRegularization = !selectedRegOut && !isSelectedToday && hasIn && !hasOut;
 
   const totalDays = daysInMonth(calendarMonth);
   const leadPad = firstWeekday(calendarMonth);
@@ -315,19 +338,37 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
           </p>
         )}
 
-        {selectedReg ? (
-          <p style={{ fontWeight: 600, color: REG_COLORS.text, fontSize: '0.85rem', margin: '0.5rem 0 0' }}>
-            Regularization requested — {REG_STATUS_LABEL[selectedReg.status] || selectedReg.status}
-          </p>
-        ) : canRequestRegularization ? (
+        {(selectedRegIn || selectedRegOut) && (
+          <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+            {selectedRegIn && (
+              <p style={{ fontWeight: 600, color: REG_COLORS.text, fontSize: '0.85rem', margin: 0 }}>
+                Punch In regularization ({selectedRegIn.requestedTime}) — {REG_STATUS_LABEL[selectedRegIn.status] || selectedRegIn.status}
+              </p>
+            )}
+            {selectedRegOut && (
+              <p style={{ fontWeight: 600, color: REG_COLORS.text, fontSize: '0.85rem', margin: 0 }}>
+                Punch Out regularization ({selectedRegOut.requestedTime}) — {REG_STATUS_LABEL[selectedRegOut.status] || selectedRegOut.status}
+              </p>
+            )}
+          </div>
+        )}
+
+        {(canRequestInRegularization || canRequestOutRegularization) && (
           <div style={{ marginTop: '0.75rem' }}>
             {!regFormOpen ? (
-              <div>
-                <button type="button" onClick={() => setRegFormOpen(true)} disabled={quotaReached} style={punchButtonStyle('#60a5fa', '#3b82f6', quotaReached)}>
-                  Apply for Regularization
-                </button>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                {canRequestInRegularization && (
+                  <button type="button" onClick={() => setRegFormOpen('in')} disabled={quotaReached} style={punchButtonStyle('#60a5fa', '#3b82f6', quotaReached)}>
+                    Regularize Punch In
+                  </button>
+                )}
+                {canRequestOutRegularization && (
+                  <button type="button" onClick={() => setRegFormOpen('out')} disabled={quotaReached} style={punchButtonStyle('#60a5fa', '#3b82f6', quotaReached)}>
+                    Regularize Punch Out
+                  </button>
+                )}
                 {regPolicy && (
-                  <span style={{ color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.6rem' }}>
+                  <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
                     {regPolicy.usedThisMonth} of {regPolicy.monthlyQuota} used this month
                     {quotaReached ? ' — limit reached' : ''}
                   </span>
@@ -335,18 +376,30 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
               </div>
             ) : (
               <div>
+                <p style={{ fontWeight: 600, color: '#334155', fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
+                  Regularizing: {REG_TYPE_LABEL[regFormOpen]}
+                </p>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>
+                  {REG_TYPE_LABEL[regFormOpen]} time
+                </label>
+                <input
+                  type="time"
+                  value={regTime}
+                  onChange={(e) => setRegTime(e.target.value)}
+                  style={{ borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.5rem 0.6rem', fontSize: '0.875rem', fontFamily: 'inherit', marginBottom: '0.5rem' }}
+                />
                 <textarea
                   value={regReason}
                   onChange={(e) => setRegReason(e.target.value)}
                   placeholder="Reason for regularization…"
                   rows={3}
-                  style={{ width: '100%', maxWidth: 420, borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.6rem', fontSize: '0.875rem', fontFamily: 'inherit' }}
+                  style={{ width: '100%', maxWidth: 420, display: 'block', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.6rem', fontSize: '0.875rem', fontFamily: 'inherit' }}
                 />
                 <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.5rem' }}>
                   <button type="button" onClick={submitRegularization} disabled={regSubmitting} style={punchButtonStyle('#60a5fa', '#3b82f6', regSubmitting)}>
                     {regSubmitting ? 'Submitting…' : 'Submit'}
                   </button>
-                  <button type="button" onClick={() => { setRegFormOpen(false); setRegReason(''); setRegError(''); }} disabled={regSubmitting} style={{ padding: '0.45rem 1rem', background: '#fff', color: '#334155', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => { setRegFormOpen(null); setRegReason(''); setRegTime(''); setRegError(''); }} disabled={regSubmitting} style={{ padding: '0.45rem 1rem', background: '#fff', color: '#334155', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
                     Cancel
                   </button>
                 </div>
@@ -354,7 +407,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
               </div>
             )}
           </div>
-        ) : null}
+        )}
       </div>
 
       {/* Month calendar */}
@@ -383,7 +436,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             if (day === null) return <div key={`pad-${idx}`} />;
             const dateStr = `${calendarMonth}-${String(day).padStart(2, '0')}`;
             const rec = calendarMap.get(dateStr);
-            const bucket = shiftRules ? latenessBucket(rec?.inMinutes ?? null, shiftRules) : null;
+            const bucket = shiftRules ? combinedAttendanceBucket(rec?.inMinutes ?? null, rec?.outMinutes ?? null, shiftRules, false) : null;
             const isRegularized = regularizationByDate.has(dateStr);
             const colors = isRegularized ? REG_COLORS : bucket ? BUCKET_COLORS[bucket] : null;
             const isSelected = dateStr === selectedDate;
@@ -420,7 +473,9 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
           <LegendDot color={BUCKET_COLORS['on-time'].bg} border={BUCKET_COLORS['on-time'].border} label={BUCKET_LABEL['on-time']} />
           <LegendDot color={BUCKET_COLORS.grace.bg} border={BUCKET_COLORS.grace.border} label={BUCKET_LABEL.grace} />
-          <LegendDot color={BUCKET_COLORS.late.bg} border={BUCKET_COLORS.late.border} label={BUCKET_LABEL.late} />
+          <LegendDot color={BUCKET_COLORS['short-leave'].bg} border={BUCKET_COLORS['short-leave'].border} label={BUCKET_LABEL['short-leave']} />
+          <LegendDot color={BUCKET_COLORS['half-day'].bg} border={BUCKET_COLORS['half-day'].border} label={BUCKET_LABEL['half-day']} />
+          <LegendDot color={BUCKET_COLORS.absent.bg} border={BUCKET_COLORS.absent.border} label={BUCKET_LABEL.absent} />
           <LegendDot color={REG_COLORS.bg} border={REG_COLORS.border} label="Regularization requested" />
         </div>
       </div>

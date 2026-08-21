@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import AttendanceWidget from '@/components/admin/AttendanceWidget';
+import ProfileProgressStrip from '@/components/admin/ProfileProgressStrip';
 
 interface DashboardStats {
   posts: number;
@@ -279,25 +280,6 @@ export default function AdminDashboard() {
         },
       ];
 
-  const quickActions = isEventAdmin
-    ? [
-        { href: '/admin/events/create', label: 'Create New Event', color1: '#48bb78', color2: '#38a169', shadow: 'rgba(72, 187, 120, 0.3)', shadowHover: 'rgba(72, 187, 120, 0.4)' },
-        { href: '/admin/events?tab=regions', label: 'Manage Event Regions', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
-        { href: '/admin/events?tab=banners', label: 'Manage Banner', color1: '#9f7aea', color2: '#805ad5', shadow: 'rgba(159, 122, 234, 0.3)', shadowHover: 'rgba(159, 122, 234, 0.4)' },
-      ]
-    : isPublisherAdmin
-    ? [
-        { href: '/admin/posts/create', label: 'Create New Post', color1: '#667eea', color2: '#764ba2', shadow: 'rgba(102, 126, 234, 0.3)', shadowHover: 'rgba(102, 126, 234, 0.4)' },
-        { href: '/admin/categories/create', label: 'Create Industry', color1: '#ed8936', color2: '#dd6b20', shadow: 'rgba(237, 137, 54, 0.3)', shadowHover: 'rgba(237, 137, 54, 0.4)' },
-        { href: '/admin/posts?tab=authors', label: 'Manage Authors', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
-      ]
-    : [
-        { href: '/admin/posts/create', label: 'Create New Post', color1: '#667eea', color2: '#764ba2', shadow: 'rgba(102, 126, 234, 0.3)', shadowHover: 'rgba(102, 126, 234, 0.4)' },
-        { href: '/admin/events/create', label: 'Create New Event', color1: '#48bb78', color2: '#38a169', shadow: 'rgba(72, 187, 120, 0.3)', shadowHover: 'rgba(72, 187, 120, 0.4)' },
-        { href: '/admin/categories/create', label: 'Create Industry', color1: '#ed8936', color2: '#dd6b20', shadow: 'rgba(237, 137, 54, 0.3)', shadowHover: 'rgba(237, 137, 54, 0.4)' },
-        { href: '/admin/rss-feeds/create', label: 'Add RSS Feed', color1: '#0ea5e9', color2: '#0284c7', shadow: 'rgba(14, 165, 233, 0.3)', shadowHover: 'rgba(14, 165, 233, 0.4)' },
-      ];
-
   return (
     <AdminErrorBoundary>
       <div>
@@ -406,71 +388,7 @@ export default function AdminDashboard() {
           })}
         </div>
 
-        <div style={{
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          padding: '2rem',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-          border: '1px solid rgba(0, 0, 0, 0.04)',
-        }}>
-          <h2 style={{
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            marginBottom: '0.5rem',
-            color: '#0f172a',
-            letterSpacing: '-0.01em',
-          }}>
-            Quick Actions
-          </h2>
-          <p style={{
-            color: '#64748b',
-            fontSize: '0.9375rem',
-            marginBottom: '1.5rem',
-          }}>
-            Create new content or manage existing items
-          </p>
-          <div style={{
-            display: 'flex',
-            gap: '1rem',
-            flexWrap: 'wrap',
-          }}>
-            {quickActions.map((action) => (
-              <Link
-                key={action.href}
-                href={action.href}
-                style={{
-                  padding: '0.875rem 1.75rem',
-                  background: `linear-gradient(135deg, ${action.color1} 0%, ${action.color2} 100%)`,
-                  color: 'white',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  fontWeight: '600',
-                  fontSize: '0.9375rem',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: `0 4px 12px ${action.shadow}`,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = `0 6px 20px ${action.shadowHover}`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = `0 4px 12px ${action.shadow}`;
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                {action.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
+        {(isEventAdmin || isPublisherAdmin) && <ProfileProgressStrip />}
         {(isEventAdmin || isPublisherAdmin) && <AttendanceWidget />}
 
         {!isEventAdmin && !isPublisherAdmin && (

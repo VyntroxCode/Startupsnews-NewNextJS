@@ -11,6 +11,10 @@ interface PolicyData {
   regularizationMonthlyQuota: number;
   shortLeaveMaxHours: number;
   shortLeaveMonthlyQuota: number;
+  halfDayThresholdHours: number;
+  halfDayMinWorkedHours: number;
+  shortLeaveMinWorkedHours: number;
+  fullDayMinWorkedHours: number;
 }
 
 const cardStyle: CSSProperties = {
@@ -104,8 +108,10 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
       <Row label="Grace period" desc="Minutes after shift start before a punch-in counts as late." value={`${policy.shiftGraceMinutes} min`} />
       <Row label="Regularization window" desc="How many days after an attendance date you may still request regularization." value={`${policy.regularizationWindowDays} days`} />
       <Row label="Regularization monthly limit" desc="How many regularization requests you may submit per calendar month." value={`${policy.regularizationMonthlyQuota} / month`} />
-      <Row label="Short leave — max duration" desc="Time away from shift up to this many hours counts as a Short Leave." value={`${policy.shortLeaveMaxHours} hrs`} />
+      <Row label="Short leave — punch-in cutoff" desc="Punch in later than the grace period but within this many hours of shift start, and it's a Short Leave. Every 3rd one costs half a day's pay — leftovers carry into the next payroll cycle rather than resetting." value={`${policy.shortLeaveMaxHours} hrs after shift start`} />
       <Row label="Short leave — monthly quota" desc="How many Short Leaves you may take per calendar month." value={`${policy.shortLeaveMonthlyQuota} / month`} />
+      <Row label="Half day — punch-in cutoff" desc="Punch in later than the Short Leave cutoff but within this many hours of shift start, and it's a Half Day — half a day's pay. Later than this is Absent." value={`${policy.halfDayThresholdHours} hrs after shift start`} />
+      <Row label="Hours worked — secondary rule" desc="Your day's status is the WORSE of arrival time (above) and total hours worked, punch-out minus punch-in. Below the first number is Absent, up to the second is Half Day, up to the third is Short Leave, above it is a full day." value={`${policy.halfDayMinWorkedHours} / ${policy.shortLeaveMinWorkedHours} / ${policy.fullDayMinWorkedHours} hrs`} />
     </div>
   );
 }

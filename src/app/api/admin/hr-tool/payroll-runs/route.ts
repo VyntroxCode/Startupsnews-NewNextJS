@@ -5,21 +5,27 @@ import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { HrPayrollRun } from '@/modules/hr-tool/domain/types';
 import { hrToolService, getPayrollRoster } from '../_lib';
 
-/** POST /api/admin/hr-tool/payroll-runs — { month: 'YYYY-MM' }. Computes and freezes real
- * Net Pay for every active employee that month (see HrToolService.runPayroll); refuses if the
- * payroll period hasn't fully elapsed yet. Calling it again for an already-run month
- * recomputes and overwrites — that's the "recompute" mechanism, no separate endpoint. */
+interface RunPayrollBody extends Pick<HrPayrollRun, 'month'> {
+  /** Admin-entered TDS per employee name for this run — missing employees default to 0. */
+  tds?: Record<string, number>;
+}
+
+/** POST /api/admin/hr-tool/payroll-runs — { month: 'YYYY-MM', tds?: Record<name, number> }.
+ * Computes and freezes real Net Pay for every active employee that month (see
+ * HrToolService.runPayroll); refuses if the payroll period hasn't fully elapsed yet. Calling it
+ * again for an already-run month recomputes and overwrites — that's the "recompute" mechanism,
+ * no separate endpoint. */
 export async function POST(request: NextRequest) {
   const auth = await requireAnyRole(request, HR_TOOL_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const [body, errorResponse] = await parseJsonBody<Pick<HrPayrollRun, 'month'>>(request);
+    const [body, errorResponse] = await parseJsonBody<RunPayrollBody>(request);
     if (errorResponse) return errorResponse;
     if (!body?.month) return NextResponse.json({ success: false, error: 'month is required' }, { status: 400 });
 
     const roster = await getPayrollRoster();
-    const result = await hrToolService.runPayroll(body.month, roster, auth.user.email);
+    const result = await hrToolService.runPayroll(body.month, roster, auth.user.email, body.tds);
     if (!result.ok) return NextResponse.json({ success: false, error: result.error }, { status: 409 });
     return NextResponse.json({ success: true, data: { entries: result.entries } });
   } catch (error) {

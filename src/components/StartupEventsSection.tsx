@@ -20,21 +20,17 @@ export function StartupEventsSection({ events, showLocationTag = true }: Startup
         {list.slice(0, 20).map((event) => {
           const detailUrl = getStartupEventDetailPath(event);
           const isInternal = detailUrl.startsWith("/");
-          const titleWords = event.title.trim().split(/\s+/);
-          const shortTitle = titleWords.length > 4
-            ? `${titleWords.slice(0, 4).join(" ")}...`
-            : event.title;
 
           return (
-            <a 
-              key={event.url || event.id} 
-              href={detailUrl} 
+            <a
+              key={event.url || event.id}
+              href={detailUrl}
               {...(isInternal ? {} : { rel: "noopener noreferrer bookmark", target: "_blank" })}
               className="startup-events-item"
             >
               <div className="mvp-feat1-list-cont left relative">
                 <div className="mvp-feat1-list-text">
-                  <h2>{shortTitle}</h2>
+                  <h2 title={event.title}>{event.title}</h2>
                   <div className="mvp-cat-date-wrap left relative">
                     {showLocationTag && (
                       <>

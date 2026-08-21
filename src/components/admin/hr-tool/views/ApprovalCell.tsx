@@ -23,7 +23,6 @@ export default function ApprovalCell({ req, onDecide }: {
   function open(level: 'rm' | 'hr', decision: 'approved' | 'rejected') { setPending({ level, decision }); setRemarks(''); }
   function confirmDecision() {
     if (!pending) return;
-    if (pending.decision === 'rejected' && !remarks.trim()) { alert('Remarks required.'); return; }
     onDecide(pending.level, pending.decision, remarks.trim());
     setPending(null);
   }
@@ -34,14 +33,14 @@ export default function ApprovalCell({ req, onDecide }: {
   return (
     <>
       <button className="btn approve sm" onClick={() => open(level, 'approved')}>Approve</button>{' '}
-      <button className="btn reject sm" onClick={() => open(level, 'rejected')}>Reject with remarks</button>
+      <button className="btn reject sm" onClick={() => open(level, 'rejected')}>Reject</button>
       {pending && (
-        <ModalShell title={pending.decision === 'rejected' ? 'Reject — remarks required' : 'Approve — remarks (optional)'} onClose={() => setPending(null)} actions={[
+        <ModalShell title={pending.decision === 'rejected' ? 'Reject — remarks (optional)' : 'Approve — remarks (optional)'} onClose={() => setPending(null)} actions={[
           { label: 'Cancel', cls: 'btn', onClick: () => setPending(null) },
           { label: pending.decision === 'rejected' ? 'Reject' : 'Approve', cls: pending.decision === 'rejected' ? 'btn reject' : 'btn approve', onClick: confirmDecision },
         ]}>
-          <div className="field"><label className="field-label">Remarks{pending.decision === 'rejected' ? ' (required)' : ''}</label>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder={pending.decision === 'approved' ? 'optional' : undefined} />
+          <div className="field"><label className="field-label">Remarks</label>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="optional" />
           </div>
         </ModalShell>
       )}
