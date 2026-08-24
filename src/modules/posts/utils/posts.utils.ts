@@ -2,6 +2,7 @@ import { PostEntity } from '../domain/types';
 import { formatTimeAgo, formatDate } from '@/shared/utils/date.utils';
 import { query } from '@/shared/database/connection';
 import { toPresignedUrlIfEnabled } from '@/shared/utils/s3-presign';
+import { toCdnUrl } from '@/shared/utils/image-cdn';
 
 /** No fallback: posts without a real thumbnail are hidden from lists; single-post view shows no image when missing. */
 
@@ -26,24 +27,6 @@ function getS3ImageHost(): string {
     }
   }
   return 'startupnews-media-2026.s3.us-east-1.amazonaws.com';
-}
-
-/** CDN base URL (e.g. CloudFront) to serve S3 bucket images through. Unset = serve straight from S3 (no change in behavior). */
-function getCdnBaseUrl(): string {
-  const cdn = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_IMAGE_CDN_URL) || '';
-  return cdn.trim().replace(/\/$/, '');
-}
-
-/** Rewrite a confirmed S3-bucket URL to the CDN host (same key/path), when NEXT_PUBLIC_IMAGE_CDN_URL is set. */
-function toCdnUrl(s3Url: string): string {
-  const cdnBase = getCdnBaseUrl();
-  if (!cdnBase) return s3Url;
-  try {
-    const u = new URL(s3Url);
-    return cdnBase + u.pathname + u.search;
-  } catch {
-    return s3Url;
-  }
 }
 
 /** Return url only if it is from our S3 bucket; otherwise return '' so caller uses default. Rewritten to the CDN host when configured. */
@@ -592,9 +575,9 @@ export async function entityToPost(entity: PostEntity): Promise<Post> {
     ? (rssInfo?.item_author || rssInfo?.feed_name || 'Zox News Staff')
     : (staffAuthor?.name || 'Zox News Staff');
   const authorType = hasRssSource ? 'source' : 'staff';
-  const authorAvatarUrl = hasRssSource 
-    ? (rssInfo?.feed_logo_url || undefined)
-    : (staffAuthor?.avatar_url || undefined);
+  const authorAvatarUrl = hasRssSource
+    ? (toCdnUrl(rssInfo?.feed_logo_url) || undefined)
+    : (toCdnUrl(staffAuthor?.avatar_url) || undefined);
 
   return {
     id: entity.id.toString(),
@@ -620,7 +603,7 @@ export async function entityToPost(entity: PostEntity): Promise<Post> {
     httpStatus: Boolean(entity.is_gone_410) ? 410 : (entity.status === 'published' ? 200 : 410),
     // Author/Source information
     sourceName: hasRssSource ? rssInfo?.feed_name : undefined,
-    sourceLogoUrl: hasRssSource ? (rssInfo?.feed_logo_url || undefined) : undefined,
+    sourceLogoUrl: hasRssSource ? (toCdnUrl(rssInfo?.feed_logo_url) || undefined) : undefined,
     sourceAuthor: hasRssSource ? (rssInfo?.item_author || undefined) : undefined,
     authorName,
     authorSlug: toAuthorSlug(authorName),
@@ -733,7 +716,7 @@ export async function entitiesToPosts(entities: PostEntity[]): Promise<Post[]> {
         isGone410: Boolean(entity.is_gone_410),
         httpStatus: Boolean(entity.is_gone_410) ? 410 : (entity.status === 'published' ? 200 : 410),
         sourceName: hasRssSource ? rssInfo?.feed_name : undefined,
-        sourceLogoUrl: hasRssSource ? (rssInfo?.feed_logo_url || undefined) : undefined,
+        sourceLogoUrl: hasRssSource ? (toCdnUrl(rssInfo?.feed_logo_url) || undefined) : undefined,
         sourceAuthor: hasRssSource ? (rssInfo?.item_author || undefined) : undefined,
         authorName,
         authorSlug: toAuthorSlug(authorName),

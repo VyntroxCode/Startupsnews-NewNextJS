@@ -18,6 +18,7 @@ import { BannersService } from "@/modules/banners/service/banners.service";
 import { BannersRepository } from "@/modules/banners/repository/banners.repository";
 import { entityToBanner } from "@/modules/banners/utils/banners.utils";
 import type { Banner } from "@/modules/banners/domain/types";
+import { toCdnUrl } from "@/shared/utils/image-cdn";
 
 const bannersRepository = new BannersRepository();
 const bannersService = new BannersService(bannersRepository);
@@ -25,7 +26,11 @@ const bannersService = new BannersService(bannersRepository);
 async function getActiveBanners(): Promise<Banner[]> {
   try {
     const entities = await bannersService.getActiveBanners();
-    return entities.map(entityToBanner);
+    return entities.map((e) => {
+      const banner = entityToBanner(e);
+      banner.imageUrl = toCdnUrl(banner.imageUrl) || banner.imageUrl;
+      return banner;
+    });
   } catch (error) {
     console.error("Error fetching banners for layout:", error);
     return [];

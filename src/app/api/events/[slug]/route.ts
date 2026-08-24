@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { EventsService } from '@/modules/events/service/events.service';
 import { EventsRepository } from '@/modules/events/repository/events.repository';
 import { entityToEvent } from '@/modules/events/utils/events.utils';
+import { toCdnUrl } from '@/shared/utils/image-cdn';
 
 // Initialize services
 const eventsRepository = new EventsRepository();
@@ -32,6 +33,8 @@ export async function GET(
     }
 
     const event = entityToEvent(entity);
+    // CDN rewrite only on this public display path — see shared/utils/image-cdn.ts.
+    event.image = toCdnUrl(event.image) || event.image;
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BannersService } from '@/modules/banners/service/banners.service';
 import { BannersRepository } from '@/modules/banners/repository/banners.repository';
 import { entityToBanner } from '@/modules/banners/utils/banners.utils';
+import { toCdnUrl } from '@/shared/utils/image-cdn';
 
 // Initialize services
 const bannersRepository = new BannersRepository();
@@ -18,7 +19,9 @@ export async function GET(request: NextRequest) {
     const limitNum = limit ? parseInt(limit, 10) : undefined;
 
     const entities = await bannersService.getActiveBanners(limitNum);
-    const banners = entities.map(entityToBanner);
+    // CDN rewrite only on this public display path — never in the admin routes, where the
+    // raw S3 URL must stay intact for the edit form (see shared/utils/image-cdn.ts).
+    const banners = entities.map((e) => ({ ...entityToBanner(e), imageUrl: toCdnUrl(e.image_url) }));
 
     return NextResponse.json({
       success: true,

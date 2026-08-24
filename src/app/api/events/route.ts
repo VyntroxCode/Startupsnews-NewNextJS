@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { EventsService } from '@/modules/events/service/events.service';
 import { EventsRepository } from '@/modules/events/repository/events.repository';
 import { entityToEvent } from '@/modules/events/utils/events.utils';
+import { toCdnUrl } from '@/shared/utils/image-cdn';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,7 +42,12 @@ export async function GET(request: NextRequest) {
     }
 
     const entities = await eventsService.getAllEvents(filters);
-    const events = entities.map(entityToEvent);
+    // CDN rewrite only on this public display path — never in the admin routes, where the
+    // raw S3 URL must stay intact for the edit form (see shared/utils/image-cdn.ts).
+    const events = entities.map((e) => {
+      const event = entityToEvent(e);
+      return { ...event, image: toCdnUrl(event.image) || event.image };
+    });
 
     return NextResponse.json({
       success: true,

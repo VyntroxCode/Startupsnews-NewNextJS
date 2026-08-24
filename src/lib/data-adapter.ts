@@ -20,6 +20,7 @@ import {
 import { entityToEvent } from "@/modules/events/utils/events.utils";
 import type { StartupEvent } from "@/modules/events/domain/types";
 import { slugify } from "@/shared/utils/string.utils";
+import { toCdnUrl } from "@/shared/utils/image-cdn";
 import { PartnerLogosRepository, InnerPageContentRepository } from "@/modules/inner-pages/repository/inner-pages.repository";
 import { toPartnerLogo, toInnerPageContent, PARTNER_LOGO_SECTIONS, type PartnerLogo } from "@/modules/inner-pages/domain/types";
 
@@ -849,7 +850,9 @@ export async function getEventsByRegion(): Promise<
       );
       const key = matched ?? loc; // fall back to raw location if not in DB
       if (!eventsByRegion[key]) eventsByRegion[key] = [];
-      eventsByRegion[key].push(entityToEvent(e));
+      const event = entityToEvent(e);
+      event.image = toCdnUrl(event.image) || event.image;
+      eventsByRegion[key].push(event);
     }
 
     await setCache(cacheKey, eventsByRegion, 300);
@@ -871,7 +874,11 @@ export async function getStartupEvents(): Promise<StartupEvent[]> {
 
   try {
     const entities = await eventsService.getUpcomingForPublic();
-    const events = entities.map((e) => entityToEvent(e));
+    const events = entities.map((e) => {
+      const event = entityToEvent(e);
+      event.image = toCdnUrl(event.image) || event.image;
+      return event;
+    });
     await setCache(cacheKey, events, 120);
     return events;
   } catch (error) {
@@ -891,7 +898,9 @@ export async function getEventBySlug(
     const entity = await eventsService.getEventBySlug(slug);
     if (!entity) return null;
     if (entity.status === "draft") return null;
-    return entityToEvent(entity);
+    const event = entityToEvent(entity);
+    event.image = toCdnUrl(event.image) || event.image;
+    return event;
   } catch (error) {
     console.error("Error fetching event by slug:", error);
     return null;
@@ -916,6 +925,7 @@ export async function getPartnerLogosBySection(): Promise<Record<string, Partner
     const entities = await new PartnerLogosRepository().findAll();
     for (const e of entities) {
       const logo = toPartnerLogo(e);
+      logo.imageUrl = toCdnUrl(logo.imageUrl) || logo.imageUrl;
       if (!grouped[logo.section]) grouped[logo.section] = [];
       grouped[logo.section].push(logo);
     }
