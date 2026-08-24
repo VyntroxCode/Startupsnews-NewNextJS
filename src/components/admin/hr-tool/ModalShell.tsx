@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, type ReactNode } from 'react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 export interface ModalAction { label: string; cls: string; onClick: () => void | Promise<void>; }
 
@@ -15,6 +16,9 @@ export default function ModalShell({ title, onClose, actions, children, maxWidth
   // close the modal mid-selection. Only close when both the press AND the release
   // happened directly on the backdrop, not just the release.
   const pressedBackdrop = useRef(false);
+  // ModalShell is only ever rendered while its modal is actually open (each caller
+  // conditionally renders it), so the Escape listener can just always be live.
+  useEscapeKey(onClose);
 
   return (
     <div

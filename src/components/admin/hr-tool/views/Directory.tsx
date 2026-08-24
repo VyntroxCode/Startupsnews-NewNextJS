@@ -5,6 +5,7 @@ import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import HireEmployeeButton from './HireEmployeeButton';
 import EditCredentialModal from './EditCredentialModal';
+import AttendanceCalendar from './AttendanceCalendar';
 import { PANEL_ROLE_LABEL } from './CredentialFields';
 import { StatusBadge, addDays, computeCtcBreakdown, daysLeft, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
 
@@ -12,6 +13,19 @@ import { StatusBadge, addDays, computeCtcBreakdown, daysLeft, exportCSV, exportE
 const DOCUMENTS_WINDOW_DAYS = 5;
 import type { HrEmployee } from '../types';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
+
+function fmtDoj(doj: string): string {
+  if (!doj) return '—';
+  const d = new Date(doj + 'T00:00:00');
+  if (isNaN(d.getTime())) return doj;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/** True only for an employee who actually has a documents checklist and hasn't uploaded a
+ * single item on it yet — not employees with no checklist at all (nothing to flag for them). */
+function allDocsMissing(e: HrEmployee): boolean {
+  return e.documents.length > 0 && e.documents.every((d) => d.status === 'not_uploaded');
+}
 
 function PageHead({ title, sub }: { title: string; sub: string }) {
   const { state } = useHrTool();
@@ -37,6 +51,8 @@ export default function Directory() {
   const [addingOrphanId, setAddingOrphanId] = useState<number | null>(null);
   const [docRejectTarget, setDocRejectTarget] = useState<{ empId: string; idx: number } | null>(null);
   const [docRejectRemarks, setDocRejectRemarks] = useState('');
+  const [docSearch, setDocSearch] = useState('');
+  const [docStatusFilter, setDocStatusFilter] = useState('');
 
   const admin = isAdmin(state.role);
   const founder = state.role === 'Founder';
@@ -189,24 +205,48 @@ export default function Directory() {
   }
 
   const profile = profileId ? state.employees.find((e) => e.id === profileId) || null : null;
-  // Document-tracker cards: anyone still mid-checklist, plus anyone who finished/missed their
-  // window within the last 2 weeks (so a just-completed or just-expired case stays visible for
-  // a bit rather than vanishing the instant it's resolved). Old, fully-settled records drop off
-  // so this doesn't grow into a permanent roster.
-  const docTrackerEmployees = useMemo(() => {
+
+  // Merged in from the old standalone "Employee Documents" page — every non-exited employee
+  // with a documents checklist at all, not just new hires still mid-window.
+  const docEmployees = useMemo(() => {
     if (!admin) return [];
-    return state.employees.filter((e) => {
-      if (e.status === 'exited' || e.documents.length === 0) return false;
-      const approvedCount = e.documents.filter((d) => d.status === 'approved').length;
-      if (approvedCount < e.documents.length) return true;
-      const dl = e.documentsDeadline ? daysLeft(e.documentsDeadline) : null;
-      return dl !== null && dl > -14;
-    });
+    return state.employees.filter((e) => e.status !== 'exited' && e.documents.length > 0);
   }, [state.employees, admin]);
+
+  const docStats = useMemo(() => {
+    const allDocs = docEmployees.flatMap((e) => e.documents);
+    return {
+      total: allDocs.length,
+      notUploaded: allDocs.filter((d) => d.status === 'not_uploaded').length,
+      pending: allDocs.filter((d) => d.status === 'pending').length,
+      approved: allDocs.filter((d) => d.status === 'approved').length,
+      rejected: allDocs.filter((d) => d.status === 'rejected').length,
+    };
+  }, [docEmployees]);
+
+  const filteredDocEmployees = useMemo(() => {
+    const term = docSearch.trim().toLowerCase();
+    return docEmployees
+      .filter((e) => {
+        const matchesTerm = !term || e.name.toLowerCase().includes(term) || e.documents.some((d) => d.name.toLowerCase().includes(term));
+        const matchesStatus = !docStatusFilter || e.documents.some((d) => d.status === docStatusFilter);
+        return matchesTerm && matchesStatus;
+      })
+      // Most urgent first: whoever's window is closing soonest (or already closed) floats to
+      // the top; employees with no deadline sink to the bottom.
+      .sort((a, b) => {
+        const da = a.documentsDeadline ? daysLeft(a.documentsDeadline) : null;
+        const db = b.documentsDeadline ? daysLeft(b.documentsDeadline) : null;
+        if (da === null && db === null) return a.name.localeCompare(b.name);
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return da - db;
+      });
+  }, [docEmployees, docSearch, docStatusFilter]);
 
   return (
     <>
-      <PageHead title="Employee Directory" sub={admin ? "Search, filter, and open any employee's full profile." : "Your team only — sibling departments aren't visible here."} />
+      <PageHead title="Directory" sub={admin ? "Search, filter, and open any employee's full profile." : "Your team only — sibling departments aren't visible here."} />
 
       {addingOrphanId !== null && (
         <div className="notice info" style={{ marginBottom: 16 }}>
@@ -233,26 +273,49 @@ export default function Directory() {
           </div>
         )}
       </div>
-      <div className="card"><div className="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Designation</th><th>Team</th><th>Status</th><th></th></tr></thead>
+      <div className="card"><div className="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Designation</th><th>Team</th><th>Date of Joining</th><th>Status</th><th></th></tr></thead>
         <tbody>
           {rows.map((e) => (
             <tr key={e.id} onClick={() => setProfileId(e.id)} style={{ cursor: 'pointer' }}>
-              <td>{credentialByEmployee(e)?.employeeCode ? <code>{credentialByEmployee(e)?.employeeCode}</code> : <span className="meta">—</span>}</td>
+              <td>
+                {credentialByEmployee(e)?.employeeCode ? (
+                  <code style={allDocsMissing(e) ? { color: 'var(--red)' } : undefined} title={allDocsMissing(e) ? 'No documents uploaded yet' : undefined}>
+                    {credentialByEmployee(e)?.employeeCode}
+                  </code>
+                ) : <span className="meta">—</span>}
+              </td>
               <td><div className="row-name"><div className="avatar">{initials(e.name)}</div><div><div>{e.name}</div><div className="meta">{e.email}</div></div></div></td>
-              <td>{e.designation}</td><td>{e.team}</td><td><StatusBadge status={e.status} /></td>
+              <td>{e.designation}</td><td>{e.team}</td><td>{fmtDoj(e.doj)}</td><td><StatusBadge status={e.status} /></td>
               <td style={{ textAlign: 'right' }}><button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); setProfileId(e.id); }}>{admin ? 'View / Edit →' : 'View profile →'}</button></td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={6}><div className="empty">No employees match this search.</div></td></tr>}
+          {rows.length === 0 && <tr><td colSpan={7}><div className="empty">No employees match this search.</div></td></tr>}
         </tbody>
       </table></div></div>
 
-      {admin && docTrackerEmployees.length > 0 && (
+      {admin && docEmployees.length > 0 && (
         <section className="block" style={{ marginTop: 16 }}>
-          <div className="block-head"><h2>New hire document tracker</h2></div>
-          {docTrackerEmployees.map((e) => (
+          <div className="block-head"><h2>Documents</h2></div>
+          <div className="grid grid-4" style={{ marginBottom: 16 }}>
+            <div className="card pad"><div className="stat-label">Not Uploaded</div><div className="stat-num">{docStats.notUploaded}</div><div className="stat-note">of {docStats.total} total documents</div></div>
+            <div className="card pad"><div className="stat-label">Pending Review</div><div className="stat-num">{docStats.pending}</div><div className="stat-note">awaiting your approval</div></div>
+            <div className="card pad"><div className="stat-label">Approved</div><div className="stat-num">{docStats.approved}</div><div className="stat-note">on file</div></div>
+            <div className="card pad"><div className="stat-label">Rejected</div><div className="stat-num">{docStats.rejected}</div><div className="stat-note">need a re-upload</div></div>
+          </div>
+          <div className="toolbar" style={{ marginBottom: 16 }}>
+            <input className="search" type="text" placeholder="Search by employee or document" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} />
+            <select value={docStatusFilter} onChange={(e) => setDocStatusFilter(e.target.value)} style={{ width: 180 }}>
+              <option value="">All statuses</option>
+              <option value="not_uploaded">Not uploaded</option>
+              <option value="pending">Pending review</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          {filteredDocEmployees.map((e) => (
             <DocumentTrackerCard key={e.id} employee={e} onApprove={(idx) => docAction(e.id, idx, 'approved')} onReject={(idx) => docAction(e.id, idx, 'rejected')} />
           ))}
+          {filteredDocEmployees.length === 0 && <div className="card pad"><div className="empty">No employees match this search.</div></div>}
         </section>
       )}
 
@@ -322,16 +385,20 @@ export default function Directory() {
   );
 }
 
-/** One employee's document-checklist card in the "New hire document tracker" — mirrors the old
- * (now-removed) Onboarding.tsx OnboardingCard's layout (name/window/badge/progress/table) but
+/** One employee's document-checklist card in Directory's merged "Documents" section — mirrors
+ * the old (now-removed) Onboarding.tsx OnboardingCard's layout (name/window/badge/progress) but
  * driven by the real HrEmployee.documents + documentsDeadline instead of the dead HrOnboarding
- * pipeline. */
+ * pipeline. Split two ways per employee: documents actually provided (uploaded, whatever their
+ * review state) on the left, documents still outstanding (never uploaded) on the right — reusing
+ * the app's existing `grid grid-2` layout rather than one-off CSS. */
 function DocumentTrackerCard({ employee, onApprove, onReject }: {
   employee: HrEmployee; onApprove: (idx: number) => void; onReject: (idx: number) => void;
 }) {
   const docs = employee.documents;
   const approvedCount = docs.filter((d) => d.status === 'approved').length;
-  const uploadedCount = docs.filter((d) => ['approved', 'pending', 'rejected'].includes(d.status)).length;
+  const indexed = docs.map((d, i) => ({ ...d, idx: i }));
+  const provided = indexed.filter((d) => d.status !== 'not_uploaded');
+  const pending = indexed.filter((d) => d.status === 'not_uploaded');
   const pct = docs.length ? Math.round((approvedCount / docs.length) * 100) : 0;
   const dl = employee.documentsDeadline ? daysLeft(employee.documentsDeadline) : null;
   const overdue = dl !== null && dl < 0 && pct < 100;
@@ -350,30 +417,48 @@ function DocumentTrackerCard({ employee, onApprove, onReject }: {
           <span className={`badge ${pct === 100 ? 'approved' : overdue ? 'rejected' : 'pending'}`}>
             {pct === 100 ? 'All docs approved' : overdue ? 'Window closed' : dl !== null ? `${dl} day${dl === 1 ? '' : 's'} left` : 'No deadline set'}
           </span>
-          <div className="meta" style={{ marginTop: 4 }}>{approvedCount}/{docs.length} approved · {uploadedCount}/{docs.length} uploaded</div>
+          <div className="meta" style={{ marginTop: 4 }}>{approvedCount}/{docs.length} approved · {provided.length}/{docs.length} uploaded</div>
         </div>
       </div>
       <div className="progress-track" style={{ marginBottom: 14 }}><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
-      <table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
-        <tbody>{docs.map((d, i) => (
-          <tr key={d.name}>
-            <td>
-              {d.name}
-              {d.status === 'rejected' && d.remarks && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>Rejected: {d.remarks}</div>}
-            </td>
-            <td><StatusBadge status={d.status} /></td>
-            <td style={{ textAlign: 'right' }}>
-              {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm" style={{ marginRight: 6 }}>View</a>}
-              {d.status === 'pending' ? (
-                <>
-                  <button className="btn approve sm" onClick={() => onApprove(i)}>Approve</button>{' '}
-                  <button className="btn reject sm" onClick={() => onReject(i)}>Reject with remarks</button>
-                </>
-              ) : d.status === 'not_uploaded' ? <span className="meta">not yet uploaded</span> : <span className="meta">reviewed</span>}
-            </td>
-          </tr>
-        ))}</tbody>
-      </table>
+
+      <div className="grid grid-2">
+        <div>
+          <div className="stat-label" style={{ marginBottom: 8 }}>Provided ({provided.length})</div>
+          {provided.length === 0 ? <div className="meta">Nothing uploaded yet.</div> : (
+            <table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
+              <tbody>{provided.map((d) => (
+                <tr key={d.name}>
+                  <td>
+                    {d.name}
+                    {d.status === 'rejected' && d.remarks && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>Rejected: {d.remarks}</div>}
+                  </td>
+                  <td><StatusBadge status={d.status} /></td>
+                  <td style={{ textAlign: 'right' }}>
+                    {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm" style={{ marginRight: 6 }}>View</a>}
+                    {d.status === 'pending' && (
+                      <>
+                        <button className="btn approve sm" onClick={() => onApprove(d.idx)}>Approve</button>{' '}
+                        <button className="btn reject sm" onClick={() => onReject(d.idx)}>Reject</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </div>
+        <div>
+          <div className="stat-label" style={{ marginBottom: 8 }}>Pending ({pending.length})</div>
+          {pending.length === 0 ? <div className="meta">Nothing outstanding.</div> : (
+            <table><thead><tr><th>Document</th></tr></thead>
+              <tbody>{pending.map((d) => (
+                <tr key={d.name}><td>{d.name}<div className="meta" style={{ marginTop: 2 }}>not yet uploaded</div></td></tr>
+              ))}</tbody>
+            </table>
+          )}
+        </div>
+      </div>
       {overdue && <div className="notice" style={{ marginTop: 14 }}>Upload window has closed with documents still missing or unreviewed. Follow up with {employee.name.split(' ')[0]} directly.</div>}
     </div>
   );
@@ -393,7 +478,12 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
     : state.employeeCredentials.find((c) => c.name === employee.name);
   const cs = employee.ctcSplitOverride || state.rules.ctcSplit;
 
-  const [editing, setEditing] = useState(false);
+  // Admins land straight in the editable form (clicking a row and clicking "View / Edit →"
+  // already open this exact same modal — there was never a second, different view to reconcile,
+  // just an extra "Edit details" click in the way every time). Non-admins have no path to
+  // toggle editing at all (no such button below), so this has no effect for them — they still
+  // get the plain read-only summary.
+  const [editing, setEditing] = useState(admin);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     designation: employee.designation, team: employee.team, manager: employee.manager || '',
@@ -423,16 +513,16 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
         { label: saving ? 'Saving…' : 'Save changes', cls: 'btn primary', onClick: saveEdit },
       ]
     : [{ label: 'Close', cls: 'btn', onClick: onClose }];
-  if (!editing) {
-    if (admin) buttons.unshift({ label: 'Edit details', cls: 'btn', onClick: startEdit });
-    if (admin && employee.id !== state.currentUser?.id) buttons.unshift({ label: 'Remove employee', cls: 'btn reject', onClick: onRemove });
-    if (admin && employee.status !== 'exited' && employee.id !== state.currentUser?.id) {
-      buttons.unshift({ label: 'Mark as exited', cls: 'btn', onClick: onMarkExited });
-    }
-    if (employee.status === 'probation' && admin) {
-      buttons.unshift({ label: 'Extend probation', cls: 'btn', onClick: onExtendProbation });
-      buttons.unshift({ label: 'Confirm — move to Active', cls: 'btn approve', onClick: onConfirmProbation });
-    }
+  // These stay available regardless of edit state (admins now land straight in the form, so
+  // gating them on "not editing" would hide them behind an extra Cancel click every time).
+  if (!editing && admin) buttons.unshift({ label: 'Edit details', cls: 'btn', onClick: startEdit });
+  if (admin && employee.id !== state.currentUser?.id) buttons.unshift({ label: 'Remove employee', cls: 'btn reject', onClick: onRemove });
+  if (admin && employee.status !== 'exited' && employee.id !== state.currentUser?.id) {
+    buttons.unshift({ label: 'Mark as exited', cls: 'btn', onClick: onMarkExited });
+  }
+  if (employee.status === 'probation' && admin) {
+    buttons.unshift({ label: 'Extend probation', cls: 'btn', onClick: onExtendProbation });
+    buttons.unshift({ label: 'Confirm — move to Active', cls: 'btn approve', onClick: onConfirmProbation });
   }
   return (
     <ModalShell title={employee.name} onClose={onClose} actions={buttons}>
@@ -486,7 +576,10 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
         </>
       )}
       {canSeeCTC && (() => {
-        const b = computeCtcBreakdown(employee.ctc, cs);
+        // While editing, follow the unsaved CTC the admin is currently typing — not the last
+        // saved value — so this breakdown doesn't sit frozen/stale until they hit Save.
+        const liveCtc = editing ? (Number(form.ctc) || 0) : employee.ctc;
+        const b = computeCtcBreakdown(liveCtc, cs);
         return (
           <div className="field"><label className="field-label">CTC structure (₹/month)</label>
             Basic ₹{b.basic.toLocaleString('en-IN')} · HRA ₹{b.hra.toLocaleString('en-IN')} · Convenience ₹{b.convenience.toLocaleString('en-IN')} · Special Allowance ₹{b.specialAllowance.toLocaleString('en-IN')}
@@ -518,30 +611,60 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
                 </div>
               );
             })()}
-          <table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
-            <tbody>{employee.documents.map((d, i) => (
-              <tr key={d.name}>
-                <td>
-                  {d.name}
-                  {d.status === 'rejected' && d.remarks && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>Rejected: {d.remarks}</div>}
-                  {d.uploadedAt && <div className="meta" style={{ marginTop: 2 }}>Uploaded {d.uploadedAt}</div>}
-                </td>
-                <td><StatusBadge status={d.status} /></td>
-                <td style={{ textAlign: 'right' }}>
-                  {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm" style={{ marginRight: 6 }}>View/Download</a>}
-                  {d.status === 'pending' && (
-                    <>
-                      <button className="btn approve sm" onClick={() => onApproveDoc(i)}>Approve</button>{' '}
-                      <button className="btn reject sm" onClick={() => onRejectDoc(i)}>Reject</button>
-                    </>
+          {(() => {
+            const indexed = employee.documents.map((d, i) => ({ ...d, idx: i }));
+            const provided = indexed.filter((d) => d.status !== 'not_uploaded');
+            const pending = indexed.filter((d) => d.status === 'not_uploaded');
+            return (
+              <div className="grid grid-2">
+                <div>
+                  <div className="stat-label" style={{ marginBottom: 8 }}>Provided ({provided.length})</div>
+                  {provided.length === 0 ? <div className="meta">Nothing uploaded yet.</div> : (
+                    <table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
+                      <tbody>{provided.map((d) => (
+                        <tr key={d.name}>
+                          <td>
+                            {d.name}
+                            {d.status === 'rejected' && d.remarks && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>Rejected: {d.remarks}</div>}
+                            {d.uploadedAt && <div className="meta" style={{ marginTop: 2 }}>Uploaded {d.uploadedAt}</div>}
+                          </td>
+                          <td><StatusBadge status={d.status} /></td>
+                          <td style={{ textAlign: 'right' }}>
+                            {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm" style={{ marginRight: 6 }}>View/Download</a>}
+                            {d.status === 'pending' && (
+                              <>
+                                <button className="btn approve sm" onClick={() => onApproveDoc(d.idx)}>Approve</button>{' '}
+                                <button className="btn reject sm" onClick={() => onRejectDoc(d.idx)}>Reject</button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))}</tbody>
+                    </table>
                   )}
-                </td>
-              </tr>
-            ))}</tbody>
-          </table>
+                </div>
+                <div>
+                  <div className="stat-label" style={{ marginBottom: 8 }}>Pending ({pending.length})</div>
+                  {pending.length === 0 ? <div className="meta">Nothing outstanding.</div> : (
+                    <table><thead><tr><th>Document</th></tr></thead>
+                      <tbody>{pending.map((d) => (
+                        <tr key={d.name}><td>{d.name}<div className="meta" style={{ marginTop: 2 }}>not yet uploaded</div></td></tr>
+                      ))}</tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           </>
         )}
       </div>
+      {admin && (
+        <div className="field">
+          <label className="field-label">Attendance calendar</label>
+          <AttendanceCalendar empName={employee.name} />
+        </div>
+      )}
       {founder && (
         <div className="field">
           <label className="field-label">Login &amp; credentials</label>
@@ -586,6 +709,10 @@ function CtcSplitModal({ employeeId, onClose }: { employeeId: string; onClose: (
     if (h < 0 || h > 100) { alert('HRA must be between 0 and 100% of Basic.'); return; }
     if (c < 0) { alert('Convenience Allowance cannot be negative.'); return; }
     if (convType === 'percent' && c > 100) { alert('Convenience Allowance % must be between 0 and 100.'); return; }
+    if (preview.specialAllowance < 0) {
+      alert(`Basic + HRA + Convenience (₹${(preview.basic + preview.hra + preview.convenience).toLocaleString('en-IN')}/month) is more than ${e.name.split(' ')[0]}'s monthly salary (₹${Math.round(e.ctc / 12).toLocaleString('en-IN')}) — Special Allowance can't go negative. Lower Basic, HRA, or Convenience first.`);
+      return;
+    }
     await persistEmployees(state.employees.map((x) => (x.id === employeeId
       ? { ...x, ctcSplitOverride: { basicPct: b, hraPctOfBasic: h, convenienceType: convType, convenienceValue: c } }
       : x)));
@@ -623,6 +750,11 @@ function CtcSplitModal({ employeeId, onClose }: { employeeId: string; onClose: (
         {' · '}Convenience ₹{preview.convenience.toLocaleString('en-IN')}
         {' · '}Special Allowance ₹{preview.specialAllowance.toLocaleString('en-IN')}
       </div>
+      {preview.specialAllowance < 0 && (
+        <div className="notice" style={{ marginTop: 10, background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)' }}>
+          Special Allowance can&apos;t go negative — Basic + HRA + Convenience already adds up to more than {e.name.split(' ')[0]}&apos;s monthly salary. Lower Basic, HRA, or Convenience before saving.
+        </div>
+      )}
     </ModalShell>
   );
 }

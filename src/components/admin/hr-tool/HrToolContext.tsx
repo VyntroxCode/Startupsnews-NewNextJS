@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { hrApi } from './api';
 import { todayStr } from './utils';
-import { currentPayrollMonthKey } from '@/modules/hr-tool/utils/time';
+import { payrollCycleToRunKey } from '@/modules/hr-tool/utils/time';
 import { getAdminUser } from '@/lib/admin-auth';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 import type {
@@ -53,7 +53,7 @@ function initialState(): HrState {
     orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
     employees: [], employeeCredentials: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
     regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
-    payrollRun: { month: currentPayrollMonthKey(DEFAULT_RULES), status: 'not_run' },
+    payrollRun: { month: payrollCycleToRunKey(DEFAULT_RULES), status: 'not_run' },
     templates: {}, rules: DEFAULT_RULES, auditLog: [],
   };
 }

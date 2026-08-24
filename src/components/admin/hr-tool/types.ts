@@ -8,13 +8,12 @@ export type {
 export type HrRole = 'HR Head' | 'Founder' | 'Reporting Manager' | 'Employee';
 
 export type HrView =
-  | 'dashboard' | 'directory' | 'documentReview' | 'offboarding' | 'attendance' | 'leave'
+  | 'dashboard' | 'directory' | 'offboarding' | 'attendance' | 'leave'
   | 'payroll' | 'expenses' | 'compliance' | 'posh' | 'helpdesk' | 'company' | 'rules' | 'documents';
 
 export const VIEW_ACCESS: Record<HrView, HrRole[]> = {
   dashboard: ['HR Head', 'Founder', 'Reporting Manager', 'Employee'],
   directory: ['HR Head', 'Founder', 'Reporting Manager'],
-  documentReview: ['HR Head', 'Founder'],
   offboarding: ['HR Head', 'Founder'],
   attendance: ['HR Head', 'Founder', 'Reporting Manager', 'Employee'],
   leave: ['HR Head', 'Founder', 'Reporting Manager', 'Employee'],

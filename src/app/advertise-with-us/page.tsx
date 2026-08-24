@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { PageBreadcrumb } from "@/components/PageBreadcrumb";
+import { PageHeading } from "@/components/PageHeading";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
 import { trackEvent } from "@/lib/analytics";
@@ -238,21 +240,11 @@ export default function AdvertisePage() {
 
 	return (
 		<div className="bg-white text-adv-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
-			{/* Breadcrumb */}
+			{/* Breadcrumb + page title */}
 			<div className="px-5 sm:px-8 lg:px-10">
-				<nav className="event-by-country-breadcrumb" aria-label="Breadcrumb">
-					<Link href="/" className="event-by-country-breadcrumb-link">Home</Link>
-					<span className="event-by-country-breadcrumb-separator" aria-hidden="true">/</span>
-					<span className="event-by-country-breadcrumb-current" aria-current="page">Advertise With Us</span>
-				</nav>
+				<PageBreadcrumb current="Advertise With Us" />
 			</div>
-
-			{/* Eyebrow */}
-			<div className="px-5 sm:px-8 lg:px-10 pt-1 pb-4 text-center">
-				<h1 className="text-[26px] sm:text-[32px] font-bold tracking-[-0.01em] text-adv-ink">
-					Advertise With Us
-				</h1>
-			</div>
+			<PageHeading title="Advertise With Us" />
 
 			{/* HERO */}
 			<section className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-7 lg:gap-[72px] items-center px-5 sm:px-8 lg:px-10 py-6 sm:py-8 lg:py-12">
@@ -420,7 +412,7 @@ export default function AdvertisePage() {
 			{/* ENQUIRY FORM */}
 			<section
 				id="sn-form"
-				className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 pt-10 sm:pt-12 lg:pt-16 pb-8 sm:pb-10 lg:pb-12"
+				className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 pt-10 sm:pt-12 lg:pt-16 pb-6 sm:pb-8 lg:pb-10"
 			>
 				<Reveal direction="left" className="min-w-0">
 					<h2 className="text-adv-ink text-[30px] sm:text-[40px] lg:text-[52px] font-black tracking-[-0.035em] leading-[1.05]">

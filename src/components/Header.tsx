@@ -309,6 +309,7 @@ export function Header() {
                       <button
                         onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal'))}
                         title="Sign in"
+                        className="header-signin-btn"
                         style={{
                           width: 34, height: 34, borderRadius: '50%',
                           background: '#f3f4f6', border: '2px solid #e5e7eb',

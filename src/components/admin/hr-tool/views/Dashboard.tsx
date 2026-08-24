@@ -4,9 +4,11 @@ import { useHrTool } from '../HrToolContext';
 import { StatusBadge, ApprovalBadge, initials, rmOf, todayStr, monthKeyToLabel } from '../utils';
 import type { HrView } from '../types';
 
-function StatTile({ label, num, note, view, onClick }: { label: string; num: string | number; note: string; view: HrView; onClick: (v: HrView) => void }) {
+/** `tone` is an optional green/red accent for tiles that represent a done/not-done state (e.g.
+ * Payroll Cycle) — omit it for plain count tiles, which stay neutral. */
+function StatTile({ label, num, note, view, onClick, tone }: { label: string; num: string | number; note: string; view: HrView; onClick: (v: HrView) => void; tone?: 'good' | 'bad' }) {
   return (
-    <div className="card pad clickable" onClick={() => onClick(view)}>
+    <div className={`card pad clickable${tone ? ` tone-${tone}` : ''}`} onClick={() => onClick(view)}>
       <div className="stat-label">{label}</div>
       <div className="stat-num">{num}</div>
       <div className="stat-note">{note}</div>
@@ -40,9 +42,16 @@ export default function Dashboard() {
     <>
       <PageHead title="Dashboard" sub="A quick read on what needs your attention today. Every number below is clickable." />
       <div className="grid grid-3" style={{ marginBottom: 16 }}>
-        <StatTile label="Active Employees" num={active} note={`${probation.length} on probation`} view="directory" onClick={setView} />
+        <StatTile label="Active Team" num={active} note={`${probation.length} on probation`} view="directory" onClick={setView} />
         <StatTile label="Pending Regularizations" num={pendingReg} note="across manager + HR review" view="attendance" onClick={setView} />
-        <StatTile label="Payroll Cycle" num={monthKeyToLabel(state.payrollRun.month)} note={state.payrollRun.status === 'not_run' ? 'not yet run' : 'completed'} view="payroll" onClick={setView} />
+        <StatTile
+          label="Payroll Cycle"
+          num={monthKeyToLabel(state.payrollRun.month)}
+          note={state.payrollRun.status === 'not_run' ? 'not yet run' : 'completed'}
+          view="payroll"
+          onClick={setView}
+          tone={state.payrollRun.status === 'not_run' ? 'bad' : 'good'}
+        />
       </div>
       <div className="grid grid-4" style={{ marginBottom: 26 }}>
         <StatTile label="Leave — awaiting HR" num={pendingLeaveHR} note="RM-cleared, needs your action" view="leave" onClick={setView} />
@@ -102,7 +111,7 @@ function ManagerDashboard() {
           ))}</tbody>
         </table></div>
       </section>
-      <div className="footnote">CTC and salary details are restricted to HR Head/Founder and are not visible from your view, including in the Employee Directory and Payroll.</div>
+      <div className="footnote">CTC and salary details are restricted to HR Head/Founder and are not visible from your view, including in the Directory and Payroll.</div>
     </>
   );
 }

@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { PageBreadcrumb } from '@/components/PageBreadcrumb';
+import { PageHeading } from '@/components/PageHeading';
 
 export const metadata: Metadata = {
   title: 'Editorial Policy — StartupNews.fyi',
@@ -14,36 +16,36 @@ const listStyle: React.CSSProperties = {
 
 export default function EditorialPolicy() {
   return (
-    <div style={{ width: '100%', background: '#fff', minHeight: '100vh' }}>
+    <div style={{ width: '100%', background: '#fff' }}>
       <style>{`
-        .ep-wrap { max-width: 800px; margin: 0 auto; padding: 80px 20px; }
-        .ep-header { margin-bottom: 60px; text-align: center; }
-        .ep-title { font-size: 42px; font-weight: 900; color: #000; text-transform: uppercase; font-family: Inter, sans-serif; margin-bottom: 20px; letter-spacing: 1px; }
+        .ep-breadcrumb-wrap { padding: 20px 20px 0 24px; }
+        .ep-wrap { max-width: 800px; margin: 0 auto; padding: 40px 20px 40px; }
+        .ep-header { margin-bottom: 40px; text-align: center; }
         .ep-section-title { font-size: 24px; font-weight: 800; color: #000; margin-top: 50px; margin-bottom: 20px; font-family: Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
         .ep-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .ep-article { font-size: 16px; line-height: 1.8; color: #333; font-family: 'NB International', sans-serif; }
         @media (max-width: 768px) {
-          .ep-wrap { padding: 36px 16px 52px; }
-          .ep-header { margin-bottom: 32px; }
-          .ep-title { font-size: 26px; letter-spacing: 0.5px; }
+          .ep-breadcrumb-wrap { padding: 14px 16px 0 16px; }
+          .ep-wrap { padding: 20px 16px 28px; }
+          .ep-header { margin-bottom: 24px; }
           .ep-section-title { font-size: 18px; margin-top: 32px; margin-bottom: 14px; }
           .ep-article { font-size: 15px; }
         }
         @media (max-width: 480px) {
-          .ep-wrap { padding: 24px 14px 40px; }
-          .ep-header { margin-bottom: 24px; }
-          .ep-title { font-size: 22px; }
+          .ep-breadcrumb-wrap { padding: 12px 14px 0 14px; }
+          .ep-wrap { padding: 16px 14px 22px; }
+          .ep-header { margin-bottom: 20px; }
           .ep-section-title { font-size: 16px; margin-top: 28px; }
           .ep-article { font-size: 14px; line-height: 1.7; }
         }
       `}</style>
-      <div className="ep-wrap">
+      <div className="ep-breadcrumb-wrap">
+        <PageBreadcrumb current="Editorial Policy" />
+      </div>
+      <PageHeading title="Editorial Policy" />
 
+      <div className="ep-wrap">
         <header className="ep-header">
-          <h1 className="ep-title">
-            Editorial Policy
-          </h1>
-          <div style={{ width: '60px', height: '4px', background: '#ee1761', margin: '0 auto 20px' }} />
           <p style={{ fontSize: '14px', color: '#666', margin: '0' }}>
             Applies to: All published content &nbsp;|&nbsp; Reviewed by: Editorial Board &nbsp;|&nbsp; Next review: February 2027
           </p>

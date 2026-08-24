@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders, getAdminUser } from '@/lib/admin-auth';
@@ -9,12 +10,13 @@ import ImageUpload from '@/components/admin/ImageUpload';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import EventsManagementTabs from '@/components/admin/events/EventsManagementTabs';
 import {
-  PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, PARTNERSHIP_KIND_OPTIONS, SITE_STATUS_OPTIONS,
+  PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, SITE_STATUS_OPTIONS,
   EVENT_DESCRIPTION_MIN_LENGTH,
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
   type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
 import { COUNTRY_NAMES, citiesForCountry } from '@/modules/partnership-events/domain/country-city-data';
+import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey } from '@/modules/partnership-events/utils/partnership-events.utils';
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-pt-display' });
@@ -71,18 +73,23 @@ type EventDraft = Omit<PartnershipEvent, 'id' | 'eventId' | 'linkedEvent' | 'cre
   region: string;
   /** Not a partnership_events column — drives the linked public Event's real status. No "Completed" here; that's automatic (see markPastEventsAsExpired). */
   siteStatus: 'draft' | 'upcoming' | 'cancelled';
+  /** Not a partnership_events column — drives the linked public Event's URL slug. Auto-follows
+   * Event Name until the admin edits it directly (see slugManuallyEdited). */
+  slug: string;
 };
 
 const emptySpeaker = (): Speaker => ({ name: '', designation: '', company: '', others: '' });
 
 const emptyDraft = (): EventDraft => ({
   eventName: '', city: '', country: '', organiser: '', poc: '', contact: '', email: '', website: '', emailThread: '',
-  initiatedDate: '', eventStartDate: '', eventStartTime: '', eventEndDate: '', eventEndTime: '',
+  // Auto-set to today and never manually editable (see the read-only Initiated Date field in
+  // the modal) — mirrors how the public /submit-event flow already stamps it server-side.
+  initiatedDate: todayStr(), eventStartDate: '', eventStartTime: '', eventEndDate: '', eventEndTime: '',
   venueAddress: '', googleLocationLink: '', description: '', eventType: '', ticketCurrency: '', ticketPrice: '',
   speakers: [], posterUrl: '', bannerUrl: '', socialMediaPosts: '', socialCreatives: [],
   partnershipStatus: '', partnershipType: '',
   lastUpdatedDate: '', comment: '', listing: '', listingLink: '', source: 'Manually added',
-  region: '', siteStatus: 'draft',
+  region: '', siteStatus: 'draft', slug: '',
 });
 
 const SITE_STATUS_BADGE: Record<string, { label: string; color: string }> = {
@@ -93,15 +100,27 @@ const SITE_STATUS_BADGE: Record<string, { label: string; color: string }> = {
 };
 
 const STATUS_ORDER = [...PARTNERSHIP_STATUS_OPTIONS] as string[];
-// Trimmed-down status list for just the "All statuses" filter dropdown and the KPI cards row —
-// In Progress/On Hold/Dropped stay fully valid statuses (still assignable per-event, still
-// counted/classified everywhere else), they're just not surfaced as their own quick-filter/card.
-const STATUS_FILTER_ORDER = STATUS_ORDER.filter((s) => !['In Progress', 'On Hold', 'Dropped'].includes(s));
+// Trimmed-down status list for just the KPI cards row — drops "Expired" (its own card
+// double-counted against the date-derived isExpired badge that used to sit per-row and was
+// confusing; "Expired" is still filterable via the "All Statuses" dropdown below — it's kept
+// accurate by a server-side sweep, see PartnershipEventsRepository.markPastPartnershipsAsExpired,
+// not something the admin ever needs to set manually).
+const STATUS_FILTER_ORDER = STATUS_ORDER.filter((s) => s !== 'Expired');
+// The Add/Edit modal's own status editor (the one place status can actually be changed — the
+// table just displays it read-only) only offers the active deal-pipeline statuses — Draft,
+// Cancelled and Expired are set some other way (Draft is the default/blank state, Cancelled
+// comes from classifyStatus's own "cancel" fuzzy-match on stored text, Expired is the automatic
+// server sweep above), not picked from this dropdown. An event already holding one of those (or
+// any other legacy value) still shows and keeps it via the "(legacy)" fallback option below.
+const STATUS_EDIT_ORDER = ['Initiated', 'Partnership Done', 'Only Listing', 'Ticketing'];
+// Excluded from the default "All Statuses" table view — these need a deliberate, manual look,
+// not a permanent fixture cluttering the everyday list.
+const DEFAULT_HIDDEN_STATUSES = ['Unmapped', 'Expired'];
 const STATUS_COLOR_HEX: Record<string, string> = {
-  Draft: '#9333EA', Initiated: '#7C3FE0', 'In Progress': '#2563C7', 'On Hold': '#B9790A',
-  'Partnership Done': '#1E9E64', Dropped: '#C22B44', 'Only Listed (No Partnership)': '#0E7C8B',
-  Expired: '#3F4552', Unmapped: '#9CA3AF',
+  Draft: '#9333EA', Initiated: '#7C3FE0', 'Partnership Done': '#1E9E64', 'Only Listing': '#0E7C8B',
+  Ticketing: '#2563C7', Cancelled: '#C22B44', Expired: '#3F4552', Unmapped: '#9CA3AF',
 };
+const TYPE_COLOR_HEX: Record<string, string> = { 'In-person': '#0D9488', Cohort: '#7C3FE0', 'Online (virtual)': '#D97706' };
 
 /* ============================================================
    DERIVED FIELDS (mirrors the original standalone tool)
@@ -109,6 +128,10 @@ const STATUS_COLOR_HEX: Record<string, string> = {
 interface Derived {
   statusBucket: string;
   isExpired: boolean;
+  /** Not just "!isExpired" — an event that's actually listed (a real published website Event
+   * is linked) counts as Upcoming regardless of the tracker's own dates, matching the same rule
+   * the server-side auto-expiry sweep uses (see markPastPartnershipsAsExpired). */
+  isUpcoming: boolean;
   dateOrderSuspect: boolean;
   daysInStatus: number | null;
   listingResolved: string;
@@ -120,6 +143,9 @@ function startOfToday(): number {
   t.setHours(0, 0, 0, 0);
   return t.getTime();
 }
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 function parseYmd(s: string): number | null {
   if (!s) return null;
   const d = new Date(s + 'T00:00:00');
@@ -128,30 +154,43 @@ function parseYmd(s: string): number | null {
 function daysBetween(a: number, b: number): number {
   return Math.floor((a - b) / (1000 * 60 * 60 * 24));
 }
-function isIndia(country: string): boolean {
-  return /india/i.test(country || '');
-}
 function classifyStatus(raw: string): string {
   const s = (raw || '').toLowerCase().trim();
   if (!s) return 'Unmapped';
   if (STATUS_ORDER.includes(raw)) return raw;
-  if (s.includes('only listed') || s.includes('no partnership') || s.includes('listed only')) return 'Only Listed (No Partnership)';
+  // Catches bare "listed" too (a lot of real historical data uses that exact word), not just
+  // "only listed"/"listed only" — anything mentioning "listed" at all means this bucket.
+  if (s.includes('listed') || s.includes('listing') || s.includes('no partnership')) return 'Only Listing';
   if (s.includes('expir')) return 'Expired';
+  if (s.includes('cancel')) return 'Cancelled';
+  if (s.includes('ticket')) return 'Ticketing';
   if (s.includes('done') || s.includes('confirm') || s.includes('complete') || s.includes('executed')) return 'Partnership Done';
-  if (s.includes('drop') || s.includes('cancel')) return 'Dropped';
-  if (s.includes('progress')) return 'In Progress';
-  if (s.includes('pending') || s.includes('hold')) return 'On Hold';
   if (s.includes('initiat')) return 'Initiated';
+  if (s.includes('draft')) return 'Draft';
+  // Legacy "In Progress" / "On Hold" / "Dropped" text (retired concepts) also lands here — the
+  // admin reclassifies these manually, they're not auto-migrated to a new bucket.
   return 'Unmapped';
 }
 function normalizeListing(rawListing: string, rawLink: string, statusBucket: string): string {
   const hasLink = !!(rawLink || '').trim();
   const l = (rawListing || '').toLowerCase().trim();
-  if (statusBucket === 'Dropped') return 'No';
-  if ((statusBucket === 'Partnership Done' || statusBucket === 'Only Listed (No Partnership)') && hasLink) return 'Yes';
+  if (statusBucket === 'Cancelled') return 'No';
+  if ((statusBucket === 'Partnership Done' || statusBucket === 'Only Listing') && hasLink) return 'Yes';
   if (l.includes('process')) return 'In process';
   if (l === 'no' && !hasLink) return 'No';
   return 'Pending';
+}
+/** The tracker's own claim that an event is "listed" (status = Partnership Done or Only
+ * Listing) — see isLiveListed for whether that claim is actually true on the live site. */
+function isListedStatus(statusBucket: string): boolean {
+  return statusBucket === 'Partnership Done' || statusBucket === 'Only Listing';
+}
+/** Actually live on the public site right now — a real linked Event that isn't sitting in
+ * Draft. The "Listed" KPI card compares this against isListedStatus's count and warns when
+ * they disagree (an event claims Partnership Done/Only Listed but has no live page, or vice
+ * versa) instead of silently trusting the tracker's own status field. */
+function isLiveListed(e: PartnershipEvent, statusBucket: string): boolean {
+  return isListedStatus(statusBucket) && !!e.linkedEvent && e.linkedEvent.status !== 'draft';
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -170,6 +209,28 @@ function cleanWebsite(url: string): string {
   if (!v) return '';
   const low = v.toLowerCase();
   return WEBSITE_EXCLUDE_DOMAINS.some((d) => low.includes(d)) ? '' : v;
+}
+
+// Splits a stored "+91 9876543210"-style contact string back into the country-code select +
+// digits the Contact No. field edits — same shape the /submit-event PhoneField itself keeps.
+// Anything that doesn't start with a known/plausible "+<digits>" code is treated as a bare
+// number under the default +91, so legacy plain-digit values still show up in the number box.
+function parseContact(contact: string): { code: string; codeCustom: string; number: string } {
+  const trimmed = (contact || '').trim();
+  const m = trimmed.match(/^(\+\d{1,4})[\s-]*(.*)$/);
+  if (m) {
+    const code = m[1];
+    const isKnown = COUNTRY_CODE_OPTIONS.some((c) => c.code === code);
+    return isKnown
+      ? { code, codeCustom: '', number: m[2].replace(/\D/g, '') }
+      : { code: 'other', codeCustom: code, number: m[2].replace(/\D/g, '') };
+  }
+  return { code: '+91', codeCustom: '', number: trimmed.replace(/\D/g, '') };
+}
+function combineContact(code: string, codeCustom: string, number: string): string {
+  if (!number.trim()) return '';
+  const effectiveCode = code === 'other' ? (codeCustom.trim() || 'other') : code;
+  return `${effectiveCode} ${number}`.trim();
 }
 
 // A best-effort guess only, used when both City and Country are blank on import.
@@ -205,14 +266,15 @@ function computeDerived(e: PartnershipEvent): Derived {
   const effectiveEndMs = explicitEndMs ?? startMs;
   const refMs = effectiveEndMs ?? startMs;
   const isExpired = refMs !== null ? refMs < today : false;
+  const isUpcoming = !isExpired || !!e.linkedEvent;
   const dateOrderSuspect = !!(startMs !== null && explicitEndMs !== null && explicitEndMs < startMs);
   // Total days from Initiated Date to the event's end date (falling back to start date if no
   // end date is set) — not days-since-last-update, and not open-ended against "today".
   const initiatedMs = parseYmd(e.initiatedDate);
   const daysInStatus = (initiatedMs !== null && effectiveEndMs !== null) ? daysBetween(effectiveEndMs, initiatedMs) : null;
-  const partnershipTypeResolved = e.partnershipType || (e.country ? (isIndia(e.country) ? 'Domestic' : 'International') : '');
+  const partnershipTypeResolved = e.partnershipType;
   const listingResolved = normalizeListing(e.listing, e.listingLink, statusBucket);
-  return { statusBucket, isExpired, dateOrderSuspect, daysInStatus, listingResolved, partnershipTypeResolved };
+  return { statusBucket, isExpired, isUpcoming, dateOrderSuspect, daysInStatus, listingResolved, partnershipTypeResolved };
 }
 
 /* ============================================================
@@ -440,6 +502,30 @@ function fmtDisplay(ymd: string): string {
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
+// Split day+month from year — the table's date columns show these on two lines (year on its
+// own smaller line below) instead of one long "23 Aug 2026" string, so the column can stay narrow.
+function fmtMonthDay(ymd: string): string {
+  if (!ymd) return '—';
+  const d = new Date(ymd + 'T00:00:00');
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+function fmtYear(ymd: string): string {
+  if (!ymd) return '';
+  const d = new Date(ymd + 'T00:00:00');
+  return isNaN(d.getTime()) ? '' : String(d.getFullYear());
+}
+// "14:30" -> "2:30 PM". Blank input means no time was set — callers just skip rendering
+// anything rather than showing an empty/placeholder line under the date.
+function fmtTime(hhmm: string): string {
+  if (!hhmm) return '';
+  const [hStr, mStr] = hhmm.split(':');
+  const h = parseInt(hStr, 10);
+  if (isNaN(h)) return '';
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${mStr || '00'} ${period}`;
+}
 function monthKey(ymd: string): string {
   return ymd.slice(0, 7);
 }
@@ -474,8 +560,8 @@ const BELL_SNOOZE_MS = 15 * 60 * 1000;
 const BELL_RINGTONE_URL = 'https://assets.mixkit.co/active_storage/sfx/1356/1356.wav';
 
 // "Live" = not expired. "Partner" events are the subset actually in the partnership
-// pipeline — Dropped and Only Listed (No Partnership) events don't count as a partner event.
-const PARTNER_PIPELINE_STATUSES = ['Initiated', 'In Progress', 'On Hold', 'Partnership Done'];
+// pipeline — Cancelled and Only Listing events don't count as a partner event.
+const PARTNER_PIPELINE_STATUSES = ['Initiated', 'Partnership Done', 'Ticketing'];
 
 interface ActivityEntry { ts: number; type: string; eventName: string; actor: string; detail: string }
 
@@ -533,12 +619,12 @@ export default function PartnershipTrackerPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [listingFilter, setListingFilter] = useState('all');
-  const [timelineFilter, setTimelineFilter] = useState('all');
   const [cardFilter, setCardFilter] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState<string | null>(null);
   const [chartsExpanded, setChartsExpanded] = useState(false);
 
-  const [sortKey, setSortKey] = useState<string | null>('eventName');
+  // Defaults to soonest-first by event date ("current to future") rather than alphabetical.
+  const [sortKey, setSortKey] = useState<string | null>('eventStartDate');
   const [sortDir, setSortDir] = useState<1 | -1>(1);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -546,6 +632,7 @@ export default function PartnershipTrackerPage() {
   const [pageSize, setPageSize] = useState(50);
 
   const [modalOpen, setModalOpen] = useState(false);
+  useEscapeKey(() => setModalOpen(false), modalOpen);
   const [mainTab, setMainTab] = useState<'tracker' | 'events'>('tracker');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<EventDraft>(emptyDraft());
@@ -556,6 +643,17 @@ export default function PartnershipTrackerPage() {
   // "Others" manual-entry mode for the Region/Country and City fields — reset per open.
   const [regionOther, setRegionOther] = useState(false);
   const [cityOther, setCityOther] = useState(false);
+  // Slug auto-follows Event Name (like the public /submit-event form's title->slug behavior)
+  // until the admin edits it directly, or until editing a record that already has a live
+  // linked-event slug worth preserving — reset per open, see openAddModal/openEditModal.
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  // Split country-code + digits UI state for the Contact No. field (mirrors the public
+  // /submit-event PhoneField) — combined into the single draft.contact string on every change,
+  // so draft.contact stays the one source of truth saveModal() actually submits.
+  const [phoneCode, setPhoneCode] = useState('+91');
+  const [phoneCodeCustom, setPhoneCodeCustom] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   // Only close an overlay on backdrop click if the mousedown ALSO started on the backdrop —
   // otherwise selecting/copying text inside the modal and releasing the mouse past its edge
   // (a normal text-selection drag) was misread as a backdrop click and closed the modal.
@@ -580,6 +678,7 @@ export default function PartnershipTrackerPage() {
 
   const [, setActivityLog] = useState<ActivityEntry[]>([]);
   const [dailyReportOpen, setDailyReportOpen] = useState(false);
+  useEscapeKey(() => setDailyReportOpen(false), dailyReportOpen);
   const [reportText, setReportText] = useState('');
   const [reportError, setReportError] = useState('');
   const [activityPersonFilter, setActivityPersonFilter] = useState('all');
@@ -729,14 +828,18 @@ export default function PartnershipTrackerPage() {
 
   const counts = useMemo(() => {
     const byStatus: Record<string, number> = {};
-    let listed = 0, unmapped = 0;
+    // "Listed" is Partnership Done + Only Listed — but only the ones actually live on the
+    // site right now (listedLive). listedClaimed tracks the tracker's own status-based count
+    // of the same two buckets, so the KPI card can flag when the two disagree (an event says
+    // Partnership Done/Only Listed but has no live page yet, or the reverse).
+    let listedLive = 0, listedClaimed = 0;
     events.forEach((e) => {
       const d = derivedById.get(e.id)!;
       byStatus[d.statusBucket] = (byStatus[d.statusBucket] || 0) + 1;
-      if (d.listingResolved.toLowerCase() === 'yes') listed++;
-      if (d.statusBucket === 'Unmapped') unmapped++;
+      if (isListedStatus(d.statusBucket)) listedClaimed++;
+      if (isLiveListed(e, d.statusBucket)) listedLive++;
     });
-    return { byStatus, listed, unmapped, total: events.length };
+    return { byStatus, listed: listedLive, listedClaimed, total: events.length };
   }, [events, derivedById]);
 
   // Who created/updated what today, with exact datetime — feeds the Daily Report's
@@ -768,17 +871,20 @@ export default function PartnershipTrackerPage() {
   const filtered = useMemo(() => {
     let list = events.slice();
     if (monthFilter) list = list.filter((e) => e.eventStartDate && monthKey(e.eventStartDate) === monthFilter);
-    if (cardFilter === 'Listed') list = list.filter((e) => derivedById.get(e.id)!.listingResolved.toLowerCase() === 'yes');
+    if (cardFilter === 'Listed') list = list.filter((e) => isLiveListed(e, derivedById.get(e.id)!.statusBucket));
     else if (cardFilter) list = list.filter((e) => derivedById.get(e.id)!.statusBucket === cardFilter);
 
     const q = deferredSearch.trim().toLowerCase();
     if (q) list = list.filter((e) => e.eventName.toLowerCase().includes(q) || e.organiser.toLowerCase().includes(q) || e.poc.toLowerCase().includes(q));
 
-    if (statusFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.statusBucket === statusFilter);
+    // The default "all" view excludes Unmapped/Expired so they don't clutter the everyday list —
+    // Expired is still explicitly selectable from this same dropdown for a deliberate manual
+    // check; Unmapped isn't offered there at all (not a real status, just "couldn't classify").
+    if (statusFilter === 'all') list = list.filter((e) => !DEFAULT_HIDDEN_STATUSES.includes(derivedById.get(e.id)!.statusBucket));
+    else if (statusFilter === 'Listed') list = list.filter((e) => isLiveListed(e, derivedById.get(e.id)!.statusBucket));
+    else list = list.filter((e) => derivedById.get(e.id)!.statusBucket === statusFilter);
     if (typeFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.partnershipTypeResolved === typeFilter);
-    if (listingFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.listingResolved.toLowerCase() === listingFilter.toLowerCase());
-    if (timelineFilter === 'upcoming') list = list.filter((e) => !derivedById.get(e.id)!.isExpired);
-    else if (timelineFilter === 'expired') list = list.filter((e) => derivedById.get(e.id)!.isExpired);
+    if (listingFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.statusBucket === listingFilter);
 
     if (sortKey) {
       list.sort((a, b) => {
@@ -798,7 +904,7 @@ export default function PartnershipTrackerPage() {
       });
     }
     return list;
-  }, [events, derivedById, monthFilter, cardFilter, deferredSearch, statusFilter, typeFilter, listingFilter, timelineFilter, sortKey, sortDir]);
+  }, [events, derivedById, monthFilter, cardFilter, deferredSearch, statusFilter, typeFilter, listingFilter, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const clampedPage = Math.min(page, totalPages);
@@ -838,8 +944,8 @@ export default function PartnershipTrackerPage() {
 
   function resetToPage1() { setPage(1); }
   function clearFilters() {
-    setSearch(''); setStatusFilter('all'); setTypeFilter('all'); setListingFilter('all'); setTimelineFilter('all');
-    setCardFilter(null); setMonthFilter(null); setSortKey(null); setPage(1);
+    setSearch(''); setStatusFilter('all'); setTypeFilter('all'); setListingFilter('all');
+    setCardFilter(null); setMonthFilter(null); setSortKey('eventStartDate'); setSortDir(1); setPage(1);
   }
   function setCard(bucket: string | null) { setCardFilter(bucket); setMonthFilter(null); setPage(1); }
   function toggleSort(key: string) {
@@ -856,6 +962,11 @@ export default function PartnershipTrackerPage() {
     setOpenCreativePlatforms(new Set());
     setRegionOther(false);
     setCityOther(false);
+    setSlugManuallyEdited(false);
+    setPhoneCode('+91');
+    setPhoneCodeCustom('');
+    setPhoneNumber('');
+    setPhoneError('');
     setModalOpen(true);
   }
   function openEditModal(e: PartnershipEvent) {
@@ -866,32 +977,45 @@ export default function PartnershipTrackerPage() {
     setDraft({
       ...rest,
       region: regionValue,
+      partnershipType: rest.partnershipType,
       // "Completed" is automatic, never a dropdown option — reopening a published-then-auto-completed
       // event should still show/resave as "Published", not silently reset to Draft.
       siteStatus: linkedEvent?.status === 'completed' ? 'upcoming' : (linkedEvent?.status || 'draft'),
+      slug: linkedEvent?.slug || '',
     });
     setModalError('');
     // Auto-expand any platform that already has images, so editing an event doesn't hide its own data.
     setOpenCreativePlatforms(new Set(SOCIAL_CREATIVE_PLATFORMS.filter((p) => e.socialCreatives.some((c) => c.platform === p))));
     setRegionOther(!!regionValue && !COUNTRY_NAMES.includes(regionValue));
+    // A record with an already-live slug keeps it fixed (renaming the event shouldn't silently
+    // break its existing URL); a not-yet-listed record still auto-follows Event Name edits.
+    setSlugManuallyEdited(!!linkedEvent?.slug);
     const cities = citiesForCountry(regionValue);
     setCityOther(!!e.city && !!cities && !cities.includes(e.city));
+    const parsedPhone = parseContact(e.contact);
+    setPhoneCode(parsedPhone.code);
+    setPhoneCodeCustom(parsedPhone.codeCustom);
+    setPhoneNumber(parsedPhone.number);
+    setPhoneError('');
     setModalOpen(true);
   }
   async function saveModal() {
-    const closed = classifyStatus(draft.partnershipStatus) === 'Dropped';
+    const closed = classifyStatus(draft.partnershipStatus) === 'Cancelled';
     const effectiveDraft = closed ? { ...draft, listing: 'No', listingLink: '' } : draft;
     if (closed && (draft.listing !== 'No' || draft.listingLink.trim())) {
       setDraft((d) => ({ ...d, listing: 'No', listingLink: '' }));
     }
     if (!effectiveDraft.eventName.trim()) { setModalError('Event name is required.'); return; }
-    if (!draft.region.trim()) { setModalError('Region is required.'); return; }
-    if (draft.siteStatus !== 'draft' && !draft.eventStartDate.trim()) {
-      setModalError('Event Start Date is required to Publish or Cancel this on the website — fill it in, or leave Website Listing Status as Draft for now.');
-      return;
+    if (!draft.posterUrl.trim()) { setModalError('Event poster is required.'); return; }
+    if (!draft.bannerUrl.trim()) { setModalError('Event banner is required.'); return; }
+    const publishRequiredMsg = (field: string) =>
+      `${field} is required to Publish or Cancel this on the website — fill it in, or leave Website Listing Status as Draft for now.`;
+    if (draft.siteStatus !== 'draft') {
+      if (!draft.region.trim()) { setModalError(publishRequiredMsg('Region/Country')); return; }
+      if (!draft.eventStartDate.trim()) { setModalError(publishRequiredMsg('Event Start Date')); return; }
+      if (!draft.venueAddress.trim()) { setModalError(publishRequiredMsg('Complete Address')); return; }
+      if (!draft.googleLocationLink.trim()) { setModalError(publishRequiredMsg('Google Location (Maps link)')); return; }
     }
-    if (!draft.venueAddress.trim()) { setModalError('Complete Address is required.'); return; }
-    if (!draft.googleLocationLink.trim()) { setModalError('Google Location (Maps link) is required.'); return; }
     const missingSpeakerIdx = draft.speakers.findIndex((sp) => !sp.name.trim());
     if (missingSpeakerIdx !== -1) {
       setModalError(`Speaker/guest #${missingSpeakerIdx + 1}: Name is required (or remove that row).`);
@@ -902,7 +1026,21 @@ export default function PartnershipTrackerPage() {
       setModalError('Email ID looks invalid — enter a valid address (e.g. name@example.com).');
       return;
     }
+    if (phoneNumber.trim()) {
+      if (phoneCode === 'other' && !CUSTOM_CODE_RE.test(phoneCodeCustom.trim())) {
+        setModalError('Contact No.: enter a valid country code (e.g. +49).');
+        return;
+      }
+      if (!phoneRule.pattern.test(phoneNumber.trim())) {
+        setModalError(`Contact No.: ${phoneRule.message}`);
+        return;
+      }
+    }
     const descVal = stripHtml(draft.description);
+    if (draft.siteStatus !== 'draft' && !descVal) {
+      setModalError(publishRequiredMsg('Event Description'));
+      return;
+    }
     if (descVal && descVal.length < EVENT_DESCRIPTION_MIN_LENGTH) {
       setModalError(`Event Description needs at least ${EVENT_DESCRIPTION_MIN_LENGTH} characters (currently ${descVal.length}).`);
       return;
@@ -917,7 +1055,15 @@ export default function PartnershipTrackerPage() {
     setModalError('');
     // Country field was removed from the form (point 3) — Region/Country now covers it,
     // so mirror the selection into `country` for the existing dedup/exports/table columns.
-    const payload = { ...effectiveDraft, country: effectiveDraft.region, website: cleanWebsite(effectiveDraft.website), socialCreatives: effectiveDraft.socialCreatives.filter((c) => c.image.trim()) };
+    // lastUpdatedDate is stamped here rather than editable in the form — mirrors initiatedDate.
+    const payload = {
+      ...effectiveDraft,
+      country: effectiveDraft.region,
+      slug: slugify(effectiveDraft.slug),
+      website: cleanWebsite(effectiveDraft.website),
+      socialCreatives: effectiveDraft.socialCreatives.filter((c) => c.image.trim()),
+      lastUpdatedDate: todayStr(),
+    };
     try {
       const res = editingId
         ? await api(`/api/admin/partnership-events/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -953,24 +1099,6 @@ export default function PartnershipTrackerPage() {
       setEvents((prev) => prev.filter((e) => e.id !== id));
     } else {
       showToast(res.error || 'Delete failed.', 'error');
-    }
-  }
-  async function updateStatusInline(id: number, newStatus: string) {
-    const target = events.find((e) => e.id === id);
-    const patch: Partial<EventDraft> = { partnershipStatus: newStatus };
-    if (classifyStatus(newStatus) === 'Dropped') {
-      patch.listing = 'No';
-      patch.listingLink = '';
-    }
-    if (target && classifyStatus(target.partnershipStatus) !== newStatus) {
-      patch.lastUpdatedDate = new Date().toISOString().slice(0, 10);
-      logActivity('status', target.eventName, `Status → ${newStatus}`);
-    }
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
-    const res = await api(`/api/admin/partnership-events/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
-    if (!res.success) {
-      showToast(res.error || 'Status update failed.', 'error');
-      await loadEvents();
     }
   }
   async function runBulkDelete() {
@@ -1124,6 +1252,12 @@ export default function PartnershipTrackerPage() {
 
   const regionOptions = buildRegionOptions(draft.region);
   const citiesForSelectedCountry = citiesForCountry(draft.region);
+  const effectivePhoneCode = phoneCode === 'other' ? (phoneCodeCustom.trim() || 'other') : phoneCode;
+  const phoneRule = PHONE_RULES[effectivePhoneCode] || PHONE_RULES.other;
+  // Draft = nothing but the name + the two core images need to be filled in yet. The moment
+  // Website Listing Status leaves Draft (Published/Cancelled), the fields a real public event
+  // page actually needs become required — mirrors saveModal()'s own validation exactly.
+  const requiredToPublish = draft.siteStatus !== 'draft';
 
   /* ---------------- Render ---------------- */
   return (
@@ -1220,22 +1354,35 @@ export default function PartnershipTrackerPage() {
                 <div className="pt-card-label"><span className="pt-dot" />All events</div>
                 <div className="pt-card-count">{counts.total}</div>
               </div>
-              {STATUS_FILTER_ORDER.map((s) => (
-                <div key={s} className={`pt-card ${cardFilter === s ? 'active' : ''}`} style={{ ['--dot' as string]: STATUS_COLOR_HEX[s] }} onClick={() => setCard(s)}>
-                  <div className="pt-card-label"><span className="pt-dot" />{s}</div>
-                  <div className="pt-card-count">{counts.byStatus[s] || 0}</div>
+              {STATUS_FILTER_ORDER.map((s) => {
+                const isAlertCard = (s === 'Initiated' || s === 'Draft') && (counts.byStatus[s] || 0) > 0;
+                return (
+                  <div
+                    key={s}
+                    className={`pt-card ${cardFilter === s ? 'active' : ''} ${isAlertCard ? 'pt-card-blink' : ''}`}
+                    style={{ ['--dot' as string]: isAlertCard ? '#C22B44' : STATUS_COLOR_HEX[s] }}
+                    onClick={() => setCard(s)}
+                  >
+                    <div className="pt-card-label"><span className="pt-dot" />{s}</div>
+                    <div className="pt-card-count">{counts.byStatus[s] || 0}</div>
+                  </div>
+                );
+              })}
+              <div
+                className={`pt-card ${cardFilter === 'Listed' ? 'active' : ''}`}
+                style={{ ['--dot' as string]: counts.listed === counts.listedClaimed ? '#7C3FE0' : '#C22B44' }}
+                onClick={() => setCard('Listed')}
+                title={counts.listed === counts.listedClaimed ? undefined : `${counts.listedClaimed} event(s) are marked Partnership Done / Only Listed, but only ${counts.listed} actually have a live page on the site — check for missing or still-Draft listings.`}
+              >
+                <div className="pt-card-label">
+                  <span className="pt-dot" />Listed
+                  {counts.listed !== counts.listedClaimed && <span className="pt-card-warn-icon">⚠</span>}
                 </div>
-              ))}
-              <div className={`pt-card ${cardFilter === 'Listed' ? 'active' : ''}`} style={{ ['--dot' as string]: '#7C3FE0' }} onClick={() => setCard('Listed')}>
-                <div className="pt-card-label"><span className="pt-dot" />Listed</div>
                 <div className="pt-card-count">{counts.listed}</div>
+                {counts.listed !== counts.listedClaimed && (
+                  <div className="pt-card-warn-text">{counts.listedClaimed} claimed vs {counts.listed} live</div>
+                )}
               </div>
-              {counts.unmapped > 0 && (
-                <div className={`pt-card ${cardFilter === 'Unmapped' ? 'active' : ''}`} style={{ ['--dot' as string]: '#9CA3AF' }} onClick={() => setCard('Unmapped')}>
-                  <div className="pt-card-label"><span className="pt-dot" />Unmapped</div>
-                  <div className="pt-card-count">{counts.unmapped}</div>
-                </div>
-              )}
             </div>
 
             {(momData.keys.length > 0 || yoyData.years.length > 0) && (
@@ -1335,25 +1482,22 @@ export default function PartnershipTrackerPage() {
                 <input placeholder="Search event, organiser, POC…" value={search} onChange={(e) => { setSearch(e.target.value); resetToPage1(); }} />
               </div>
               <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); resetToPage1(); }}>
-                <option value="all">All statuses</option>
-                {STATUS_FILTER_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
-                <option value="Unmapped">Unmapped</option>
+                <option value="all">Event Statuses</option>
+                <option value="Listed">Listed</option>
+                <option value="Draft">Draft</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="Expired">Expired</option>
               </select>
               <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); resetToPage1(); }}>
                 <option value="all">All Events</option>
                 {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <select value={listingFilter} onChange={(e) => { setListingFilter(e.target.value); resetToPage1(); }}>
-                <option value="all">Any listing status</option>
-                <option value="Yes">Listed</option>
-                <option value="In process">Listing in process</option>
-                <option value="Pending">Pending</option>
-                <option value="No">Not listed</option>
-              </select>
-              <select value={timelineFilter} onChange={(e) => { setTimelineFilter(e.target.value); resetToPage1(); }}>
-                <option value="all">Upcoming + Expired</option>
-                <option value="upcoming">Upcoming only</option>
-                <option value="expired">Expired only</option>
+                <option value="all">Partnership Statuses</option>
+                <option value="Initiated">Initiated</option>
+                <option value="Partnership Done">Partnership Done</option>
+                <option value="Only Listing">Only Listing</option>
+                <option value="Ticketing">Ticketing</option>
               </select>
               <select value={pageSize} onChange={(e) => { setPageSize(parseInt(e.target.value, 10)); resetToPage1(); }}>
                 {[25, 50, 100, 200].map((n) => <option key={n} value={n}>{n} / page</option>)}
@@ -1395,34 +1539,25 @@ export default function PartnershipTrackerPage() {
                       <th className="pt-sticky" onClick={() => toggleSort('eventName')}>Event{sortKey === 'eventName' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th onClick={() => toggleSort('city')}>City{sortKey === 'city' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th onClick={() => toggleSort('country')}>Country{sortKey === 'country' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th onClick={() => toggleSort('organiser')}>Organiser{sortKey === 'organiser' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th onClick={() => toggleSort('poc')}>POC{sortKey === 'poc' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th>Contact</th>
-                      <th>Email</th>
-                      <th>Website</th>
-                      <th onClick={() => toggleSort('initiatedDate')}>Initiated{sortKey === 'initiatedDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th>Email Thread</th>
                       <th onClick={() => toggleSort('eventStartDate')}>Start date{sortKey === 'eventStartDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th onClick={() => toggleSort('eventEndDate')}>End date{sortKey === 'eventEndDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th>Status</th>
-                      <th onClick={() => toggleSort('daysInStatus')}>Days in status{sortKey === 'daysInStatus' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Type</th>
-                      <th onClick={() => toggleSort('lastUpdatedDate')}>Last updated{sortKey === 'lastUpdatedDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th>Status</th>
                       <th>Comment</th>
-                      <th>Speakers / Guests</th>
-                      <th>Site Status</th>
-                      <th className="pt-col-act">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageList.length === 0 ? (
-                      <tr><td colSpan={21} className="pt-empty">No events match these filters.</td></tr>
+                      <tr><td colSpan={9} className="pt-empty">No events match these filters.</td></tr>
                     ) : pageList.map((e) => {
                       const d = derivedById.get(e.id)!;
-                      const color = STATUS_COLOR_HEX[d.statusBucket] || '#9CA3AF';
+                      const statusColor = STATUS_COLOR_HEX[d.statusBucket] || '#9CA3AF';
+                      const typeColor = TYPE_COLOR_HEX[d.partnershipTypeResolved] || '#9CA3AF';
+                      const startTime = fmtTime(e.eventStartTime);
+                      const endTime = fmtTime(e.eventEndTime);
                       return (
-                        <tr key={e.id} className={selectedIds.has(e.id) ? 'pt-row-selected' : ''}>
-                          <td className="pt-col-chk">
+                        <tr key={e.id} className={`pt-row-clickable ${selectedIds.has(e.id) ? 'pt-row-selected' : ''}`} onClick={() => openEditModal(e)}>
+                          <td className="pt-col-chk" onClick={(ev) => ev.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={selectedIds.has(e.id)}
@@ -1434,58 +1569,28 @@ export default function PartnershipTrackerPage() {
                             />
                           </td>
                           <td className="pt-sticky">
-                            <div className="pt-ev-title pt-name-link" onClick={() => openEditModal(e)}>{e.eventName}</div>
-                            {e.source && <div className="pt-ev-sub">{e.source}</div>}
-                            {d.isExpired && <span className="pt-badge" style={{ color: '#3F4552' }}>Expired</span>}
+                            <div className="pt-ev-title">{e.eventName}</div>
                           </td>
-                          <td>{e.city || <span className="pt-muted">—</span>}</td>
-                          <td>{e.country || <span className="pt-muted">—</span>}</td>
-                          <td>{e.organiser || <span className="pt-muted">—</span>}</td>
-                          <td>{e.poc || <span className="pt-muted">—</span>}</td>
-                          <td>{e.contact || <span className="pt-muted">—</span>}</td>
-                          <td>{e.email || <span className="pt-muted">—</span>}</td>
-                          <td>{e.website ? <a className="pt-link" href={e.website} target="_blank" rel="noopener">{e.website}</a> : <span className="pt-muted">—</span>}</td>
-                          <td className="pt-mono">{fmtDisplay(e.initiatedDate)}</td>
-                          <td>{e.emailThread ? <a className="pt-link" href={e.emailThread} target="_blank" rel="noopener">Open thread</a> : <span className="pt-muted">—</span>}</td>
-                          <td className="pt-mono">{fmtDisplay(e.eventStartDate)}</td>
-                          <td className="pt-mono">
-                            {fmtDisplay(e.eventEndDate)}
+                          <td className="pt-col-city">{e.city || <span className="pt-muted">—</span>}</td>
+                          <td className="pt-col-country">{e.country || <span className="pt-muted">—</span>}</td>
+                          <td className="pt-mono pt-col-date">
+                            {fmtMonthDay(e.eventStartDate)}
+                            <div className="pt-cell-sub">{fmtYear(e.eventStartDate)}{startTime ? ` · ${startTime}` : ''}</div>
+                          </td>
+                          <td className="pt-mono pt-col-date">
+                            {fmtMonthDay(e.eventEndDate)}
+                            <div className="pt-cell-sub">{fmtYear(e.eventEndDate)}{endTime ? ` · ${endTime}` : ''}</div>
                             {d.dateOrderSuspect && <span className="pt-badge" style={{ color: '#C22B44' }} title="End date is before start date">⚠ order</span>}
                           </td>
-                          <td>
-                            <select
-                              className="pt-status-select"
-                              style={{ color }}
-                              value={d.statusBucket === 'Unmapped' ? '' : d.statusBucket}
-                              onChange={(ev) => updateStatusInline(e.id, ev.target.value)}
-                            >
-                              {d.statusBucket === 'Unmapped' && <option value="" disabled>Unmapped</option>}
-                              {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
-                            </select>
+                          <td className="pt-col-type">
+                            {d.partnershipTypeResolved
+                              ? <span className="pt-pill" style={{ color: typeColor, borderColor: typeColor, background: `${typeColor}1A` }}>{d.partnershipTypeResolved}</span>
+                              : <span className="pt-muted">—</span>}
                           </td>
-                          <td>{d.daysInStatus !== null ? <span className="pt-mono">{d.daysInStatus}d</span> : <span className="pt-muted">—</span>}</td>
-                          <td>{d.partnershipTypeResolved || <span className="pt-muted">—</span>}</td>
-                          <td className="pt-mono">{fmtDisplay(e.lastUpdatedDate)}</td>
-                          <td title={e.comment}>{e.comment || <span className="pt-muted">—</span>}</td>
-                          <td title={speakersExportText(e.speakers)}>{speakersExportText(e.speakers) || <span className="pt-muted">—</span>}</td>
-                          <td>
-                            {e.linkedEvent ? (
-                              <a
-                                className="pt-badge"
-                                style={{ color: SITE_STATUS_BADGE[e.linkedEvent.status]?.color || '#6B7280', textDecoration: 'none' }}
-                                href={`/startup-events/${e.linkedEvent.slug}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                title="View on site"
-                              >
-                                {SITE_STATUS_BADGE[e.linkedEvent.status]?.label || e.linkedEvent.status}
-                              </a>
-                            ) : <span className="pt-muted">Not listed yet</span>}
+                          <td className="pt-col-status">
+                            <span className="pt-pill" style={{ color: statusColor, borderColor: statusColor, background: `${statusColor}1A` }}>{d.statusBucket}</span>
                           </td>
-                          <td className="pt-row-actions">
-                            <button onClick={() => openEditModal(e)}>Edit</button>
-                            <button className="del" onClick={() => deleteEvent(e.id, e.eventName)}>Delete</button>
-                          </td>
+                          <td className="pt-col-comment" title={e.comment}>{e.comment || <span className="pt-muted">—</span>}</td>
                         </tr>
                       );
                     })}
@@ -1536,26 +1641,62 @@ export default function PartnershipTrackerPage() {
               <button className="pt-modal-close" onClick={() => setModalOpen(false)}>✕</button>
             </div>
             <div className="pt-modal-body">
-              <div className="pt-form-grid">
+              <div className="pt-form-grid pt-form-grid-3">
                 <div className="pt-fg">
                   <label>Partnership Type</label>
-                  <select value={draft.eventType} onChange={(e) => setDraft({ ...draft, eventType: e.target.value })}>
+                  <select
+                    value={draft.partnershipStatus}
+                    onChange={(e) => {
+                      const nextStatus = e.target.value;
+                      const closed = classifyStatus(nextStatus) === 'Cancelled';
+                      setDraft({ ...draft, partnershipStatus: nextStatus, ...(closed ? { listing: 'No', listingLink: '' } : {}) });
+                    }}
+                  >
                     <option value="">—</option>
-                    {PARTNERSHIP_KIND_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                    {draft.partnershipStatus && !STATUS_EDIT_ORDER.includes(draft.partnershipStatus) && (
+                      <option value={draft.partnershipStatus} disabled>{draft.partnershipStatus} (legacy)</option>
+                    )}
+                    {STATUS_EDIT_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
-                <div className="pt-fg"><label>Initiated date</label><input type="date" value={draft.initiatedDate} onChange={(e) => setDraft({ ...draft, initiatedDate: e.target.value })} /></div>
+                <div className="pt-fg">
+                  <label>Event Type</label>
+                  <select value={draft.partnershipType} onChange={(e) => setDraft({ ...draft, partnershipType: e.target.value })}>
+                    <option value="">—</option>
+                    {draft.partnershipType && !(PARTNERSHIP_TYPE_OPTIONS as readonly string[]).includes(draft.partnershipType) && (
+                      <option value={draft.partnershipType} disabled>{draft.partnershipType} (legacy)</option>
+                    )}
+                    {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="pt-fg"><label>Initiated date</label><div className="pt-readonly-field">{fmtDisplay(draft.initiatedDate)}</div></div>
               </div>
 
               <div className="pt-section-title">1. Event basics</div>
               <div className="pt-form-grid">
                 <div className="pt-fg pt-full">
                   <label>Name of the event *</label>
-                  <input placeholder="e.g. Startup Mixer | Mumbai | 14 Mar 2026" value={draft.eventName} onChange={(e) => setDraft({ ...draft, eventName: e.target.value })} />
+                  <input
+                    placeholder="e.g. Startup Mixer | Mumbai | 14 Mar 2026"
+                    value={draft.eventName}
+                    onChange={(e) => {
+                      const eventName = e.target.value;
+                      setDraft((d) => ({ ...d, eventName, slug: slugManuallyEdited ? d.slug : slugify(eventName) }));
+                    }}
+                  />
                   <div className="pt-hint">Format: Event Name | City | Date</div>
                 </div>
+                <div className="pt-fg pt-full">
+                  <label>Slug (website URL)</label>
+                  <input
+                    placeholder="auto-generated-from-event-name"
+                    value={draft.slug}
+                    onChange={(e) => { setSlugManuallyEdited(true); setDraft({ ...draft, slug: e.target.value }); }}
+                  />
+                  <div className="pt-hint">Auto-fills from the event name — edit only if this event is already listed and you don&apos;t want to change its live URL.</div>
+                </div>
                 <div className="pt-fg">
-                  <label>Region/Country (for website listing) *</label>
+                  <label>Region/Country (for website listing){requiredToPublish && ' *'}</label>
                   {regionOther ? (
                     <>
                       <input
@@ -1627,32 +1768,88 @@ export default function PartnershipTrackerPage() {
                     }}
                   />
                 </div>
-                <div className="pt-fg"><label>Contact No.</label><input type="tel" value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} /></div>
+                <div className="pt-fg">
+                  <label>Contact No.</label>
+                  <div className="pt-phone-row">
+                    <select
+                      value={phoneCode}
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        setPhoneCode(code);
+                        setDraft((d) => ({ ...d, contact: combineContact(code, phoneCodeCustom, phoneNumber) }));
+                        setPhoneError('');
+                      }}
+                    >
+                      {COUNTRY_CODE_OPTIONS.map((c) => (
+                        <option key={c.code} value={c.code}>{c.code === 'other' ? '🌐 Other' : `${c.emoji} ${c.code}`}</option>
+                      ))}
+                    </select>
+                    {phoneCode === 'other' && (
+                      <input
+                        type="text"
+                        placeholder="+xxx"
+                        value={phoneCodeCustom}
+                        onChange={(e) => {
+                          const codeCustom = e.target.value;
+                          setPhoneCodeCustom(codeCustom);
+                          setDraft((d) => ({ ...d, contact: combineContact(phoneCode, codeCustom, phoneNumber) }));
+                        }}
+                        style={{ width: 70, flex: '0 0 70px' }}
+                      />
+                    )}
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={phoneRule.maxLen}
+                      placeholder="e.g. 98765 43210"
+                      value={phoneNumber}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, phoneRule.maxLen);
+                        setPhoneNumber(digits);
+                        setDraft((d) => ({ ...d, contact: combineContact(phoneCode, phoneCodeCustom, digits) }));
+                        setPhoneError('');
+                      }}
+                      onKeyDown={(e) => {
+                        const isDigit = /^[0-9]$/.test(e.key);
+                        const isControlKey = e.key.length > 1 || e.ctrlKey || e.metaKey || e.altKey;
+                        if (!isDigit && !isControlKey) { e.preventDefault(); return; }
+                        const hasSelection = e.currentTarget.selectionStart !== e.currentTarget.selectionEnd;
+                        if (isDigit && !hasSelection && phoneNumber.length >= phoneRule.maxLen) e.preventDefault();
+                      }}
+                      onBlur={() => {
+                        if (!phoneNumber.trim()) { setPhoneError(''); return; }
+                        setPhoneError(phoneRule.pattern.test(phoneNumber.trim()) ? '' : phoneRule.message);
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                  </div>
+                  {phoneError && <div className="pt-hint pt-hint-warn">{phoneError}</div>}
+                </div>
                 <div className="pt-fg"><label>Email ID</label><input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value.replace(/\s/g, '') })} /></div>
-                <div className="pt-fg pt-full">
+                <div className="pt-fg">
                   <label>Email Thread</label>
                   <input placeholder="https://mail.google.com/mail/u/0/#inbox/…" value={draft.emailThread} onChange={(e) => setDraft({ ...draft, emailThread: e.target.value })} />
                   <div className="pt-hint">Paste the direct Gmail thread link for this conversation.</div>
                 </div>
-                <div className="pt-fg pt-full"><label>Registration Link</label><input value={draft.website} onChange={(e) => setDraft({ ...draft, website: e.target.value })} /></div>
+                <div className="pt-fg"><label>Registration Link</label><input value={draft.website} onChange={(e) => setDraft({ ...draft, website: e.target.value })} /></div>
               </div>
 
               <div className="pt-section-title">2. Event start &amp; end date/time</div>
               <div className="pt-form-grid">
-                <div className="pt-fg"><label>Event Start Date</label><input type="date" value={draft.eventStartDate} onChange={(e) => setDraft({ ...draft, eventStartDate: e.target.value })} /></div>
+                <div className="pt-fg"><label>Event Start Date{requiredToPublish && ' *'}</label><input type="date" value={draft.eventStartDate} onChange={(e) => setDraft({ ...draft, eventStartDate: e.target.value })} /></div>
                 <div className="pt-fg"><label>Event Start Time</label><input type="time" value={draft.eventStartTime} onChange={(e) => setDraft({ ...draft, eventStartTime: e.target.value })} /></div>
                 <div className="pt-fg"><label>Event End Date</label><input type="date" value={draft.eventEndDate} onChange={(e) => setDraft({ ...draft, eventEndDate: e.target.value })} /></div>
                 <div className="pt-fg"><label>Event End Time</label><input type="time" value={draft.eventEndTime} onChange={(e) => setDraft({ ...draft, eventEndTime: e.target.value })} /></div>
-                <div className="pt-fg"><label>Last Updated Date</label><input type="date" value={draft.lastUpdatedDate} onChange={(e) => setDraft({ ...draft, lastUpdatedDate: e.target.value })} /></div>
+                <div className="pt-fg"><label>Last Updated Date</label><div className="pt-readonly-field">{draft.lastUpdatedDate ? fmtDisplay(draft.lastUpdatedDate) : '—'}</div></div>
               </div>
 
-              <div className="pt-section-title">3. Venue</div>
+              <div className="pt-section-title">3. Venue{requiredToPublish && ' *'}</div>
               <div className="pt-form-grid">
-                <div className="pt-fg pt-full"><label>Complete Address *</label><textarea value={draft.venueAddress} onChange={(e) => setDraft({ ...draft, venueAddress: e.target.value })} /></div>
-                <div className="pt-fg pt-full"><label>Google Location (Maps link) *</label><input value={draft.googleLocationLink} onChange={(e) => setDraft({ ...draft, googleLocationLink: e.target.value })} placeholder="https://maps.google.com/…" /></div>
+                <div className="pt-fg pt-full"><label>Complete Address{requiredToPublish && ' *'}</label><textarea value={draft.venueAddress} onChange={(e) => setDraft({ ...draft, venueAddress: e.target.value })} /></div>
+                <div className="pt-fg pt-full"><label>Google Location (Maps link){requiredToPublish && ' *'}</label><input value={draft.googleLocationLink} onChange={(e) => setDraft({ ...draft, googleLocationLink: e.target.value })} placeholder="https://maps.google.com/…" /></div>
               </div>
 
-              <div className="pt-section-title">4. Event description</div>
+              <div className="pt-section-title">4. Event description{requiredToPublish && ' *'}</div>
               <div className="pt-form-grid">
                 <div className="pt-fg pt-full">
                   <RichTextEditor
@@ -1679,13 +1876,13 @@ export default function PartnershipTrackerPage() {
               ))}
               <span className="pt-add-line" onClick={() => setDraft({ ...draft, speakers: [...draft.speakers, emptySpeaker()] })}>+ Add speaker/guest</span>
 
-              <div className="pt-section-title" style={{ marginTop: 18 }}>7. Event poster (event page listing)</div>
+              <div className="pt-section-title" style={{ marginTop: 18 }}>7. Event poster (event page listing) *</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>{POSTER_SPEC}</div>
-              <ImageUpload value={draft.posterUrl} onChange={(url) => setDraft({ ...draft, posterUrl: url })} label="Event poster" />
+              <ImageUpload value={draft.posterUrl} onChange={(url) => setDraft({ ...draft, posterUrl: url })} label="Event poster" required exactDimensions={IMAGE_SPECS.cover} />
 
-              <div className="pt-section-title">8. Event banner (homepage)</div>
+              <div className="pt-section-title">8. Event banner (homepage) *</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>{BANNER_SPEC}</div>
-              <ImageUpload value={draft.bannerUrl} onChange={(url) => setDraft({ ...draft, bannerUrl: url })} label="Homepage banner" />
+              <ImageUpload value={draft.bannerUrl} onChange={(url) => setDraft({ ...draft, bannerUrl: url })} label="Homepage banner" required exactDimensions={IMAGE_SPECS.banner} />
 
               <div className="pt-section-title">9. Social media posts</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>Suggested content only — we&apos;ll recreate and finalise this to match our page before publishing.</div>
@@ -1715,7 +1912,7 @@ export default function PartnershipTrackerPage() {
                   {draft.socialCreatives.map((c, i) => c.platform !== platform ? null : (
                     <div className="pt-speaker-row" key={i}>
                       <div style={{ flex: 1 }}>
-                        <ImageUpload value={c.image} onChange={(v) => { const next = [...draft.socialCreatives]; next[i] = { ...next[i], image: v }; setDraft({ ...draft, socialCreatives: next }); }} label={`${SOCIAL_CREATIVE_PLATFORM_LABELS[platform] || platform} image`} />
+                        <ImageUpload value={c.image} onChange={(v) => { const next = [...draft.socialCreatives]; next[i] = { ...next[i], image: v }; setDraft({ ...draft, socialCreatives: next }); }} label={`${SOCIAL_CREATIVE_PLATFORM_LABELS[platform] || platform} image`} exactDimensions={IMAGE_SPECS.social} />
                       </div>
                       <button type="button" className="pt-rm" onClick={() => setDraft({ ...draft, socialCreatives: draft.socialCreatives.filter((_, idx) => idx !== i) })}>✕</button>
                     </div>
@@ -1728,37 +1925,12 @@ export default function PartnershipTrackerPage() {
 
               <div className="pt-section-title" style={{ marginTop: 18 }}>Partnership tracking</div>
               <div className="pt-form-grid">
-                <div className="pt-fg">
-                  <label>Partnership Status</label>
-                  <select
-                    value={draft.partnershipStatus}
-                    onChange={(e) => {
-                      const nextStatus = e.target.value;
-                      const closed = classifyStatus(nextStatus) === 'Dropped';
-                      setDraft({ ...draft, partnershipStatus: nextStatus, ...(closed ? { listing: 'No', listingLink: '' } : {}) });
-                    }}
-                  >
-                    <option value="">—</option>
-                    {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="pt-fg">
-                  <label>Event Type</label>
-                  <select value={draft.partnershipType} onChange={(e) => setDraft({ ...draft, partnershipType: e.target.value })}>
-                    <option value="">—</option>
-                    {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
                 <div className="pt-fg pt-full"><label>Internal comment</label><textarea value={draft.comment} onChange={(e) => setDraft({ ...draft, comment: e.target.value })} /></div>
                 <div className="pt-fg pt-full">
                   <label>Website Listing Status *</label>
                   <select value={draft.siteStatus} onChange={(e) => setDraft({ ...draft, siteStatus: e.target.value as EventDraft['siteStatus'] })}>
                     {SITE_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
-                  <div className="pt-hint">
-                    Controls whether this shows as a real event on the website. Published = live now. There&apos;s no manual &quot;Completed&quot; option — once the Event End Date (or Event Start Date, if no end date is set) has passed, it flips to Completed on its own.
-                    {!draft.eventStartDate && <><br />Needs an Event Start Date filled in above before it can actually go live.</>}
-                  </div>
                 </div>
               </div>
               {modalError && <div className="pt-modal-error">{modalError}</div>}
@@ -1900,6 +2072,14 @@ export default function PartnershipTrackerPage() {
         .pt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); display: inline-block; margin-right: 6px; }
         .pt-card-label { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; }
         .pt-card-count { font-family: var(--font-pt-display), sans-serif; font-size: 24px; font-weight: 700; margin-top: 5px; }
+        .pt-card-warn-icon { margin-left: 5px; color: #C22B44; font-size: 11px; }
+        .pt-card-warn-text { margin-top: 4px; font-size: 10px; color: #C22B44; font-weight: 600; }
+        .pt-card-blink { border-color: #C22B44; animation: pt-card-blink-anim 1.2s ease-in-out infinite; }
+        .pt-card-blink .pt-card-count { color: #C22B44; }
+        @keyframes pt-card-blink-anim {
+          0%, 100% { box-shadow: 0 0 0 1px #C22B44 inset; background: var(--surface); }
+          50% { box-shadow: 0 0 0 1px #C22B44 inset; background: rgba(194, 43, 68, 0.12); }
+        }
 
         .pt-chart-toggle { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 16px; margin-bottom: 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; transition: border-color .15s; }
         .pt-chart-toggle:hover { border-color: var(--faint); }
@@ -1939,7 +2119,7 @@ export default function PartnershipTrackerPage() {
 
         .pt-tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
         .pt-tbl-scroll { overflow: auto; max-height: 65vh; }
-        .pt-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 2000px; }
+        .pt-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
         .pt-wrap thead th { text-align: left; padding: 11px 14px; color: var(--muted); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); background: var(--surface-2); cursor: pointer; white-space: nowrap; position: sticky; top: 0; z-index: 3; }
         .pt-sort-arrow { color: var(--accent); }
         .pt-col-chk { width: 38px; cursor: default !important; }
@@ -1948,23 +2128,29 @@ export default function PartnershipTrackerPage() {
         .pt-wrap tbody tr { border-bottom: 1px solid var(--border); }
         .pt-wrap tbody tr:last-child { border-bottom: none; }
         .pt-wrap tbody tr:hover td { background: var(--surface-2); }
+        .pt-row-clickable { cursor: pointer; }
         .pt-row-selected td { background: rgba(37,99,199,0.08) !important; }
         .pt-wrap td { padding: 10px 14px; vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .pt-ev-title { font-weight: 600; }
-        .pt-name-link { cursor: pointer; }
-        .pt-name-link:hover { color: var(--accent); text-decoration: underline; }
-        .pt-ev-sub { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+        /* Narrower per-column caps (Event keeps the shared 220px above) so more columns fit in
+           view without horizontal scroll — max-width + ellipsis, not a hard width, so nothing
+           actually collapses or overlaps, it just truncates gracefully like Event/Comment already did. */
+        .pt-col-city { max-width: 100px; }
+        .pt-col-country { max-width: 110px; }
+        .pt-col-date { max-width: 90px; }
+        .pt-col-type { max-width: 120px; }
+        .pt-col-status { max-width: 130px; }
+        .pt-col-comment { max-width: 150px; }
+        /* Event name wraps onto a second line instead of the single-line ellipsis every other
+           column uses — long titles were getting cut off after just a few words. */
+        .pt-wrap td.pt-sticky { white-space: normal; overflow: visible; text-overflow: clip; }
+        .pt-ev-title { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; }
+        .pt-cell-sub { color: var(--faint); font-size: 11px; margin-top: 2px; }
         .pt-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; border: 1px solid currentColor; padding: 2px 7px; border-radius: 20px; margin-left: 6px; white-space: nowrap; }
         .pt-mono { font-family: var(--font-pt-mono), ui-monospace, monospace; font-size: 12px; }
         .pt-muted { color: var(--faint); }
         .pt-link { color: var(--accent); }
-        .pt-status-select { border-radius: 20px; font-size: 11.5px; font-weight: 500; padding: 3px 8px; border: 1px solid currentColor; cursor: pointer; background: var(--surface); }
+        .pt-pill { display: inline-flex; align-items: center; border-radius: 20px; font-size: 11.5px; font-weight: 600; padding: 3px 10px; border: 1px solid currentColor; white-space: nowrap; }
         .pt-empty { padding: 44px; text-align: center; color: var(--muted); }
-        .pt-row-actions { display: flex; gap: 6px; }
-        .pt-row-actions button { background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); cursor: pointer; padding: 4px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-        .pt-row-actions button:hover { background: var(--border); color: var(--text); }
-        .pt-row-actions button.del { color: #C22B44; border-color: rgba(194,43,68,0.35); background: rgba(194,43,68,0.06); }
-        .pt-row-actions button.del:hover { background: rgba(194,43,68,0.14); }
 
         .pt-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
         .pt-page-info { margin-right: auto; }
@@ -1973,7 +2159,8 @@ export default function PartnershipTrackerPage() {
 
         .pt-overlay { display: none; position: fixed; inset: 0; background: rgba(16,26,43,0.45); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .pt-overlay.open { display: flex; }
-        .pt-modal { background: var(--surface); border-radius: 14px; width: 720px; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 48px rgba(16,26,43,0.25); }
+        .pt-modal { background: var(--surface); border-radius: 14px; width: 80vw; max-width: 1400px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 48px rgba(16,26,43,0.25); }
+        @media (max-width: 900px) { .pt-modal { width: 96vw; } }
         .pt-modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--surface); z-index: 1; }
         .pt-modal-header h2 { font-size: 16px; margin: 0; }
         .pt-modal-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
@@ -1983,10 +2170,14 @@ export default function PartnershipTrackerPage() {
         .pt-hint { font-size: 11px; color: var(--faint); }
         .pt-hint-warn { color: #B9790A; }
         .pt-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+        .pt-form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        @media (max-width: 700px) { .pt-form-grid-3 { grid-template-columns: 1fr; } }
         .pt-fg { display: flex; flex-direction: column; gap: 5px; }
         .pt-fg.pt-full { grid-column: 1/-1; }
         .pt-fg label { font-size: 11px; color: var(--muted); }
         .pt-fg input, .pt-fg select, .pt-fg textarea { min-height: 36px; padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; font-family: inherit; }
+        .pt-phone-row { display: flex; gap: 6px; }
+        .pt-phone-row select { flex: 0 0 88px; width: 88px; padding: 0 6px; }
         .pt-fg textarea { min-height: 64px; padding: 10px 12px; resize: vertical; width: 100%; }
         .pt-speaker-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: flex-start; }
         .pt-speaker-row input { flex: 1; height: 36px; padding: 0 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); }

@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
     // Keep linked-event status in sync (same lazy refresh the Events admin list already does)
     // so "Completed" shows correctly here too, without a separate cron job.
     await eventsRepository.markPastEventsAsExpired();
+    // Same lazy-sweep pattern for the tracker's own partnership_status — see
+    // PartnershipEventsRepository.markPastPartnershipsAsExpired for the exact rule.
+    await partnershipEventsRepository.markPastPartnershipsAsExpired();
 
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || undefined;

@@ -14,13 +14,19 @@ const nextConfig: NextConfig = {
   },
   // Allow external images from DB (S3 bucket) and CDN
   images: {
-    qualities: [90],
+    // 90 stays the default for hero/LCP images (see "LCP Issues" commit). 60 is added for small
+    // carousel thumbnails (EventByCountryCard) — those never explicitly requested 90, they just
+    // got it because 90 was the only allowed value; at ~380px rendered width the difference is
+    // invisible but the byte savings are real, which matters on /events (dozens of images/page).
+    qualities: [60, 90],
     dangerouslyAllowSVG: true,
     contentDispositionType: "inline",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
       { protocol: "https", hostname: "*.unsplash.com", pathname: "/**" },
+      // CloudFront distribution in front of the S3 bucket (ImagesStartupNews)
+      { protocol: "https", hostname: "images.startupnews.fyi", pathname: "/**" },
       // S3 bucket: startupnews-media-2026 (us-east-1) – images from DB
       { protocol: "https", hostname: "startupnews-media-2026.s3.amazonaws.com", pathname: "/**" },
       { protocol: "https", hostname: "startupnews-media-2026.s3.us-east-1.amazonaws.com", pathname: "/**" },

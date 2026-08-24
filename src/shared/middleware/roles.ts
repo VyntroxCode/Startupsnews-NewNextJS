@@ -26,6 +26,9 @@ export const REPORTS_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 /** Brand Stories + Brand Story Sections — given to Publisher Admin alongside content management. */
 export const BRAND_STORIES_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 
+/** Inner Pages (partner logos + editable content for standalone pages like Our Partners) — given to Publisher Admin alongside content management. */
+export const INNER_PAGES_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
+
 /** Every admin-panel role — dashboard/stats and other cross-cutting read-only surfaces. */
 export const ALL_ADMIN_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin'] as const;
 

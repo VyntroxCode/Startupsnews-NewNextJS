@@ -121,6 +121,7 @@ export class EventSubmissionService {
       posterUrl: required.image1,
       bannerUrl: payload.image3?.trim() || undefined,
       socialCreatives,
+      partnershipType: payload.eventType?.trim() || undefined,
       partnershipStatus: 'Draft',
       listing: 'Pending',
       source: 'Public Submission',

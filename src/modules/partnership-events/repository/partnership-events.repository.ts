@@ -78,6 +78,29 @@ export class PartnershipEventsRepository {
     return query<PartnershipEventEntity>(sql, params);
   }
 
+  /**
+   * Flip partnership_status to 'Expired' for events whose date has quietly passed while still
+   * "in the pipeline" — call this so the status actually reflects reality instead of relying on
+   * someone remembering to set it by hand (see markPastEventsAsExpired on EventsRepository for
+   * the equivalent sweep on the public site's own event status).
+   * - Only touches events never actually listed (event_id IS NULL) — once an event has a real,
+   *   published website Event linked, it's treated as still current/upcoming rather than force-
+   *   flipped, regardless of the tracker's own dates.
+   * - Only touches events still in a non-terminal status — Partnership Done / Dropped / Only
+   *   Listed (No Partnership) / already-Expired are left alone so a resolved outcome is never
+   *   silently overwritten.
+   */
+  async markPastPartnershipsAsExpired(): Promise<void> {
+    await query(
+      `UPDATE partnership_events
+       SET partnership_status = 'Expired'
+       WHERE event_id IS NULL
+       AND COALESCE(event_end_date, event_start_date) IS NOT NULL
+       AND COALESCE(event_end_date, event_start_date) < CURDATE()
+       AND partnership_status NOT IN ('Partnership Done', 'Dropped', 'Only Listed (No Partnership)', 'Expired')`
+    );
+  }
+
   async count(filters?: PartnershipEventFilters): Promise<number> {
     const { sql: whereSql, params } = buildWhere(filters);
     const row = await queryOne<{ total: number | bigint }>(`SELECT COUNT(*) as total FROM partnership_events ${whereSql}`, params);

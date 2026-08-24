@@ -1,5 +1,5 @@
 import { query, queryOne, getDbConnection } from '@/shared/database/connection';
-import { EventEntity } from '../domain/types';
+import { EventEntity, EventSpeaker } from '../domain/types';
 
 export class EventsRepository {
   async findAll(filters?: {
@@ -185,14 +185,17 @@ export class EventsRepository {
     eventEndTime?: string | null;
     imageUrl?: string;
     externalUrl?: string;
+    venueAddress?: string | null;
+    googleLocationLink?: string | null;
+    speakers?: EventSpeaker[] | null;
     status?: 'draft' | 'upcoming' | 'completed' | 'cancelled';
     createdBy?: string;
   }): Promise<EventEntity> {
     const sql = `
       INSERT INTO events (
         title, slug, excerpt, description, location, event_date, event_end_date, event_time, event_end_time,
-        image_url, external_url, status, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        image_url, external_url, venue_address, google_location_link, speakers, status, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const eventDateStr = this.normalizeEventDate(data.eventDate);
     const eventEndDateStr = data.eventEndDate ? this.normalizeEventDate(data.eventEndDate) : null;
@@ -208,6 +211,9 @@ export class EventsRepository {
       data.eventEndTime || null,
       data.imageUrl || null,
       data.externalUrl || null,
+      data.venueAddress || null,
+      data.googleLocationLink || null,
+      data.speakers && data.speakers.length ? JSON.stringify(data.speakers) : null,
       data.status || 'draft',
       data.createdBy || null,
       data.createdBy || null,
@@ -242,6 +248,10 @@ export class EventsRepository {
         // Normalize event_date to YYYY-MM-DD for MySQL DATE
         if ((key === 'event_date' || key === 'event_end_date') && value !== null && (value instanceof Date || typeof value === 'string')) {
           params.push(this.normalizeEventDate(value as Date | string));
+        } else if (key === 'speakers') {
+          // JSON column — the driver doesn't auto-serialize JS arrays, matching how
+          // partnership_events' own speakers column is written.
+          params.push(Array.isArray(value) && value.length ? JSON.stringify(value) : null);
         } else {
           params.push(value as string | number | Date | null);
         }

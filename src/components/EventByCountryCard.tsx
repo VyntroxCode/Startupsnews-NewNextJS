@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import type { StartupEvent } from "@/lib/data-adapter";
 import { getStartupEventDetailPath } from "@/lib/event-utils";
@@ -20,6 +23,7 @@ export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps)
     .replace(/\s+/g, " ")
     .trim();
   const displaySummary = summaryText || "Discover event details, agenda, and registration information.";
+  const [loaded, setLoaded] = useState(false);
 
   return (
     <li className="event-by-country-card">
@@ -29,23 +33,23 @@ export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps)
         className="event-by-country-card-link"
         aria-label={`View event: ${event.title}`}
       >
-        <div className="event-by-country-card-img">
+        <div className={`event-by-country-card-img${loaded ? "" : " event-by-country-card-img-loading"}`}>
           <Image
             src={imageUrl}
             alt={event.title}
             fill
+            // These are ~380-475px on screen (3-per-row desktop carousel), never a full-bleed
+            // hero/LCP image — quality 60 is visually indistinguishable at that size and cuts
+            // payload noticeably vs. the site-wide default of 90 (see next.config.ts qualities).
+            quality={60}
             sizes="(max-width: 600px) 100vw, (max-width: 1024px) 50vw, 33vw"
             style={{ objectFit: "contain" }}
             className="event-by-country-card-img-main"
+            onLoad={() => setLoaded(true)}
           />
         </div>
         <div className="event-by-country-card-content">
-          <span className="event-by-country-date">
-            {event.date}
-            {event.eventTime && !event.eventTime.startsWith('00:00') ? ` - ${event.eventTime}` : ""}
-            {event.eventEndDate && event.eventEndDate !== event.date ? ` to ${event.eventEndDate}` : ""}
-            {event.eventEndDate && event.eventEndDate !== event.date && event.eventTime && !event.eventTime.startsWith('00:00') && event.eventEndTime && !event.eventEndTime.startsWith('00:00') ? ` - ${event.eventEndTime}` : ""}
-          </span>
+          <span className="event-by-country-date">{event.dateRange}</span>
           {event.location && (
             <span className="event-by-country-venue">{event.location}</span>
           )}

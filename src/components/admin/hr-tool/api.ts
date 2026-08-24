@@ -25,7 +25,6 @@ export interface PayrollApiResult {
   periodFrom: string;
   periodTo: string;
   periodEnded: boolean;
-  runUnlocksAt: string;
   canRun: boolean;
   alreadyRun: boolean;
   entries: HrPayrollEntry[];

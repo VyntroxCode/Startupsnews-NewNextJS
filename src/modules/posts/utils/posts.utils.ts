@@ -28,7 +28,25 @@ function getS3ImageHost(): string {
   return 'startupnews-media-2026.s3.us-east-1.amazonaws.com';
 }
 
-/** Return url only if it is from our S3 bucket; otherwise return '' so caller uses default. */
+/** CDN base URL (e.g. CloudFront) to serve S3 bucket images through. Unset = serve straight from S3 (no change in behavior). */
+function getCdnBaseUrl(): string {
+  const cdn = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_IMAGE_CDN_URL) || '';
+  return cdn.trim().replace(/\/$/, '');
+}
+
+/** Rewrite a confirmed S3-bucket URL to the CDN host (same key/path), when NEXT_PUBLIC_IMAGE_CDN_URL is set. */
+function toCdnUrl(s3Url: string): string {
+  const cdnBase = getCdnBaseUrl();
+  if (!cdnBase) return s3Url;
+  try {
+    const u = new URL(s3Url);
+    return cdnBase + u.pathname + u.search;
+  } catch {
+    return s3Url;
+  }
+}
+
+/** Return url only if it is from our S3 bucket; otherwise return '' so caller uses default. Rewritten to the CDN host when configured. */
 function onlyS3ImageUrl(url: string): string {
   const s = typeof url === 'string' ? url.trim() : '';
   if (!s) return '';
@@ -36,9 +54,9 @@ function onlyS3ImageUrl(url: string): string {
   try {
     const u = new URL(s);
     const host = u.hostname;
-    if (host === s3Host) return s;
-    if (host === 's3.amazonaws.com' && u.pathname.replace(/^\/+/, '').startsWith('startupnews-media-2026/')) return s;
-    if (host.endsWith('.s3.us-east-1.amazonaws.com') && host.startsWith('startupnews-media-2026.')) return s;
+    if (host === s3Host) return toCdnUrl(s);
+    if (host === 's3.amazonaws.com' && u.pathname.replace(/^\/+/, '').startsWith('startupnews-media-2026/')) return toCdnUrl(s);
+    if (host.endsWith('.s3.us-east-1.amazonaws.com') && host.startsWith('startupnews-media-2026.')) return toCdnUrl(s);
   } catch {
     /* ignore */
   }

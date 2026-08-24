@@ -162,6 +162,9 @@ export class EventsService {
     if (data.eventEndTime !== undefined) updateData.event_end_time = data.eventEndTime ?? null;
     if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
     if (data.externalUrl !== undefined) updateData.external_url = data.externalUrl;
+    if (data.venueAddress !== undefined) updateData.venue_address = data.venueAddress;
+    if (data.googleLocationLink !== undefined) updateData.google_location_link = data.googleLocationLink;
+    if (data.speakers !== undefined) updateData.speakers = data.speakers;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.updatedBy !== undefined) updateData.updated_by = data.updatedBy;
 

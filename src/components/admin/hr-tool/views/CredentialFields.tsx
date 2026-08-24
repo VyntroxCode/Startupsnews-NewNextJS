@@ -66,7 +66,7 @@ export function EmployeeIdField({ form, onChange, isEdit }: {
 }) {
   return (
     <div className="field">
-      <label className="field-label">Employee ID</label>
+      <label className="field-label">Employee ID{!isEdit && ' *'}</label>
       {isEdit ? (
         <input type="text" value={form.employeeCode} disabled />
       ) : (
@@ -153,7 +153,7 @@ export function CredentialFields({
 
   const passwordField = (
     <div className="field">
-      <label className="field-label">{isEdit ? 'New password (leave blank to keep current)' : 'Password'}</label>
+      <label className="field-label">{isEdit ? 'New password (leave blank to keep current)' : 'Password *'}</label>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <input type={showPassword ? 'text' : 'password'} value={form.password}
           style={{ flex: '1 1 160px', minWidth: 0 }}
@@ -173,7 +173,7 @@ export function CredentialFields({
 
   const confirmPasswordField = (
     <div className="field">
-      <label className="field-label">Confirm password</label>
+      <label className="field-label">Confirm password{!isEdit && ' *'}</label>
       <input type={showPassword ? 'text' : 'password'} value={form.confirmPassword}
         onChange={(e) => onChange({ confirmPassword: e.target.value })} placeholder="Re-enter password" />
     </div>
@@ -211,7 +211,7 @@ export function CredentialFields({
 
       <div className="field-grid-2">
         <div className="field">
-          <label className="field-label">Role (admin panel access)</label>
+          <label className="field-label">Role (admin panel access){!isEdit && ' *'}</label>
           <select value={form.panelRole} onChange={(e) => onChange({ panelRole: e.target.value as '' | PanelAdminRole, linkedPanelAdminId: '' })}>
             <option value="">None — HR record only</option>
             <option value="publisher_admin">Publisher Admin</option>
@@ -221,7 +221,7 @@ export function CredentialFields({
 
         {form.panelRole && (
           <div className="field">
-            <label className="field-label">Link to existing {PANEL_ROLE_LABEL[form.panelRole]} account</label>
+            <label className="field-label">Link to existing {PANEL_ROLE_LABEL[form.panelRole]} account{!isEdit && ' *'}</label>
             <select value={form.linkedPanelAdminId} onChange={(e) => onChange({ linkedPanelAdminId: e.target.value ? Number(e.target.value) : '' })}>
               <option value="">— Select —</option>
               {availableAdmins.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.email}</option>)}

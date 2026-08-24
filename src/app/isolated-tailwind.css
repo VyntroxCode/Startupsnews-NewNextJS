@@ -31,6 +31,7 @@
 @import "tailwindcss/theme.css" source(none);
 @import "tailwindcss/utilities.css" source(none);
 @source "./about-us/page.tsx";
+@source "./about-us/AboutUsClient.tsx";
 @source "./advertise-with-us/page.tsx";
 @source "./ecosystem-partners/page.tsx";
 @source "./contact-us/page.tsx";

@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import { getAuthHeaders } from '@/lib/admin-auth';
-import { addDays, buildOfferLetterContent, mergeTemplate, nextEmployeeId, todayStr } from '../utils';
+import { addDays, buildOfferLetterContent, mergeTemplate, nextEmployeeId, todayStr, type OfferLetterData } from '../utils';
+import { JoiningLetterView } from './JoiningLetterView';
+import { generateJoiningLetterPdf, generatePlainLetterPdf, triggerPdfDownload } from '../joiningLetterPdf';
 
 /** How many days a new hire has to submit their required-documents checklist, counted from doj. */
 const DOCUMENTS_WINDOW_DAYS = 5;
@@ -74,7 +76,7 @@ function emptyForm(state: ReturnType<typeof useHrTool>['state']): FormState {
  * "separately assign an Employee ID" flow: this collects everything once (offer letter
  * fields and Employee ID/credential fields share one form, no field asked twice) and, on
  * approval, creates the login AND the Directory record together — no more employees who
- * exist in one place but not the other. Shared by Employee Directory and Onboarding. */
+ * exist in one place but not the other. Shared by Directory and Onboarding. */
 export default function HireEmployeeButton({ label, className }: { label: string; className: string }) {
   const { state, persistEmployees, upsertEmployeeCredentialInState, logRuleChange } = useHrTool();
   const [addOpen, setAddOpen] = useState(false);
@@ -82,28 +84,44 @@ export default function HireEmployeeButton({ label, className }: { label: string
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<FormState | null>(null);
   const [sending, setSending] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   function patch(p: Partial<FormState>) { setForm((f) => ({ ...f, ...p })); }
+
+  /** Structured data behind the default generated letter — shared by the plain-text version
+   * (email body / custom-template merge tags), the on-screen structured preview, and the PDF
+   * download, so all three always agree. */
+  function letterDataFor(p: FormState): OfferLetterData {
+    const ctc = Number(p.ctc) || 0;
+    const manager = managerOf(p, state);
+    const requiredDocuments = state.orgStructure.requiredDocuments;
+    const documentsDeadline = requiredDocuments.length ? addDays(p.doj, DOCUMENTS_WINDOW_DAYS) : null;
+    return {
+      employeeName: fullNameOf(p), employeeCode: p.employeeCode.trim(), password: p.password, designation: p.designation, team: p.team,
+      manager, ctc, doj: p.doj, documentsDeadline, requiredDocuments, rules: state.rules,
+    };
+  }
+
+  /** Whether HR has drafted a fully custom "Offer Letter" template in Company Profile — when
+   * they have, that freeform text wins everywhere (preview, email, PDF) instead of the
+   * structured default. */
+  function hasCustomTemplate(): boolean {
+    return !!state.templates['Offer Letter']?.content?.trim();
+  }
 
   /** The letter text shown in preview and saved/emailed on approval. Honours a custom "Offer
    * Letter" draft from Company Profile if HR has written one; otherwise falls back to the full
    * generated letter (letterhead, compensation breakdown, work terms, document checklist). */
   function offerLetterFor(p: FormState): string {
-    const ctc = Number(p.ctc) || 0;
-    const manager = managerOf(p, state);
-    const requiredDocuments = state.orgStructure.requiredDocuments;
-    const documentsDeadline = requiredDocuments.length ? addDays(p.doj, DOCUMENTS_WINDOW_DAYS) : null;
     const customDraft = state.templates['Offer Letter']?.content?.trim();
     if (customDraft) {
+      const ctc = Number(p.ctc) || 0;
       return mergeTemplate(customDraft, {
         employee_name: fullNameOf(p), designation: p.designation, team: p.team, ctc: '₹' + ctc.toLocaleString('en-IN'),
         employee_code: p.employeeCode.trim(), password: p.password,
       });
     }
-    return buildOfferLetterContent({
-      employeeName: fullNameOf(p), employeeCode: p.employeeCode.trim(), password: p.password, designation: p.designation, team: p.team,
-      manager, ctc, doj: p.doj, documentsDeadline, requiredDocuments, rules: state.rules,
-    });
+    return buildOfferLetterContent(letterDataFor(p));
   }
 
   /** Opens with the client-cached next-ID suggestion immediately, then silently upgrades it
@@ -211,14 +229,33 @@ export default function HireEmployeeButton({ label, className }: { label: string
     }
   }
 
+  /** Generates a properly formatted, paginated PDF of the same letter shown in the preview —
+   * the structured version (letterhead, compensation table) for the default generated letter,
+   * or a paginated plain-text version if HR has drafted a custom template. */
+  async function downloadLetter() {
+    if (!preview) return;
+    setDownloading(true);
+    setError('');
+    try {
+      const bytes = hasCustomTemplate() ? await generatePlainLetterPdf(offerLetterFor(preview)) : await generateJoiningLetterPdf(letterDataFor(preview));
+      const safeName = fullNameOf(preview).trim().replace(/\s+/g, '-') || 'Employee';
+      triggerPdfDownload(bytes, `Joining-Letter-${safeName}-${preview.employeeCode.trim()}.pdf`);
+    } catch (err) {
+      console.error('Joining letter PDF generation failed:', err);
+      setError('Could not generate the PDF. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <>
       <button className={className} onClick={openAdd}>{label}</button>
 
       {addOpen && (
-        <ModalShell title="Send offer letter" onClose={() => setAddOpen(false)} maxWidth={640} actions={[
+        <ModalShell title="Send Joining Letter" onClose={() => setAddOpen(false)} maxWidth={640} actions={[
           { label: 'Cancel', cls: 'btn', onClick: () => setAddOpen(false) },
-          { label: 'Preview offer letter', cls: 'btn primary', onClick: previewOffer },
+          { label: 'Preview Joining Letter', cls: 'btn primary', onClick: previewOffer },
         ]}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
             <div className="notice info" style={{ width: 220, marginBottom: 0 }}>
@@ -230,26 +267,26 @@ export default function HireEmployeeButton({ label, className }: { label: string
           {error && <div className="notice" style={{ background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)' }}>{error}</div>}
 
           <div className="field-grid-2">
-            <div className="field"><label className="field-label">First name</label><input type="text" placeholder="e.g. Kavita" value={form.firstName} onChange={(e) => patch({ firstName: e.target.value })} /></div>
-            <div className="field"><label className="field-label">Last name</label><input type="text" placeholder="e.g. Rao" value={form.lastName} onChange={(e) => patch({ lastName: e.target.value })} /></div>
+            <div className="field"><label className="field-label">First name *</label><input type="text" placeholder="e.g. Kavita" value={form.firstName} onChange={(e) => patch({ firstName: e.target.value })} /></div>
+            <div className="field"><label className="field-label">Last name *</label><input type="text" placeholder="e.g. Rao" value={form.lastName} onChange={(e) => patch({ lastName: e.target.value })} /></div>
           </div>
 
           <div className="field-grid-2">
-            <div className="field"><label className="field-label">Email</label><input type="email" placeholder="name@snf.co" value={form.email} onChange={(e) => patch({ email: e.target.value })} /></div>
-            <div className="field"><label className="field-label">Contact</label><input type="tel" placeholder="e.g. 9876543210" value={form.contact} onChange={(e) => patch({ contact: e.target.value })} /></div>
+            <div className="field"><label className="field-label">Email *</label><input type="email" placeholder="name@snf.co" value={form.email} onChange={(e) => patch({ email: e.target.value })} /></div>
+            <div className="field"><label className="field-label">Contact *</label><input type="tel" placeholder="e.g. 9876543210" value={form.contact} onChange={(e) => patch({ contact: e.target.value })} /></div>
           </div>
 
           <div className="field-grid-3">
             <div className="field">
-              <label className="field-label">Designation</label>
+              <label className="field-label">Designation *</label>
               <DesignationSelect value={form.designation} onChange={(v) => patch({ designation: v })} />
             </div>
             <div className="field">
-              <label className="field-label">Department</label>
+              <label className="field-label">Department *</label>
               <select value={form.team} onChange={(e) => patch({ team: e.target.value })}>{state.teams.map((t) => <option key={t.name}>{t.name}</option>)}</select>
             </div>
             <div className="field">
-              <label className="field-label">Reporting Manager (optional)</label>
+              <label className="field-label">Reporting Manager</label>
               <select value={form.reportingManager} onChange={(e) => patch({ reportingManager: e.target.value })}>
                 <option value="">
                   {state.teams.find((t) => t.name === form.team)?.manager ? `— Use Department default (${state.teams.find((t) => t.name === form.team)?.manager}) —` : '— None —'}
@@ -260,8 +297,8 @@ export default function HireEmployeeButton({ label, className }: { label: string
           </div>
 
           <div className="field-grid-2">
-            <div className="field"><label className="field-label">Annual CTC (₹)</label><input type="number" placeholder="e.g. 480000" value={form.ctc} onChange={(e) => patch({ ctc: e.target.value })} /></div>
-            <div className="field"><label className="field-label">Date of joining</label><input type="date" value={form.doj} onChange={(e) => patch({ doj: e.target.value })} /></div>
+            <div className="field"><label className="field-label">Annual CTC (₹) *</label><input type="number" placeholder="e.g. 480000" value={form.ctc} onChange={(e) => patch({ ctc: e.target.value })} /></div>
+            <div className="field"><label className="field-label">Date of joining *</label><input type="date" value={form.doj} onChange={(e) => patch({ doj: e.target.value })} /></div>
           </div>
 
           <CredentialFields form={form} onChange={patch} isEdit={false} showAvatar={false} hideId sideBySidePasswords />
@@ -269,18 +306,24 @@ export default function HireEmployeeButton({ label, className }: { label: string
       )}
 
       {preview && (
-        <ModalShell title="Preview — Offer Letter" onClose={() => setPreview(null)} actions={[
+        <ModalShell title="Preview — Joining Letter" onClose={() => setPreview(null)} maxWidth={720} actions={[
           { label: 'Back to edit', cls: 'btn', onClick: () => { setAddOpen(true); setPreview(null); }, },
+          { label: downloading ? 'Preparing PDF…' : 'Download Joining Letter', cls: 'btn', onClick: downloadLetter },
           { label: sending ? 'Creating…' : 'Approve & Send', cls: 'btn primary', onClick: approveAndSend },
         ]}>
           <div className="notice info">
-            This is exactly what {preview.firstName.trim()} will see. Approving creates their Employee ID/login and Directory record right away
-            {preview.email.trim() ? <> and emails this offer letter to <strong>{preview.email.trim()}</strong>.</> : ' — add an email above to have it emailed to them automatically.'}
+            Approving creates their login{preview.email.trim() ? ' and emails them this letter.' : '.'}
           </div>
           {error && <div className="notice" style={{ background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)' }}>{error}</div>}
-          <div className="card pad" style={{ whiteSpace: 'pre-wrap', fontSize: 12.5 }}>
-            {offerLetterFor(preview)}
-          </div>
+          {hasCustomTemplate() ? (
+            <div className="card pad" style={{ whiteSpace: 'pre-wrap', fontSize: 12.5 }}>
+              {offerLetterFor(preview)}
+            </div>
+          ) : (
+            <div className="card pad" style={{ padding: 28 }}>
+              <JoiningLetterView d={letterDataFor(preview)} />
+            </div>
+          )}
           <div className="meta" style={{ marginTop: 10, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
             <span>Employee ID: <code>{preview.employeeCode}</code></span>
             <span>· Password: <code>{preview.password}</code></span>

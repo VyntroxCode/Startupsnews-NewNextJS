@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
@@ -801,6 +802,7 @@ function ContactModal({ draft, setDraft, config, editing, saving, onCancel, onSa
   draft: ContactDraft; setDraft: (d: ContactDraft) => void; config: ContactsConfig; editing: boolean; saving: boolean;
   onCancel: () => void; onSave: () => void;
 }) {
+  useEscapeKey(onCancel);
   return (
     <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal">
@@ -879,6 +881,7 @@ function ContactCardModal({ contact, onClose, onEdit, onDelete }: {
 }) {
   const wa = contact.phones[0] ? waLink(contact.phones[0]) : null;
   const initials = contact.name.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || '?';
+  useEscapeKey(onClose);
   return (
     <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal card-modal">
@@ -1062,6 +1065,7 @@ function ImportContactsModal({ onClose, onImported, showToast }: {
   }
 
   const canDismiss = step !== 'progress';
+  useEscapeKey(onClose, canDismiss);
 
   return (
     <div className="overlay open" onClick={(e) => { if (e.target === e.currentTarget && canDismiss) onClose(); }}>

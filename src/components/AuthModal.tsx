@@ -295,6 +295,24 @@ export default function AuthModal() {
 		setSuccess("");
 	};
 
+	/* ── Broadcast auth-flow visibility so other UI (e.g. the PWA install
+	   card) can stay sequenced behind it. `false` only fires after a `true`
+	   was sent, so unrelated listeners never see a spurious close. ──────── */
+	const authFlowVisible = (open || scrollVisible || showWelcome) && !isAdmin;
+	const wasAuthFlowVisibleRef = useRef(false);
+	const everAuthFlowVisibleRef = useRef(false);
+	useEffect(() => {
+		if (!mounted) return;
+		if (authFlowVisible === wasAuthFlowVisibleRef.current) return;
+		wasAuthFlowVisibleRef.current = authFlowVisible;
+		if (authFlowVisible) {
+			everAuthFlowVisibleRef.current = true;
+			window.dispatchEvent(new CustomEvent("auth-modal-state", { detail: { open: true } }));
+		} else if (everAuthFlowVisibleRef.current) {
+			window.dispatchEvent(new CustomEvent("auth-modal-state", { detail: { open: false } }));
+		}
+	}, [mounted, authFlowVisible]);
+
 	if (!mounted || isAdmin) return null;
 
 	/* ─────────────── SINGLE RETURN ─────────────── */

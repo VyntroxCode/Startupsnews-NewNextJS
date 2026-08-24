@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>You're offline — StartupNews.fyi</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #ffffff;
+    color: #111111;
+  }
+  .wrap {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+  }
+  .card {
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+  .badge {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #fce4ec;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+  }
+  .badge svg { width: 32px; height: 32px; }
+  h1 {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+  p {
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: #4b5563;
+    margin: 0 0 24px;
+  }
+  button {
+    appearance: none;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    background: #E72262;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:active { transform: translateY(1px); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="badge">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9z" fill="#E72262"/>
+          <path d="M5 13l2 2a8 8 0 0111 0l2-2a11 11 0 00-15 0z" fill="#E72262" opacity="0.6"/>
+          <path d="M9 17l2 2a3 3 0 004 0l2-2a6 6 0 00-8 0z" fill="#E72262" opacity="0.35"/>
+          <circle cx="12" cy="21" r="1.4" fill="#E72262"/>
+        </svg>
+      </div>
+      <h1>You're offline</h1>
+      <p>We couldn't reach StartupNews.fyi. Check your connection and try again — anything you'd already opened may still be available.</p>
+      <button onclick="window.location.reload()">Try again</button>
+    </div>
+  </div>
+</body>
+</html>

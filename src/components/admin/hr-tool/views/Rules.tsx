@@ -138,6 +138,10 @@ export default function Rules() {
     if (hraPct < 0 || hraPct > 100) { alert('HRA must be between 0 and 100% of Basic.'); return; }
     if (ctcConvType === 'percent' && (convValue < 0 || convValue > 100)) { alert('Convenience Allowance % must be between 0 and 100.'); return; }
     if (convValue < 0) { alert('Convenience Allowance cannot be negative.'); return; }
+    if (sampleBreakdown.specialAllowance < 0) {
+      alert('Basic + HRA + Convenience already exceeds the ₹50,000/month sample salary shown below — Special Allowance can\'t go negative. Lower one of them first. (A lower-CTC employee would hit this even sooner — check their individual CTC structure override too.)');
+      return;
+    }
     await persistRules({ ...r, ctcSplit: { basicPct, hraPctOfBasic: hraPct, convenienceType: ctcConvType, convenienceValue: convValue } });
     logRuleChange(`Updated CTC structure: Basic ${basicPct}% of salary / HRA ${hraPct}% of Basic / Convenience ${ctcConvType === 'amount' ? '₹' + convValue : convValue + '%'} — Special Allowance auto-computed as the remainder`);
   }
@@ -279,6 +283,11 @@ export default function Rules() {
             {' · '}Convenience {sampleBreakdown.convenience.toLocaleString('en-IN')}
             {' · '}Special Allowance {sampleBreakdown.specialAllowance.toLocaleString('en-IN')} (all ₹/month, using your unsaved edits above)
           </div>
+          {sampleBreakdown.specialAllowance < 0 && (
+            <div className="notice" style={{ marginTop: 10, background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)' }}>
+              Special Allowance can&apos;t go negative — Basic + HRA + Convenience already adds up to more than the ₹50,000/month sample salary above. Lower Basic, HRA, or Convenience before saving.
+            </div>
+          )}
         </div>
       </section>
 

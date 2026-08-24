@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import CountryCodePicker from './CountryCodePicker';
 import { CUSTOM_CODE_RE, PHONE_RULES, STATUSES, TYPES } from './constants';
 import { parseContactValue } from './utils';
@@ -33,6 +34,9 @@ export default function LeadFormModal({ lead, team, onClose, onSave }: {
   const [contactError, setContactError] = useState('');
   const [formMsg, setFormMsg] = useState<{ kind: 'err'; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  // Mounted only while this modal is open (parent renders it conditionally), so the listener
+  // can just always be live.
+  useEscapeKey(onClose);
 
   async function handleSave() {
     if (!draft.name.trim()) { setNameInvalid(true); setFormMsg({ kind: 'err', text: 'Name is required.' }); return; }

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getEventsByRegion, getEventImage } from "@/lib/data-adapter";
-import { EventByCountryCard } from "@/components/EventByCountryCard";
+import { getEventsByRegion } from "@/lib/data-adapter";
+import { EventsCarousel } from "@/components/EventsCarousel";
 import type { StartupEvent } from "@/modules/events/domain/types";
 
 import type { Metadata } from "next";
@@ -9,7 +9,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
 // event_regions is a flat list mixing cities, countries, and a few non-geographic labels (e.g.
 // "Online", "Cohort") with no country field of its own — this maps the city-level ones to the
-// country they belong under for the page's "Events In {Country}" headings. A region NOT listed
+// country they belong under for the page's country-name headings. A region NOT listed
 // here (already a country name, e.g. "Australia", or unrecognized) falls back to using its own
 // name as the country bucket, so it still renders sensibly as its own top-level section.
 const REGION_COUNTRY: Record<string, string> = {
@@ -19,12 +19,17 @@ const REGION_COUNTRY: Record<string, string> = {
   Dubai: "UAE", "Abu Dhabi": "UAE",
   Amsterdam: "Netherlands", Berlin: "Germany", Madrid: "Spain", Riyadh: "Saudi Arabia",
 };
-// Labels that aren't a place at all — shown as their own top-level section using their own
-// name verbatim, not "Events In {name}", and never given a redundant city sub-heading.
+// Labels that aren't a place at all — used here only to suppress the redundant city sub-heading
+// EventsCarousel would otherwise render underneath a section already named after that same label.
 const NON_GEOGRAPHIC_REGIONS = new Set(["Cohort", "Online", "Other Cities", "International Events"]);
 
-/** Regroups the flat region -> events map into country -> city -> events, in the order
- * countries are first encountered (regions already come back alphabetically by region name). */
+/** Regroups the flat region -> events map into country -> city -> events. Countries come out
+ * India-first, then alphabetically — regions are keyed alphabetically by city/region name at
+ * the source (event_regions ORDER BY name ASC), which otherwise puts whichever city happens to
+ * sort first (e.g. "Abu Dhabi") ahead of India regardless of it being the primary market.
+ * Events within each city are already ascending by date from the query that builds
+ * eventsByRegion (events.repository's ORDER BY event_date ASC), so that part needs no sorting
+ * here — only the country-level order needs fixing. */
 function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<string, Record<string, StartupEvent[]>> {
   const grouped: Record<string, Record<string, StartupEvent[]>> = {};
   for (const [region, events] of Object.entries(eventsByRegion)) {
@@ -33,7 +38,12 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
     if (!grouped[country]) grouped[country] = {};
     grouped[country][region] = events;
   }
-  return grouped;
+  const orderedEntries = Object.entries(grouped).sort(([a], [b]) => {
+    if (a === "India") return -1;
+    if (b === "India") return 1;
+    return a.localeCompare(b);
+  });
+  return Object.fromEntries(orderedEntries);
 }
 
 export const revalidate = 60;
@@ -82,23 +92,15 @@ export default async function EventsPage() {
               <div className="mvp-main-blog-body left relative event-by-country-body">
                 {Object.entries(eventsByCountry).map(([country, cities]) => (
                   <section key={country} className="event-by-country-section">
-                    <h2 className="event-by-country-region">
-                      {NON_GEOGRAPHIC_REGIONS.has(country) ? country : `Events In ${country}`}
-                    </h2>
+                    <h2 className="event-by-country-region">{country}</h2>
                     {Object.entries(cities).map(([city, events]) => (
                       <div key={city} className="event-by-country-city-group">
-                        {city !== country && !NON_GEOGRAPHIC_REGIONS.has(city) && (
-                          <h3 className="event-by-country-city">{city}</h3>
-                        )}
-                        <ul className="event-by-country-list">
-                          {events.map((event) => (
-                            <EventByCountryCard
-                              key={String(event.id ?? event.slug ?? event.url)}
-                              event={event}
-                              imageUrl={getEventImage(event)}
-                            />
-                          ))}
-                        </ul>
+                        <EventsCarousel
+                          events={events}
+                          maxEvents={events.length}
+                          title={city !== country && !NON_GEOGRAPHIC_REGIONS.has(city) ? city : null}
+                          className="event-country-carousel"
+                        />
                       </div>
                     ))}
                   </section>

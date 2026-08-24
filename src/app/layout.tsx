@@ -11,6 +11,8 @@ import { TopLoader } from "@/components/TopLoader";
 import { siteConfig } from "@/lib/config";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import AuthModal from "@/components/AuthModal";
+import InstallPWA from "@/components/InstallPWA";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { BannersService } from "@/modules/banners/service/banners.service";
 import { BannersRepository } from "@/modules/banners/repository/banners.repository";
@@ -232,7 +234,9 @@ export default async function RootLayout({
         <ConditionalLayout banners={banners}>
           {children}
         </ConditionalLayout>
+        <InstallPWA />
         <AuthModal />
+        <ServiceWorkerRegister />
         <ThemeScript />
         <GoogleAnalytics />
       </body>

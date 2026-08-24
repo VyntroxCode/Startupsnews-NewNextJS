@@ -140,6 +140,9 @@ export interface PartnershipEventInput {
   source?: string;
   /** Drives the linked public Event — not a partnership_events column, consumed by the create/update sync. */
   region?: string;
+  /** Drives the linked public Event's URL slug — not a partnership_events column. Left blank, the
+   * linked Event falls back to auto-generating one from the event name (see EventsService.createEvent). */
+  slug?: string;
   siteStatus?: 'draft' | 'upcoming' | 'cancelled';
 }
 
@@ -150,14 +153,20 @@ export interface PartnershipEventFilters {
   offset?: number;
 }
 
-export const PARTNERSHIP_STATUS_OPTIONS = ['Draft', 'Initiated', 'In Progress', 'On Hold', 'Partnership Done', 'Dropped', 'Only Listed (No Partnership)', 'Expired'] as const;
+// 'In Progress' / 'On Hold' / 'Dropped' / 'Only Listed (No Partnership)' were retired from this
+// list — any event still carrying that stored text buckets to 'Unmapped' (classifyStatus in
+// partnership-tracker/page.tsx) for the admin to manually reclassify, it's not auto-migrated.
+export const PARTNERSHIP_STATUS_OPTIONS = ['Draft', 'Initiated', 'Partnership Done', 'Only Listing', 'Ticketing', 'Cancelled', 'Expired'] as const;
 /** The real, public-site-facing status — separate from PARTNERSHIP_STATUS_OPTIONS (deal stage) and the existing, unwired `listing` field. No "Completed" here — that's automatic, driven by event date (see EventsRepository.markPastEventsAsExpired). */
 export const SITE_STATUS_OPTIONS: { value: 'draft' | 'upcoming' | 'cancelled'; label: string }[] = [
   { value: 'draft', label: 'Draft' },
   { value: 'upcoming', label: 'Published' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
-export const PARTNERSHIP_TYPE_OPTIONS = ['Domestic', 'International'] as const;
+// Repurposed from a geography-based Domestic/International split to an event-format split —
+// old stored 'Domestic'/'International' values show as "(legacy)" in the dropdown until an
+// admin manually reclassifies them.
+export const PARTNERSHIP_TYPE_OPTIONS = ['In-person', 'Cohort', 'Online (virtual)'] as const;
 export const LISTING_OPTIONS = ['No', 'Pending', 'In process', 'Yes'] as const;
 /** Stored in the `eventType`/`event_type` field — repurposed from the old Free/Paid ticketing dropdown. */
 export const PARTNERSHIP_KIND_OPTIONS = ['Media Partnership', 'Ticketing Partnership', 'No Partnership'] as const;

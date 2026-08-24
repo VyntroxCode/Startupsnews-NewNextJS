@@ -20,6 +20,8 @@ import {
 import { entityToEvent } from "@/modules/events/utils/events.utils";
 import type { StartupEvent } from "@/modules/events/domain/types";
 import { slugify } from "@/shared/utils/string.utils";
+import { PartnerLogosRepository, InnerPageContentRepository } from "@/modules/inner-pages/repository/inner-pages.repository";
+import { toPartnerLogo, toInnerPageContent, PARTNER_LOGO_SECTIONS, type PartnerLogo } from "@/modules/inner-pages/domain/types";
 
 // Post interface (backward compatible)
 export interface Post {
@@ -894,6 +896,53 @@ export async function getEventBySlug(
     console.error("Error fetching event by slug:", error);
     return null;
   }
+}
+
+/**
+ * Partner logos for /our-partners, grouped by section (International, National), in the same
+ * admin-controlled order within each section — that order is what determines which of the two
+ * counter-scrolling marquee rows each logo lands in (see PartnerLogosMarquee: alternates by
+ * index). Sections with no logos yet still get an empty array key.
+ */
+export async function getPartnerLogosBySection(): Promise<Record<string, PartnerLogo[]>> {
+  const cacheKey = "partner-logos:by-section";
+  const cached = await getCache<Record<string, PartnerLogo[]>>(cacheKey);
+  if (cached) return cached;
+
+  const grouped: Record<string, PartnerLogo[]> = Object.fromEntries(
+    PARTNER_LOGO_SECTIONS.map((s) => [s, []])
+  );
+  try {
+    const entities = await new PartnerLogosRepository().findAll();
+    for (const e of entities) {
+      const logo = toPartnerLogo(e);
+      if (!grouped[logo.section]) grouped[logo.section] = [];
+      grouped[logo.section].push(logo);
+    }
+  } catch (error) {
+    console.error("Error fetching partner logos:", error);
+  }
+
+  await setCache(cacheKey, grouped, 300);
+  return grouped;
+}
+
+/** Rich-text intro content for an "Inner Page" (e.g. 'our-partners') — empty string if an admin hasn't set any yet. */
+export async function getInnerPageContent(pageKey: string): Promise<string> {
+  const cacheKey = `inner-page-content:${pageKey}`;
+  const cached = await getCache<string>(cacheKey);
+  if (cached !== null && cached !== undefined) return cached;
+
+  let html = "";
+  try {
+    const entity = await new InnerPageContentRepository().find(pageKey);
+    html = toInnerPageContent(entity, pageKey).contentHtml;
+  } catch (error) {
+    console.error("Error fetching inner page content:", error);
+  }
+
+  await setCache(cacheKey, html, 300);
+  return html;
 }
 
 // Re-export types for backward compatibility

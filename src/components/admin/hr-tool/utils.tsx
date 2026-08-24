@@ -208,15 +208,73 @@ export function agreementMerged(o: HrOnboarding, employees: HrEmployee[], templa
 }
 
 /* ---------------------------------------------------------
+   Number/date formatting for the offer letter
+--------------------------------------------------------- */
+const NUMBER_ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const NUMBER_TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+function twoDigitWords(n: number): string {
+  if (n < 20) return NUMBER_ONES[n];
+  const t = Math.floor(n / 10), o = n % 10;
+  return NUMBER_TENS[t] + (o ? ' ' + NUMBER_ONES[o] : '');
+}
+function threeDigitWords(n: number): string {
+  const h = Math.floor(n / 100), rest = n % 100;
+  const parts: string[] = [];
+  if (h) parts.push(NUMBER_ONES[h] + ' Hundred');
+  if (rest) parts.push(twoDigitWords(rest));
+  return parts.join(' ');
+}
+/** Indian numbering (Crore/Lac/Thousand) — "Four Lacs Twenty Thousand" style, matching the
+ * company's actual offer-letter template rather than international short-scale grouping. */
+export function amountToIndianWords(amount: number): string {
+  let n = Math.round(Math.abs(amount));
+  if (n === 0) return 'Zero';
+  const crore = Math.floor(n / 10000000); n %= 10000000;
+  const lac = Math.floor(n / 100000); n %= 100000;
+  const thousand = Math.floor(n / 1000); n %= 1000;
+  const rest = n;
+  const parts: string[] = [];
+  if (crore) parts.push(twoDigitWords(crore) + (crore > 1 ? ' Crores' : ' Crore'));
+  if (lac) parts.push(twoDigitWords(lac) + (lac > 1 ? ' Lacs' : ' Lac'));
+  if (thousand) parts.push(twoDigitWords(thousand) + ' Thousand');
+  if (rest) parts.push(threeDigitWords(rest));
+  return parts.join(' ');
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function ordinalSuffix(day: number): string {
+  if (day >= 11 && day <= 13) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+/** "2026-08-22" -> "22nd August 2026" (or without the year) — matches the date style used on
+ * the company's actual offer-letter template. */
+export function ordinalDate(dateStr: string, withYear = true): string {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  return `${d}${ordinalSuffix(d)} ${MONTH_NAMES[m - 1]}${withYear ? ' ' + y : ''}`;
+}
+
+/* ---------------------------------------------------------
    Offer letter
 --------------------------------------------------------- */
-/** Registered-entity details as shown on Company Profile — kept here too since the offer letter
- * needs them on its letterhead and this module doesn't import from app-level pages. */
-const COMPANY = {
+/** Registered-entity details as shown on Company Profile — the one shared source of truth for
+ * the offer letter's letterhead/footer (JoiningLetterView.tsx and joiningLetterPdf.ts both
+ * import this instead of keeping their own copies, which had drifted out of sync with each
+ * other and with the company's real registration details before this was centralized). */
+export const COMPANY = {
   name: 'DOTFYI Media Ventures Pvt. Ltd.',
   brand: 'StartupNews.fyi',
-  cin: 'U74999DL2021PTC123456',
-  address: '1553-A-8 Gali No. 2, West Rohtash Nagar, Shahdara, East Delhi, Delhi 110032, India',
+  cin: 'U22100DL2022PTC403240',
+  address: '1553 A-8, West Rohtash Nagar, Lane No – 2, Shahdara, Delhi – 110032.',
+  email: 'office@startupnews.fyi',
 };
 
 export interface OfferLetterData {
@@ -235,93 +293,57 @@ export interface OfferLetterData {
   rules: HrRules;
 }
 
-/** Full, properly formatted offer letter — letterhead, reference, compensation breakdown (per
- * the configured CTC split), work terms, the document checklist/deadline the new hire will see
- * on their portal, and an acceptance block. Used as the default "Offer Letter" content whenever
- * HR hasn't drafted a custom template in Company Profile (a custom draft still wins — see
- * HireEmployeeButton's use of this alongside mergeTemplate). */
+/** The company's actual offer-letter template — logo (see JoiningLetterView/joiningLetterPdf,
+ * which show it as an image; here it's just implied since plain text can't embed one), a single
+ * offer paragraph (role, joining date, annual compensation spelled out in words, probation), a
+ * portal-login line (the one thing this template didn't need before the Employee Portal
+ * existed), the document checklist, and the standard acceptance/closing. Deliberately does not
+ * itemize the CTC split (Basic/HRA/Convenience) the way the internal Payroll/CTC Structure
+ * tooling does — that breakdown is for payroll math, not this letter. Used as the default
+ * "Offer Letter" content whenever HR hasn't drafted a custom template in Company Profile (a
+ * custom draft still wins — see HireEmployeeButton's use of this alongside mergeTemplate). */
 export function buildOfferLetterContent(d: OfferLetterData): string {
-  const m = computeCtcBreakdown(d.ctc, d.rules.ctcSplit);
-  // The letter shows annual figures (matching d.ctc) — the monthly breakdown ×12.
-  const basic = m.basic * 12, hra = m.hra * 12, convenience = m.convenience * 12, allowances = m.specialAllowance * 12;
-  const fmt = (n: number) => '₹' + n.toLocaleString('en-IN');
-  const dateStr = todayStr();
+  const dateStr = ordinalDate(todayStr());
   const firstName = d.employeeName.trim().split(/\s+/)[0] || d.employeeName;
+  const ctcWords = amountToIndianWords(d.ctc);
   const docsList = d.requiredDocuments.length
-    ? d.requiredDocuments.map((n, i) => `   ${i + 1}. ${n}`).join('\n')
-    : '   (to be communicated by HR)';
+    ? d.requiredDocuments.map((n) => `• ${n}`).join('\n')
+    : '• (to be communicated by HR)';
 
-  return `${COMPANY.name}
-${COMPANY.address}
-CIN: ${COMPANY.cin}
+  return `Date: ${dateStr}
 
-Date: ${dateStr}
-Ref: OFFER/${d.employeeCode}/${dateStr.slice(0, 4)}
-
-To,
-${d.employeeName}
-
-Subject: Offer of Employment — ${d.designation}
+Offer Letter : "${d.designation}"
 
 Dear ${firstName},
 
-We are pleased to offer you employment with ${COMPANY.name} ("the Company"), for the position of ${d.designation} in the ${d.team} team, on the terms and conditions set out below. We were impressed by your background and look forward to having you on board.
+With reference to your application & subsequent Interview we had with you, we are pleased to offer you employment as "${d.designation}" in our organization. Your joining date is ${ordinalDate(d.doj, false)}, and Your Annual Compensation will be Rs. ${d.ctc.toLocaleString('en-IN')}/- (${ctcWords} Only) and you will be on a probation of 3 months.
 
-1. POSITION & REPORTING
-   Designation        : ${d.designation}
-   Team               : ${d.team}
-   Reporting Manager  : ${d.manager || 'To be assigned'}
-   Employee ID        : ${d.employeeCode}
+You will be able to track your onboarding via our Employee Portal — sign in with Employee ID ${d.employeeCode} and password ${d.password} (please change it after your first login).
 
-2. DATE OF JOINING
-   ${d.doj}
-
-3. EMPLOYEE PORTAL LOGIN
-   Use the credentials below to sign in to the Employee Portal, track your onboarding, and upload the documents listed further below. Please change your password after your first login.
-   Employee ID : ${d.employeeCode}
-   Password    : ${d.password}
-
-4. COMPENSATION
-   Your Annual Cost to Company (CTC) will be ${fmt(d.ctc)}, structured as follows:
-     Basic Salary          ${fmt(basic)}
-     House Rent Allowance  ${fmt(hra)}
-     Convenience Allowance ${fmt(convenience)}
-     Special Allowance     ${fmt(allowances)}
-     -----------------------------------------
-     Total Annual CTC      ${fmt(d.ctc)}
-   Salary is paid monthly per the Company's standard payroll cycle (${salaryPeriodLabel(d.rules)}), subject to applicable statutory deductions.
-
-5. WORK LOCATION & HOURS
-   Working days  : ${d.rules.workingDaysPattern}
-   Shift timing  : ${shiftTimingsLabel(d.rules)}
-
-6. PROBATION
-   You will be on probation for 3 months from your date of joining, during which your performance and conduct will be reviewed ahead of confirmation.
-
-7. DOCUMENTS REQUIRED
-   Please submit the following via the Employee Portal ${d.documentsDeadline ? `within 5 days of joining (by ${d.documentsDeadline})` : 'within the timeline HR communicates'}:
+You are requested to share following documents for completion of processes:
 ${docsList}
 
-8. TERMS OF EMPLOYMENT
-   a. This offer is contingent on verification of the information and documents you provide.
-   b. You agree to maintain strict confidentiality of the Company's proprietary and business information, both during and after your employment.
-   c. Either party may terminate this employment by providing notice as per Company policy in force at the time.
-   d. You agree to comply with all Company policies, rules, and code of conduct as communicated from time to time.
+Please confirm your acceptance to this Offer. On completion of these Documents, your joining would be completed.
 
-9. ACCEPTANCE
-   Please confirm your acceptance of this offer by signing and returning a copy of this letter, or by accepting it electronically via the Employee Portal, on or before your date of joining.
-
-We look forward to a successful association with you.
-
-For ${COMPANY.name},
+Kindly check and return a copy of duly signed Appointment Letter in acceptance of the terms and conditions mentioned after receiving.
 
 
 _______________________
 Authorised Signatory
 
+Warm Regards;
+${COMPANY.brand}
 
-I, ${d.employeeName}, accept the above offer of employment on the terms and conditions stated above.
 
-Signature: _______________________     Date: _______________
+I agree to become part of Team ${COMPANY.brand} on the terms and conditions mentioned in the letter.
+
+Place: _______________                              Signature: _______________
+Date: _______________
+
+
+${COMPANY.name}
+${COMPANY.cin}
+${COMPANY.address}
+${COMPANY.email}
 `;
 }

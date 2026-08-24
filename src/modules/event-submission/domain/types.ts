@@ -17,6 +17,7 @@ export interface SubmitEventPayload {
   endTime?: string;
   venueAddress?: string;
   venueMapLink?: string;
+  eventType?: string;
   speakers?: Speaker[];
   image1?: string;
   image3?: string;

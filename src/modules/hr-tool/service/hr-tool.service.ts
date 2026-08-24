@@ -6,17 +6,11 @@ import {
 import { todayStr, nowTimeStr, nowMinutesSinceMidnight, monthRange, payrollPeriodRange, eachDateInRange, isSunday, addDaysUTC, daysUntil } from '../utils/time';
 import { latenessBucket } from '../utils/lateness';
 
-/** How many days before a payroll period's end date "Run Payroll" unlocks — lets the admin
- * process payroll ahead of payday instead of only after the cycle is fully over. */
-const RUN_PAYROLL_UNLOCK_DAYS_BEFORE_END = 5;
-
 export interface PayrollPreview {
   month: string;
   periodFrom: string;
   periodTo: string;
   periodEnded: boolean;
-  /** The earliest date "Run Payroll" is allowed to run for this cycle. */
-  runUnlocksAt: string;
   canRun: boolean;
   entries: HrPayrollEntry[];
   /** Names of roster members (active Employee ID, employed during this period, not yet exited)
@@ -372,13 +366,15 @@ export class HrToolService {
    * TDS. TDS is entered by the admin per employee per run (see tdsByEmp), not a formula — Net
    * Pay = Gross − TDS. No PF/ESI deductions in V1.
    *
-   * "Run Payroll" unlocks RUN_PAYROLL_UNLOCK_DAYS_BEFORE_END days before the period ends, so
-   * admins can process payroll ahead of payday rather than only after the cycle fully closes —
-   * which means this can run while some of the period's days haven't happened yet. Those
-   * future days are simply not judged present/leave/LOP at all (not counted as LOP just for
-   * not having occurred yet); re-running once the cycle actually ends picks them up for real,
-   * via the existing recompute-and-overwrite mechanism. Total Days, though, always reflects
-   * the FULL period regardless of when this runs — that's a calendar fact, not a time-based one.
+   * "Run Payroll" only unlocks once the period has fully ended (canRun = periodEnded) — no
+   * early window, and no expiry once it has ended, so the admin can come back and recompute as
+   * many times as they like. The Payroll page is responsible for pointing this at the right
+   * cycle in the first place (see payrollCycleToRunKey — one cycle behind "today's" cycle, so
+   * it flips to a freshly-ended cycle the instant the next one starts and stays there for that
+   * cycle's full length). Because a runnable period has, by definition, already ended, every
+   * one of its days has already happened — this function's own "don't judge days that haven't
+   * happened yet" handling (evalTo/futureDays below) only matters for the rare direct call with
+   * a still-in-progress month (e.g. an ad-hoc mid-cycle check), not for the normal Run Payroll path.
    *
    * `roster` (see PayrollRosterEntry) is the real Employee-ID roster, not the hr_employees
    * table — attendance is recorded against Employee-ID names, so anyone with an Employee ID
@@ -391,8 +387,7 @@ export class HrToolService {
     const { from, to } = payrollPeriodRange(monthKey, rules);
     const today = todayStr();
     const periodEnded = to <= today;
-    const runUnlocksAt = addDaysUTC(to, -RUN_PAYROLL_UNLOCK_DAYS_BEFORE_END);
-    const canRun = today >= runUnlocksAt;
+    const canRun = periodEnded;
     // Don't judge days that haven't happened yet when this runs early.
     const evalTo = to < today ? to : today;
 
@@ -441,7 +436,13 @@ export class HrToolService {
       // never judged, so a live preview of an open cycle doesn't inflate LOP for days that
       // simply haven't occurred; always 0 once the cycle has fully ended.
       let weekOffDays = 0, presentDays = 0, leaveDays = 0, futureDays = 0;
-      const totalDays = eachDateInRange(clippedFrom, to).length;
+      // The "Total Days" COLUMN is the full calendar cycle length (e.g. 31/30/28-29) regardless
+      // of date of joining — a plain "how many days are in this month's cycle" figure. The pay
+      // formula below still needs the DOJ-clipped day count (employedDays) so a mid-cycle joiner
+      // isn't charged LOP for days before they were even employed — those two numbers are
+      // deliberately different now, where they used to be the same (DOJ-clipped) value.
+      const totalDaysInCycle = eachDateInRange(from, to).length;
+      const employedDays = eachDateInRange(clippedFrom, to).length;
       for (const date of eachDateInRange(clippedFrom, to)) {
         if (isSunday(date) || holidaySet.has(date)) { weekOffDays++; continue; }
         if (date > evalTo) { futureDays++; continue; }
@@ -451,50 +452,51 @@ export class HrToolService {
         else if (approvedLeaveDates.has(date)) leaveDays++;
         // else: falls through, accounted for in the lopDays residual below.
       }
-      const workingDays = totalDays - weekOffDays;
+      const workingDays = employedDays - weekOffDays;
 
-      // LOP Days = Total Days − Present Days − Week Off − Leave Days (futureDays subtracted too,
-      // purely so an open cycle's not-yet-happened days don't get counted as loss-of-pay; it's
-      // always 0 once the cycle has ended, at which point this is exactly that formula). Absent
-      // Days is the same whole-day count, shown as its own column for "did they come in" status
-      // separately from the pay-impact number.
-      const lopDays = totalDays - presentDays - weekOffDays - leaveDays - futureDays;
+      // LOP Days = Employed Days − Present Days − Week Off − Leave Days (futureDays subtracted
+      // too, purely so an open cycle's not-yet-happened days don't get counted as loss-of-pay;
+      // it's always 0 once the cycle has ended, at which point this is exactly that formula).
+      // Absent Days is the same whole-day count, shown as its own column for "did they come in"
+      // status separately from the pay-impact number.
+      const lopDays = employedDays - presentDays - weekOffDays - leaveDays - futureDays;
       const absentDays = lopDays;
 
-      // actual days = total days − LOP days; paying days = actual days ÷ total days;
+      // actual days = employed days − LOP days; paying days = actual days ÷ employed days;
       // Gross = paying days × monthly salary (the attendance-adjusted take-home before TDS).
       const monthlySalary = Math.round(ctc / 12);
-      const actualDays = totalDays - lopDays;
-      const payingDays = totalDays > 0 ? actualDays / totalDays : 0;
+      const actualDays = employedDays - lopDays;
+      const payingDays = employedDays > 0 ? actualDays / employedDays : 0;
       const monthlyGross = Math.round(payingDays * monthlySalary);
       // TDS is entered by the admin per employee per run (see runPayroll's tdsByEmp) — not a
       // formula. Defaults to 0 (or whatever was frozen last time this month was run).
       const tds = tdsByEmp?.[r.name] ?? 0;
       const netPay = Math.round(monthlyGross - tds);
       entries.push({
-        emp: r.name, totalDays, weekOffDays, workingDays, presentDays, leaveDays, absentDays,
+        emp: r.name, totalDays: totalDaysInCycle, weekOffDays, workingDays, presentDays, leaveDays, absentDays,
         shortLeaveDays: 0, shortLeaveCarryOut: 0, halfDayDays: 0, lopDays, monthlyGross, tds, netPay,
       });
     }
 
-    return { month: monthKey, periodFrom: from, periodTo: to, periodEnded, runUnlocksAt, canRun, entries, missingCtcEmployees };
+    return { month: monthKey, periodFrom: from, periodTo: to, periodEnded, canRun, entries, missingCtcEmployees };
   }
 
-  /** Freezes a month's payroll: computes it (refusing if it's not within the unlock window yet
-   * — see RUN_PAYROLL_UNLOCK_DAYS_BEFORE_END — or if anyone on the roster has no CTC set, which
-   * would otherwise silently freeze a ₹0 payslip for them) and persists one hr_payroll_entries
-   * row per employee. Calling it again for an already-run month recomputes and overwrites via
-   * upsert — that's the whole "recompute" mechanism, no separate action. `tdsByEmp` carries
-   * whatever the admin typed into the TDS column for this run (missing employees default to 0). */
+  /** Freezes a month's payroll: computes it (refusing if the cycle hasn't fully ended yet, or if
+   * anyone on the roster has no CTC set, which would otherwise silently freeze a ₹0 payslip for
+   * them) and persists one hr_payroll_entries row per employee. Calling it again for an
+   * already-run month recomputes and overwrites via upsert — that's the whole "recompute"
+   * mechanism, no separate action, and there's no limit on how many times an admin can do this
+   * once the cycle has ended. `tdsByEmp` carries whatever the admin typed into the TDS column
+   * for this run (missing employees default to 0). */
   async runPayroll(
     monthKey: string, roster: PayrollRosterEntry[], actor?: string, tdsByEmp?: Record<string, number>
   ): Promise<{ ok: boolean; error?: string; entries?: HrPayrollEntry[] }> {
     const preview = await this.computePayrollForMonth(monthKey, roster, tdsByEmp);
     if (!preview.canRun) {
-      return { ok: false, error: `Run Payroll unlocks on ${preview.runUnlocksAt} — ${RUN_PAYROLL_UNLOCK_DAYS_BEFORE_END} days before this cycle ends on ${preview.periodTo}.` };
+      return { ok: false, error: `Run Payroll unlocks once this cycle ends on ${preview.periodTo}.` };
     }
     if (preview.missingCtcEmployees.length > 0) {
-      return { ok: false, error: `CTC is not set for: ${preview.missingCtcEmployees.join(', ')}. Set their Annual CTC in Employee Directory before running payroll.` };
+      return { ok: false, error: `CTC is not set for: ${preview.missingCtcEmployees.join(', ')}. Set their Annual CTC in Directory before running payroll.` };
     }
     await Promise.all(preview.entries.map((e) => this.repository.upsertPayrollEntry(monthKey, e)));
     await this.repository.upsertPayrollRun({ month: monthKey, status: 'run', runAt: new Date().toISOString(), runBy: actor || null });
@@ -512,7 +514,7 @@ export class HrToolService {
         this.repository.findRules(),
       ]);
       const { from, to } = payrollPeriodRange(monthKey, rules || DEFAULT_RULES);
-      return { month: monthKey, periodFrom: from, periodTo: to, periodEnded: true, runUnlocksAt: addDaysUTC(to, -RUN_PAYROLL_UNLOCK_DAYS_BEFORE_END), canRun: true, entries, missingCtcEmployees: [], alreadyRun: true };
+      return { month: monthKey, periodFrom: from, periodTo: to, periodEnded: true, canRun: true, entries, missingCtcEmployees: [], alreadyRun: true };
     }
     const preview = await this.computePayrollForMonth(monthKey, roster);
     return { ...preview, alreadyRun: false };

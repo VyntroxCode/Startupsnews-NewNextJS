@@ -94,15 +94,12 @@ export default async function StartupEventPage({
               </div>
               <h2 className="event-detail-title">{event.title}</h2>
               <div className="event-detail-meta">
-                <span className="event-detail-date">{event.date}</span>
+                <span className="event-detail-date">{event.dateRange}</span>
                 {event.eventTime && !event.eventTime.startsWith('00:00') && (
-                  <span className="event-detail-time">{event.eventTime}</span>
-                )}
-                {event.eventEndDate && event.eventEndDate !== event.date && (
-                  <span className="event-detail-date">to {event.eventEndDate}</span>
-                )}
-                {event.eventEndDate && event.eventEndDate !== event.date && event.eventTime && !event.eventTime.startsWith('00:00') && event.eventEndTime && !event.eventEndTime.startsWith('00:00') && (
-                  <span className="event-detail-time">{event.eventEndTime}</span>
+                  <span className="event-detail-time">
+                    {event.eventTime}
+                    {event.eventEndTime && !event.eventEndTime.startsWith('00:00') ? ` - ${event.eventEndTime}` : ''}
+                  </span>
                 )}
                 <span className="event-detail-location">{event.location}</span>
               </div>
@@ -137,6 +134,40 @@ export default async function StartupEventPage({
                 // If description is invalid (CSS code, etc.), don't render it
                 return null;
               })()}
+
+              {(event.venueAddress || event.googleLocationLink) && (
+                <div className="event-detail-venue">
+                  <h3 className="event-detail-section-title">Venue</h3>
+                  {event.venueAddress && <p className="event-detail-venue-address">{event.venueAddress}</p>}
+                  {event.googleLocationLink && (
+                    <a
+                      href={event.googleLocationLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="event-detail-venue-link"
+                    >
+                      View on Google Maps
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {event.speakers && event.speakers.length > 0 && (
+                <div className="event-detail-speakers">
+                  <h3 className="event-detail-section-title">Key Speakers / Guests</h3>
+                  <div className="event-detail-speakers-row">
+                    {event.speakers.map((sp, i) => (
+                      <div className="event-detail-speaker-card" key={`${sp.name}-${i}`}>
+                        <div className="event-detail-speaker-name">{sp.name}</div>
+                        {sp.designation && <div className="event-detail-speaker-designation">{sp.designation}</div>}
+                        {sp.company && <div className="event-detail-speaker-company">{sp.company}</div>}
+                        {sp.others && <div className="event-detail-speaker-others">{sp.others}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="event-detail-actions" style={{ flexDirection: 'column', justifyContent: 'center', marginTop: '20px', gap: '20px' }}>
                 {event.url && (
                   <a href={event.url} target="_blank" rel="noopener noreferrer" className="event-detail-book-btn">

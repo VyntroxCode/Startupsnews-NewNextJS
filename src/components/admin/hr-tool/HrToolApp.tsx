@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { useHrTool } from './HrToolContext';
 import Dashboard from './views/Dashboard';
 import Directory from './views/Directory';
-import EmployeeDocuments from './views/EmployeeDocuments';
 import Offboarding from './views/Offboarding';
 import Attendance from './views/Attendance';
 import Leave from './views/Leave';
@@ -20,7 +19,7 @@ import { isAdmin, rmOf, scopedApprovals } from './utils';
 import { VIEW_ACCESS, type HrView } from './types';
 
 const VIEWS: Record<HrView, () => React.JSX.Element> = {
-  dashboard: Dashboard, directory: Directory, documentReview: EmployeeDocuments, offboarding: Offboarding,
+  dashboard: Dashboard, directory: Directory, offboarding: Offboarding,
   attendance: Attendance, leave: Leave, payroll: Payroll, expenses: Expenses,
   compliance: Compliance, posh: Posh, helpdesk: Helpdesk, company: Company, rules: Rules, documents: Documents,
 };
@@ -31,8 +30,7 @@ interface NavGroup { label: string; items: NavItem[]; }
 const NAV_GROUPS: NavGroup[] = [
   { label: 'Overview', items: [{ view: 'dashboard', label: 'Dashboard', icon: '◆' }] },
   { label: 'People', items: [
-    { view: 'directory', label: 'Employee Directory', icon: '☰' },
-    { view: 'documentReview', label: 'Employee Documents', icon: '📄' },
+    { view: 'directory', label: 'Directory', icon: '☰' },
     { view: 'offboarding', label: 'Offboarding', icon: '←' },
   ] },
   { label: 'Time', items: [
@@ -70,7 +68,7 @@ function pendingCountFor(view: HrView, state: ReturnType<typeof useHrTool>['stat
     return scopedApprovals(state.expenses, role, me.name, state.employees).filter((x) => x.status === 'pending' &&
       ((role === 'Reporting Manager' && x.stage === 'rm' && rmOf(state.employees, x.emp) === me.name) || (isAdmin(role) && x.stage === 'hr'))).length;
   }
-  if (view === 'documentReview' && isAdmin(role)) {
+  if (view === 'directory' && isAdmin(role)) {
     return state.employees.reduce((n, e) => n + e.documents.filter((d) => d.status === 'pending').length, 0);
   }
   if (view === 'documents' && role === 'Employee') {
@@ -86,10 +84,13 @@ export default function HrToolApp() {
   const { loading, loadError } = useHrTool();
 
   if (loading) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontFamily: "'Space Grotesk'" }}>Loading…</div>;
+    // Rendered before HrToolStyles ever mounts, so the .hr-tool-app stylesheet's --muted/--red
+    // variables aren't in scope here yet — use their actual values directly instead of a
+    // var() that would silently fall back to unstyled black text.
+    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8' }}>Loading…</div>;
   }
   if (loadError) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', fontFamily: "'Space Grotesk'" }}>Could not load HR data. Please refresh the page.</div>;
+    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626' }}>Could not load HR data. Please refresh the page.</div>;
   }
   return <HrToolShell />;
 }
@@ -161,18 +162,17 @@ function HrToolStyles() {
         --red: #DC2626; --red-soft: #FEE2E2; --green-soft: #DCFCE7; --green: #16A34A;
         --blue-soft: #DBEAFE; --blue: #2563EB; --orange: #EA580C; --orange-soft: #FFEDD5;
         --muted: #94A3B8; --radius: 10px;
-        font-family: 'Inter', sans-serif; color: var(--ink); background: var(--paper);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--ink); background: var(--paper);
         border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,0.06);
       }
       .hr-tool-app * { box-sizing: border-box; }
-      .hr-tool-app h1, .hr-tool-app h2, .hr-tool-app h3 { font-family: 'Space Grotesk', sans-serif; }
       .hr-tool-app button { font-family: inherit; cursor: pointer; }
       .hr-tool-app a { color: inherit; }
       .hr-tool-app .app { display: grid; grid-template-columns: 236px 1fr; min-height: 70vh; }
       .hr-tool-app .sidebar { background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%); color: #EEF2FF; padding: 22px 14px; display: flex; flex-direction: column; gap: 4px; }
       .hr-tool-app .brand { display: flex; align-items: center; gap: 9px; padding: 4px 10px 20px; }
-      .hr-tool-app .brand-mark { width: 28px; height: 28px; border-radius: 7px; background: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk'; font-weight: 700; color: var(--forest); font-size: 14px; flex-shrink: 0; }
-      .hr-tool-app .brand-name { font-family: 'Space Grotesk'; font-weight: 700; font-size: 16.5px; color: #fff; }
+      .hr-tool-app .brand-mark { width: 28px; height: 28px; border-radius: 7px; background: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--forest); font-size: 14px; flex-shrink: 0; }
+      .hr-tool-app .brand-name { font-weight: 700; font-size: 16.5px; color: #fff; }
       .hr-tool-app .brand-sub { font-size: 10px; color: #C7D2FE; letter-spacing: 0.6px; text-transform: uppercase; margin-top: 1px; }
       .hr-tool-app .nav-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #A5B4FC; padding: 14px 12px 6px; }
       .hr-tool-app .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: #E0E7FF; background: transparent; border: none; text-align: left; width: 100%; transition: background .12s; }
@@ -200,8 +200,12 @@ function HrToolStyles() {
       .hr-tool-app .grid-2 { grid-template-columns: 1fr 1fr; }
       @media(max-width:900px) { .hr-tool-app .grid-4, .hr-tool-app .grid-3, .hr-tool-app .grid-2 { grid-template-columns: 1fr; } }
       .hr-tool-app .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; }
-      .hr-tool-app .stat-num { font-family: 'Space Grotesk'; font-size: 28px; font-weight: 700; margin-top: 6px; }
+      .hr-tool-app .stat-num { font-size: 28px; font-weight: 700; margin-top: 6px; }
       .hr-tool-app .stat-note { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+      .hr-tool-app .card.tone-good { background: var(--green-soft); border-color: var(--green); }
+      .hr-tool-app .card.tone-good .stat-note { color: var(--green); font-weight: 600; }
+      .hr-tool-app .card.tone-bad { background: var(--red-soft); border-color: var(--red); }
+      .hr-tool-app .card.tone-bad .stat-note { color: var(--red); font-weight: 600; }
       .hr-tool-app section.block { margin-bottom: 26px; }
       .hr-tool-app .block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; gap: 10px; flex-wrap: wrap; }
       .hr-tool-app .block-head h2 { font-size: 15px; margin: 0; font-weight: 700; }
@@ -256,7 +260,7 @@ function HrToolStyles() {
       .hr-tool-app .modal-body { padding: 18px 22px; }
       .hr-tool-app .modal-foot { padding: 14px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
       .hr-tool-app .x-close { background: none; border: none; font-size: 18px; color: var(--muted); }
-      .hr-tool-app .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--forest); color: #EEF2FF; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; font-family: 'Space Grotesk'; flex-shrink: 0; }
+      .hr-tool-app .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--forest); color: #EEF2FF; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; flex-shrink: 0; }
       .hr-tool-app .row-name { display: flex; align-items: center; gap: 9px; }
       .hr-tool-app .row-name .meta { font-size: 11.5px; color: var(--muted); }
       .hr-tool-app .meta { font-size: 11.5px; color: var(--muted); }

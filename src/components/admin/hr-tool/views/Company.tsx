@@ -28,7 +28,7 @@ export default function Company() {
         <div className="card pad">
           <div className="block-head"><h2>Registered details</h2></div>
           <div className="field"><label className="field-label">Company name</label>DOTFYI Media Ventures Pvt. Ltd. (StartupNews.fyi)</div>
-          <div className="field"><label className="field-label">CIN</label>U74999DL2021PTC123456</div>
+          <div className="field"><label className="field-label">CIN</label>U22100DL2022PTC403240</div>
           <div className="field"><label className="field-label">Registered state</label>Delhi</div>
         </div>
         <div className="card pad">

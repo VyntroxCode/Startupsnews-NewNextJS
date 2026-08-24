@@ -22,6 +22,7 @@ export interface SubmitEventFormData {
   city: string;
   cityOther: string;
   externalUrl: string;
+  eventType: string;
   description: string;
 
   startDate: string;
@@ -57,6 +58,7 @@ export function createInitialFormData(): SubmitEventFormData {
     city: '',
     cityOther: '',
     externalUrl: '',
+    eventType: '',
     description: '',
 
     startDate: '',

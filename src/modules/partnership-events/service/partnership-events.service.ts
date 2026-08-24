@@ -1,6 +1,6 @@
 import { PartnershipEventsRepository } from '../repository/partnership-events.repository';
 import { PartnershipEventEntity, PartnershipEventFilters, PartnershipEventInput, LinkedEventSummary } from '../domain/types';
-import { dedupKey, autoExcerpt } from '../utils/partnership-events.utils';
+import { dedupKey, autoExcerpt, parseSpeakers } from '../utils/partnership-events.utils';
 import { EventsService, EventNotFoundError } from '@/modules/events/service/events.service';
 
 export interface SyncResult {
@@ -128,17 +128,26 @@ export class PartnershipEventsService {
     if (input.region === undefined && input.siteStatus === undefined) return { entity };
     const region = input.region?.trim();
     if (!region) return { entity };
+    // The public site groups events by city (e.g. "Mumbai"), not by the broader Region/Country
+    // dropdown value (e.g. "India") — prefer the specific City field when one's set, falling
+    // back to region for cases with no separate city concept (UAE, Singapore, "Cohort"/"Online"
+    // and other non-geographic regions, where City is typically left blank).
+    const location = entity.city?.trim() || region;
 
     const eventFields = {
       title: entity.event_name,
+      slug: input.slug?.trim() || '',
       description: entity.description || undefined,
       excerpt: autoExcerpt(entity.description),
-      location: region,
+      location,
       eventEndDate: entity.event_end_date || null,
       eventTime: entity.event_start_time || undefined,
       eventEndTime: entity.event_end_time || null,
       imageUrl: entity.poster_url || undefined,
       externalUrl: entity.website || undefined,
+      venueAddress: entity.venue_address || null,
+      googleLocationLink: entity.google_location_link || null,
+      speakers: parseSpeakers(entity.speakers),
       status: input.siteStatus || 'draft',
     };
 
@@ -178,7 +187,6 @@ export class PartnershipEventsService {
 
       const created = await this.eventsService.createEvent({
         ...eventFields,
-        slug: '',
         eventDate: entity.event_start_date,
         createdBy: actor,
       });

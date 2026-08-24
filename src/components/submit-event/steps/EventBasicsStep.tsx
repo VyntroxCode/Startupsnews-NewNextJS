@@ -1,6 +1,7 @@
 "use client";
 
 import { CountryCityFields } from "../CountryCityFields";
+import { CustomSelect } from "../CustomSelect";
 import { FormField } from "../FormField";
 import { DESC_TARGET_WORDS } from "../constants";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
@@ -13,6 +14,9 @@ import {
   validateSlug,
   validateTitle,
 } from "../validation";
+import { PARTNERSHIP_TYPE_OPTIONS } from "@/modules/partnership-events/domain/types";
+
+const EVENT_TYPE_OPTIONS = PARTNERSHIP_TYPE_OPTIONS.map((t) => ({ value: t, label: t }));
 
 export function EventBasicsStep({ ctrl }: { ctrl: SubmitEventFormController }) {
   const { data, errors } = ctrl;
@@ -68,6 +72,15 @@ export function EventBasicsStep({ ctrl }: { ctrl: SubmitEventFormController }) {
         onChange={(v) => ctrl.updateAndMaybeValidate("externalUrl", v, "externalUrl", validateExternalUrl)}
         onBlur={() => ctrl.blurValidate("externalUrl", validateExternalUrl)}
       />
+      <div className="field" id="field-event-type">
+        <label>Event Type</label>
+        <CustomSelect
+          options={EVENT_TYPE_OPTIONS}
+          value={data.eventType}
+          onChange={(v) => ctrl.setField("eventType", v)}
+          ariaLabel="Event Type"
+        />
+      </div>
 
       <div className={"field" + (errors.description ? " has-error" : "")} id="field-description">
         <label htmlFor="f-description">Event Description *</label>

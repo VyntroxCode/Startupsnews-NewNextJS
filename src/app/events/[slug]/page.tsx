@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getEventsByRegion, getEventImage } from "@/lib/data-adapter";
-import { EventByCountryCard } from "@/components/EventByCountryCard";
+import { getEventsByRegion } from "@/lib/data-adapter";
+import { EventsCarousel } from "@/components/EventsCarousel";
 import { ArrowRightIcon } from "@/components/icons";
 
 // Helper to convert region name to slug (e.g. "Delhi NCR" -> "delhi-ncr")
@@ -85,15 +85,12 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
                                 <section className="event-by-country-section" style={{ paddingTop: "20px" }}>
                                     <h2 className="event-by-country-region">Events In {region}</h2>
                                     {upcomingEvents.length > 0 ? (
-                                        <ul className="event-by-country-list">
-                                            {upcomingEvents.map((event) => (
-                                                <EventByCountryCard
-                                                    key={String(event.id ?? event.slug ?? event.url)}
-                                                    event={event}
-                                                    imageUrl={getEventImage(event)}
-                                                />
-                                            ))}
-                                        </ul>
+                                        <EventsCarousel
+                                            events={upcomingEvents}
+                                            maxEvents={upcomingEvents.length}
+                                            title={null}
+                                            className="event-country-carousel"
+                                        />
                                     ) : (
                                         <p>No upcoming events found for {region} at this time.</p>
                                     )}

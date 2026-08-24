@@ -48,6 +48,7 @@ export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
           <div className="row"><span className="k">Title</span><span className="v">{data.title || "—"}</span></div>
           <div className="row"><span className="k">Location</span><span className="v">{locationText}</span></div>
           <div className="row"><span className="k">Registration Link</span><span className="v">{data.externalUrl || "—"}</span></div>
+          <div className="row"><span className="k">Event Type</span><span className="v">{data.eventType || "—"}</span></div>
           <div className="row"><span className="k">Description</span><span className="v">{wordCount ? `${wordCount} words` : "—"}</span></div>
         </div>
       </div>

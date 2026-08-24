@@ -21,6 +21,7 @@ import CharacterCount from '@tiptap/extension-character-count';
 import { Extension } from '@tiptap/core';
 import { normalizeEditorHtml } from '@/shared/utils/editor-html';
 import { getAdminToken } from '@/lib/admin-auth';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 /* ─── HTML sanitizer + structural converter for paste/upload ───
    1. Strips dangerous content (scripts, event handlers)
@@ -702,6 +703,9 @@ export default function RichTextEditorClient({
   const [htmlModalText, setHtmlModalText] = useState('');
   const [htmlModalPreview, setHtmlModalPreview] = useState<string | null>(null);
   const [injectedCss, setInjectedCss] = useState('');
+  // Previously only worked while the textarea itself had focus — now fires regardless of
+  // where focus is inside the modal (e.g. the Preview/Cancel buttons).
+  useEscapeKey(() => { setHtmlModalOpen(false); setHtmlModalPreview(null); }, htmlModalOpen);
 
   const editor = useEditor({
     immediatelyRender: false,

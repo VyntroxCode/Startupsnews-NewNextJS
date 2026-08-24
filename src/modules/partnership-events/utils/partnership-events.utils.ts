@@ -16,7 +16,7 @@ function safeJsonParse(value: string): unknown {
     return null;
   }
 }
-function parseSpeakers(value: unknown): Speaker[] {
+export function parseSpeakers(value: unknown): Speaker[] {
   return parseJsonArray(value)
     .filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null)
     .map((v) => ({

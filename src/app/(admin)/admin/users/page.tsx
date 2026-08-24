@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { useAdminData } from '@/hooks/useAdminData';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import Pagination from '@/components/admin/Pagination';
 import SearchBar from '@/components/admin/SearchBar';
 import LoadingSkeleton from '@/components/admin/LoadingSkeleton';
@@ -125,6 +126,7 @@ function AccountManager({
     if (saving) return;
     setShowModal(false);
   }, [saving]);
+  useEscapeKey(closeModal, showModal);
 
   const notifyDataUpdated = () => {
     if (typeof window !== 'undefined') {

@@ -9,6 +9,20 @@ interface ImageUploadProps {
   label?: string;
   required?: boolean;
   accept?: string;
+  /** When set, the selected image's pixel dimensions must match this exactly — anything else
+   * (even if smaller/larger by a few px) is rejected before it ever reaches the upload step. */
+  exactDimensions?: { width: number; height: number };
+}
+
+/** Reads actual pixel dimensions off the file itself, not the (possibly stale/absent) EXIF data. */
+function getImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url); };
+    img.onerror = () => { resolve(null); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
 }
 
 // Formats a canvas re-encode would just bloat (already-compressed/vector/animated) — upload as-is.
@@ -73,6 +87,7 @@ export default function ImageUpload({
   label = 'Image',
   required = false,
   accept = 'image/*',
+  exactDimensions,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -96,6 +111,17 @@ export default function ImageUpload({
       return;
     }
 
+    if (exactDimensions) {
+      const dims = await getImageDimensions(file);
+      if (!dims || dims.width !== exactDimensions.width || dims.height !== exactDimensions.height) {
+        setError(
+          `Image must be exactly ${exactDimensions.width}×${exactDimensions.height}px` +
+          (dims ? ` — this image is ${dims.width}×${dims.height}px.` : '.')
+        );
+        return;
+      }
+    }
+
     setError('');
     setUploading(true);
     setUploadProgress(0);
@@ -107,7 +133,9 @@ export default function ImageUpload({
         return;
       }
 
-      const uploadFile = await compressImageFile(file);
+      // Compression re-encodes/downscales — that would break an exact-dimension guarantee
+      // (e.g. a 2438px-wide banner exceeds MAX_DIMENSION and would get resized), so skip it here.
+      const uploadFile = exactDimensions ? file : await compressImageFile(file);
 
       const safeFilename = uploadFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const presignResponse = await fetch('/api/admin/presign', {
@@ -150,11 +178,6 @@ export default function ImageUpload({
       setUploading(false);
       setUploadProgress(0);
     }
-  };
-
-  const handleUrlChange = (url: string) => {
-    setPreview(url);
-    onChange(url);
   };
 
   const removeImage = () => {
@@ -268,29 +291,13 @@ export default function ImageUpload({
             style={{ display: 'none' }}
           />
         </label>
-
-        <div>
-          <input
-            type="url"
-            value={value}
-            onChange={(e) => handleUrlChange(e.target.value)}
-            placeholder="Or enter image URL"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '0.9375rem',
-              boxSizing: 'border-box',
-              color: '#0f172a',
-              outline: 'none',
-              transition: 'border-color 0.2s, box-shadow 0.2s',
-            }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)'; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
-          />
-        </div>
       </div>
+
+      {exactDimensions && (
+        <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b' }}>
+          Required size: exactly {exactDimensions.width}×{exactDimensions.height}px.
+        </div>
+      )}
 
       {error && (
         <div style={{

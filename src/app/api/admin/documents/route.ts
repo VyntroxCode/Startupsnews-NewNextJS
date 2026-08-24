@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const credential = await hrCredentialsService.getByLinkedPanelAdminId(auth.user.id);
     if (!credential) {
       return NextResponse.json(
-        { success: false, error: 'No Employee ID has been linked to your account yet — ask your Founder to link one from HR Management → Employee Directory.' },
+        { success: false, error: 'No Employee ID has been linked to your account yet — ask your Founder to link one from HR Management → Directory.' },
         { status: 400 }
       );
     }

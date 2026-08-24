@@ -20,6 +20,7 @@ export function buildSubmitPayload(data: SubmitEventFormData) {
     country: data.country,
     city: resolvedCity(data),
     externalUrl: data.externalUrl.trim(),
+    eventType: data.eventType,
     description: data.description.trim(),
     startDate: data.startDate,
     startTime: data.startTime,

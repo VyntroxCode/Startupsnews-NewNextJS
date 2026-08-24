@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StartupEvent } from "@/lib/data-adapter";
 import { EventByCountryCard } from "@/components/EventByCountryCard";
 import { getEventImage } from "@/lib/event-utils";
@@ -8,177 +8,171 @@ import { getEventImage } from "@/lib/event-utils";
 interface EventsCarouselProps {
   events: StartupEvent[];
   maxEvents?: number;
+  /** Heading text shown above the carousel. Omit for the default "Startup Events" (homepage
+   * usage); pass `null` to render no heading at all (e.g. when a parent heading already covers it). */
+  title?: string | null;
+  /** Extra class on the outer container, for page-specific card-width overrides (see
+   * .event-country-carousel in globals.css, used by /events for a wider "peek the next card" look). */
+  className?: string;
 }
 
-export function EventsCarousel({ events, maxEvents = 10 }: EventsCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const autoPauseUntilRef = useRef(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isMobileRef = useRef(false);
-
-  // Limit events to maxEvents
+/**
+ * Horizontally-scrollable event row: three cards per row on desktop (two on tablet, one on
+ * mobile — widths come from the `.events-carousel-list > .event-by-country-card` CSS rules),
+ * scrolled natively (trackpad/touch swipe, mouse-wheel, or click-drag) with smooth momentum,
+ * rather than the old click-to-page transform carousel. Prev/next buttons and dots just nudge
+ * the same native scroll position by one card at a time.
+ */
+export function EventsCarousel({ events, maxEvents = 10, title, className = "" }: EventsCarouselProps) {
+  const heading = title === undefined ? "Startup Events" : title;
   const displayEvents = events.slice(0, maxEvents);
   const totalEvents = displayEvents.length;
 
-  // Calculate how many cards to show per view based on screen size
-  const [cardsPerView, setCardsPerView] = useState(1);
+  const trackRef = useRef<HTMLUListElement>(null);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(1);
+  const [dragging, setDragging] = useState(false);
+
+  const isDragging = useRef(false);
+  const draggedRef = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartScroll = useRef(0);
+  const autoplayPausedUntil = useRef(0);
+  // Hovering any card blocks autoplay outright (not just a timed pause) — set on mouse enter/leave
+  // of the row, checked every autoplay tick. Separate from autoplayPausedUntil, which is for a
+  // few seconds after a discrete interaction (drag/wheel/button/dot) on devices with no hover.
+  const isHovering = useRef(false);
+
+  // Width of one card + the gap after it — the unit every scroll step/snap point moves by.
+  const cardStep = useCallback((): number => {
+    const track = trackRef.current;
+    const first = track?.firstElementChild as HTMLElement | null;
+    if (!track || !first) return 0;
+    const gap = parseFloat(getComputedStyle(track).columnGap || "0") || 0;
+    return first.getBoundingClientRect().width + gap;
+  }, []);
+
+  const updateScrollState = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const step = cardStep();
+    const max = track.scrollWidth - track.clientWidth;
+    setAtStart(track.scrollLeft <= 2);
+    setAtEnd(track.scrollLeft >= max - 2);
+    if (step > 0) {
+      setVisibleCount(Math.max(1, Math.round(track.clientWidth / step)));
+      setActiveIndex(Math.round(track.scrollLeft / step));
+    }
+  }, [cardStep]);
 
   useEffect(() => {
-    const updateCardsPerView = () => {
-      const container = carouselRef.current;
-      if (!container) return;
-
-      // Use both container width and window width for reliable detection
-      const containerWidth = container.offsetWidth;
-      const windowWidth = window.innerWidth;
-      const effectiveWidth = containerWidth > 0 ? containerWidth : windowWidth;
-      
-      // Mobile: 1 card, Tablet: 2 cards, Desktop: 3 cards
-      let newCardsPerView = 1;
-      if (effectiveWidth >= 1024) {
-        newCardsPerView = 3;
-      } else if (effectiveWidth >= 768) {
-        newCardsPerView = 2;
-      } else {
-        newCardsPerView = 1;
-      }
-
-      isMobileRef.current = newCardsPerView === 1;
-      setCardsPerView(newCardsPerView);
-    };
-
-    updateCardsPerView();
-    window.addEventListener('resize', updateCardsPerView);
-    
-    // Also update after a short delay to account for DOM layout
-    const timeoutId = window.setTimeout(updateCardsPerView, 100);
-    
+    updateScrollState();
+    const track = trackRef.current;
+    if (!track) return;
+    const onScroll = () => updateScrollState();
+    track.addEventListener("scroll", onScroll, { passive: true });
+    // ResizeObserver, not just window resize — catches layout shifts a window resize wouldn't
+    // (web font swap reflowing card widths, a sidebar/ad slot changing the track's own width).
+    const ro = new ResizeObserver(onScroll);
+    ro.observe(track);
+    const raf = requestAnimationFrame(updateScrollState);
     return () => {
-      window.removeEventListener('resize', updateCardsPerView);
-      clearTimeout(timeoutId);
+      track.removeEventListener("scroll", onScroll);
+      ro.disconnect();
+      cancelAnimationFrame(raf);
     };
-  }, [displayEvents.length]);
+  }, [updateScrollState, totalEvents]);
 
-  const maxIndex = Math.max(0, totalEvents - cardsPerView);
+  const maxIndex = Math.max(0, totalEvents - visibleCount);
 
-  // Keep current index valid when viewport size or data length changes.
+  const scrollToIndex = (index: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const clamped = Math.max(0, Math.min(index, maxIndex));
+    track.scrollTo({ left: clamped * cardStep(), behavior: "smooth" });
+  };
+
+  const goToPrev = () => scrollToIndex(activeIndex - 1);
+  const goToNext = () => scrollToIndex(activeIndex + 1);
+
+  const pauseAutoplay = (ms = 4000) => {
+    autoplayPausedUntil.current = Date.now() + ms;
+  };
+
+  // Gently auto-advances one card at a time, looping back to the start at the end — blocked
+  // entirely while the cursor is hovering the row, and paused for a few seconds after any other
+  // manual interaction (drag, wheel, buttons, dots) on devices with no hover.
   useEffect(() => {
-    setCurrentIndex((prev) => Math.min(prev, maxIndex));
-  }, [maxIndex]);
+    if (totalEvents <= visibleCount) return;
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => {
+      const track = trackRef.current;
+      if (!track || isHovering.current || Date.now() < autoplayPausedUntil.current) return;
+      const max = track.scrollWidth - track.clientWidth;
+      if (track.scrollLeft >= max - 2) {
+        track.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        track.scrollBy({ left: cardStep(), behavior: "smooth" });
+      }
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, [totalEvents, visibleCount, cardStep]);
 
-  // Auto-scroll interval setup - simplified and more robust
+  // A normal vertical wheel/trackpad gesture over the row glides it sideways instead of
+  // scrolling the page — the "scroll it properly" behavior for mouse users. This has to be a
+  // real (non-passive) native listener: React attaches its onWheel/onTouchMove handlers as
+  // passive by default, so calling preventDefault() from a JSX onWheel prop is silently a no-op
+  // (the browser just logs a warning) and the page would scroll vertically underneath it too.
   useEffect(() => {
-    // Only set up autoplay if we have multiple events
-    if (totalEvents <= 1) {
-      return;
-    }
-
-    // Clean up any existing interval before creating a new one
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    // Set up autoplay interval
-    const intervalId = window.setInterval(() => {
-      // Only advance if on mobile view
-      if (!isMobileRef.current) {
-        return;
-      }
-
-      // Skip if paused due to user interaction
-      if (Date.now() < autoPauseUntilRef.current) {
-        return;
-      }
-
-      setCurrentIndex((prev) => {
-        const nextIndex = prev >= maxIndex ? 0 : prev + 1;
-        return nextIndex;
-      });
-    }, 4000);
-
-    intervalRef.current = intervalId as any;
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+    const track = trackRef.current;
+    if (!track) return;
+    const onWheel = (e: WheelEvent) => {
+      if (track.scrollWidth <= track.clientWidth) return;
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      track.scrollLeft += e.deltaY;
+      pauseAutoplay();
     };
-  }, [totalEvents, maxIndex]);
+    track.addEventListener("wheel", onWheel, { passive: false });
+    return () => track.removeEventListener("wheel", onWheel);
+  }, []);
 
-  const pauseAutoplayTemporarily = (ms: number = 5000) => {
-    autoPauseUntilRef.current = Date.now() + ms;
+  // Click-and-drag scrolling for desktop mouse users (touch/trackpad already scroll natively).
+  const handlePointerDown = (e: React.PointerEvent<HTMLUListElement>) => {
+    const track = trackRef.current;
+    if (!track || e.pointerType !== "mouse") return;
+    isDragging.current = true;
+    setDragging(true);
+    draggedRef.current = false;
+    dragStartX.current = e.clientX;
+    dragStartScroll.current = track.scrollLeft;
+    track.setPointerCapture(e.pointerId);
+    pauseAutoplay();
   };
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => Math.min(prev + 1, maxIndex));
+  const handlePointerMove = (e: React.PointerEvent<HTMLUListElement>) => {
+    const track = trackRef.current;
+    if (!track || !isDragging.current) return;
+    const dx = e.clientX - dragStartX.current;
+    if (Math.abs(dx) > 3) draggedRef.current = true;
+    track.scrollLeft = dragStartScroll.current - dx;
   };
-
-  const goToPrev = () => {
-    setCurrentIndex((prev) => Math.max(prev - 1, 0));
+  const endDrag = () => {
+    isDragging.current = false;
+    setDragging(false);
   };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!carouselRef.current) return;
-    pauseAutoplayTemporarily();
-    setIsDragging(true);
-    setStartX(e.pageX);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !carouselRef.current) return;
-    e.preventDefault();
-    const x = e.pageX;
-    const distance = x - startX;
-    
-    // Dragging right moves to previous card, dragging left moves to next card
-    if (Math.abs(distance) > 50) {
-      const direction = distance > 0 ? -1 : 1;
-      if (direction > 0) {
-        goToNext();
-      } else {
-        goToPrev();
-      }
-      setIsDragging(false);
+  // Swallow the click that follows a drag so it doesn't also open the card underneath the cursor.
+  const handleClickCapture = (e: React.MouseEvent<HTMLUListElement>) => {
+    if (draggedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      draggedRef.current = false;
     }
   };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!carouselRef.current) return;
-    pauseAutoplayTemporarily();
-    setIsDragging(true);
-    setStartX(e.touches[0].pageX);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || !carouselRef.current) return;
-    const x = e.touches[0].pageX;
-    const distance = x - startX;
-    
-    // Dragging right moves to previous card, dragging left moves to next card
-    if (Math.abs(distance) > 50) {
-      const direction = distance > 0 ? -1 : 1;
-      if (direction > 0) {
-        goToNext();
-      } else {
-        goToPrev();
-      }
-      setIsDragging(false);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    pauseAutoplayTemporarily(2500);
-    setIsDragging(false);
-  };
+  const handleTouchStart = () => pauseAutoplay(2500);
+  const handleMouseEnter = () => { isHovering.current = true; };
+  const handleMouseLeave = () => { isHovering.current = false; };
 
   if (totalEvents === 0) {
     return (
@@ -188,82 +182,71 @@ export function EventsCarousel({ events, maxEvents = 10 }: EventsCarouselProps) 
     );
   }
 
+  const showControls = totalEvents > visibleCount;
+
   return (
-    <div className="events-carousel-container">
+    <div className={`events-carousel-container ${className}`.trim()}>
       <div className="events-carousel-header">
-        <h2 className="events-carousel-title">Startup Events</h2>
-        {totalEvents > cardsPerView && (
+        {heading && <h2 className="events-carousel-title">{heading}</h2>}
+        {showControls && (
           <div className="events-carousel-controls">
             <button
               type="button"
               className="events-carousel-btn events-carousel-btn-prev"
-              onClick={goToPrev}
-              disabled={currentIndex === 0}
+              onClick={() => { pauseAutoplay(); goToPrev(); }}
+              disabled={atStart}
               aria-label="Previous events"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-           {/* <span className="text-[0.875rem] text-[#666] font-medium min-w-[50px] text-center">
-              {currentIndex + 1} / {maxIndex + 1}
-            </span> */}
             <button
               type="button"
               className="events-carousel-btn events-carousel-btn-next"
-              onClick={goToNext}
-              disabled={currentIndex >= maxIndex}
+              onClick={() => { pauseAutoplay(); goToNext(); }}
+              disabled={atEnd}
               aria-label="Next events"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </div>
         )}
       </div>
 
-      <div
-        ref={carouselRef}
-        className="events-carousel-wrapper"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+      <ul
+        ref={trackRef}
+        className="events-carousel-list scrollbar-hide"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={handleClickCapture}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        style={{
-          cursor: isDragging ? 'grabbing' : 'grab',
-        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={{ cursor: dragging ? "grabbing" : "grab" }}
       >
-        <ul
-          className="events-carousel-list"
-          style={{
-            transform: `translateX(calc(-${currentIndex * 100}% - ${currentIndex * 20}px))`,
-            transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        >
-          {displayEvents.map((event, index) => (
-            <EventByCountryCard
-              key={String(event.id ?? event.slug ?? `${event.url}-${index}`)}
-              event={event}
-              imageUrl={getEventImage(event)}
-            />
-          ))}
-        </ul>
-      </div>
+        {displayEvents.map((event, index) => (
+          <EventByCountryCard
+            key={String(event.id ?? event.slug ?? `${event.url}-${index}`)}
+            event={event}
+            imageUrl={getEventImage(event)}
+          />
+        ))}
+      </ul>
 
-      {/* Dots indicator for mobile */}
-      {totalEvents > cardsPerView && (
+      {showControls && (
         <div className="events-carousel-dots">
           {Array.from({ length: maxIndex + 1 }).map((_, index) => (
             <button
               key={index}
               type="button"
-              className={`events-carousel-dot ${index === currentIndex ? 'active' : ''}`}
-              onClick={() => setCurrentIndex(index)}
+              className={`events-carousel-dot ${index === activeIndex ? "active" : ""}`}
+              onClick={() => { pauseAutoplay(); scrollToIndex(index); }}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}
@@ -272,4 +255,3 @@ export function EventsCarousel({ events, maxEvents = 10 }: EventsCarouselProps) 
     </div>
   );
 }
-
