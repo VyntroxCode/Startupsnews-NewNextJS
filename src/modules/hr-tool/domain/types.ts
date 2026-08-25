@@ -1,4 +1,5 @@
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
+import type { HrKycDocuments } from './kyc';
 
 export interface HrTeam { name: string; manager: string | null; }
 
@@ -55,6 +56,10 @@ export interface HrEmployee {
   documents: HrDocRef[];
   /** Deadline for submitting the required-documents checklist — set at hire time (doj + 5 days). */
   documentsDeadline?: string | null;
+  /** PAN/Aadhaar/bank/education/experience checklist — see domain/kyc.ts. Separate from
+   * `documents` (the admin-configurable generic Required Documents list); this one has a fixed
+   * shape defined by HR policy, with per-slot text fields and validation. */
+  kycDocuments: HrKycDocuments;
   signedDocs: HrSignedDoc[];
   ctcSplitOverride?: HrCtcSplit | null;
   probationExtendedBy?: number | null;
@@ -194,6 +199,14 @@ export interface HrRules {
 
 export interface HrAuditLogEntry { ts: string; who: string; change: string; }
 
+/** Registered-entity identity shown on the Company Profile page — previously hardcoded directly
+ * in Company.tsx with no way to edit or persist a change. */
+export interface HrCompanyProfile {
+  companyName: string;
+  cin: string;
+  registeredState: string;
+}
+
 export interface HrBootstrap {
   teams: HrTeam[];
   orgStructure: HrOrgStructure;
@@ -211,6 +224,7 @@ export interface HrBootstrap {
   templates: HrTemplate[];
   rules: HrRules;
   auditLog: HrAuditLogEntry[];
+  companyProfile: HrCompanyProfile;
   /** Assigning-IDs credentials — used to show Employee ID/Role alongside attendance rows for Publisher/Event Admin punches. */
   employeeCredentials: HrEmployeeCredential[];
 }

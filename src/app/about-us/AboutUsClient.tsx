@@ -327,10 +327,12 @@ export default function AboutUsClient({ contentHtml }: { contentHtml: string }) 
 				className="max-w-[1200px] mx-auto mt-6 sm:mt-10 mb-2 sm:mb-4 bg-white text-au-ink"
 				style={{ fontFamily: SITE_FONT_FAMILY }}
 			>
-				<div className="px-5 md:px-10">
-					<PageBreadcrumb current="About Us" />
+				<div className="page-intro-animate">
+					<div className="px-5 md:px-10">
+						<PageBreadcrumb current="About Us" />
+					</div>
+					<PageHeading title="About Us" />
 				</div>
-				<PageHeading title="About Us" />
 
 				{/* HERO — image removed; lead statement, then the intelligence strip below it */}
 				<TaglineHero />

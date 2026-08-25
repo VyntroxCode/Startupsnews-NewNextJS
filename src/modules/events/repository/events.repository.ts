@@ -179,6 +179,7 @@ export class EventsRepository {
     excerpt?: string;
     description?: string;
     location: string;
+    country?: string | null;
     eventDate: Date | string;
     eventEndDate?: Date | string | null;
     eventTime?: string;
@@ -193,9 +194,9 @@ export class EventsRepository {
   }): Promise<EventEntity> {
     const sql = `
       INSERT INTO events (
-        title, slug, excerpt, description, location, event_date, event_end_date, event_time, event_end_time,
+        title, slug, excerpt, description, location, country, event_date, event_end_date, event_time, event_end_time,
         image_url, external_url, venue_address, google_location_link, speakers, status, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const eventDateStr = this.normalizeEventDate(data.eventDate);
     const eventEndDateStr = data.eventEndDate ? this.normalizeEventDate(data.eventEndDate) : null;
@@ -205,6 +206,7 @@ export class EventsRepository {
       data.excerpt || null,
       data.description || null,
       data.location,
+      data.country || null,
       eventDateStr,
       eventEndDateStr,
       data.eventTime || null,

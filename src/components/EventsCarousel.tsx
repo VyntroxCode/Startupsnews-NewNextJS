@@ -120,26 +120,11 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
     return () => window.clearInterval(id);
   }, [totalEvents, visibleCount, cardStep]);
 
-  // A normal vertical wheel/trackpad gesture over the row glides it sideways instead of
-  // scrolling the page — the "scroll it properly" behavior for mouse users. This has to be a
-  // real (non-passive) native listener: React attaches its onWheel/onTouchMove handlers as
-  // passive by default, so calling preventDefault() from a JSX onWheel prop is silently a no-op
-  // (the browser just logs a warning) and the page would scroll vertically underneath it too.
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    const onWheel = (e: WheelEvent) => {
-      if (track.scrollWidth <= track.clientWidth) return;
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
-      e.preventDefault();
-      track.scrollLeft += e.deltaY;
-      pauseAutoplay();
-    };
-    track.addEventListener("wheel", onWheel, { passive: false });
-    return () => track.removeEventListener("wheel", onWheel);
-  }, []);
-
   // Click-and-drag scrolling for desktop mouse users (touch/trackpad already scroll natively).
+  // Deliberately no vertical-wheel-to-horizontal-scroll hijack here (there used to be one) —
+  // it captured every plain mouse-wheel tick over the row, which meant normal page scrolling
+  // stopped working the moment the cursor crossed over a card. Horizontal movement is still
+  // fully available via drag, a trackpad's native horizontal swipe, and the arrow buttons/dots.
   const handlePointerDown = (e: React.PointerEvent<HTMLUListElement>) => {
     const track = trackRef.current;
     if (!track || e.pointerType !== "mouse") return;
@@ -155,7 +140,10 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
     const track = trackRef.current;
     if (!track || !isDragging.current) return;
     const dx = e.clientX - dragStartX.current;
-    if (Math.abs(dx) > 3) draggedRef.current = true;
+    // A real drag, not just the couple of pixels of mouse jitter a normal click naturally has —
+    // 3px was low enough that plain clicks kept getting misread as drags and silently swallowed
+    // (see handleClickCapture), breaking navigation into the card entirely.
+    if (Math.abs(dx) > 10) draggedRef.current = true;
     track.scrollLeft = dragStartScroll.current - dx;
   };
   const endDrag = () => {

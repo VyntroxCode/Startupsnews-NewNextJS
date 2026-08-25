@@ -162,7 +162,11 @@ export default function Attendance() {
           )}
         </div>
         <div className="meta" style={{ marginBottom: 10 }}>Window to request: within {state.rules.regularizationWindowDays} days of the attendance date. {state.rules.twoLevelApproval.attendance ? 'Manager approves first, then HR.' : 'HR approves directly (manager step off).'}</div>
-        <div className="card"><div className="table-scroll"><table><thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Requested Time</th><th>Reason</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
+        <div className="card"><div className="table-scroll wrap-table"><table>
+          <colgroup>
+            <col style={{ width: '14%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '11%' }} /><col style={{ width: '33%' }} /><col style={{ width: '12%' }} /><col style={{ width: '10%' }} />
+          </colgroup>
+          <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Requested Time</th><th>Reason</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
           <tbody>
             {regRows.map((r) => (
               <tr key={r.id}><td>{r.emp}</td><td>{r.date}</td><td>{r.punchType === 'out' ? 'Punch Out' : 'Punch In'}</td><td>{r.requestedTime || '—'}</td><td>{r.reason}</td><td><ApprovalBadge req={r} /></td>

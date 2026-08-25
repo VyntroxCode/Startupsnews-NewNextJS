@@ -91,6 +91,7 @@ export function entityToEvent(entity: EventEntity): StartupEvent {
     id: entity.id.toString(),
     slug: entity.slug,
     location: entity.location,
+    country: entity.country || undefined,
     date: formatDateString(entity.event_date),
     dateRange: buildDateRange(entity.event_date, entity.event_end_date),
     title: entity.title,

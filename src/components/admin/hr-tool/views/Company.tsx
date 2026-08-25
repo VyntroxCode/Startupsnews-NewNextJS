@@ -15,8 +15,31 @@ const SAMPLE_MERGE_DATA = {
 };
 
 export default function Company() {
-  const { state, logRuleChange } = useHrTool();
+  const { state, logRuleChange, persistCompanyProfile } = useHrTool();
   const [editing, setEditing] = useState<string | null>(null);
+
+  const [companyName, setCompanyName] = useState(state.companyProfile.companyName);
+  const [cin, setCin] = useState(state.companyProfile.cin);
+  const [registeredState, setRegisteredState] = useState(state.companyProfile.registeredState);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const profileDirty = companyName !== state.companyProfile.companyName || cin !== state.companyProfile.cin || registeredState !== state.companyProfile.registeredState;
+
+  async function saveCompanyProfile() {
+    if (!companyName.trim() || !cin.trim() || !registeredState.trim()) {
+      alert('Company name, CIN, and registered state cannot be blank.');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      await persistCompanyProfile({ companyName: companyName.trim(), cin: cin.trim(), registeredState: registeredState.trim() });
+      logRuleChange('Updated company registered details');
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
+    } finally {
+      setSavingProfile(false);
+    }
+  }
 
   return (
     <>
@@ -27,9 +50,21 @@ export default function Company() {
       <div className="grid grid-2">
         <div className="card pad">
           <div className="block-head"><h2>Registered details</h2></div>
-          <div className="field"><label className="field-label">Company name</label>DOTFYI Media Ventures Pvt. Ltd. (StartupNews.fyi)</div>
-          <div className="field"><label className="field-label">CIN</label>U22100DL2022PTC403240</div>
-          <div className="field"><label className="field-label">Registered state</label>Delhi</div>
+          <div className="field"><label className="field-label">Company name</label>
+            <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div className="field"><label className="field-label">CIN</label>
+            <input type="text" value={cin} onChange={(e) => setCin(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div className="field"><label className="field-label">Registered state</label>
+            <input type="text" value={registeredState} onChange={(e) => setRegisteredState(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+            <button className="btn sm" onClick={saveCompanyProfile} disabled={savingProfile || !profileDirty}>
+              {savingProfile ? 'Saving…' : 'Save company details'}
+            </button>
+            {profileSaved && <span className="meta">Saved ✓</span>}
+          </div>
         </div>
         <div className="card pad">
           <div className="block-head"><h2>Work policy (from Rules &amp; Org Structure)</h2></div>

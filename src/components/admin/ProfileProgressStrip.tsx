@@ -32,11 +32,19 @@ export default function ProfileProgressStrip({
         const res = await fetch(`${apiBase}/me`, { headers: getHeaders() });
         const json = await res.json();
         if (cancelled || !json.success || !json.data?.linked) return;
-        const documents = (json.data.documents || []) as { status: string }[];
-        if (documents.length === 0) return;
-        const done = documents.filter((d) => d.status === 'pending' || d.status === 'approved').length;
-        setTotal(documents.length);
-        setSubmitted(done);
+        // totalRequired/totalSubmitted (combined with the KYC checklist) are only present on the
+        // employee surface — fall back to the plain generic-checklist count for Publisher/Event
+        // Admin, which has no KYC section.
+        if (json.data.totalRequired !== undefined) {
+          if (json.data.totalRequired === 0) return;
+          setTotal(json.data.totalRequired);
+          setSubmitted(json.data.totalSubmitted ?? 0);
+        } else {
+          const documents = (json.data.documents || []) as { status: string }[];
+          if (documents.length === 0) return;
+          setTotal(documents.length);
+          setSubmitted(documents.filter((d) => d.status === 'pending' || d.status === 'approved').length);
+        }
         setPct(json.data.progressPct ?? 0);
         setDaysLeft(json.data.daysLeft ?? null);
       } catch {

@@ -1,6 +1,7 @@
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";
 import { getInnerPageContent } from "@/lib/data-adapter";
+import { HeadphonesIcon, MegaphoneIcon, BriefcaseIcon, GlobeIcon } from "@/components/icons";
 
 export const revalidate = 60;
 export const dynamic = "force-dynamic";
@@ -10,7 +11,10 @@ export const dynamic = "force-dynamic";
 const DEFAULT_CONTENT = (
   <div className="contact-us-sections">
     <div className="contact-us-section-item">
-      <h2 className="contact-us-section-item-title">Quick Support</h2>
+      <h2 className="contact-us-section-item-title">
+        <span className="contact-us-section-item-icon"><HeadphonesIcon /></span>
+        Quick Support
+      </h2>
       <p className="contact-us-section-item-body">
         Please chat with our team using the chat widget at the bottom right hand corner of this page, which typically offers the fastest support.
       </p>
@@ -23,7 +27,10 @@ const DEFAULT_CONTENT = (
     </div>
 
     <div className="contact-us-section-item">
-      <h2 className="contact-us-section-item-title">Press</h2>
+      <h2 className="contact-us-section-item-title">
+        <span className="contact-us-section-item-icon"><MegaphoneIcon /></span>
+        Press
+      </h2>
       <p className="contact-us-section-item-body">
         For all press inquiries or press releases, please email at{" "}
         <a href="mailto:publishing@startupnews.fyi">
@@ -33,7 +40,10 @@ const DEFAULT_CONTENT = (
     </div>
 
     <div className="contact-us-section-item">
-      <h2 className="contact-us-section-item-title">Careers</h2>
+      <h2 className="contact-us-section-item-title">
+        <span className="contact-us-section-item-icon"><BriefcaseIcon /></span>
+        Careers
+      </h2>
       <p className="contact-us-section-item-body">
         For information regarding careers with us, please email at{" "}
         <a className="contact-us-section-item-link" href="mailto:office@startupnews.fyi">
@@ -43,7 +53,10 @@ const DEFAULT_CONTENT = (
     </div>
 
     <div className="contact-us-section-item">
-      <h2 className="contact-us-section-item-title">Website Support</h2>
+      <h2 className="contact-us-section-item-title">
+        <span className="contact-us-section-item-icon"><GlobeIcon /></span>
+        Website Support
+      </h2>
     </div>
   </div>
 );
@@ -55,10 +68,12 @@ export default async function ContactUsPage() {
     <div
       id="mvp-article-cont"
       className="left relative contact-us-custom-page">
-      <div className="px-6 pt-2">
-        <PageBreadcrumb current="Contact Us" />
+      <div className="page-intro-animate">
+        <div className="px-6 pt-2">
+          <PageBreadcrumb current="Contact Us" />
+        </div>
+        <PageHeading title="Contact Us" />
       </div>
-      <PageHeading title="Contact Us" />
 
       <div className="kt-row-column-wrap">
         <section className="contact-us-section">

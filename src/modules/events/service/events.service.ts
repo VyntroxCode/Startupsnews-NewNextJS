@@ -152,6 +152,7 @@ export class EventsService {
     if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.location !== undefined) updateData.location = data.location;
+    if (data.country !== undefined) updateData.country = data.country;
     if (data.eventDate !== undefined) {
       updateData.event_date = data.eventDate;
     }

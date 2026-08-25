@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from 'react';
 import { useHrTool } from '../HrToolContext';
 import { addDays, mergeTemplate, nextEmployeeId, todayStr } from '../utils';
+import { emptyKycDocuments } from '../types';
 
 type Screen = 'login' | 'sign-offer' | 'signed';
 
@@ -45,6 +46,7 @@ export default function Login() {
       id: newId, name: o.name, email: o.name.toLowerCase().replace(/\s+/g, '.') + '@snf.co', phone: null, designation: o.designation,
       team: o.team, manager: teamManager, status: 'onboarding', doj: today, sysRole: 'Employee', ctc: o.ctc,
       leaveBalance: { Casual: 0, Sick: 0, Earned: 0 }, documents: [],
+      kycDocuments: emptyKycDocuments(),
       signedDocs: [{ type: 'Offer Letter', content: offerMerged, signedDate: today }],
     };
     await persistOnboarding(updatedOnboarding);

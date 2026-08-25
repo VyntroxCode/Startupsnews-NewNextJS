@@ -5,6 +5,7 @@ import { getAuthHeaders } from '@/lib/admin-auth';
 import { latenessBucket, combinedAttendanceBucket, type ShiftSettings, type LatenessBucket } from '@/modules/hr-tool/utils/lateness';
 
 interface AttendanceDayRecord { date: string; status: string; inTime: string; outTime: string; inMinutes: number | null; outMinutes: number | null; }
+interface HolidayRecord { date: string; name: string; }
 interface RegularizationRecord {
   id: string; date: string; reason: string; punchType: 'in' | 'out'; requestedTime: string | null;
   stage: string; status: string; rmRemarks: string; hrRemarks: string;
@@ -15,6 +16,7 @@ interface AttendanceMeData {
   name?: string;
   month?: string;
   calendar?: AttendanceDayRecord[];
+  holidays?: HolidayRecord[];
   shiftRules?: ShiftSettings & { shiftEndTime: string };
   regularizations?: RegularizationRecord[];
   regularizationPolicy?: { windowDays: number; monthlyQuota: number; usedThisMonth: number };
@@ -98,6 +100,11 @@ const BUCKET_LABEL: Record<LatenessBucket, string> = {
 const REG_COLORS = { bg: '#dbeafe', border: '#60a5fa', text: '#1e40af' };
 const REG_STATUS_LABEL: Record<string, string> = { pending: 'Pending admin approval', approved: 'Approved', rejected: 'Rejected' };
 const REG_TYPE_LABEL: Record<'in' | 'out', string> = { in: 'Punch In', out: 'Punch Out' };
+
+/** A day on the admin's Holiday calendar (HR Management → Rules & Org Structure) — shown in
+ * violet, distinct from every lateness/regularization color, on both the calendar grid and the
+ * selected-date detail panel. */
+const HOLIDAY_COLORS = { bg: '#ede9fe', border: '#a78bfa', text: '#6d28d9' };
 
 function LegendDot({ color, border, label }: { color: string; border: string; label: string }) {
   return (
@@ -217,6 +224,12 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
     return map;
   }, [data]);
 
+  const holidayMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (data?.holidays || []).forEach((h) => map.set(h.date, h.name));
+    return map;
+  }, [data]);
+
   function selectDate(dateStr: string) {
     setSelectedDate(dateStr);
     setRegFormOpen(null);
@@ -257,7 +270,8 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const isSelectedToday = selectedDate === today;
   const hasIn = !!selectedRecord?.inTime && selectedRecord.inTime !== '—';
   const hasOut = !!selectedRecord?.outTime && selectedRecord.outTime !== '—';
-  const rowStatus = selectedRecord?.status || (isSelectedToday ? 'Not punched in yet' : 'No record');
+  const selectedHoliday = holidayMap.get(selectedDate);
+  const rowStatus = selectedHoliday ? `Holiday — ${selectedHoliday}` : selectedRecord?.status || (isSelectedToday ? 'Not punched in yet' : 'No record');
   // Combined bucket (arrival time + hours worked, worse of the two) drives the day's displayed
   // status/color; the pure arrival-time bucket separately gates punch-in Regularization, since
   // that's specifically about correcting the punch-in itself, not the day's overall outcome —
@@ -438,7 +452,11 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             const rec = calendarMap.get(dateStr);
             const bucket = shiftRules ? combinedAttendanceBucket(rec?.inMinutes ?? null, rec?.outMinutes ?? null, shiftRules, false) : null;
             const isRegularized = regularizationByDate.has(dateStr);
-            const colors = isRegularized ? REG_COLORS : bucket ? BUCKET_COLORS[bucket] : null;
+            const holidayName = holidayMap.get(dateStr);
+            // Regularization is the most actionable status, so it still wins if a request happens
+            // to land on a holiday; otherwise a holiday must win over the plain attendance bucket,
+            // since no punch on a non-working day would otherwise render as a false "Absent".
+            const colors = isRegularized ? REG_COLORS : holidayName ? HOLIDAY_COLORS : bucket ? BUCKET_COLORS[bucket] : null;
             const isSelected = dateStr === selectedDate;
             const isToday = dateStr === today;
             return (
@@ -446,6 +464,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                 type="button"
                 key={dateStr}
                 onClick={() => selectDate(dateStr)}
+                title={holidayName}
                 style={{
                   minHeight: '3.75rem',
                   borderRadius: '8px',
@@ -465,12 +484,14 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
               >
                 <span>{day}</span>
                 {isToday && <span style={{ fontSize: '0.625rem', fontWeight: 600 }}>Today</span>}
+                {!isToday && holidayName && <span style={{ fontSize: '0.625rem', fontWeight: 600 }}>Holiday</span>}
               </button>
             );
           })}
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+          <LegendDot color={HOLIDAY_COLORS.bg} border={HOLIDAY_COLORS.border} label="Holiday" />
           <LegendDot color={BUCKET_COLORS['on-time'].bg} border={BUCKET_COLORS['on-time'].border} label={BUCKET_LABEL['on-time']} />
           <LegendDot color={BUCKET_COLORS.grace.bg} border={BUCKET_COLORS.grace.border} label={BUCKET_LABEL.grace} />
           <LegendDot color={BUCKET_COLORS['short-leave'].bg} border={BUCKET_COLORS['short-leave'].border} label={BUCKET_LABEL['short-leave']} />

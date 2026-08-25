@@ -36,7 +36,7 @@ export function HomeDarkSection({ title, categorySlug, featured, list,url }: Hom
                         alt={featured.title}
                         fill
                         sizes="(max-width: 767px) 100vw, 740px"
-                        style={{ objectFit: "cover" }}
+                        style={{ objectFit: "fill" }}
                       />
                     </div>
                     <div className="mvp-widget-dark-feat-text left relative">
@@ -61,7 +61,7 @@ export function HomeDarkSection({ title, categorySlug, featured, list,url }: Hom
                           alt={post.title}
                           width={400}
                           height={240}
-                          style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                          style={{ width: "100%", height: "auto", objectFit: "fill" }}
                           sizes="(max-width: 767px) 100vw, 400px"
                         />
                       </div>

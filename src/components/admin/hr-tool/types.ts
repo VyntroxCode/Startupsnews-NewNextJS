@@ -2,8 +2,11 @@ export type {
   HrTeam, HrHoliday, HrOrgStructure, HrDocRef, HrSignedDoc, HrCtcSplit, HrCtcBreakdown, HrEmployee,
   HrOnboardingAssets, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrApprovalBase, HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask,
-  HrPayrollRun, HrPayrollEntry, HrTemplate, HrRules, HrAuditLogEntry, HrBootstrap,
+  HrPayrollRun, HrPayrollEntry, HrTemplate, HrRules, HrAuditLogEntry, HrBootstrap, HrCompanyProfile,
 } from '@/modules/hr-tool/domain/types';
+
+export type { HrKycDocuments, KycSlotDef, KycSectionDef } from '@/modules/hr-tool/domain/kyc';
+export { KYC_SECTIONS, emptyKycDocuments } from '@/modules/hr-tool/domain/kyc';
 
 export type HrRole = 'HR Head' | 'Founder' | 'Reporting Manager' | 'Employee';
 

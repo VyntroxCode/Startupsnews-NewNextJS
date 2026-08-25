@@ -2,6 +2,7 @@ import { getAuthHeaders } from '@/lib/admin-auth';
 import type {
   HrBootstrap, HrTeam, HrEmployee, HrOnboarding, HrRegularization, HrLeaveRequest, HrExpense,
   HrTicket, HrRules, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPayrollEntry, HrAuditLogEntry,
+  HrCompanyProfile,
 } from './types';
 
 const API_BASE = '/api/admin/hr-tool';
@@ -52,6 +53,7 @@ export const hrApi = {
   saveExpenses: (v: HrExpense[]) => apiPut('/expenses', v),
   saveTickets: (v: HrTicket[]) => apiPut('/tickets', v),
   saveRules: (v: HrRules) => apiPut('/rules', v),
+  saveCompanyProfile: (v: HrCompanyProfile) => apiPut('/company-profile', v),
   recordAttendance: (v: HrAttendanceRecord) => apiPost('/attendance', v),
   recordAttendanceOverride: (v: HrAttendanceOverride) => apiPost('/attendance-overrides', v),
   recordPunch: (v: HrPunch) => apiPost('/punch-log', v),

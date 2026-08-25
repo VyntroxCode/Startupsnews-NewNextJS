@@ -13,6 +13,13 @@ export interface StartupEvent {
   id?: string | number;
   slug?: string;
   location: string;
+  /** The actual country this event belongs to (e.g. "India") — distinct from `location`, which
+   * is the specific city/region (e.g. "Mathura") shown as the sub-heading on /events. Without
+   * this, grouping by country had to guess from the city name via a small hardcoded list, and
+   * any city not on that list (e.g. Mathura) silently became its own top-level section instead
+   * of nesting under India. Optional because older events created before this field existed
+   * don't have it — /events falls back to the old guessing behavior for those. */
+  country?: string;
   date: string;
   /** Pre-formatted "23 August - 25 August 2026"-style single/range label — build once in
    * entityToEvent so every consumer (cards, detail page) renders the same clean date, instead of
@@ -42,6 +49,7 @@ export interface EventEntity {
   excerpt?: string;
   description?: string;
   location: string;
+  country?: string | null;
   // Dates from MariaDB are returned as strings, but we type them as Date | string for flexibility
   event_date: Date | string;
   event_end_date?: Date | string | null;
@@ -70,6 +78,7 @@ export interface CreateEventDto {
   excerpt?: string;
   description?: string;
   location: string;
+  country?: string | null;
   eventDate: Date | string;
   eventEndDate?: Date | string | null;
   eventTime?: string | null;

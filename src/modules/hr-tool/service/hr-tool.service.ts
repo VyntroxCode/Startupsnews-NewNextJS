@@ -1,10 +1,11 @@
 import { HrToolRepository } from '../repository/hr-tool.repository';
 import {
   HrBootstrap, HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
-  HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrPayrollEntry, HrRules, HrAuditLogEntry,
+  HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrPayrollEntry, HrRules, HrAuditLogEntry, HrCompanyProfile,
 } from '../domain/types';
 import { todayStr, nowTimeStr, nowMinutesSinceMidnight, monthRange, payrollPeriodRange, eachDateInRange, isSunday, addDaysUTC, daysUntil } from '../utils/time';
 import { latenessBucket } from '../utils/lateness';
+import { HrKycDocuments, getKycSlotDef, mergeKycDocuments, validateKycField, computeKycProgress } from '../domain/kyc';
 
 export interface PayrollPreview {
   month: string;
@@ -60,6 +61,15 @@ const DEFAULT_RULES: HrRules = {
   assetChecklist: true,
 };
 
+// Same values that used to be hardcoded directly in Company.tsx — used only if the
+// hr_company_profile row is somehow missing (e.g. migration not yet run), matching the
+// DEFAULT_RULES fallback pattern above.
+const DEFAULT_COMPANY_PROFILE: HrCompanyProfile = {
+  companyName: 'DOTFYI Media Ventures Pvt. Ltd. (StartupNews.fyi)',
+  cin: 'U22100DL2022PTC403240',
+  registeredState: 'Delhi',
+};
+
 export class HrToolService {
   constructor(private repository: HrToolRepository) {}
 
@@ -70,6 +80,7 @@ export class HrToolService {
       teams, designations, expenseCategories, requiredDocuments, holidays,
       employees, onboarding, attendance, attendanceOverrides, punchLog,
       regularizations, leaveRequests, expenses, tickets, compliance, payrollRuns, templates, rules, auditLog,
+      companyProfile,
     ] = await Promise.all([
       this.repository.findTeams(),
       this.repository.findNameList('hr_designations'),
@@ -90,6 +101,7 @@ export class HrToolService {
       this.repository.findTemplates(),
       this.repository.findRules(),
       this.repository.findAuditLog(),
+      this.repository.findCompanyProfile(),
     ]);
 
     return {
@@ -109,6 +121,7 @@ export class HrToolService {
       templates,
       rules: rules || DEFAULT_RULES,
       auditLog,
+      companyProfile: companyProfile || DEFAULT_COMPANY_PROFILE,
     };
   }
 
@@ -285,9 +298,69 @@ export class HrToolService {
     return { ok: true };
   }
 
+  /** The employee's own KYC & Personal Documents checklist (PAN, Aadhaar, bank, education,
+   * experience — see domain/kyc.ts), merged against the fixed slot schema so a slot never
+   * missing just because it was added to the checklist after this employee's row was created. */
+  async getKycForCredential(credentialId: number, name: string): Promise<{
+    linked: boolean; documents?: HrKycDocuments; progress?: { total: number; submitted: number; pct: number };
+  }> {
+    const employee = await this.repository.findEmployeeByCredential(credentialId, name);
+    if (!employee) return { linked: false };
+    const documents = mergeKycDocuments(employee.kycDocuments);
+    return { linked: true, documents, progress: computeKycProgress(documents) };
+  }
+
+  /** Saves one KYC slot's file and/or text fields for the logged-in employee. Any provided field
+   * value is validated against that slot's own pattern (e.g. PAN/Aadhaar format) regardless of
+   * whether the slot is required — a malformed number is never accepted just because the slot is
+   * optional. The slot only advances to 'pending' (ready for HR review) once it has a file AND
+   * every one of its fields is present and valid; editing a previously-approved slot's data or
+   * file bumps it back to 'pending' for re-review. */
+  async saveKycSlot(
+    credentialId: number, name: string, slotKey: string, input: { fields?: Record<string, string>; url?: string }
+  ): Promise<{ ok: boolean; error?: string }> {
+    const slotDef = getKycSlotDef(slotKey);
+    if (!slotDef) return { ok: false, error: 'Not a recognised KYC document type.' };
+
+    const employee = await this.repository.findEmployeeByCredential(credentialId, name);
+    if (!employee) return { ok: false, error: 'No Directory record is linked to this login yet.' };
+
+    const documents = mergeKycDocuments(employee.kycDocuments);
+    const current = documents[slotKey];
+
+    const nextFields = { ...current.fields };
+    if (input.fields) {
+      for (const fieldDef of slotDef.fields) {
+        if (!(fieldDef.key in input.fields)) continue;
+        const { value, error } = validateKycField(fieldDef, input.fields[fieldDef.key]);
+        if (error) return { ok: false, error: `${fieldDef.label}: ${error}` };
+        nextFields[fieldDef.key] = value;
+      }
+    }
+    const nextUrl = input.url !== undefined ? input.url : current.url;
+    const isComplete = !!nextUrl && slotDef.fields.every((f) => {
+      const { value, error } = validateKycField(f, nextFields[f.key] || '');
+      return !!value && !error;
+    });
+
+    documents[slotKey] = {
+      status: isComplete ? 'pending' : 'not_uploaded',
+      url: nextUrl,
+      uploadedAt: nextUrl ? (current.uploadedAt && input.url === undefined ? current.uploadedAt : todayStr()) : null,
+      remarks: isComplete ? null : current.remarks,
+      fields: nextFields,
+    };
+
+    await this.repository.updateEmployeeKyc(employee.id, documents);
+    return { ok: true };
+  }
+
   saveExpenseCategories(names: string[]) { return this.repository.replaceNameList('hr_expense_categories', names); }
   saveRequiredDocuments(names: string[]) { return this.repository.replaceNameList('hr_required_documents', names); }
   saveHolidays(holidays: HrHoliday[]) { return this.repository.replaceHolidays(holidays); }
+  /** The admin's Holiday calendar (Rules & Org Structure) — read access for callers outside the
+   * native HR tool bootstrap, e.g. the Employee Panel's own attendance calendar. */
+  getHolidays(): Promise<HrHoliday[]> { return this.repository.findHolidays(); }
   saveEmployees(employees: HrEmployee[]) { return this.repository.replaceEmployees(employees); }
   saveOnboarding(items: HrOnboarding[]) { return this.repository.replaceOnboarding(items); }
   recordAttendance(rec: HrAttendanceRecord) { return this.repository.upsertAttendance(rec); }
@@ -347,6 +420,7 @@ export class HrToolService {
   saveTickets(items: HrTicket[]) { return this.repository.replaceTickets(items); }
   saveTemplate(name: string, content: string) { return this.repository.upsertTemplate(name, content); }
   saveRules(rules: HrRules) { return this.repository.saveRules(rules); }
+  saveCompanyProfile(profile: HrCompanyProfile, actor?: string) { return this.repository.saveCompanyProfile(profile, actor); }
   appendAuditLog(entry: HrAuditLogEntry) { return this.repository.appendAuditLog(entry); }
 
   /**

@@ -121,6 +121,18 @@ const STATUS_COLOR_HEX: Record<string, string> = {
   Ticketing: '#2563C7', Cancelled: '#C22B44', Expired: '#3F4552', Unmapped: '#9CA3AF',
 };
 const TYPE_COLOR_HEX: Record<string, string> = { 'In-person': '#0D9488', Cohort: '#7C3FE0', 'Online (virtual)': '#D97706' };
+// Domestic (India) vs international at-a-glance in the Country column — light blue for India,
+// amber for everywhere else. Non-geographic values (Cohort, Online, blank) aren't really
+// "international" either way, so they're left uncolored rather than guessed at.
+const DOMESTIC_COUNTRY_COLOR = '#2E86DE';
+const INTERNATIONAL_COUNTRY_COLOR = '#D97706';
+function countryPillColor(country: string | undefined | null): string | null {
+  const c = country?.trim().toLowerCase();
+  if (!c) return null;
+  if (c === 'india') return DOMESTIC_COUNTRY_COLOR;
+  if (c === 'cohort' || c === 'online') return null;
+  return INTERNATIONAL_COUNTRY_COLOR;
+}
 
 /* ============================================================
    DERIVED FIELDS (mirrors the original standalone tool)
@@ -871,7 +883,7 @@ export default function PartnershipTrackerPage() {
   const filtered = useMemo(() => {
     let list = events.slice();
     if (monthFilter) list = list.filter((e) => e.eventStartDate && monthKey(e.eventStartDate) === monthFilter);
-    if (cardFilter === 'Listed') list = list.filter((e) => isLiveListed(e, derivedById.get(e.id)!.statusBucket));
+    if (cardFilter === 'Listed') list = list.filter((e) => isListedStatus(derivedById.get(e.id)!.statusBucket));
     else if (cardFilter) list = list.filter((e) => derivedById.get(e.id)!.statusBucket === cardFilter);
 
     const q = deferredSearch.trim().toLowerCase();
@@ -881,7 +893,7 @@ export default function PartnershipTrackerPage() {
     // Expired is still explicitly selectable from this same dropdown for a deliberate manual
     // check; Unmapped isn't offered there at all (not a real status, just "couldn't classify").
     if (statusFilter === 'all') list = list.filter((e) => !DEFAULT_HIDDEN_STATUSES.includes(derivedById.get(e.id)!.statusBucket));
-    else if (statusFilter === 'Listed') list = list.filter((e) => isLiveListed(e, derivedById.get(e.id)!.statusBucket));
+    else if (statusFilter === 'Listed') list = list.filter((e) => isListedStatus(derivedById.get(e.id)!.statusBucket));
     else list = list.filter((e) => derivedById.get(e.id)!.statusBucket === statusFilter);
     if (typeFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.partnershipTypeResolved === typeFilter);
     if (listingFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.statusBucket === listingFilter);
@@ -1007,7 +1019,6 @@ export default function PartnershipTrackerPage() {
     }
     if (!effectiveDraft.eventName.trim()) { setModalError('Event name is required.'); return; }
     if (!draft.posterUrl.trim()) { setModalError('Event poster is required.'); return; }
-    if (!draft.bannerUrl.trim()) { setModalError('Event banner is required.'); return; }
     const publishRequiredMsg = (field: string) =>
       `${field} is required to Publish or Cancel this on the website — fill it in, or leave Website Listing Status as Draft for now.`;
     if (draft.siteStatus !== 'draft') {
@@ -1370,17 +1381,22 @@ export default function PartnershipTrackerPage() {
               })}
               <div
                 className={`pt-card ${cardFilter === 'Listed' ? 'active' : ''}`}
-                style={{ ['--dot' as string]: counts.listed === counts.listedClaimed ? '#7C3FE0' : '#C22B44' }}
+                style={{ ['--dot' as string]: '#7C3FE0' }}
                 onClick={() => setCard('Listed')}
-                title={counts.listed === counts.listedClaimed ? undefined : `${counts.listedClaimed} event(s) are marked Partnership Done / Only Listed, but only ${counts.listed} actually have a live page on the site — check for missing or still-Draft listings.`}
+                title={counts.listed === counts.listedClaimed ? undefined : `${counts.listed} of these ${counts.listed === 1 ? 'is' : 'are'} actually live on the site right now — the rest are marked Partnership Done / Only Listed but have no live page yet (missing or still-Draft listing).`}
               >
                 <div className="pt-card-label">
                   <span className="pt-dot" />Listed
-                  {counts.listed !== counts.listedClaimed && <span className="pt-card-warn-icon">⚠</span>}
                 </div>
-                <div className="pt-card-count">{counts.listed}</div>
+                {/* Total count of Partnership Done + Only Listing status, regardless of whether
+                    the linked website page is actually live yet — see isListedStatus. The
+                    stricter "actually live right now" count (isLiveListed) is shown as a small
+                    note below instead of gating the headline number, which is what made this
+                    card read as "very low" before — most Partnership Done/Only Listed events
+                    don't have a published (non-Draft) linked Event yet. */}
+                <div className="pt-card-count">{counts.listedClaimed}</div>
                 {counts.listed !== counts.listedClaimed && (
-                  <div className="pt-card-warn-text">{counts.listedClaimed} claimed vs {counts.listed} live</div>
+                  <div className="pt-card-warn-text">{counts.listed} live on site now</div>
                 )}
               </div>
             </div>
@@ -1543,12 +1559,13 @@ export default function PartnershipTrackerPage() {
                       <th onClick={() => toggleSort('eventEndDate')}>End date{sortKey === 'eventEndDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
                       <th>Type</th>
                       <th>Status</th>
+                      <th>View</th>
                       <th>Comment</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageList.length === 0 ? (
-                      <tr><td colSpan={9} className="pt-empty">No events match these filters.</td></tr>
+                      <tr><td colSpan={10} className="pt-empty">No events match these filters.</td></tr>
                     ) : pageList.map((e) => {
                       const d = derivedById.get(e.id)!;
                       const statusColor = STATUS_COLOR_HEX[d.statusBucket] || '#9CA3AF';
@@ -1572,7 +1589,16 @@ export default function PartnershipTrackerPage() {
                             <div className="pt-ev-title">{e.eventName}</div>
                           </td>
                           <td className="pt-col-city">{e.city || <span className="pt-muted">—</span>}</td>
-                          <td className="pt-col-country">{e.country || <span className="pt-muted">—</span>}</td>
+                          <td className="pt-col-country">
+                            {e.country ? (
+                              (() => {
+                                const countryColor = countryPillColor(e.country);
+                                return countryColor
+                                  ? <span className="pt-pill" style={{ color: countryColor, borderColor: countryColor, background: `${countryColor}1A` }}>{e.country}</span>
+                                  : e.country;
+                              })()
+                            ) : <span className="pt-muted">—</span>}
+                          </td>
                           <td className="pt-mono pt-col-date">
                             {fmtMonthDay(e.eventStartDate)}
                             <div className="pt-cell-sub">{fmtYear(e.eventStartDate)}{startTime ? ` · ${startTime}` : ''}</div>
@@ -1589,6 +1615,13 @@ export default function PartnershipTrackerPage() {
                           </td>
                           <td className="pt-col-status">
                             <span className="pt-pill" style={{ color: statusColor, borderColor: statusColor, background: `${statusColor}1A` }}>{d.statusBucket}</span>
+                          </td>
+                          <td className="pt-col-view" onClick={(ev) => ev.stopPropagation()}>
+                            {e.linkedEvent ? (
+                              <a href={`/startup-events/${e.linkedEvent.slug}`} target="_blank" rel="noopener noreferrer" className="pt-view-btn">View</a>
+                            ) : (
+                              <span className="pt-muted" title="Not listed on the site yet">—</span>
+                            )}
                           </td>
                           <td className="pt-col-comment" title={e.comment}>{e.comment || <span className="pt-muted">—</span>}</td>
                         </tr>
@@ -1880,9 +1913,9 @@ export default function PartnershipTrackerPage() {
               <div className="pt-hint" style={{ marginBottom: 6 }}>{POSTER_SPEC}</div>
               <ImageUpload value={draft.posterUrl} onChange={(url) => setDraft({ ...draft, posterUrl: url })} label="Event poster" required exactDimensions={IMAGE_SPECS.cover} />
 
-              <div className="pt-section-title">8. Event banner (homepage) *</div>
+              <div className="pt-section-title">8. Event banner (homepage)</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>{BANNER_SPEC}</div>
-              <ImageUpload value={draft.bannerUrl} onChange={(url) => setDraft({ ...draft, bannerUrl: url })} label="Homepage banner" required exactDimensions={IMAGE_SPECS.banner} />
+              <ImageUpload value={draft.bannerUrl} onChange={(url) => setDraft({ ...draft, bannerUrl: url })} label="Homepage banner" exactDimensions={IMAGE_SPECS.banner} />
 
               <div className="pt-section-title">9. Social media posts</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>Suggested content only — we&apos;ll recreate and finalise this to match our page before publishing.</div>
@@ -2139,7 +2172,14 @@ export default function PartnershipTrackerPage() {
         .pt-col-date { max-width: 90px; }
         .pt-col-type { max-width: 120px; }
         .pt-col-status { max-width: 130px; }
+        .pt-col-view { max-width: 70px; text-align: center; }
         .pt-col-comment { max-width: 150px; }
+        .pt-view-btn {
+          display: inline-flex; align-items: center; justify-content: center; border-radius: 20px;
+          font-size: 11.5px; font-weight: 600; padding: 3px 12px; border: 1px solid var(--accent);
+          color: var(--accent); text-decoration: none; white-space: nowrap;
+        }
+        .pt-view-btn:hover { background: var(--accent); color: #fff; }
         /* Event name wraps onto a second line instead of the single-line ellipsis every other
            column uses — long titles were getting cut off after just a few words. */
         .pt-wrap td.pt-sticky { white-space: normal; overflow: visible; text-overflow: clip; }

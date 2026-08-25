@@ -212,6 +212,8 @@ function HrToolStyles() {
       .hr-tool-app .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .hr-tool-app table { width: 100%; border-collapse: collapse; font-size: 13px; }
       .hr-tool-app .table-scroll table { min-width: max-content; }
+      .hr-tool-app .table-scroll.wrap-table table { min-width: 100%; table-layout: fixed; }
+      .hr-tool-app .table-scroll.wrap-table td, .hr-tool-app .table-scroll.wrap-table th { white-space: normal; word-break: break-word; }
       .hr-tool-app th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; padding: 9px 14px; border-bottom: 1px solid var(--line); }
       .hr-tool-app td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
       .hr-tool-app tr:last-child td { border-bottom: none; }

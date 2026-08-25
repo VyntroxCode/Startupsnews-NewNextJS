@@ -9,8 +9,9 @@ import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types
 import type {
   HrTeam, HrOrgStructure, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrRules,
-  HrAuditLogEntry, HrRole, HrView,
+  HrAuditLogEntry, HrRole, HrView, HrCompanyProfile,
 } from './types';
+import { emptyKycDocuments } from './types';
 
 interface HrState {
   role: HrRole | null;
@@ -33,6 +34,7 @@ interface HrState {
   templates: Record<string, { content: string }>;
   rules: HrRules;
   auditLog: HrAuditLogEntry[];
+  companyProfile: HrCompanyProfile;
 }
 
 const DEFAULT_RULES: HrRules = {
@@ -47,6 +49,12 @@ const DEFAULT_RULES: HrRules = {
   optionalHolidayChoice: true, assetChecklist: true,
 };
 
+// Placeholder shown only until bootstrap loads the real (or migration-seeded) row — see
+// HrToolService's own DEFAULT_COMPANY_PROFILE for the source of truth these mirror.
+const DEFAULT_COMPANY_PROFILE: HrCompanyProfile = {
+  companyName: 'DOTFYI Media Ventures Pvt. Ltd. (StartupNews.fyi)', cin: 'U22100DL2022PTC403240', registeredState: 'Delhi',
+};
+
 function initialState(): HrState {
   return {
     role: null, view: 'dashboard', currentUser: null, teams: [],
@@ -54,7 +62,7 @@ function initialState(): HrState {
     employees: [], employeeCredentials: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
     regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
     payrollRun: { month: payrollCycleToRunKey(DEFAULT_RULES), status: 'not_run' },
-    templates: {}, rules: DEFAULT_RULES, auditLog: [],
+    templates: {}, rules: DEFAULT_RULES, auditLog: [], companyProfile: DEFAULT_COMPANY_PROFILE,
   };
 }
 
@@ -81,6 +89,7 @@ function resolveFounder(employees: HrEmployee[]): HrEmployee {
     ctc: 0,
     leaveBalance: {},
     documents: [],
+    kycDocuments: emptyKycDocuments(),
     signedDocs: [],
   };
 }
@@ -106,6 +115,7 @@ interface HrToolContextValue {
   persistExpenses: (v: HrExpense[]) => Promise<void>;
   persistTickets: (v: HrTicket[]) => Promise<void>;
   persistRules: (v: HrRules) => Promise<void>;
+  persistCompanyProfile: (v: HrCompanyProfile) => Promise<void>;
   persistAttendance: (rec: HrAttendanceRecord) => Promise<void>;
   persistAttendanceOverride: (o: HrAttendanceOverride) => Promise<void>;
   persistPunch: (p: HrPunch) => Promise<void>;
@@ -150,6 +160,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
             tickets: data.tickets, compliance: data.compliance,
             payrollRun: currentMonthRun || s.payrollRun,
             templates, rules: data.rules || s.rules, auditLog: data.auditLog || [],
+            companyProfile: data.companyProfile || s.companyProfile,
             currentUser: resolveFounder(data.employees),
             role: 'Founder',
           };
@@ -189,6 +200,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const persistExpenses = useCallback(async (v: HrExpense[]) => { setState((s) => ({ ...s, expenses: v })); try { await hrApi.saveExpenses(v); } catch { warnSaveFailed(); } }, []);
   const persistTickets = useCallback(async (v: HrTicket[]) => { setState((s) => ({ ...s, tickets: v })); try { await hrApi.saveTickets(v); } catch { warnSaveFailed(); } }, []);
   const persistRules = useCallback(async (v: HrRules) => { setState((s) => ({ ...s, rules: v })); try { await hrApi.saveRules(v); } catch { warnSaveFailed(); } }, []);
+  const persistCompanyProfile = useCallback(async (v: HrCompanyProfile) => { setState((s) => ({ ...s, companyProfile: v })); try { await hrApi.saveCompanyProfile(v); } catch { warnSaveFailed(); } }, []);
   const persistAttendance = useCallback(async (rec: HrAttendanceRecord) => {
     setState((s) => {
       const idx = s.attendance.findIndex((a) => a.emp === rec.emp && a.date === rec.date);
@@ -255,13 +267,13 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     state, loading, loadError, setView, login, logout, logRuleChange,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
-    persistTickets, persistRules, persistAttendance, persistAttendanceOverride, persistPunch,
+    persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
     state, loading, loadError, setView, login, logout, logRuleChange,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
-    persistTickets, persistRules, persistAttendance, persistAttendanceOverride, persistPunch,
+    persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   ]);
 

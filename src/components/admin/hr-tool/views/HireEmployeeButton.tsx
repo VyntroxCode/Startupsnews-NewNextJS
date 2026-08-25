@@ -12,6 +12,7 @@ import { generateJoiningLetterPdf, generatePlainLetterPdf, triggerPdfDownload } 
 const DOCUMENTS_WINDOW_DAYS = 5;
 import { copyToClipboard, CredentialFields, EmployeeIdField, nextEmployeeCode, validateCredentialFields, type CredentialFormState } from './CredentialFields';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
+import { emptyKycDocuments } from '../types';
 
 function DesignationSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { state, persistDesignations, logRuleChange } = useHrTool();
@@ -194,6 +195,7 @@ export default function HireEmployeeButton({ label, className }: { label: string
         status: 'active', doj: preview.doj, sysRole: 'Employee', ctc,
         leaveBalance: { Casual: 6, Sick: 6, Earned: 10 }, documents,
         documentsDeadline: documents.length ? addDays(preview.doj, DOCUMENTS_WINDOW_DAYS) : null,
+        kycDocuments: emptyKycDocuments(),
         signedDocs: [{ type: 'Offer Letter', content: offerMerged, signedDate: today }],
       };
       await persistEmployees([...state.employees, newEmployee]);

@@ -3,16 +3,18 @@ import { findAllRows, replaceAllRows, parseJsonColumn, SqlParam } from './shared
 import {
   HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrTemplate,
-  HrRules, HrAuditLogEntry,
+  HrRules, HrAuditLogEntry, HrCompanyProfile,
 } from '../domain/types';
+import { HrKycDocuments, mergeKycDocuments } from '../domain/kyc';
 
 interface NameRow { name: string; }
 interface HolidayRow { holiday_date: string; name: string; }
+interface CompanyProfileRow { company_name: string; cin: string; registered_state: string; }
 
 interface EmployeeRow {
   id: string; credential_id: number | null; name: string; email: string | null; phone: string | null; designation: string | null; team: string | null; manager: string | null;
   status: string; doj: string | null; sys_role: string; ctc: number;
-  leave_balance: unknown; documents: unknown; documents_deadline: string | null; signed_docs: unknown; ctc_split_override: unknown; probation_extended_by: number | null;
+  leave_balance: unknown; documents: unknown; documents_deadline: string | null; kyc_documents: unknown; signed_docs: unknown; ctc_split_override: unknown; probation_extended_by: number | null;
 }
 interface OnboardingRow {
   id: string; name: string; personal_email: string | null; designation: string | null; team: string | null; ctc: number;
@@ -87,6 +89,7 @@ export class HrToolRepository {
       manager: r.manager, status: r.status, doj: r.doj || '', sysRole: r.sys_role, ctc: r.ctc,
       leaveBalance: parseJsonColumn(r.leave_balance, {}), documents: parseJsonColumn(r.documents, []),
       documentsDeadline: r.documents_deadline,
+      kycDocuments: mergeKycDocuments(parseJsonColumn<Partial<HrKycDocuments> | null>(r.kyc_documents, null)),
       signedDocs: parseJsonColumn(r.signed_docs, []), ctcSplitOverride: parseJsonColumn(r.ctc_split_override, null),
       probationExtendedBy: r.probation_extended_by,
     };
@@ -98,11 +101,11 @@ export class HrToolRepository {
   async replaceEmployees(employees: HrEmployee[]): Promise<void> {
     await replaceAllRows(
       'hr_employees',
-      ['id', 'credential_id', 'name', 'email', 'phone', 'designation', 'team', 'manager', 'status', 'doj', 'sys_role', 'ctc', 'leave_balance', 'documents', 'documents_deadline', 'signed_docs', 'ctc_split_override', 'probation_extended_by'],
+      ['id', 'credential_id', 'name', 'email', 'phone', 'designation', 'team', 'manager', 'status', 'doj', 'sys_role', 'ctc', 'leave_balance', 'documents', 'documents_deadline', 'kyc_documents', 'signed_docs', 'ctc_split_override', 'probation_extended_by'],
       employees,
       (e) => [
         e.id, e.credentialId ?? null, e.name, e.email || null, e.phone || null, e.designation || null, e.team || null, e.manager || null, e.status, e.doj || null,
-        e.sysRole, e.ctc, JSON.stringify(e.leaveBalance || {}), JSON.stringify(e.documents || []), e.documentsDeadline || null, JSON.stringify(e.signedDocs || []),
+        e.sysRole, e.ctc, JSON.stringify(e.leaveBalance || {}), JSON.stringify(e.documents || []), e.documentsDeadline || null, JSON.stringify(mergeKycDocuments(e.kycDocuments)), JSON.stringify(e.signedDocs || []),
         e.ctcSplitOverride ? JSON.stringify(e.ctcSplitOverride) : null, e.probationExtendedBy ?? null,
       ]
     );
@@ -120,6 +123,10 @@ export class HrToolRepository {
    * directly — unlike replaceEmployees' whole-table replace, it never touches any other employee's row. */
   async updateEmployeeDocuments(employeeId: string, documents: HrDocRef[]): Promise<void> {
     await query('UPDATE hr_employees SET documents = ? WHERE id = ?', [JSON.stringify(documents), employeeId]);
+  }
+  /** Same single-row-write safety as updateEmployeeDocuments, for the separate KYC checklist. */
+  async updateEmployeeKyc(employeeId: string, kycDocuments: HrKycDocuments): Promise<void> {
+    await query('UPDATE hr_employees SET kyc_documents = ? WHERE id = ?', [JSON.stringify(kycDocuments), employeeId]);
   }
 
   // --- Onboarding ---
@@ -426,6 +433,21 @@ export class HrToolRepository {
         late_mark_penalty = VALUES(late_mark_penalty), geo_fencing = VALUES(geo_fencing), selfie_checkin = VALUES(selfie_checkin),
         pf_esi = VALUES(pf_esi), optional_holiday_choice = VALUES(optional_holiday_choice), asset_checklist = VALUES(asset_checklist)`,
       params
+    );
+  }
+
+  // --- Company profile ---
+  async findCompanyProfile(): Promise<HrCompanyProfile | null> {
+    const r = await queryOne<CompanyProfileRow>('SELECT * FROM hr_company_profile WHERE id = 1');
+    if (!r) return null;
+    return { companyName: r.company_name, cin: r.cin, registeredState: r.registered_state };
+  }
+  async saveCompanyProfile(profile: HrCompanyProfile, actor?: string): Promise<void> {
+    await query(
+      `INSERT INTO hr_company_profile (id, company_name, cin, registered_state, updated_by) VALUES (1, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE company_name = VALUES(company_name), cin = VALUES(cin),
+        registered_state = VALUES(registered_state), updated_by = VALUES(updated_by)`,
+      [profile.companyName, profile.cin, profile.registeredState, actor || null]
     );
   }
 

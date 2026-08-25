@@ -65,10 +65,30 @@ export class PartnershipEventsService {
   async getLinkedEventSummaries(entities: PartnershipEventEntity[]): Promise<Map<number, LinkedEventSummary>> {
     const ids = [...new Set(entities.map((e) => e.event_id).filter((id): id is number => !!id))];
     const map = new Map<number, LinkedEventSummary>();
-    if (!ids.length) return map;
-    const events = await this.eventsService.getEventsByIds(ids);
-    for (const ev of events) {
-      map.set(ev.id, { id: ev.id, slug: ev.slug, status: ev.status, location: ev.location });
+    if (ids.length) {
+      const events = await this.eventsService.getEventsByIds(ids);
+      for (const ev of events) {
+        map.set(ev.id, { id: ev.id, slug: ev.slug, status: ev.status, location: ev.location });
+      }
+    }
+
+    // Records saved before event_id linking existed (or whose linked event was recreated —
+    // see syncLinkedEvent) have no event_id yet, even though a matching website Event may
+    // already exist under the exact same title. That adoption used to only run inside
+    // create/updateEvent (on Save), so an old row's Slug/View/status silently stayed blank
+    // until an admin happened to re-open and re-save that specific record. Doing the same
+    // exact-title lookup here means it self-heals the moment the row is next listed or opened,
+    // not just on save. Deliberately exact-title only (same match `findByTitle` already uses
+    // for the write path) — several real events differ only by a city/date suffix (e.g.
+    // "Venture Capital World Summit" vs "Bengaluru 2026 Venture Capital World Summit" are two
+    // different live events), so a fuzzy/substring match could silently attach the wrong page.
+    const unlinked = entities.filter((e) => !e.event_id);
+    for (const entity of unlinked) {
+      const match = await this.eventsService.getEventByTitle(entity.event_name);
+      if (!match) continue;
+      await this.repository.setEventId(entity.id, match.id);
+      entity.event_id = match.id;
+      map.set(match.id, { id: match.id, slug: match.slug, status: match.status, location: match.location });
     }
     return map;
   }
@@ -140,6 +160,11 @@ export class PartnershipEventsService {
       description: entity.description || undefined,
       excerpt: autoExcerpt(entity.description),
       location,
+      // The actual Region/Country value ("India", "UAE", "Cohort", ...) — stored as its own
+      // field so /events can group by real country instead of guessing from the city name (see
+      // groupByCountry's REGION_COUNTRY comment for the bug this fixes, e.g. "Mathura" not being
+      // recognised as an Indian city and landing in its own top-level section).
+      country: region,
       eventEndDate: entity.event_end_date || null,
       eventTime: entity.event_start_time || undefined,
       eventEndTime: entity.event_end_time || null,

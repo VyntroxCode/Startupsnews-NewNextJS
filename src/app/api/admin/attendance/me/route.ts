@@ -15,13 +15,17 @@ export async function GET(request: NextRequest) {
     }
 
     const { month, from, to } = monthRange(request.nextUrl.searchParams.get('month'));
-    const [punch, calendar, policy, regularizations, usedThisMonth] = await Promise.all([
+    const [punch, calendar, policy, regularizations, usedThisMonth, allHolidays] = await Promise.all([
       hrToolService.getPunchByEmp(credential.name),
       hrToolService.getAttendanceForEmployeeInRange(credential.name, from, to),
       hrToolService.getPolicySummary(),
       hrToolService.getRegularizationsForEmployee(credential.name),
       hrToolService.countRegularizationsForEmployeeInMonth(credential.name, from, to),
+      hrToolService.getHolidays(),
     ]);
+    // Same admin Holiday calendar shown in the Employee Panel's attendance widget — this route
+    // feeds the same shared <AttendanceWidget> for the Publisher/Event Admin's own attendance tab.
+    const holidays = allHolidays.filter((h) => h.date >= from && h.date <= to);
 
     const today = todayStr();
     const isToday = punch?.date === today;
@@ -40,6 +44,7 @@ export async function GET(request: NextRequest) {
         },
         month,
         calendar,
+        holidays,
         shiftRules: {
           shiftStartTime: policy.shiftStartTime, shiftEndTime: policy.shiftEndTime, shiftGraceMinutes: policy.shiftGraceMinutes,
           shortLeaveMaxHours: policy.shortLeaveMaxHours, halfDayThresholdHours: policy.halfDayThresholdHours,

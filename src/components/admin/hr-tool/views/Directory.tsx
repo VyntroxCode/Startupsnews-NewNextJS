@@ -13,6 +13,7 @@ import { StatusBadge, addDays, computeCtcBreakdown, daysLeft, exportCSV, exportE
 const DOCUMENTS_WINDOW_DAYS = 5;
 import type { HrEmployee } from '../types';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
+import { KYC_SECTIONS, emptyKycDocuments } from '../types';
 
 function fmtDoj(doj: string): string {
   if (!doj) return '—';
@@ -51,6 +52,8 @@ export default function Directory() {
   const [addingOrphanId, setAddingOrphanId] = useState<number | null>(null);
   const [docRejectTarget, setDocRejectTarget] = useState<{ empId: string; idx: number } | null>(null);
   const [docRejectRemarks, setDocRejectRemarks] = useState('');
+  const [kycRejectTarget, setKycRejectTarget] = useState<{ empId: string; slotKey: string } | null>(null);
+  const [kycRejectRemarks, setKycRejectRemarks] = useState('');
   const [docSearch, setDocSearch] = useState('');
   const [docStatusFilter, setDocStatusFilter] = useState('');
 
@@ -108,6 +111,7 @@ export default function Directory() {
       leaveBalance: { Casual: 6, Sick: 6, Earned: 10 },
       documents,
       documentsDeadline: documents.length ? addDays(doj, DOCUMENTS_WINDOW_DAYS) : null,
+      kycDocuments: emptyKycDocuments(),
       signedDocs: [],
     };
     await persistEmployees([...state.employees, newEmployee]);
@@ -168,6 +172,15 @@ export default function Directory() {
     if (status === 'rejected') { setDocRejectTarget({ empId, idx }); setDocRejectRemarks(''); return; }
     await persistEmployees(state.employees.map((e) => (e.id === empId ? { ...e, documents: e.documents.map((d, i) => (i === idx ? { ...d, status: 'approved', remarks: null } : d)) } : e)));
   }
+  async function kycDocAction(empId: string, slotKey: string, status: 'approved' | 'rejected') {
+    if (status === 'rejected') { setKycRejectTarget({ empId, slotKey }); setKycRejectRemarks(''); return; }
+    await persistEmployees(state.employees.map((e) => (e.id === empId ? { ...e, kycDocuments: { ...e.kycDocuments, [slotKey]: { ...e.kycDocuments[slotKey], status: 'approved', remarks: null } } } : e)));
+  }
+  async function confirmKycDocReject() {
+    if (!kycRejectTarget || !kycRejectRemarks.trim()) { alert('Remarks are required on rejection.'); return; }
+    await persistEmployees(state.employees.map((e) => (e.id === kycRejectTarget.empId ? { ...e, kycDocuments: { ...e.kycDocuments, [kycRejectTarget.slotKey]: { ...e.kycDocuments[kycRejectTarget.slotKey], status: 'rejected', remarks: kycRejectRemarks.trim() } } } : e)));
+    setKycRejectTarget(null);
+  }
   async function confirmDocReject() {
     if (!docRejectTarget || !docRejectRemarks.trim()) { alert('Remarks are required on rejection.'); return; }
     await persistEmployees(state.employees.map((e) => (e.id === docRejectTarget.empId ? { ...e, documents: e.documents.map((d, i) => (i === docRejectTarget.idx ? { ...d, status: 'rejected', remarks: docRejectRemarks.trim() } : d)) } : e)));
@@ -194,6 +207,7 @@ export default function Directory() {
         leaveBalance: { Casual: 6, Sick: 6, Earned: 10 },
         documents: newDocuments,
         documentsDeadline: newDocuments.length ? addDays(resolvedDoj, DOCUMENTS_WINDOW_DAYS) : null,
+        kycDocuments: emptyKycDocuments(),
         signedDocs: [],
       }];
       count++;
@@ -328,6 +342,15 @@ export default function Directory() {
         </ModalShell>
       )}
 
+      {kycRejectTarget && (
+        <ModalShell title="Reject KYC document" onClose={() => setKycRejectTarget(null)} actions={[
+          { label: 'Cancel', cls: 'btn', onClick: () => setKycRejectTarget(null) },
+          { label: 'Reject', cls: 'btn reject', onClick: confirmKycDocReject },
+        ]}>
+          <div className="field"><label className="field-label">Remarks (required — shown to the employee)</label><textarea value={kycRejectRemarks} onChange={(e) => setKycRejectRemarks(e.target.value)} /></div>
+        </ModalShell>
+      )}
+
       {profile && !ctcSplitId && (
         <EmployeeProfileModal
           employee={profile}
@@ -343,6 +366,8 @@ export default function Directory() {
           onIssueCredential={() => setIssuingCredentialFor(profile)}
           onApproveDoc={(idx) => docAction(profile.id, idx, 'approved')}
           onRejectDoc={(idx) => docAction(profile.id, idx, 'rejected')}
+          onApproveKyc={(slotKey) => kycDocAction(profile.id, slotKey, 'approved')}
+          onRejectKyc={(slotKey) => kycDocAction(profile.id, slotKey, 'rejected')}
           onSaveEdits={(updates) => saveEmployeeEdits(profile, updates)}
         />
       )}
@@ -464,11 +489,12 @@ function DocumentTrackerCard({ employee, onApprove, onReject }: {
   );
 }
 
-function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSplit, onRemove, onConfirmProbation, onExtendProbation, onMarkExited, onEditCredential, onIssueCredential, onApproveDoc, onRejectDoc, onSaveEdits }: {
+function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSplit, onRemove, onConfirmProbation, onExtendProbation, onMarkExited, onEditCredential, onIssueCredential, onApproveDoc, onRejectDoc, onApproveKyc, onRejectKyc, onSaveEdits }: {
   employee: HrEmployee; admin: boolean; founder: boolean; onClose: () => void; onEditCtcSplit: () => void;
   onRemove: () => void; onConfirmProbation: () => void; onExtendProbation: () => void; onMarkExited: () => void;
   onEditCredential: (c: HrEmployeeCredential) => void; onIssueCredential: () => void;
   onApproveDoc: (idx: number) => void; onRejectDoc: (idx: number) => void;
+  onApproveKyc: (slotKey: string) => void; onRejectKyc: (slotKey: string) => void;
   onSaveEdits: (updates: Partial<HrEmployee>) => Promise<void>;
 }) {
   const { state } = useHrTool();
@@ -657,6 +683,49 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
             );
           })()}
           </>
+        )}
+      </div>
+      <div className="field">
+        <label className="field-label">KYC &amp; Personal Documents</label>
+        {!admin ? (
+          <span className="meta">Restricted — visible only to HR Head/Founder and the employee.</span>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {KYC_SECTIONS.map((section) => (
+              <div key={section.title}>
+                <div className="stat-label" style={{ marginBottom: 6 }}>{section.title}</div>
+                <table><thead><tr><th>Document</th><th>Details</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
+                  <tbody>{section.slots.map((slot) => {
+                    const d = employee.kycDocuments[slot.key];
+                    return (
+                      <tr key={slot.key}>
+                        <td>
+                          {slot.label}{slot.required && ' *'}
+                          {d.status === 'rejected' && d.remarks && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>Rejected: {d.remarks}</div>}
+                          {d.uploadedAt && d.status !== 'not_uploaded' && <div className="meta" style={{ marginTop: 2 }}>Uploaded {d.uploadedAt}</div>}
+                        </td>
+                        <td className="meta">
+                          {slot.fields.map((f) => d.fields[f.key]).filter(Boolean).length > 0
+                            ? slot.fields.map((f) => d.fields[f.key] ? `${f.label}: ${d.fields[f.key]}` : null).filter(Boolean).join(' · ')
+                            : '—'}
+                        </td>
+                        <td><StatusBadge status={d.status} /></td>
+                        <td style={{ textAlign: 'right' }}>
+                          {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm" style={{ marginRight: 6 }}>View/Download</a>}
+                          {d.status === 'pending' && (
+                            <>
+                              <button className="btn approve sm" onClick={() => onApproveKyc(slot.key)}>Approve</button>{' '}
+                              <button className="btn reject sm" onClick={() => onRejectKyc(slot.key)}>Reject</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}</tbody>
+                </table>
+              </div>
+            ))}
+          </div>
         )}
       </div>
       {admin && (

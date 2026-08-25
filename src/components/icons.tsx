@@ -92,6 +92,37 @@ export function HeadphonesIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function MegaphoneIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <OutlineIcon {...props}>
+      <path d="M3 11v2a2 2 0 0 0 2 2h1l4 4V5L6 9H5a2 2 0 0 0-2 2z" />
+      <path d="M15 8a4 4 0 0 1 0 8" />
+      <path d="M18 5a8 8 0 0 1 0 14" />
+    </OutlineIcon>
+  );
+}
+
+export function BriefcaseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <OutlineIcon {...props}>
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+    </OutlineIcon>
+  );
+}
+
+export function GlobeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <OutlineIcon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <path d="M12 3a14 14 0 0 1 0 18" />
+      <path d="M12 3a14 14 0 0 0 0 18" />
+    </OutlineIcon>
+  );
+}
+
 function BrandIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg

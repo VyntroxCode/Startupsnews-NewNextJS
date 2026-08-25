@@ -34,7 +34,12 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
   const grouped: Record<string, Record<string, StartupEvent[]>> = {};
   for (const [region, events] of Object.entries(eventsByRegion)) {
     if (!events || events.length === 0) continue;
-    const country = REGION_COUNTRY[region] || region;
+    // Prefer the event's own real `country` (set from the partnership tracker's Region/Country
+    // field — see syncLinkedEvent) over guessing from the city name via REGION_COUNTRY, which
+    // only recognizes a small hardcoded list of cities: any city not on that list (e.g.
+    // "Mathura") used to silently become its own top-level section instead of nesting under
+    // India. Falls back to the old guess only for events created before `country` existed.
+    const country = events.find((e) => e.country?.trim())?.country?.trim() || REGION_COUNTRY[region] || region;
     if (!grouped[country]) grouped[country] = {};
     grouped[country][region] = events;
   }
