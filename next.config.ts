@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // deploy.sh builds into a separate directory and atomically swaps it into .next
+  // afterward, so the still-running old process's ISR revalidation writes (e.g.
+  // page.tsx's revalidate=60 rewriting .next/server/app/index.html in place)
+  // can never land mid-build and clobber a chunk reference the new build already
+  // replaced. NEXT_BUILD_DIR is only set during that build step.
+  distDir: process.env.NEXT_BUILD_DIR || '.next',
   // Allow larger request bodies for admin post/event create and edit (e.g. rich text from mobile)
   experimental: {
     serverActions: {
