@@ -58,7 +58,14 @@ function clearCacheForEndpoint(endpoint: string): void {
   }
 }
 
-function clearAllAdminApiCache(): void {
+/** Exported so the admin layout's fetch monkey-patch (see (admin)/layout.tsx) can clear this
+ * cache directly the instant a write succeeds — dispatching the `admin:data-updated` event alone
+ * isn't enough, since it only reaches a `useAdminData` instance that happens to be MOUNTED at
+ * that moment. A write made from an edit/create page (list page unmounted) left the cache stale
+ * for up to CACHE_DURATION after navigating back to the list — e.g. editing an event's status to
+ * "draft" and saving, then returning to the Events tab, could still show the pre-edit cached
+ * list for up to 30s, looking like the save silently failed. */
+export function clearAllAdminApiCache(): void {
   for (const key of cache.keys()) {
     if (key.includes('/api/admin/')) {
       cache.delete(key);

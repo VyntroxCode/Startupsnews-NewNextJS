@@ -30,3 +30,14 @@ export const COUNTRY_NAMES: string[] = Object.keys(COUNTRY_CITY_DATA).sort((a, b
 export function citiesForCountry(country: string): string[] | null {
   return COUNTRY_CITY_DATA[country] || null;
 }
+
+/** Reverse lookup — given a city name, finds which country's list contains it. Used to recover
+ * the Region/Country field for old records that predate this form having a dedicated Country
+ * field of its own, where only a city (via the linked website Event's `location`) survived. */
+export function countryForCity(city: string): string | null {
+  if (!city) return null;
+  for (const [country, cities] of Object.entries(COUNTRY_CITY_DATA)) {
+    if (cities.includes(city)) return country;
+  }
+  return null;
+}

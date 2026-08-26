@@ -37,6 +37,14 @@ const FIELD_LIMITS: Partial<Record<keyof PartnershipEventInput, number>> = {
   source: 255,
 };
 
+// MariaDB returns DATE columns as either a string or a Date object depending on driver config —
+// normalize to plain YYYY-MM-DD so it drops straight into an <input type="date">.
+function toYmd(d: Date | string | null | undefined): string | null {
+  if (!d) return null;
+  if (typeof d === 'string') return d.slice(0, 10);
+  return d.toISOString().slice(0, 10);
+}
+
 function clip<K extends keyof PartnershipEventInput>(value: string, field: K): string {
   const limit = FIELD_LIMITS[field];
   return limit && value.length > limit ? value.slice(0, limit) : value;
@@ -68,7 +76,11 @@ export class PartnershipEventsService {
     if (ids.length) {
       const events = await this.eventsService.getEventsByIds(ids);
       for (const ev of events) {
-        map.set(ev.id, { id: ev.id, slug: ev.slug, status: ev.status, location: ev.location });
+        map.set(ev.id, {
+          id: ev.id, slug: ev.slug, status: ev.status, location: ev.location, country: ev.country || null,
+          description: ev.description || null, eventDate: toYmd(ev.event_date), eventTime: ev.event_time || null,
+          externalUrl: ev.external_url || null,
+        });
       }
     }
 
@@ -88,7 +100,11 @@ export class PartnershipEventsService {
       if (!match) continue;
       await this.repository.setEventId(entity.id, match.id);
       entity.event_id = match.id;
-      map.set(match.id, { id: match.id, slug: match.slug, status: match.status, location: match.location });
+      map.set(match.id, {
+        id: match.id, slug: match.slug, status: match.status, location: match.location, country: match.country || null,
+        description: match.description || null, eventDate: toYmd(match.event_date), eventTime: match.event_time || null,
+        externalUrl: match.external_url || null,
+      });
     }
     return map;
   }

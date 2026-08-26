@@ -1,5 +1,5 @@
 import { SOCIAL_PLATFORMS } from "./constants";
-import { resolveEndDateTime, resolvedCity, resolvedPhoneCode } from "./validation";
+import { resolveEndDateTime, resolvedCity, resolvedCountry, resolvedPhoneCode } from "./validation";
 import type { SubmitEventFormData } from "./types";
 
 export function buildSubmitPayload(data: SubmitEventFormData) {
@@ -17,7 +17,7 @@ export function buildSubmitPayload(data: SubmitEventFormData) {
     organizerPhone: `${resolvedPhoneCode(data)} ${phoneDigits}`,
     title: data.title.trim(),
     slug: data.slug.trim(),
-    country: data.country,
+    country: resolvedCountry(data),
     city: resolvedCity(data),
     externalUrl: data.externalUrl.trim(),
     eventType: data.eventType,

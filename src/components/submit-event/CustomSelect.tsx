@@ -6,6 +6,9 @@ export interface CustomSelectOption {
   value: string;
   label: string;
   emoji?: string;
+  /** Stays visible in a searchable list no matter what's typed — for a pinned "Other (add
+   * manually)" entry, which the user needs to reach precisely when their search finds nothing. */
+  alwaysShow?: boolean;
 }
 
 interface CustomSelectProps {
@@ -59,7 +62,7 @@ export function CustomSelect({
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return options;
-    return options.filter((o) => o.label.toLowerCase().includes(term));
+    return options.filter((o) => o.alwaysShow || o.label.toLowerCase().includes(term));
   }, [options, search]);
 
   function toggleOpen() {

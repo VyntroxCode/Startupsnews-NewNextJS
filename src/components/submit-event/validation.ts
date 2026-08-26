@@ -1,4 +1,4 @@
-import { CUSTOM_CODE_RE, EMAIL_RE, OTHER_CITY_VALUE, PHONE_RULES, SLUG_RE } from './constants';
+import { CUSTOM_CODE_RE, EMAIL_RE, OTHER_CITY_VALUE, OTHER_COUNTRY_VALUE, PHONE_RULES, SLUG_RE } from './constants';
 import type { SubmitEventFormData } from './types';
 
 export function countWords(text: string): number {
@@ -8,6 +8,10 @@ export function countWords(text: string): number {
 
 export function resolvedCity(data: SubmitEventFormData): string {
   return data.city === OTHER_CITY_VALUE ? data.cityOther.trim() : data.city;
+}
+
+export function resolvedCountry(data: SubmitEventFormData): string {
+  return data.country === OTHER_COUNTRY_VALUE ? data.countryOther.trim() : data.country;
 }
 
 export function resolvedPhoneCode(data: SubmitEventFormData): string {
@@ -71,12 +75,15 @@ export function validateSlug(data: SubmitEventFormData): string {
 
 export function validateExternalUrl(data: SubmitEventFormData): string {
   const v = data.externalUrl.trim();
-  if (!v) return '';
+  if (!v) return 'Please enter a registration link.';
   return isValidHttpUrl(v) ? '' : 'Enter a valid http:// or https:// URL.';
 }
 
 export function validateCountry(data: SubmitEventFormData): string {
-  return data.country ? '' : 'Please select a country.';
+  if (data.country === OTHER_COUNTRY_VALUE) {
+    return data.countryOther.trim() ? '' : 'Please enter a country name.';
+  }
+  return data.country && data.country !== OTHER_COUNTRY_VALUE ? '' : 'Please select a country.';
 }
 
 export function validateCity(data: SubmitEventFormData): string {

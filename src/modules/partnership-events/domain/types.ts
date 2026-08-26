@@ -21,6 +21,16 @@ export interface LinkedEventSummary {
   slug: string;
   status: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   location: string;
+  country: string | null;
+  /** Fallback source for the Edit modal's Description/Event Date/Event Time/Registration Link
+   * fields — for an event originally created straight on the Events tab (not through this
+   * tracker), the partnership_events row's own columns are often blank while the real data lives
+   * here. Only used when the partnership_events row's own field is blank (openEditModal) — never
+   * overrides a value the admin already has on the tracker side. */
+  description: string | null;
+  eventDate: string | null;
+  eventTime: string | null;
+  externalUrl: string | null;
 }
 
 export interface PartnershipEventEntity {

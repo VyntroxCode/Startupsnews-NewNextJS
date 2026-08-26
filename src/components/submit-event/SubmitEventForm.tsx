@@ -11,7 +11,7 @@ import { EventBasicsStep } from "./steps/EventBasicsStep";
 import { ImagesStep } from "./steps/ImagesStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { useSubmitEventForm } from "./useSubmitEventForm";
-import { resolvedCity } from "./validation";
+import { resolvedCity, resolvedCountry } from "./validation";
 
 export function SubmitEventForm() {
   const ctrl = useSubmitEventForm();
@@ -19,7 +19,8 @@ export function SubmitEventForm() {
 
   if (submitted) {
     const whenText = `${formatConfirmDate(data.startDate)} · ${data.startTime || ""}`;
-    const whereText = data.country === "India" ? resolvedCity(data) || "India" : data.country || "International";
+    const country = resolvedCountry(data);
+    const whereText = country === "India" ? resolvedCity(data) || "India" : country || "International";
     return (
       <ConfirmationPanel
         organizerFirstName={data.organizerName.trim().split(" ")[0] || ""}
@@ -48,7 +49,7 @@ export function SubmitEventForm() {
         <PreviewCard
           title={data.title}
           image1={data.image1}
-          country={data.country}
+          country={resolvedCountry(data)}
           region={resolvedCity(data)}
           startDate={data.startDate}
           endDate={data.endDate || data.startDate}

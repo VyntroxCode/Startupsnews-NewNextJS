@@ -14,6 +14,7 @@ import {
 import { isPathAllowed, defaultPathForRole } from '@/lib/admin-role-access';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
+import { clearAllAdminApiCache } from '@/hooks/useAdminData';
 
 const ADMIN_DATA_UPDATED_EVENT = 'admin:data-updated';
 
@@ -164,6 +165,11 @@ export default function AdminLayout({
                             requestUrl.includes('/api/admin/media/ingest');
 
       if (response.ok && method !== 'GET' && requestUrl.includes('/api/admin/') && !isSpecialPath) {
+        // Clear the cache directly here, not just via the event below — the event only reaches a
+        // useAdminData instance that's currently MOUNTED, which isn't the case when the write
+        // came from an edit/create page (the list page is unmounted at that moment). Without
+        // this, saving from an edit page left the list's cache stale until it naturally expired.
+        clearAllAdminApiCache();
         window.dispatchEvent(
           new CustomEvent(ADMIN_DATA_UPDATED_EVENT, {
             detail: {

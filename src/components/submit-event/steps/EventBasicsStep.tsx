@@ -52,11 +52,13 @@ export function EventBasicsStep({ ctrl }: { ctrl: SubmitEventFormController }) {
       />
       <CountryCityFields
         country={data.country}
+        countryOther={data.countryOther}
         city={data.city}
         cityOther={data.cityOther}
         countryError={errors.country}
         cityError={errors.city}
         onChangeCountry={(v) => ctrl.setField("country", v)}
+        onChangeCountryOther={(v) => ctrl.updateAndMaybeValidate("countryOther", v, "country", validateCountry)}
         onChangeCity={(v) => ctrl.setField("city", v)}
         onChangeCityOther={(v) => ctrl.updateAndMaybeValidate("cityOther", v, "city", validateCity)}
         onBlurCountry={() => ctrl.blurValidate("country", validateCountry)}
@@ -65,6 +67,7 @@ export function EventBasicsStep({ ctrl }: { ctrl: SubmitEventFormController }) {
       <FormField
         id="external-url"
         label="Registration Link"
+        required
         type="url"
         placeholder="https://..."
         value={data.externalUrl}

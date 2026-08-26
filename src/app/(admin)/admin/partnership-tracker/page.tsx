@@ -15,7 +15,7 @@ import {
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
   type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
-import { COUNTRY_NAMES, citiesForCountry } from '@/modules/partnership-events/domain/country-city-data';
+import { COUNTRY_NAMES, citiesForCountry, countryForCity } from '@/modules/partnership-events/domain/country-city-data';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey } from '@/modules/partnership-events/utils/partnership-events.utils';
 
@@ -108,10 +108,11 @@ const STATUS_ORDER = [...PARTNERSHIP_STATUS_OPTIONS] as string[];
 const STATUS_FILTER_ORDER = STATUS_ORDER.filter((s) => s !== 'Expired');
 // The Add/Edit modal's own status editor (the one place status can actually be changed — the
 // table just displays it read-only) only offers the active deal-pipeline statuses — Draft,
-// Cancelled and Expired are set some other way (Draft is the default/blank state, Cancelled
-// comes from classifyStatus's own "cancel" fuzzy-match on stored text, Expired is the automatic
-// server sweep above), not picked from this dropdown. An event already holding one of those (or
-// any other legacy value) still shows and keeps it via the "(legacy)" fallback option below.
+// Cancelled and Expired are set some other way (Draft is driven by the Website Listing Status
+// field, not this dropdown — see classifyStatus; Cancelled comes from classifyStatus's own
+// "cancel" fuzzy-match on stored text; Expired is the automatic server sweep above), not picked
+// from this dropdown. An event already holding one of those (or any other legacy value) still
+// shows and keeps it via the "(legacy)" fallback option below.
 const STATUS_EDIT_ORDER = ['Initiated', 'Partnership Done', 'Only Listing', 'Ticketing'];
 // Excluded from the default "All Statuses" table view — these need a deliberate, manual look,
 // not a permanent fixture cluttering the everyday list.
@@ -166,19 +167,29 @@ function parseYmd(s: string): number | null {
 function daysBetween(a: number, b: number): number {
   return Math.floor((a - b) / (1000 * 60 * 60 * 24));
 }
-function classifyStatus(raw: string): string {
+/**
+ * `siteStatus` is the linked website Event's own publish status ('draft'/'upcoming'/'completed'),
+ * i.e. what the Add/Edit modal's "Website Listing Status *" field controls — pass
+ * `e.linkedEvent?.status` (undefined when there's no linked website Event at all yet).
+ *
+ * "Draft" is bucketed purely from this — NOT from a blank/unset Partnership Status — since
+ * whether an event is actually live on the public site is ground truth, while the Partnership
+ * Status dropdown is just the internal CRM deal-stage (Initiated/Partnership Done/Only
+ * Listing/Ticketing) and was never meant to double as an on/off switch for site-publish state.
+ * Draft takes priority over those in-progress CRM stages (an unpublished event showing as e.g.
+ * "Only Listing" is misleading), but NOT over the terminal Cancelled/Expired outcomes, which are
+ * deliberate admin decisions/date-based facts that hold regardless of publish state.
+ */
+function classifyStatus(raw: string, siteStatus?: string): string {
   const s = (raw || '').toLowerCase().trim();
-  // Blank is the deliberate default/unset state (see STATUS_EDIT_ORDER's comment) — it must bucket
-  // as 'Draft', not 'Unmapped'. 'Unmapped' is hidden from the default table view and isn't even a
-  // selectable filter, so a blank status used to make the event vanish from the tracker entirely
-  // (KPI card, search, everything) while its linked website Event stayed fully visible elsewhere.
-  if (!s) return 'Draft';
+  if (s.includes('cancel')) return 'Cancelled';
+  if (s.includes('expir')) return 'Expired';
+  if (!siteStatus || siteStatus === 'draft') return 'Draft';
+  if (!s) return 'Unmapped';
   if (STATUS_ORDER.includes(raw)) return raw;
   // Catches bare "listed" too (a lot of real historical data uses that exact word), not just
   // "only listed"/"listed only" — anything mentioning "listed" at all means this bucket.
   if (s.includes('listed') || s.includes('listing') || s.includes('no partnership')) return 'Only Listing';
-  if (s.includes('expir')) return 'Expired';
-  if (s.includes('cancel')) return 'Cancelled';
   if (s.includes('ticket')) return 'Ticketing';
   if (s.includes('done') || s.includes('confirm') || s.includes('complete') || s.includes('executed')) return 'Partnership Done';
   if (s.includes('initiat')) return 'Initiated';
@@ -186,6 +197,22 @@ function classifyStatus(raw: string): string {
   // Legacy "In Progress" / "On Hold" / "Dropped" text (retired concepts) also lands here — the
   // admin reclassifies these manually, they're not auto-migrated to a new bucket.
   return 'Unmapped';
+}
+/** Maps old freeform partnership_status text (from before STATUS_EDIT_ORDER existed — e.g. bulk
+ * CSV imports) to its closest modern equivalent, so opening an old event for edit pre-selects a
+ * real, editable option instead of showing a locked "(legacy)" placeholder with no obvious next
+ * step. Only covers exact, unambiguous synonyms actually seen in real data (Confirmed, In
+ * Progress, listed) — genuinely unrecognized text is left as-is (still shows as legacy) rather
+ * than guessed at. Saving without touching this field also quietly cleans up the stored text to
+ * the modern equivalent, gradually retiring the old free text with no separate migration needed. */
+function normalizeStatusForEdit(raw: string): string {
+  if (!raw || STATUS_EDIT_ORDER.includes(raw) || (PARTNERSHIP_STATUS_OPTIONS as readonly string[]).includes(raw)) return raw;
+  const s = raw.toLowerCase().trim();
+  if (s.includes('confirm') || s.includes('done') || s.includes('complete') || s.includes('executed')) return 'Partnership Done';
+  if (s.includes('listed') || s.includes('listing')) return 'Only Listing';
+  if (s.includes('progress') || s.includes('initiat')) return 'Initiated';
+  if (s.includes('ticket')) return 'Ticketing';
+  return raw;
 }
 function normalizeListing(rawListing: string, rawLink: string, statusBucket: string): string {
   const hasLink = !!(rawLink || '').trim();
@@ -276,7 +303,7 @@ function inferLocationFromName(name: string): { city: string; country: string } 
 }
 function computeDerived(e: PartnershipEvent): Derived {
   const today = startOfToday();
-  const statusBucket = classifyStatus(e.partnershipStatus);
+  const statusBucket = classifyStatus(e.partnershipStatus, e.linkedEvent?.status);
   const startMs = parseYmd(e.eventStartDate);
   const explicitEndMs = parseYmd(e.eventEndDate);
   const effectiveEndMs = explicitEndMs ?? startMs;
@@ -989,11 +1016,48 @@ export default function PartnershipTrackerPage() {
     setEditingId(e.id);
     const { id: _id, eventId: _eventId, linkedEvent, createdAt: _createdAt, updatedAt: _updatedAt, createdBy: _createdBy, updatedBy: _updatedBy, ...rest } = e;
     void _id; void _eventId; void _createdAt; void _updatedAt; void _createdBy; void _updatedBy;
-    const regionValue = linkedEvent?.location || '';
+    // Best-effort recovery of Region/Country for events created before this record had a
+    // reliable place to store it — several real sources may each hold a piece of the answer:
+    //  1. `e.country` — the partnership record's own stored value, kept in sync on every save
+    //     (see saveModal's `country: effectiveDraft.region` mirror). Most authoritative when set.
+    //  2. `linkedEvent.country` — the linked website Event's own (newer) country column, set by
+    //     syncLinkedEvent on save; populated for anything saved since that column existed.
+    //  3. `linkedEvent.location` itself, if it's directly a recognised country/region name — for
+    //     entries with no separate city (UAE, Singapore, Cohort, Online), syncLinkedEvent stores
+    //     the region directly as `location` (`location = city || region`).
+    //  4. Reverse-lookup `linkedEvent.location` as a CITY against COUNTRY_CITY_DATA — covers
+    //     older records where only a city survived (e.g. "Dubai" → "UAE", "Mumbai" → "India").
+    // Previously this used `linkedEvent.location` alone, which is normally a CITY, not a country
+    // — showing e.g. "Delhi" in both the Region/Country and City fields for older events instead
+    // of "India", while every one of the sources above sat unused.
+    const regionValue =
+      e.country
+      || linkedEvent?.country
+      || (linkedEvent?.location && COUNTRY_NAMES.includes(linkedEvent.location) ? linkedEvent.location : '')
+      || (linkedEvent?.location ? countryForCity(linkedEvent.location) : null)
+      || '';
     setDraft({
       ...rest,
       region: regionValue,
       partnershipType: rest.partnershipType,
+      partnershipStatus: normalizeStatusForEdit(rest.partnershipStatus),
+      // Old events (33 of 62 real rows — mostly bulk-imported before `initiated_date` was
+      // captured, e.g. one actually created back in December) have this genuinely blank, showing
+      // as an empty "Initiated date" when reopened for edit. Defaulting it to today HERE (only
+      // when reopening an existing event, never in the Add-event reset — see emptyDraft(), which
+      // already stamps a fresh event with today's date at creation time and works fine) gives the
+      // admin a real value instead of blank.
+      initiatedDate: rest.initiatedDate || todayStr(),
+      // Events created directly on the Events tab (never through this tracker) often have a
+      // partnership_events row with these left blank while the real data already lives on the
+      // linked public Event — pull it over whenever the tracker's own field is empty, same
+      // "prefer our own value, fall back to the linked Event" pattern as Region/Country above.
+      // Deliberately never overrides a value that's already set here, even if it looks stale next
+      // to the live site — an admin may have deliberately changed it and not yet republished.
+      description: rest.description || linkedEvent?.description || '',
+      eventStartDate: rest.eventStartDate || linkedEvent?.eventDate || todayStr(),
+      eventStartTime: rest.eventStartTime || linkedEvent?.eventTime || '',
+      website: rest.website || linkedEvent?.externalUrl || '',
       // "Completed" is automatic, never a dropdown option — reopening a published-then-auto-completed
       // event should still show/resave as "Published", not silently reset to Draft.
       siteStatus: linkedEvent?.status === 'completed' ? 'upcoming' : (linkedEvent?.status || 'draft'),
@@ -1689,9 +1753,16 @@ export default function PartnershipTrackerPage() {
                       setDraft({ ...draft, partnershipStatus: nextStatus, ...(closed ? { listing: 'No', listingLink: '' } : {}) });
                     }}
                   >
-                    <option value="">— (Draft)</option>
+                    <option value="">—</option>
                     {draft.partnershipStatus && !STATUS_EDIT_ORDER.includes(draft.partnershipStatus) && (
-                      <option value={draft.partnershipStatus} disabled>{draft.partnershipStatus} (legacy)</option>
+                      <option value={draft.partnershipStatus} disabled>
+                        {draft.partnershipStatus}
+                        {/* Cancelled/Expired are legitimate, recognised terminal states — just not
+                            manually re-pickable from this dropdown (see STATUS_EDIT_ORDER's own
+                            comment) — so they're shown plainly. Only genuinely unrecognised text
+                            that normalizeStatusForEdit couldn't map gets the "(legacy)" callout. */}
+                        {(PARTNERSHIP_STATUS_OPTIONS as readonly string[]).includes(draft.partnershipStatus) ? '' : ' (legacy)'}
+                      </option>
                     )}
                     {STATUS_EDIT_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -1701,7 +1772,7 @@ export default function PartnershipTrackerPage() {
                   <select value={draft.partnershipType} onChange={(e) => setDraft({ ...draft, partnershipType: e.target.value })}>
                     <option value="">—</option>
                     {draft.partnershipType && !(PARTNERSHIP_TYPE_OPTIONS as readonly string[]).includes(draft.partnershipType) && (
-                      <option value={draft.partnershipType} disabled>{draft.partnershipType} (legacy)</option>
+                      <option value={draft.partnershipType} disabled>{draft.partnershipType} — old value, please pick one below</option>
                     )}
                     {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>

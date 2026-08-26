@@ -3,14 +3,15 @@
 import { SOCIAL_PLATFORMS } from "../constants";
 import { formatConfirmDate } from "../format";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
-import { resolveEndDateTime, resolvedCity, resolvedPhoneCode, countWords } from "../validation";
+import { resolveEndDateTime, resolvedCity, resolvedCountry, resolvedPhoneCode, countWords } from "../validation";
 
 export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
   const { data, submitting, submitError } = ctrl;
 
   const city = resolvedCity(data);
+  const country = resolvedCountry(data);
   const locationText =
-    data.country === "India" ? `India${city ? " · " + city : ""}` : `International${data.country ? " · " + data.country : ""}${city ? " · " + city : ""}`;
+    country === "India" ? `India${city ? " · " + city : ""}` : `International${country ? " · " + country : ""}${city ? " · " + city : ""}`;
 
   const { endDate, endTime } = resolveEndDateTime(data);
   const wordCount = countWords(data.description);

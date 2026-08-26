@@ -52,6 +52,7 @@ export const CITY_DATA: Record<string, string[]> = {
 };
 
 export const OTHER_CITY_VALUE = '__other__';
+export const OTHER_COUNTRY_VALUE = '__other__';
 
 export interface ImageSpec {
   width: number;
