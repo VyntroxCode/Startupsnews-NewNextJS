@@ -36,6 +36,25 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   rejected: { bg: '#fee2e2', text: '#b91c1c', label: 'Rejected' },
 };
 
+/** PUT via XHR (not fetch) so real upload-progress events are available — same pattern as
+ * ImageUpload.tsx's uploadWithProgress, since fetch() has no byte-level progress API. */
+function uploadWithProgress(uploadUrl: string, file: File, onProgress: (pct: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (evt) => {
+      if (evt.lengthComputable) onProgress(Math.round((evt.loaded / evt.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload to storage failed (${xhr.status}). ${xhr.responseText || 'Please try again.'}`));
+    };
+    xhr.onerror = () => reject(new Error('Upload to storage failed — network error. Please try again.'));
+    xhr.send(file);
+  });
+}
+
 function StatusBadge({ status }: { status: string }) {
   const s = STATUS_STYLE[status] || STATUS_STYLE.not_uploaded;
   return (
@@ -66,6 +85,7 @@ export default function DocumentsWidget({
   const [data, setData] = useState<DocumentsMeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingName, setUploadingName] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [error, setError] = useState('');
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -89,6 +109,7 @@ export default function DocumentsWidget({
 
   async function handleFileSelected(docName: string, file: File) {
     setUploadingName(docName);
+    setUploadPct(0);
     setError('');
     try {
       const safeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -101,8 +122,7 @@ export default function DocumentsWidget({
       if (!presignRes.ok || !presignJson.success) throw new Error(presignJson.error || 'Failed to prepare upload.');
       const { uploadUrl, fileUrl } = presignJson.data as { uploadUrl: string; fileUrl: string };
 
-      const putRes = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
-      if (!putRes.ok) throw new Error(`Upload to storage failed (${putRes.status}).`);
+      await uploadWithProgress(uploadUrl, file, setUploadPct);
 
       const recordRes = await fetch(apiBase, {
         method: 'POST',
@@ -117,6 +137,7 @@ export default function DocumentsWidget({
       setError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
       setUploadingName(null);
+      setUploadPct(null);
     }
   }
 
@@ -130,21 +151,31 @@ export default function DocumentsWidget({
   }
 
   const documents = data.documents || [];
-  const pct = data.progressPct ?? 0;
+  // `data.progressPct` from the API is the combined generic+KYC figure (see /api/employee/documents/me)
+  // meant for the page-level ProfileProgressStrip, not this section specifically — trusting it here
+  // showed a confusing non-zero "% complete" above an empty "no checklist set up" list once the
+  // generic Required Documents list was emptied out. This widget only ever shows/tracks the generic
+  // checklist, so it computes its own percentage from just that.
+  const requiredCount = data.requiredDocuments?.length || 0;
+  const pct = requiredCount ? Math.round((documents.filter((d) => d.status === 'pending' || d.status === 'approved').length / requiredCount) * 100) : null;
   const dl = data.daysLeft ?? null;
-  const overdue = dl !== null && dl < 0 && pct < 100;
+  const overdue = pct !== null && dl !== null && dl < 0 && pct < 100;
 
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Required documents</h3>
-        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: pct === 100 ? '#166534' : '#64748b' }}>{pct}% complete</span>
+        {pct !== null && (
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: pct === 100 ? '#166534' : '#64748b' }}>{pct}% complete</span>
+        )}
       </div>
-      <div style={{ height: 8, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden', marginBottom: '0.6rem' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#6366f1', transition: 'width 0.3s' }} />
-      </div>
+      {pct !== null && (
+        <div style={{ height: 8, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden', marginBottom: '0.6rem' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#6366f1', transition: 'width 0.3s' }} />
+        </div>
+      )}
 
-      {pct < 100 && dl !== null && (
+      {pct !== null && pct < 100 && dl !== null && (
         <div style={{
           marginBottom: '1.25rem', padding: '0.6rem 1rem', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600,
           background: overdue ? '#fef2f2' : dl <= 1 ? '#fff7ed' : '#eef2ff',
@@ -202,11 +233,17 @@ export default function DocumentsWidget({
                       style={{
                         padding: '0.4rem 0.9rem', background: uploadingName === d.name ? '#a0aec0' : '#6366f1', color: '#fff',
                         border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.8rem', cursor: uploadingName === d.name ? 'not-allowed' : 'pointer',
+                        minWidth: uploadingName === d.name ? 108 : undefined,
                       }}
                     >
-                      {uploadingName === d.name ? 'Uploading…' : d.status === 'not_uploaded' ? 'Upload' : d.status === 'rejected' ? 'Re-upload' : 'Replace'}
+                      {uploadingName === d.name ? `Uploading… ${uploadPct ?? 0}%` : d.status === 'not_uploaded' ? 'Upload' : d.status === 'rejected' ? 'Re-upload' : 'Replace'}
                     </button>
                   </div>
+                  {uploadingName === d.name && (
+                    <div style={{ height: 5, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden', marginTop: 6 }}>
+                      <div style={{ height: '100%', width: `${uploadPct ?? 0}%`, background: '#6366f1', transition: 'width 0.15s' }} />
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

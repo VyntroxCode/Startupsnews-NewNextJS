@@ -137,18 +137,21 @@ export default async function StartupEventPage({
 
               {(event.venueAddress || event.googleLocationLink) && (
                 <div className="event-detail-venue">
-                  <h3 className="event-detail-section-title">Venue</h3>
-                  {event.venueAddress && <p className="event-detail-venue-address">{event.venueAddress}</p>}
-                  {event.googleLocationLink && (
-                    <a
-                      href={event.googleLocationLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="event-detail-venue-link"
-                    >
-                      View on Google Maps
-                    </a>
-                  )}
+                  <h3 className="event-detail-section-title">
+                    Venue :-{" "}
+                    {event.googleLocationLink ? (
+                      <a
+                        href={event.googleLocationLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="event-detail-venue-address-link"
+                      >
+                        {event.venueAddress || "View on Google Maps"}
+                      </a>
+                    ) : (
+                      <span className="event-detail-venue-address-inline">{event.venueAddress}</span>
+                    )}
+                  </h3>
                 </div>
               )}
 

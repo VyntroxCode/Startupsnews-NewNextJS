@@ -2243,25 +2243,17 @@ img.mvp-big-img {
   margin-bottom: 28px;
 }
 
-.event-detail-venue-address {
-  font-size: 0.98rem;
-  line-height: 1.6;
-  color: #444;
-  margin: 0 0 10px 0;
-  white-space: pre-line;
+.event-detail-venue-address-link,
+.event-detail-venue-address-inline {
+  font-weight: 500;
 }
 
-.event-detail-venue-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #0066cc;
+.event-detail-venue-address-link {
   text-decoration: none;
+  cursor: pointer;
 }
 
-.event-detail-venue-link:hover {
+.event-detail-venue-address-link:hover {
   text-decoration: underline;
 }
 

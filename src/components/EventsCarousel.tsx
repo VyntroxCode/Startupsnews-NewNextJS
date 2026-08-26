@@ -133,7 +133,12 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
     draggedRef.current = false;
     dragStartX.current = e.clientX;
     dragStartScroll.current = track.scrollLeft;
-    track.setPointerCapture(e.pointerId);
+    // Deliberately NOT calling track.setPointerCapture() here (only once a real drag is confirmed
+    // below) — capturing the pointer immediately on every mousedown, including a plain click,
+    // makes the browser retarget the resulting "click" event to the captured element (this <ul>)
+    // instead of the card link under the cursor, so the <a> never receives the click and never
+    // navigates. That's a separate, more fundamental bug than the drag-vs-click distance check
+    // below — a 0px-movement click was still silently broken even with a generous threshold there.
     pauseAutoplay();
   };
   const handlePointerMove = (e: React.PointerEvent<HTMLUListElement>) => {
@@ -143,7 +148,12 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
     // A real drag, not just the couple of pixels of mouse jitter a normal click naturally has —
     // 3px was low enough that plain clicks kept getting misread as drags and silently swallowed
     // (see handleClickCapture), breaking navigation into the card entirely.
-    if (Math.abs(dx) > 10) draggedRef.current = true;
+    if (Math.abs(dx) > 10 && !draggedRef.current) {
+      draggedRef.current = true;
+      // Only capture the pointer once we know this is a genuine drag — see handlePointerDown.
+      // Keeps receiving move/up events even if the cursor leaves the track mid-drag.
+      track.setPointerCapture(e.pointerId);
+    }
     track.scrollLeft = dragStartScroll.current - dx;
   };
   const endDrag = () => {

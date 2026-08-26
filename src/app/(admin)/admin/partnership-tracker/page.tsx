@@ -168,7 +168,11 @@ function daysBetween(a: number, b: number): number {
 }
 function classifyStatus(raw: string): string {
   const s = (raw || '').toLowerCase().trim();
-  if (!s) return 'Unmapped';
+  // Blank is the deliberate default/unset state (see STATUS_EDIT_ORDER's comment) — it must bucket
+  // as 'Draft', not 'Unmapped'. 'Unmapped' is hidden from the default table view and isn't even a
+  // selectable filter, so a blank status used to make the event vanish from the tracker entirely
+  // (KPI card, search, everything) while its linked website Event stayed fully visible elsewhere.
+  if (!s) return 'Draft';
   if (STATUS_ORDER.includes(raw)) return raw;
   // Catches bare "listed" too (a lot of real historical data uses that exact word), not just
   // "only listed"/"listed only" — anything mentioning "listed" at all means this bucket.
@@ -1676,7 +1680,7 @@ export default function PartnershipTrackerPage() {
             <div className="pt-modal-body">
               <div className="pt-form-grid pt-form-grid-3">
                 <div className="pt-fg">
-                  <label>Partnership Type</label>
+                  <label>Partnership Status</label>
                   <select
                     value={draft.partnershipStatus}
                     onChange={(e) => {
@@ -1685,7 +1689,7 @@ export default function PartnershipTrackerPage() {
                       setDraft({ ...draft, partnershipStatus: nextStatus, ...(closed ? { listing: 'No', listingLink: '' } : {}) });
                     }}
                   >
-                    <option value="">—</option>
+                    <option value="">— (Draft)</option>
                     {draft.partnershipStatus && !STATUS_EDIT_ORDER.includes(draft.partnershipStatus) && (
                       <option value={draft.partnershipStatus} disabled>{draft.partnershipStatus} (legacy)</option>
                     )}

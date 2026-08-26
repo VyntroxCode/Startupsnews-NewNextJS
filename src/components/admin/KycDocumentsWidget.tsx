@@ -20,6 +20,25 @@ const inputStyle: CSSProperties = {
 };
 const labelStyle: CSSProperties = { display: 'block', marginBottom: 4, fontSize: '0.78rem', fontWeight: 600, color: '#475569' };
 
+/** PUT via XHR (not fetch) so real upload-progress events are available — same pattern as
+ * ImageUpload.tsx's uploadWithProgress, since fetch() has no byte-level progress API. */
+function uploadWithProgress(uploadUrl: string, file: File, onProgress: (pct: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (evt) => {
+      if (evt.lengthComputable) onProgress(Math.round((evt.loaded / evt.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload to storage failed (${xhr.status}). ${xhr.responseText || 'Please try again.'}`));
+    };
+    xhr.onerror = () => reject(new Error('Upload to storage failed — network error. Please try again.'));
+    xhr.send(file);
+  });
+}
+
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   not_uploaded: { bg: '#f1f5f9', text: '#64748b', label: 'Not uploaded' },
   pending: { bg: '#ffedd5', text: '#c2410c', label: 'Pending review' },
@@ -54,12 +73,13 @@ interface KycDocumentsWidgetProps {
 function SlotCard({ slotDef, value, onSave }: {
   slotDef: KycSlotDef;
   value: HrKycSlotValue;
-  onSave: (fields: Record<string, string> | undefined, file: File | null) => Promise<string | null>;
+  onSave: (fields: Record<string, string> | undefined, file: File | null, onProgress: (pct: number) => void) => Promise<string | null>;
 }) {
   const [fields, setFields] = useState<Record<string, string>>(value.fields || {});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | null>>({});
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,12 +103,14 @@ function SlotCard({ slotDef, value, onSave }: {
   async function save() {
     setSaving(true);
     setError('');
+    setUploadPct(file ? 0 : null);
     try {
-      const err = await onSave(slotDef.fields.length ? fields : undefined, file);
+      const err = await onSave(slotDef.fields.length ? fields : undefined, file, setUploadPct);
       if (err) setError(err);
       else setFile(null);
     } finally {
       setSaving(false);
+      setUploadPct(null);
     }
   }
 
@@ -142,11 +164,17 @@ function SlotCard({ slotDef, value, onSave }: {
           style={{
             padding: '0.4rem 0.9rem', background: saving || !dirty || hasFieldError ? '#cbd5e1' : '#6366f1', color: '#fff',
             border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.8rem', cursor: saving || !dirty || hasFieldError ? 'not-allowed' : 'pointer',
+            minWidth: saving && uploadPct !== null ? 96 : undefined,
           }}
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? (uploadPct !== null ? `Uploading… ${uploadPct}%` : 'Saving…') : 'Save'}
         </button>
       </div>
+      {saving && uploadPct !== null && (
+        <div style={{ height: 5, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden', marginTop: 8 }}>
+          <div style={{ height: '100%', width: `${uploadPct}%`, background: '#6366f1', transition: 'width 0.15s' }} />
+        </div>
+      )}
       {error && <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#b91c1c' }}>{error}</div>}
     </div>
   );
@@ -180,7 +208,7 @@ export default function KycDocumentsWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBase]);
 
-  async function handleSave(slotKey: string, fields: Record<string, string> | undefined, file: File | null): Promise<string | null> {
+  async function handleSave(slotKey: string, fields: Record<string, string> | undefined, file: File | null, onProgress: (pct: number) => void): Promise<string | null> {
     try {
       let url: string | undefined;
       if (file) {
@@ -192,8 +220,7 @@ export default function KycDocumentsWidget({
         const presignJson = await presignRes.json();
         if (!presignRes.ok || !presignJson.success) return presignJson.error || 'Failed to prepare upload.';
         const { uploadUrl, fileUrl } = presignJson.data as { uploadUrl: string; fileUrl: string };
-        const putRes = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
-        if (!putRes.ok) return `Upload to storage failed (${putRes.status}).`;
+        await uploadWithProgress(uploadUrl, file, onProgress);
         url = fileUrl;
       }
 
@@ -238,7 +265,7 @@ export default function KycDocumentsWidget({
             {section.title}
           </div>
           {section.slots.map((slot) => (
-            <SlotCard key={slot.key} slotDef={slot} value={documents[slot.key]} onSave={(fields, file) => handleSave(slot.key, fields, file)} />
+            <SlotCard key={slot.key} slotDef={slot} value={documents[slot.key]} onSave={(fields, file, onProgress) => handleSave(slot.key, fields, file, onProgress)} />
           ))}
         </div>
       ))}

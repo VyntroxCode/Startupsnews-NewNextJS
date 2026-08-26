@@ -86,9 +86,7 @@ export const KYC_SECTIONS: KycSectionDef[] = [
   {
     title: 'Bank Details',
     slots: [
-      { key: 'bank_month_1', label: 'Bank Statement — Month 1', required: true, fields: [] },
-      { key: 'bank_month_2', label: 'Bank Statement — Month 2', required: true, fields: [] },
-      { key: 'bank_month_3', label: 'Bank Statement — Month 3', required: false, fields: [] },
+      { key: 'bank_statement', label: 'Bank Statement (3 Months)', required: true, fields: [] },
       { key: 'cheque', label: 'Cancelled Cheque', required: true, fields: [] },
       { key: 'salary_slip', label: 'Last Salary Slip', required: false, fields: [] },
     ],
@@ -96,18 +94,18 @@ export const KYC_SECTIONS: KycSectionDef[] = [
   {
     title: 'Education',
     slots: [
-      { key: 'education_1', label: 'Education 1 — 10th / Secondary', required: true, fields: educationFields() },
-      { key: 'education_2', label: 'Education 2 — 12th / Senior Secondary', required: true, fields: educationFields() },
-      { key: 'education_3', label: 'Education 3 — Graduation', required: false, fields: educationFields() },
-      { key: 'education_4', label: 'Education 4 — Post-Graduation', required: false, fields: educationFields() },
+      { key: 'education_1', label: 'Education 1', required: true, fields: educationFields() },
+      { key: 'education_2', label: 'Education 2', required: true, fields: educationFields() },
+      { key: 'education_3', label: 'Education 3', required: false, fields: educationFields() },
+      { key: 'education_4', label: 'Education 4', required: false, fields: educationFields() },
     ],
   },
   {
     title: 'Experience',
     slots: [
-      { key: 'experience_1', label: 'Last Experience', required: false, fields: experienceFields() },
-      { key: 'experience_2', label: '2nd Last Experience', required: false, fields: experienceFields() },
-      { key: 'experience_3', label: '3rd Last Experience', required: false, fields: experienceFields() },
+      { key: 'experience_1', label: 'Experience 1', required: false, fields: experienceFields() },
+      { key: 'experience_2', label: 'Experience 2', required: false, fields: experienceFields() },
+      { key: 'experience_3', label: 'Experience 3', required: false, fields: experienceFields() },
     ],
   },
 ];
