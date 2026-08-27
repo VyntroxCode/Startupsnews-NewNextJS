@@ -2,6 +2,8 @@ import { PartnershipEventsRepository } from '../repository/partnership-events.re
 import { PartnershipEventEntity, PartnershipEventFilters, PartnershipEventInput, LinkedEventSummary } from '../domain/types';
 import { dedupKey, autoExcerpt, parseSpeakers } from '../utils/partnership-events.utils';
 import { EventsService, EventNotFoundError } from '@/modules/events/service/events.service';
+import { BannersService } from '@/modules/banners/service/banners.service';
+import { BannersRepository } from '@/modules/banners/repository/banners.repository';
 
 export interface SyncResult {
   entity: PartnershipEventEntity;
@@ -62,7 +64,10 @@ function clipInput<T extends Partial<PartnershipEventInput>>(input: T): T {
 export class PartnershipEventsService {
   constructor(
     private repository: PartnershipEventsRepository,
-    private eventsService: EventsService
+    private eventsService: EventsService,
+    // Defaulted rather than wired at each of the five API routes that build this service —
+    // only the two save paths below ever touch it (see syncHomepageBanner).
+    private bannersService: BannersService = new BannersService(new BannersRepository())
   ) {}
 
   async getAllEvents(filters?: PartnershipEventFilters) {
@@ -126,14 +131,22 @@ export class PartnershipEventsService {
     const error = this.validateInput(input);
     if (error) throw new Error(error);
     const entity = await this.repository.create(clipInput({ ...input, eventName: input.eventName.trim() }), actor);
-    return this.syncLinkedEvent(entity, input, actor);
+    const synced = await this.syncLinkedEvent(entity, input, actor);
+    return this.syncHomepageBanner(synced, input, actor);
   }
 
   async updateEvent(id: number, input: Partial<PartnershipEventInput>, actor?: string): Promise<SyncResult | null> {
     if (input.eventName !== undefined && !input.eventName.trim()) throw new Error('Event name is required');
-    const entity = await this.repository.update(id, clipInput(input), actor);
+    // createEvent() has always trimmed eventName before saving; this didn't — an update carrying
+    // incidental leading/trailing whitespace persisted it untrimmed, letting the stored
+    // event_name silently drift from the linked website Event's own (trimmed) title. That drift
+    // is exactly what could make syncLinkedEvent's findByTitle safety net miss a still-live event
+    // and wrongly create a duplicate instead of updating it.
+    const normalizedInput = input.eventName !== undefined ? { ...input, eventName: input.eventName.trim() } : input;
+    const entity = await this.repository.update(id, clipInput(normalizedInput), actor);
     if (!entity) return null;
-    return this.syncLinkedEvent(entity, input, actor);
+    const synced = await this.syncLinkedEvent(entity, input, actor);
+    return this.syncHomepageBanner(synced, input, actor);
   }
 
   /**
@@ -242,12 +255,102 @@ export class PartnershipEventsService {
     }
   }
 
+  /**
+   * Publishes the tracker's "Event banner (homepage)" image to the real homepage carousel —
+   * scheduled, never immediate: the banner sits in the `banners` table with start_date set to
+   * the admin-chosen Banner Start Date, and BannersRepository.findAll's date filter (plus
+   * BannerCarousel's own start/end check) keeps it invisible on the site until that day
+   * arrives. The admin form makes the date mandatory the moment a banner image is added, so a
+   * banner can never reach the homepage without an explicit go-live date.
+   *
+   * The row is auto-managed: banner_id remembers it so re-saving updates it in place instead
+   * of stacking duplicates, and it's deactivated (never deleted) when the image is cleared, so
+   * nothing an admin hand-tuned in Admin → Banners is destroyed and re-adding is one save away.
+   *
+   * Like syncLinkedEvent, a failure here never fails the save — the partnership record the
+   * admin just filled in matters more than the carousel; the problem comes back as a warning.
+   */
+  private async syncHomepageBanner(
+    result: SyncResult,
+    input: Partial<PartnershipEventInput>,
+    actor?: string
+  ): Promise<SyncResult> {
+    // Only the paths that actually carry these fields (the Add/Edit modal) touch the homepage.
+    // Bulk CSV import goes straight to the repository and never reaches here at all.
+    if (input.bannerUrl === undefined && input.bannerStartDate === undefined) return result;
+
+    const { entity } = result;
+    const imageUrl = entity.banner_url?.trim() || '';
+    const startDate = toYmd(entity.banner_start_date);
+
+    try {
+      if (!imageUrl || !startDate) {
+        if (entity.banner_id) {
+          await this.bannersService.updateBanner({ id: entity.banner_id, isActive: false, updatedBy: actor });
+        }
+        return result;
+      }
+
+      const linked = entity.event_id ? (await this.eventsService.getEventsByIds([entity.event_id]))[0] : undefined;
+      // A banner advertising a Draft or Cancelled listing would link to a page that isn't live,
+      // so the row stays but stays switched off until the listing itself is published.
+      const isActive = !linked || (linked.status !== 'draft' && linked.status !== 'cancelled');
+      // Whole-day window: live from midnight on the chosen day, and only retired once the
+      // event's own last day is over (the carousel filters start_date <= NOW() <= end_date).
+      const endSource = toYmd(entity.event_end_date) || toYmd(entity.event_start_date);
+      const fields = {
+        title: entity.event_name,
+        imageUrl,
+        linkUrl: linked?.slug ? `/startup-events/${linked.slug}` : '',
+        isActive,
+        startDate: `${startDate} 00:00:00`,
+        ...(endSource ? { endDate: `${endSource} 23:59:59` } : {}),
+      };
+
+      // banner_id can point at a row since deleted from Admin → Banners — recreate in that case.
+      const existing = entity.banner_id ? await this.bannersService.getBannerById(entity.banner_id) : null;
+      if (existing) {
+        // display_order is deliberately carried over, not reset — ordering is the Banners
+        // admin's call, and re-saving the tracker record shouldn't reshuffle the carousel.
+        await this.bannersService.updateBanner({ ...fields, id: existing.id, order: existing.display_order, updatedBy: actor });
+      } else {
+        const created = await this.bannersService.createBanner({ ...fields, order: 0, createdBy: actor, updatedBy: actor });
+        const bannerId = Number(created.id);
+        await this.repository.setBannerId(entity.id, bannerId);
+        entity.banner_id = bannerId;
+      }
+      return result;
+    } catch (err) {
+      console.error(`Partnership event ${entity.id}: failed to sync homepage banner:`, err);
+      return { ...result, warning: result.warning || 'Saved, but the homepage banner could not be scheduled — please try saving again.' };
+    }
+  }
+
   async deleteEvent(id: number) {
+    await this.retireHomepageBanners([id]);
     return this.repository.delete(id);
   }
 
   async bulkDelete(ids: number[]) {
+    await this.retireHomepageBanners(ids);
     return this.repository.bulkDelete(ids);
+  }
+
+  /**
+   * Switches off the auto-managed homepage banners of records about to be deleted — without
+   * this the `banners` row outlives its tracker record and keeps running on the homepage with
+   * nothing left to edit it from. Deactivated rather than deleted, matching syncHomepageBanner,
+   * so the row stays visible (and restorable) in Admin → Banners. Never blocks the delete.
+   */
+  private async retireHomepageBanners(ids: number[]): Promise<void> {
+    for (const id of ids) {
+      try {
+        const entity = await this.repository.findById(id);
+        if (entity?.banner_id) await this.bannersService.updateBanner({ id: entity.banner_id, isActive: false });
+      } catch (err) {
+        console.error(`Partnership event ${id}: failed to retire its homepage banner before delete:`, err);
+      }
+    }
   }
 
   /**

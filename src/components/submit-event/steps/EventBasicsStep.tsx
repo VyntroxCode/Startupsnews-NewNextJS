@@ -57,9 +57,9 @@ export function EventBasicsStep({ ctrl }: { ctrl: SubmitEventFormController }) {
         cityOther={data.cityOther}
         countryError={errors.country}
         cityError={errors.city}
-        onChangeCountry={(v) => ctrl.setField("country", v)}
+        onChangeCountry={(v) => ctrl.updateAndMaybeValidate("country", v, "country", validateCountry)}
         onChangeCountryOther={(v) => ctrl.updateAndMaybeValidate("countryOther", v, "country", validateCountry)}
-        onChangeCity={(v) => ctrl.setField("city", v)}
+        onChangeCity={(v) => ctrl.updateAndMaybeValidate("city", v, "city", validateCity)}
         onChangeCityOther={(v) => ctrl.updateAndMaybeValidate("cityOther", v, "city", validateCity)}
         onBlurCountry={() => ctrl.blurValidate("country", validateCountry)}
         onBlurCity={() => ctrl.blurValidate("city", validateCity)}

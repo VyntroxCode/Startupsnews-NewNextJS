@@ -109,6 +109,7 @@ interface HrToolContextValue {
   persistRequiredDocuments: (v: string[]) => Promise<void>;
   persistHolidays: (v: { date: string; name: string }[]) => Promise<void>;
   persistEmployees: (v: HrEmployee[]) => Promise<void>;
+  deleteEmployee: (employee: HrEmployee) => Promise<void>;
   persistOnboarding: (v: HrOnboarding[]) => Promise<void>;
   persistRegularizations: (v: HrRegularization[]) => Promise<void>;
   persistLeaveRequests: (v: HrLeaveRequest[]) => Promise<void>;
@@ -194,6 +195,39 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, employees: v, currentUser: s.currentUser ? v.find((e) => e.id === s.currentUser!.id) || s.currentUser : null }));
     try { await hrApi.saveEmployees(v); } catch { warnSaveFailed(); }
   }, []);
+  /** Permanent removal of one employee. Goes through the dedicated DELETE endpoint rather than
+   * a persistEmployees save of the shortened list: that only rewrites hr_employees, leaving the
+   * Employee ID credential behind for Directory's orphan auto-heal to resurrect the row from.
+   * Local state is pruned the same way the server prunes the DB — their credential, approvals,
+   * attendance, punches and onboarding row all go — so the UI matches without a reload.
+   * Throws (rather than the usual silent warnSaveFailed) so the caller can report the failure. */
+  const deleteEmployee = useCallback(async (employee: HrEmployee) => {
+    await hrApi.deleteEmployee(employee.id);
+    const name = employee.name;
+    setState((s) => {
+      const punchLog = { ...s.punchLog };
+      delete punchLog[name];
+      const attendanceOverrides: Record<string, string> = {};
+      Object.entries(s.attendanceOverrides).forEach(([k, v]) => { if (!k.startsWith(name + '|')) attendanceOverrides[k] = v; });
+      return {
+        ...s,
+        employees: s.employees
+          .filter((e) => e.id !== employee.id)
+          .map((e) => (e.manager === name ? { ...e, manager: null } : e)),
+        employeeCredentials: s.employeeCredentials.filter((c) =>
+          employee.credentialId != null ? c.id !== employee.credentialId : c.name !== name),
+        teams: s.teams.map((t) => (t.manager === name ? { ...t, manager: null } : t)),
+        onboarding: s.onboarding.filter((o) => o.employeeId !== employee.id),
+        attendance: s.attendance.filter((a) => a.emp !== name),
+        attendanceOverrides,
+        punchLog,
+        regularizations: s.regularizations.filter((r) => r.emp !== name),
+        leaveRequests: s.leaveRequests.filter((l) => l.emp !== name),
+        expenses: s.expenses.filter((x) => x.emp !== name),
+        tickets: s.tickets.filter((t) => t.emp !== name),
+      };
+    });
+  }, []);
   const persistOnboarding = useCallback(async (v: HrOnboarding[]) => { setState((s) => ({ ...s, onboarding: v })); try { await hrApi.saveOnboarding(v); } catch { warnSaveFailed(); } }, []);
   const persistRegularizations = useCallback(async (v: HrRegularization[]) => { setState((s) => ({ ...s, regularizations: v })); try { await hrApi.saveRegularizations(v); } catch { warnSaveFailed(); } }, []);
   const persistLeaveRequests = useCallback(async (v: HrLeaveRequest[]) => { setState((s) => ({ ...s, leaveRequests: v })); try { await hrApi.saveLeaveRequests(v); } catch { warnSaveFailed(); } }, []);
@@ -266,13 +300,13 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const value = useMemo<HrToolContextValue>(() => ({
     state, loading, loadError, setView, login, logout, logRuleChange,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
-    persistEmployees, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
+    persistEmployees, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
     state, loading, loadError, setView, login, logout, logRuleChange,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
-    persistEmployees, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
+    persistEmployees, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   ]);

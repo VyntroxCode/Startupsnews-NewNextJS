@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getEventsByRegion } from "@/lib/data-adapter";
 import { EventsCarousel } from "@/components/EventsCarousel";
+import { EventsSearchBar } from "@/components/EventsSearchBar";
 import type { StartupEvent } from "@/modules/events/domain/types";
 
 import type { Metadata } from "next";
@@ -72,6 +73,13 @@ export const metadata: Metadata = {
 export default async function EventsPage() {
   const eventsByRegion = await getEventsByRegion();
   const eventsByCountry = groupByCountry(eventsByRegion);
+  // Deduped by slug (falling back to id) — a handful of legacy/duplicate rows can otherwise
+  // appear twice in the flat region map, which would show the same card twice in search results.
+  const allEvents = Array.from(
+    new Map(
+      Object.values(eventsByRegion).flat().map((event) => [event.slug || event.id || event.url, event])
+    ).values()
+  );
 
   return (
     <div className="mvp-main-blog-wrap left relative mvp-main-blog-marg event-by-country-page">
@@ -95,21 +103,23 @@ export default async function EventsPage() {
           <div className="mvp-main-blog-out left relative event-by-country-out">
             <div className="mvp-main-blog-in event-by-country-in">
               <div className="mvp-main-blog-body left relative event-by-country-body">
-                {Object.entries(eventsByCountry).map(([country, cities]) => (
-                  <section key={country} className="event-by-country-section">
-                    <h2 className="event-by-country-region">{country}</h2>
-                    {Object.entries(cities).map(([city, events]) => (
-                      <div key={city} className="event-by-country-city-group">
-                        <EventsCarousel
-                          events={events}
-                          maxEvents={events.length}
-                          title={city !== country && !NON_GEOGRAPHIC_REGIONS.has(city) ? city : null}
-                          className="event-country-carousel"
-                        />
-                      </div>
-                    ))}
-                  </section>
-                ))}
+                <EventsSearchBar allEvents={allEvents}>
+                  {Object.entries(eventsByCountry).map(([country, cities]) => (
+                    <section key={country} className="event-by-country-section">
+                      <h2 className="event-by-country-region">{country}</h2>
+                      {Object.entries(cities).map(([city, events]) => (
+                        <div key={city} className="event-by-country-city-group">
+                          <EventsCarousel
+                            events={events}
+                            maxEvents={events.length}
+                            title={city !== country && !NON_GEOGRAPHIC_REGIONS.has(city) ? city : null}
+                            className="event-country-carousel"
+                          />
+                        </div>
+                      ))}
+                    </section>
+                  ))}
+                </EventsSearchBar>
               </div>
             </div>
           </div>

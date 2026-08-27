@@ -9,7 +9,7 @@ export interface ModalAction { label: string; cls: string; onClick: () => void |
  * and renders this conditionally — that keeps every control inside it a normal, live
  * controlled React input instead of a frozen snapshot. */
 export default function ModalShell({ title, onClose, actions, children, maxWidth }: {
-  title: string; onClose: () => void; actions: ModalAction[]; children: ReactNode; maxWidth?: number;
+  title: string; onClose: () => void; actions: ModalAction[]; children: ReactNode; maxWidth?: number | string;
 }) {
   // Selecting text inside the modal (e.g. to copy a password) and releasing the mouse
   // outside it — a very common drag path — used to register as a backdrop click and

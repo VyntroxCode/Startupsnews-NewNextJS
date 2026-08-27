@@ -53,6 +53,7 @@ interface PartnershipEvent {
   speakers: Speaker[];
   posterUrl: string;
   bannerUrl: string;
+  bannerStartDate: string;
   socialMediaPosts: string;
   socialCreatives: SocialCreative[];
   partnershipStatus: string;
@@ -86,7 +87,7 @@ const emptyDraft = (): EventDraft => ({
   // the modal) — mirrors how the public /submit-event flow already stamps it server-side.
   initiatedDate: todayStr(), eventStartDate: '', eventStartTime: '', eventEndDate: '', eventEndTime: '',
   venueAddress: '', googleLocationLink: '', description: '', eventType: '', ticketCurrency: '', ticketPrice: '',
-  speakers: [], posterUrl: '', bannerUrl: '', socialMediaPosts: '', socialCreatives: [],
+  speakers: [], posterUrl: '', bannerUrl: '', bannerStartDate: '', socialMediaPosts: '', socialCreatives: [],
   partnershipStatus: '', partnershipType: '',
   lastUpdatedDate: '', comment: '', listing: '', listingLink: '', source: 'Manually added',
   region: '', siteStatus: 'draft', slug: '',
@@ -179,11 +180,21 @@ function daysBetween(a: number, b: number): number {
  * Draft takes priority over those in-progress CRM stages (an unpublished event showing as e.g.
  * "Only Listing" is misleading), but NOT over the terminal Cancelled/Expired outcomes, which are
  * deliberate admin decisions/date-based facts that hold regardless of publish state.
+ *
+ * `isDateExpired` (the event's own end/start date vs today, computed in computeDerived) is
+ * checked directly here too, not just the raw CRM text already saying "expir" — the automatic
+ * DB sweep that rewrites that text (markPastPartnershipsAsExpired) only ever touches rows with
+ * no linked website Event at all (`event_id IS NULL`), so a past-dated event that IS linked but
+ * still sitting unpublished (siteStatus 'draft') never got its text updated and kept falling into
+ * the Draft bucket above by date alone — a real event stuck in Draft forever, past its own date.
+ * Checking the date live here means it's correct on every load regardless of that sweep's scope,
+ * and self-heals going forward: the moment any event's date passes, it moves to Expired even
+ * while still in Draft, instead of only Cancelled and text-already-marked-Expired doing so.
  */
-function classifyStatus(raw: string, siteStatus?: string): string {
+function classifyStatus(raw: string, siteStatus?: string, isDateExpired?: boolean): string {
   const s = (raw || '').toLowerCase().trim();
   if (s.includes('cancel')) return 'Cancelled';
-  if (s.includes('expir')) return 'Expired';
+  if (s.includes('expir') || isDateExpired) return 'Expired';
   if (!siteStatus || siteStatus === 'draft') return 'Draft';
   if (!s) return 'Unmapped';
   if (STATUS_ORDER.includes(raw)) return raw;
@@ -303,12 +314,12 @@ function inferLocationFromName(name: string): { city: string; country: string } 
 }
 function computeDerived(e: PartnershipEvent): Derived {
   const today = startOfToday();
-  const statusBucket = classifyStatus(e.partnershipStatus, e.linkedEvent?.status);
   const startMs = parseYmd(e.eventStartDate);
   const explicitEndMs = parseYmd(e.eventEndDate);
   const effectiveEndMs = explicitEndMs ?? startMs;
   const refMs = effectiveEndMs ?? startMs;
   const isExpired = refMs !== null ? refMs < today : false;
+  const statusBucket = classifyStatus(e.partnershipStatus, e.linkedEvent?.status, isExpired);
   const isUpcoming = !isExpired || !!e.linkedEvent;
   const dateOrderSuspect = !!(startMs !== null && explicitEndMs !== null && explicitEndMs < startMs);
   // Total days from Initiated Date to the event's end date (falling back to start date if no
@@ -497,7 +508,7 @@ function extractSheetIdAndGid(url: string): { id: string; gid: string } | null {
 const EXPORT_EXTRA_HEADERS = [
   'Event Start Time', 'Event End Time', 'Venue Address', 'Google Location Link', 'Event Description',
   'Event Type', 'Ticket Currency', 'Ticket Starts From', 'Key Speakers/Guests',
-  'Event Poster Link', 'Event Banner Link', 'Social Media Post Content', 'Social Media Creative Link',
+  'Event Poster Link', 'Event Banner Link', 'Banner Start Date', 'Social Media Post Content', 'Social Media Creative Link',
   'Website Region', 'Website Listing Status', 'Website Event Link',
 ];
 function speakersExportText(list: Speaker[]): string {
@@ -523,6 +534,7 @@ function downloadEventsExcel(list: PartnershipEvent[], filename: string) {
     'Key Speakers/Guests': speakersExportText(e.speakers),
     'Event Poster Link': e.posterUrl || '',
     'Event Banner Link': e.bannerUrl || '',
+    'Banner Start Date': e.bannerStartDate || '',
     'Social Media Post Content': e.socialMediaPosts || '',
     'Social Media Creative Link': creativesExportText(e.socialCreatives),
     'Website Region': e.linkedEvent?.location || '',
@@ -1086,14 +1098,23 @@ export default function PartnershipTrackerPage() {
       setDraft((d) => ({ ...d, listing: 'No', listingLink: '' }));
     }
     if (!effectiveDraft.eventName.trim()) { setModalError('Event name is required.'); return; }
-    if (!draft.posterUrl.trim()) { setModalError('Event poster is required.'); return; }
     const publishRequiredMsg = (field: string) =>
       `${field} is required to Publish or Cancel this on the website — fill it in, or leave Website Listing Status as Draft for now.`;
     if (draft.siteStatus !== 'draft') {
+      // Poster is only required (with its exact 1260×630 size enforced client-side by
+      // ImageUpload, see the `required` prop below) once the admin is actually publishing —
+      // a Draft can be saved without one while the rest of the listing is still being prepared.
+      if (!draft.posterUrl.trim()) { setModalError(publishRequiredMsg('Event poster')); return; }
       if (!draft.region.trim()) { setModalError(publishRequiredMsg('Region/Country')); return; }
       if (!draft.eventStartDate.trim()) { setModalError(publishRequiredMsg('Event Start Date')); return; }
       if (!draft.venueAddress.trim()) { setModalError(publishRequiredMsg('Complete Address')); return; }
       if (!draft.googleLocationLink.trim()) { setModalError(publishRequiredMsg('Google Location (Maps link)')); return; }
+    }
+    // The banner image itself stays optional; a go-live date is mandatory as soon as one is
+    // added, so nothing can reach the homepage carousel without an explicit start date.
+    if (draft.bannerUrl.trim() && !draft.bannerStartDate.trim()) {
+      setModalError('Banner Start Date is required once a homepage banner image is added — pick the date the banner should start showing (or remove the banner image).');
+      return;
     }
     const missingSpeakerIdx = draft.speakers.findIndex((sp) => !sp.name.trim());
     if (missingSpeakerIdx !== -1) {
@@ -1984,13 +2005,29 @@ export default function PartnershipTrackerPage() {
               ))}
               <span className="pt-add-line" onClick={() => setDraft({ ...draft, speakers: [...draft.speakers, emptySpeaker()] })}>+ Add speaker/guest</span>
 
-              <div className="pt-section-title" style={{ marginTop: 18 }}>7. Event poster (event page listing) *</div>
+              <div className="pt-section-title" style={{ marginTop: 18 }}>7. Event poster (event page listing){requiredToPublish && ' *'}</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>{POSTER_SPEC}</div>
-              <ImageUpload value={draft.posterUrl} onChange={(url) => setDraft({ ...draft, posterUrl: url })} label="Event poster" required exactDimensions={IMAGE_SPECS.cover} />
+              <ImageUpload value={draft.posterUrl} onChange={(url) => setDraft({ ...draft, posterUrl: url })} label="Event poster" required={requiredToPublish} exactDimensions={IMAGE_SPECS.cover} />
 
               <div className="pt-section-title">8. Event banner (homepage)</div>
-              <div className="pt-hint" style={{ marginBottom: 6 }}>{BANNER_SPEC}</div>
+              <div className="pt-hint" style={{ marginBottom: 6 }}>{BANNER_SPEC} Optional — but once a banner is added, the start date below decides when it appears on the homepage.</div>
               <ImageUpload value={draft.bannerUrl} onChange={(url) => setDraft({ ...draft, bannerUrl: url })} label="Homepage banner" exactDimensions={IMAGE_SPECS.banner} />
+              <div className="pt-form-grid" style={{ marginTop: 10 }}>
+                <div className="pt-fg">
+                  <label>Banner Start Date{draft.bannerUrl.trim() && ' *'}</label>
+                  <input
+                    type="date"
+                    value={draft.bannerStartDate}
+                    onChange={(e) => setDraft({ ...draft, bannerStartDate: e.target.value })}
+                  />
+                  <span className="pt-hint">
+                    {/* Scheduled, not immediate — the banner row is created on save but stays hidden
+                        until this date (see PartnershipEventsService.syncHomepageBanner). */}
+                    The banner starts showing on the homepage on this date — not before. It comes down
+                    automatically after the event&apos;s last day.
+                  </span>
+                </div>
+              </div>
 
               <div className="pt-section-title">9. Social media posts</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>Suggested content only — we&apos;ll recreate and finalise this to match our page before publishing.</div>

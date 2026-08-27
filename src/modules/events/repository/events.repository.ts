@@ -150,8 +150,17 @@ export class EventsRepository {
   /** Exact title match (case-insensitive per the column's collation), most recently created
    * first — used to adopt an already-existing website Event instead of creating a duplicate
    * when a Partnership Event record has no (or a stale) event_id link. */
+  /**
+   * Case/whitespace-insensitive match — this is the safety net `syncLinkedEvent` (Partnership
+   * Tracker) relies on before deciding "the linked event is really gone, recreate it": a plain
+   * exact `=` match here previously missed a still-live event whose title only differed by
+   * trimming or casing (e.g. the CRM's `event_name` picking up a trailing space some other field
+   * didn't have), silently falling through to create a genuine DUPLICATE event instead of
+   * updating the real one — the exact "edit changed the location, but now there are two events"
+   * bug this fixes. Normalizing both sides makes this robust regardless of the column's collation.
+   */
   async findByTitle(title: string): Promise<EventEntity | null> {
-    return queryOne<EventEntity>('SELECT * FROM events WHERE title = ? ORDER BY id DESC LIMIT 1', [title]);
+    return queryOne<EventEntity>('SELECT * FROM events WHERE LOWER(TRIM(title)) = LOWER(TRIM(?)) ORDER BY id DESC LIMIT 1', [title]);
   }
 
   /**

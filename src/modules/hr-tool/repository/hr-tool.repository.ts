@@ -1,4 +1,4 @@
-import { query, queryOne } from '@/shared/database/connection';
+import { getDbConnection, query, queryOne } from '@/shared/database/connection';
 import { findAllRows, replaceAllRows, parseJsonColumn, SqlParam } from './shared';
 import {
   HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
@@ -47,6 +47,13 @@ interface RulesRow {
   late_mark_penalty: number; geo_fencing: number; selfie_checkin: number; pf_esi: number; optional_holiday_choice: number; asset_checklist: number;
 }
 interface AuditRow { ts: string; who: string; change_text: string; }
+
+/** Tables whose rows belong to one employee and are keyed by their `emp` (name) column —
+ * everything that has to go when that employee's record is deleted. */
+const EMPLOYEE_NAME_KEYED_TABLES = [
+  'hr_attendance', 'hr_attendance_overrides', 'hr_punch_log', 'hr_regularizations',
+  'hr_leave_requests', 'hr_expenses', 'hr_tickets', 'hr_payroll_entries',
+] as const;
 
 function mapRegularizationRow(r: RegularizationRow): HrRegularization {
   return {
@@ -127,6 +134,49 @@ export class HrToolRepository {
   /** Same single-row-write safety as updateEmployeeDocuments, for the separate KYC checklist. */
   async updateEmployeeKyc(employeeId: string, kycDocuments: HrKycDocuments): Promise<void> {
     await query('UPDATE hr_employees SET kyc_documents = ? WHERE id = ?', [JSON.stringify(kycDocuments), employeeId]);
+  }
+
+  /** Hard-deletes one employee and every record keyed to them, in a single transaction so a
+   * failure part-way through leaves nothing half-removed. Their Employee ID credential goes
+   * too: leaving it behind makes Directory's orphan auto-heal recreate the Directory row
+   * moments after it was deleted, which is why "Remove employee" used to look like it did
+   * nothing at all. The credential is matched credential_id-first, name-second — the same
+   * resolution Directory itself uses. Returns null when the id no longer exists. */
+  async deleteEmployeeCascade(employeeId: string): Promise<{ name: string; credentialId: number | null } | null> {
+    const pool = await getDbConnection();
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const found = await connection.query('SELECT name, credential_id FROM hr_employees WHERE id = ?', [employeeId]);
+      const row = (Array.isArray(found) ? found[0] : found) as { name: string; credential_id: number | null } | undefined;
+      if (!row) {
+        await connection.rollback();
+        return null;
+      }
+
+      // Attendance/approvals/payroll rows all key off the employee's name, not their id.
+      for (const table of EMPLOYEE_NAME_KEYED_TABLES) {
+        await connection.query(`DELETE FROM ${table} WHERE emp = ?`, [row.name]);
+      }
+      // Anyone who reported to them, and any team they managed, would otherwise point at a
+      // name that no longer exists.
+      await connection.query('UPDATE hr_teams SET manager = NULL WHERE manager = ?', [row.name]);
+      await connection.query('UPDATE hr_employees SET manager = NULL WHERE manager = ?', [row.name]);
+      await connection.query('DELETE FROM hr_onboarding WHERE employee_id = ?', [employeeId]);
+      await connection.query('DELETE FROM hr_employees WHERE id = ?', [employeeId]);
+      if (row.credential_id != null) {
+        await connection.query('DELETE FROM hr_employee_credentials WHERE id = ?', [row.credential_id]);
+      } else {
+        await connection.query('DELETE FROM hr_employee_credentials WHERE name = ?', [row.name]);
+      }
+      await connection.commit();
+      return { name: row.name, credentialId: row.credential_id };
+    } catch (e) {
+      await connection.rollback();
+      throw e;
+    } finally {
+      connection.release();
+    }
   }
 
   // --- Onboarding ---

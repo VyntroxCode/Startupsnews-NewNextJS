@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import HireEmployeeButton from './HireEmployeeButton';
@@ -39,7 +39,7 @@ function PageHead({ title, sub }: { title: string; sub: string }) {
 }
 
 export default function Directory() {
-  const { state, persistEmployees, persistTeams, persistDesignations, logRuleChange, upsertEmployeeCredentialInState } = useHrTool();
+  const { state, persistEmployees, deleteEmployee, persistDesignations, logRuleChange, upsertEmployeeCredentialInState } = useHrTool();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
@@ -50,6 +50,7 @@ export default function Directory() {
   const [editingCredential, setEditingCredential] = useState<HrEmployeeCredential | null>(null);
   const [issuingCredentialFor, setIssuingCredentialFor] = useState<HrEmployee | null>(null);
   const [addingOrphanId, setAddingOrphanId] = useState<number | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [docRejectTarget, setDocRejectTarget] = useState<{ empId: string; idx: number } | null>(null);
   const [docRejectRemarks, setDocRejectRemarks] = useState('');
   const [kycRejectTarget, setKycRejectTarget] = useState<{ empId: string; slotKey: string } | null>(null);
@@ -142,12 +143,28 @@ export default function Directory() {
     if (fmt === 'csv') exportCSV('employee_directory.csv', exportRows); else exportExcel('employee_directory.xlsx', exportRows);
   }
 
+  /** Permanent delete — the employee, their Employee ID login and all of their records. The
+   * Employee ID has to go with them: while it exists, the orphan auto-heal above treats the
+   * missing Directory row as a gap to fill and puts the employee straight back. */
   async function removeEmployeeRecord(e: HrEmployee) {
-    if (!confirm(`Remove ${e.name} from the Directory? This is for correcting mistaken entries — for a real exit, use Offboarding instead. This can't be undone.`)) return;
-    await persistTeams(state.teams.map((t) => (t.manager === e.name ? { ...t, manager: null } : t)));
-    await persistEmployees(state.employees.filter((x) => x.id !== e.id));
-    logRuleChange(`Removed employee record: ${e.name}`);
-    setProfileId(null);
+    if (removingId) return;
+    if (!confirm(
+      `Permanently delete ${e.name}?\n\n` +
+      'This removes their Directory record, their Employee ID login, and all of their attendance, ' +
+      'leave, expense, ticket and payroll records.\n\n' +
+      'For a real exit use "Mark as exited" instead — that keeps the record and moves them to ' +
+      "Offboarding. This can't be undone."
+    )) return;
+    setRemovingId(e.id);
+    try {
+      await deleteEmployee(e);
+      logRuleChange(`Deleted employee ${e.name} — record, Employee ID and all related data`);
+      setProfileId(null);
+    } catch (err) {
+      alert(`Could not delete ${e.name}. ${err instanceof Error ? err.message : 'Please try again.'}`);
+    } finally {
+      setRemovingId(null);
+    }
   }
   async function confirmProbation(e: HrEmployee) {
     await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, status: 'active', leaveBalance: { Casual: 6, Sick: 6, Earned: 10 } } : x)));
@@ -489,6 +506,30 @@ function DocumentTrackerCard({ employee, onApprove, onReject }: {
   );
 }
 
+/** Collapsible block inside the employee profile modal. The profile is long — identity, CTC,
+ * two document checklists, a month of attendance and credentials all stacked — so everything
+ * past "Employee details" is folded away by default, with the header carrying enough of a
+ * summary that HR can see whether it's worth opening. Styled with the tool's own `.acc-*`
+ * rules in HrToolApp: this repo only compiles Tailwind for the two `*-tailwind.css` pages
+ * (see postcss.config.mjs), so utility classes are inert everywhere in /admin. */
+function Section({ title, summary, defaultOpen = false, children }: {
+  title: string; summary?: ReactNode; defaultOpen?: boolean; children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`acc${open ? ' open' : ''}`}>
+      <button type="button" className="acc-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="acc-text">
+          <span className="acc-title">{title}</span>
+          {summary ? <span className="acc-sum">{summary}</span> : null}
+        </span>
+        <span className="acc-chev" aria-hidden="true">▾</span>
+      </button>
+      {open && <div className="acc-body">{children}</div>}
+    </div>
+  );
+}
+
 function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSplit, onRemove, onConfirmProbation, onExtendProbation, onMarkExited, onEditCredential, onIssueCredential, onApproveDoc, onRejectDoc, onApproveKyc, onRejectKyc, onSaveEdits }: {
   employee: HrEmployee; admin: boolean; founder: boolean; onClose: () => void; onEditCtcSplit: () => void;
   onRemove: () => void; onConfirmProbation: () => void; onExtendProbation: () => void; onMarkExited: () => void;
@@ -533,6 +574,29 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
     setEditing(false);
   }
 
+  // Header summaries, so a collapsed section still says what's inside it.
+  const docTotal = employee.documents.length;
+  const docApproved = employee.documents.filter((d) => d.status === 'approved').length;
+  const docUploaded = employee.documents.filter((d) => d.status !== 'not_uploaded').length;
+  const docWindowLeft = employee.documentsDeadline ? daysLeft(employee.documentsDeadline) : null;
+  const docSummary = !admin
+    ? 'Restricted — HR Head/Founder and the employee only'
+    : docTotal === 0
+      ? 'No document checklist on this record'
+      : `${docApproved}/${docTotal} approved · ${docUploaded}/${docTotal} uploaded`
+        + (docApproved === docTotal ? '' : docWindowLeft === null ? '' : docWindowLeft < 0 ? ' · window closed' : ` · ${docWindowLeft} day${docWindowLeft === 1 ? '' : 's'} left`);
+
+  const kycSlots = KYC_SECTIONS.flatMap((sec) => sec.slots);
+  const kycProvided = kycSlots.filter((slot) => employee.kycDocuments[slot.key]?.status !== 'not_uploaded').length;
+  const kycAwaiting = kycSlots.filter((slot) => employee.kycDocuments[slot.key]?.status === 'pending').length;
+  const kycSummary = !admin
+    ? 'Restricted — HR Head/Founder and the employee only'
+    : `${kycProvided}/${kycSlots.length} provided`
+      + (kycAwaiting ? ` · ${kycAwaiting} awaiting review` : '')
+      + (kycProvided === 0 ? ' · nothing uploaded yet' : '');
+
+  const monthLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
   const buttons = editing
     ? [
         { label: 'Cancel', cls: 'btn', onClick: () => setEditing(false) },
@@ -551,7 +615,8 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
     buttons.unshift({ label: 'Confirm — move to Active', cls: 'btn approve', onClick: onConfirmProbation });
   }
   return (
-    <ModalShell title={employee.name} onClose={onClose} actions={buttons}>
+    <ModalShell title={employee.name} onClose={onClose} actions={buttons} maxWidth={860}>
+      <Section title="Employee details" summary={`${employee.designation} · ${employee.team}${employee.manager ? ` · reports to ${employee.manager}` : ''}`} defaultOpen>
       {editing ? (
         <>
           <div className="field-grid-2">
@@ -617,8 +682,9 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
       <div className="field"><label className="field-label">Leave balance</label>
         {Object.entries(employee.leaveBalance).filter(([k]) => state.rules.leaveTypes[k] !== false).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>)}
       </div>
-      <div className="field">
-        <label className="field-label">Documents</label>
+      </Section>
+
+      <Section title="Documents" summary={docSummary}>
         {!admin ? (
           <span className="meta">Restricted — visible only to HR Head/Founder and the employee.</span>
         ) : employee.documents.length === 0 ? (
@@ -684,9 +750,9 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
           })()}
           </>
         )}
-      </div>
-      <div className="field">
-        <label className="field-label">KYC &amp; Personal Documents</label>
+      </Section>
+
+      <Section title="KYC & personal documents" summary={kycSummary}>
         {!admin ? (
           <span className="meta">Restricted — visible only to HR Head/Founder and the employee.</span>
         ) : (
@@ -694,6 +760,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
             {KYC_SECTIONS.map((section) => (
               <div key={section.title}>
                 <div className="stat-label" style={{ marginBottom: 6 }}>{section.title}</div>
+                <div className="table-scroll wrap-table">
                 <table><thead><tr><th>Document</th><th>Details</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
                   <tbody>{section.slots.map((slot) => {
                     const d = employee.kycDocuments[slot.key];
@@ -723,20 +790,20 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
                     );
                   })}</tbody>
                 </table>
+                </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Section>
+
       {admin && (
-        <div className="field">
-          <label className="field-label">Attendance calendar</label>
+        <Section title="Attendance calendar" summary={`${monthLabel} — present, absent, leave and week-off totals with a day-by-day grid`}>
           <AttendanceCalendar empName={employee.name} />
-        </div>
+        </Section>
       )}
       {founder && (
-        <div className="field">
-          <label className="field-label">Login &amp; credentials</label>
+        <Section title="Login & credentials" summary={credential ? `${credential.employeeCode} · ${credential.isActive ? 'Active' : 'Inactive'}` : 'No login issued yet'}>
           {credential ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <code>{credential.employeeCode}</code>
@@ -750,7 +817,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
               <button className="btn ghost sm" onClick={onIssueCredential}>Issue Employee ID</button>
             </div>
           )}
-        </div>
+        </Section>
       )}
     </ModalShell>
   );
@@ -812,6 +879,18 @@ function CtcSplitModal({ employeeId, onClose }: { employeeId: string; onClose: (
         {convType === 'amount' && '₹'}
         <input className="mini-input" type="number" value={convValue} onChange={(ev) => setConvValue(ev.target.value)} />
         {convType === 'percent' && '%'}
+      </div>
+      <div className="field">
+        <label className="field-label">Special Allowance (₹/month)</label>
+        <input
+          className="mini-input"
+          type="text"
+          value={'₹' + preview.specialAllowance.toLocaleString('en-IN')}
+          readOnly
+          disabled
+          style={{ width: 110, ...(preview.specialAllowance < 0 ? { color: 'var(--red)', borderColor: '#FECACA' } : {}) }}
+        />
+        <span className="meta" style={{ marginLeft: 8 }}>— computed automatically, whatever&apos;s left of monthly salary</span>
       </div>
       <div className="meta" style={{ marginTop: 8 }}>
         On {e.name.split(' ')[0]}&apos;s ₹{e.ctc.toLocaleString('en-IN')} annual CTC (₹/month): Basic ₹{preview.basic.toLocaleString('en-IN')}

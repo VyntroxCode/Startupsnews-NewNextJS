@@ -1396,6 +1396,69 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   padding-bottom: 56px;
 }
 
+.event-search {
+  margin-bottom: 36px;
+}
+
+.event-search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 480px;
+  margin: 0 auto 8px;
+}
+
+.event-search-icon {
+  position: absolute;
+  left: 16px;
+  color: #999;
+  pointer-events: none;
+}
+
+.event-search-input {
+  width: 100%;
+  padding: 12px 44px 12px 44px;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  font-size: 0.95rem;
+  color: #111;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.event-search-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(226, 58, 99, 0.12);
+}
+
+.event-search-clear {
+  position: absolute;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: #555;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.event-search-clear:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.event-search-empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: #666;
+  font-size: 1rem;
+}
+
 .event-by-country-title {
   font-size: 1.75rem;
   font-weight: 700;

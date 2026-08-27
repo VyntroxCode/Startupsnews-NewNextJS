@@ -362,6 +362,12 @@ export class HrToolService {
    * native HR tool bootstrap, e.g. the Employee Panel's own attendance calendar. */
   getHolidays(): Promise<HrHoliday[]> { return this.repository.findHolidays(); }
   saveEmployees(employees: HrEmployee[]) { return this.repository.replaceEmployees(employees); }
+  /** Removes an employee for good — record, Employee ID credential and all their attendance /
+   * approval / payroll rows (see HrToolRepository.deleteEmployeeCascade). Returns false when
+   * the employee was already gone. */
+  async deleteEmployee(id: string): Promise<boolean> {
+    return (await this.repository.deleteEmployeeCascade(id)) !== null;
+  }
   saveOnboarding(items: HrOnboarding[]) { return this.repository.replaceOnboarding(items); }
   recordAttendance(rec: HrAttendanceRecord) { return this.repository.upsertAttendance(rec); }
   recordAttendanceOverride(o: HrAttendanceOverride) { return this.repository.upsertAttendanceOverride(o); }

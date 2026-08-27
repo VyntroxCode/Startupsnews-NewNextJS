@@ -86,6 +86,10 @@ export default function HireEmployeeButton({ label, className }: { label: string
   const [preview, setPreview] = useState<FormState | null>(null);
   const [sending, setSending] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Freshest known employee-credentials list, refreshed on open (see openAdd) — used to catch a
+  // duplicate Employee ID at the initial-form stage (previewOffer) instead of only failing later
+  // at the final "Approve & Send" step, after the whole letter's already been filled in.
+  const [freshCredentials, setFreshCredentials] = useState<HrEmployeeCredential[] | null>(null);
 
   function patch(p: Partial<FormState>) { setForm((f) => ({ ...f, ...p })); }
 
@@ -133,6 +137,7 @@ export default function HireEmployeeButton({ label, className }: { label: string
   function openAdd() {
     setForm(emptyForm(state));
     setError('');
+    setFreshCredentials(null);
     setAddOpen(true);
     (async () => {
       try {
@@ -140,6 +145,7 @@ export default function HireEmployeeButton({ label, className }: { label: string
         const data = await res.json();
         if (res.ok && data.success) {
           const fresh = data.data as HrEmployeeCredential[];
+          setFreshCredentials(fresh);
           setForm((f) => ({ ...f, employeeCode: nextEmployeeCode(fresh) }));
         }
       } catch {
@@ -161,6 +167,14 @@ export default function HireEmployeeButton({ label, className }: { label: string
     // the Department's configured manager (see managerOf), so there's nothing to validate.
     const credError = validateCredentialFields(form, false);
     if (credError) { setError(credError); return; }
+    // Catch a duplicate Employee ID right here — before the admin fills out the rest of the
+    // letter and reaches "Approve & Send", where this used to only surface server-side.
+    const code = form.employeeCode.trim();
+    const existing = freshCredentials ?? state.employeeCredentials;
+    if (existing.some((c) => c.employeeCode === code)) {
+      setError(`Employee ID "${code}" is already in use — please choose a different one.`);
+      return;
+    }
     setError('');
     setAddOpen(false);
     setPreview(form);
@@ -255,7 +269,7 @@ export default function HireEmployeeButton({ label, className }: { label: string
       <button className={className} onClick={openAdd}>{label}</button>
 
       {addOpen && (
-        <ModalShell title="Send Joining Letter" onClose={() => setAddOpen(false)} maxWidth={640} actions={[
+        <ModalShell title="Create Employee" onClose={() => setAddOpen(false)} maxWidth="80vw" actions={[
           { label: 'Cancel', cls: 'btn', onClick: () => setAddOpen(false) },
           { label: 'Preview Joining Letter', cls: 'btn primary', onClick: previewOffer },
         ]}>

@@ -59,6 +59,10 @@ export interface PartnershipEventEntity {
   speakers: JsonArrayColumn;
   poster_url: string | null;
   banner_url: string | null;
+  /** Date the homepage banner should go live — see PartnershipEventsService.syncHomepageBanner. */
+  banner_start_date: string | null;
+  /** id of the auto-managed `banners` row created from banner_url, so re-saving updates it in place. */
+  banner_id: number | null;
   social_media_posts: string | null;
   social_creatives: JsonArrayColumn;
   partnership_status: string | null;
@@ -100,6 +104,7 @@ export interface PartnershipEvent {
   speakers: Speaker[];
   posterUrl: string;
   bannerUrl: string;
+  bannerStartDate: string;
   socialMediaPosts: string;
   socialCreatives: SocialCreative[];
   partnershipStatus: string;
@@ -139,6 +144,8 @@ export interface PartnershipEventInput {
   speakers?: Speaker[];
   posterUrl?: string;
   bannerUrl?: string;
+  /** YYYY-MM-DD. Required by the admin form whenever bannerUrl is set — nothing reaches the homepage without it. */
+  bannerStartDate?: string | null;
   socialMediaPosts?: string;
   socialCreatives?: SocialCreative[];
   partnershipStatus?: string;

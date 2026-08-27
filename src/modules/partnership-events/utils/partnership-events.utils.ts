@@ -72,6 +72,7 @@ export function entityToPartnershipEvent(entity: PartnershipEventEntity): Partne
     speakers: parseSpeakers(entity.speakers),
     posterUrl: entity.poster_url || '',
     bannerUrl: entity.banner_url || '',
+    bannerStartDate: entity.banner_start_date || '',
     socialMediaPosts: entity.social_media_posts || '',
     socialCreatives: parseSocialCreatives(entity.social_creatives),
     partnershipStatus: entity.partnership_status || '',

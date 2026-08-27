@@ -27,6 +27,7 @@ const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
   ['speakers', 'speakers'],
   ['posterUrl', 'poster_url'],
   ['bannerUrl', 'banner_url'],
+  ['bannerStartDate', 'banner_start_date'],
   ['socialMediaPosts', 'social_media_posts'],
   ['socialCreatives', 'social_creatives'],
   ['partnershipStatus', 'partnership_status'],
@@ -39,7 +40,7 @@ const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
 ];
 
 const JSON_COLUMNS = new Set<keyof PartnershipEventInput>(['speakers', 'socialCreatives']);
-const DATE_COLUMNS = new Set<keyof PartnershipEventInput>(['initiatedDate', 'eventStartDate', 'eventEndDate', 'lastUpdatedDate']);
+const DATE_COLUMNS = new Set<keyof PartnershipEventInput>(['initiatedDate', 'eventStartDate', 'eventEndDate', 'lastUpdatedDate', 'bannerStartDate']);
 
 function toParam(key: keyof PartnershipEventInput, value: unknown): SqlParam {
   if (JSON_COLUMNS.has(key)) return JSON.stringify(value || []);
@@ -162,6 +163,11 @@ export class PartnershipEventsRepository {
   /** Records the id of the auto-created linked Event the first time one gets created for this record. */
   async setEventId(id: number, eventId: number): Promise<void> {
     await query('UPDATE partnership_events SET event_id = ? WHERE id = ?', [eventId, id]);
+  }
+
+  /** Same idea as setEventId, for the auto-managed homepage `banners` row (see syncHomepageBanner). */
+  async setBannerId(id: number, bannerId: number | null): Promise<void> {
+    await query('UPDATE partnership_events SET banner_id = ? WHERE id = ?', [bannerId, id]);
   }
 
   async delete(id: number): Promise<void> {

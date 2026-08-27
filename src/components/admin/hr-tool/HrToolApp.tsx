@@ -244,6 +244,7 @@ function HrToolStyles() {
       .hr-tool-app .btn:disabled { opacity: 0.45; cursor: not-allowed; }
       .hr-tool-app select, .hr-tool-app input[type=text], .hr-tool-app input[type=number], .hr-tool-app input[type=date],
       .hr-tool-app input[type=time], .hr-tool-app input[type=password], .hr-tool-app input[type=email], .hr-tool-app input[type=url],
+      .hr-tool-app input[type=tel],
       .hr-tool-app textarea { font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink); width: 100%; }
       .hr-tool-app textarea { resize: vertical; min-height: 56px; }
       .hr-tool-app label.field-label { font-size: 11.5px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 5px; }
@@ -287,6 +288,45 @@ function HrToolStyles() {
       .hr-tool-app .cal-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 10px; }
       .hr-tool-app .cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
       .hr-tool-app .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+      /* Collapsible sections in the employee profile modal (Directory's <Section>). */
+      .hr-tool-app .acc { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin-bottom: 10px; overflow: hidden; }
+      .hr-tool-app .acc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 12px 14px; background: #F8FAFC; border: none; text-align: left; transition: background .12s; }
+      .hr-tool-app .acc-head:hover { background: #F1F5F9; }
+      .hr-tool-app .acc.open .acc-head { background: var(--panel); border-bottom: 1px solid var(--line); }
+      .hr-tool-app .acc-text { min-width: 0; }
+      .hr-tool-app .acc-title { display: block; font-size: 13px; font-weight: 700; color: var(--ink); }
+      .hr-tool-app .acc-sum { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+      .hr-tool-app .acc-chev { flex-shrink: 0; font-size: 11px; color: var(--muted); transition: transform .15s; }
+      .hr-tool-app .acc.open .acc-chev { transform: rotate(180deg); }
+      .hr-tool-app .acc-body { padding: 16px 14px; }
+      .hr-tool-app .acc-body > .field:last-child { margin-bottom: 0; }
+
+      /* Attendance calendar summary strip (AttendanceCalendar's <CalStat>). */
+      .hr-tool-app .cal-summary { border: 1px solid var(--line); border-radius: 10px; background: #F8FAFC; padding: 13px 14px; margin-bottom: 14px; }
+      .hr-tool-app .cal-summary-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+      .hr-tool-app .cal-summary-month { font-size: 13px; font-weight: 700; }
+      .hr-tool-app .cal-summary-note { font-size: 11.5px; color: var(--muted); }
+      .hr-tool-app .cal-summary-note strong { color: var(--ink); font-weight: 700; }
+      .hr-tool-app .cal-summary-bar { display: flex; height: 6px; border-radius: 6px; overflow: hidden; background: #E2E8F0; margin-top: 11px; }
+      .hr-tool-app .cal-summary-bar .seg.present { background: var(--green); }
+      .hr-tool-app .cal-summary-bar .seg.absent { background: var(--red); }
+      .hr-tool-app .cal-summary-bar .seg.leave { background: var(--blue); }
+      .hr-tool-app .cal-summary-bar .seg.unrecorded { background: #CBD5E1; }
+      .hr-tool-app .cal-summary-rule { font-size: 11px; color: var(--muted); margin-top: 11px; line-height: 1.45; }
+      .hr-tool-app .cal-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 8px; margin-top: 12px; }
+      .hr-tool-app .cal-stat { border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 9px 11px; }
+      .hr-tool-app .cal-stat-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.25; opacity: 0.75; }
+      .hr-tool-app .cal-stat-num { font-size: 21px; font-weight: 700; line-height: 1; margin-top: 7px; }
+      .hr-tool-app .cal-stat-sub { font-size: 10.5px; line-height: 1.2; margin-top: 5px; opacity: 0.72; }
+      .hr-tool-app .cal-stat.neutral { color: var(--ink); }
+      .hr-tool-app .cal-stat.present { background: var(--green-soft); border-color: #BBF7D0; color: #14532D; }
+      .hr-tool-app .cal-stat.absent { background: var(--red-soft); border-color: #FECACA; color: #7F1D1D; }
+      .hr-tool-app .cal-stat.leave { background: var(--blue-soft); border-color: #BFDBFE; color: #1E3A8A; }
+      .hr-tool-app .cal-stat.off { background: #F1F5F9; border-color: #E2E8F0; color: #475569; }
+      .hr-tool-app .cal-stat.regpending { background: var(--amber-soft); border-color: #FDE68A; color: #78350F; }
+      .hr-tool-app .cal-stat.regapproved { background: #EDE9FE; border-color: #DDD6FE; color: #5B21B6; }
+      @media (max-width: 560px) { .hr-tool-app .cal-stats { grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); } }
+
       .hr-tool-app .rule-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); gap: 16px; flex-wrap: wrap; }
       .hr-tool-app .rule-row:last-child { border-bottom: none; }
       .hr-tool-app .rule-name { font-weight: 600; font-size: 13px; }
