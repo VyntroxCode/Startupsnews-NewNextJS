@@ -1,0 +1,2117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StartupNews System Atlas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F6F9;
+  --paper-raised:#FFFFFF;
+  --paper-sunken:#E9EEF3;
+  --ink:#10151C;
+  --ink-soft:#52606D;
+  --ink-faint:#8592A0;
+  --line:#D7DFE7;
+  --line-strong:#B9C4D0;
+  --accent:#2952CC;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E6ECFC;
+  --accent-2:#0E8F82;
+  --status-draft:#8A8F98;
+  --status-published:#1E9E6B;
+  --status-scheduled:#B8860B;
+  --status-archived:#A34E4E;
+  --status-gone:#B23A3A;
+  --code-bg:#EDF1F6;
+  --shadow: 0 1px 2px rgba(16,21,28,0.06), 0 8px 24px -12px rgba(16,21,28,0.12);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0C1117;
+    --paper-raised:#131A22;
+    --paper-sunken:#0A0E13;
+    --ink:#E7ECF2;
+    --ink-soft:#9DACBC;
+    --ink-faint:#6B7887;
+    --line:#22303F;
+    --line-strong:#31465C;
+    --accent:#6E93FF;
+    --accent-ink:#0A0E13;
+    --accent-soft:#182544;
+    --accent-2:#42D9C8;
+    --status-draft:#8D97A3;
+    --status-published:#3FCE94;
+    --status-scheduled:#E0B84B;
+    --status-archived:#D97C7C;
+    --status-gone:#E2585B;
+    --code-bg:#0F1620;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0C1117;
+  --paper-raised:#131A22;
+  --paper-sunken:#0A0E13;
+  --ink:#E7ECF2;
+  --ink-soft:#9DACBC;
+  --ink-faint:#6B7887;
+  --line:#22303F;
+  --line-strong:#31465C;
+  --accent:#6E93FF;
+  --accent-ink:#0A0E13;
+  --accent-soft:#182544;
+  --accent-2:#42D9C8;
+  --status-draft:#8D97A3;
+  --status-published:#3FCE94;
+  --status-scheduled:#E0B84B;
+  --status-archived:#D97C7C;
+  --status-gone:#E2585B;
+  --code-bg:#0F1620;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+}
+
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Public Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size:15.5px;
+  line-height:1.6;
+}
+a{color:var(--accent);}
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  border-radius:3px;
+}
+h1,h2,h3,h4{
+  font-family:"Archivo", ui-sans-serif, system-ui, sans-serif;
+  text-wrap:balance;
+  margin:0;
+  color:var(--ink);
+}
+code, .mono{
+  font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.eyebrow{
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.72rem;
+  letter-spacing:0.11em;
+  text-transform:uppercase;
+  color:var(--accent);
+  font-weight:500;
+}
+
+/* ---------- Masthead ---------- */
+.masthead{
+  border-bottom:1px solid var(--line);
+  background:var(--paper-raised);
+  padding:2.6rem 1.5rem 1.8rem;
+}
+.masthead-inner{
+  max-width:1360px;
+  margin:0 auto;
+}
+.masthead h1{
+  font-size:clamp(2rem, 3.2vw, 2.9rem);
+  font-weight:800;
+  letter-spacing:-0.01em;
+  margin-top:0.5rem;
+}
+.masthead p.dek{
+  max-width:62ch;
+  color:var(--ink-soft);
+  font-size:1.05rem;
+  margin-top:0.7rem;
+}
+.stat-strip{
+  display:flex;
+  flex-wrap:wrap;
+  gap:0;
+  margin-top:1.8rem;
+  border-top:1px solid var(--line);
+  border-left:1px solid var(--line);
+}
+.stat{
+  flex:1 1 140px;
+  padding:0.85rem 1.1rem;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+}
+.stat .n{
+  font-family:"Archivo", sans-serif;
+  font-weight:800;
+  font-size:1.5rem;
+  font-variant-numeric:tabular-nums;
+}
+.stat .l{
+  font-size:0.74rem;
+  color:var(--ink-faint);
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+  margin-top:0.15rem;
+}
+
+/* ---------- Layout ---------- */
+.layout{
+  max-width:1360px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:250px minmax(0,1fr);
+  gap:2.2rem;
+  padding:1.8rem 1.5rem 5rem;
+  align-items:start;
+}
+@media (max-width: 880px){
+  .layout{grid-template-columns:1fr;}
+  nav.toc{position:static; max-height:none;}
+}
+nav.toc{
+  position:sticky;
+  top:1.2rem;
+  max-height:calc(100vh - 2.4rem);
+  overflow-y:auto;
+  padding-right:0.4rem;
+}
+nav.toc input[type="text"]{
+  width:100%;
+  padding:0.5rem 0.7rem;
+  border:1px solid var(--line-strong);
+  border-radius:6px;
+  background:var(--paper-sunken);
+  color:var(--ink);
+  font-family:inherit;
+  font-size:0.85rem;
+  margin-bottom:0.9rem;
+}
+nav.toc ul{list-style:none;margin:0;padding:0;}
+nav.toc > ul > li{margin-bottom:0.15rem;}
+nav.toc a{
+  display:block;
+  padding:0.32rem 0.55rem;
+  border-radius:5px;
+  color:var(--ink-soft);
+  text-decoration:none;
+  font-size:0.87rem;
+  font-weight:500;
+}
+nav.toc a:hover{background:var(--accent-soft); color:var(--accent);}
+nav.toc .grp-label{
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.68rem;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  padding:0.7rem 0.55rem 0.25rem;
+}
+nav.toc ul ul{padding-left:0.85rem; border-left:1px solid var(--line); margin-left:0.55rem;}
+
+main{min-width:0;}
+section{
+  margin-bottom:3.4rem;
+  scroll-margin-top:1.2rem;
+}
+section > .sec-head{
+  margin-bottom:1.1rem;
+}
+section > .sec-head h2{
+  font-size:1.55rem;
+  font-weight:700;
+}
+section > .sec-head p{
+  color:var(--ink-soft);
+  max-width:72ch;
+  margin-top:0.4rem;
+}
+h3.sub{
+  font-size:1.1rem;
+  font-weight:700;
+  margin:1.8rem 0 0.6rem;
+}
+h3.sub .mono{font-size:0.85em; color:var(--ink-faint); font-weight:500;}
+
+p{max-width:74ch;}
+
+/* ---------- Diagram card ---------- */
+.diagram{
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:1.1rem;
+  box-shadow:var(--shadow);
+  overflow-x:auto;
+  margin:0.9rem 0 1.4rem;
+}
+.diagram .cap{
+  font-size:0.82rem;
+  color:var(--ink-faint);
+  margin-top:0.7rem;
+  padding-top:0.6rem;
+  border-top:1px dashed var(--line);
+}
+
+/* ---------- Tables (data grids) ---------- */
+.scrollwrap{overflow-x:auto; border-radius:8px;}
+table.grid{
+  border-collapse:collapse;
+  width:100%;
+  font-size:0.86rem;
+  background:var(--paper-raised);
+}
+table.grid th, table.grid td{
+  text-align:left;
+  padding:0.5rem 0.7rem;
+  border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+table.grid th{
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.7rem;
+  letter-spacing:0.05em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  background:var(--paper-sunken);
+  position:sticky; top:0;
+}
+table.grid tr:last-child td{border-bottom:none;}
+table.grid td code{font-size:0.83em;}
+
+/* ---------- Table-card (DB reference) ---------- */
+.table-card{
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--paper-raised);
+  margin-bottom:0.7rem;
+  box-shadow:var(--shadow);
+}
+.table-card summary{
+  list-style:none;
+  cursor:pointer;
+  padding:0.75rem 1rem;
+  display:flex;
+  align-items:center;
+  gap:0.7rem;
+  flex-wrap:wrap;
+}
+.table-card summary::-webkit-details-marker{display:none;}
+.table-card summary::before{
+  content:"▸";
+  color:var(--accent);
+  font-size:0.75rem;
+  transition:transform 0.15s ease;
+  flex:0 0 auto;
+}
+.table-card[open] summary::before{transform:rotate(90deg);}
+.table-card summary .tname{
+  font-family:"IBM Plex Mono", monospace;
+  font-weight:600;
+  font-size:0.95rem;
+}
+.table-card summary .purpose{
+  color:var(--ink-soft);
+  font-size:0.84rem;
+  flex:1 1 240px;
+}
+.table-card summary .count{
+  font-size:0.7rem;
+  color:var(--ink-faint);
+  background:var(--paper-sunken);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:0.12rem 0.55rem;
+  font-family:"IBM Plex Mono", monospace;
+}
+.table-card .body{
+  padding:0 1rem 1rem;
+}
+.table-card .flags{
+  margin:0 0 0.7rem;
+  font-size:0.8rem;
+  color:var(--ink-soft);
+}
+.k{
+  display:inline-block;
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.62rem;
+  font-weight:600;
+  letter-spacing:0.02em;
+  padding:0.03rem 0.32rem;
+  border-radius:4px;
+  margin-left:0.35rem;
+  vertical-align:1px;
+}
+.k.pk{background:var(--accent-soft); color:var(--accent);}
+.k.fk{background:var(--code-bg); color:var(--accent-2); border:1px solid var(--line-strong);}
+.k.uk{background:var(--code-bg); color:var(--ink-soft); border:1px solid var(--line-strong);}
+
+/* ---------- Status pills (semantic, drawn from real enums) ---------- */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:0.35rem;
+  font-size:0.78rem;
+  font-weight:600;
+  padding:0.12rem 0.6rem;
+  border-radius:20px;
+}
+.pill::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor;}
+.pill.draft{color:var(--status-draft); background:color-mix(in srgb, var(--status-draft) 14%, transparent);}
+.pill.published{color:var(--status-published); background:color-mix(in srgb, var(--status-published) 14%, transparent);}
+.pill.scheduled{color:var(--status-scheduled); background:color-mix(in srgb, var(--status-scheduled) 14%, transparent);}
+.pill.archived{color:var(--status-archived); background:color-mix(in srgb, var(--status-archived) 14%, transparent);}
+.pill.gone{color:var(--status-gone); background:color-mix(in srgb, var(--status-gone) 14%, transparent);}
+
+/* ---------- Domain summary cards ---------- */
+.domain-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+  gap:0.7rem;
+  margin:1rem 0 1.6rem;
+}
+.domain-strip a{
+  display:block;
+  text-decoration:none;
+  border:1px solid var(--line);
+  background:var(--paper-raised);
+  border-radius:10px;
+  padding:0.85rem 0.95rem;
+  box-shadow:var(--shadow);
+}
+.domain-strip a .n{
+  font-family:"Archivo", sans-serif;
+  font-weight:800;
+  font-size:1.4rem;
+  color:var(--ink);
+}
+.domain-strip a .l{
+  font-size:0.82rem;
+  color:var(--ink-soft);
+  margin-top:0.15rem;
+}
+
+/* ---------- Controls ---------- */
+.controls{
+  display:flex;
+  gap:0.6rem;
+  margin-bottom:1rem;
+}
+.controls button{
+  font-family:"IBM Plex Mono", monospace;
+  font-size:0.76rem;
+  background:var(--paper-raised);
+  border:1px solid var(--line-strong);
+  color:var(--ink-soft);
+  padding:0.4rem 0.75rem;
+  border-radius:6px;
+  cursor:pointer;
+}
+.controls button:hover{border-color:var(--accent); color:var(--accent);}
+
+/* ---------- Notes list ---------- */
+ul.notes{padding-left:1.2rem;}
+ul.notes li{margin-bottom:0.65rem; max-width:76ch;}
+ul.notes li b{color:var(--ink);}
+
+.callout{
+  border-left:3px solid var(--accent-2);
+  background:var(--paper-sunken);
+  padding:0.8rem 1rem;
+  border-radius:0 8px 8px 0;
+  font-size:0.9rem;
+  color:var(--ink-soft);
+  margin:0.9rem 0 1.4rem;
+  max-width:74ch;
+}
+
+footer{
+  max-width:1360px;
+  margin:0 auto;
+  padding:1.5rem 1.5rem 3rem;
+  color:var(--ink-faint);
+  font-size:0.8rem;
+  border-top:1px solid var(--line);
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;}
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+(function(){
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: dark ? 'dark' : 'default',
+    securityLevel: 'loose',
+    fontFamily: '"IBM Plex Mono", ui-monospace, monospace'
+  });
+})();
+</script>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="eyebrow">Codebase Reference — zox-nextjs</div>
+    <h1>StartupNews System Atlas</h1>
+    <p class="dek">Architecture, request data flow, and the complete MariaDB schema for the StartupNews.fyi platform — a modular Next.js 16 app serving the public site, an admin panel, an employee/HR portal, and internal dashboards.</p>
+    <div class="stat-strip">
+      <div class="stat"><div class="n">53</div><div class="l">DB tables</div></div>
+      <div class="stat"><div class="n">18</div><div class="l">src/modules</div></div>
+      <div class="stat"><div class="n">~20</div><div class="l">API route groups</div></div>
+      <div class="stat"><div class="n">4</div><div class="l">auth flows</div></div>
+      <div class="stat"><div class="n">5</div><div class="l">scheduled jobs</div></div>
+      <div class="stat"><div class="n">6</div><div class="l">schema domains</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="Table of contents">
+  <input type="text" id="tocFilter" placeholder="Filter tables…" autocomplete="off">
+  <ul>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#architecture">System Architecture</a></li>
+    <li><a href="#surface">Application Surface</a></li>
+    <li><a href="#dataflow">Data Flow</a></li>
+    <li><a href="#jobs">Background Jobs &amp; Queues</a></li>
+    <li>
+      <a href="#database">Database Schema</a>
+      <ul>
+        <li><a href="#dom-content">Content</a></li>
+        <li><a href="#dom-users">Users &amp; Auth</a></li>
+        <li><a href="#dom-hr">HR Tool</a></li>
+        <li><a href="#dom-sales">Sales &amp; Partnerships</a></li>
+        <li><a href="#dom-rss">RSS &amp; Newsletter</a></li>
+        <li><a href="#dom-misc">Misc</a></li>
+      </ul>
+    </li>
+    <li><a href="#notes">Notes &amp; Caveats</a></li>
+  </ul>
+</nav>
+
+<main id="mainContent">
+
+<section id="overview">
+  <div class="sec-head">
+    <h2>Overview</h2>
+    <p>StartupNews.fyi is a single Next.js 16 App Router codebase with no ORM — every module talks to MariaDB through hand-written SQL behind a repository layer. Six functional areas share that codebase: the public news/events site, an admin panel, a lighter publisher/event-admin dashboard, an employee/HR portal, a sales &amp; partnerships tracker, and an RSS ingestion pipeline that feeds both the site and the newsletter.</p>
+  </div>
+  <div class="domain-strip">
+    <a href="#dom-content"><div class="n">12</div><div class="l">Content tables</div></a>
+    <a href="#dom-users"><div class="n">7</div><div class="l">Users &amp; Auth tables</div></a>
+    <a href="#dom-hr"><div class="n">21</div><div class="l">HR Tool tables</div></a>
+    <a href="#dom-sales"><div class="n">3</div><div class="l">Sales &amp; Partnerships tables</div></a>
+    <a href="#dom-rss"><div class="n">5</div><div class="l">RSS &amp; Newsletter tables</div></a>
+    <a href="#dom-misc"><div class="n">5</div><div class="l">Misc tables</div></a>
+  </div>
+</section>
+
+<section id="architecture">
+  <div class="sec-head">
+    <h2>System Architecture</h2>
+    <p>Every read or write follows the same shape: route/page → service (business rules + cache) → repository (raw SQL) → MariaDB, with Redis as a read-through cache and lock provider, and S3 as the media store. A separate cron/queue/worker track runs outside the request cycle for RSS ingestion and scheduled publishing.</p>
+  </div>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph CLIENT["Client"]
+        BROWSER["Browser — public site / admin panel / employee portal / dashboard"]
+    end
+
+    subgraph NEXT["Next.js 16 App Router"]
+        PAGES["Pages and Server Components — src/app/**"]
+        API["API Route Handlers — src/app/api/**"]
+        ACTIONS["Server Actions — src/app/actions"]
+    end
+
+    subgraph MODULE["Module Layer — src/modules/*"]
+        SERVICE["Service — business rules, cache orchestration"]
+        REPO["Repository — raw SQL"]
+        DOMAIN["Domain types"]
+        UTILS["Utils — transforms, URL/CDN helpers"]
+    end
+
+    subgraph DATA["Data and Infra"]
+        DB[("MariaDB — zox_db")]
+        REDIS[("Redis — cache + locks")]
+        S3[("S3 — media")]
+    end
+
+    subgraph ASYNC["Background Processing"]
+        CRON["node-cron daemon — cron/index.ts"]
+        QUEUE["In-memory Queue — src/queue"]
+        WORKER["RSS Worker — src/workers"]
+    end
+
+    subgraph EXTERNAL["External Services"]
+        SMTP["SMTP — nodemailer"]
+        RSS_SRC["RSS sources"]
+        OAUTH["Google / LinkedIn OAuth"]
+        TURNSTILE["Cloudflare Turnstile"]
+    end
+
+    BROWSER --> PAGES
+    BROWSER --> API
+    PAGES --> SERVICE
+    API --> SERVICE
+    ACTIONS --> SERVICE
+    SERVICE --> REPO
+    SERVICE -. read-through cache .-> REDIS
+    REPO --> DB
+    REPO -. invalidate .-> REDIS
+    SERVICE --> UTILS
+    UTILS --> S3
+    DOMAIN -.-> SERVICE
+    DOMAIN -.-> REPO
+
+    CRON --> QUEUE
+    QUEUE --> WORKER
+    WORKER --> REPO
+    WORKER --> RSS_SRC
+    WORKER --> S3
+    CRON -. lock .-> REDIS
+    WORKER -. lock .-> REDIS
+
+    API --> SMTP
+    API --> OAUTH
+    API --> TURNSTILE
+</pre>
+    <div class="cap">No root <code>middleware.ts</code> exists — auth is enforced per-route-handler rather than at the Next.js middleware layer. Modules follow domain / repository / service / utils as sibling folders; routes stay thin and only orchestrate.</div>
+  </div>
+</section>
+
+<section id="surface">
+  <div class="sec-head">
+    <h2>Application Surface</h2>
+    <p>~20 API route groups under <code>src/app/api/*</code>, and frontend routes split across four zones: public content, admin panel, employee portal, and a lighter publisher/event-admin dashboard.</p>
+  </div>
+
+  <h3 class="sub">API route groups <span class="mono">src/app/api/*</span></h3>
+  <div class="scrollwrap">
+  <table class="grid">
+    <thead><tr><th>Route group</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>admin/</code></td><td>Admin-panel CRUD for everything: auth, authors, banners, brand-stories(+sections), categories, contacts, event-regions, events (+CSV export), presign (S3 uploads), rss-feeds, and the full hr-tool/* surface (attendance, audit-log, bootstrap, company-profile, designations, employee-credentials, employees, expenses, holidays, leave-requests, onboarding, payroll, punch-log, regularizations, required-documents, rules, teams, templates, tickets)</td></tr>
+      <tr><td><code>advertise/</code></td><td>Advertise-with-us form submission (Turnstile-protected)</td></tr>
+      <tr><td><code>banners/</code></td><td>Public read of homepage banners</td></tr>
+      <tr><td><code>brand-stories/</code>, <code>brand-story-sections/</code></td><td>Public read of sponsored brand-story content</td></tr>
+      <tr><td><code>categories/</code></td><td>Public category list / lookup by slug</td></tr>
+      <tr><td><code>cron/</code></td><td>HTTP-triggered cron endpoints: invalidate-post-cache, newsletter-auto, newsletter-schedule, rss-feeds</td></tr>
+      <tr><td><code>dashboard/</code></td><td>Aggregate stats for the admin dashboard</td></tr>
+      <tr><td><code>employee/</code></td><td>Employee self-service: attendance, documents (+presign), kyc, leave-requests — isolated auth</td></tr>
+      <tr><td><code>events/</code></td><td>Public events list/detail, newsletter-template, populate-content, robots, submit-event (+S3 presign)</td></tr>
+      <tr><td><code>health/</code></td><td>Health check</td></tr>
+      <tr><td><code>internal/</code></td><td>Reserved (no active routes)</td></tr>
+      <tr><td><code>newsletter/</code></td><td>Public newsletter category listing</td></tr>
+      <tr><td><code>posts/</code></td><td>Public posts list/detail (<code>[slug]</code>), robots</td></tr>
+      <tr><td><code>public-auth/</code></td><td>Public-user auth: register/login (JWT), google-verify, LinkedIn login/callback, profile-status, update-profile, newsletter-preferences</td></tr>
+      <tr><td><code>report-sections/</code>, <code>reports/</code></td><td>Public read of published reports/sections</td></tr>
+      <tr><td><code>search/</code></td><td>Public search endpoint</td></tr>
+      <tr><td><code>site-settings/</code></td><td>Single-value site settings (e.g. footer copyright)</td></tr>
+      <tr><td><code>unsubscribe/</code></td><td>Newsletter unsubscribe handling</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 class="sub">Frontend route zones <span class="mono">src/app/*</span></h3>
+  <div class="scrollwrap">
+  <table class="grid">
+    <thead><tr><th>Zone</th><th>Routes</th></tr></thead>
+    <tbody>
+      <tr><td>Public content</td><td>home, news, category/[slug], [category]/[slug], [...slug]/[slug] (catch-all), author/[slug], search, events, startup-events, press-release, submit-event, about, about-us, contact-us, advertise-with-us, ecosystem-partners, our-partners, editorial-policy, privacy-policy, terms-and-conditions, return-refund-policy, delete-your-account, unsubscribe</td></tr>
+      <tr><td>Admin panel <span class="mono">(admin)/admin/*</span></td><td>login, posts, authors, categories, banners, events, brand-stories, reports, rss-feeds, newsletter(+categories), contacts, users, registered-users, sales-tracker, partnership-tracker, hr-tool, attendance, documents, leave, inner-pages, rules-policy, tools/[id]</td></tr>
+      <tr><td>Employee portal <span class="mono">employee/*</span></td><td>attendance, documents, leave, rules-policy — separate employee-token auth, own layout</td></tr>
+      <tr><td>Dashboard <span class="mono">dashboard/*</span></td><td>overview, brand-stories, newsletter, reports, settings — lighter panel for publisher/event-admin roles, own layout</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="dataflow">
+  <div class="sec-head">
+    <h2>Data Flow</h2>
+    <p>Three representative flows: who's allowed to do what, how a cached read resolves, and how an RSS item becomes a published post.</p>
+  </div>
+
+  <h3 class="sub">Auth — four separate flows, one JWT library</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph PUBLIC["Public user"]
+        P1["/api/public-auth/*"]
+        P2["JWT — own secret"]
+        P3[("public_registrations")]
+    end
+    subgraph STAFF["Admin / Editor / Author / Panel admin"]
+        S1["Any protected admin route"]
+        S2["auth.middleware.ts — getAuthUser / requireAuth"]
+        S3{"role claim"}
+        S4[("users")]
+        S5[("panel_admins")]
+    end
+    subgraph EMP["Employee"]
+        E1["/api/employee/*"]
+        E2["employee-auth.middleware.ts — requireEmployeeAuth"]
+        E3[("hr_employee_credentials")]
+    end
+
+    P1 --> P2 --> P3
+    S1 --> S2 --> S3
+    S3 -->|admin / editor / author| S4
+    S3 -->|event_admin / publisher_admin| S5
+    E1 --> E2 --> E3
+    E3 -. linked account .-> S5
+</pre>
+    <div class="cap">No shared session table — every flow is stateless JWT. Staff tokens are checked against a fixed role→permission map in <code>src/shared/middleware/roles.ts</code> (e.g. <code>HR_TOOL_ROLES</code> and <code>SALES_TRACKER_ROLES</code> are <code>admin</code>-only). Employee tokens reload the credential row on every request so deactivation takes effect immediately.</div>
+  </div>
+
+  <h3 class="sub">Read path — cached post list request</h3>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    participant B as Browser
+    participant R as /api/posts route
+    participant C as Redis cache
+    participant SV as PostsService
+    participant RP as PostsRepository
+    participant DB as MariaDB
+
+    B->>R: GET /api/posts?filters
+    R->>RP: publishScheduledPosts()
+    RP->>DB: UPDATE posts SET status='published' WHERE due
+    R->>C: getCache(api:posts:filters)
+    alt route cache hit
+        C-->>R: cached JSON
+        R-->>B: 200 response
+    else route cache miss
+        R->>SV: getAllPosts(filters)
+        SV->>C: getCache(posts:all:filters)
+        alt service cache hit
+            C-->>SV: PostEntity[]
+        else service cache miss
+            SV->>RP: findAll(filters)
+            RP->>DB: SELECT ... FULLTEXT / LIKE
+            DB-->>RP: rows
+            RP-->>SV: PostEntity[]
+            SV->>C: setCache 60s
+        end
+        SV-->>R: PostEntity[]
+        R->>R: entitiesToPosts()
+        R->>C: setCache api:posts:filters, 60s
+        R-->>B: 200 response
+    end
+</pre>
+    <div class="cap">Posts are cached at two layers — the route's serialized-filter key and the service's query key — both 60s TTL for list views, 600s for single-post-by-slug. Any write invalidates every <code>posts:*</code> / <code>post:*</code> / <code>api:posts:*</code> prefix via a SCAN+DEL sweep. Redis is fail-soft: if it's unreachable, cache calls become no-ops and the app just reads straight from MariaDB.</div>
+  </div>
+
+  <h3 class="sub">Async path — RSS ingestion pipeline</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    CRON["node-cron — every 10 min"] -->|redis lock| SCHED["RssFeedsSchedulerJob"]
+    SCHED -->|find due feeds| REPO1[("rss_feeds")]
+    SCHED -->|enqueue| Q["MemoryQueue — RSS_FEED_PROCESS"]
+    Q --> WORK["RssFeedWorker"]
+    WORK -->|per-feed lock| LOCK[("Redis")]
+    WORK --> PARSE["RssParserService — rss-parser"]
+    PARSE --> SRC["Remote RSS feed"]
+    WORK --> IMG["image-to-s3.ts"]
+    IMG --> S3[("S3 bucket")]
+    WORK --> UP[("rss_feed_items — upsert")]
+    WORK -->|auto_publish = true| POST[("posts — new row")]
+    POST -. invalidate .-> CACHE[("Redis cache")]
+</pre>
+    <div class="cap">The in-memory queue (<code>src/queue/queue.memory.ts</code>) is single-instance and unpersisted — jobs live in a Map with exponential-backoff retry, not backed by Redis despite Redis being used elsewhere. An admin "Fetch now" button bypasses the queue and calls the worker directly.</div>
+  </div>
+</section>
+
+<section id="jobs">
+  <div class="sec-head">
+    <h2>Background Jobs &amp; Queues</h2>
+    <p>A standalone daemon (<code>cron/index.ts</code>, run via <code>npx tsx cron/index.ts</code>) owns five <code>node-cron</code> schedules, each guarded by a Redis lock plus an execution-timeout guard to prevent overlap across instances. The same jobs are also reachable over HTTP for external schedulers.</p>
+  </div>
+  <div class="scrollwrap">
+  <table class="grid">
+    <thead><tr><th>Job</th><th>Schedule</th><th>What it does</th><th>HTTP alternative</th></tr></thead>
+    <tbody>
+      <tr><td>RSS scheduler</td><td>Every 10 min</td><td>Finds due feeds, enqueues <code>RSS_FEED_PROCESS</code> jobs on the in-memory queue</td><td><code>/api/cron/rss-feeds</code></td></tr>
+      <tr><td>Morning Signal</td><td>Hourly</td><td>Sends per-subscriber-timezone 8AM digest email; writes run stats to <code>site_settings</code></td><td><code>/api/cron/newsletter-auto</code></td></tr>
+      <tr><td>Report scheduler</td><td>Every 5 min</td><td>Publishes due <code>reports</code> rows (<code>publish_at</code> reached)</td><td>—</td></tr>
+      <tr><td>Brand story scheduler</td><td>Every 5 min</td><td>Publishes due <code>brand_stories</code> rows</td><td>—</td></tr>
+      <tr><td>Post scheduler</td><td>Every 5 min</td><td>Publishes due <code>posts</code> rows (also run inline on every <code>GET /api/posts</code> as a belt-and-suspenders check)</td><td>—</td></tr>
+      <tr><td>Cache invalidation</td><td>On demand</td><td>Manual sweep of all post-related Redis prefixes</td><td><code>/api/cron/invalidate-post-cache</code>, or CLI: <code>npx tsx scripts/invalidate-post-cache.ts</code></td></tr>
+      <tr><td>Newsletter send</td><td>Scheduled per-row</td><td>Sends a <code>newsletter_schedules</code> row via SMTP when its <code>scheduled_at</code> is reached</td><td><code>/api/cron/newsletter-schedule</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="database">
+  <div class="sec-head">
+    <h2>Database Schema</h2>
+    <p>MariaDB, no ORM — 53 tables across 6 domains. <code>scripts/init-db.sql</code> only covers the original 8 tables; everything since (audit columns, SEO fields, HR tool, banners, reports, RSS, sales, partnerships) was added via one-off migration scripts. Some tables self-provision their own DDL from application code rather than a tracked migration. Full detail on both in <a href="#notes">Notes &amp; Caveats</a> below.</p>
+  </div>
+
+  <div class="controls">
+    <button type="button" onclick="document.querySelectorAll('.table-card').forEach(function(d){d.open=true})">Expand all</button>
+    <button type="button" onclick="document.querySelectorAll('.table-card').forEach(function(d){d.open=false})">Collapse all</button>
+  </div>
+
+  <h3 id="dom-content" class="sub" style="margin-top:0;">Content <span class="mono">— 12 tables</span></h3>
+  <p>Posts, categories, events, reports, brand stories, banners, and static page content — the tables behind the public site.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    CATEGORIES ||--o{ CATEGORIES : "parent_id"
+    CATEGORIES ||--o{ POSTS : "category_id"
+    USERS ||--o{ POSTS : "author_id"
+    POSTS ||--o{ POST_TAGS : "post_id"
+    REPORT_SECTIONS ||--o{ REPORTS : "section_id"
+    BRAND_STORY_SECTIONS ||--o{ BRAND_STORIES : "section_id"
+    EVENTS ||--o{ PARTNERSHIP_EVENTS : "event_id"
+    BANNERS ||--o{ PARTNERSHIP_EVENTS : "banner_id"
+
+    CATEGORIES {
+        int id PK
+        varchar name
+        varchar slug UK
+        int parent_id FK
+        int sort_order
+    }
+    POSTS {
+        int id PK
+        varchar title
+        varchar slug UK
+        int category_id FK
+        int author_id FK
+        enum status
+        enum format
+        boolean is_gone_410
+        timestamp published_at
+    }
+    POST_TAGS {
+        int id PK
+        int post_id FK
+        varchar tag_name
+    }
+    EVENTS {
+        int id PK
+        varchar title
+        varchar slug UK
+        varchar location
+        varchar country
+        date event_date
+        enum status
+        json speakers
+    }
+    EVENT_REGIONS {
+        int id PK
+        varchar name UK
+        int sort_order
+    }
+    REPORT_SECTIONS {
+        int id PK
+        varchar title
+        int sort_order
+    }
+    REPORTS {
+        int id PK
+        varchar title
+        text file_url
+        int section_id FK
+        boolean is_active
+        datetime publish_at
+    }
+    BRAND_STORY_SECTIONS {
+        int id PK
+        varchar title
+        int sort_order
+    }
+    BRAND_STORIES {
+        int id PK
+        varchar title
+        text file_url
+        int section_id FK
+        boolean is_active
+    }
+    BANNERS {
+        int id PK
+        varchar title
+        varchar image_url
+        boolean is_active
+        int display_order
+    }
+    PARTNER_LOGOS {
+        int id PK
+        varchar section
+        varchar image_url
+        int sort_order
+    }
+    INNER_PAGE_CONTENT {
+        varchar page_key PK
+        longtext content_html
+    }
+</pre>
+  </div>
+
+  <p style="margin:0 0 0.6rem;"><span class="pill draft">draft</span> <span class="pill scheduled">scheduled</span> <span class="pill published">published</span> <span class="pill archived">archived</span> <span class="pill gone">410 gone</span> — <code>posts.status</code> lifecycle, plus the independent <code>is_gone_410</code> flag.</p>
+
+  <details class="table-card" data-name="posts" open>
+    <summary><span class="tname">posts</span><span class="purpose">Articles — the core content table, full-text searchable</span><span class="count">20 cols</span></summary>
+    <div class="body">
+      <div class="scrollwrap"><table class="grid">
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+          <tr><td><code>title</code></td><td><code>VARCHAR(500) NOT NULL</code></td><td></td></tr>
+          <tr><td><code>slug</code><span class="k uk">UK</span></td><td><code>VARCHAR(500) UNIQUE NOT NULL</code></td><td>idx_slug</td></tr>
+          <tr><td><code>excerpt</code></td><td><code>TEXT</code></td><td>nullable</td></tr>
+          <tr><td><code>meta_description</code></td><td><code>VARCHAR(160)</code></td><td>NULL; added post-launch for SEO</td></tr>
+          <tr><td><code>content</code></td><td><code>LONGTEXT NOT NULL</code></td><td>FULLTEXT idx_search(title, excerpt, content)</td></tr>
+          <tr><td><code>category_id</code><span class="k fk">FK</span></td><td><code>INT NOT NULL</code></td><td>→ categories.id, ON DELETE RESTRICT; idx_category</td></tr>
+          <tr><td><code>author_id</code><span class="k fk">FK</span></td><td><code>INT NOT NULL</code></td><td>→ users.id, ON DELETE RESTRICT; idx_author</td></tr>
+          <tr><td><code>featured_image_url</code></td><td><code>VARCHAR(500)</code></td><td>nullable</td></tr>
+          <tr><td><code>featured_image_small_url</code></td><td><code>VARCHAR(500)</code></td><td>nullable</td></tr>
+          <tr><td><code>format</code></td><td><code>ENUM('standard','video','gallery')</code></td><td>DEFAULT 'standard'</td></tr>
+          <tr><td><code>status</code></td><td><code>ENUM('draft','published','archived','scheduled')</code></td><td>DEFAULT 'draft'; idx_status</td></tr>
+          <tr><td><code>robots</code></td><td><code>VARCHAR(50) NOT NULL</code></td><td>DEFAULT 'index,follow'</td></tr>
+          <tr><td><code>content_follow</code></td><td><code>VARCHAR(20) NOT NULL</code></td><td>DEFAULT 'nofollow'</td></tr>
+          <tr><td><code>is_gone_410</code></td><td><code>TINYINT(1) NOT NULL</code></td><td>DEFAULT 0; idx_posts_is_gone_410 — marks a URL as permanently gone for SEO</td></tr>
+          <tr><td><code>featured</code></td><td><code>BOOLEAN</code></td><td>DEFAULT FALSE; idx_featured</td></tr>
+          <tr><td><code>trending_score</code></td><td><code>DECIMAL(10,2)</code></td><td>DEFAULT 0; idx_trending</td></tr>
+          <tr><td><code>view_count</code></td><td><code>INT</code></td><td>DEFAULT 0</td></tr>
+          <tr><td><code>published_at</code></td><td><code>TIMESTAMP</code></td><td>nullable; idx_published</td></tr>
+          <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td>default now / on-update now</td></tr>
+          <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL, audit trail</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </details>
+
+  <details class="table-card" data-name="post_tags">
+    <summary><span class="tname">post_tags</span><span class="purpose">Free-text tags attached to a post</span><span class="count">4 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>post_id</code><span class="k fk">FK</span></td><td><code>INT NOT NULL</code></td><td>→ posts.id, ON DELETE CASCADE; idx_post</td></tr>
+        <tr><td><code>tag_name</code></td><td><code>VARCHAR(100) NOT NULL</code></td><td>idx_tag</td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="categories">
+    <summary><span class="tname">categories</span><span class="purpose">Post taxonomy — self-referential for sub-categories</span><span class="count">9 cols</span></summary>
+    <div class="body">
+      <p class="flags">Reset to exactly 12 canonical categories in production (ai-deeptech, fintech, social-media, robotics, healthtech, ev-mobility, ecommerce, saas-enterprise, consumer-d2c, web3-blockchain, cybersecurity, climate-energy).</p>
+      <div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>name</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>slug</code><span class="k uk">UK</span></td><td><code>VARCHAR(255) UNIQUE NOT NULL</code></td><td>idx_slug</td></tr>
+        <tr><td><code>description</code></td><td><code>TEXT</code></td><td>nullable</td></tr>
+        <tr><td><code>image_url</code></td><td><code>VARCHAR(500)</code></td><td>nullable</td></tr>
+        <tr><td><code>parent_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>self-FK, ON DELETE SET NULL; idx_parent</td></tr>
+        <tr><td><code>sort_order</code></td><td><code>INT</code></td><td>DEFAULT 0</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="events">
+    <summary><span class="tname">events</span><span class="purpose">Startup events listing</span><span class="count">17 cols</span></summary>
+    <div class="body">
+      <p class="flags">⚠ Application code reads/writes <code>status</code> values <code>'draft'</code>/<code>'completed'</code> not present in the tracked ENUM migration — the live DB enum was likely widened outside the tracked migration flow.</p>
+      <div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>title</code></td><td><code>VARCHAR(500) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>slug</code><span class="k uk">UK</span></td><td><code>VARCHAR(500) UNIQUE NOT NULL</code></td><td>idx_slug</td></tr>
+        <tr><td><code>excerpt</code> / <code>description</code></td><td><code>TEXT</code></td><td>nullable</td></tr>
+        <tr><td><code>location</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td>idx_location</td></tr>
+        <tr><td><code>country</code></td><td><code>VARCHAR(100)</code></td><td>NULL, added post-launch</td></tr>
+        <tr><td><code>event_date</code></td><td><code>DATE NOT NULL</code></td><td>idx_date</td></tr>
+        <tr><td><code>event_end_date</code></td><td><code>DATE</code></td><td>NULL</td></tr>
+        <tr><td><code>event_time</code> / <code>event_end_time</code></td><td><code>TIME</code></td><td>nullable</td></tr>
+        <tr><td><code>image_url</code> / <code>external_url</code></td><td><code>VARCHAR(500)</code></td><td>nullable</td></tr>
+        <tr><td><code>venue_address</code></td><td><code>TEXT</code></td><td>NULL</td></tr>
+        <tr><td><code>google_location_link</code></td><td><code>VARCHAR(500)</code></td><td>NULL</td></tr>
+        <tr><td><code>speakers</code></td><td><code>JSON</code></td><td>NULL</td></tr>
+        <tr><td><code>status</code></td><td><code>ENUM('upcoming','ongoing','past','cancelled', …)</code></td><td>DEFAULT 'upcoming'; see flag above</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="event_regions">
+    <summary><span class="tname">event_regions</span><span class="purpose">Region picklist for events (self-provisioning, seeded from a 42-entry hardcoded list)</span><span class="count">6 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>name</code><span class="k uk">UK</span></td><td><code>VARCHAR(100) NOT NULL</code></td><td>unique_name</td></tr>
+        <tr><td><code>sort_order</code></td><td><code>INT NOT NULL</code></td><td>DEFAULT 0</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="report_sections">
+    <summary><span class="tname">report_sections</span><span class="purpose">Grouping for published reports</span><span class="count">6 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>title</code></td><td><code>VARCHAR(255)</code></td><td></td></tr>
+        <tr><td><code>sort_order</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>DATETIME</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="reports">
+    <summary><span class="tname">reports</span><span class="purpose">Downloadable PDF reports, schedulable</span><span class="count">14 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>title</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>description</code></td><td><code>TEXT NOT NULL</code></td><td></td></tr>
+        <tr><td><code>file_url</code></td><td><code>TEXT NOT NULL</code></td><td></td></tr>
+        <tr><td><code>thumbnail_url</code></td><td><code>TEXT</code></td><td>NULL</td></tr>
+        <tr><td><code>file_name</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+        <tr><td><code>file_size</code></td><td><code>BIGINT</code></td><td>NULL</td></tr>
+        <tr><td><code>page_count</code></td><td><code>INT</code></td><td>NULL, backfilled</td></tr>
+        <tr><td><code>mime_type</code></td><td><code>VARCHAR(120)</code></td><td>NULL</td></tr>
+        <tr><td><code>is_active</code></td><td><code>TINYINT(1) NOT NULL</code></td><td>DEFAULT 1</td></tr>
+        <tr><td><code>publish_at</code></td><td><code>DATETIME</code></td><td>NULL — drives the report scheduler</td></tr>
+        <tr><td><code>section_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>NULL, → report_sections.id</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>DATETIME</code></td><td>idx_reports_active_created(is_active, created_at)</td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="brand_story_sections">
+    <summary><span class="tname">brand_story_sections</span><span class="purpose">Grouping for sponsored brand stories</span><span class="count">6 cols</span></summary>
+    <div class="body"><p class="flags">Same shape as <code>report_sections</code>.</p></div>
+  </details>
+
+  <details class="table-card" data-name="brand_stories">
+    <summary><span class="tname">brand_stories</span><span class="purpose">Sponsored content PDFs — identical shape to reports</span><span class="count">14 cols</span></summary>
+    <div class="body"><p class="flags">Same shape as <code>reports</code>: title, description, file_url, thumbnail_url, file_name, file_size, page_count, mime_type, is_active, publish_at, section_id → brand_story_sections.id, audit columns. idx_brand_stories_active_created(is_active, created_at).</p></div>
+  </details>
+
+  <details class="table-card" data-name="banners">
+    <summary><span class="tname">banners</span><span class="purpose">Homepage promotional banners</span><span class="count">12 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>title</code></td><td><code>VARCHAR(500) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>description</code></td><td><code>TEXT</code></td><td>nullable</td></tr>
+        <tr><td><code>image_url</code></td><td><code>VARCHAR(500) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>link_url</code> / <code>link_text</code></td><td><code>VARCHAR(500)</code> / <code>VARCHAR(255)</code></td><td>nullable</td></tr>
+        <tr><td><code>display_order</code></td><td><code>INT</code></td><td>DEFAULT 0; idx_order</td></tr>
+        <tr><td><code>is_active</code></td><td><code>BOOLEAN</code></td><td>DEFAULT TRUE; idx_active</td></tr>
+        <tr><td><code>start_date</code> / <code>end_date</code></td><td><code>TIMESTAMP</code></td><td>NULL; idx_dates</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="partner_logos">
+    <summary><span class="tname">partner_logos</span><span class="purpose">Ecosystem/international partner logo strip</span><span class="count">7 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>section</code></td><td><code>VARCHAR(60) NOT NULL</code></td><td>'International' / 'National'; idx_partner_logos_section(section, sort_order)</td></tr>
+        <tr><td><code>image_url</code></td><td><code>VARCHAR(500) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>link_url</code></td><td><code>VARCHAR(500)</code></td><td>NULL</td></tr>
+        <tr><td><code>sort_order</code></td><td><code>INT NOT NULL</code></td><td>DEFAULT 0</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="inner_page_content">
+    <summary><span class="tname">inner_page_content</span><span class="purpose">Freeform HTML for static pages (e.g. "our-partners")</span><span class="count">4 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>page_key</code><span class="k pk">PK</span></td><td><code>VARCHAR(60)</code></td><td>e.g. 'our-partners'</td></tr>
+        <tr><td><code>content_html</code></td><td><code>LONGTEXT</code></td><td>NULL</td></tr>
+        <tr><td><code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <h3 id="dom-users" class="sub">Users &amp; Auth <span class="mono">— 7 tables</span></h3>
+  <p>Four separate identity tables — staff, panel admins, employees, and public site users — none of them share a login path. <code>sessions</code> is a legacy leftover; auth is stateless JWT everywhere.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    USERS ||--o{ POSTS : authors
+    PANEL_ADMINS ||--o| HR_EMPLOYEE_CREDENTIALS : "linked_panel_admin_id"
+    PUBLIC_REGISTRATIONS ||--o{ PUBLIC_REGISTRATION_FOUNDERS : "pub_user_id"
+    PUBLIC_REGISTRATIONS ||--o{ PUBLIC_REGISTRATION_FUNDING_ROUNDS : "pub_user_id"
+    USERS ||--o{ SESSIONS : "user_id"
+
+    USERS {
+        int id PK
+        varchar email UK
+        varchar password_hash
+        enum role
+        boolean is_active
+    }
+    PANEL_ADMINS {
+        int id PK
+        varchar email UK
+        varchar password_hash
+        enum role
+        boolean is_active
+    }
+    HR_EMPLOYEE_CREDENTIALS {
+        int id PK
+        varchar employee_code UK
+        varchar designation
+        varchar password_hash
+        enum panel_role
+        int linked_panel_admin_id FK
+    }
+    PUBLIC_REGISTRATIONS {
+        int id PK
+        varchar email UK
+        enum auth_provider
+        varchar google_id
+        varchar linkedin_id
+        varchar category
+        varchar newsletter_category_slugs
+    }
+    PUBLIC_REGISTRATION_FOUNDERS {
+        int id PK
+        int pub_user_id FK
+        varchar name
+        varchar role
+    }
+    PUBLIC_REGISTRATION_FUNDING_ROUNDS {
+        int id PK
+        int pub_user_id FK
+        varchar round_type
+        varchar amount
+    }
+    SESSIONS {
+        int id PK
+        int user_id FK
+        varchar token UK
+        timestamp expires_at
+    }
+</pre>
+  </div>
+
+  <details class="table-card" data-name="users">
+    <summary><span class="tname">users</span><span class="purpose">Staff accounts — admin / editor / author</span><span class="count">13 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>email</code><span class="k uk">UK</span></td><td><code>VARCHAR(255) UNIQUE NOT NULL</code></td><td>idx_email</td></tr>
+        <tr><td><code>password_hash</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td>bcrypt</td></tr>
+        <tr><td><code>name</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>role</code></td><td><code>ENUM('admin','editor','author','event_admin','publisher_admin')</code></td><td>DEFAULT 'author'; idx_role — the last two values look vestigial now that <code>panel_admins</code> exists as its own table</td></tr>
+        <tr><td><code>avatar_url</code></td><td><code>VARCHAR(500)</code></td><td>nullable</td></tr>
+        <tr><td><code>author_description</code></td><td><code>LONGTEXT</code></td><td>NULL, public author bio</td></tr>
+        <tr><td><code>is_default_author</code></td><td><code>TINYINT(1) NOT NULL</code></td><td>DEFAULT 0 — fallback byline for RSS-ingested posts</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>last_login</code></td><td><code>TIMESTAMP</code></td><td>NULL</td></tr>
+        <tr><td><code>is_active</code></td><td><code>BOOLEAN</code></td><td>DEFAULT TRUE</td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="panel_admins">
+    <summary><span class="tname">panel_admins</span><span class="purpose">Scoped dashboard admins — event_admin / publisher_admin</span><span class="count">10 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>email</code><span class="k uk">UK</span></td><td><code>VARCHAR(255) UNIQUE NOT NULL</code></td><td>idx_email</td></tr>
+        <tr><td><code>password_hash</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>name</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>role</code></td><td><code>ENUM('event_admin','publisher_admin') NOT NULL</code></td><td>idx_role</td></tr>
+        <tr><td><code>is_active</code></td><td><code>BOOLEAN</code></td><td>DEFAULT TRUE</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code> / <code>last_login</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_employee_credentials">
+    <summary><span class="tname">hr_employee_credentials</span><span class="purpose">Employee login — can optionally double as a panel-admin login</span><span class="count">13 cols</span></summary>
+    <div class="body">
+      <p class="flags">When <code>linked_panel_admin_id</code> is set and active, that panel admin's own email/password is retired — they log in with their Employee ID + password instead.</p>
+      <div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>employee_code</code><span class="k uk">UK</span></td><td><code>VARCHAR(32) UNIQUE NOT NULL</code></td><td>idx_employee_code</td></tr>
+        <tr><td><code>name</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>designation</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td>widened from a 3-value ENUM to free text, driven by <code>hr_designations</code></td></tr>
+        <tr><td><code>email</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+        <tr><td><code>avatar_url</code></td><td><code>VARCHAR(1000)</code></td><td>NULL</td></tr>
+        <tr><td><code>password_hash</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td>bcrypt — actual auth</td></tr>
+        <tr><td><code>password_display</code></td><td><code>VARCHAR(512)</code></td><td>NULL — AES-256-GCM ciphertext, display-only (HR can view generated passwords)</td></tr>
+        <tr><td><code>password_iv</code> / <code>password_tag</code></td><td><code>VARCHAR(32)</code> / <code>VARCHAR(40)</code></td><td>NULL — AES-GCM IV/auth tag</td></tr>
+        <tr><td><code>panel_role</code></td><td><code>ENUM('event_admin','publisher_admin')</code></td><td>NULL</td></tr>
+        <tr><td><code>linked_panel_admin_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>NULL, → panel_admins.id; idx_linked_panel_admin</td></tr>
+        <tr><td><code>is_active</code></td><td><code>BOOLEAN</code></td><td>DEFAULT TRUE</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="public_registrations">
+    <summary><span class="tname">public_registrations</span><span class="purpose">Public site accounts — email/Google/LinkedIn, plus a large role-specific profile</span><span class="count">40+ cols</span></summary>
+    <div class="body">
+      <p class="flags">Self-provisioning table. Profile columns are prefixed by registration category: <code>s_*</code> startup, <code>i_*</code> investor, <code>a_*</code> accelerator, <code>c_*</code> creator, <code>l_*</code> lawyer, <code>cs_*</code> CA/CS, <code>ib_*</code> investment banker, <code>bk_*</code> banker, <code>g_*</code> generic — only the block matching <code>category</code> is populated.</p>
+      <div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>name</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>email</code><span class="k uk">UK</span></td><td><code>VARCHAR(255) NOT NULL UNIQUE</code></td><td>idx_email</td></tr>
+        <tr><td><code>phone</code>, <code>country</code>, <code>city</code></td><td><code>VARCHAR</code></td><td>NULL</td></tr>
+        <tr><td><code>linkedin_url</code></td><td><code>VARCHAR(500)</code></td><td>NULL</td></tr>
+        <tr><td><code>password_hash</code></td><td><code>VARCHAR(255)</code></td><td>NULL — only set for email-provider accounts</td></tr>
+        <tr><td><code>google_id</code> / <code>linkedin_id</code></td><td><code>VARCHAR(255)</code></td><td>NULL; idx_google_id / idx_linkedin_id</td></tr>
+        <tr><td><code>auth_provider</code></td><td><code>ENUM('email','google','linkedin') NOT NULL</code></td><td>DEFAULT 'email'</td></tr>
+        <tr><td><code>is_active</code></td><td><code>TINYINT(1) NOT NULL</code></td><td>DEFAULT 1</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code> / <code>last_login</code></td><td><code>DATETIME</code></td><td></td></tr>
+        <tr><td><code>newsletter_category_slugs</code></td><td><code>VARCHAR(500)</code></td><td>NULL, comma-joined, max 3</td></tr>
+        <tr><td><code>timezone</code></td><td><code>VARCHAR(64)</code></td><td>NULL — drives Morning Signal send time</td></tr>
+        <tr><td><code>last_newsletter_sent_date</code></td><td><code>DATE</code></td><td>NULL</td></tr>
+        <tr><td><code>newsletter_unsubscribed</code></td><td><code>TINYINT(1) NOT NULL</code></td><td>DEFAULT 0</td></tr>
+        <tr><td><code>category</code></td><td><code>VARCHAR(32)</code></td><td>NULL — e.g. 'startup', 'investor'</td></tr>
+        <tr><td><code>other_category</code>, <code>website</code>, <code>bio</code></td><td><code>VARCHAR</code></td><td>NULL</td></tr>
+        <tr><td><code>s_name, s_founded(INT), s_entity, s_stage, s_dpiit(ENUM), s_dpiit_number, s_team_size, s_revenue_status, s_pitch, s_raising(ENUM), s_amount_seeking, s_crunchbase, s_tracxn</code></td><td>mixed</td><td>startup profile</td></tr>
+        <tr><td><code>i_firm, i_type, i_check_size, i_stage_focus, i_sector_focus, i_geo_focus</code></td><td><code>VARCHAR</code></td><td>investor profile</td></tr>
+        <tr><td><code>a_program_name, a_duration, a_sector_focus, a_equity_taken(DECIMAL 5,2)</code></td><td>mixed</td><td>accelerator profile</td></tr>
+        <tr><td><code>c_platforms, c_niche, c_mediakit</code></td><td><code>VARCHAR</code></td><td>creator profile</td></tr>
+        <tr><td><code>l_firm, l_practice_areas, l_jurisdiction, l_years_experience(INT)</code></td><td>mixed</td><td>lawyer profile</td></tr>
+        <tr><td><code>cs_firm, cs_membership_number, cs_services, cs_years_experience(INT)</code></td><td>mixed</td><td>CA/CS profile</td></tr>
+        <tr><td><code>ib_firm, ib_years_experience(INT), ib_deal_types</code></td><td>mixed</td><td>investment-banker profile</td></tr>
+        <tr><td><code>bk_bank_name, bk_years_experience(INT), bk_vertical</code></td><td>mixed</td><td>banker profile</td></tr>
+        <tr><td><code>g_organization, g_role</code></td><td><code>VARCHAR</code></td><td>generic profile</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="public_registration_founders">
+    <summary><span class="tname">public_registration_founders</span><span class="purpose">Founder list for a 'startup'-category registration</span><span class="count">6 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>pub_user_id</code><span class="k fk">FK</span></td><td><code>INT NOT NULL</code></td><td>→ public_registrations.id, ON DELETE CASCADE</td></tr>
+        <tr><td><code>name</code> / <code>role</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>linkedin_url</code></td><td><code>VARCHAR(500)</code></td><td>NULL</td></tr>
+        <tr><td><code>sort_order</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="public_registration_funding_rounds">
+    <summary><span class="tname">public_registration_funding_rounds</span><span class="purpose">Funding history for a 'startup'-category registration</span><span class="count">7 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>pub_user_id</code><span class="k fk">FK</span></td><td><code>INT NOT NULL</code></td><td>→ public_registrations.id, ON DELETE CASCADE</td></tr>
+        <tr><td><code>round_type</code> / <code>amount</code> / <code>lead_investor</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>round_date</code></td><td><code>VARCHAR(7)</code></td><td>e.g. "2024-05"</td></tr>
+        <tr><td><code>sort_order</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="sessions">
+    <summary><span class="tname">sessions</span><span class="purpose">Legacy — no repository code queries this table; auth is stateless JWT</span><span class="count">5 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>user_id</code><span class="k fk">FK</span></td><td><code>INT NOT NULL</code></td><td>→ users.id, ON DELETE CASCADE; idx_user</td></tr>
+        <tr><td><code>token</code><span class="k uk">UK</span></td><td><code>VARCHAR(255) UNIQUE NOT NULL</code></td><td>idx_token</td></tr>
+        <tr><td><code>expires_at</code></td><td><code>TIMESTAMP NOT NULL</code></td><td>idx_expires</td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <h3 id="dom-hr" class="sub">HR Tool <span class="mono">— 21 tables</span></h3>
+  <p>The largest domain: onboarding, attendance, leave, expenses, tickets, and payroll for internal staff. Employee-linked tables reference <code>hr_employees.id</code> (a string employee code) by convention, not by an enforced foreign key — the app treats <code>hr_employees</code> as a whole-table-replace collection.</p>
+
+  <h4 style="font-family:'IBM Plex Mono',monospace; font-size:0.8rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--ink-faint); margin:1.1rem 0 0.4rem; font-weight:500;">People &amp; setup</h4>
+  <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    HR_EMPLOYEE_CREDENTIALS ||--o| HR_EMPLOYEES : "credential_id"
+    HR_TEAMS ||--o{ HR_EMPLOYEES : "team"
+    HR_DESIGNATIONS ||--o{ HR_EMPLOYEES : "designation"
+
+    HR_EMPLOYEE_CREDENTIALS {
+        int id PK
+        varchar employee_code UK
+    }
+    HR_TEAMS {
+        varchar name PK
+        varchar manager
+    }
+    HR_DESIGNATIONS {
+        varchar name PK
+    }
+    HR_EXPENSE_CATEGORIES {
+        varchar name PK
+    }
+    HR_REQUIRED_DOCUMENTS {
+        varchar name PK
+    }
+    HR_HOLIDAYS {
+        int id PK
+        date holiday_date
+        varchar name
+    }
+    HR_EMPLOYEES {
+        varchar id PK
+        varchar name
+        varchar designation
+        varchar team
+        varchar status
+        int credential_id FK
+        json leave_balance
+        json kyc_documents
+    }
+    HR_ONBOARDING {
+        varchar id PK
+        varchar name
+        varchar stage
+        varchar employee_id
+    }
+    HR_COMPANY_PROFILE {
+        int id PK
+        varchar company_name
+        varchar cin
+    }
+    HR_RULES {
+        int id PK
+        varchar working_days_pattern
+        time shift_start_time
+        time shift_end_time
+    }
+    HR_TEMPLATES {
+        varchar name PK
+        longtext content
+    }
+</pre>
+  </div>
+
+  <h4 style="font-family:'IBM Plex Mono',monospace; font-size:0.8rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--ink-faint); margin:1.6rem 0 0.4rem; font-weight:500;">Attendance &amp; payroll</h4>
+  <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    HR_EMPLOYEES ||--o{ HR_ATTENDANCE : emp
+    HR_EMPLOYEES ||--o{ HR_PUNCH_LOG : emp
+    HR_EMPLOYEES ||--o{ HR_REGULARIZATIONS : emp
+    HR_EMPLOYEES ||--o{ HR_LEAVE_REQUESTS : emp
+    HR_EMPLOYEES ||--o{ HR_EXPENSES : emp
+    HR_EMPLOYEES ||--o{ HR_TICKETS : emp
+    HR_EMPLOYEES ||--o{ HR_ATTENDANCE_OVERRIDES : emp
+    HR_PAYROLL_RUNS ||--o{ HR_PAYROLL_ENTRIES : month
+
+    HR_ATTENDANCE {
+        int id PK
+        varchar emp
+        date attendance_date
+        varchar status
+    }
+    HR_ATTENDANCE_OVERRIDES {
+        varchar emp PK
+        date override_date PK
+        varchar status
+    }
+    HR_PUNCH_LOG {
+        varchar emp PK
+        date punch_date
+        time in_time
+        time out_time
+    }
+    HR_REGULARIZATIONS {
+        varchar id PK
+        varchar emp
+        date reg_date
+        varchar status
+    }
+    HR_LEAVE_REQUESTS {
+        varchar id PK
+        varchar emp
+        varchar type
+        date from_date
+        date to_date
+        varchar status
+    }
+    HR_EXPENSES {
+        varchar id PK
+        varchar emp
+        varchar category
+        int amount
+        varchar status
+    }
+    HR_TICKETS {
+        varchar id PK
+        varchar emp
+        varchar category
+        varchar status
+    }
+    HR_COMPLIANCE_TASKS {
+        int id PK
+        varchar task
+        date due_date
+        varchar status
+    }
+    HR_PAYROLL_RUNS {
+        int id PK
+        varchar month UK
+        varchar status
+    }
+    HR_PAYROLL_ENTRIES {
+        int id PK
+        varchar month
+        varchar emp
+        decimal lop_days
+        decimal net_pay
+    }
+    HR_AUDIT_LOG {
+        int id PK
+        datetime ts
+        varchar who
+        text change_text
+    }
+</pre>
+    <div class="cap">Approval flows (leave, expenses, regularizations, tickets) share the same shape: <code>stage</code> tracks where it sits (RM / HR), <code>status</code> is the outcome, plus separate <code>rm_remarks</code> / <code>hr_remarks</code> text fields.</div>
+  </div>
+
+  <details class="table-card" data-name="hr_employees">
+    <summary><span class="tname">hr_employees</span><span class="purpose">The employee master record</span><span class="count">17 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>VARCHAR(20)</code></td><td>employee code, app-generated</td></tr>
+        <tr><td><code>credential_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>→ hr_employee_credentials.id (soft); idx_credential_id</td></tr>
+        <tr><td><code>name</code>, <code>email</code>, <code>phone</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>designation</code>, <code>team</code>, <code>manager</code></td><td><code>VARCHAR</code></td><td>idx_team</td></tr>
+        <tr><td><code>status</code></td><td><code>VARCHAR</code></td><td>idx_status</td></tr>
+        <tr><td><code>doj</code></td><td><code>DATE</code></td><td>date of joining</td></tr>
+        <tr><td><code>sys_role</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>ctc</code></td><td><code>DECIMAL</code></td><td></td></tr>
+        <tr><td><code>leave_balance</code></td><td><code>JSON</code></td><td></td></tr>
+        <tr><td><code>documents</code>, <code>kyc_documents</code>, <code>signed_docs</code></td><td><code>JSON</code></td><td>kyc_documents shape: PAN, Aadhaar, Bank Statement, Cancelled Cheque, Salary Slip, Education 1–4, Experience 1–3</td></tr>
+        <tr><td><code>documents_deadline</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>ctc_split_override</code></td><td><code>JSON</code></td><td></td></tr>
+        <tr><td><code>probation_extended_by</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_onboarding">
+    <summary><span class="tname">hr_onboarding</span><span class="purpose">Pre-employee pipeline — offer through signed docs</span><span class="count">12 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>VARCHAR(20)</code></td><td></td></tr>
+        <tr><td><code>name</code>, <code>personal_email</code>, <code>designation</code>, <code>team</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>ctc</code></td><td><code>DECIMAL</code></td><td></td></tr>
+        <tr><td><code>stage</code></td><td><code>VARCHAR</code></td><td>offer → docs → active</td></tr>
+        <tr><td><code>offer_sent_date</code>, <code>signed_date</code>, <code>upload_deadline</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>employee_id</code></td><td><code>VARCHAR</code></td><td>set once converted to hr_employees</td></tr>
+        <tr><td><code>agreement_stage</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>docs</code>, <code>assets</code></td><td><code>JSON</code></td><td></td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_attendance">
+    <summary><span class="tname">hr_attendance</span><span class="purpose">Daily attendance record, one row per employee per day</span><span class="count">7 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>emp</code></td><td><code>VARCHAR</code></td><td>UNIQUE(emp, attendance_date)</td></tr>
+        <tr><td><code>attendance_date</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>status</code></td><td><code>VARCHAR</code></td><td>present / absent / half-day / week-off / holiday</td></tr>
+        <tr><td><code>in_time</code> / <code>out_time</code></td><td><code>TIME</code></td><td></td></tr>
+        <tr><td><code>in_minutes</code> / <code>out_minutes</code></td><td><code>INT</code></td><td>minute-of-day, for fast comparisons against <code>hr_rules</code> thresholds</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_attendance_overrides">
+    <summary><span class="tname">hr_attendance_overrides</span><span class="purpose">Manual HR override of a computed attendance status</span><span class="count">3 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>emp</code><span class="k pk">PK</span></td><td><code>VARCHAR</code></td><td>composite PK(emp, override_date)</td></tr>
+        <tr><td><code>override_date</code><span class="k pk">PK</span></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>status</code></td><td><code>VARCHAR</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_punch_log">
+    <summary><span class="tname">hr_punch_log</span><span class="purpose">Raw in/out punches, source for computed attendance</span><span class="count">5 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>emp</code><span class="k pk">PK</span></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>punch_date</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>in_time</code> / <code>out_time</code></td><td><code>TIME</code></td><td></td></tr>
+        <tr><td><code>in_minutes</code> / <code>out_minutes</code></td><td><code>INT</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_regularizations">
+    <summary><span class="tname">hr_regularizations</span><span class="purpose">Employee request to fix a missed/incorrect punch</span><span class="count">10 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>VARCHAR(30)</code></td><td></td></tr>
+        <tr><td><code>emp</code></td><td><code>VARCHAR</code></td><td>idx_emp</td></tr>
+        <tr><td><code>reg_date</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>punch_type</code></td><td><code>VARCHAR</code></td><td>in / out</td></tr>
+        <tr><td><code>reason</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>requested_time</code></td><td><code>TIME</code></td><td></td></tr>
+        <tr><td><code>stage</code>, <code>status</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>rm_remarks</code>, <code>hr_remarks</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_leave_requests">
+    <summary><span class="tname">hr_leave_requests</span><span class="purpose">Leave application with RM/HR two-level approval</span><span class="count">10 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>VARCHAR(30)</code></td><td></td></tr>
+        <tr><td><code>emp</code></td><td><code>VARCHAR</code></td><td>idx_emp</td></tr>
+        <tr><td><code>type</code></td><td><code>VARCHAR</code></td><td>from <code>hr_rules.leave_types</code></td></tr>
+        <tr><td><code>from_date</code> / <code>to_date</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>remarks</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>stage</code>, <code>status</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>rm_remarks</code>, <code>hr_remarks</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_expenses">
+    <summary><span class="tname">hr_expenses</span><span class="purpose">Reimbursement claim</span><span class="count">9 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>VARCHAR(30)</code></td><td></td></tr>
+        <tr><td><code>emp</code></td><td><code>VARCHAR</code></td><td>idx_emp</td></tr>
+        <tr><td><code>category</code></td><td><code>VARCHAR</code></td><td>from <code>hr_expense_categories</code></td></tr>
+        <tr><td><code>amount</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>stage</code>, <code>status</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>rm_remarks</code>, <code>hr_remarks</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_tickets">
+    <summary><span class="tname">hr_tickets</span><span class="purpose">General employee support ticket to HR</span><span class="count">6 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>VARCHAR(30)</code></td><td></td></tr>
+        <tr><td><code>emp</code></td><td><code>VARCHAR</code></td><td>idx_emp</td></tr>
+        <tr><td><code>category</code>, <code>status</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>note</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_compliance_tasks">
+    <summary><span class="tname">hr_compliance_tasks</span><span class="purpose">Read-only compliance checklist shown to HR</span><span class="count">4 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>task</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>due_date</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>status</code></td><td><code>VARCHAR</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_payroll_runs">
+    <summary><span class="tname">hr_payroll_runs</span><span class="purpose">One row per month a payroll run is executed</span><span class="count">6 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>month</code><span class="k uk">UK</span></td><td><code>VARCHAR</code></td><td>UNIQUE</td></tr>
+        <tr><td><code>status</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>run_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>run_by</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_payroll_entries">
+    <summary><span class="tname">hr_payroll_entries</span><span class="purpose">Per-employee computed payroll line for a month</span><span class="count">15 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>month</code>, <code>emp</code></td><td><code>VARCHAR</code></td><td>UNIQUE(month, emp); idx_month</td></tr>
+        <tr><td><code>working_days</code>, <code>total_days</code>, <code>present_days</code>, <code>absent_days</code>, <code>week_off_days</code>, <code>leave_days</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>short_leave_days</code>, <code>short_leave_carry_out</code>, <code>half_day_days</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>lop_days</code></td><td><code>DECIMAL(6,1)</code></td><td>widened from INT — loss-of-pay days, supports half-days</td></tr>
+        <tr><td><code>monthly_gross</code>, <code>tds</code>, <code>net_pay</code></td><td><code>DECIMAL</code></td><td></td></tr>
+        <tr><td><code>computed_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_rules">
+    <summary><span class="tname">hr_rules</span><span class="purpose">Singleton (id=1) — every policy knob for attendance, leave, payroll</span><span class="count">27 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>TINYINT</code></td><td>CHECK id = 1</td></tr>
+        <tr><td><code>working_days_pattern</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>shift_start_time</code> / <code>shift_end_time</code></td><td><code>TIME</code></td><td></td></tr>
+        <tr><td><code>shift_grace_minutes</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>half_day_threshold_hours</code></td><td><code>DECIMAL(3,1)</code></td><td>widened from INT</td></tr>
+        <tr><td><code>regularization_window_days</code>, <code>regularization_override</code>, <code>regularization_monthly_quota</code></td><td>mixed</td><td></td></tr>
+        <tr><td><code>short_leave_max_hours</code>, <code>short_leave_monthly_quota</code></td><td>mixed</td><td></td></tr>
+        <tr><td><code>half_day_min_worked_hours</code>, <code>short_leave_min_worked_hours</code>, <code>full_day_min_worked_hours</code></td><td>DECIMAL</td><td></td></tr>
+        <tr><td><code>salary_period_from</code> / <code>salary_period_to</code></td><td><code>INT</code></td><td>day-of-month</td></tr>
+        <tr><td><code>ctc_basic_pct</code>, <code>ctc_hra_pct</code>, <code>ctc_allowances_pct</code></td><td><code>DECIMAL</code></td><td>ctc_allowances_pct now unused</td></tr>
+        <tr><td><code>ctc_convenience_type</code>, <code>ctc_convenience_value</code></td><td>mixed</td><td></td></tr>
+        <tr><td><code>leave_types</code></td><td><code>JSON</code></td><td>picklist consumed by hr_leave_requests.type</td></tr>
+        <tr><td><code>two_level_approval_leave</code> / <code>_attendance</code> / <code>_expense</code></td><td><code>BOOLEAN</code></td><td></td></tr>
+        <tr><td><code>late_mark_penalty</code>, <code>geo_fencing</code>, <code>selfie_checkin</code>, <code>pf_esi</code>, <code>optional_holiday_choice</code>, <code>asset_checklist</code></td><td>mixed</td><td>feature toggles</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_company_profile">
+    <summary><span class="tname">hr_company_profile</span><span class="purpose">Singleton (id=1) — legal entity details for payslips</span><span class="count">5 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>company_name</code>, <code>cin</code>, <code>registered_state</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>updated_at</code> / <code>updated_by</code></td><td><code>TIMESTAMP</code> / <code>VARCHAR</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_audit_log">
+    <summary><span class="tname">hr_audit_log</span><span class="purpose">Append-only change log for HR tool actions</span><span class="count">4 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>ts</code></td><td><code>DATETIME</code></td><td></td></tr>
+        <tr><td><code>who</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>change_text</code></td><td><code>TEXT</code></td><td>idx_created</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_teams">
+    <summary><span class="tname">hr_teams</span><span class="purpose">Team picklist</span><span class="count">3 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <tbody>
+        <tr><td><code>name</code><span class="k pk">PK</span></td><td><code>VARCHAR(255)</code></td><td></td></tr>
+        <tr><td><code>manager</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_designations">
+    <summary><span class="tname">hr_designations</span><span class="purpose">Job title picklist</span><span class="count">2 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid"><tbody>
+      <tr><td><code>name</code><span class="k pk">PK</span></td><td><code>VARCHAR(255)</code></td><td></td></tr>
+      <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+    </tbody></table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_expense_categories">
+    <summary><span class="tname">hr_expense_categories</span><span class="purpose">Reimbursement category picklist</span><span class="count">2 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid"><tbody>
+      <tr><td><code>name</code><span class="k pk">PK</span></td><td><code>VARCHAR(255)</code></td><td></td></tr>
+      <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+    </tbody></table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_required_documents">
+    <summary><span class="tname">hr_required_documents</span><span class="purpose">Onboarding document checklist picklist</span><span class="count">2 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid"><tbody>
+      <tr><td><code>name</code><span class="k pk">PK</span></td><td><code>VARCHAR(255)</code></td><td></td></tr>
+      <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+    </tbody></table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_holidays">
+    <summary><span class="tname">hr_holidays</span><span class="purpose">Company holiday calendar</span><span class="count">3 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid"><tbody>
+      <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+      <tr><td><code>holiday_date</code></td><td><code>DATE</code></td><td>UNIQUE(holiday_date, name)</td></tr>
+      <tr><td><code>name</code></td><td><code>VARCHAR</code></td><td></td></tr>
+    </tbody></table></div></div>
+  </details>
+
+  <details class="table-card" data-name="hr_templates">
+    <summary><span class="tname">hr_templates</span><span class="purpose">Document templates (offer letters, etc.)</span><span class="count">3 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid"><tbody>
+      <tr><td><code>name</code><span class="k pk">PK</span></td><td><code>VARCHAR(100)</code></td><td></td></tr>
+      <tr><td><code>content</code></td><td><code>LONGTEXT</code></td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+    </tbody></table></div></div>
+  </details>
+
+  <h3 id="dom-sales" class="sub">Sales &amp; Partnerships <span class="mono">— 3 tables</span></h3>
+  <p>The event-submission module has no table of its own — the public "Submit Event" form writes directly into <code>partnership_events</code> (<code>status='Draft'</code>, <code>source='Public Submission'</code>).</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    EVENTS ||--o{ PARTNERSHIP_EVENTS : "event_id"
+    BANNERS ||--o{ PARTNERSHIP_EVENTS : "banner_id"
+
+    SALES_LEADS {
+        varchar id PK
+        date lead_date
+        varchar name
+        varchar company
+        varchar status
+        varchar assigned_to
+    }
+    SALES_TEAM_MEMBERS {
+        int id PK
+        varchar name UK
+        int sort_order
+    }
+    PARTNERSHIP_EVENTS {
+        int id PK
+        varchar event_name
+        int event_id FK
+        int banner_id FK
+        varchar partnership_status
+        varchar partnership_type
+        json speakers
+    }
+</pre>
+  </div>
+
+  <details class="table-card" data-name="sales_leads">
+    <summary><span class="tname">sales_leads</span><span class="purpose">CRM pipeline for advertising/sponsorship leads</span><span class="count">14 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>VARCHAR(40)</code></td><td>app-generated</td></tr>
+        <tr><td><code>lead_date</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>name</code>, <code>company</code>, <code>contact</code>, <code>email</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>source</code>, <code>type</code>, <code>other_type</code></td><td><code>VARCHAR</code></td><td>idx_type</td></tr>
+        <tr><td><code>query_text</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>assigned_to</code></td><td><code>VARCHAR</code></td><td>idx_assigned_to, → sales_team_members.name (soft)</td></tr>
+        <tr><td><code>status</code></td><td><code>VARCHAR</code></td><td>idx_status</td></tr>
+        <tr><td><code>next_follow_up_date</code>, <code>last_connect_date</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>last_call_discussion</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="sales_team_members">
+    <summary><span class="tname">sales_team_members</span><span class="purpose">Sales rep picklist for lead assignment</span><span class="count">3 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid"><tbody>
+      <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+      <tr><td><code>name</code><span class="k uk">UK</span></td><td><code>VARCHAR</code></td><td>UNIQUE</td></tr>
+      <tr><td><code>sort_order</code></td><td><code>INT</code></td><td></td></tr>
+    </tbody></table></div></div>
+  </details>
+
+  <details class="table-card" data-name="partnership_events">
+    <summary><span class="tname">partnership_events</span><span class="purpose">Event-partnership deal tracker — the widest table in the schema</span><span class="count">33 cols</span></summary>
+    <div class="body">
+      <p class="flags">Also the intake table for the public "Submit Event" form (<code>event-submission</code> module has no table of its own).</p>
+      <div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>event_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>NULL, → events.id; idx_event_id</td></tr>
+        <tr><td><code>event_name</code></td><td><code>VARCHAR(500) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>city</code>, <code>country</code>, <code>organiser</code>, <code>poc</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+        <tr><td><code>contact</code></td><td><code>VARCHAR(100)</code></td><td>NULL</td></tr>
+        <tr><td><code>email</code>, <code>website</code></td><td><code>VARCHAR</code></td><td>NULL</td></tr>
+        <tr><td><code>email_thread</code></td><td><code>VARCHAR(1000)</code></td><td>NULL</td></tr>
+        <tr><td><code>initiated_date</code>, <code>event_start_date</code>, <code>event_end_date</code></td><td><code>DATE</code></td><td>NULL</td></tr>
+        <tr><td><code>event_start_time</code>, <code>event_end_time</code></td><td><code>VARCHAR(20)</code></td><td>NULL</td></tr>
+        <tr><td><code>venue_address</code>, <code>description</code></td><td><code>TEXT</code></td><td>NULL</td></tr>
+        <tr><td><code>google_location_link</code></td><td><code>VARCHAR(500)</code></td><td>NULL</td></tr>
+        <tr><td><code>event_type</code></td><td><code>VARCHAR(50)</code></td><td>widened from VARCHAR(20); Media / Ticketing / No Partnership</td></tr>
+        <tr><td><code>ticket_currency</code>, <code>ticket_price</code></td><td><code>VARCHAR</code></td><td>NULL</td></tr>
+        <tr><td><code>speakers</code></td><td><code>JSON</code></td><td>NULL — array of {name, designation, company, others}</td></tr>
+        <tr><td><code>poster_url</code>, <code>banner_url</code></td><td><code>VARCHAR(500)</code></td><td>NULL</td></tr>
+        <tr><td><code>banner_start_date</code></td><td><code>DATE</code></td><td>NULL</td></tr>
+        <tr><td><code>banner_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>NULL, → banners.id; idx_banner_id</td></tr>
+        <tr><td><code>social_media_posts</code></td><td><code>TEXT</code></td><td>NULL</td></tr>
+        <tr><td><code>social_creatives</code></td><td><code>JSON</code></td><td>NULL — array of {platform, image}</td></tr>
+        <tr><td><code>partnership_status</code></td><td><code>VARCHAR(100)</code></td><td>idx_status; Draft / Initiated / Partnership Done / Only Listing / Ticketing / Cancelled / Expired</td></tr>
+        <tr><td><code>partnership_type</code></td><td><code>VARCHAR(50)</code></td><td>In-person / Cohort / Online (virtual)</td></tr>
+        <tr><td><code>last_updated_date</code></td><td><code>DATE</code></td><td>NULL</td></tr>
+        <tr><td><code>comment</code></td><td><code>TEXT</code></td><td>NULL</td></tr>
+        <tr><td><code>listing</code></td><td><code>VARCHAR(50)</code></td><td>No / Pending / In process / Yes</td></tr>
+        <tr><td><code>listing_link</code></td><td><code>VARCHAR(500)</code></td><td>NULL</td></tr>
+        <tr><td><code>source</code></td><td><code>VARCHAR(255)</code></td><td>NULL — e.g. 'Public Submission'</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td>idx_start_date; FULLTEXT idx_search(event_name, organiser, poc, comment)</td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <h3 id="dom-rss" class="sub">RSS &amp; Newsletter <span class="mono">— 5 tables</span></h3>
+  <p>Newsletter subscribers aren't a separate table — they're rows in <code>public_registrations</code>, identified via <code>newsletter_category_slugs</code> / <code>newsletter_unsubscribed</code> / <code>last_newsletter_sent_date</code>.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    CATEGORIES ||--o{ RSS_FEEDS : "category_id"
+    USERS ||--o{ RSS_FEEDS : "author_id"
+    RSS_FEEDS ||--o{ RSS_FEED_ITEMS : "rss_feed_id"
+    RSS_FEED_ITEMS |o--o| POSTS : "post_id"
+    NEWSLETTER_CATEGORIES ||--o{ NEWSLETTER_ITEMS : "category_slug"
+
+    RSS_FEEDS {
+        int id PK
+        varchar name
+        varchar url
+        int category_id FK
+        int author_id FK
+        boolean enabled
+        boolean auto_publish
+        set feed_for
+    }
+    RSS_FEED_ITEMS {
+        int id PK
+        int rss_feed_id FK
+        varchar guid
+        varchar title
+        boolean processed
+        int post_id FK
+    }
+    NEWSLETTER_CATEGORIES {
+        int id PK
+        varchar name
+        varchar slug UK
+        varchar color
+    }
+    NEWSLETTER_ITEMS {
+        int id PK
+        varchar category_slug
+        varchar title
+        varchar link
+        timestamp published_at
+    }
+    NEWSLETTER_SCHEDULES {
+        int id PK
+        varchar subject
+        json recipient_filter
+        enum status
+        timestamp scheduled_at
+    }
+</pre>
+  </div>
+
+  <details class="table-card" data-name="rss_feeds">
+    <summary><span class="tname">rss_feeds</span><span class="purpose">RSS source configuration, polled by the scheduler</span><span class="count">15 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>name</code>, <code>url</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>logo_url</code></td><td><code>VARCHAR</code></td><td>NULL</td></tr>
+        <tr><td><code>category_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>→ categories.id, ON DELETE RESTRICT</td></tr>
+        <tr><td><code>author_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>→ users.id, ON DELETE RESTRICT — byline for ingested posts</td></tr>
+        <tr><td><code>enabled</code></td><td><code>BOOLEAN</code></td><td>idx_enabled</td></tr>
+        <tr><td><code>fetch_interval_minutes</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>last_fetched_at</code></td><td><code>TIMESTAMP</code></td><td>idx_last_fetched</td></tr>
+        <tr><td><code>last_error</code>, <code>error_count</code></td><td><code>TEXT</code> / <code>INT</code></td><td></td></tr>
+        <tr><td><code>max_items_per_fetch</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>auto_publish</code></td><td><code>BOOLEAN</code></td><td>publish straight to <code>posts</code> without manual review</td></tr>
+        <tr><td><code>feed_for</code></td><td><code>SET('website','newsletter')</code></td><td>DEFAULT 'website'</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="rss_feed_items">
+    <summary><span class="tname">rss_feed_items</span><span class="purpose">Individual items pulled from a feed</span><span class="count">12 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>rss_feed_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>→ rss_feeds.id, ON DELETE CASCADE</td></tr>
+        <tr><td><code>guid</code></td><td><code>VARCHAR</code></td><td>UNIQUE(rss_feed_id, guid(255))</td></tr>
+        <tr><td><code>title</code>, <code>link</code>, <code>author</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>description</code>, <code>content</code></td><td><code>TEXT</code> / <code>LONGTEXT</code></td><td></td></tr>
+        <tr><td><code>image_url</code></td><td><code>VARCHAR</code></td><td>re-hosted to S3</td></tr>
+        <tr><td><code>published_at</code></td><td><code>TIMESTAMP</code></td><td>idx_published</td></tr>
+        <tr><td><code>processed</code></td><td><code>BOOLEAN</code></td><td>idx_processed</td></tr>
+        <tr><td><code>post_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>NULL, → posts.id, ON DELETE SET NULL</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="newsletter_categories">
+    <summary><span class="tname">newsletter_categories</span><span class="purpose">Newsletter topic picklist subscribers choose from</span><span class="count">8 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>name</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>slug</code><span class="k uk">UK</span></td><td><code>VARCHAR</code></td><td>UNIQUE</td></tr>
+        <tr><td><code>description</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>color</code></td><td><code>VARCHAR</code></td><td>DEFAULT '#6366f1'</td></tr>
+        <tr><td><code>sort_order</code></td><td><code>INT</code></td><td>idx_sort(sort_order, name)</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="newsletter_items">
+    <summary><span class="tname">newsletter_items</span><span class="purpose">Append-only content snapshot refreshed each Morning Signal run</span><span class="count">9 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>rss_feed_id</code></td><td><code>INT</code></td><td>implied FK, no constraint</td></tr>
+        <tr><td><code>feed_name</code>, <code>feed_url</code>, <code>feed_logo_url</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>category_slug</code></td><td><code>VARCHAR</code></td><td>idx_category_published</td></tr>
+        <tr><td><code>title</code>, <code>link</code>, <code>image_url</code>, <code>description</code></td><td><code>VARCHAR</code>/<code>TEXT</code></td><td></td></tr>
+        <tr><td><code>published_at</code></td><td><code>TIMESTAMP</code></td><td>idx_published</td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="newsletter_schedules">
+    <summary><span class="tname">newsletter_schedules</span><span class="purpose">A composed newsletter send, queued or completed</span><span class="count">12 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>subject</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>html</code></td><td><code>LONGTEXT</code></td><td></td></tr>
+        <tr><td><code>recipient_filter</code></td><td><code>JSON</code></td><td>"all" | category-slug array | {customRecipients:[...]}</td></tr>
+        <tr><td><code>scheduled_at</code></td><td><code>TIMESTAMP</code></td><td>idx_status_scheduled(status, scheduled_at)</td></tr>
+        <tr><td><code>status</code></td><td><code>ENUM('pending','sending','sent','cancelled','failed')</code></td><td></td></tr>
+        <tr><td><code>sent_count</code>, <code>total_count</code></td><td><code>INT</code></td><td></td></tr>
+        <tr><td><code>error_log</code></td><td><code>TEXT</code></td><td></td></tr>
+        <tr><td><code>created_at</code>, <code>sent_at</code>, <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <h3 id="dom-misc" class="sub">Misc <span class="mono">— 5 tables</span></h3>
+  <p>Site configuration and the CRM contacts book. <code>analytics</code> is a legacy leftover — post views/trending scores are written directly onto the <code>posts</code> row instead.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    POSTS ||--o{ ANALYTICS : "post_id"
+
+    SETTINGS {
+        int id PK
+        varchar key UK
+        text value
+    }
+    SITE_SETTINGS {
+        int id PK
+        varchar key UK
+        text value
+    }
+    ADMIN_TOOLS {
+        int id PK
+        varchar slug UK
+        longtext html_content
+        boolean visible_to_event_admin
+        boolean visible_to_publisher_admin
+    }
+    ANALYTICS {
+        int id PK
+        int post_id FK
+        varchar event_type
+        varchar user_ip
+    }
+    CONTACTS {
+        int id PK
+        varchar name
+        varchar company
+        json types
+        json emails
+    }
+</pre>
+  </div>
+
+  <details class="table-card" data-name="settings">
+    <summary><span class="tname">settings</span><span class="purpose">Generic key/value config store (e.g. contacts module config)</span><span class="count">5 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid"><tbody>
+      <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+      <tr><td><code>key</code><span class="k uk">UK</span></td><td><code>VARCHAR(255)</code></td><td>UNIQUE; idx_key</td></tr>
+      <tr><td><code>value</code></td><td><code>TEXT</code></td><td></td></tr>
+      <tr><td><code>type</code></td><td><code>VARCHAR(50)</code></td><td>DEFAULT 'string'</td></tr>
+      <tr><td><code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+    </tbody></table></div></div>
+  </details>
+
+  <details class="table-card" data-name="site_settings">
+    <summary><span class="tname">site_settings</span><span class="purpose">Self-provisioning single-value settings, distinct from `settings` (e.g. footer copyright)</span><span class="count">4 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid"><tbody>
+      <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+      <tr><td><code>key</code><span class="k uk">UK</span></td><td><code>VARCHAR(120)</code></td><td>UNIQUE</td></tr>
+      <tr><td><code>value</code></td><td><code>TEXT</code></td><td></td></tr>
+      <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+    </tbody></table></div></div>
+  </details>
+
+  <details class="table-card" data-name="admin_tools">
+    <summary><span class="tname">admin_tools</span><span class="purpose">Ad-hoc HTML micro-tools embedded in the admin/dashboard nav</span><span class="count">9 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>name</code></td><td><code>VARCHAR(255) NOT NULL</code></td><td></td></tr>
+        <tr><td><code>slug</code><span class="k uk">UK</span></td><td><code>VARCHAR(255) NOT NULL UNIQUE</code></td><td>idx_slug</td></tr>
+        <tr><td><code>html_content</code></td><td><code>LONGTEXT NOT NULL</code></td><td></td></tr>
+        <tr><td><code>visible_to_event_admin</code></td><td><code>BOOLEAN</code></td><td>DEFAULT FALSE</td></tr>
+        <tr><td><code>visible_to_publisher_admin</code></td><td><code>BOOLEAN</code></td><td>DEFAULT FALSE</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td>NULL</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="analytics">
+    <summary><span class="tname">analytics</span><span class="purpose">Legacy — no repository code queries this table</span><span class="count">6 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>post_id</code><span class="k fk">FK</span></td><td><code>INT</code></td><td>NULL, → posts.id, ON DELETE CASCADE; idx_post</td></tr>
+        <tr><td><code>event_type</code></td><td><code>VARCHAR(50) NOT NULL</code></td><td>idx_type</td></tr>
+        <tr><td><code>user_ip</code></td><td><code>VARCHAR(45)</code></td><td></td></tr>
+        <tr><td><code>user_agent</code>, <code>referrer</code></td><td><code>TEXT</code> / <code>VARCHAR(500)</code></td><td></td></tr>
+        <tr><td><code>created_at</code></td><td><code>TIMESTAMP</code></td><td>idx_created</td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+  <details class="table-card" data-name="contacts">
+    <summary><span class="tname">contacts</span><span class="purpose">CRM-style contacts book, full-text searchable</span><span class="count">13 cols</span></summary>
+    <div class="body"><div class="scrollwrap"><table class="grid">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code><span class="k pk">PK</span></td><td><code>INT AUTO_INCREMENT</code></td><td></td></tr>
+        <tr><td><code>name</code>, <code>company</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>types</code>, <code>cities</code>, <code>emails</code>, <code>phones</code>, <code>tags</code></td><td><code>JSON</code></td><td></td></tr>
+        <tr><td><code>country</code></td><td><code>VARCHAR</code></td><td>idx_country</td></tr>
+        <tr><td><code>linkedin</code>, <code>instagram</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>sector</code>, <code>stage</code></td><td><code>VARCHAR</code></td><td></td></tr>
+        <tr><td><code>notes</code></td><td><code>TEXT</code></td><td>FULLTEXT idx_search(name, company, notes)</td></tr>
+        <tr><td><code>created_at</code> / <code>updated_at</code></td><td><code>TIMESTAMP</code></td><td></td></tr>
+        <tr><td><code>created_by</code> / <code>updated_by</code></td><td><code>VARCHAR(255)</code></td><td></td></tr>
+      </tbody>
+    </table></div></div>
+  </details>
+
+</section>
+
+<section id="notes">
+  <div class="sec-head">
+    <h2>Notes &amp; Caveats</h2>
+    <p>Six things worth knowing before treating this as ground truth for a migration or a new feature.</p>
+  </div>
+  <ul class="notes">
+    <li><b><code>scripts/init-db.sql</code> is not a clean day-one baseline.</b> It's been silently updated over time to fold in some early migrations (audit columns, <code>panel_admins</code>, <code>admin_tools</code> visibility flags) but not later ones — SEO fields, event venue/country fields, and all of HR tool, banners, reports, RSS, sales, and partnerships. Treat it as authoritative only for <code>users</code>, <code>categories</code>, <code>posts</code>, <code>post_tags</code>, <code>events</code>, <code>analytics</code>, <code>sessions</code>, <code>settings</code>, <code>admin_tools</code>.</li>
+    <li><b>The real migration history lives in git, not on disk.</b> Every file under <code>scripts/migrations/*.sql</code> was deleted from the working tree after being run; only a 4-line <code>.applied_migrations</code> log and git history remain. Recoverable via <code>git log --all --diff-filter=A --name-only -- 'scripts/migrations/*.sql'</code>.</li>
+    <li><b>Five tables self-provision their own DDL</b> from application code rather than a tracked migration: <code>reports</code>/<code>report_sections</code>, <code>brand_stories</code>/<code>brand_story_sections</code>, <code>event_regions</code>, <code>public_registrations</code> (+2 child tables), and <code>site_settings</code>.</li>
+    <li><b>Flagged discrepancy — <code>events.status</code>.</b> Application code writes <code>'draft'</code>/<code>'completed'</code> values not present in any tracked ENUM migration; the live database enum was likely altered outside the tracked migration flow. Verify against production schema before relying on the enum list shown here.</li>
+    <li><b>Two dead tables:</b> <code>sessions</code> and <code>analytics</code> exist in the baseline schema but no current repository code queries either — auth is fully stateless JWT, and view counts/trending scores are written straight onto the <code>posts</code> row instead.</li>
+    <li><b>Duplicate self-migration on <code>posts.is_gone_410</code>.</b> It has both a tracked migration and a second, independent defensive <code>ALTER TABLE</code> inside <code>src/app/api/admin/posts/bulk-status/route.ts</code> — same end state, two code paths creating it.</li>
+  </ul>
+  <div class="callout">Generated by reading the live repository at <code>/home/ubuntu/zox-nextjs</code> — <code>scripts/init-db.sql</code>, migration history recovered from git, and every <code>src/modules/*/repository/*.ts</code> + <code>domain/types.ts</code>. Column types for self-provisioning and JS-inferred tables are best-effort inference from TypeScript entity shapes, not a live <code>SHOW CREATE TABLE</code> dump — cross-check against production before using this as a migration source of truth.</div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  StartupNews System Atlas — generated from a live read of <code>/home/ubuntu/zox-nextjs</code> (repository code, <code>scripts/init-db.sql</code>, and migration history in git). Reflects code structure as of the most recent commit on <code>main</code>.
+</footer>
+
+<script>
+(function(){
+  var filter = document.getElementById('tocFilter');
+  filter.addEventListener('input', function(){
+    var q = filter.value.trim().toLowerCase();
+    document.querySelectorAll('.table-card').forEach(function(card){
+      var name = (card.getAttribute('data-name')||'').toLowerCase();
+      var match = !q || name.indexOf(q) !== -1;
+      card.style.display = match ? '' : 'none';
+      if(match && q) card.open = true;
+    });
+  });
+})();
+</script>
+</body>
+</html>
