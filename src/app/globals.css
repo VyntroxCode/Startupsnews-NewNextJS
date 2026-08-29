@@ -8161,7 +8161,39 @@ body .banner-carousel-container,
   white-space: nowrap;
 }
 
+.snf-page .custom-select-btn .cs-label.cs-placeholder { color: var(--muted); }
+
+/* Combobox mode: the trigger is a text field you type straight into, so the
+   wrapper keeps the input chrome and the inner <input> is left bare. */
+.snf-page .custom-select-btn.is-combobox { cursor: text; }
+
+/* Specificity note: `.snf-page .field input[type=text]` (0,3,1) styles every field
+   input with its own border, padding and 8px radius — it outranks a plain
+   `.snf-page .custom-select-btn .cs-input` (0,3,0) and draws a second box inside
+   the trigger. `input.cs-input` with `.field` in the chain (0,4,1) takes it back.
+   :hover/:focus are listed too, or the field rules re-add a focus ring around an
+   input that has no visible border of its own. */
+.snf-page .field .custom-select-btn input.cs-input,
+.snf-page .field .custom-select-btn input.cs-input:hover,
+.snf-page .field .custom-select-btn input.cs-input:focus {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+  box-shadow: none;
+}
+
+.snf-page .field .custom-select-btn input.cs-input::placeholder { color: var(--muted); }
+
 .snf-page .custom-select-btn:focus,
+.snf-page .custom-select-btn:focus-within,
 .snf-page .custom-select-btn.open {
   outline: none;
   border-color: var(--brand);
@@ -8210,6 +8242,14 @@ body .banner-carousel-container,
 .snf-page .custom-select-list li.active { background: var(--brand-tint); }
 
 .snf-page .custom-select-list li.selected { font-weight: 700; color: var(--brand-dark); }
+
+.snf-page .custom-select-list li.cs-empty {
+  color: var(--muted);
+  cursor: default;
+  font-style: italic;
+}
+
+.snf-page .custom-select-list li.cs-empty:hover { background: transparent; }
 .snf-page .custom-select-list li.filtered-out { display: none; }
 
 .snf-page .dropdown-search-item {

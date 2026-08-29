@@ -66,6 +66,7 @@ export function CountryCityFields({
           onBlurValidate={onBlurCountry}
           searchable
           searchPlaceholder="Search countries…"
+          placeholder="Select country"
           ariaLabel="Country"
         />
         {country === OTHER_COUNTRY_VALUE && (
@@ -89,6 +90,7 @@ export function CountryCityFields({
           value={city}
           onChange={(v) => onChangeCity(v)}
           onBlurValidate={onBlurCity}
+          placeholder={country ? "Select city" : "Select a country first"}
           ariaLabel="City"
         />
         {city === OTHER_CITY_VALUE && (

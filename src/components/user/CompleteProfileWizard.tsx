@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { COUNTRIES } from '@/constants/countries';
+import { CustomSelect } from '@/components/submit-event/CustomSelect';
 import {
   REGISTRATION_CATEGORIES, INVESTOR_TYPES, CHECK_SIZES, STAGE_FOCUS, ENTITY_TYPES,
   STARTUP_STAGES, TEAM_SIZES, REVENUE_STATUSES, ROUND_TYPES, BANKING_VERTICALS,
@@ -10,6 +11,8 @@ import {
 interface NLCategory { id: number; name: string; slug: string; color: string; }
 interface Founder { name: string; role: string; linkedin_url: string; }
 interface FundingRound { round_type: string; amount: string; lead_investor: string; round_date: string; }
+
+const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({ value: c, label: c }));
 
 const BRAND = '#ee1761';
 const BRAND_DARK = '#c8114d';
@@ -55,29 +58,10 @@ const CATEGORY_PREFIX: Record<string, string> = {
   govt: 'g_', consultant: 'g_', coworking: 'g_', university: 'g_', student: 'g_', other: 'g_',
 };
 
-const STARTUP_REQUIRED_KEYS = ['s_name', 's_founded', 's_entity', 's_stage', 's_team_size', 's_revenue_status', 's_pitch'];
-
-const CATEGORY_REQUIRED_KEYS: Record<string, string[]> = {
-  investor: ['i_type', 'i_check_size', 'i_stage_focus', 'i_sector_focus', 'i_geo_focus'],
-  vc: ['i_type', 'i_check_size', 'i_stage_focus', 'i_sector_focus', 'i_geo_focus'],
-  pe: ['i_type', 'i_check_size', 'i_stage_focus', 'i_sector_focus', 'i_geo_focus'],
-  familyoffice: ['i_type', 'i_check_size', 'i_stage_focus', 'i_sector_focus', 'i_geo_focus'],
-  accelerator: ['a_program_name', 'a_duration', 'a_sector_focus'],
-  incubator: ['a_program_name', 'a_duration', 'a_sector_focus'],
-  creator: ['c_platforms', 'c_niche'],
-  media: ['c_platforms', 'c_niche'],
-  lawyer: ['l_firm', 'l_practice_areas', 'l_jurisdiction', 'l_years_experience'],
-  cacs: ['cs_firm', 'cs_membership_number', 'cs_services', 'cs_years_experience'],
-  ibanker: ['ib_firm', 'ib_years_experience', 'ib_deal_types'],
-  banker: ['bk_bank_name', 'bk_years_experience', 'bk_vertical'],
-  govt: ['g_role'], consultant: ['g_role'], coworking: ['g_role'],
-  university: ['g_role'], student: ['g_role'], other: ['g_role'],
-};
-
 function ReviewSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 18 }}>
-      <p style={{ margin: '0 0 8px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</p>
+      <p style={{ margin: '0 0 8px', fontSize: '0.7rem', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</p>
       <div style={{ background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 10, padding: '12px 14px' }}>
         {children}
       </div>
@@ -193,28 +177,9 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
   const isLast = stepIdx === steps.length - 1;
   const isFirst = stepIdx === 0;
 
-  const basicValid = Boolean(phone.trim() && city.trim() && country.trim() && linkedin.trim());
-  const categoryValid = Boolean(category && (category !== 'other' || otherCategory.trim()));
-  const categoryDetailsValid = (() => {
-    if (!category) return false;
-    if (category === 'startup') {
-      return (
-        STARTUP_REQUIRED_KEYS.every((k) => profile[k]) &&
-        Boolean(profile.s_raising) &&
-        founders.some((f) => f.name.trim()) &&
-        Boolean(website.trim())
-      );
-    }
-    return (CATEGORY_REQUIRED_KEYS[category] || []).every((k) => profile[k]);
-  })();
-
-  const stepValid =
-    step === 1 ? basicValid :
-    step === 3 ? categoryValid :
-    step === 4 ? categoryDetailsValid :
-    true;
-
-  const allValid = basicValid && categoryValid && categoryDetailsValid;
+  // Only phone + country are mandatory; every other field in the wizard is optional.
+  const basicValid = Boolean(phone.trim() && country.trim());
+  const stepValid = step === 1 ? basicValid : true;
 
   const next = () => setStepIdx((i) => Math.min(i + 1, steps.length - 1));
   const back = () => setStepIdx((i) => Math.max(i - 1, 0));
@@ -333,23 +298,28 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
                 <input className="cpw-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
               </Field>
               <Row2>
-                <Field label="City" required>
+                <Field label="Country" required>
+                  <CustomSelect
+                    ariaLabel="Country"
+                    searchable
+                    searchPlaceholder="Search countries…"
+                    placeholder="Select…"
+                    options={COUNTRY_OPTIONS}
+                    value={country}
+                    onChange={setCountry}
+                  />
+                </Field>
+                <Field label="City">
                   <input className="cpw-input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Mumbai" />
                 </Field>
-                <Field label="Country" required>
-                  <select className="cpw-input" value={country} onChange={(e) => setCountry(e.target.value)}>
-                    <option value="">Select…</option>
-                    {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
               </Row2>
-              <Field label="LinkedIn profile URL" required>
+              <Field label="LinkedIn profile URL">
                 <input type="url" className="cpw-input" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="https://linkedin.com/in/..." />
               </Field>
-              <Field label={`Website${category === 'startup' ? '' : ' (optional, mandatory for startups)'}`} required={category === 'startup'}>
+              <Field label="Website">
                 <input type="url" className="cpw-input" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://" />
               </Field>
-              <Field label="Short bio (optional)">
+              <Field label="Short bio">
                 <textarea
                   className="cpw-input cpw-textarea"
                   value={bio}
@@ -406,7 +376,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
               ))}
               {category === 'other' && (
                 <div className="cpw-cat-other">
-                  <Field label="Please specify" required>
+                  <Field label="Please specify">
                     <input className="cpw-input" value={otherCategory} onChange={(e) => setOtherCategory(e.target.value)} />
                   </Field>
                 </div>
@@ -495,18 +465,18 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
           )}
         </div>
 
-        {isLast && !allValid && (
-          <div className="cpw-warning-wrap">
-            <div className="cpw-alert cpw-alert-warn">
-              Some required fields are still missing — go back and fill them in before saving.
-            </div>
-          </div>
-        )}
         {!isLast && !stepValid && (
           <div className="cpw-warning-wrap">
             <p className="cpw-warning-text">
               Fill in all required fields (*) to continue.
             </p>
+          </div>
+        )}
+        {isLast && !basicValid && (
+          <div className="cpw-warning-wrap">
+            <div className="cpw-alert cpw-alert-warn">
+              Phone / WhatsApp and Country are still missing — go back to Basic info and fill them in before saving.
+            </div>
           </div>
         )}
 
@@ -520,7 +490,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={saving || !allValid}
+              disabled={saving || !basicValid}
               className="cpw-btn-primary"
             >
               {saving ? 'Saving…' : 'Save & finish'}
@@ -570,7 +540,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
         .cpw-warning-text { margin: 0; font-size: 0.8125rem; color: #c2410c; font-weight: 500; }
 
         .cpw-field { margin-bottom: 24px; }
-        .cpw-label { display: block; font-size: 0.8125rem; font-weight: 500; color: #94a3b8; margin-bottom: 6px; }
+        .cpw-label { display: block; font-size: 0.8125rem; font-weight: 600; color: #0f172a; margin-bottom: 6px; }
         .cpw-req { color: ${BRAND}; margin-left: 2px; }
 
         .cpw-input { width: 100%; padding: 4px 0 10px; border: none; border-bottom: 1.5px solid #e5e7eb; border-radius: 0; font-size: 1.0625rem; font-weight: 500; color: #0f172a; background: transparent; outline: none; box-sizing: border-box; font-family: inherit; transition: border-color 0.15s; }
@@ -578,6 +548,30 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
         .cpw-input:hover { border-color: #cbd5e1; }
         .cpw-input:focus { border-color: ${BRAND}; }
         select.cpw-input { cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; padding-right: 22px; background-repeat: no-repeat; background-position: right 2px center; background-size: 16px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); }
+        /* CustomSelect (reused from submit-event) — its globals.css rules are scoped
+           to .snf-page, so it needs its own dressing to match the cpw underline fields. */
+        .cpw-modal .custom-select-wrap { position: relative; width: 100%; }
+        .cpw-modal .custom-select-btn { width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; padding: 4px 0 10px; border: none; border-bottom: 1.5px solid #e5e7eb; border-radius: 0; background: transparent; font-family: inherit; font-size: 1.0625rem; font-weight: 500; color: #0f172a; cursor: pointer; transition: border-color 0.15s; }
+        .cpw-modal .custom-select-btn:hover { border-color: #cbd5e1; }
+        .cpw-modal .custom-select-btn:focus, .cpw-modal .custom-select-btn:focus-within, .cpw-modal .custom-select-btn.open { outline: none; border-color: ${BRAND}; }
+        .cpw-modal .custom-select-btn .cs-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cpw-modal .custom-select-btn .cs-label.cs-placeholder { color: #cbd5e1; font-weight: 400; }
+        .cpw-modal .custom-select-btn.is-combobox { cursor: text; }
+        .cpw-modal .custom-select-btn input.cs-input, .cpw-modal .custom-select-btn input.cs-input:hover, .cpw-modal .custom-select-btn input.cs-input:focus { flex: 1; width: auto; min-width: 0; border: none; border-radius: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: #0f172a; outline: none; box-shadow: none; }
+        .cpw-modal .custom-select-btn input.cs-input::placeholder { color: #cbd5e1; font-weight: 400; }
+        .cpw-modal .custom-select-btn .caret { font-size: 11px; color: #94a3b8; flex-shrink: 0; transition: transform 0.15s; }
+        .cpw-modal .custom-select-btn.open .caret { transform: rotate(180deg); }
+        .cpw-modal .custom-select-list { position: absolute; top: calc(100% + 6px); left: 0; right: 0; max-height: 240px; overflow-y: auto; margin: 0; padding: 5px; list-style: none; background: #fff; border: 1.5px solid #e5e7eb; border-radius: 12px; box-shadow: 0 12px 32px rgba(15,23,42,0.14); z-index: 60; display: none; }
+        .cpw-modal .custom-select-list.open { display: block; }
+        .cpw-modal .custom-select-list li { padding: 9px 10px; font-size: 0.875rem; border-radius: 7px; cursor: pointer; color: #0f172a; transition: background-color 0.1s; }
+        .cpw-modal .custom-select-list li:hover, .cpw-modal .custom-select-list li.active { background: #fce7f0; }
+        .cpw-modal .custom-select-list li.cs-empty { color: #94a3b8; font-style: italic; cursor: default; }
+        .cpw-modal .custom-select-list li.cs-empty:hover { background: transparent; }
+        .cpw-modal .custom-select-list li.selected { font-weight: 700; color: ${BRAND_DARK}; }
+        .cpw-modal .dropdown-search-item { position: sticky; top: -5px; margin: -5px -5px 5px; padding: 7px; background: #fff; border-bottom: 1px solid #f1f5f9; cursor: default; z-index: 1; }
+        .cpw-modal .dropdown-search-input { width: 100%; box-sizing: border-box; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; font-size: 0.875rem; font-family: inherit; color: #0f172a; outline: none; transition: border-color 0.15s; }
+        .cpw-modal .dropdown-search-input:focus { border-color: ${BRAND}; }
+
         .cpw-textarea { min-height: 70px; resize: vertical; font-family: inherit; line-height: 1.5; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; font-size: 0.9375rem; }
         .cpw-textarea:focus { border-color: ${BRAND}; }
 
@@ -657,16 +651,16 @@ function CategoryDetailFields({
     return (
       <>
         <Row2>
-          <Field label="Startup name" required><input className="cpw-input" value={v('s_name')} onChange={(e) => setP('s_name', e.target.value)} /></Field>
-          <Field label="Founded year" required><input type="number" className="cpw-input" value={v('s_founded')} onChange={(e) => setP('s_founded', e.target.value)} min={1990} max={2026} /></Field>
+          <Field label="Startup name"><input className="cpw-input" value={v('s_name')} onChange={(e) => setP('s_name', e.target.value)} /></Field>
+          <Field label="Founded year"><input type="number" className="cpw-input" value={v('s_founded')} onChange={(e) => setP('s_founded', e.target.value)} min={1990} max={2026} /></Field>
         </Row2>
         <Row2>
-          <Field label="Legal entity type" required>
+          <Field label="Legal entity type">
             <select className="cpw-input" value={v('s_entity')} onChange={(e) => setP('s_entity', e.target.value)}>
               <option value="">Select…</option>{ENTITY_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
-          <Field label="Stage" required>
+          <Field label="Stage">
             <select className="cpw-input" value={v('s_stage')} onChange={(e) => setP('s_stage', e.target.value)}>
               <option value="">Select…</option>{STARTUP_STAGES.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -688,22 +682,22 @@ function CategoryDetailFields({
           )}
         </Field>
         <Row2>
-          <Field label="Team size" required>
+          <Field label="Team size">
             <select className="cpw-input" value={v('s_team_size')} onChange={(e) => setP('s_team_size', e.target.value)}>
               <option value="">Select…</option>{TEAM_SIZES.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
-          <Field label="Revenue status" required>
+          <Field label="Revenue status">
             <select className="cpw-input" value={v('s_revenue_status')} onChange={(e) => setP('s_revenue_status', e.target.value)}>
               <option value="">Select…</option>{REVENUE_STATUSES.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
         </Row2>
-        <Field label="One-line pitch" required>
+        <Field label="One-line pitch">
           <input className="cpw-input" maxLength={140} value={v('s_pitch')} onChange={(e) => setP('s_pitch', e.target.value)} />
         </Field>
 
-        <p style={{ margin: '20px 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Founders</p>
+        <p style={{ margin: '20px 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Founders</p>
         {founders.map((f, i) => (
           <div key={i} style={{ border: '1px dashed #e2e8f0', borderRadius: 10, padding: 14, marginBottom: 10, position: 'relative' }}>
             {founders.length > 1 && (
@@ -720,7 +714,7 @@ function CategoryDetailFields({
           + Add founder
         </button>
 
-        <p style={{ margin: '20px 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Funding history</p>
+        <p style={{ margin: '20px 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Funding history</p>
         {fundingRounds.map((r, i) => (
           <div key={i} style={{ border: '1px dashed #e2e8f0', borderRadius: 10, padding: 14, marginBottom: 10, position: 'relative' }}>
             <button type="button" onClick={() => setFundingRounds((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: 10, right: 12, background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.75rem', cursor: 'pointer' }}>remove</button>
@@ -742,7 +736,7 @@ function CategoryDetailFields({
           + Add funding round
         </button>
 
-        <Field label="Currently raising?" required>
+        <Field label="Currently raising?">
           <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
             {['yes', 'planning', 'no'].map((opt) => (
               <label key={opt} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: '0.8125rem' }}>
@@ -768,26 +762,26 @@ function CategoryDetailFields({
       <>
         <Row2>
           <Field label="Firm / fund name"><input className="cpw-input" value={v('i_firm')} onChange={(e) => setP('i_firm', e.target.value)} /></Field>
-          <Field label="Investor type" required>
+          <Field label="Investor type">
             <select className="cpw-input" value={v('i_type')} onChange={(e) => setP('i_type', e.target.value)}>
               <option value="">Select…</option>{INVESTOR_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
         </Row2>
         <Row2>
-          <Field label="Check size range" required>
+          <Field label="Check size range">
             <select className="cpw-input" value={v('i_check_size')} onChange={(e) => setP('i_check_size', e.target.value)}>
               <option value="">Select…</option>{CHECK_SIZES.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
-          <Field label="Stage focus" required>
+          <Field label="Stage focus">
             <select className="cpw-input" value={v('i_stage_focus')} onChange={(e) => setP('i_stage_focus', e.target.value)}>
               <option value="">Select…</option>{STAGE_FOCUS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
         </Row2>
-        <Field label="Sector focus" required><input className="cpw-input" placeholder="e.g. Fintech, SaaS" value={v('i_sector_focus')} onChange={(e) => setP('i_sector_focus', e.target.value)} /></Field>
-        <Field label="Geography focus" required><input className="cpw-input" placeholder="e.g. India, SEA" value={v('i_geo_focus')} onChange={(e) => setP('i_geo_focus', e.target.value)} /></Field>
+        <Field label="Sector focus"><input className="cpw-input" placeholder="e.g. Fintech, SaaS" value={v('i_sector_focus')} onChange={(e) => setP('i_sector_focus', e.target.value)} /></Field>
+        <Field label="Geography focus"><input className="cpw-input" placeholder="e.g. India, SEA" value={v('i_geo_focus')} onChange={(e) => setP('i_geo_focus', e.target.value)} /></Field>
       </>
     );
   }
@@ -796,10 +790,10 @@ function CategoryDetailFields({
     return (
       <>
         <Row2>
-          <Field label="Program name" required><input className="cpw-input" value={v('a_program_name')} onChange={(e) => setP('a_program_name', e.target.value)} /></Field>
-          <Field label="Program duration" required><input className="cpw-input" placeholder="e.g. 12 weeks" value={v('a_duration')} onChange={(e) => setP('a_duration', e.target.value)} /></Field>
+          <Field label="Program name"><input className="cpw-input" value={v('a_program_name')} onChange={(e) => setP('a_program_name', e.target.value)} /></Field>
+          <Field label="Program duration"><input className="cpw-input" placeholder="e.g. 12 weeks" value={v('a_duration')} onChange={(e) => setP('a_duration', e.target.value)} /></Field>
         </Row2>
-        <Field label="Sector focus" required><input className="cpw-input" value={v('a_sector_focus')} onChange={(e) => setP('a_sector_focus', e.target.value)} /></Field>
+        <Field label="Sector focus"><input className="cpw-input" value={v('a_sector_focus')} onChange={(e) => setP('a_sector_focus', e.target.value)} /></Field>
         <Field label="Equity taken (%)"><input type="number" className="cpw-input" value={v('a_equity_taken')} onChange={(e) => setP('a_equity_taken', e.target.value)} /></Field>
       </>
     );
@@ -808,8 +802,8 @@ function CategoryDetailFields({
   if (CREATOR_CATEGORIES.includes(category)) {
     return (
       <>
-        <Field label="Primary platform(s)" required><input className="cpw-input" placeholder="e.g. Instagram, YouTube, LinkedIn" value={v('c_platforms')} onChange={(e) => setP('c_platforms', e.target.value)} /></Field>
-        <Field label="Content niche" required><input className="cpw-input" value={v('c_niche')} onChange={(e) => setP('c_niche', e.target.value)} /></Field>
+        <Field label="Primary platform(s)"><input className="cpw-input" placeholder="e.g. Instagram, YouTube, LinkedIn" value={v('c_platforms')} onChange={(e) => setP('c_platforms', e.target.value)} /></Field>
+        <Field label="Content niche"><input className="cpw-input" value={v('c_niche')} onChange={(e) => setP('c_niche', e.target.value)} /></Field>
         <Field label="Media kit / portfolio link"><input type="url" className="cpw-input" value={v('c_mediakit')} onChange={(e) => setP('c_mediakit', e.target.value)} /></Field>
       </>
     );
@@ -818,11 +812,11 @@ function CategoryDetailFields({
   if (category === 'lawyer') {
     return (
       <>
-        <Field label="Firm name (or 'Independent')" required><input className="cpw-input" value={v('l_firm')} onChange={(e) => setP('l_firm', e.target.value)} /></Field>
-        <Field label="Practice areas" required><input className="cpw-input" placeholder="e.g. Corporate, VC/Fundraising, IP" value={v('l_practice_areas')} onChange={(e) => setP('l_practice_areas', e.target.value)} /></Field>
+        <Field label="Firm name (or 'Independent')"><input className="cpw-input" value={v('l_firm')} onChange={(e) => setP('l_firm', e.target.value)} /></Field>
+        <Field label="Practice areas"><input className="cpw-input" placeholder="e.g. Corporate, VC/Fundraising, IP" value={v('l_practice_areas')} onChange={(e) => setP('l_practice_areas', e.target.value)} /></Field>
         <Row2>
-          <Field label="Jurisdictions qualified in" required><input className="cpw-input" value={v('l_jurisdiction')} onChange={(e) => setP('l_jurisdiction', e.target.value)} /></Field>
-          <Field label="Years of experience" required><input type="number" className="cpw-input" value={v('l_years_experience')} onChange={(e) => setP('l_years_experience', e.target.value)} /></Field>
+          <Field label="Jurisdictions qualified in"><input className="cpw-input" value={v('l_jurisdiction')} onChange={(e) => setP('l_jurisdiction', e.target.value)} /></Field>
+          <Field label="Years of experience"><input type="number" className="cpw-input" value={v('l_years_experience')} onChange={(e) => setP('l_years_experience', e.target.value)} /></Field>
         </Row2>
       </>
     );
@@ -832,11 +826,11 @@ function CategoryDetailFields({
     return (
       <>
         <Row2>
-          <Field label="Firm name" required><input className="cpw-input" value={v('cs_firm')} onChange={(e) => setP('cs_firm', e.target.value)} /></Field>
-          <Field label="ICAI / ICSI membership no." required><input className="cpw-input" value={v('cs_membership_number')} onChange={(e) => setP('cs_membership_number', e.target.value)} /></Field>
+          <Field label="Firm name"><input className="cpw-input" value={v('cs_firm')} onChange={(e) => setP('cs_firm', e.target.value)} /></Field>
+          <Field label="ICAI / ICSI membership no."><input className="cpw-input" value={v('cs_membership_number')} onChange={(e) => setP('cs_membership_number', e.target.value)} /></Field>
         </Row2>
-        <Field label="Services offered" required><input className="cpw-input" placeholder="e.g. Auditing, ROC filings, Valuation" value={v('cs_services')} onChange={(e) => setP('cs_services', e.target.value)} /></Field>
-        <Field label="Years of experience" required><input type="number" className="cpw-input" value={v('cs_years_experience')} onChange={(e) => setP('cs_years_experience', e.target.value)} /></Field>
+        <Field label="Services offered"><input className="cpw-input" placeholder="e.g. Auditing, ROC filings, Valuation" value={v('cs_services')} onChange={(e) => setP('cs_services', e.target.value)} /></Field>
+        <Field label="Years of experience"><input type="number" className="cpw-input" value={v('cs_years_experience')} onChange={(e) => setP('cs_years_experience', e.target.value)} /></Field>
       </>
     );
   }
@@ -845,10 +839,10 @@ function CategoryDetailFields({
     return (
       <>
         <Row2>
-          <Field label="Firm / bank name" required><input className="cpw-input" value={v('ib_firm')} onChange={(e) => setP('ib_firm', e.target.value)} /></Field>
-          <Field label="Years of experience" required><input type="number" className="cpw-input" value={v('ib_years_experience')} onChange={(e) => setP('ib_years_experience', e.target.value)} /></Field>
+          <Field label="Firm / bank name"><input className="cpw-input" value={v('ib_firm')} onChange={(e) => setP('ib_firm', e.target.value)} /></Field>
+          <Field label="Years of experience"><input type="number" className="cpw-input" value={v('ib_years_experience')} onChange={(e) => setP('ib_years_experience', e.target.value)} /></Field>
         </Row2>
-        <Field label="Deal types handled" required><input className="cpw-input" placeholder="e.g. M&A, IPO, PE/VC Fundraising" value={v('ib_deal_types')} onChange={(e) => setP('ib_deal_types', e.target.value)} /></Field>
+        <Field label="Deal types handled"><input className="cpw-input" placeholder="e.g. M&A, IPO, PE/VC Fundraising" value={v('ib_deal_types')} onChange={(e) => setP('ib_deal_types', e.target.value)} /></Field>
       </>
     );
   }
@@ -857,10 +851,10 @@ function CategoryDetailFields({
     return (
       <>
         <Row2>
-          <Field label="Bank name" required><input className="cpw-input" value={v('bk_bank_name')} onChange={(e) => setP('bk_bank_name', e.target.value)} /></Field>
-          <Field label="Years of experience" required><input type="number" className="cpw-input" value={v('bk_years_experience')} onChange={(e) => setP('bk_years_experience', e.target.value)} /></Field>
+          <Field label="Bank name"><input className="cpw-input" value={v('bk_bank_name')} onChange={(e) => setP('bk_bank_name', e.target.value)} /></Field>
+          <Field label="Years of experience"><input type="number" className="cpw-input" value={v('bk_years_experience')} onChange={(e) => setP('bk_years_experience', e.target.value)} /></Field>
         </Row2>
-        <Field label="Banking vertical" required>
+        <Field label="Banking vertical">
           <select className="cpw-input" value={v('bk_vertical')} onChange={(e) => setP('bk_vertical', e.target.value)}>
             <option value="">Select…</option>{BANKING_VERTICALS.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
@@ -873,7 +867,7 @@ function CategoryDetailFields({
     return (
       <>
         <Field label="Organization / affiliation"><input className="cpw-input" value={v('g_organization')} onChange={(e) => setP('g_organization', e.target.value)} /></Field>
-        <Field label="Role / area of focus" required><input className="cpw-input" value={v('g_role')} onChange={(e) => setP('g_role', e.target.value)} /></Field>
+        <Field label="Role / area of focus"><input className="cpw-input" value={v('g_role')} onChange={(e) => setP('g_role', e.target.value)} /></Field>
       </>
     );
   }

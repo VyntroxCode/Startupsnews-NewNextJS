@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   PWA_INSTALL_DISMISSED_KEY,
@@ -86,6 +87,7 @@ function computeInitialDismissed(key: string): boolean {
 }
 
 export default function InstallPWA() {
+  const pathname = usePathname();
   const [mode, setMode] = useState<Mode>(computeInitialMode);
   const [armed, setArmed] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
@@ -263,6 +265,9 @@ export default function InstallPWA() {
   };
 
   /* ── Resolve what to actually render ───────────────────────────────── */
+  // Never over the signed-in user dashboard — it's a working surface, not a
+  // browsing one, and the card sits on top of its modals.
+  if (pathname?.startsWith("/dashboard")) return null;
   if (!armed || authBusy) return null;
 
   let visible: Mode = "none";
