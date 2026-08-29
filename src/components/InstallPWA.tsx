@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import appIcon from "@/app/icon.png";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -329,7 +330,7 @@ export default function InstallPWA() {
               overflow: "hidden",
             }}
           >
-            <Image src="/icons/icon-192.png" alt="" width={44} height={44} />
+            <Image src={appIcon} alt="" width={44} height={44} />
           </div>
 
           <div style={{ flex: "1 1 200px", minWidth: 180 }}>
