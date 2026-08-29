@@ -364,7 +364,9 @@ export default function InstallPWA() {
             )}
           </div>
 
-          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          {/* stretch, not flex-end: the dismiss link is centred under the Install
+              pill rather than hanging off its right edge with a 4px inset. */}
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6 }}>
             {visible === "install" && (
               <button
                 type="button"
@@ -396,7 +398,9 @@ export default function InstallPWA() {
                 fontSize: 12.5,
                 cursor: "pointer",
                 fontFamily: "inherit",
-                padding: visible === "install" ? "0 4px" : "9px 4px",
+                padding: visible === "install" ? "2px 4px" : "9px 4px",
+                textAlign: "center",
+                lineHeight: 1.2,
                 whiteSpace: "nowrap",
               }}
             >
