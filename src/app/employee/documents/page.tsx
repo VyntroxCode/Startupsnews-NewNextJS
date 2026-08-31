@@ -1,6 +1,5 @@
 'use client';
 
-import DocumentsWidget from '@/components/admin/DocumentsWidget';
 import KycDocumentsWidget from '@/components/admin/KycDocumentsWidget';
 import { getEmployeeAuthHeaders } from '@/lib/employee-auth';
 
@@ -16,7 +15,6 @@ export default function EmployeeDocumentsPage() {
         </p>
       </div>
 
-      <DocumentsWidget apiBase="/api/employee/documents" getHeaders={getEmployeeAuthHeaders} presignEndpoint="/api/employee/documents/presign" />
       <KycDocumentsWidget apiBase="/api/employee/kyc" getHeaders={getEmployeeAuthHeaders} presignEndpoint="/api/employee/documents/presign" />
     </div>
   );

@@ -522,7 +522,7 @@ function DocumentTrackerCard({ employee, onApprove, onReject }: {
         <div>
           <div className="stat-label" style={{ marginBottom: 8 }}>Provided ({provided.length})</div>
           {provided.length === 0 ? <div className="meta">Nothing uploaded yet.</div> : (
-            <table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
+            <div className="table-scroll"><table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
               <tbody>{provided.map((d) => (
                 <tr key={d.name}>
                   <td>
@@ -531,27 +531,29 @@ function DocumentTrackerCard({ employee, onApprove, onReject }: {
                   </td>
                   <td><StatusBadge status={d.status} /></td>
                   <td style={{ textAlign: 'right' }}>
-                    {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm" style={{ marginRight: 6 }}>View</a>}
-                    {d.status === 'pending' && (
-                      <>
-                        <button className="btn approve sm" onClick={() => onApprove(d.idx)}>Approve</button>{' '}
-                        <button className="btn reject sm" onClick={() => onReject(d.idx)}>Reject</button>
-                      </>
-                    )}
+                    <span className="action-row">
+                      {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm">View</a>}
+                      {d.status === 'pending' && (
+                        <>
+                          <button className="btn approve sm" onClick={() => onApprove(d.idx)}>Approve</button>
+                          <button className="btn reject sm" onClick={() => onReject(d.idx)}>Reject</button>
+                        </>
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}</tbody>
-            </table>
+            </table></div>
           )}
         </div>
         <div>
           <div className="stat-label" style={{ marginBottom: 8 }}>Pending ({pending.length})</div>
           {pending.length === 0 ? <div className="meta">Nothing outstanding.</div> : (
-            <table><thead><tr><th>Document</th></tr></thead>
+            <div className="table-scroll"><table><thead><tr><th>Document</th></tr></thead>
               <tbody>{pending.map((d) => (
                 <tr key={d.name}><td>{d.name}<div className="meta" style={{ marginTop: 2 }}>not yet uploaded</div></td></tr>
               ))}</tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </div>
@@ -654,7 +656,11 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
 
   const buttons = editing
     ? [
-        { label: 'Cancel', cls: 'btn', onClick: () => setEditing(false) },
+        // Admins land straight in this editable form (see the comment above), so there is no
+        // separate read-only view for Cancel to fall back to — it must close the whole modal,
+        // the same as the × in the header, or it looks like Cancel silently "does nothing" and
+        // leaves a dead, non-editable form on screen.
+        { label: 'Cancel', cls: 'btn', onClick: onClose },
         { label: saving ? 'Saving…' : 'Save changes', cls: 'btn primary', onClick: saveEdit },
       ]
     : [{ label: 'Close', cls: 'btn', onClick: onClose }];
@@ -767,7 +773,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
                 <div>
                   <div className="stat-label" style={{ marginBottom: 8 }}>Provided ({provided.length})</div>
                   {provided.length === 0 ? <div className="meta">Nothing uploaded yet.</div> : (
-                    <table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
+                    <div className="table-scroll"><table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
                       <tbody>{provided.map((d) => (
                         <tr key={d.name}>
                           <td>
@@ -777,27 +783,29 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
                           </td>
                           <td><StatusBadge status={d.status} /></td>
                           <td style={{ textAlign: 'right' }}>
-                            {d.url && <button className="btn ghost sm" style={{ marginRight: 6 }} onClick={() => setViewerDoc({ name: d.name, url: d.url! })}>View</button>}
-                            {d.status === 'pending' && (
-                              <>
-                                <button className="btn approve sm" onClick={() => onApproveDoc(d.idx)}>Approve</button>{' '}
-                                <button className="btn reject sm" onClick={() => onRejectDoc(d.idx)}>Reject</button>
-                              </>
-                            )}
+                            <span className="action-row">
+                              {d.url && <button className="btn ghost sm" onClick={() => setViewerDoc({ name: d.name, url: d.url! })}>View</button>}
+                              {d.status === 'pending' && (
+                                <>
+                                  <button className="btn approve sm" onClick={() => onApproveDoc(d.idx)}>Approve</button>
+                                  <button className="btn reject sm" onClick={() => onRejectDoc(d.idx)}>Reject</button>
+                                </>
+                              )}
+                            </span>
                           </td>
                         </tr>
                       ))}</tbody>
-                    </table>
+                    </table></div>
                   )}
                 </div>
                 <div>
                   <div className="stat-label" style={{ marginBottom: 8 }}>Pending ({pending.length})</div>
                   {pending.length === 0 ? <div className="meta">Nothing outstanding.</div> : (
-                    <table><thead><tr><th>Document</th></tr></thead>
+                    <div className="table-scroll"><table><thead><tr><th>Document</th></tr></thead>
                       <tbody>{pending.map((d) => (
                         <tr key={d.name}><td>{d.name}<div className="meta" style={{ marginTop: 2 }}>not yet uploaded</div></td></tr>
                       ))}</tbody>
-                    </table>
+                    </table></div>
                   )}
                 </div>
               </div>
@@ -833,13 +841,15 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
                         </td>
                         <td><StatusBadge status={d.status} /></td>
                         <td style={{ textAlign: 'right' }}>
-                          {d.url && <button className="btn ghost sm" style={{ marginRight: 6 }} onClick={() => setViewerDoc({ name: slot.label, url: d.url! })}>View</button>}
-                          {d.status === 'pending' && (
-                            <>
-                              <button className="btn approve sm" onClick={() => onApproveKyc(slot.key)}>Approve</button>{' '}
-                              <button className="btn reject sm" onClick={() => onRejectKyc(slot.key)}>Reject</button>
-                            </>
-                          )}
+                          <span className="action-row">
+                            {d.url && <button className="btn ghost sm" onClick={() => setViewerDoc({ name: slot.label, url: d.url! })}>View</button>}
+                            {d.status === 'pending' && (
+                              <>
+                                <button className="btn approve sm" onClick={() => onApproveKyc(slot.key)}>Approve</button>
+                                <button className="btn reject sm" onClick={() => onRejectKyc(slot.key)}>Reject</button>
+                              </>
+                            )}
+                          </span>
                         </td>
                       </tr>
                     );

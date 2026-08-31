@@ -31,6 +31,10 @@ interface HrState {
   tickets: HrTicket[];
   compliance: HrComplianceTask[];
   payrollRun: HrPayrollRun;
+  /** Every month payroll has ever been run for (month/status/runAt/runBy) — payrollRun above is
+   * just the current cycle's slice of this, kept separately since it predates payrollRuns and
+   * Dashboard's stat tile already depends on that exact shape. */
+  payrollRuns: HrPayrollRun[];
   templates: Record<string, { content: string }>;
   rules: HrRules;
   auditLog: HrAuditLogEntry[];
@@ -61,7 +65,7 @@ function initialState(): HrState {
     orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
     employees: [], employeeCredentials: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
     regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
-    payrollRun: { month: payrollCycleToRunKey(DEFAULT_RULES), status: 'not_run' },
+    payrollRun: { month: payrollCycleToRunKey(DEFAULT_RULES), status: 'not_run' }, payrollRuns: [],
     templates: {}, rules: DEFAULT_RULES, auditLog: [], companyProfile: DEFAULT_COMPANY_PROFILE,
   };
 }
@@ -186,7 +190,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
             onboarding: data.onboarding, attendance: data.attendance, attendanceOverrides, punchLog,
             regularizations: data.regularizations, leaveRequests: data.leaveRequests, expenses: data.expenses,
             tickets: data.tickets, compliance: data.compliance,
-            payrollRun: currentMonthRun || s.payrollRun,
+            payrollRun: currentMonthRun || s.payrollRun, payrollRuns: data.payrollRuns || [],
             templates, rules: data.rules || s.rules, auditLog: data.auditLog || [],
             companyProfile: data.companyProfile || s.companyProfile,
             currentUser: resolveFounder(data.employees),
@@ -294,7 +298,12 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const runPayrollForMonth = useCallback(async (month: string, tds?: Record<string, number>) => {
     const res = await hrApi.runPayroll(month, tds);
     if (res.success) {
-      setState((s) => ({ ...s, payrollRun: { month, status: 'run', runAt: new Date().toISOString(), runBy: state.currentUser?.name || null } }));
+      const run: HrPayrollRun = { month, status: 'run', runAt: new Date().toISOString(), runBy: state.currentUser?.name || null };
+      setState((s) => ({
+        ...s,
+        payrollRun: run,
+        payrollRuns: [run, ...s.payrollRuns.filter((r) => r.month !== month)],
+      }));
     }
     return res;
   }, [state.currentUser]);
@@ -327,7 +336,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
       teams: clearedTeams,
       onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
       regularizations: [], leaveRequests: [], expenses: [], tickets: [],
-      payrollRun: { month: s.payrollRun.month, status: 'not_run' },
+      payrollRun: { month: s.payrollRun.month, status: 'not_run' }, payrollRuns: [],
     }));
     await hrApi.saveTeams(clearedTeams).catch(() => warnSaveFailed());
     logRuleChange('Reset all sample data (kept Teams, Org Structure, Rules, and Templates)');

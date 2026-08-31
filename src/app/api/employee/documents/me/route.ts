@@ -4,12 +4,12 @@ import { hrToolService } from '../_lib';
 
 /** GET /api/employee/documents/me — the logged-in employee's required-document checklist,
  * merged against what they've actually uploaded, plus their overall completion percentage.
- * `progressPct`/`totalRequired`/`totalSubmitted` are combined across this generic checklist AND
- * the separate KYC & Personal Documents checklist (PAN/Aadhaar/bank/education/experience — see
- * /api/employee/kyc), so "profile completion" reflects the whole picture; `documents` itself is
- * untouched (still just this generic list) so existing consumers of the plain array are unaffected.
- * This combining is deliberately only done here (the employee route), not in the shared service
- * method the Publisher/Event Admin surface also calls — KYC is an employee-only checklist. */
+ * `progressPct`/`totalRequired`/`totalSubmitted` reflect only the KYC & Personal Documents
+ * checklist (PAN/Aadhaar/bank/education/experience — see /api/employee/kyc): the employee
+ * Documents page only offers KYC uploads, so "profile completion" has to track what the
+ * employee can actually complete there. `documents` itself is untouched (still the generic
+ * admin-configured list, `hr_required_documents`) so existing consumers of the plain array —
+ * e.g. the admin Directory/Document Review screens — are unaffected. */
 export async function GET(request: NextRequest) {
   const auth = await requireEmployeeAuth(request);
   if (auth instanceof NextResponse) return auth;
@@ -20,11 +20,9 @@ export async function GET(request: NextRequest) {
       hrToolService.getDocumentsForCredential(credential.id, credential.name),
       hrToolService.getKycForCredential(credential.id, credential.name),
     ]);
-    const genericTotal = data.requiredDocuments?.length || 0;
-    const genericSubmitted = (data.documents || []).filter((d) => d.status === 'pending' || d.status === 'approved').length;
-    const totalRequired = genericTotal + (kyc.progress?.total || 0);
-    const totalSubmitted = genericSubmitted + (kyc.progress?.submitted || 0);
-    const progressPct = totalRequired ? Math.round((totalSubmitted / totalRequired) * 100) : (data.progressPct ?? 0);
+    const totalRequired = kyc.progress?.total || 0;
+    const totalSubmitted = kyc.progress?.submitted || 0;
+    const progressPct = kyc.progress?.pct ?? 0;
 
     return NextResponse.json({
       success: true,

@@ -4974,38 +4974,6 @@ footer.footer {
   background: #0066cc;
 }
 
-.events-carousel-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.events-carousel-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid #ddd;
-  border-radius: 50%;
-  background: #fff;
-  cursor: pointer;
-  color: #111;
-  transition: all 0.2s ease;
-  padding: 0;
-}
-
-.events-carousel-btn:hover:not(:disabled) {
-  background: #f5f5f5;
-  border-color: #0066cc;
-  color: #0066cc;
-}
-
-.events-carousel-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .events-carousel-indicator {
   font-size: 0.875rem;
   color: #666;
@@ -5048,13 +5016,6 @@ footer.footer {
   padding: 40px 20px;
   text-align: center;
   color: #666;
-}
-
-/* Mobile: hide prev/next arrows; carousel auto-scrolls */
-@media (max-width: 767px) {
-  .events-carousel-btn {
-    display: none;
-  }
 }
 
 /* Tablet: 2 cards per view */

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useHrTool } from './HrToolContext';
 import Dashboard from './views/Dashboard';
 import Directory from './views/Directory';
@@ -87,11 +87,30 @@ export default function HrToolApp() {
   return <HrToolShell />;
 }
 
+function subscribeToResize(callback: () => void) {
+  window.addEventListener('resize', callback);
+  return () => window.removeEventListener('resize', callback);
+}
+
+/** True below `breakpoint`px, live-updating as the window resizes. useSyncExternalStore (rather
+ * than an effect + setState) reads the browser-only viewport width without a hydration mismatch:
+ * React reuses `getServerSnapshot`'s `false` for the first client render, then resyncs to the
+ * real width right after. */
+function useIsNarrowViewport(breakpoint: number): boolean {
+  return useSyncExternalStore(subscribeToResize, () => window.innerWidth < breakpoint, () => false);
+}
+
 function HrToolShell() {
   const ctx2 = useHrTool();
   const { state, setView, logout } = ctx2;
   const role = state.role;
   const currentUser = state.currentUser;
+
+  // Sidebar collapses to an icon rail either because the viewport is narrow or because the
+  // user hit the minimize button — whichever happened, a manual click always wins from then on.
+  const isNarrow = useIsNarrowViewport(860);
+  const [manualCollapsed, setManualCollapsed] = useState<boolean | null>(null);
+  const collapsed = manualCollapsed ?? isNarrow;
 
   useEffect(() => {
     if (role && !VIEW_ACCESS[state.view].includes(role)) setView('dashboard');
@@ -104,11 +123,20 @@ function HrToolShell() {
 
   return (
     <div className="hr-tool-app">
-      <div className="app">
+      <div className={`app${collapsed ? ' collapsed' : ''}`}>
         <aside className="sidebar">
           <div className="brand">
             <div className="brand-mark">H</div>
-            <div><div className="brand-name">Huey</div><div className="brand-sub">HR Console</div></div>
+            <div className="brand-text"><div className="brand-name">Huey</div><div className="brand-sub">HR Console</div></div>
+            <button
+              type="button"
+              className="sidebar-toggle"
+              onClick={() => setManualCollapsed(!collapsed)}
+              title={collapsed ? 'Expand sidebar' : 'Minimize sidebar'}
+              aria-label={collapsed ? 'Expand sidebar' : 'Minimize sidebar'}
+            >
+              {collapsed ? '»' : '«'}
+            </button>
           </div>
           <nav>
             {NAV_GROUPS.map((group) => {
@@ -120,8 +148,14 @@ function HrToolShell() {
                   {visibleItems.map((item) => {
                     const count = pendingCountFor(item.view, state);
                     return (
-                      <button key={item.view} className={`nav-item${state.view === item.view ? ' active' : ''}`} onClick={() => setView(item.view)}>
-                        <span className="nav-icon">{item.icon}</span> {item.label}
+                      <button
+                        key={item.view}
+                        className={`nav-item${state.view === item.view ? ' active' : ''}`}
+                        onClick={() => setView(item.view)}
+                        title={collapsed ? item.label : undefined}
+                      >
+                        <span className="nav-icon">{item.icon}</span>
+                        <span className="nav-label">{item.label}</span>
                         {count > 0 && <span className="nav-dot" />}
                       </button>
                     );
@@ -133,7 +167,10 @@ function HrToolShell() {
           <div className="role-switch">
             <label>Logged in as</label>
             <div className="who">{currentUser.name} · {role}</div>
-            <button className="logout-btn" onClick={logout}>⇄ Switch user / Log out</button>
+            <button className="logout-btn" onClick={logout} title="Switch user / Log out">
+              <span className="logout-icon">⇄</span>
+              <span className="nav-label">Switch user / Log out</span>
+            </button>
           </div>
         </aside>
         <main className="main">
@@ -160,24 +197,46 @@ function HrToolStyles() {
       .hr-tool-app * { box-sizing: border-box; }
       .hr-tool-app button { font-family: inherit; cursor: pointer; }
       .hr-tool-app a { color: inherit; }
-      .hr-tool-app .app { display: grid; grid-template-columns: 236px 1fr; min-height: 70vh; }
-      .hr-tool-app .sidebar { background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%); color: #EEF2FF; padding: 22px 14px; display: flex; flex-direction: column; gap: 4px; }
-      .hr-tool-app .brand { display: flex; align-items: center; gap: 9px; padding: 4px 10px 20px; }
+      .hr-tool-app .app { display: grid; grid-template-columns: 236px 1fr; min-height: 70vh; transition: grid-template-columns .15s ease; }
+      .hr-tool-app .sidebar { background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%); color: #EEF2FF; padding: 22px 14px; display: flex; flex-direction: column; gap: 4px; overflow-x: hidden; }
+      .hr-tool-app .brand { display: flex; align-items: center; gap: 8px; padding: 4px 6px 20px 10px; }
       .hr-tool-app .brand-mark { width: 28px; height: 28px; border-radius: 7px; background: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--forest); font-size: 14px; flex-shrink: 0; }
-      .hr-tool-app .brand-name { font-weight: 700; font-size: 16.5px; color: #fff; }
-      .hr-tool-app .brand-sub { font-size: 10px; color: #C7D2FE; letter-spacing: 0.6px; text-transform: uppercase; margin-top: 1px; }
-      .hr-tool-app .nav-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #A5B4FC; padding: 14px 12px 6px; }
-      .hr-tool-app .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: #E0E7FF; background: transparent; border: none; text-align: left; width: 100%; transition: background .12s; }
+      .hr-tool-app .brand-text { flex: 1; min-width: 0; overflow: hidden; }
+      .hr-tool-app .brand-name { font-weight: 700; font-size: 16.5px; color: #fff; white-space: nowrap; }
+      .hr-tool-app .brand-sub { font-size: 10px; color: #C7D2FE; letter-spacing: 0.6px; text-transform: uppercase; margin-top: 1px; white-space: nowrap; }
+      .hr-tool-app .sidebar-toggle { flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+      .hr-tool-app .sidebar-toggle:hover { background: rgba(255,255,255,0.2); }
+      .hr-tool-app .nav-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #A5B4FC; padding: 14px 12px 6px; white-space: nowrap; overflow: hidden; }
+      .hr-tool-app .nav-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: #E0E7FF; background: transparent; border: none; text-align: left; width: 100%; transition: background .12s; }
       .hr-tool-app .nav-item:hover { background: rgba(255,255,255,0.12); }
       .hr-tool-app .nav-item.active { background: #fff; color: var(--forest); font-weight: 600; }
-      .hr-tool-app .nav-icon { width: 17px; text-align: center; font-size: 13px; opacity: 0.9; }
+      .hr-tool-app .nav-icon { width: 17px; text-align: center; font-size: 13px; opacity: 0.9; flex-shrink: 0; }
+      .hr-tool-app .nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hr-tool-app .nav-dot { width: 7px; height: 7px; border-radius: 50%; background: #FF4D4D; margin-left: auto; flex-shrink: 0; }
       .hr-tool-app .role-switch { margin-top: auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.18); }
-      .hr-tool-app .role-switch label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #A5B4FC; display: block; margin-bottom: 6px; }
-      .hr-tool-app .role-switch .who { font-size: 12.5px; font-weight: 600; color: #fff; margin-bottom: 8px; }
-      .hr-tool-app .logout-btn { width: 100%; margin-top: 9px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); color: #fff; padding: 7px 9px; border-radius: 7px; font-size: 12px; font-weight: 600; }
+      .hr-tool-app .role-switch label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #A5B4FC; display: block; margin-bottom: 6px; white-space: nowrap; }
+      .hr-tool-app .role-switch .who { font-size: 12.5px; font-weight: 600; color: #fff; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .hr-tool-app .logout-btn { width: 100%; margin-top: 9px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); color: #fff; padding: 7px 9px; border-radius: 7px; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 7px; }
       .hr-tool-app .logout-btn:hover { background: rgba(255,255,255,0.2); }
-      .hr-tool-app .main { padding: 28px 34px 60px; max-width: 1180px; overflow-y: auto; }
+      .hr-tool-app .logout-icon { flex-shrink: 0; }
+      /* Minimize button (desktop) and narrow viewports (mobile) both collapse to this same
+         64px icon rail — one set of rules instead of maintaining two parallel layouts. */
+      .hr-tool-app .app.collapsed { grid-template-columns: 64px 1fr; }
+      .hr-tool-app .app.collapsed .sidebar { padding: 22px 8px; align-items: center; }
+      .hr-tool-app .app.collapsed .brand { flex-direction: column; gap: 10px; padding: 4px 0 20px; }
+      .hr-tool-app .app.collapsed .brand-text { display: none; }
+      .hr-tool-app .app.collapsed .nav-group-label { display: none; }
+      .hr-tool-app .app.collapsed .nav-item { justify-content: center; padding: 10px; gap: 0; }
+      .hr-tool-app .app.collapsed .nav-label { display: none; }
+      .hr-tool-app .app.collapsed .nav-dot { position: absolute; top: 6px; right: 6px; margin-left: 0; }
+      .hr-tool-app .app.collapsed .role-switch { display: flex; justify-content: center; }
+      .hr-tool-app .app.collapsed .role-switch label, .hr-tool-app .app.collapsed .role-switch .who { display: none; }
+      .hr-tool-app .app.collapsed .logout-btn { width: 40px; padding: 8px; }
+      .hr-tool-app .main { padding: 28px 34px 60px; max-width: 1180px; overflow-y: auto; min-width: 0; }
+      @media (max-width: 640px) {
+        .hr-tool-app .main { padding: 18px 16px 40px; }
+        .hr-tool-app .pad { padding: 14px 16px; }
+      }
       .hr-tool-app .topbar { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 10px; }
       .hr-tool-app .page-title { font-size: 23px; font-weight: 700; margin: 0; }
       .hr-tool-app .page-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
@@ -235,6 +294,10 @@ function HrToolStyles() {
       .hr-tool-app .btn.reject { background: transparent; color: var(--red); border-color: var(--red-soft); }
       .hr-tool-app .btn.sm { padding: 5px 10px; font-size: 11.5px; }
       .hr-tool-app .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      /* Keeps grouped action buttons (View / Approve / Reject etc.) on one line instead of
+         wrapping individually when a table cell gets tight — a raw text-node space between
+         buttons wraps like any other inline content and staggers the row. */
+      .hr-tool-app .action-row { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
       .hr-tool-app select, .hr-tool-app input[type=text], .hr-tool-app input[type=number], .hr-tool-app input[type=date],
       .hr-tool-app input[type=time], .hr-tool-app input[type=password], .hr-tool-app input[type=email], .hr-tool-app input[type=url],
       .hr-tool-app input[type=tel],

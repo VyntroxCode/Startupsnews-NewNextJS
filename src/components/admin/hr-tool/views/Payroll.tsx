@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import AttendanceCalendar from './AttendanceCalendar';
 import { StatusBadge, exportCSV, exportExcel, salaryPeriodLabel, monthKeyToLabel, computeCtcBreakdown } from '../utils';
 import { payrollCycleToRunKey } from '@/modules/hr-tool/utils/time';
 import { hrApi, type PayrollApiResult } from '../api';
-import type { HrPayrollEntry } from '../types';
+import type { HrPayrollEntry, HrPayrollRun } from '../types';
 import { generatePayslipPdf, generateBulkPayslipPdf, triggerPdfDownload, type PayslipData } from '../payslipPdf';
 
 function fmtShortDate(ymd: string): string {
@@ -14,6 +14,16 @@ function fmtShortDate(ymd: string): string {
   const d = new Date(ymd + 'T00:00:00');
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/** runAt is a MySQL datetime string ("2026-08-26 14:03:11"); Safari's Date parser rejects that
+ * format outright (needs a "T"), so it's patched in before parsing. */
+function fmtDateTime(v: string | null | undefined): string {
+  if (!v) return '—';
+  const d = new Date(v.includes('T') ? v : v.replace(' ', 'T'));
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    + ', ' + d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 export default function Payroll() {
@@ -72,7 +82,7 @@ export default function Payroll() {
    * on an employee yet); Income Tax mirrors the admin-entered TDS for the run; Provident Fund is
    * always 0 for now — there's no PF configuration anywhere in the HR module yet to derive one from.
    */
-  function buildPayslipData(e: HrPayrollEntry, tds: number, netPay: number): PayslipData | null {
+  function buildPayslipData(e: HrPayrollEntry, tds: number, netPay: number, monthKey: string, periodTo: string): PayslipData | null {
     const employee = employeeByName.get(e.emp);
     if (!employee) return null;
     const cred = employee.credentialId
@@ -92,8 +102,8 @@ export default function Payroll() {
       employeeName: employee.name,
       employeeCode: cred?.employeeCode || '—',
       designation: employee.designation,
-      monthLabel: monthKeyToLabel(month),
-      payDateLabel: fmtShortDate(payroll?.periodTo || ''),
+      monthLabel: monthKeyToLabel(monthKey),
+      payDateLabel: fmtShortDate(periodTo),
       dojLabel: fmtShortDate(employee.doj),
       paidDays: e.totalDays - e.lopDays,
       lopDays: e.lopDays,
@@ -113,7 +123,7 @@ export default function Payroll() {
     if (!entry) return;
     setPdfBusy(true);
     try {
-      const data = buildPayslipData(entry, entry.tds, entry.netPay);
+      const data = buildPayslipData(entry, entry.tds, entry.netPay, month, payroll?.periodTo || '');
       if (!data) return;
       const bytes = await generatePayslipPdf(data);
       triggerPdfDownload(bytes, `payslip_${data.employeeCode}_${month}.pdf`);
@@ -126,13 +136,72 @@ export default function Payroll() {
     setPdfBusy(true);
     try {
       const list = entries
-        .map((e) => buildPayslipData(e, liveTds(e.emp, e.tds), liveNetPay(e)))
+        .map((e) => buildPayslipData(e, liveTds(e.emp, e.tds), liveNetPay(e), month, payroll?.periodTo || ''))
         .filter((d): d is PayslipData => d !== null);
       if (!list.length) return;
       const bytes = await generateBulkPayslipPdf(list);
       triggerPdfDownload(bytes, `payroll_slips_${month}.pdf`);
     } finally {
       setPdfBusy(false);
+    }
+  }
+
+  /** Employee ID for the history table — falls back to a name match like Directory does,
+   * since not every employee row necessarily has credentialId set. */
+  function employeeCodeFor(name: string): string {
+    const employee = employeeByName.get(name);
+    const cred = employee?.credentialId
+      ? state.employeeCredentials.find((c) => c.id === employee.credentialId)
+      : state.employeeCredentials.find((c) => c.name === name);
+    return cred?.employeeCode || '—';
+  }
+
+  // Past runs (see state.payrollRuns), newest first — each row's per-employee detail (who got
+  // paid, their ID, their Net Pay) is fetched on demand when expanded rather than for every
+  // run up front, since a company can accumulate a lot of these over time.
+  const sortedRuns = useMemo(() => [...state.payrollRuns].sort((a, b) => b.month.localeCompare(a.month)), [state.payrollRuns]);
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  const [historyCache, setHistoryCache] = useState<Record<string, PayrollApiResult>>({});
+  const [historyLoadingMonth, setHistoryLoadingMonth] = useState<string | null>(null);
+  const [historyBusyKey, setHistoryBusyKey] = useState<string | null>(null);
+
+  async function toggleHistoryRow(monthKey: string) {
+    if (expandedMonth === monthKey) { setExpandedMonth(null); return; }
+    setExpandedMonth(monthKey);
+    if (historyCache[monthKey]) return;
+    setHistoryLoadingMonth(monthKey);
+    const res = await hrApi.getPayroll(monthKey);
+    if (res.success && res.data) setHistoryCache((c) => ({ ...c, [monthKey]: res.data! }));
+    setHistoryLoadingMonth(null);
+  }
+
+  async function handleDownloadHistoryAll(run: HrPayrollRun) {
+    const data = historyCache[run.month];
+    if (!data) return;
+    setHistoryBusyKey(run.month);
+    try {
+      const list = data.entries
+        .map((e) => buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo))
+        .filter((d): d is PayslipData => d !== null);
+      if (!list.length) return;
+      const bytes = await generateBulkPayslipPdf(list);
+      triggerPdfDownload(bytes, `payroll_slips_${run.month}.pdf`);
+    } finally {
+      setHistoryBusyKey(null);
+    }
+  }
+  async function handleDownloadHistoryOne(run: HrPayrollRun, e: HrPayrollEntry) {
+    const data = historyCache[run.month];
+    if (!data) return;
+    const key = run.month + ':' + e.emp;
+    setHistoryBusyKey(key);
+    try {
+      const slip = buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo);
+      if (!slip) return;
+      const bytes = await generatePayslipPdf(slip);
+      triggerPdfDownload(bytes, `payslip_${slip.employeeCode}_${run.month}.pdf`);
+    } finally {
+      setHistoryBusyKey(null);
     }
   }
 
@@ -262,6 +331,9 @@ export default function Payroll() {
               <div className="toolbar">
                 <button className="btn sm" onClick={() => exportPayroll('csv')} disabled={entries.length === 0}>⇩ CSV</button>
                 <button className="btn sm" onClick={() => exportPayroll('excel')} disabled={entries.length === 0}>⇩ Excel</button>
+                <button className="btn sm" disabled={!alreadyRun || entries.length === 0 || pdfBusy} onClick={handleDownloadAllPayslips}>
+                  {pdfBusy ? 'Generating…' : '⇩ Payslips (PDF)'}
+                </button>
                 <button
                   className="btn primary"
                   disabled={!(payroll?.canRun ?? false) || entries.length === 0 || running || missingCtc.length > 0}
@@ -277,16 +349,84 @@ export default function Payroll() {
       </div>
       <section className="block">
         <div className="block-head"><h2>Payslip history</h2></div>
-        <div className="card"><table><thead><tr><th>Month</th><th>Employees paid</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            <tr><td>{monthKeyToLabel(month)}</td><td>{entries.length}</td><td><StatusBadge status={alreadyRun ? 'approved' : 'pending'} /></td>
-              <td style={{ textAlign: 'right' }}>
-                <button className="btn ghost sm" disabled={!alreadyRun || entries.length === 0 || pdfBusy} onClick={handleDownloadAllPayslips}>
-                  {pdfBusy ? 'Generating…' : 'Download payslips (PDF)'}
-                </button>
-              </td></tr>
-          </tbody>
-        </table></div>
+        <div className="card">
+          {sortedRuns.length === 0 ? (
+            <div className="pad"><div className="empty">No payroll has been run yet — once you run a cycle above, it shows up here.</div></div>
+          ) : (
+            <div className="table-scroll"><table><thead><tr><th>Month</th><th>Run date</th><th>Run by</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                {sortedRuns.map((run) => {
+                  const isOpen = expandedMonth === run.month;
+                  const data = historyCache[run.month];
+                  const isLoading = historyLoadingMonth === run.month;
+                  return (
+                    <Fragment key={run.month}>
+                      <tr>
+                        <td>{monthKeyToLabel(run.month)}</td>
+                        <td>{fmtDateTime(run.runAt)}</td>
+                        <td>{run.runBy || '—'}</td>
+                        <td><StatusBadge status="approved" /></td>
+                        <td style={{ textAlign: 'right' }}>
+                          <span className="action-row">
+                            <button className="btn ghost sm" onClick={() => toggleHistoryRow(run.month)}>
+                              {isOpen ? 'Hide details' : 'View details'}
+                            </button>
+                            <button
+                              className="btn ghost sm"
+                              disabled={!data || data.entries.length === 0 || historyBusyKey === run.month}
+                              onClick={() => handleDownloadHistoryAll(run)}
+                            >
+                              {historyBusyKey === run.month ? 'Generating…' : 'Download all (PDF)'}
+                            </button>
+                          </span>
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr>
+                          <td colSpan={5} style={{ padding: 0 }}>
+                            <div style={{ padding: '4px 14px 16px', background: '#F8FAFC' }}>
+                              {isLoading && <div className="empty">Loading…</div>}
+                              {!isLoading && data && data.entries.length === 0 && (
+                                <div className="empty">No employees were paid this month.</div>
+                              )}
+                              {!isLoading && data && data.entries.length > 0 && (
+                                <div className="table-scroll"><table><thead><tr>
+                                  <th>Employee</th><th>Employee ID</th><th>Gross</th><th>TDS</th><th>Net Pay</th><th style={{ textAlign: 'right' }}>Action</th>
+                                </tr></thead>
+                                  <tbody>{data.entries.map((e) => {
+                                    const busyKey = run.month + ':' + e.emp;
+                                    return (
+                                      <tr key={e.emp}>
+                                        <td>{e.emp}</td>
+                                        <td>{employeeCodeFor(e.emp)}</td>
+                                        <td>₹{e.monthlyGross.toLocaleString('en-IN')}</td>
+                                        <td>₹{e.tds.toLocaleString('en-IN')}</td>
+                                        <td>₹{e.netPay.toLocaleString('en-IN')}</td>
+                                        <td style={{ textAlign: 'right' }}>
+                                          <button
+                                            className="btn ghost sm"
+                                            disabled={historyBusyKey === busyKey}
+                                            onClick={() => handleDownloadHistoryOne(run, e)}
+                                          >
+                                            {historyBusyKey === busyKey ? 'Generating…' : 'Download PDF'}
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}</tbody>
+                                </table></div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table></div>
+          )}
+        </div>
       </section>
     </>
   );

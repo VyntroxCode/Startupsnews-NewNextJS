@@ -20,8 +20,9 @@ interface EventsCarouselProps {
  * Horizontally-scrollable event row: three cards per row on desktop (two on tablet, one on
  * mobile — widths come from the `.events-carousel-list > .event-by-country-card` CSS rules),
  * scrolled natively (trackpad/touch swipe, mouse-wheel, or click-drag) with smooth momentum,
- * rather than the old click-to-page transform carousel. Prev/next buttons and dots just nudge
- * the same native scroll position by one card at a time.
+ * rather than the old click-to-page transform carousel. Autoplay and the dots just nudge the
+ * same native scroll position by one card at a time — no prev/next arrow buttons, autoplay
+ * alone is the intended way to move through the row.
  */
 export function EventsCarousel({ events, maxEvents = 10, title, className = "" }: EventsCarouselProps) {
   const heading = title === undefined ? "Startup Events" : title;
@@ -29,8 +30,6 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
   const totalEvents = displayEvents.length;
 
   const trackRef = useRef<HTMLUListElement>(null);
-  const [atStart, setAtStart] = useState(true);
-  const [atEnd, setAtEnd] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(1);
   const [dragging, setDragging] = useState(false);
@@ -58,9 +57,6 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
     const track = trackRef.current;
     if (!track) return;
     const step = cardStep();
-    const max = track.scrollWidth - track.clientWidth;
-    setAtStart(track.scrollLeft <= 2);
-    setAtEnd(track.scrollLeft >= max - 2);
     if (step > 0) {
       setVisibleCount(Math.max(1, Math.round(track.clientWidth / step)));
       setActiveIndex(Math.round(track.scrollLeft / step));
@@ -94,9 +90,6 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
     track.scrollTo({ left: clamped * cardStep(), behavior: "smooth" });
   };
 
-  const goToPrev = () => scrollToIndex(activeIndex - 1);
-  const goToNext = () => scrollToIndex(activeIndex + 1);
-
   const pauseAutoplay = (ms = 4000) => {
     autoplayPausedUntil.current = Date.now() + ms;
   };
@@ -124,7 +117,7 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
   // Deliberately no vertical-wheel-to-horizontal-scroll hijack here (there used to be one) —
   // it captured every plain mouse-wheel tick over the row, which meant normal page scrolling
   // stopped working the moment the cursor crossed over a card. Horizontal movement is still
-  // fully available via drag, a trackpad's native horizontal swipe, and the arrow buttons/dots.
+  // fully available via drag, a trackpad's native horizontal swipe, and the dots.
   const handlePointerDown = (e: React.PointerEvent<HTMLUListElement>) => {
     const track = trackRef.current;
     if (!track || e.pointerType !== "mouse") return;
@@ -186,32 +179,6 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
     <div className={`events-carousel-container ${className}`.trim()}>
       <div className="events-carousel-header">
         {heading && <h2 className="events-carousel-title">{heading}</h2>}
-        {showControls && (
-          <div className="events-carousel-controls">
-            <button
-              type="button"
-              className="events-carousel-btn events-carousel-btn-prev"
-              onClick={() => { pauseAutoplay(); goToPrev(); }}
-              disabled={atStart}
-              aria-label="Previous events"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="events-carousel-btn events-carousel-btn-next"
-              onClick={() => { pauseAutoplay(); goToNext(); }}
-              disabled={atEnd}
-              aria-label="Next events"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
-        )}
       </div>
 
       <ul

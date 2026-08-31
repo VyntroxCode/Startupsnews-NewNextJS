@@ -18,6 +18,7 @@
 		"db:diagnose-s3-images": "tsx scripts/run-s3-images-diagnostic.ts",
 		"db:backfill-images-from-live-url": "tsx scripts/backfill-post-images-from-live-url.ts",
 		"db:backfill-report-page-counts": "tsx scripts/backfill-report-page-counts.ts",
+		"db:backfill-hr-employee-documents": "tsx scripts/backfill-hr-employee-documents.ts",
 		"report:thin-content-posts": "tsx scripts/export-thin-content-posts-csv.ts",
 		"report:publish-buckets": "tsx scripts/export-publish-buckets-csv.ts",
 		"db:seed-rss-feeds": "tsx scripts/seed-rss-feeds.ts",

@@ -39,8 +39,10 @@ export default function ApprovalCell({ req, onDecide }: {
 
   return (
     <>
-      <button className="btn approve sm" onClick={() => open(level, 'approved')}>Approve</button>{' '}
-      <button className="btn reject sm" onClick={() => open(level, 'rejected')}>Reject</button>
+      <span className="action-row">
+        <button className="btn approve sm" onClick={() => open(level, 'approved')}>Approve</button>
+        <button className="btn reject sm" onClick={() => open(level, 'rejected')}>Reject</button>
+      </span>
       {pending && (
         <ModalShell title={pending.decision === 'rejected' ? 'Reject — remarks (optional)' : 'Approve — remarks (optional)'} onClose={() => setPending(null)} actions={[
           { label: 'Cancel', cls: 'btn', onClick: () => setPending(null) },
