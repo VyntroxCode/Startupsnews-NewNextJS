@@ -117,16 +117,18 @@ export function currentPayrollMonthKey(rules: { salaryPeriodFrom: number; salary
   return key;
 }
 
-/** The most recently COMPLETED payroll cycle — one cycle behind currentPayrollMonthKey (which
- * names whichever cycle today currently falls inside, including one that's still running).
- * "Run Payroll" only ever unlocks once a cycle has fully ended (see computePayrollForMonth's
- * canRun), so this — not the in-progress cycle — is what the Payroll page should actually show
- * and act on: it flips over to a freshly-ended cycle (e.g. 26 Aug – 25 Sep) the instant the next
- * one starts (26 Sep), and stays pointed at it for that entire following cycle's length, giving
- * the admin weeks — not a handful of days — to check the numbers and re-run as many times as
- * they want before it naturally rolls over again. */
+/** The most recently COMPLETED payroll cycle. "Run Payroll" only ever unlocks once a cycle has
+ * fully ended — periodEnded = `to <= today`, same boundary computePayrollForMonth uses for
+ * canRun — so this is what the Payroll page should actually show and act on: whichever cycle
+ * today falls inside (currentPayrollMonthKey) IF that cycle has already ended by that boundary
+ * (e.g. today is its last day), otherwise the one before it. Once a cycle has ended it stays
+ * pointed at it for that entire following cycle's length, giving the admin weeks — not a handful
+ * of days — to check the numbers and re-run as many times as they want before it naturally rolls
+ * over again. */
 export function payrollCycleToRunKey(rules: { salaryPeriodFrom: number; salaryPeriodTo: number | string }): string {
-  return shiftMonthKey(currentPayrollMonthKey(rules), -1);
+  const key = currentPayrollMonthKey(rules);
+  const { to } = payrollPeriodRange(key, rules);
+  return to <= todayStr() ? key : shiftMonthKey(key, -1);
 }
 
 /** Every "YYYY-MM-DD" date from `from` to `to` inclusive — built entirely from UTC components
