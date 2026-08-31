@@ -165,7 +165,7 @@ export default function Attendance() {
         <div className="meta" style={{ marginBottom: 10 }}>Window to request: within {state.rules.regularizationWindowDays} days of the attendance date. {state.rules.twoLevelApproval.attendance ? 'Manager approves first, then HR.' : 'HR approves directly (manager step off).'}</div>
         <div className="card"><div className="table-scroll wrap-table"><table>
           <colgroup>
-            <col style={{ width: '14%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '11%' }} /><col style={{ width: '33%' }} /><col style={{ width: '12%' }} /><col style={{ width: '10%' }} />
+            <col style={{ width: '13%' }} /><col style={{ width: '9%' }} /><col style={{ width: '9%' }} /><col style={{ width: '10%' }} /><col style={{ width: '27%' }} /><col style={{ width: '13%' }} /><col style={{ width: '19%' }} />
           </colgroup>
           <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Requested Time</th><th>Reason</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
           <tbody>

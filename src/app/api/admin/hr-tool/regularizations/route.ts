@@ -4,10 +4,33 @@ import { HR_TOOL_ROLES } from '@/shared/middleware/roles';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { HrToolService } from '@/modules/hr-tool/service/hr-tool.service';
 import { HrToolRepository } from '@/modules/hr-tool/repository/hr-tool.repository';
+import { HrRegularization } from '@/modules/hr-tool/domain/types';
 
 const hrToolService = new HrToolService(new HrToolRepository());
 
 interface Body { emp?: string; date?: string; reason?: string; punchType?: 'in' | 'out'; requestedTime?: string }
+
+/** PUT /api/admin/hr-tool/regularizations — replaces the full list; used by the HR tool's
+ * approve/reject UI (ApprovalCell) to persist status changes. */
+export async function PUT(request: NextRequest) {
+  const auth = await requireAnyRole(request, HR_TOOL_ROLES);
+  if (auth instanceof NextResponse) return auth;
+
+  try {
+    const [body, errorResponse] = await parseJsonBody<HrRegularization[]>(request);
+    if (errorResponse) return errorResponse;
+    if (!Array.isArray(body)) return NextResponse.json({ success: false, error: 'Request body must be an array' }, { status: 400 });
+
+    await hrToolService.saveRegularizations(body);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error saving HR regularizations:', error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Failed to save regularizations' },
+      { status: 400 }
+    );
+  }
+}
 
 /**
  * POST /api/admin/hr-tool/regularizations — files a regularization from inside HR Management,
