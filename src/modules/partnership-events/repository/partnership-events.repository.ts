@@ -28,6 +28,7 @@ const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
   ['posterUrl', 'poster_url'],
   ['bannerUrl', 'banner_url'],
   ['bannerStartDate', 'banner_start_date'],
+  ['bannerActive', 'banner_active'],
   ['socialMediaPosts', 'social_media_posts'],
   ['socialCreatives', 'social_creatives'],
   ['partnershipStatus', 'partnership_status'],
@@ -41,9 +42,12 @@ const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
 
 const JSON_COLUMNS = new Set<keyof PartnershipEventInput>(['speakers', 'socialCreatives']);
 const DATE_COLUMNS = new Set<keyof PartnershipEventInput>(['initiatedDate', 'eventStartDate', 'eventEndDate', 'lastUpdatedDate', 'bannerStartDate']);
+// TINYINT(1) columns: a JS boolean has to reach MySQL as 1/0, not as `true`/`false`.
+const BOOL_COLUMNS = new Set<keyof PartnershipEventInput>(['bannerActive']);
 
 function toParam(key: keyof PartnershipEventInput, value: unknown): SqlParam {
   if (JSON_COLUMNS.has(key)) return JSON.stringify(value || []);
+  if (BOOL_COLUMNS.has(key)) return value ? 1 : 0;
   if (DATE_COLUMNS.has(key) && value === '') return null;
   return (value as string | null | undefined) ?? null;
 }

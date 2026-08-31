@@ -277,7 +277,7 @@ export class PartnershipEventsService {
   ): Promise<SyncResult> {
     // Only the paths that actually carry these fields (the Add/Edit modal) touch the homepage.
     // Bulk CSV import goes straight to the repository and never reaches here at all.
-    if (input.bannerUrl === undefined && input.bannerStartDate === undefined) return result;
+    if (input.bannerUrl === undefined && input.bannerStartDate === undefined && input.bannerActive === undefined) return result;
 
     const { entity } = result;
     const imageUrl = entity.banner_url?.trim() || '';
@@ -292,9 +292,14 @@ export class PartnershipEventsService {
       }
 
       const linked = entity.event_id ? (await this.eventsService.getEventsByIds([entity.event_id]))[0] : undefined;
-      // A banner advertising a Draft or Cancelled listing would link to a page that isn't live,
-      // so the row stays but stays switched off until the listing itself is published.
-      const isActive = !linked || (linked.status !== 'draft' && linked.status !== 'cancelled');
+      // Two independent reasons to keep the row switched off: the admin turned the banner off by
+      // hand (banner_active — the "take it down without losing the image" case), or the banner
+      // advertises a Draft/Cancelled listing, which would link to a page that isn't live. NULL
+      // banner_active means a row predating the column, which stays on, as it was before.
+      const adminEnabled = entity.banner_active === null || entity.banner_active === undefined
+        ? true
+        : Boolean(Number(entity.banner_active));
+      const isActive = adminEnabled && (!linked || (linked.status !== 'draft' && linked.status !== 'cancelled'));
       // Whole-day window: live from midnight on the chosen day, and only retired once the
       // event's own last day is over (the carousel filters start_date <= NOW() <= end_date).
       const endSource = toYmd(entity.event_end_date) || toYmd(entity.event_start_date);

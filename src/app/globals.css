@@ -1404,23 +1404,26 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   position: relative;
   display: flex;
   align-items: center;
-  max-width: 480px;
-  margin: 0 auto 8px;
+  /* Right-aligned and compact: a secondary control that shouldn't compete with the page
+     heading or the carousels below it. `auto` on the LEFT margin is what pushes it right. */
+  width: 100%;
+  max-width: 300px;
+  margin: 0 0 8px auto;
 }
 
 .event-search-icon {
   position: absolute;
-  left: 16px;
+  left: 12px;
   color: #999;
   pointer-events: none;
 }
 
 .event-search-input {
   width: 100%;
-  padding: 12px 44px 12px 44px;
+  padding: 8px 34px 8px 34px;
   border: 1.5px solid rgba(0, 0, 0, 0.12);
   border-radius: 999px;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   color: #111;
   background: #fff;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -1434,9 +1437,9 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 .event-search-clear {
   position: absolute;
-  right: 8px;
-  width: 28px;
-  height: 28px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.06);
@@ -1457,6 +1460,15 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   padding: 48px 16px;
   color: #666;
   font-size: 1rem;
+}
+
+/* On narrow screens the compact right-aligned box would be uncomfortably small to tap,
+   so it goes back to full width there. */
+@media (max-width: 560px) {
+  .event-search-bar {
+    max-width: none;
+    margin: 0 0 8px;
+  }
 }
 
 .event-by-country-title {

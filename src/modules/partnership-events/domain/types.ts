@@ -63,6 +63,9 @@ export interface PartnershipEventEntity {
   banner_start_date: string | null;
   /** id of the auto-managed `banners` row created from banner_url, so re-saving updates it in place. */
   banner_id: number | null;
+  /** Admin's explicit on/off switch for the homepage banner. TINYINT(1); NULL only on rows that
+   * predate the column. See PartnershipEventsService.syncHomepageBanner. */
+  banner_active: number | boolean | null;
   social_media_posts: string | null;
   social_creatives: JsonArrayColumn;
   partnership_status: string | null;
@@ -105,6 +108,8 @@ export interface PartnershipEvent {
   posterUrl: string;
   bannerUrl: string;
   bannerStartDate: string;
+  /** False takes the banner off the homepage without discarding the image or its start date. */
+  bannerActive: boolean;
   socialMediaPosts: string;
   socialCreatives: SocialCreative[];
   partnershipStatus: string;
@@ -146,6 +151,8 @@ export interface PartnershipEventInput {
   bannerUrl?: string;
   /** YYYY-MM-DD. Required by the admin form whenever bannerUrl is set — nothing reaches the homepage without it. */
   bannerStartDate?: string | null;
+  /** Explicit show/hide for the homepage banner. Omitted by callers that don't manage banners. */
+  bannerActive?: boolean;
   socialMediaPosts?: string;
   socialCreatives?: SocialCreative[];
   partnershipStatus?: string;

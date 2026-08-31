@@ -33,7 +33,7 @@ export function EventsSearchBar({ allEvents, children }: EventsSearchBarProps) {
   return (
     <div className="event-search">
       <div className="event-search-bar">
-        <svg className="event-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg className="event-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
           <path d="M21 21L16.65 16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
@@ -41,7 +41,7 @@ export function EventsSearchBar({ allEvents, children }: EventsSearchBarProps) {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search events by name…"
+          placeholder="Search Event"
           aria-label="Search events by name"
           className="event-search-input"
         />

@@ -73,6 +73,9 @@ export function entityToPartnershipEvent(entity: PartnershipEventEntity): Partne
     posterUrl: entity.poster_url || '',
     bannerUrl: entity.banner_url || '',
     bannerStartDate: entity.banner_start_date || '',
+    // NULL means the row predates the banner_active column — those banners were live under the
+    // old always-on behaviour, so they stay live rather than silently switching themselves off.
+    bannerActive: entity.banner_active === null || entity.banner_active === undefined ? true : Boolean(Number(entity.banner_active)),
     socialMediaPosts: entity.social_media_posts || '',
     socialCreatives: parseSocialCreatives(entity.social_creatives),
     partnershipStatus: entity.partnership_status || '',

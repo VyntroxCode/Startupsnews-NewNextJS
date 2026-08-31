@@ -181,11 +181,19 @@ export class HrToolService {
 
     const rules = (await this.repository.findRules()) || DEFAULT_RULES;
 
+    if (date > todayStr()) {
+      return { ok: false, error: 'You can only regularize a date that has already arrived.' };
+    }
+
     const [dayRecord] = await this.repository.findAttendanceForEmployeeInRange(emp, date, date);
     if (punchType === 'in') {
+      // A missing punch-in (bucket === null) is precisely the case this exists for — someone
+      // forgot to punch in and only punched out, so there is no arrival time to bucket. Only an
+      // on-time punch-in has genuinely nothing to correct. The regularization window, the monthly
+      // quota and RM/HR approval below all still apply, so this stays bounded.
       const bucket = latenessBucket(dayRecord?.inMinutes ?? null, rules);
-      if (bucket === null || bucket === 'on-time') {
-        return { ok: false, error: 'Only a late punch-in (grace period or later) can be regularized.' };
+      if (bucket === 'on-time') {
+        return { ok: false, error: 'That punch-in was on time — there is nothing to regularize.' };
       }
     } else {
       const hasOut = !!dayRecord?.outTime && dayRecord.outTime !== '—';

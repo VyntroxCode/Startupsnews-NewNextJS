@@ -54,6 +54,7 @@ interface PartnershipEvent {
   posterUrl: string;
   bannerUrl: string;
   bannerStartDate: string;
+  bannerActive: boolean;
   socialMediaPosts: string;
   socialCreatives: SocialCreative[];
   partnershipStatus: string;
@@ -87,7 +88,7 @@ const emptyDraft = (): EventDraft => ({
   // the modal) — mirrors how the public /submit-event flow already stamps it server-side.
   initiatedDate: todayStr(), eventStartDate: '', eventStartTime: '', eventEndDate: '', eventEndTime: '',
   venueAddress: '', googleLocationLink: '', description: '', eventType: '', ticketCurrency: '', ticketPrice: '',
-  speakers: [], posterUrl: '', bannerUrl: '', bannerStartDate: '', socialMediaPosts: '', socialCreatives: [],
+  speakers: [], posterUrl: '', bannerUrl: '', bannerStartDate: '', bannerActive: true, socialMediaPosts: '', socialCreatives: [],
   partnershipStatus: '', partnershipType: '',
   lastUpdatedDate: '', comment: '', listing: '', listingLink: '', source: 'Manually added',
   region: '', siteStatus: 'draft', slug: '',
@@ -2028,6 +2029,36 @@ export default function PartnershipTrackerPage() {
                   </span>
                 </div>
               </div>
+              {/* Manual override on top of the schedule. Without this the only ways to pull a live
+                  banner down were to delete the image, delete the whole record, or wait for the
+                  event to end — all of which lose the image and the start date. Switching this off
+                  deactivates the `banners` row (never deletes it), so it can be switched straight
+                  back on later. Only offered once there's actually a banner to show/hide. */}
+              {draft.bannerUrl.trim() !== '' && (
+                <div className={'pt-banner-switch' + (draft.bannerActive ? '' : ' off')}>
+                  <label className="pt-switch">
+                    <input
+                      type="checkbox"
+                      checked={draft.bannerActive}
+                      onChange={(e) => setDraft({ ...draft, bannerActive: e.target.checked })}
+                    />
+                    <span className="pt-switch-track"><span className="pt-switch-thumb" /></span>
+                    <span className="pt-switch-copy">
+                      <strong>{draft.bannerActive ? 'Showing on the homepage' : 'Hidden from the homepage'}</strong>
+                      <span className="pt-hint">
+                        {draft.bannerActive
+                          ? 'Switch this off to take the banner down. The image and start date are kept, so you can put it back up at any time.'
+                          : 'This banner will not appear on the homepage, even once its start date passes. The image and start date are kept — switch it back on whenever you want it live again.'}
+                      </span>
+                      {draft.bannerActive && draft.siteStatus === 'draft' && (
+                        <span className="pt-hint pt-hint-warn">
+                          This listing is still a Draft, so the banner stays down until the listing itself is published.
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                </div>
+              )}
 
               <div className="pt-section-title">9. Social media posts</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>Suggested content only — we&apos;ll recreate and finalise this to match our page before publishing.</div>
@@ -2328,6 +2359,17 @@ export default function PartnershipTrackerPage() {
         .pt-fg.pt-full { grid-column: 1/-1; }
         .pt-fg label { font-size: 11px; color: var(--muted); }
         .pt-fg input, .pt-fg select, .pt-fg textarea { min-height: 36px; padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; font-family: inherit; }
+        .pt-banner-switch { margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface-2); }
+        .pt-banner-switch.off { border-color: #E4B9C2; background: #FDF3F5; }
+        .pt-switch { display: flex; align-items: flex-start; gap: 11px; cursor: pointer; }
+        .pt-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .pt-switch-track { flex: 0 0 auto; position: relative; width: 38px; height: 21px; border-radius: 21px; background: #C6CDD8; transition: background .15s; margin-top: 1px; }
+        .pt-switch-thumb { position: absolute; top: 3px; left: 3px; width: 15px; height: 15px; border-radius: 50%; background: #fff; transition: transform .15s; }
+        .pt-switch input:checked + .pt-switch-track { background: var(--accent); }
+        .pt-switch input:checked + .pt-switch-track .pt-switch-thumb { transform: translateX(17px); }
+        .pt-switch input:focus-visible + .pt-switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .pt-switch-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .pt-switch-copy strong { font-size: 12.5px; color: var(--text); font-weight: 700; }
         .pt-phone-row { display: flex; gap: 6px; }
         .pt-phone-row select { flex: 0 0 88px; width: 88px; padding: 0 6px; }
         .pt-fg textarea { min-height: 64px; padding: 10px 12px; resize: vertical; width: 100%; }

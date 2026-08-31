@@ -283,8 +283,14 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const selectedRegOut = selectedRegs.find((r) => r.punchType === 'out');
   const regPolicy = data.regularizationPolicy;
   const quotaReached = !!regPolicy && regPolicy.usedThisMonth >= regPolicy.monthlyQuota;
-  const canRequestInRegularization = !selectedRegIn && !!selectedTimeBucket && selectedTimeBucket !== 'on-time';
-  const canRequestOutRegularization = !selectedRegOut && !isSelectedToday && hasIn && !hasOut;
+  // A punch that never happened is exactly what regularization is for — someone who forgot to
+  // punch in and only punched out would otherwise be left with a permanently broken day, since a
+  // missing punch-in has no lateness bucket at all. Only an on-time punch-in has nothing to
+  // correct. Future dates are excluded because there is nothing there to fix yet.
+  const isSelectedFuture = selectedDate > today;
+  const canRequestInRegularization = !selectedRegIn && !isSelectedFuture
+    && (!hasIn || (!!selectedTimeBucket && selectedTimeBucket !== 'on-time'));
+  const canRequestOutRegularization = !selectedRegOut && !isSelectedToday && !isSelectedFuture && !hasOut;
 
   const totalDays = daysInMonth(calendarMonth);
   const leadPad = firstWeekday(calendarMonth);
@@ -336,7 +342,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                   ) : <span style={{ color: '#94a3b8' }}>—</span>}
                 </td>
                 <td style={tdStyle}>
-                  {hasOut ? selectedRecord?.outTime : (isSelectedToday && hasIn) ? (
+                  {hasOut ? selectedRecord?.outTime : isSelectedToday ? (
                     <button type="button" onClick={() => punch('out')} disabled={punching !== null} style={punchButtonStyle('#f56565', '#e53e3e', punching !== null)}>
                       {punching === 'out' ? 'Punching out…' : '⏱ Punch Out'}
                     </button>
