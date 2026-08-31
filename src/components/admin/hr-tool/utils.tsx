@@ -96,7 +96,7 @@ export function salaryPeriodLabel(rules: HrRules): string {
   return `${rules.salaryPeriodFrom} to ${rules.salaryPeriodTo === 'last' ? 'last day of the month' : rules.salaryPeriodTo}`;
 }
 export function shiftTimingsLabel(rules: HrRules): string {
-  return `${rules.shiftStartTime}–${rules.shiftEndTime} · ${rules.shiftGraceMinutes} min grace · short leave to ${rules.shortLeaveMaxHours}h · half day to ${rules.halfDayThresholdHours}h`;
+  return `${rules.shiftStartTime}–${rules.shiftEndTime} · ${rules.shiftGraceMinutes} min grace · full day at ${rules.fullDayMinWorkedHours}h worked · half day below ${rules.shortLeaveMinWorkedHours}h · absent below ${rules.halfDayMinWorkedHours}h`;
 }
 
 /* ---------------------------------------------------------
@@ -346,4 +346,16 @@ ${COMPANY.cin}
 ${COMPANY.address}
 ${COMPANY.email}
 `;
+}
+
+/** Opening leave balance for a new/confirmed employee: one month's accrual for each ENABLED
+ * leave type. Replaces the `{ Casual: 6, Sick: 6, Earned: 10 }` literal that was copy-pasted in
+ * four places — that handed every new hire Sick and Earned balances regardless of what the admin
+ * had actually configured under Rules → Leave types. */
+export function initialLeaveBalance(rules: HrRules): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [name, cfg] of Object.entries(rules.leaveTypes)) {
+    if (cfg.enabled) out[name] = cfg.perMonth;
+  }
+  return out;
 }

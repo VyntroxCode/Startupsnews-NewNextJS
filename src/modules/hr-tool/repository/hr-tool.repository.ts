@@ -3,7 +3,7 @@ import { findAllRows, replaceAllRows, parseJsonColumn, SqlParam } from './shared
 import {
   HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrTemplate,
-  HrRules, HrAuditLogEntry, HrCompanyProfile,
+  HrRules, HrAuditLogEntry, HrCompanyProfile, HrDocumentUploadRequest, normalizeLeaveTypes,
 } from '../domain/types';
 import { HrKycDocuments, mergeKycDocuments } from '../domain/kyc';
 
@@ -105,7 +105,84 @@ export class HrToolRepository {
     const rows = await findAllRows<EmployeeRow>('hr_employees', 'created_at ASC');
     return rows.map((r) => this.employeeFromRow(r));
   }
+  /**
+   * Every attendance/leave/expense table keys its employee by NAME, not by id — so renaming an
+   * employee used to orphan their entire history: attendance, punches, leave, expenses and
+   * payroll all stopped matching, and the next payroll showed them absent for the whole cycle.
+   *
+   * Rather than re-key nine tables (a large migration touching every query), a rename is made
+   * safe the way production systems do when a natural key is entrenched: the new name is
+   * **cascaded** across every referencing table in ONE transaction, so the rename either lands
+   * everywhere or nowhere. Nothing is lost and no row is left pointing at the old name.
+   */
+  private static readonly EMP_NAME_REFS = [
+    ['hr_attendance', 'emp'], ['hr_attendance_overrides', 'emp'], ['hr_punch_log', 'emp'],
+    ['hr_regularizations', 'emp'], ['hr_leave_requests', 'emp'], ['hr_expenses', 'emp'],
+    ['hr_tickets', 'emp'], ['hr_payroll_entries', 'emp'], ['hr_document_upload_requests', 'emp'],
+    // Manager fields hold a name too, so a renamed manager keeps their reports.
+    ['hr_employees', 'manager'], ['hr_teams', 'manager'],
+    // The credential's name is what punch/attendance rows are actually WRITTEN under
+    // (punchEmployee is called with credential.name, not the employee row's name). Leaving it
+    // behind meant a rename looked complete — existing history moved — while the very next
+    // punch was written under the old name again, silently creating a fresh orphan.
+    ['hr_employee_credentials', 'name'],
+  ] as const;
+
+  async cascadeEmployeeRename(renames: { from: string; to: string }[]): Promise<void> {
+    const real = renames.filter((r) => r.from && r.to && r.from !== r.to);
+    if (real.length === 0) return;
+    const pool = await getDbConnection();
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      for (const { from, to } of real) {
+        for (const [table, column] of HrToolRepository.EMP_NAME_REFS) {
+          await connection.query(`UPDATE ${table} SET ${column} = ? WHERE ${column} = ?`, [to, from]);
+        }
+      }
+      await connection.commit();
+    } catch (e) {
+      await connection.rollback();
+      throw e;
+    } finally {
+      connection.end();
+    }
+  }
+
   async replaceEmployees(employees: HrEmployee[]): Promise<void> {
+    // Until employee relations are keyed by ID rather than name, the NAME is load-bearing: nine
+    // tables link to it by exact string match. Two guards keep that link trustworthy.
+    //
+    // 1. Normalise. A trailing space or a doubled space produces a name that matches nothing,
+    //    silently orphaning every attendance/leave/payroll row written under it.
+    const normalised = employees.map((e) => ({ ...e, name: (e.name || '').trim().replace(/\s+/g, ' ') }));
+    const blank = normalised.find((e) => !e.name);
+    if (blank) throw new Error('An employee name cannot be blank — it is what links their attendance, leave and payroll records.');
+
+    // 2. Reject duplicates outright. Two employees sharing a name would share ALL of their
+    //    history — attendance, leave, expenses, payroll. Failing loudly at save time is far
+    //    better than discovering it in a payslip; the check is case-insensitive because the
+    //    lookups are not, so "Rahul Sharma" and "rahul sharma" would collide in practice.
+    const seen = new Map<string, string>();
+    for (const e of normalised) {
+      const key = e.name.toLowerCase();
+      const other = seen.get(key);
+      if (other && other !== e.id) {
+        throw new Error(`Two employees are named "${e.name}". Employee records are linked by name, so duplicates would share attendance, leave and payroll history. Please distinguish them (e.g. add a middle name or initial).`);
+      }
+      seen.set(key, e.id);
+    }
+    employees = normalised;
+
+    // Detect renames by id BEFORE the wholesale replace below wipes the old names, and cascade
+    // them first. Done here rather than in a route so every caller of this save path is covered.
+    const existing = await findAllRows<EmployeeRow>('hr_employees', 'created_at ASC');
+    const nameById = new Map(existing.map((r) => [r.id, r.name]));
+    const renames = employees
+      .map((e) => ({ from: nameById.get(e.id) || '', to: e.name }))
+      .filter((r) => r.from && r.from !== r.to);
+    await this.cascadeEmployeeRename(renames);
+
     await replaceAllRows(
       'hr_employees',
       ['id', 'credential_id', 'name', 'email', 'phone', 'designation', 'team', 'manager', 'status', 'doj', 'sys_role', 'ctc', 'leave_balance', 'documents', 'documents_deadline', 'kyc_documents', 'signed_docs', 'ctc_split_override', 'probation_extended_by'],
@@ -288,7 +365,7 @@ export class HrToolRepository {
       [reg.id, reg.emp, reg.date, reg.punchType, reg.reason || null, reg.requestedTime || null, reg.stage, reg.status, reg.rmRemarks || null, reg.hrRemarks || null]
     );
   }
-  async countRegularizationsForEmployeeInMonth(emp: string, fromDate: string, toDate: string): Promise<number> {
+  async countRegularizationsForEmployeeInRange(emp: string, fromDate: string, toDate: string): Promise<number> {
     const rows = await query<{ cnt: number }>(
       'SELECT COUNT(*) AS cnt FROM hr_regularizations WHERE emp = ? AND reg_date BETWEEN ? AND ?',
       [emp, fromDate, toDate]
@@ -440,7 +517,7 @@ export class HrToolRepository {
         convenienceType: r.ctc_convenience_type === 'percent' ? 'percent' : 'amount',
         convenienceValue: Number(r.ctc_convenience_value),
       },
-      leaveTypes: parseJsonColumn(r.leave_types, {}),
+      leaveTypes: normalizeLeaveTypes(parseJsonColumn(r.leave_types, {})),
       twoLevelApproval: { leave: !!r.two_level_approval_leave, attendance: !!r.two_level_approval_attendance, expense: !!r.two_level_approval_expense },
       lateMarkPenalty: !!r.late_mark_penalty, geoFencing: !!r.geo_fencing, selfieCheckin: !!r.selfie_checkin,
       pfEsi: !!r.pf_esi, optionalHolidayChoice: !!r.optional_holiday_choice, assetChecklist: !!r.asset_checklist,
@@ -523,5 +600,61 @@ export class HrToolRepository {
     if (keepEmployeeId) await query('DELETE FROM hr_employees WHERE id != ?', [keepEmployeeId]);
     else await query('DELETE FROM hr_employees', []);
     await query(`UPDATE hr_teams SET manager = NULL WHERE manager NOT IN (SELECT name FROM hr_employees)`, []);
+  }
+
+  /* ---------------------------------------------------------
+     Document-upload permission requests (see the 5-day window)
+  --------------------------------------------------------- */
+  private mapDocRequest(r: Record<string, unknown>): HrDocumentUploadRequest {
+    const asIso = (v: unknown) => (v instanceof Date ? v.toISOString() : (v as string | null));
+    return {
+      id: Number(r.id), emp: String(r.emp), reason: String(r.reason),
+      status: r.status as HrDocumentUploadRequest['status'],
+      requestedAt: asIso(r.requested_at) || '',
+      decidedBy: (r.decided_by as string | null) ?? null,
+      decidedAt: asIso(r.decided_at),
+      remarks: (r.remarks as string | null) ?? null,
+      grantedUntil: r.granted_until instanceof Date
+        ? r.granted_until.toISOString().slice(0, 10)
+        : ((r.granted_until as string | null) ?? null),
+    };
+  }
+
+  async findDocumentUploadRequests(): Promise<HrDocumentUploadRequest[]> {
+    const rows = await query<Record<string, unknown>>(
+      'SELECT * FROM hr_document_upload_requests ORDER BY (status = \'pending\') DESC, requested_at DESC', []
+    );
+    return rows.map((r) => this.mapDocRequest(r));
+  }
+
+  async findPendingDocumentUploadRequest(emp: string): Promise<HrDocumentUploadRequest | null> {
+    const row = await queryOne<Record<string, unknown>>(
+      'SELECT * FROM hr_document_upload_requests WHERE emp = ? AND status = \'pending\' ORDER BY requested_at DESC LIMIT 1', [emp]
+    );
+    return row ? this.mapDocRequest(row) : null;
+  }
+
+  async insertDocumentUploadRequest(emp: string, reason: string): Promise<void> {
+    await query('INSERT INTO hr_document_upload_requests (emp, reason) VALUES (?, ?)', [emp, reason]);
+  }
+
+  async findDocumentUploadRequestById(id: number): Promise<HrDocumentUploadRequest | null> {
+    const row = await queryOne<Record<string, unknown>>('SELECT * FROM hr_document_upload_requests WHERE id = ?', [id]);
+    return row ? this.mapDocRequest(row) : null;
+  }
+
+  async decideDocumentUploadRequest(
+    id: number, status: 'approved' | 'rejected', decidedBy: string, remarks: string, grantedUntil: string | null
+  ): Promise<void> {
+    await query(
+      `UPDATE hr_document_upload_requests
+         SET status = ?, decided_by = ?, decided_at = NOW(), remarks = ?, granted_until = ?
+       WHERE id = ? AND status = 'pending'`,
+      [status, decidedBy, remarks || null, grantedUntil, id]
+    );
+  }
+
+  async setDocumentsDeadline(employeeId: string, deadline: string): Promise<void> {
+    await query('UPDATE hr_employees SET documents_deadline = ? WHERE id = ?', [deadline, employeeId]);
   }
 }

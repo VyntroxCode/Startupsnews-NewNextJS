@@ -1,9 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useHrTool } from '../HrToolContext';
+import ModalShell from '../ModalShell';
 import { computeCtcBreakdown } from '../utils';
-import type { HrRules } from '../types';
+import type { HrLeaveTypeConfig, HrRules } from '../types';
+
+/** Plain-English names for the confirmation dialog's change list — the raw camelCase keys mean
+ * nothing to whoever is approving the change. */
+const RULE_LABELS: Partial<Record<keyof HrRules, string>> = {
+  shiftStartTime: 'Shift start time', shiftEndTime: 'Shift end time', shiftGraceMinutes: 'Grace period (min)',
+  halfDayThresholdHours: 'Half day — punch-in cutoff', regularizationWindowDays: 'Regularization window (days)',
+  regularizationOverride: 'Admin override past window', regularizationMonthlyQuota: 'Regularization limit per payroll cycle',
+  shortLeaveMaxHours: 'Short leave — punch-in cutoff', shortLeaveMonthlyQuota: 'Short leave — monthly quota',
+  halfDayMinWorkedHours: 'Hours worked — absent below', shortLeaveMinWorkedHours: 'Hours worked — half day below',
+  fullDayMinWorkedHours: 'Hours worked — full day at', salaryPeriodFrom: 'Salary period from',
+  salaryPeriodTo: 'Salary period to', twoLevelApproval: 'Approval chain', leaveTypes: 'Leave types',
+  lateMarkPenalty: 'Late-mark penalty', geoFencing: 'Geo-fencing', selfieCheckin: 'Selfie check-in',
+  pfEsi: 'PF / ESI statutory modules', optionalHolidayChoice: 'Optional holiday self-selection',
+  assetChecklist: 'Asset issuance/return checklist',
+};
+
+/** Ceiling for the three hours-worked thresholds. A value above the shift's own length would be
+ * unreachable — nobody could ever work enough to earn a full day — so the field refuses it
+ * rather than letting an admin silently make full days impossible. */
+const MAX_WORKED_HOURS = 8.5;
+
+function clampWorkedHours(raw: string): number {
+  const n = Number(raw);
+  if (!isFinite(n) || n < 0) return 0;
+  return Math.min(n, MAX_WORKED_HOURS);
+}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -32,6 +59,49 @@ export default function Rules() {
   const [ctcConvType, setCtcConvType] = useState<'amount' | 'percent'>(r.ctcSplit.convenienceType);
   const [ctcConvValue, setCtcConvValue] = useState(String(r.ctcSplit.convenienceValue));
   const [newLeaveType, setNewLeaveType] = useState('');
+  const [newLeavePerMonth, setNewLeavePerMonth] = useState('1');
+
+  // Every toggle and number field below edits THIS local copy, not the saved rules. Before, each
+  // one called persistRules() directly, so a single keystroke in a number field was a server
+  // write plus an audit-log entry plus a full-tree re-render — the "it saves/reloads as I type"
+  // problem. Nothing leaves this component now until Save changes is confirmed.
+  const [ruleDraft, setRuleDraft] = useState<HrRules>(r);
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
+  const [savingRules, setSavingRules] = useState(false);
+  // Re-sync when the saved rules genuinely change (initial load, or a save completing). Local
+  // edits don't touch `r`, so this can't clobber work in progress.
+  useEffect(() => { setRuleDraft(r); }, [r]);
+
+  const rulesDirty = JSON.stringify(ruleDraft) !== JSON.stringify(r);
+
+  // Spelled out in the confirmation rather than a bare "are you sure?", so the admin can see
+  // exactly what they're about to apply — these settings reach payroll.
+  const changedRuleLabels = (Object.keys(ruleDraft) as (keyof HrRules)[])
+    .filter((k) => JSON.stringify(ruleDraft[k]) !== JSON.stringify(r[k]))
+    .map((k) => {
+      const before = r[k], after = ruleDraft[k];
+      if (typeof before === 'boolean') return `${RULE_LABELS[k] || k}: ${before ? 'on' : 'off'} → ${after ? 'on' : 'off'}`;
+      if (before !== null && typeof before === 'object') return `${RULE_LABELS[k] || k}: updated`;
+      return `${RULE_LABELS[k] || k}: ${String(before)} → ${String(after)}`;
+    });
+
+  function setDraftRule<K extends keyof HrRules>(key: K, value: HrRules[K]) {
+    setRuleDraft((d) => ({ ...d, [key]: value }));
+  }
+  function setDraftApproval(mod: 'leave' | 'attendance' | 'expense', value: boolean) {
+    setRuleDraft((d) => ({ ...d, twoLevelApproval: { ...d.twoLevelApproval, [mod]: value } }));
+  }
+  function setDraftLeaveType(type: string, cfg: HrLeaveTypeConfig) {
+    setRuleDraft((d) => ({ ...d, leaveTypes: { ...d.leaveTypes, [type]: cfg } }));
+  }
+  function discardRuleEdits() { setRuleDraft(r); }
+  async function commitRuleEdits() {
+    setSavingRules(true);
+    await persistRules(ruleDraft);
+    logRuleChange('Updated attendance, approval, leave-type and other rules');
+    setSavingRules(false);
+    setConfirmSaveOpen(false);
+  }
 
   // Live preview against the (unsaved) draft values in the fields above, not the saved rules —
   // so admin sees the effect of an edit before clicking Save.
@@ -40,22 +110,6 @@ export default function Rules() {
     convenienceType: ctcConvType, convenienceValue: Number(ctcConvValue) || 0,
   });
 
-  async function updateRule<K extends keyof HrRules>(key: K, value: HrRules[K]) {
-    await persistRules({ ...r, [key]: value });
-    logRuleChange(`Set ${String(key)} to "${value}"`);
-  }
-  async function updateRuleBool(key: keyof HrRules, value: boolean) {
-    await persistRules({ ...r, [key]: value });
-    logRuleChange(`${value ? 'Enabled' : 'Disabled'} ${String(key)}`);
-  }
-  async function updateApprovalRule(mod: 'leave' | 'attendance' | 'expense', value: boolean) {
-    await persistRules({ ...r, twoLevelApproval: { ...r.twoLevelApproval, [mod]: value } });
-    logRuleChange(`${value ? 'Enabled' : 'Disabled'} two-level approval for ${mod}`);
-  }
-  async function updateLeaveType(type: string, value: boolean) {
-    await persistRules({ ...r, leaveTypes: { ...r.leaveTypes, [type]: value } });
-    logRuleChange(`${value ? 'Enabled' : 'Disabled'} leave type: ${type}`);
-  }
 
   async function addTeam() {
     const name = newTeam.trim();
@@ -149,10 +203,10 @@ export default function Rules() {
   async function addLeaveType() {
     const name = newLeaveType.trim();
     if (!name) return;
-    if (r.leaveTypes[name] !== undefined) { alert('That leave type already exists.'); return; }
-    await persistRules({ ...r, leaveTypes: { ...r.leaveTypes, [name]: true } });
-    logRuleChange(`Added leave type: ${name}`);
+    if (ruleDraft.leaveTypes[name] !== undefined) { alert('That leave type already exists.'); return; }
+    setRuleDraft((d) => ({ ...d, leaveTypes: { ...d.leaveTypes, [name]: { enabled: true, perMonth: Math.max(0, Number(newLeavePerMonth) || 0) } } }));
     setNewLeaveType('');
+    setNewLeavePerMonth('1');
   }
 
   async function handleResetSampleData() {
@@ -297,59 +351,27 @@ export default function Rules() {
           <div className="rule-row">
             <div><div className="rule-name">Shift timings (punch in / punch out)</div><div className="rule-desc">Official shift start and end time.</div></div>
             <div className="rule-inputs">
-              In <input type="time" value={r.shiftStartTime} onChange={(e) => updateRule('shiftStartTime', e.target.value)} style={{ width: 120 }} />
-              Out <input type="time" value={r.shiftEndTime} onChange={(e) => updateRule('shiftEndTime', e.target.value)} style={{ width: 120 }} />
+              In <input type="time" value={ruleDraft.shiftStartTime} onChange={(e) => setDraftRule('shiftStartTime', e.target.value)} style={{ width: 120 }} />
+              Out <input type="time" value={ruleDraft.shiftEndTime} onChange={(e) => setDraftRule('shiftEndTime', e.target.value)} style={{ width: 120 }} />
             </div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">Grace period</div><div className="rule-desc">Minutes after shift start before a punch-in counts as late.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={r.shiftGraceMinutes} onChange={(e) => updateRule('shiftGraceMinutes', Number(e.target.value))} /> min</div>
+            <div className="rule-inputs"><input className="mini-input" type="number" value={ruleDraft.shiftGraceMinutes} onChange={(e) => setDraftRule('shiftGraceMinutes', Number(e.target.value))} /> min</div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Half day — punch-in cutoff</div><div className="rule-desc">Hours after shift start up to which a punch-in still counts as a Half Day (each costs half a day&apos;s pay). Later than this counts as Absent.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" step="0.5" value={r.halfDayThresholdHours} onChange={(e) => updateRule('halfDayThresholdHours', Number(e.target.value))} /> hrs after shift start</div>
+            <div><div className="rule-name">Regularization limit per payroll cycle</div><div className="rule-desc">How many regularization requests an employee may submit per payroll cycle (26th → 25th). Dates are limited to that same cycle — earlier cycles are already paid out and can no longer be corrected.</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" value={ruleDraft.regularizationMonthlyQuota} onChange={(e) => setDraftRule('regularizationMonthlyQuota', Number(e.target.value))} /> / cycle</div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Regularization window</div><div className="rule-desc">How many days after an attendance date an employee may still request regularization.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={r.regularizationWindowDays} onChange={(e) => updateRule('regularizationWindowDays', Number(e.target.value))} /> days</div>
-          </div>
-          <div className="rule-row">
-            <div><div className="rule-name">Admin override past window</div><div className="rule-desc">Allow HR to manually accept a regularization request submitted after the window has closed.</div></div>
-            <Toggle checked={r.regularizationOverride} onChange={(v) => updateRuleBool('regularizationOverride', v)} />
-          </div>
-          <div className="rule-row">
-            <div><div className="rule-name">Regularization monthly limit</div><div className="rule-desc">How many regularization requests an employee may submit per calendar month. Shown to employees on Rules &amp; Policy; the Apply button only appears on a late or grace-period punch-in.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={r.regularizationMonthlyQuota} onChange={(e) => updateRule('regularizationMonthlyQuota', Number(e.target.value))} /> / month</div>
-          </div>
-          <div className="rule-row">
-            <div><div className="rule-name">Short leave — punch-in cutoff</div><div className="rule-desc">Hours after shift start (past the grace period) up to which a punch-in counts as a Short Leave. Every 3rd Short Leave converts into one Half Day for pay — leftovers that don&apos;t reach 3 carry forward into the next payroll cycle instead of resetting.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" step="0.5" value={r.shortLeaveMaxHours} onChange={(e) => updateRule('shortLeaveMaxHours', Number(e.target.value))} /> hrs after shift start</div>
-          </div>
-          <div className="rule-row">
-            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month (shown on Rules &amp; Policy — not yet enforced as a hard cap on punch-in itself).</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={r.shortLeaveMonthlyQuota} onChange={(e) => updateRule('shortLeaveMonthlyQuota', Number(e.target.value))} /> / month</div>
-          </div>
-          <div className="rule-row">
-            <div><div className="rule-name">Hours worked — secondary rule</div><div className="rule-desc">A day&apos;s status is the WORSE of arrival time (above) and total hours worked (punch-out minus punch-in) — an on-time arrival doesn&apos;t save a day where they left early, and working long hours doesn&apos;t undo a late arrival. Below the first number is Absent, up to the second is Half Day, up to the third is Short Leave, above it is a full day.</div></div>
+            <div><div className="rule-name">Hours worked — day status</div><div className="rule-desc">Total hours worked decides the day — counted only inside the shift window above, so time before the shift starts or after it ends is not credited. Maximum {MAX_WORKED_HOURS} hrs. Below the first number is Absent, below the second is Half Day, below the third is Short Leave, at or above it is a full day. Punch-in time no longer changes the outcome — it only marks the arrival on time or late against the grace period above.</div></div>
             <div className="rule-inputs">
-              <input className="mini-input" type="number" step="0.25" value={r.halfDayMinWorkedHours} onChange={(e) => updateRule('halfDayMinWorkedHours', Number(e.target.value))} style={{ width: 70 }} />
+              <input className="mini-input" type="number" step="0.25" min={0} max={MAX_WORKED_HOURS} value={ruleDraft.halfDayMinWorkedHours} onChange={(e) => setDraftRule('halfDayMinWorkedHours', clampWorkedHours(e.target.value))} style={{ width: 70 }} />
               {' / '}
-              <input className="mini-input" type="number" step="0.25" value={r.shortLeaveMinWorkedHours} onChange={(e) => updateRule('shortLeaveMinWorkedHours', Number(e.target.value))} style={{ width: 70 }} />
+              <input className="mini-input" type="number" step="0.25" min={0} max={MAX_WORKED_HOURS} value={ruleDraft.shortLeaveMinWorkedHours} onChange={(e) => setDraftRule('shortLeaveMinWorkedHours', clampWorkedHours(e.target.value))} style={{ width: 70 }} />
               {' / '}
-              <input className="mini-input" type="number" step="0.25" value={r.fullDayMinWorkedHours} onChange={(e) => updateRule('fullDayMinWorkedHours', Number(e.target.value))} style={{ width: 70 }} />
+              <input className="mini-input" type="number" step="0.25" min={0} max={MAX_WORKED_HOURS} value={ruleDraft.fullDayMinWorkedHours} onChange={(e) => setDraftRule('fullDayMinWorkedHours', clampWorkedHours(e.target.value))} style={{ width: 70 }} />
               {' hrs worked'}
-            </div>
-          </div>
-          <div className="rule-row">
-            <div><div className="rule-name">Salary calculation period</div><div className="rule-desc">Defines the payroll cycle used across payroll, attendance-linked pay, and reports.</div></div>
-            <div className="rule-inputs">
-              From day <select value={r.salaryPeriodFrom} onChange={(e) => updateRule('salaryPeriodFrom', Number(e.target.value))} style={{ width: 80 }}>
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-              To <select value={String(r.salaryPeriodTo)} onChange={(e) => updateRule('salaryPeriodTo', e.target.value === 'last' ? 'last' : String(Number(e.target.value)))} style={{ width: 140 }}>
-                <option value="last">Last day of month</option>
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
             </div>
           </div>
         </div>
@@ -360,8 +382,8 @@ export default function Rules() {
         <div className="card pad">
           {(['leave', 'attendance', 'expense'] as const).map((m) => (
             <div className="rule-row" key={m}>
-              <div><div className="rule-name">Two-level approval — {m === 'attendance' ? 'Attendance regularization' : m.charAt(0).toUpperCase() + m.slice(1)}</div><div className="rule-desc">On: Reporting Manager approves first, then HR Head. Off: HR Head approves directly.</div></div>
-              <Toggle checked={r.twoLevelApproval[m]} onChange={(v) => updateApprovalRule(m, v)} />
+              <div><div className="rule-name">Two-level approval — {m === 'attendance' ? 'Attendance regularization' : m.charAt(0).toUpperCase() + m.slice(1)}</div><div className="rule-desc">On: the request goes to the HR Head to approve. Off: the Founder/admin approves it directly. Either way it is a single approval step.</div></div>
+              <Toggle checked={ruleDraft.twoLevelApproval[m]} onChange={(v) => setDraftApproval(m, v)} />
             </div>
           ))}
         </div>
@@ -370,26 +392,40 @@ export default function Rules() {
       <section className="block">
         <div className="block-head"><h2>Leave types</h2></div>
         <div className="card pad">
-          <div className="rule-desc" style={{ marginBottom: 8 }}>Untick a type and it disappears everywhere. Add a custom type if you need one beyond the defaults.</div>
-          {Object.entries(r.leaveTypes).map(([type, on]) => (
-            <div className="rule-row" key={type}><div className="rule-name">{type}</div><Toggle checked={on} onChange={(v) => updateLeaveType(type, v)} /></div>
+          <div className="rule-desc" style={{ marginBottom: 8 }}>Switch a type off and it disappears everywhere. The number is how many days an employee accrues each month while that type is on. Add your own type below if you need one beyond these.</div>
+          {Object.entries(ruleDraft.leaveTypes).map(([type, cfg]) => (
+            <div className="rule-row" key={type}>
+              <div><div className="rule-name">{type}</div><div className="rule-desc">{cfg.enabled ? `${cfg.perMonth} day${cfg.perMonth === 1 ? '' : 's'} accrued per month.` : 'Switched off — hidden from leave applications and balances.'}</div></div>
+              <div className="rule-inputs">
+                <input
+                  className="mini-input" type="number" min={0} step={0.5}
+                  value={cfg.perMonth}
+                  disabled={!cfg.enabled}
+                  onChange={(e) => setDraftLeaveType(type, { ...cfg, perMonth: Math.max(0, Number(e.target.value) || 0) })}
+                />
+                <span>/ month</span>
+                <Toggle checked={cfg.enabled} onChange={(v) => setDraftLeaveType(type, { ...cfg, enabled: v })} />
+              </div>
+            </div>
           ))}
           <div className="add-inline" style={{ marginTop: 12 }}>
             <input type="text" placeholder="e.g. Sabbatical" value={newLeaveType} onChange={(e) => setNewLeaveType(e.target.value)} />
+            <input className="mini-input" type="number" min={0} step={0.5} value={newLeavePerMonth} onChange={(e) => setNewLeavePerMonth(e.target.value)} style={{ flex: '0 0 80px' }} />
             <button className="btn sm" onClick={addLeaveType}>+ Add leave type</button>
           </div>
+          <div className="rule-desc" style={{ marginTop: 6 }}>New types are added switched on, with the monthly allowance you enter beside the name.</div>
         </div>
       </section>
 
       <section className="block">
         <div className="block-head"><h2>Other configurable rules</h2></div>
         <div className="card pad">
-          <div className="rule-row"><div><div className="rule-name">Late-mark penalty</div><div className="rule-desc">Deduct leave for repeated late marks.</div></div><Toggle checked={r.lateMarkPenalty} onChange={(v) => updateRuleBool('lateMarkPenalty', v)} /></div>
-          <div className="rule-row"><div><div className="rule-name">Geo-fencing</div><div className="rule-desc">Restrict punch-in to within a radius of office location(s).</div></div><Toggle checked={r.geoFencing} onChange={(v) => updateRuleBool('geoFencing', v)} /></div>
-          <div className="rule-row"><div><div className="rule-name">Selfie check-in</div><div className="rule-desc">Require a photo capture at punch in/out.</div></div><Toggle checked={r.selfieCheckin} onChange={(v) => updateRuleBool('selfieCheckin', v)} /></div>
-          <div className="rule-row"><div><div className="rule-name">PF / ESI statutory modules</div><div className="rule-desc">Keep off until headcount/wage crosses the statutory threshold.</div></div><Toggle checked={r.pfEsi} onChange={(v) => updateRuleBool('pfEsi', v)} /></div>
-          <div className="rule-row"><div><div className="rule-name">Optional holiday self-selection</div><div className="rule-desc">Let employees pick their own festival holidays from a pool.</div></div><Toggle checked={r.optionalHolidayChoice} onChange={(v) => updateRuleBool('optionalHolidayChoice', v)} /></div>
-          <div className="rule-row"><div><div className="rule-name">Asset issuance/return checklist</div><div className="rule-desc">Track laptop/ID/access card handover in onboarding and offboarding.</div></div><Toggle checked={r.assetChecklist} onChange={(v) => updateRuleBool('assetChecklist', v)} /></div>
+          <div className="rule-row"><div><div className="rule-name">Late-mark penalty</div><div className="rule-desc">Deduct leave for repeated late marks.</div></div><Toggle checked={ruleDraft.lateMarkPenalty} onChange={(v) => setDraftRule('lateMarkPenalty', v)} /></div>
+          <div className="rule-row"><div><div className="rule-name">Geo-fencing</div><div className="rule-desc">Restrict punch-in to within a radius of office location(s).</div></div><Toggle checked={ruleDraft.geoFencing} onChange={(v) => setDraftRule('geoFencing', v)} /></div>
+          <div className="rule-row"><div><div className="rule-name">Selfie check-in</div><div className="rule-desc">Require a photo capture at punch in/out.</div></div><Toggle checked={ruleDraft.selfieCheckin} onChange={(v) => setDraftRule('selfieCheckin', v)} /></div>
+          <div className="rule-row"><div><div className="rule-name">PF / ESI statutory modules</div><div className="rule-desc">Keep off until headcount/wage crosses the statutory threshold.</div></div><Toggle checked={ruleDraft.pfEsi} onChange={(v) => setDraftRule('pfEsi', v)} /></div>
+          <div className="rule-row"><div><div className="rule-name">Optional holiday self-selection</div><div className="rule-desc">Let employees pick their own festival holidays from a pool.</div></div><Toggle checked={ruleDraft.optionalHolidayChoice} onChange={(v) => setDraftRule('optionalHolidayChoice', v)} /></div>
+          <div className="rule-row"><div><div className="rule-name">Asset issuance/return checklist</div><div className="rule-desc">Track laptop/ID/access card handover in onboarding and offboarding.</div></div><Toggle checked={ruleDraft.assetChecklist} onChange={(v) => setDraftRule('assetChecklist', v)} /></div>
         </div>
       </section>
 
@@ -400,6 +436,41 @@ export default function Rules() {
           <button className="btn reject" onClick={handleResetSampleData}>⚠ Delete all sample data</button>
         </div>
       </section>
+
+      {/* Sticky because the drafted rules span four sections — the admin shouldn't have to
+          scroll hunting for the button after changing something near the top. */}
+      {rulesDirty && (
+        <div className="rules-savebar">
+          <div>
+            <div className="rule-name">You have unsaved rule changes</div>
+            <div className="rule-desc">Nothing is applied until you save. These rules affect attendance status, approvals and payroll.</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button className="btn" onClick={discardRuleEdits} disabled={savingRules}>Discard</button>
+            <button className="btn primary" onClick={() => setConfirmSaveOpen(true)} disabled={savingRules}>Save changes</button>
+          </div>
+        </div>
+      )}
+      {confirmSaveOpen && (
+        <ModalShell
+          title="Apply rule changes?"
+          onClose={() => setConfirmSaveOpen(false)}
+          actions={[
+            { label: 'Cancel', cls: 'btn', onClick: () => setConfirmSaveOpen(false) },
+            { label: savingRules ? 'Saving…' : 'Yes, apply changes', cls: 'btn primary', onClick: commitRuleEdits },
+          ]}
+        >
+          <div className="notice">These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately.</div>
+          <div className="field">
+            <label className="field-label">About to change</label>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {changedRuleLabels.length === 0
+                ? <li className="meta">No differences detected.</li>
+                : changedRuleLabels.map((label) => <li key={label} style={{ fontSize: 13, marginBottom: 2 }}>{label}</li>)}
+            </ul>
+          </div>
+        </ModalShell>
+      )}
 
       <section className="block">
         <div className="block-head"><h2>Recent changes (audit log)</h2></div>

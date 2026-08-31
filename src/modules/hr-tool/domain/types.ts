@@ -187,7 +187,7 @@ export interface HrRules {
   salaryPeriodFrom: number;
   salaryPeriodTo: string;
   ctcSplit: HrCtcSplit;
-  leaveTypes: Record<string, boolean>;
+  leaveTypes: Record<string, HrLeaveTypeConfig>;
   twoLevelApproval: { leave: boolean; attendance: boolean; expense: boolean };
   lateMarkPenalty: boolean;
   geoFencing: boolean;
@@ -227,4 +227,38 @@ export interface HrBootstrap {
   companyProfile: HrCompanyProfile;
   /** Assigning-IDs credentials — used to show Employee ID/Role alongside attendance rows for Publisher/Event Admin punches. */
   employeeCredentials: HrEmployeeCredential[];
+}
+
+/** One configurable leave type. `perMonth` is the allowance an employee accrues each month —
+ * the thing the old `Record<string, boolean>` shape had nowhere to store. */
+export interface HrLeaveTypeConfig { enabled: boolean; perMonth: number; }
+
+/** Accepts either shape and always returns the new one. Rows written before this change hold
+ * `{ Casual: true, Sick: true, ... }`; reading them must not crash or silently switch a live
+ * leave type off, so a legacy `true` maps to enabled with the previous default allowance. */
+export function normalizeLeaveTypes(raw: unknown): Record<string, HrLeaveTypeConfig> {
+  const out: Record<string, HrLeaveTypeConfig> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === 'boolean') { out[name] = { enabled: value, perMonth: value ? 1 : 0 }; continue; }
+    if (value && typeof value === 'object') {
+      const v = value as { enabled?: unknown; perMonth?: unknown };
+      out[name] = { enabled: v.enabled !== false, perMonth: Math.max(0, Number(v.perMonth) || 0) };
+    }
+  }
+  return out;
+}
+
+/** An employee asking HR to reopen their document-upload window after it closed. Approving one
+ * pushes hr_employees.documents_deadline forward; see HrToolService.decideDocumentUploadRequest. */
+export interface HrDocumentUploadRequest {
+  id: number;
+  emp: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  remarks: string | null;
+  grantedUntil: string | null;
 }

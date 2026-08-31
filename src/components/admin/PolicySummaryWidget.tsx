@@ -107,7 +107,7 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
       <Row label="Shift timings" desc="Official punch-in and punch-out time." value={`${policy.shiftStartTime} – ${policy.shiftEndTime}`} />
       <Row label="Grace period" desc="Minutes after shift start before a punch-in counts as late." value={`${policy.shiftGraceMinutes} min`} />
       <Row label="Regularization window" desc="How many days after an attendance date you may still request regularization." value={`${policy.regularizationWindowDays} days`} />
-      <Row label="Regularization monthly limit" desc="How many regularization requests you may submit per calendar month." value={`${policy.regularizationMonthlyQuota} / month`} />
+      <Row label="Regularization limit" desc="How many regularization requests you may submit per payroll cycle (26th to 25th)." value={`${policy.regularizationMonthlyQuota} / cycle`} />
       <Row label="Short leave — punch-in cutoff" desc="Punch in later than the grace period but within this many hours of shift start, and it's a Short Leave. Every 3rd one costs half a day's pay — leftovers carry into the next payroll cycle rather than resetting." value={`${policy.shortLeaveMaxHours} hrs after shift start`} />
       <Row label="Short leave — monthly quota" desc="How many Short Leaves you may take per calendar month." value={`${policy.shortLeaveMonthlyQuota} / month`} />
       <Row label="Half day — punch-in cutoff" desc="Punch in later than the Short Leave cutoff but within this many hours of shift start, and it's a Half Day — half a day's pay. Later than this is Absent." value={`${policy.halfDayThresholdHours} hrs after shift start`} />

@@ -6,11 +6,11 @@ import type { HrView } from '../types';
 
 /** `tone` is an optional green/red accent for tiles that represent a done/not-done state (e.g.
  * Payroll Cycle) — omit it for plain count tiles, which stay neutral. */
-function StatTile({ label, num, note, view, onClick, tone }: { label: string; num: string | number; note: string; view: HrView; onClick: (v: HrView) => void; tone?: 'good' | 'bad' }) {
+function StatTile({ label, num, note, view, onClick, tone, longNum }: { label: string; num: string | number; note: string; view: HrView; onClick: (v: HrView) => void; tone?: 'good' | 'bad'; longNum?: boolean }) {
   return (
     <div className={`card pad clickable${tone ? ` tone-${tone}` : ''}`} onClick={() => onClick(view)}>
       <div className="stat-label">{label}</div>
-      <div className="stat-num">{num}</div>
+      <div className={`stat-num${longNum ? ' stat-num-text' : ''}`}>{num}</div>
       <div className="stat-note">{note}</div>
     </div>
   );
@@ -51,6 +51,7 @@ export default function Dashboard() {
           view="payroll"
           onClick={setView}
           tone={state.payrollRun.status === 'not_run' ? 'bad' : 'good'}
+          longNum
         />
       </div>
       <div className="grid grid-4" style={{ marginBottom: 26 }}>
@@ -131,7 +132,7 @@ function EmployeeDashboard() {
           <div className="stat-num" style={{ fontSize: 19 }}>{myAtt ? myAtt.status : 'Not punched in'}</div>
           <div className="stat-note">{myAtt ? `${myAtt.inTime} – ${myAtt.outTime}` : 'Punch in from Attendance'}</div>
         </div>
-        {Object.entries(me.leaveBalance).filter(([k]) => state.rules.leaveTypes[k] !== false).map(([k, v]) => (
+        {Object.entries(me.leaveBalance).filter(([k]) => state.rules.leaveTypes[k]?.enabled !== false).map(([k, v]) => (
           <div className="card pad" key={k}><div className="stat-label">{k} Leave</div><div className="stat-num">{v}</div><div className="stat-note">days remaining</div></div>
         ))}
       </div>

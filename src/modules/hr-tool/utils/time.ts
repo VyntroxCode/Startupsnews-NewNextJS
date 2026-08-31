@@ -20,6 +20,14 @@ export function nowTimeStr(): string {
   return new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 }
 
+/** Current time as a 'YYYY-MM-DD HH:MM:SS' string in IST, safe to bind straight into a MySQL
+ * DATETIME/TIMESTAMP column — MySQL rejects the 'T'/'Z' from Date#toISOString() (matches the
+ * same IST-string convention used for published_at in posts.repository.ts). */
+export function nowMysqlDatetime(): string {
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+  return new Date(Date.now() + IST_OFFSET).toISOString().slice(0, 19).replace('T', ' ');
+}
+
 export function nowMinutesSinceMidnight(): number {
   const parts = new Date()
     .toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false })

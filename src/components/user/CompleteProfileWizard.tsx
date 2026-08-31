@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { COUNTRIES } from '@/constants/countries';
-import { CustomSelect } from '@/components/submit-event/CustomSelect';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import {
   REGISTRATION_CATEGORIES, INVESTOR_TYPES, CHECK_SIZES, STAGE_FOCUS, ENTITY_TYPES,
   STARTUP_STAGES, TEAM_SIZES, REVENUE_STATUSES, ROUND_TYPES, BANKING_VERTICALS,

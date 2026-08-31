@@ -15,12 +15,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { month, from, to } = monthRange(request.nextUrl.searchParams.get('month'));
-    const [punch, calendar, policy, regularizations, usedThisMonth, allHolidays] = await Promise.all([
+    const [punch, calendar, policy, regularizations, regUsage, allHolidays] = await Promise.all([
       hrToolService.getPunchByEmp(credential.name),
       hrToolService.getAttendanceForEmployeeInRange(credential.name, from, to),
       hrToolService.getPolicySummary(),
       hrToolService.getRegularizationsForEmployee(credential.name),
-      hrToolService.countRegularizationsForEmployeeInMonth(credential.name, from, to),
+      hrToolService.getRegularizationUsage(credential.name),
       hrToolService.getHolidays(),
     ]);
     // Same admin Holiday calendar shown in the Employee Panel's attendance widget — this route
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
           fullDayMinWorkedHours: policy.fullDayMinWorkedHours,
         },
         regularizations,
-        regularizationPolicy: { windowDays: policy.regularizationWindowDays, monthlyQuota: policy.regularizationMonthlyQuota, usedThisMonth },
+        regularizationPolicy: { windowDays: policy.regularizationWindowDays, monthlyQuota: regUsage.quota, usedThisMonth: regUsage.used, cycleFrom: regUsage.from, cycleTo: regUsage.to },
       },
     });
   } catch (error) {

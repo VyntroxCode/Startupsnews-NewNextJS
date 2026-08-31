@@ -41,3 +41,46 @@ export function countryForCity(city: string): string | null {
   }
   return null;
 }
+
+/**
+ * Country name → flag emoji, for the Region/Country dropdown in the Add/Edit Event form.
+ *
+ * Covers every country in COUNTRY_CITY_DATA above, plus a wider set of countries an admin may
+ * type in via "Others…" — the dropdown keeps whatever value a record already holds, so a
+ * custom country still gets its flag instead of sitting there bare next to the curated ones.
+ * One canonical name per country: no alternative spellings. A name that doesn't match returns
+ * '' from flagForCountry and simply renders without a flag.
+ */
+export const COUNTRY_FLAGS: Record<string, string> = {
+  // Curated list (COUNTRY_CITY_DATA)
+  India: '🇮🇳', USA: '🇺🇸', UK: '🇬🇧', UAE: '🇦🇪', Singapore: '🇸🇬',
+  Germany: '🇩🇪', France: '🇫🇷', Netherlands: '🇳🇱', Australia: '🇦🇺', Canada: '🇨🇦',
+  'Saudi Arabia': '🇸🇦', China: '🇨🇳', Japan: '🇯🇵', 'South Africa': '🇿🇦', Ireland: '🇮🇪',
+  // Commonly added via "Others…"
+  Vietnam: '🇻🇳', Indonesia: '🇮🇩', Thailand: '🇹🇭', Malaysia: '🇲🇾', Philippines: '🇵🇭',
+  'South Korea': '🇰🇷', Taiwan: '🇹🇼', 'Hong Kong': '🇭🇰', Macau: '🇲🇴',
+  Brazil: '🇧🇷', Mexico: '🇲🇽', Argentina: '🇦🇷', Chile: '🇨🇱', Colombia: '🇨🇴',
+  Spain: '🇪🇸', Italy: '🇮🇹', Portugal: '🇵🇹', Switzerland: '🇨🇭', Austria: '🇦🇹',
+  Belgium: '🇧🇪', Sweden: '🇸🇪', Norway: '🇳🇴', Denmark: '🇩🇰', Finland: '🇫🇮',
+  Poland: '🇵🇱', Greece: '🇬🇷', 'Czech Republic': '🇨🇿', Hungary: '🇭🇺',
+  Romania: '🇷🇴', Estonia: '🇪🇪', Lithuania: '🇱🇹', Latvia: '🇱🇻', Ukraine: '🇺🇦',
+  Russia: '🇷🇺', Turkey: '🇹🇷', Israel: '🇮🇱', Egypt: '🇪🇬', Morocco: '🇲🇦',
+  Nigeria: '🇳🇬', Kenya: '🇰🇪', Ghana: '🇬🇭', Ethiopia: '🇪🇹', Tanzania: '🇹🇿',
+  Qatar: '🇶🇦', Kuwait: '🇰🇼', Bahrain: '🇧🇭', Oman: '🇴🇲', Jordan: '🇯🇴', Lebanon: '🇱🇧',
+  Pakistan: '🇵🇰', Bangladesh: '🇧🇩', 'Sri Lanka': '🇱🇰', Nepal: '🇳🇵', Bhutan: '🇧🇹',
+  Maldives: '🇲🇻', 'New Zealand': '🇳🇿', Fiji: '🇫🇯', Armenia: '🇦🇲', Georgia: '🇬🇪',
+  Kazakhstan: '🇰🇿', Uzbekistan: '🇺🇿', Azerbaijan: '🇦🇿', Iceland: '🇮🇸', Luxembourg: '🇱🇺',
+  Cyprus: '🇨🇾', Malta: '🇲🇹', Croatia: '🇭🇷', Serbia: '🇷🇸', Bulgaria: '🇧🇬', Slovakia: '🇸🇰',
+  Slovenia: '🇸🇮',
+};
+
+const FLAG_BY_LOWER_NAME = new Map(
+  Object.entries(COUNTRY_FLAGS).map(([name, flag]) => [name.toLowerCase(), flag])
+);
+
+/** Flag emoji for a country name, or '' when it isn't recognised — callers render `flag + name`
+ * so an unknown country degrades to just its name rather than showing a placeholder box. */
+export function flagForCountry(country: string): string {
+  if (!country) return '';
+  return FLAG_BY_LOWER_NAME.get(country.trim().toLowerCase()) || '';
+}

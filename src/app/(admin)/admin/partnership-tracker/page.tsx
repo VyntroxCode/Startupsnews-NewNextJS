@@ -15,7 +15,7 @@ import {
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
   type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
-import { COUNTRY_NAMES, citiesForCountry, countryForCity } from '@/modules/partnership-events/domain/country-city-data';
+import { COUNTRY_NAMES, citiesForCountry, countryForCity, flagForCountry } from '@/modules/partnership-events/domain/country-city-data';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey } from '@/modules/partnership-events/utils/partnership-events.utils';
 
@@ -1079,12 +1079,17 @@ export default function PartnershipTrackerPage() {
     setModalError('');
     // Auto-expand any platform that already has images, so editing an event doesn't hide its own data.
     setOpenCreativePlatforms(new Set(SOCIAL_CREATIVE_PLATFORMS.filter((p) => e.socialCreatives.some((c) => c.platform === p))));
-    setRegionOther(!!regionValue && !COUNTRY_NAMES.includes(regionValue));
+    // Both dropdowns keep whatever value the record already holds as a selectable option
+    // (buildRegionOptions / cityOptions append it), so opening an event never has to drop into
+    // free-text mode. It used to: a city like "Guangzhou" — real, but not in China's curated
+    // three — forced the field to a plain input whose only escape link *cleared the city*, so
+    // the dropdown was unusable on exactly the records that needed it. Free-text is now
+    // entered only by deliberately choosing "Others…".
+    setRegionOther(false);
     // A record with an already-live slug keeps it fixed (renaming the event shouldn't silently
     // break its existing URL); a not-yet-listed record still auto-follows Event Name edits.
     setSlugManuallyEdited(!!linkedEvent?.slug);
-    const cities = citiesForCountry(regionValue);
-    setCityOther(!!e.city && !!cities && !cities.includes(e.city));
+    setCityOther(false);
     const parsedPhone = parseContact(e.contact);
     setPhoneCode(parsedPhone.code);
     setPhoneCodeCustom(parsedPhone.codeCustom);
@@ -1353,6 +1358,15 @@ export default function PartnershipTrackerPage() {
 
   const regionOptions = buildRegionOptions(draft.region);
   const citiesForSelectedCountry = citiesForCountry(draft.region);
+  // Whatever city the record already holds stays selectable even when it isn't one of the
+  // curated ones for that country, so switching to another city is always a plain dropdown pick.
+  const cityOptions = (() => {
+    if (!citiesForSelectedCountry) return null;
+    const current = draft.city.trim();
+    return current && !citiesForSelectedCountry.includes(current)
+      ? [...citiesForSelectedCountry, current]
+      : citiesForSelectedCountry;
+  })();
   const effectivePhoneCode = phoneCode === 'other' ? (phoneCodeCustom.trim() || 'other') : phoneCode;
   const phoneRule = PHONE_RULES[effectivePhoneCode] || PHONE_RULES.other;
   // Draft = nothing but the name + the two core images need to be filled in yet. The moment
@@ -1834,7 +1848,9 @@ export default function PartnershipTrackerPage() {
                         value={draft.region}
                         onChange={(e) => setDraft({ ...draft, region: e.target.value })}
                       />
-                      <div className="pt-hint"><span className="pt-add-line" onClick={() => { setRegionOther(false); setCityOther(false); setDraft({ ...draft, region: '', city: '' }); }}>← Choose from list</span></div>
+                      {/* Returning to the dropdown keeps the value — it shows up as an option
+                          (buildRegionOptions adds it) instead of being thrown away. */}
+                      <div className="pt-hint"><span className="pt-add-line" onClick={() => { setRegionOther(false); setCityOther(false); }}>← Choose from list</span></div>
                     </>
                   ) : (
                     <>
@@ -1853,7 +1869,10 @@ export default function PartnershipTrackerPage() {
                         }}
                       >
                         <option value="">Select region/country</option>
-                        {regionOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+                        {regionOptions.map((r) => {
+                          const flag = flagForCountry(r);
+                          return <option key={r} value={r}>{flag ? `${flag} ${r}` : r}</option>;
+                        })}
                         <option value="__other__">Others…</option>
                       </select>
                       <div className="pt-hint">Not listed? Pick &quot;Others…&quot; and type it in.</div>
@@ -1862,11 +1881,11 @@ export default function PartnershipTrackerPage() {
                 </div>
                 <div className="pt-fg">
                   <label>City</label>
-                  {citiesForSelectedCountry ? (
+                  {cityOptions ? (
                     cityOther ? (
                       <>
                         <input placeholder="Enter city" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
-                        <div className="pt-hint"><span className="pt-add-line" onClick={() => { setCityOther(false); setDraft({ ...draft, city: '' }); }}>← Choose from list</span></div>
+                        <div className="pt-hint"><span className="pt-add-line" onClick={() => setCityOther(false)}>← Choose from list</span></div>
                       </>
                     ) : (
                       <select
@@ -1878,7 +1897,7 @@ export default function PartnershipTrackerPage() {
                         }}
                       >
                         <option value="">Select city</option>
-                        {citiesForSelectedCountry.map((c) => <option key={c} value={c}>{c}</option>)}
+                        {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
                         <option value="__other__">Others…</option>
                       </select>
                     )

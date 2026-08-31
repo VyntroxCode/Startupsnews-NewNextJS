@@ -3,6 +3,7 @@
 import { ImageUploadField } from "../ImageUploadField";
 import { SocialImagesSection } from "../SocialImagesSection";
 import { IMAGE_SPECS } from "../constants";
+import { Button } from "@/components/ui/Button";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
 
 export function ImagesStep({ ctrl }: { ctrl: SubmitEventFormController }) {
@@ -57,12 +58,12 @@ export function ImagesStep({ ctrl }: { ctrl: SubmitEventFormController }) {
         onChange={(socialImages) => ctrl.setField("socialImages", socialImages)}
       />
       <div className="wizard-nav">
-        <button type="button" className="btn-ghost" onClick={ctrl.goBack}>
+        <Button variant="ghost" onClick={ctrl.goBack}>
           Back
-        </button>
-        <button type="button" className="btn-primary" onClick={ctrl.goNext}>
+        </Button>
+        <Button variant="primary" onClick={ctrl.goNext}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

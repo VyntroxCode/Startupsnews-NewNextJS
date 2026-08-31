@@ -87,6 +87,14 @@ export default function DocumentsWidget({
   const [uploadingName, setUploadingName] = useState<string | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [error, setError] = useState('');
+  // Window state lives beside the checklist: `closed` is derivable from daysLeft, but whether a
+  // permission request is already in flight is only known server-side, and without it the UI
+  // would keep offering a second request that the API would reject.
+  const [pendingRequest, setPendingRequest] = useState(false);
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqReason, setReqReason] = useState('');
+  const [reqBusy, setReqBusy] = useState(false);
+  const [reqNote, setReqNote] = useState('');
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   async function load() {
@@ -102,8 +110,40 @@ export default function DocumentsWidget({
     }
   }
 
+  async function loadWindow() {
+    try {
+      const res = await fetch(`${apiBase}/window`, { headers: getHeaders() });
+      const json = await res.json();
+      if (json?.success) setPendingRequest(!!json.data?.pendingRequest);
+    } catch { /* non-fatal — the checklist itself still works */ }
+  }
+
+  async function submitAccessRequest() {
+    const reason = reqReason.trim();
+    if (!reason) { setReqNote('Please say why you need the window reopened.'); return; }
+    setReqBusy(true);
+    setReqNote('');
+    try {
+      const res = await fetch(`${apiBase}/window`, {
+        method: 'POST', headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'Could not send the request.');
+      setPendingRequest(true);
+      setReqOpen(false);
+      setReqReason('');
+      setReqNote('Request sent — HR will review it.');
+    } catch (err) {
+      setReqNote(err instanceof Error ? err.message : 'Could not send the request.');
+    } finally {
+      setReqBusy(false);
+    }
+  }
+
   useEffect(() => {
     load();
+    loadWindow();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBase]);
 
@@ -160,6 +200,9 @@ export default function DocumentsWidget({
   const pct = requiredCount ? Math.round((documents.filter((d) => d.status === 'pending' || d.status === 'approved').length / requiredCount) * 100) : null;
   const dl = data.daysLeft ?? null;
   const overdue = pct !== null && dl !== null && dl < 0 && pct < 100;
+  // Uploading is now genuinely blocked past the deadline (HrToolService.recordDocumentUpload),
+  // so the UI has to say so rather than offering an Upload button that will 409.
+  const windowClosed = !!data.documentsDeadline && dl !== null && dl < 0;
 
   return (
     <div style={cardStyle}>
@@ -169,6 +212,43 @@ export default function DocumentsWidget({
           <span style={{ fontSize: '0.85rem', fontWeight: 600, color: pct === 100 ? '#166534' : '#64748b' }}>{pct}% complete</span>
         )}
       </div>
+      {windowClosed && (
+        <div style={{ margin: '0.75rem 0', padding: '0.85rem 1rem', borderRadius: 10, background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e', fontSize: '0.875rem' }}>
+          <strong>Your upload window closed on {data.documentsDeadline}.</strong>{' '}
+          Uploading is disabled until HR reopens it.
+          {pendingRequest ? (
+            <div style={{ marginTop: '0.5rem', fontWeight: 600 }}>Your request is with HR — you&apos;ll be able to upload as soon as it&apos;s approved.</div>
+          ) : reqOpen ? (
+            <div style={{ marginTop: '0.6rem' }}>
+              <textarea
+                value={reqReason}
+                onChange={(e) => setReqReason(e.target.value)}
+                placeholder="Why do you need the window reopened?"
+                rows={3}
+                style={{ width: '100%', padding: '0.5rem 0.65rem', borderRadius: 8, border: '1px solid #fcd34d', fontSize: '0.85rem', fontFamily: 'inherit' }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: '0.5rem' }}>
+                <button type="button" onClick={submitAccessRequest} disabled={reqBusy}
+                  style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: 'none', background: '#b45309', color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: reqBusy ? 'not-allowed' : 'pointer' }}>
+                  {reqBusy ? 'Sending…' : 'Send request'}
+                </button>
+                <button type="button" onClick={() => { setReqOpen(false); setReqNote(''); }} disabled={reqBusy}
+                  style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: '1px solid #fcd34d', background: '#fff', color: '#92400e', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: '0.6rem' }}>
+              <button type="button" onClick={() => { setReqOpen(true); setReqNote(''); }}
+                style={{ padding: '0.4rem 0.9rem', borderRadius: 8, border: 'none', background: '#b45309', color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
+                Request permission to upload
+              </button>
+            </div>
+          )}
+          {reqNote && <div style={{ marginTop: '0.5rem', fontSize: '0.82rem' }}>{reqNote}</div>}
+        </div>
+      )}
       {pct !== null && (
         <div style={{ height: 8, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden', marginBottom: '0.6rem' }}>
           <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#6366f1', transition: 'width 0.3s' }} />

@@ -1296,7 +1296,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   justify-content: flex-start;
   gap: 5px;
   padding-top: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   font-size: 0.78rem;
   line-height: 1.4;
   color: #999;
@@ -1364,20 +1364,90 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 }
 
 .event-by-country-header {
-  padding-top: 12px;
-  padding-bottom: 24px;
+  padding-top: 2px;
+  padding-bottom: 16px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   margin-bottom: 8px;
   text-align: center;
+  /* Title stays optically centred on the page while the search box sits on the right: the two
+     1fr side columns are equal, so the `auto` middle column lands in the true centre. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.event-by-country-header-text {
+  min-width: 0;
 }
 
 .event-by-country-header .event-by-country-title {
   font-size: 1.85rem;
   font-weight: 800;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   color: #111;
   line-height: 1.25;
   letter-spacing: -0.02em;
+  /* Title slides in from the left, strapline from the right (below), so the two meet in the
+     middle. `both` holds the from-state through the delay — without it they'd flash at full
+     opacity for a frame before animating. */
+  position: relative;
+  padding-bottom: 14px;
+  animation: event-heading-in-left 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* Pink underline: grows out from the centre once the title has landed, then keeps a slow sheen
+   travelling across it. Two animations on one element — one drives width, the other
+   background-position, so they never fight over a property. */
+.event-by-country-header .event-by-country-title::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 4px;
+  width: 0;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #ff9dc0 0%, var(--brand, #e23a63) 35%, #ff5d95 65%, #ff9dc0 100%);
+  background-size: 250% 100%;
+  box-shadow: 0 2px 10px rgba(226, 58, 99, 0.35);
+  animation:
+    event-underline-grow 0.55s 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards,
+    event-underline-sheen 3s 1s linear infinite;
+}
+
+@keyframes event-heading-in-left {
+  from { opacity: 0; transform: translateX(-34px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes event-subtitle-in-right {
+  from { opacity: 0; transform: translateX(34px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes event-underline-grow {
+  from { width: 0; }
+  to   { width: 92px; }
+}
+
+@keyframes event-underline-sheen {
+  from { background-position: 250% 0; }
+  to   { background-position: -250% 0; }
+}
+
+/* Anyone whose OS asks for less motion gets the finished state, with no movement at all. */
+@media (prefers-reduced-motion: reduce) {
+  .event-by-country-header .event-by-country-title,
+  .event-by-country-header .event-by-country-subtitle {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .event-by-country-header .event-by-country-title::after {
+    animation: none;
+    width: 92px;
+  }
 }
 
 .event-by-country-subtitle {
@@ -1385,6 +1455,8 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   color: #666;
   margin: 0;
   line-height: 1.5;
+  /* Slightly behind the title so the pair reads as one movement, not a race. */
+  animation: event-subtitle-in-right 0.6s 0.12s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
 .event-by-country-header .event-by-country-title,
@@ -1404,11 +1476,11 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   position: relative;
   display: flex;
   align-items: center;
-  /* Right-aligned and compact: a secondary control that shouldn't compete with the page
-     heading or the carousels below it. `auto` on the LEFT margin is what pushes it right. */
+  /* Sits in the header's right-hand column, on the same row as the "Events" title. `auto` on
+     the LEFT margin pins it to the right edge of that column. */
   width: 100%;
-  max-width: 300px;
-  margin: 0 0 8px auto;
+  max-width: 260px;
+  margin: 0 0 0 auto;
 }
 
 .event-search-icon {
@@ -1464,10 +1536,19 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 
 /* On narrow screens the compact right-aligned box would be uncomfortably small to tap,
    so it goes back to full width there. */
-@media (max-width: 560px) {
+@media (max-width: 860px) {
+  .event-by-country-header {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  /* The balancing spacer only exists to centre the title in the 3-column layout — it would
+     just add an empty grid row once the header stacks. */
+  .event-by-country-header-side {
+    display: none;
+  }
   .event-search-bar {
     max-width: none;
-    margin: 0 0 8px;
+    margin: 0;
   }
 }
 
@@ -1480,11 +1561,11 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 }
 
 .event-by-country-section {
-  margin-bottom: 48px;
+  margin-bottom: 32px;
 }
 
 .event-by-country-section:first-child {
-  padding-top: 16px;
+  padding-top: 6px;
 }
 
 .event-by-country-section:last-child {
@@ -1494,13 +1575,13 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 .event-by-country-region {
   font-size: 2.1rem;
   font-weight: 700;
-  margin: 0 0 24px 0;
+  margin: 0 0 12px 0;
   color: #222;
   line-height: 1.25;
 }
 
 .event-by-country-city-group {
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .event-by-country-city-group:last-child {
@@ -5024,11 +5105,18 @@ footer.footer {
 }
 
 .event-country-carousel {
-  padding: 12px 0 24px;
+  padding: 4px 0 14px;
 }
 
+/* City heading: smaller than the country above it, and sitting closer to its own row of cards
+   so each city reads as one block rather than three loose bands. */
 .event-country-carousel .events-carousel-title {
-  font-size: 1.35rem;
+  font-size: 1.05rem;
+  padding-bottom: 6px;
+}
+
+.event-country-carousel .events-carousel-header {
+  margin-bottom: 10px;
 }
 
 .startupnews-event-card {

@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import HireEmployeeButton from './HireEmployeeButton';
 import EditCredentialModal from './EditCredentialModal';
 import AttendanceCalendar from './AttendanceCalendar';
 import { PANEL_ROLE_LABEL } from './CredentialFields';
-import { StatusBadge, addDays, computeCtcBreakdown, daysLeft, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
+import { StatusBadge, addDays, initialLeaveBalance, computeCtcBreakdown, daysLeft, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
 
 /** How many days a new hire has to submit their required-documents checklist, counted from doj. */
 const DOCUMENTS_WINDOW_DAYS = 5;
@@ -22,10 +22,36 @@ function fmtDoj(doj: string): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-/** True only for an employee who actually has a documents checklist and hasn't uploaded a
- * single item on it yet — not employees with no checklist at all (nothing to flag for them). */
-function allDocsMissing(e: HrEmployee): boolean {
-  return e.documents.length > 0 && e.documents.every((d) => d.status === 'not_uploaded');
+/** How far through their document checklist an employee is. `uploaded` counts anything that is
+ * no longer 'not_uploaded' — including items still awaiting HR review — because from the
+ * employee's side the file has been handed over. `rejected` is tracked separately: a rejected
+ * item was uploaded, but still needs re-uploading, so it must not read as complete. */
+function docProgress(e: HrEmployee): { total: number; uploaded: number; rejected: number } {
+  const total = e.documents.length;
+  return {
+    total,
+    uploaded: e.documents.filter((d) => d.status !== 'not_uploaded').length,
+    rejected: e.documents.filter((d) => d.status === 'rejected').length,
+  };
+}
+
+/** The Employee ID is black ONLY when the whole checklist is in and nothing was rejected.
+ * Anything short of that — a single missing item, a single rejection, or no checklist assigned
+ * at all — shows red. Previously this flagged only employees with NOTHING uploaded, so someone
+ * sitting at 4 of 5, or whose upload had been rejected, looked identical to someone fully done. */
+function documentsIncomplete(e: HrEmployee): boolean {
+  const { total, uploaded, rejected } = docProgress(e);
+  if (total === 0) return true;
+  return uploaded < total || rejected > 0;
+}
+
+/** Why a given employee is flagged — the remedy differs per case, so the tooltip has to say. */
+function documentsIssue(e: HrEmployee): string | undefined {
+  const { total, uploaded, rejected } = docProgress(e);
+  if (total === 0) return 'No document checklist assigned — nothing has been requested from this employee yet';
+  if (rejected > 0) return `${rejected} document${rejected === 1 ? '' : 's'} rejected — needs re-uploading (${uploaded}/${total} submitted)`;
+  if (uploaded < total) return `Only ${uploaded} of ${total} documents uploaded`;
+  return undefined;
 }
 
 function PageHead({ title, sub }: { title: string; sub: string }) {
@@ -101,7 +127,15 @@ export default function Directory() {
         !state.employees.some((e) => e.credentialId === c.id || e.name === c.name))
     : [], [state.employeeCredentials, state.employees, admin]);
 
+  // Defence in depth behind the ordering fix in HireEmployeeButton: a credential is attempted
+  // at most ONCE per session. Without this, any path that leaves a credential looking orphaned —
+  // a failed save, a race, a name mismatch — would have the effect below re-firing on every
+  // state change and minting a fresh Directory record each time.
+  const healedCredentialIds = useRef<Set<number>>(new Set());
+
   async function addOrphanToDirectory(c: HrEmployeeCredential) {
+    if (healedCredentialIds.current.has(c.id)) return;
+    healedCredentialIds.current.add(c.id);
     setAddingOrphanId(c.id);
     const doj = new Date(c.createdAt).toISOString().slice(0, 10);
     const documents = state.orgStructure.requiredDocuments.map((name) => ({ name, status: 'not_uploaded', url: null, uploadedAt: null, remarks: null }));
@@ -109,7 +143,7 @@ export default function Directory() {
       id: nextEmployeeId(state.employees), credentialId: c.id, name: c.name, email: c.email || '—', phone: null,
       designation: c.designation, team: state.teams[0]?.name || '', manager: null, status: 'active',
       doj, sysRole: 'Employee', ctc: 0,
-      leaveBalance: { Casual: 6, Sick: 6, Earned: 10 },
+      leaveBalance: initialLeaveBalance(state.rules),
       documents,
       documentsDeadline: documents.length ? addDays(doj, DOCUMENTS_WINDOW_DAYS) : null,
       kycDocuments: emptyKycDocuments(),
@@ -126,7 +160,9 @@ export default function Directory() {
   // until none remain.
   useEffect(() => {
     if (orphanCredentials.length === 0 || addingOrphanId !== null) return;
-    addOrphanToDirectory(orphanCredentials[0]);
+    const next = orphanCredentials.find((c) => !healedCredentialIds.current.has(c.id));
+    if (!next) return;
+    addOrphanToDirectory(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orphanCredentials, addingOrphanId]);
 
@@ -167,7 +203,7 @@ export default function Directory() {
     }
   }
   async function confirmProbation(e: HrEmployee) {
-    await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, status: 'active', leaveBalance: { Casual: 6, Sick: 6, Earned: 10 } } : x)));
+    await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, status: 'active', leaveBalance: initialLeaveBalance(state.rules) } : x)));
     logRuleChange(`Confirmed ${e.name} — moved from Probation to Active`);
     setProfileId(null);
   }
@@ -221,7 +257,7 @@ export default function Directory() {
       employees = [...employees, {
         id: newId, name, email: email || '—', phone: null, designation: designation || '—', team: team || state.teams[0]?.name || '',
         manager: manager || null, status: 'active', doj: resolvedDoj, sysRole: 'Employee', ctc: Number(ctc) || 0,
-        leaveBalance: { Casual: 6, Sick: 6, Earned: 10 },
+        leaveBalance: initialLeaveBalance(state.rules),
         documents: newDocuments,
         documentsDeadline: newDocuments.length ? addDays(resolvedDoj, DOCUMENTS_WINDOW_DAYS) : null,
         kycDocuments: emptyKycDocuments(),
@@ -304,25 +340,38 @@ export default function Directory() {
           </div>
         )}
       </div>
-      <div className="card"><div className="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Designation</th><th>Team</th><th>Date of Joining</th><th>Status</th><th></th></tr></thead>
+      <div className="card"><div className="table-scroll"><table><thead><tr><th>Employee ID</th><th>Name</th><th>Designation</th><th>Team</th><th>Date of Joining</th><th>Documents</th><th>Status</th><th></th></tr></thead>
         <tbody>
           {rows.map((e) => (
             <tr key={e.id} onClick={() => setProfileId(e.id)} style={{ cursor: 'pointer' }}>
               <td>
                 {credentialByEmployee(e)?.employeeCode ? (
-                  <code style={allDocsMissing(e) ? { color: 'var(--red)' } : undefined} title={allDocsMissing(e) ? 'No documents uploaded yet' : undefined}>
+                  <code style={documentsIncomplete(e) ? { color: 'var(--red)' } : undefined} title={documentsIssue(e)}>
                     {credentialByEmployee(e)?.employeeCode}
                   </code>
                 ) : <span className="meta">—</span>}
               </td>
               <td><div className="row-name"><div className="avatar">{initials(e.name)}</div><div><div>{e.name}</div><div className="meta">{e.email}</div></div></div></td>
-              <td>{e.designation}</td><td>{e.team}</td><td>{fmtDoj(e.doj)}</td><td><StatusBadge status={e.status} /></td>
+              <td>{e.designation}</td><td>{e.team}</td><td>{fmtDoj(e.doj)}</td>
+              <td>{(() => {
+                const { total, uploaded, rejected } = docProgress(e);
+                if (total === 0) return <span className="badge rejected" title="No checklist assigned">No checklist</span>;
+                return (
+                  <>
+                    <span className={`badge ${documentsIncomplete(e) ? 'rejected' : 'approved'}`}>{uploaded}/{total}</span>
+                    {rejected > 0 && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>{rejected} rejected</div>}
+                  </>
+                );
+              })()}</td>
+              <td><StatusBadge status={e.status} /></td>
               <td style={{ textAlign: 'right' }}><button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); setProfileId(e.id); }}>{admin ? 'View / Edit →' : 'View profile →'}</button></td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={7}><div className="empty">No employees match this search.</div></td></tr>}
+          {rows.length === 0 && <tr><td colSpan={8}><div className="empty">No employees match this search.</div></td></tr>}
         </tbody>
       </table></div></div>
+
+      {admin && <DocumentUploadRequests currentUser={state.currentUser?.name || 'HR'} />}
 
       {admin && docEmployees.length > 0 && (
         <section className="block" style={{ marginTop: 16 }}>
@@ -436,6 +485,10 @@ export default function Directory() {
 function DocumentTrackerCard({ employee, onApprove, onReject }: {
   employee: HrEmployee; onApprove: (idx: number) => void; onReject: (idx: number) => void;
 }) {
+  const { state } = useHrTool();
+  const employeeCode = (employee.credentialId != null
+    ? state.employeeCredentials.find((c) => c.id === employee.credentialId)
+    : state.employeeCredentials.find((c) => c.name === employee.name))?.employeeCode || '';
   const docs = employee.documents;
   const approvedCount = docs.filter((d) => d.status === 'approved').length;
   const indexed = docs.map((d, i) => ({ ...d, idx: i }));
@@ -452,7 +505,8 @@ function DocumentTrackerCard({ employee, onApprove, onReject }: {
           <div className="avatar">{initials(employee.name)}</div>
           <div>
             <div style={{ fontWeight: 600 }}>{employee.name}</div>
-            <div className="meta">{employee.designation} · {employee.id}{employee.documentsDeadline ? ` · window ${employee.doj} → ${employee.documentsDeadline}` : ''}</div>
+            {/* Employee ID here is the SNFYI credential code, never the internal E-### row key. */}
+            <div className="meta">{employee.designation}{employeeCode ? ` · ${employeeCode}` : ''}{employee.documentsDeadline ? ` · window ${employee.doj} → ${employee.documentsDeadline}` : ''}</div>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -551,6 +605,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
   // toggle editing at all (no such button below), so this has no effect for them — they still
   // get the plain read-only summary.
   const [editing, setEditing] = useState(admin);
+  const [viewerDoc, setViewerDoc] = useState<{ name: string; url: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     designation: employee.designation, team: employee.team, manager: employee.manager || '',
@@ -680,7 +735,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
         );
       })()}
       <div className="field"><label className="field-label">Leave balance</label>
-        {Object.entries(employee.leaveBalance).filter(([k]) => state.rules.leaveTypes[k] !== false).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>)}
+        {Object.entries(employee.leaveBalance).filter(([k]) => state.rules.leaveTypes[k]?.enabled !== false).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>)}
       </div>
       </Section>
 
@@ -722,7 +777,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
                           </td>
                           <td><StatusBadge status={d.status} /></td>
                           <td style={{ textAlign: 'right' }}>
-                            {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm" style={{ marginRight: 6 }}>View/Download</a>}
+                            {d.url && <button className="btn ghost sm" style={{ marginRight: 6 }} onClick={() => setViewerDoc({ name: d.name, url: d.url! })}>View</button>}
                             {d.status === 'pending' && (
                               <>
                                 <button className="btn approve sm" onClick={() => onApproveDoc(d.idx)}>Approve</button>{' '}
@@ -778,7 +833,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
                         </td>
                         <td><StatusBadge status={d.status} /></td>
                         <td style={{ textAlign: 'right' }}>
-                          {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm" style={{ marginRight: 6 }}>View/Download</a>}
+                          {d.url && <button className="btn ghost sm" style={{ marginRight: 6 }} onClick={() => setViewerDoc({ name: slot.label, url: d.url! })}>View</button>}
                           {d.status === 'pending' && (
                             <>
                               <button className="btn approve sm" onClick={() => onApproveKyc(slot.key)}>Approve</button>{' '}
@@ -819,7 +874,49 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
           )}
         </Section>
       )}
+      {viewerDoc && <DocumentViewer doc={viewerDoc} onClose={() => setViewerDoc(null)} />}
     </ModalShell>
+  );
+}
+
+/** Full-screen-ish preview for an uploaded document. Opens over the profile modal at 80% of the
+ * viewport, which is the point — the old plain "View/Download" link opened a new browser tab, so
+ * reviewing five documents meant five tabs and losing your place in the profile each time.
+ * PDFs and images render inline; anything else (a .docx, say) can't be previewed by the browser,
+ * so that case is told plainly rather than showing an empty frame. */
+function DocumentViewer({ doc, onClose }: { doc: { name: string; url: string }; onClose: () => void }) {
+  const ext = (doc.url.split('?')[0].split('.').pop() || '').toLowerCase();
+  const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
+  const isPdf = ext === 'pdf';
+  return (
+    <div className="doc-viewer-backdrop" onClick={onClose} role="presentation">
+      <div className="doc-viewer" onClick={(e) => e.stopPropagation()}>
+        <div className="doc-viewer-head">
+          <div className="doc-viewer-title">{doc.name}</div>
+          <div className="doc-viewer-actions">
+            <a className="btn sm" href={doc.url} target="_blank" rel="noopener noreferrer" download>⇩ Download</a>
+            <button className="btn sm" onClick={onClose} aria-label="Close document preview">✕ Close</button>
+          </div>
+        </div>
+        <div className="doc-viewer-body">
+          {isImage ? (
+            /* next/image can't serve arbitrary uploaded S3 URLs without whitelisting every
+               bucket host, and this is a one-off preview behind an admin modal, never an LCP
+               image. */
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={doc.url} alt={doc.name} className="doc-viewer-img" />
+          ) : isPdf ? (
+            <iframe src={doc.url} title={doc.name} className="doc-viewer-frame" />
+          ) : (
+            <div className="doc-viewer-fallback">
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>This file type can&apos;t be previewed in the browser.</div>
+              <div className="meta" style={{ marginBottom: 12 }}>Download it to open in the right application.</div>
+              <a className="btn primary sm" href={doc.url} target="_blank" rel="noopener noreferrer" download>⇩ Download {doc.name}</a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -904,5 +1001,83 @@ function CtcSplitModal({ employeeId, onClose }: { employeeId: string; onClose: (
         </div>
       )}
     </ModalShell>
+  );
+}
+
+/** HR queue for employees asking to have a closed document-upload window reopened. Fetched here
+ * rather than added to the bootstrap payload: it's admin-only, rarely non-empty, and keeping it
+ * out of the shared state means an approval can't invalidate everything else on the screen.
+ * Approving pushes that employee's documents_deadline forward server-side. */
+function DocumentUploadRequests({ currentUser }: { currentUser: string }) {
+  interface DocReq {
+    id: number; emp: string; reason: string; status: 'pending' | 'approved' | 'rejected';
+    requestedAt: string; decidedBy: string | null; remarks: string | null; grantedUntil: string | null;
+  }
+  const [rows, setRows] = useState<DocReq[]>([]);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [err, setErr] = useState('');
+
+  async function load() {
+    try {
+      const res = await fetch('/api/admin/hr-tool/document-upload-requests');
+      const json = await res.json();
+      if (json?.success) setRows(json.data || []);
+    } catch { /* leave the section empty rather than breaking the Directory */ }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function decide(id: number, decision: 'approved' | 'rejected') {
+    setBusyId(id);
+    setErr('');
+    try {
+      const res = await fetch('/api/admin/hr-tool/document-upload-requests', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, decision, decidedBy: currentUser }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'Could not record the decision.');
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not record the decision.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const pending = rows.filter((r) => r.status === 'pending');
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="block" style={{ marginTop: 16 }}>
+      <div className="block-head">
+        <h2>Document upload requests{pending.length > 0 ? ` (${pending.length} pending)` : ''}</h2>
+      </div>
+      {err && <div className="notice" style={{ background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)' }}>{err}</div>}
+      <div className="card"><div className="table-scroll wrap-table">
+        <table>
+          <thead><tr><th>Employee</th><th>Reason</th><th>Requested</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
+          <tbody>{rows.map((r) => (
+            <tr key={r.id}>
+              <td>{r.emp}</td>
+              <td>{r.reason}</td>
+              <td className="meta">{r.requestedAt.slice(0, 10)}</td>
+              <td>
+                <StatusBadge status={r.status} />
+                {r.status === 'approved' && r.grantedUntil && <div className="meta" style={{ marginTop: 2 }}>Window reopened to {r.grantedUntil}</div>}
+                {r.decidedBy && <div className="meta" style={{ marginTop: 2 }}>by {r.decidedBy}</div>}
+              </td>
+              <td style={{ textAlign: 'right' }}>
+                {r.status === 'pending' ? (
+                  <>
+                    <button className="btn approve sm" disabled={busyId === r.id} onClick={() => decide(r.id, 'approved')}>Approve</button>{' '}
+                    <button className="btn reject sm" disabled={busyId === r.id} onClick={() => decide(r.id, 'rejected')}>Reject</button>
+                  </>
+                ) : <span className="meta">—</span>}
+              </td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div></div>
+    </section>
   );
 }

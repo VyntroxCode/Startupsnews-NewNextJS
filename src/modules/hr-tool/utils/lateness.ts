@@ -51,31 +51,33 @@ function shiftBoundaries(rules: ShiftSettings): { shiftStart: number; graceEnd: 
   };
 }
 
+/**
+ * Arrival time now only answers "did they arrive on time?" — it no longer downgrades a day to
+ * Short Leave / Half Day / Absent. Those outcomes are decided solely by hours worked (see
+ * hoursWorkedBucket / combinedAttendanceBucket), which is the rule HR asked to run on.
+ * shortLeaveMaxHours and halfDayThresholdHours are consequently no longer read here.
+ */
 export function latenessBucket(inMinutes: number | null, rules: ShiftSettings): LatenessBucket | null {
   if (inMinutes == null) return null;
-  const { shiftStart, graceEnd, shortLeaveEnd, halfDayEnd } = shiftBoundaries(rules);
+  const { shiftStart, graceEnd } = shiftBoundaries(rules);
   if (inMinutes <= shiftStart) return 'on-time';
   if (inMinutes <= graceEnd) return 'grace';
-  if (inMinutes <= shortLeaveEnd) return 'short-leave';
-  if (inMinutes <= halfDayEnd) return 'half-day';
-  return 'absent';
+  // Past the grace period is simply "late". It costs nothing on its own; what the day is worth
+  // comes from how long they actually worked.
+  return 'grace';
 }
-
-const BUCKET_NAME: Record<LatenessBucket, string> = {
-  'on-time': 'On time', grace: 'Within grace period', 'short-leave': 'Short Leave', 'half-day': 'Half Day', absent: 'Absent',
-};
 
 export function latenessInfo(inMinutes: number | null, rules: ShiftSettings): LatenessInfo | null {
   if (inMinutes == null) return null;
-  const bucket = latenessBucket(inMinutes, rules);
-  if (bucket === 'on-time' || bucket === null) return { late: false, text: 'On time' };
-  const { shiftStart } = shiftBoundaries(rules);
+  const { shiftStart, graceEnd } = shiftBoundaries(rules);
+  if (inMinutes <= shiftStart) return { late: false, text: 'On time' };
   const diff = inMinutes - shiftStart;
   const hrs = Math.floor(diff / 60), mins = diff % 60;
   const parts: string[] = [];
   if (hrs > 0) parts.push(hrs + ' hr');
   parts.push(mins + ' min');
-  return { late: true, text: `${parts.join(' ')} late — ${BUCKET_NAME[bucket]}` };
+  const within = inMinutes <= graceEnd;
+  return { late: !within, text: `${parts.join(' ')} late${within ? ' — within grace period' : ''}` };
 }
 
 /** Four-way bucket for total hours worked (punch-out minus punch-in) that day — the secondary
@@ -93,9 +95,6 @@ export function hoursWorkedBucket(inMinutes: number | null, outMinutes: number |
   if (workedHours < Number(rules.fullDayMinWorkedHours || 0)) return 'short-leave';
   return 'full-time';
 }
-
-const TIME_OUTCOME_RANK: Record<LatenessBucket, number> = { 'on-time': 0, grace: 0, 'short-leave': 1, 'half-day': 2, absent: 3 };
-const HOURS_OUTCOME_RANK: Record<HoursWorkedBucket, number> = { 'full-time': 0, 'short-leave': 1, 'half-day': 2, absent: 3 };
 
 /** The bucket that actually decides a day's status/pay: the punch-in-time bucket (primary) vs.
  * the hours-worked bucket (secondary) — whichever is worse wins, so being on time doesn't save
@@ -115,10 +114,11 @@ export function combinedAttendanceBucket(
   const timeBucket = latenessBucket(inMinutes, rules);
   if (timeBucket === null) return null;
   const hoursBucket = hoursWorkedBucket(inMinutes, outMinutes, rules) ?? (treatMissingOutAsAbsent ? 'absent' : null);
-  // 'full-time' has rank 0, so it can never win the comparison below — the hours rule only ever
-  // downgrades. Narrowing it out here also makes hoursBucket assignable to LatenessBucket.
-  if (hoursBucket !== null && hoursBucket !== 'full-time' && HOURS_OUTCOME_RANK[hoursBucket] > TIME_OUTCOME_RANK[timeBucket]) {
-    return hoursBucket;
-  }
-  return timeBucket;
+  // Hours worked is now the ONLY thing that decides the day's outcome; it no longer merely
+  // "downgrades" a verdict that arrival time reached first. When it can't be computed (no
+  // punch-out yet on an in-progress day) the arrival label stands in, so a live day isn't
+  // judged before it has finished.
+  if (hoursBucket === null) return timeBucket;
+  // A full day's hours leaves only the arrival label (on-time vs within-grace) to report.
+  return hoursBucket === 'full-time' ? timeBucket : hoursBucket;
 }

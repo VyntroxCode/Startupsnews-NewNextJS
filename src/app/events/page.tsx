@@ -96,14 +96,14 @@ export default async function EventsPage() {
               Events
             </span>
           </nav>
-          <header className="event-by-country-header">
-            <h2 className="event-by-country-title">Events</h2>
-            <p className="event-by-country-subtitle">Discover startup and technology events by region.</p>
-          </header>
           <div className="mvp-main-blog-out left relative event-by-country-out">
             <div className="mvp-main-blog-in event-by-country-in">
               <div className="mvp-main-blog-body left relative event-by-country-body">
-                <EventsSearchBar allEvents={allEvents}>
+                <EventsSearchBar
+                  allEvents={allEvents}
+                  title="Events"
+                  subtitle="Discover startup and technology events by region."
+                >
                   {Object.entries(eventsByCountry).map(([country, cities]) => (
                     <section key={country} className="event-by-country-section">
                       <h2 className="event-by-country-region">{country}</h2>

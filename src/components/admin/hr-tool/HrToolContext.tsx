@@ -11,7 +11,7 @@ import type {
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrRules,
   HrAuditLogEntry, HrRole, HrView, HrCompanyProfile,
 } from './types';
-import { emptyKycDocuments } from './types';
+import { emptyKycDocuments, VIEW_ACCESS } from './types';
 
 interface HrState {
   role: HrRole | null;
@@ -38,12 +38,12 @@ interface HrState {
 }
 
 const DEFAULT_RULES: HrRules = {
-  workingDaysPattern: 'Mon–Sat, alternate Saturdays off', shiftStartTime: '10:00', shiftEndTime: '19:00',
+  workingDaysPattern: 'Mon–Sat working, Sundays and public holidays off', shiftStartTime: '10:00', shiftEndTime: '18:35',
   shiftGraceMinutes: 15, halfDayThresholdHours: 5.5, regularizationWindowDays: 5, regularizationOverride: false,
   regularizationMonthlyQuota: 5, shortLeaveMaxHours: 1, shortLeaveMonthlyQuota: 2,
   halfDayMinWorkedHours: 4.5, shortLeaveMinWorkedHours: 7.5, fullDayMinWorkedHours: 8.25,
   salaryPeriodFrom: 26, salaryPeriodTo: '25', ctcSplit: { basicPct: 50, hraPctOfBasic: 50, convenienceType: 'amount', convenienceValue: 0 },
-  leaveTypes: { Casual: true, Sick: true, Earned: true, Maternity: true, Paternity: true, 'Comp-off': true },
+  leaveTypes: { Casual: { enabled: true, perMonth: 1 }, Sick: { enabled: false, perMonth: 0 }, Earned: { enabled: false, perMonth: 0 }, Maternity: { enabled: false, perMonth: 0 }, Paternity: { enabled: false, perMonth: 0 }, 'Comp-off': { enabled: false, perMonth: 0 } },
   twoLevelApproval: { leave: true, attendance: true, expense: true },
   lateMarkPenalty: false, geoFencing: false, selfieCheckin: false, pfEsi: false,
   optionalHolidayChoice: true, assetChecklist: true,
@@ -57,13 +57,39 @@ const DEFAULT_COMPANY_PROFILE: HrCompanyProfile = {
 
 function initialState(): HrState {
   return {
-    role: null, view: 'dashboard', currentUser: null, teams: [],
+    role: null, view: readStoredView(), currentUser: null, teams: [],
     orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
     employees: [], employeeCredentials: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
     regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
     payrollRun: { month: payrollCycleToRunKey(DEFAULT_RULES), status: 'not_run' },
     templates: {}, rules: DEFAULT_RULES, auditLog: [], companyProfile: DEFAULT_COMPANY_PROFILE,
   };
+}
+
+/** Which section the admin is on, remembered across a remount of this provider.
+ *
+ * Without this, ANY remount of HrToolProvider — which resets state to `initialState` — silently
+ * dropped the admin back on the Dashboard, which is exactly the reported symptom: every edit in
+ * Rules & Org Structure, and creating an employee in Directory, bounced them out of the section
+ * they were working in. Persisting the view makes the section survive regardless of what caused
+ * the remount, rather than depending on having identified it.
+ *
+ * sessionStorage (not localStorage) so it lasts the tab, not forever, and is wrapped because it
+ * throws in private-mode Safari and is absent during SSR.
+ */
+const VIEW_STORAGE_KEY = 'hr-tool:view';
+
+function readStoredView(): HrView {
+  if (typeof window === 'undefined') return 'dashboard';
+  try {
+    const stored = window.sessionStorage.getItem(VIEW_STORAGE_KEY);
+    return stored && stored in VIEW_ACCESS ? (stored as HrView) : 'dashboard';
+  } catch { return 'dashboard'; }
+}
+
+function storeView(view: HrView): void {
+  if (typeof window === 'undefined') return;
+  try { window.sessionStorage.setItem(VIEW_STORAGE_KEY, view); } catch { /* private mode */ }
 }
 
 function warnSaveFailed(): void { alert("Could not save that change. It's only kept until you reload — please try again."); }
@@ -112,6 +138,7 @@ interface HrToolContextValue {
   deleteEmployee: (employee: HrEmployee) => Promise<void>;
   persistOnboarding: (v: HrOnboarding[]) => Promise<void>;
   persistRegularizations: (v: HrRegularization[]) => Promise<void>;
+  addRegularizationToState: (r: HrRegularization) => void;
   persistLeaveRequests: (v: HrLeaveRequest[]) => Promise<void>;
   persistExpenses: (v: HrExpense[]) => Promise<void>;
   persistTickets: (v: HrTicket[]) => Promise<void>;
@@ -174,14 +201,18 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  const setView = useCallback((v: HrView) => setState((s) => ({ ...s, view: v })), []);
-  const login = useCallback((emp: HrEmployee) => setState((s) => ({ ...s, currentUser: emp, role: emp.sysRole as HrRole, view: 'dashboard' })), []);
-  const logout = useCallback(() => setState((s) => ({ ...s, currentUser: resolveFounder(s.employees), role: 'Founder', view: 'dashboard' })), []);
+  const setView = useCallback((v: HrView) => { storeView(v); setState((s) => ({ ...s, view: v })); }, []);
+  // Switching user is a deliberate reset, so these two DO go back to the Dashboard — and must
+  // clear the remembered view, or the next mount would restore the previous user's section.
+  const login = useCallback((emp: HrEmployee) => { storeView('dashboard'); setState((s) => ({ ...s, currentUser: emp, role: emp.sysRole as HrRole, view: 'dashboard' })); }, []);
+  const logout = useCallback(() => { storeView('dashboard'); setState((s) => ({ ...s, currentUser: resolveFounder(s.employees), role: 'Founder', view: 'dashboard' })); }, []);
 
   const logRuleChange = useCallback((text: string) => {
+    // The POST used to live inside the setState updater. Updaters must stay pure — React can
+    // call them more than once for a single update, which sent the same audit entry twice.
     setState((s) => {
       const entry: HrAuditLogEntry = { ts: new Date().toISOString().slice(0, 10), who: `${s.currentUser ? s.currentUser.name : 'HR'} (${s.role})`, change: text };
-      hrApi.appendAuditLog(entry);
+      queueMicrotask(() => { hrApi.appendAuditLog(entry); });
       return { ...s, auditLog: [entry, ...s.auditLog] };
     });
   }, []);
@@ -230,6 +261,12 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   }, []);
   const persistOnboarding = useCallback(async (v: HrOnboarding[]) => { setState((s) => ({ ...s, onboarding: v })); try { await hrApi.saveOnboarding(v); } catch { warnSaveFailed(); } }, []);
   const persistRegularizations = useCallback(async (v: HrRegularization[]) => { setState((s) => ({ ...s, regularizations: v })); try { await hrApi.saveRegularizations(v); } catch { warnSaveFailed(); } }, []);
+  /** Client-state only. Used after the server has already inserted the row via the validated
+   * endpoint — calling persistRegularizations there would re-PUT the whole table and write it a
+   * second time. */
+  const addRegularizationToState = useCallback((r: HrRegularization) => {
+    setState((s) => ({ ...s, regularizations: [r, ...s.regularizations] }));
+  }, []);
   const persistLeaveRequests = useCallback(async (v: HrLeaveRequest[]) => { setState((s) => ({ ...s, leaveRequests: v })); try { await hrApi.saveLeaveRequests(v); } catch { warnSaveFailed(); } }, []);
   const persistExpenses = useCallback(async (v: HrExpense[]) => { setState((s) => ({ ...s, expenses: v })); try { await hrApi.saveExpenses(v); } catch { warnSaveFailed(); } }, []);
   const persistTickets = useCallback(async (v: HrTicket[]) => { setState((s) => ({ ...s, tickets: v })); try { await hrApi.saveTickets(v); } catch { warnSaveFailed(); } }, []);
@@ -298,13 +335,13 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   }, [state.currentUser, state.teams, logRuleChange]);
 
   const value = useMemo<HrToolContextValue>(() => ({
-    state, loading, loadError, setView, login, logout, logRuleChange,
+    state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
-    state, loading, loadError, setView, login, logout, logRuleChange,
+    state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,

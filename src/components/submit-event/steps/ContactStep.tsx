@@ -1,7 +1,8 @@
 "use client";
 
-import { FormField } from "../FormField";
-import { PhoneField } from "../PhoneField";
+import { FormField } from "@/components/ui/FormField";
+import { PhoneField } from "@/components/ui/PhoneField";
+import { Button } from "@/components/ui/Button";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
 import {
   validateEmail,
@@ -60,9 +61,9 @@ export function ContactStep({ ctrl }: { ctrl: SubmitEventFormController }) {
         />
       </div>
       <div className="wizard-nav no-back">
-        <button type="button" className="btn-primary" onClick={ctrl.goNext}>
+        <Button variant="primary" onClick={ctrl.goNext}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

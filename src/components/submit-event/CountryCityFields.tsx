@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CustomSelect } from "./CustomSelect";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 import { CITY_DATA, COUNTRIES, OTHER_CITY_VALUE, OTHER_COUNTRY_VALUE } from "./constants";
 
 interface CountryCityFieldsProps {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import { getAuthHeaders } from '@/lib/admin-auth';
-import { addDays, buildOfferLetterContent, mergeTemplate, nextEmployeeId, todayStr, type OfferLetterData } from '../utils';
+import { addDays, buildOfferLetterContent, initialLeaveBalance, mergeTemplate, nextEmployeeId, todayStr, type OfferLetterData } from '../utils';
 import { JoiningLetterView } from './JoiningLetterView';
 import { generateJoiningLetterPdf, generatePlainLetterPdf, triggerPdfDownload } from '../joiningLetterPdf';
 
@@ -194,7 +194,6 @@ export default function HireEmployeeButton({ label, className }: { label: string
       const data = await res.json();
       if (!res.ok || !data.success) { setError(data.error || 'Failed to create Employee ID'); return; }
       const credential = data.data as HrEmployeeCredential;
-      upsertEmployeeCredentialInState(credential);
 
       const ctc = Number(preview.ctc) || 0;
       const today = todayStr();
@@ -207,12 +206,17 @@ export default function HireEmployeeButton({ label, className }: { label: string
         id: nextEmployeeId(state.employees), credentialId: credential.id, name: fullNameOf(preview),
         email: preview.email.trim() || '—', phone: preview.contact.trim() || null, designation: preview.designation, team: preview.team, manager,
         status: 'active', doj: preview.doj, sysRole: 'Employee', ctc,
-        leaveBalance: { Casual: 6, Sick: 6, Earned: 10 }, documents,
+        leaveBalance: initialLeaveBalance(state.rules), documents,
         documentsDeadline: documents.length ? addDays(preview.doj, DOCUMENTS_WINDOW_DAYS) : null,
         kycDocuments: emptyKycDocuments(),
         signedDocs: [{ type: 'Offer Letter', content: offerMerged, signedDate: today }],
       };
       await persistEmployees([...state.employees, newEmployee]);
+      // Order matters: the credential is only published to client state AFTER its employee row
+      // exists. Doing it first (as this used to) left a render where the credential was in state
+      // but its employee was not — which is exactly what Directory's orphan-credential auto-heal
+      // looks for, so it raced in and created a SECOND employee record for the same credential.
+      upsertEmployeeCredentialInState(credential);
 
       const emailAddr = preview.email.trim();
       if (emailAddr) {

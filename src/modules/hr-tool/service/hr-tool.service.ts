@@ -2,9 +2,10 @@ import { HrToolRepository } from '../repository/hr-tool.repository';
 import {
   HrBootstrap, HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrPayrollEntry, HrRules, HrAuditLogEntry, HrCompanyProfile,
+  HrLeaveTypeConfig,
 } from '../domain/types';
-import { todayStr, nowTimeStr, nowMinutesSinceMidnight, monthRange, payrollPeriodRange, eachDateInRange, isSunday, addDaysUTC, daysUntil } from '../utils/time';
-import { latenessBucket } from '../utils/lateness';
+import { todayStr, nowTimeStr, nowMinutesSinceMidnight, nowMysqlDatetime, payrollPeriodRange, eachDateInRange, isSunday, addDaysUTC, daysUntil } from '../utils/time';
+import { latenessBucket, hoursWorkedBucket } from '../utils/lateness';
 import { HrKycDocuments, getKycSlotDef, mergeKycDocuments, validateKycField, computeKycProgress } from '../domain/kyc';
 
 export interface PayrollPreview {
@@ -35,9 +36,9 @@ export interface PunchResult {
 }
 
 const DEFAULT_RULES: HrRules = {
-  workingDaysPattern: 'Mon–Sat, alternate Saturdays off',
+  workingDaysPattern: 'Mon–Sat working, Sundays and public holidays off',
   shiftStartTime: '10:00',
-  shiftEndTime: '19:00',
+  shiftEndTime: '18:35',
   shiftGraceMinutes: 15,
   halfDayThresholdHours: 5.5,
   regularizationWindowDays: 5,
@@ -51,7 +52,7 @@ const DEFAULT_RULES: HrRules = {
   salaryPeriodFrom: 26,
   salaryPeriodTo: '25',
   ctcSplit: { basicPct: 50, hraPctOfBasic: 50, convenienceType: 'amount', convenienceValue: 0 },
-  leaveTypes: { Casual: true, Sick: true, Earned: true, Maternity: true, Paternity: true, 'Comp-off': true },
+  leaveTypes: { Casual: { enabled: true, perMonth: 1 }, Sick: { enabled: false, perMonth: 0 }, Earned: { enabled: false, perMonth: 0 }, Maternity: { enabled: false, perMonth: 0 }, Paternity: { enabled: false, perMonth: 0 }, 'Comp-off': { enabled: false, perMonth: 0 } },
   twoLevelApproval: { leave: true, attendance: true, expense: true },
   lateMarkPenalty: false,
   geoFencing: false,
@@ -138,7 +139,7 @@ export class HrToolService {
     regularizationWindowDays: number; regularizationMonthlyQuota: number;
     shortLeaveMaxHours: number; shortLeaveMonthlyQuota: number; halfDayThresholdHours: number;
     halfDayMinWorkedHours: number; shortLeaveMinWorkedHours: number; fullDayMinWorkedHours: number;
-    leaveTypes: Record<string, boolean>;
+    leaveTypes: Record<string, HrLeaveTypeConfig>;
   }> {
     const rules = await this.repository.findRules();
     const source = rules || DEFAULT_RULES;
@@ -153,8 +154,30 @@ export class HrToolService {
     };
   }
   getRegularizationsForEmployee(emp: string) { return this.repository.findRegularizationsForEmployee(emp); }
-  countRegularizationsForEmployeeInMonth(emp: string, fromDate: string, toDate: string) {
-    return this.repository.countRegularizationsForEmployeeInMonth(emp, fromDate, toDate);
+  countRegularizationsForEmployeeInRange(emp: string, fromDate: string, toDate: string) {
+    return this.repository.countRegularizationsForEmployeeInRange(emp, fromDate, toDate);
+  }
+
+  /** Start and end of the payroll cycle containing `today` (26 → 25 by default). The quota and
+   * the date limit both use this, so "N per cycle" means one thing in both places. */
+  private payrollCycleRangeFor(from: number, today: Date): { from: string; to: string } {
+    const start = this.payrollCycleStartFor(from, today);
+    const end = new Date(start + 'T00:00:00');
+    end.setMonth(end.getMonth() + 1);
+    end.setDate(end.getDate() - 1);
+    const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { from: start, to: iso(end) };
+  }
+
+  /** How much of their regularization allowance an employee has used in the CURRENT payroll
+   * cycle, with the quota alongside it. Single source of truth: the enforcement below and the
+   * figure shown on the employee's attendance page both come from here, so the number they see
+   * can't disagree with the number that blocks them. */
+  async getRegularizationUsage(emp: string): Promise<{ used: number; quota: number; from: string; to: string }> {
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    const { from, to } = this.payrollCycleRangeFor(rules.salaryPeriodFrom, new Date());
+    const used = await this.repository.countRegularizationsForEmployeeInRange(emp, from, to);
+    return { used, quota: rules.regularizationMonthlyQuota, from, to };
   }
 
   /**
@@ -168,9 +191,17 @@ export class HrToolService {
    * on-time (grace period or later — see latenessBucket); a punch-out is only eligible while
    * that day's punch-out is missing.
    */
+  /** First day of the payroll cycle that today falls in (cycle runs `from`→`from-1` of the next
+   * month, i.e. 26→25 by default). Used to bound how far back a regularization may reach. */
+  private payrollCycleStartFor(from: number, today: Date): string {
+    const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
+    const start = d >= from ? new Date(y, m, from) : new Date(y, m - 1, from);
+    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+  }
+
   async submitEmployeeRegularization(
     emp: string, date: string, reason: string, punchType: HrRegularization['punchType'], requestedTime: string
-  ): Promise<{ ok: boolean; error?: string }> {
+  ): Promise<{ ok: boolean; error?: string; created?: HrRegularization }> {
     const trimmedReason = (reason || '').trim();
     if (!trimmedReason) return { ok: false, error: 'A reason is required.' };
     const trimmedTime = (requestedTime || '').trim();
@@ -202,23 +233,35 @@ export class HrToolService {
       }
     }
 
-    const diffDays = Math.round((new Date(todayStr()).getTime() - new Date(date).getTime()) / 86400000);
-    if (!rules.regularizationOverride && diffDays > rules.regularizationWindowDays) {
-      return { ok: false, error: `This date is outside the ${rules.regularizationWindowDays}-day regularization window.` };
+    // The window is the CURRENT PAYROLL CYCLE, not a rolling day count: anything from the cycle
+    // start (the 26th) onward can still be corrected, and nothing before it can — payroll for
+    // those days has already been run, so reopening them would change a figure that's been paid.
+    const cycleStart = this.payrollCycleStartFor(rules.salaryPeriodFrom, new Date());
+    if (date < cycleStart) {
+      return { ok: false, error: `Only dates from the current payroll cycle (${cycleStart} onward) can be regularized — earlier cycles are already closed.` };
     }
 
-    const { from, to } = monthRange(date.slice(0, 7));
-    const used = await this.repository.countRegularizationsForEmployeeInMonth(emp, from, to);
+    // Counted over the PAYROLL CYCLE, not the calendar month. A cycle straddles two calendar
+    // months, so counting per month gave an employee a fresh allowance on the 1st while still
+    // inside the same cycle — a quota of 5 actually permitted 10 per cycle.
+    const { from, to } = this.payrollCycleRangeFor(rules.salaryPeriodFrom, new Date());
+    const used = await this.repository.countRegularizationsForEmployeeInRange(emp, from, to);
     if (used >= rules.regularizationMonthlyQuota) {
-      return { ok: false, error: `Monthly regularization limit reached (${rules.regularizationMonthlyQuota} per month).` };
+      return { ok: false, error: `Regularization limit reached (${rules.regularizationMonthlyQuota} for the ${from} → ${to} payroll cycle).` };
     }
 
-    const stage = rules.twoLevelApproval.attendance ? 'rm' : 'hr';
-    await this.repository.insertRegularization({
+    // Approval is a single step now: HR Head when the module's toggle is on, Founder/admin when
+    // it's off. The Reporting Manager stage is gone — it was the cause of requests stalling with
+    // nobody able to act whenever an employee had no manager assigned.
+    const stage = 'hr';
+    // Returned so callers that keep their own copy of the list (the HR tool's client state) can
+    // insert exactly the row that was written, instead of rebuilding an approximation of it.
+    const created: HrRegularization = {
       id: 'R-' + Date.now() + '-' + punchType, emp, date, punchType, reason: trimmedReason, requestedTime: trimmedTime,
       stage, status: 'pending', rmRemarks: '', hrRemarks: '',
-    });
-    return { ok: true };
+    };
+    await this.repository.insertRegularization(created);
+    return { ok: true, created };
   }
 
   getLeaveRequestsForEmployee(emp: string) { return this.repository.findLeaveRequestsForEmployee(emp); }
@@ -250,8 +293,10 @@ export class HrToolService {
     const overlapping = await this.repository.findOverlappingLeaveRequestForEmployee(emp, from, to);
     if (overlapping) return { ok: false, error: 'You already have a leave request covering part of this date range.' };
 
-    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
-    const stage = rules.twoLevelApproval.leave ? 'rm' : 'hr';
+    // Single approval step for every module now (see Rules → Approval chain): HR Head when the
+    // toggle is on, Founder/admin when it's off. Leaving this on 'rm' would strand leave requests
+    // exactly the way attendance regularizations were stranded. No rules lookup needed for it.
+    const stage = 'hr';
     await this.repository.insertLeaveRequest({
       id: 'L-' + Date.now(), emp, type: trimmedType, from, to, remarks: trimmedReason,
       stage, status: 'pending', rmRemarks: '', hrRemarks: '',
@@ -294,6 +339,12 @@ export class HrToolService {
     ]);
     if (!employee) return { ok: false, error: 'No Directory record is linked to this login yet.' };
     if (!requiredDocuments.includes(docName)) return { ok: false, error: 'Not a recognised document type.' };
+    // The upload window is now actually enforced — before this it was a label only, and an
+    // employee could upload indefinitely past it. Reopening is via a permission request, which
+    // on approval pushes documents_deadline forward (see decideDocumentUploadRequest).
+    if (employee.documentsDeadline && todayStr() > employee.documentsDeadline) {
+      return { ok: false, error: 'Your document upload window has closed. Request permission from HR to upload.' };
+    }
 
     const existing = employee.documents || [];
     const uploadedAt = todayStr();
@@ -304,6 +355,61 @@ export class HrToolService {
 
     await this.repository.updateEmployeeDocuments(employee.id, documents);
     return { ok: true };
+  }
+
+  /** How many days an approved permission request reopens the upload window for — the same
+   * length as the original window, so a reopened window behaves exactly like the first one. */
+  private static readonly DOCUMENT_REOPEN_DAYS = 5;
+
+  /** Employee-facing view of their own window: whether uploading is currently allowed, and
+   * whether they already have a request in flight (so the UI never offers to file a second). */
+  async getDocumentWindowForCredential(credentialId: number, name: string): Promise<{
+    linked: boolean; deadline?: string | null; closed?: boolean; pendingRequest?: boolean;
+  }> {
+    const employee = await this.repository.findEmployeeByCredential(credentialId, name);
+    if (!employee) return { linked: false };
+    const closed = !!employee.documentsDeadline && todayStr() > employee.documentsDeadline;
+    const pending = closed ? await this.repository.findPendingDocumentUploadRequest(employee.name) : null;
+    return { linked: true, deadline: employee.documentsDeadline || null, closed, pendingRequest: !!pending };
+  }
+
+  async requestDocumentUploadPermission(credentialId: number, name: string, reason: string): Promise<{ ok: boolean; error?: string }> {
+    const trimmed = (reason || '').trim();
+    if (!trimmed) return { ok: false, error: 'Please say why you need the window reopened.' };
+    const employee = await this.repository.findEmployeeByCredential(credentialId, name);
+    if (!employee) return { ok: false, error: 'No Directory record is linked to this login yet.' };
+    if (!employee.documentsDeadline || todayStr() <= employee.documentsDeadline) {
+      return { ok: false, error: 'Your upload window is still open — you can upload directly.' };
+    }
+    const existing = await this.repository.findPendingDocumentUploadRequest(employee.name);
+    if (existing) return { ok: false, error: 'You already have a request awaiting HR review.' };
+    await this.repository.insertDocumentUploadRequest(employee.name, trimmed);
+    return { ok: true };
+  }
+
+  listDocumentUploadRequests() { return this.repository.findDocumentUploadRequests(); }
+
+  /** Approving pushes the employee's documents_deadline out by DOCUMENT_REOPEN_DAYS from today,
+   * which is the whole mechanism — no extra per-employee flag to keep in sync with the window. */
+  async decideDocumentUploadRequest(
+    id: number, decision: 'approved' | 'rejected', decidedBy: string, remarks: string
+  ): Promise<{ ok: boolean; error?: string; grantedUntil?: string | null }> {
+    const req = await this.repository.findDocumentUploadRequestById(id);
+    if (!req) return { ok: false, error: 'Request not found.' };
+    if (req.status !== 'pending') return { ok: false, error: `This request was already ${req.status}.` };
+
+    let grantedUntil: string | null = null;
+    if (decision === 'approved') {
+      const employees = await this.repository.findEmployees();
+      const employee = employees.find((e) => e.name === req.emp);
+      if (!employee) return { ok: false, error: 'That employee no longer has a Directory record.' };
+      const d = new Date();
+      d.setDate(d.getDate() + HrToolService.DOCUMENT_REOPEN_DAYS);
+      grantedUntil = d.toISOString().slice(0, 10);
+      await this.repository.setDocumentsDeadline(employee.id, grantedUntil);
+    }
+    await this.repository.decideDocumentUploadRequest(id, decision, decidedBy, remarks, grantedUntil);
+    return { ok: true, grantedUntil };
   }
 
   /** The employee's own KYC & Personal Documents checklist (PAN, Aadhaar, bank, education,
@@ -388,6 +494,42 @@ export class HrToolService {
    * Admin, plain employees). The single place that enforces "can't punch twice today" so
    * every caller gets identical, real server-side enforcement instead of separate copies.
    */
+  /** "HH:MM" -> minutes since midnight. */
+  private static toMinutes(hhmm: string): number {
+    const [h, m] = (hhmm || '0:0').split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  /**
+   * The punch-out minute a day should be scored on. A real punch-out wins. Failing that, a day
+   * that has already ended with a punch-in but no punch-out is auto-closed at the shift end —
+   * the employee clearly worked, they just forgot to punch out, and treating that as "no
+   * punch-out" previously cost them the entire day's pay. Never applied to today, which is
+   * still in progress.
+   */
+  private autoClosedOutMinutes(
+    date: string, today: string, inMinutes: number | null, outMinutes: number | null, shiftEndTime: string
+  ): number | null {
+    if (outMinutes != null) return outMinutes;
+    if (inMinutes == null || date >= today) return null;
+    return HrToolService.toMinutes(shiftEndTime);
+  }
+
+  /**
+   * Credited working minutes for a day, clamped to the shift window. Time before the shift
+   * starts and after it ends is not paid time: arriving at 12:15 and punching out at 22:00 from
+   * home credits 12:15→18:35, not 9h45m. Raw punch spans were previously used as-is, so a very
+   * late arrival with a very late punch-out could look like a full day.
+   */
+  private creditedMinutes(inMinutes: number | null, outMinutes: number | null, shiftStart: string, shiftEnd: string): { inM: number | null; outM: number | null } {
+    if (inMinutes == null || outMinutes == null) return { inM: null, outM: null };
+    const start = HrToolService.toMinutes(shiftStart);
+    const end = HrToolService.toMinutes(shiftEnd);
+    const a = Math.max(inMinutes, start);
+    const b = Math.min(outMinutes, end);
+    return { inM: a, outM: Math.max(a, b) };
+  }
+
   async punchEmployee(emp: string, type: 'in' | 'out'): Promise<PunchResult> {
     const today = todayStr();
     const existing = await this.getPunchByEmp(emp);
@@ -407,6 +549,13 @@ export class HrToolService {
     } else {
       if (todaysPunch?.outTime) {
         return { ok: false, error: 'Already punched out today.' };
+      }
+      // Punch-out closes at the shift end. Past that the day is auto-closed at the shift end
+      // instead (see autoClosedOutMinutes), so a later punch would only ever overstate hours.
+      const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+      const shiftEnd = HrToolService.toMinutes(rules.shiftEndTime);
+      if (nowMinutesSinceMidnight() > shiftEnd) {
+        return { ok: false, error: `Punch-out closed at ${rules.shiftEndTime}. Your day is recorded up to ${rules.shiftEndTime} — raise a regularization if that is wrong.` };
       }
       if (!todaysPunch?.inTime) note = 'No punch-in recorded today.';
       await this.recordPunch({
@@ -484,13 +633,26 @@ export class HrToolService {
       this.repository.findHolidays(),
     ]);
     const holidaySet = new Set(holidays.map((h) => h.date));
+
+    // Short-leave leftovers carried in from the cycle before. Only a COMPLETED run stores
+    // entries, so a skipped cycle simply contributes 0 rather than reaching further back —
+    // predictable, and an employee can always see which cycle a carried leftover came from.
+    const [py, pm] = monthKey.split('-').map(Number);
+    const prevKey = pm === 1 ? `${py - 1}-12` : `${py}-${String(pm - 1).padStart(2, '0')}`;
+    const prevEntries = await this.repository.findPayrollEntriesForMonth(prevKey);
+    const carryInByEmp = new Map(prevEntries.map((e) => [e.emp, Number(e.shortLeaveCarryOut) || 0]));
     const employeeByName = new Map(employees.map((e) => [e.name, e]));
 
     const entries: HrPayrollEntry[] = [];
     const missingCtcEmployees: string[] = [];
     for (const r of roster) {
       const emp = employeeByName.get(r.name);
-      if (emp?.status === 'exited') continue;
+      // Exited employees were skipped outright, so anyone who worked part of a cycle and then
+      // left got NO payslip at all — the mirror of the mid-cycle joiner bug. They are now
+      // skipped only if they have no attendance in this cycle, i.e. someone who left long ago
+      // still doesn't clutter every future run, but a mid-cycle leaver is paid for the days
+      // they actually worked (days after they left have no punches and fall into LOP).
+      const isExited = emp?.status === 'exited';
       const ctc = emp?.ctc ?? 0;
       const doj = emp?.doj || r.doj;
 
@@ -505,6 +667,7 @@ export class HrToolService {
         this.repository.findAttendanceForEmployeeInRange(r.name, clippedFrom, to),
         this.repository.findLeaveRequestsForEmployeeInRange(r.name, clippedFrom, to),
       ]);
+      if (isExited && attendance.length === 0) continue;
       const attendanceByDate = new Map(attendance.map((a) => [a.date, a]));
 
       const approvedLeaveDates = new Set<string>();
@@ -524,6 +687,15 @@ export class HrToolService {
       // never judged, so a live preview of an open cycle doesn't inflate LOP for days that
       // simply haven't occurred; always 0 once the cycle has fully ended.
       let weekOffDays = 0, presentDays = 0, leaveDays = 0, futureDays = 0;
+      // Day-level outcomes now drive pay, not just "did both punches exist". workedValue is the
+      // paid worth of the days actually worked: a full or short-leave day is worth 1, a half day
+      // 0.5, an absent day 0.
+      let shortLeaveDays = 0, halfDayDays = 0, workedValue = 0;
+      // Days of the cycle before the employee joined (or after a leaver's last punch). They are
+      // counted as absent so the payslip reconciles — previously the loop simply never visited
+      // them, so a 15th-of-month joiner showed "Total Days 31" above columns summing to 11 with
+      // nothing explaining the other 20.
+      let notEmployedDays = 0;
       // The "Total Days" COLUMN is the full calendar cycle length (e.g. 31/30/28-29) regardless
       // of date of joining — a plain "how many days are in this month's cycle" figure. The pay
       // formula below still needs the DOJ-clipped day count (employedDays) so a mid-cycle joiner
@@ -531,38 +703,101 @@ export class HrToolService {
       // deliberately different now, where they used to be the same (DOJ-clipped) value.
       const totalDaysInCycle = eachDateInRange(from, to).length;
       const employedDays = eachDateInRange(clippedFrom, to).length;
-      for (const date of eachDateInRange(clippedFrom, to)) {
+      // Walk the WHOLE cycle, not just the employed part, so every day of the period lands in
+      // exactly one bucket. Note the order: pre-employment is tested before the week-off test, so
+      // Sundays before someone joined are NOT credited as paid week-offs.
+      for (const date of eachDateInRange(from, to)) {
+        if (date < clippedFrom) { notEmployedDays++; continue; }
         if (isSunday(date) || holidaySet.has(date)) { weekOffDays++; continue; }
         if (date > evalTo) { futureDays++; continue; }
         const att = attendanceByDate.get(date);
-        const hasFullPunch = !!att?.inTime && att.inTime !== '—' && !!att?.outTime && att.outTime !== '—';
-        if (hasFullPunch) presentDays++;
-        else if (approvedLeaveDates.has(date)) leaveDays++;
-        // else: falls through, accounted for in the lopDays residual below.
+        // A punched-in day that ended without a punch-out is auto-closed at the shift end rather
+        // than treated as absent — forgetting to punch out used to cost a whole day's pay.
+        const effectiveOut = this.autoClosedOutMinutes(date, today, att?.inMinutes ?? null, att?.outMinutes ?? null, rules.shiftEndTime);
+        const { inM, outM } = this.creditedMinutes(att?.inMinutes ?? null, effectiveOut, rules.shiftStartTime, rules.shiftEndTime);
+        const bucket = hoursWorkedBucket(inM, outM, rules);
+        if (bucket === null) {
+          // Never punched in — approved leave covers the day, otherwise it is loss of pay.
+          if (approvedLeaveDates.has(date)) leaveDays++;
+          continue;
+        }
+        if (bucket === 'absent') continue; // came in but worked too little to count at all
+        if (bucket === 'half-day') { halfDayDays++; workedValue += 0.5; }
+        else if (bucket === 'short-leave') { shortLeaveDays++; workedValue += 1; }
+        else workedValue += 1;
       }
-      const workingDays = employedDays - weekOffDays;
+      // Working days across the whole cycle, so present + absent reconciles against it.
+      const workingDays = totalDaysInCycle - weekOffDays;
 
       // LOP Days = Employed Days − Present Days − Week Off − Leave Days (futureDays subtracted
       // too, purely so an open cycle's not-yet-happened days don't get counted as loss-of-pay;
       // it's always 0 once the cycle has ended, at which point this is exactly that formula).
       // Absent Days is the same whole-day count, shown as its own column for "did they come in"
       // status separately from the pay-impact number.
-      const lopDays = employedDays - presentDays - weekOffDays - leaveDays - futureDays;
+      // Paid leave is capped at the configured allowance (sum of perMonth across enabled leave
+      // types — Casual 1/month by default). Approved leave beyond that is still granted time off,
+      // but it is unpaid: it falls through into LOP below. Previously every approved day was paid
+      // regardless of balance, so the allowance under Rules → Leave types had no effect on pay.
+      const leaveAllowance = Object.values(rules.leaveTypes)
+        .filter((c) => c.enabled)
+        .reduce((n, c) => n + (Number(c.perMonth) || 0), 0);
+      const paidLeaveDays = Math.min(leaveDays, leaveAllowance);
+
+      // Every 3rd Short Leave costs half a day's pay, counting last cycle's leftover alongside
+      // this cycle's. A leftover only survives when a conversion actually happened: fewer than
+      // three in total is simply forgiven and resets to zero, so 2 one cycle and 2 the next cost
+      // nothing, while 4 costs half a day and carries 1 forward. 6 → a full day (two halves),
+      // 7 → a full day plus 1 carried.
+      const carryInShortLeave = carryInByEmp.get(r.name) || 0;
+      const totalShortLeave = carryInShortLeave + shortLeaveDays;
+      const shortLeaveHalfDays = totalShortLeave >= 3 ? Math.floor(totalShortLeave / 3) : 0;
+      const shortLeaveCarryOut = totalShortLeave >= 3 ? totalShortLeave % 3 : 0;
+      const paidWorkedValue = workedValue - shortLeaveHalfDays * 0.5;
+      // Present Days is reported as the PAID WORTH of the days worked, not a headcount of days
+      // attended. A half day contributed 1 to the old headcount but only 0.5 to pay, so the
+      // payslip failed to add up — a real run showed present 2 + weekOff 3 + absent 26.5 = 31.5
+      // against totalDays 31. Reporting the paid worth makes the row reconcile exactly, and
+      // halfDayDays / shortLeaveDays still show how many days were docked and why.
+      presentDays = Math.round(paidWorkedValue * 100) / 100;
+
+      // Paid days = the worth of days actually worked + week-offs + paid leave (+ not-yet-arrived
+      // days, so an open cycle's preview isn't inflated with LOP). Everything else is LOP, and it
+      // can now be fractional — a half day is half a day of loss, not a whole one.
+      // Only days actually worked, week-offs during employment, and paid leave are paid for.
+      // Everything else in the cycle — real absence AND the not-employed days above — is LOP.
+      const paidDays = paidWorkedValue + weekOffDays + paidLeaveDays + futureDays;
+      const lopDays = Math.round((totalDaysInCycle - paidDays) * 100) / 100;
       const absentDays = lopDays;
 
       // actual days = employed days − LOP days; paying days = actual days ÷ employed days;
       // Gross = paying days × monthly salary (the attendance-adjusted take-home before TDS).
-      const monthlySalary = Math.round(ctc / 12);
-      const actualDays = employedDays - lopDays;
-      const payingDays = employedDays > 0 ? actualDays / employedDays : 0;
+      // NOT pre-rounded. Rounding the monthly figure and then rounding again after applying the
+      // attendance ratio rounded twice against the same number, so the error compounded instead
+      // of cancelling — on a ₹35,000 CTC a full month came out ₹1 above a straight ctc/12, and
+      // part-months drifted further. Only the final gross is rounded now.
+      const monthlySalary = ctc / 12;
+      const actualDays = paidDays;
+      void employedDays; void notEmployedDays; // retained for clarity of the buckets above
+      // Divided by the FULL cycle length, not by the days they happened to be employed. Dividing
+      // by employedDays paid a mid-cycle joiner a WHOLE month: someone joining on the 20th of a
+      // 26→25 cycle has employedDays = 6, and if present for all six the ratio was 6/6 = 1.0, so
+      // monthlyGross came out at 100% of salary for six days of work. Against the full cycle the
+      // same person earns 6/31 of a month — i.e. the days before they joined are unpaid, exactly
+      // as if absent. Nothing changes for anyone employed the whole cycle, where the two
+      // denominators are equal by definition.
+      const payingDays = totalDaysInCycle > 0 ? actualDays / totalDaysInCycle : 0;
       const monthlyGross = Math.round(payingDays * monthlySalary);
       // TDS is entered by the admin per employee per run (see runPayroll's tdsByEmp) — not a
       // formula. Defaults to 0 (or whatever was frozen last time this month was run).
       const tds = tdsByEmp?.[r.name] ?? 0;
-      const netPay = Math.round(monthlyGross - tds);
+      // Floored at zero: TDS is typed in by hand, and a mistyped figure larger than the gross
+      // would otherwise produce a negative payslip.
+      const netPay = Math.max(0, Math.round(monthlyGross - tds));
       entries.push({
-        emp: r.name, totalDays: totalDaysInCycle, weekOffDays, workingDays, presentDays, leaveDays, absentDays,
-        shortLeaveDays: 0, shortLeaveCarryOut: 0, halfDayDays: 0, lopDays, monthlyGross, tds, netPay,
+        // leaveDays reports PAID leave, so the columns still reconcile:
+        // employed = present + weekOff + paidLeave + LOP. Unpaid leave is inside lopDays.
+        emp: r.name, totalDays: totalDaysInCycle, weekOffDays, workingDays, presentDays, leaveDays: paidLeaveDays, absentDays,
+        shortLeaveDays, shortLeaveCarryOut, halfDayDays, lopDays, monthlyGross, tds, netPay,
       });
     }
 
@@ -587,7 +822,7 @@ export class HrToolService {
       return { ok: false, error: `CTC is not set for: ${preview.missingCtcEmployees.join(', ')}. Set their Annual CTC in Directory before running payroll.` };
     }
     await Promise.all(preview.entries.map((e) => this.repository.upsertPayrollEntry(monthKey, e)));
-    await this.repository.upsertPayrollRun({ month: monthKey, status: 'run', runAt: new Date().toISOString(), runBy: actor || null });
+    await this.repository.upsertPayrollRun({ month: monthKey, status: 'run', runAt: nowMysqlDatetime(), runBy: actor || null });
     return { ok: true, entries: preview.entries };
   }
 

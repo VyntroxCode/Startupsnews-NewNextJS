@@ -14,14 +14,13 @@ import Posh from './views/Posh';
 import Helpdesk from './views/Helpdesk';
 import Company from './views/Company';
 import Rules from './views/Rules';
-import Documents from './views/Documents';
 import { isAdmin, rmOf, scopedApprovals } from './utils';
 import { VIEW_ACCESS, type HrView } from './types';
 
 const VIEWS: Record<HrView, () => React.JSX.Element> = {
   dashboard: Dashboard, directory: Directory, offboarding: Offboarding,
   attendance: Attendance, leave: Leave, payroll: Payroll, expenses: Expenses,
-  compliance: Compliance, posh: Posh, helpdesk: Helpdesk, company: Company, rules: Rules, documents: Documents,
+  compliance: Compliance, posh: Posh, helpdesk: Helpdesk, company: Company, rules: Rules,
 };
 
 interface NavItem { view: HrView; label: string; icon: string; }
@@ -45,7 +44,6 @@ const NAV_GROUPS: NavGroup[] = [
     { view: 'compliance', label: 'Calendar & Reminders', icon: '▤' },
     { view: 'posh', label: 'POSH Committee', icon: '✨' },
   ] },
-  { label: 'Me', items: [{ view: 'documents', label: 'My Documents', icon: '📄' }] },
   { label: 'Org', items: [
     { view: 'helpdesk', label: 'Helpdesk', icon: '◈' },
     { view: 'company', label: 'Company Profile', icon: '◆' },
@@ -58,24 +56,18 @@ function pendingCountFor(view: HrView, state: ReturnType<typeof useHrTool>['stat
   const role = state.role, me = state.currentUser;
   if (view === 'attendance') {
     return scopedApprovals(state.regularizations, role, me.name, state.employees).filter((r) => r.status === 'pending' &&
-      ((role === 'Reporting Manager' && r.stage === 'rm' && rmOf(state.employees, r.emp) === me.name) || (isAdmin(role) && r.stage === 'hr'))).length;
+      ((role === 'Reporting Manager' && r.stage === 'rm' && rmOf(state.employees, r.emp) === me.name) || isAdmin(role))).length;
   }
   if (view === 'leave') {
     return scopedApprovals(state.leaveRequests, role, me.name, state.employees).filter((l) => l.status === 'pending' &&
-      ((role === 'Reporting Manager' && l.stage === 'rm' && rmOf(state.employees, l.emp) === me.name) || (isAdmin(role) && l.stage === 'hr'))).length;
+      ((role === 'Reporting Manager' && l.stage === 'rm' && rmOf(state.employees, l.emp) === me.name) || isAdmin(role))).length;
   }
   if (view === 'expenses') {
     return scopedApprovals(state.expenses, role, me.name, state.employees).filter((x) => x.status === 'pending' &&
-      ((role === 'Reporting Manager' && x.stage === 'rm' && rmOf(state.employees, x.emp) === me.name) || (isAdmin(role) && x.stage === 'hr'))).length;
+      ((role === 'Reporting Manager' && x.stage === 'rm' && rmOf(state.employees, x.emp) === me.name) || isAdmin(role))).length;
   }
   if (view === 'directory' && isAdmin(role)) {
     return state.employees.reduce((n, e) => n + e.documents.filter((d) => d.status === 'pending').length, 0);
-  }
-  if (view === 'documents' && role === 'Employee') {
-    const rejected = (me.documents || []).some((d) => d.status === 'rejected');
-    const ob = me.status === 'onboarding' ? state.onboarding.find((o) => o.employeeId === me.id) : null;
-    const needsSign = !!ob && ob.agreementStage === 'pending_employee_signature';
-    return rejected || needsSign ? 1 : 0;
   }
   return 0;
 }
@@ -200,7 +192,8 @@ function HrToolStyles() {
       .hr-tool-app .grid-2 { grid-template-columns: 1fr 1fr; }
       @media(max-width:900px) { .hr-tool-app .grid-4, .hr-tool-app .grid-3, .hr-tool-app .grid-2 { grid-template-columns: 1fr; } }
       .hr-tool-app .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; }
-      .hr-tool-app .stat-num { font-size: 28px; font-weight: 700; margin-top: 6px; }
+      .hr-tool-app .stat-num { font-size: 28px; font-weight: 700; line-height: 1.2; margin-top: 6px; }
+      .hr-tool-app .stat-num.stat-num-text { font-size: 19px; line-height: 1.25; }
       .hr-tool-app .stat-note { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
       .hr-tool-app .card.tone-good { background: var(--green-soft); border-color: var(--green); }
       .hr-tool-app .card.tone-good .stat-note { color: var(--green); font-weight: 600; }
@@ -327,17 +320,43 @@ function HrToolStyles() {
       .hr-tool-app .cal-stat.regapproved { background: #EDE9FE; border-color: #DDD6FE; color: #5B21B6; }
       @media (max-width: 560px) { .hr-tool-app .cal-stats { grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); } }
 
-      .hr-tool-app .rule-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); gap: 16px; flex-wrap: wrap; }
+      .hr-tool-app .rule-row { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); gap: 6px 24px; }
       .hr-tool-app .rule-row:last-child { border-bottom: none; }
       .hr-tool-app .rule-name { font-weight: 600; font-size: 13px; }
-      .hr-tool-app .rule-desc { font-size: 11.5px; color: var(--muted); margin-top: 2px; max-width: 480px; }
+      .hr-tool-app .rule-desc { font-size: 11.5px; color: var(--muted); margin-top: 3px; max-width: 560px; line-height: 1.45; }
+      /* Second grid cell, whatever it is (input group or bare toggle), sits right-aligned in a
+         column of its own so controls form a single vertical line. */
+      .hr-tool-app .rule-row > *:nth-child(2) { justify-self: end; }
+      .hr-tool-app .rule-inputs { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: nowrap; white-space: nowrap; font-size: 12.5px; color: var(--muted); width: 100%; }
+      .hr-tool-app .rule-inputs input, .hr-tool-app .rule-inputs select { width: auto; }
+      @media (max-width: 760px) {
+        .hr-tool-app .rule-row { grid-template-columns: minmax(0, 1fr); }
+        .hr-tool-app .rule-row > *:nth-child(2) { justify-self: start; }
+        .hr-tool-app .rule-inputs { justify-content: flex-start; }
+      }
+      /* Document preview — sits ABOVE the profile modal (z-index 1000), hence 1100. */
+      .hr-tool-app .doc-viewer-backdrop { position: fixed; inset: 0; z-index: 1100; background: rgba(15,23,42,0.62); display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; }
+      .hr-tool-app .doc-viewer { width: 80vw; height: 80vh; background: var(--panel); border-radius: 12px; box-shadow: 0 24px 64px rgba(15,23,42,0.35); display: flex; flex-direction: column; overflow: hidden; }
+      .hr-tool-app .doc-viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+      .hr-tool-app .doc-viewer-title { font-size: 14px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .hr-tool-app .doc-viewer-actions { display: flex; gap: 8px; flex-shrink: 0; }
+      .hr-tool-app .doc-viewer-actions .btn { text-decoration: none; display: inline-flex; align-items: center; }
+      /* Chequerboard so a transparent PNG or a white scan still reads as a document on a page. */
+      .hr-tool-app .doc-viewer-body { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 14px; background:
+        repeating-conic-gradient(#F1F5F9 0% 25%, #E2E8F0 0% 50%) 50% / 22px 22px; }
+      .hr-tool-app .doc-viewer-img { max-width: 100%; max-height: 100%; object-fit: contain; background: #fff; box-shadow: 0 2px 12px rgba(15,23,42,0.18); }
+      .hr-tool-app .doc-viewer-frame { width: 100%; height: 100%; border: none; background: #fff; }
+      .hr-tool-app .doc-viewer-fallback { text-align: center; background: var(--panel); padding: 28px 32px; border-radius: 10px; border: 1px solid var(--line); }
+      @media (max-width: 700px) { .hr-tool-app .doc-viewer { width: 96vw; height: 88vh; } }
+
+      .hr-tool-app .rules-savebar { position: sticky; bottom: 12px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 22px 0; padding: 14px 18px; border: 1px solid var(--amber); border-radius: var(--radius); background: var(--amber-soft); box-shadow: 0 6px 20px rgba(15,23,42,0.12); }
+      .hr-tool-app .rules-savebar .rule-desc { color: #92400E; }
       .hr-tool-app .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
       .hr-tool-app .toggle-switch input { opacity: 0; width: 0; height: 0; }
       .hr-tool-app .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #CBD5E1; border-radius: 22px; transition: .15s; }
       .hr-tool-app .toggle-slider:before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
       .hr-tool-app .toggle-switch input:checked + .toggle-slider { background: var(--forest); }
       .hr-tool-app .toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
-      .hr-tool-app .rule-inputs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .hr-tool-app .mini-input { width: 70px; padding: 6px 8px; }
       .hr-tool-app .chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
       .hr-tool-app .chip { display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid var(--line); padding: 5px 6px 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }

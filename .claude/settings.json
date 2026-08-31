@@ -327,7 +327,8 @@
       "Bash(/home/ubuntu/.npm-global/bin/claude -p 'Reply with exactly: OK' --dangerously-skip-permissions)",
       "Bash(awk 'NR==1148' /home/ubuntu/zox-nextjs/agent.md)",
       "Bash(chmod +x /home/ubuntu/zox-nextjs/.git/hooks/post-commit)",
-      "Bash(bash -n /home/ubuntu/zox-nextjs/.git/hooks/post-commit)"
+      "Bash(bash -n /home/ubuntu/zox-nextjs/.git/hooks/post-commit)",
+      "Bash(git add *)"
     ],
     "additionalDirectories": [
       "/home/tech/Startupsnews-NewNextJS-main/src",

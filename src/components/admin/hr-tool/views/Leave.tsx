@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
-import { ApprovalBadge, applyApprovalDecision, rmOf, scopedApprovals, todayStr } from '../utils';
+import { ApprovalBadge, applyApprovalDecision, scopedApprovals, todayStr } from '../utils';
 
 export default function Leave() {
   const { state, persistLeaveRequests } = useHrTool();
   const lockedToSelf = state.role === 'Employee' || state.role === 'Reporting Manager';
-  const enabledTypes = Object.entries(state.rules.leaveTypes).filter(([, on]) => on).map(([k]) => k);
+  const enabledTypes = Object.entries(state.rules.leaveTypes).filter(([, cfg]) => cfg.enabled).map(([k]) => k);
 
   const [applyOpen, setApplyOpen] = useState(false);
   const [empName, setEmpName] = useState('');
@@ -34,7 +34,10 @@ export default function Leave() {
     const finalType = type === '__other__' ? typeOther.trim() : type;
     if (!finalType) { alert('Please specify the leave type.'); return; }
     const targetEmp = lockedToSelf ? state.currentUser!.name : empName;
-    const stage = state.rules.twoLevelApproval.leave && rmOf(state.employees, targetEmp) ? 'rm' : 'hr';
+    // Single approval step for every module now (see Rules → Approval chain): HR Head when the
+    // toggle is on, Founder/admin when it's off. Leaving these on 'rm' would strand leave and
+    // expense requests exactly the way attendance regularizations were stranded.
+    const stage = 'hr';
     await persistLeaveRequests([{
       id: 'L-' + Date.now(), emp: targetEmp, type: finalType, from: from || todayStr(), to: to || from || todayStr(),
       remarks, stage, status: 'pending', rmRemarks: '', hrRemarks: '',

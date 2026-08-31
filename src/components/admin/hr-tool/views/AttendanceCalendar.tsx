@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
+import { getAuthHeaders } from '@/lib/admin-auth';
 import { applyApprovalDecision, ApprovalBadge, attendanceKey, isAdmin } from '../utils';
 import { isSunday } from '@/modules/hr-tool/utils/time';
 
@@ -159,7 +160,7 @@ function CalStat({ label, value, sub, tone }: { label: string; value: number; su
 }
 
 function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string; dateStr: string; status: DayStatus; onClose: () => void }) {
-  const { state, persistAttendanceOverride, persistRegularizations, logRuleChange } = useHrTool();
+  const { state, persistAttendanceOverride, persistRegularizations, logRuleChange, addRegularizationToState } = useHrTool();
   const [manualStatus, setManualStatus] = useState<DayStatus>(status || 'present');
   const [showRegForm, setShowRegForm] = useState<'in' | 'out' | null>(null);
   const [regTime, setRegTime] = useState('');
@@ -183,16 +184,16 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
     if (!reason) { alert('Please describe the reason.'); return; }
     const time = regTime.trim();
     if (!time) { alert('Please set the time being regularized.'); return; }
-    const diff = Math.round((new Date().getTime() - new Date(dateStr).getTime()) / 86400000);
-    if (!state.rules.regularizationOverride && diff > state.rules.regularizationWindowDays) {
-      alert(`This date is outside the ${state.rules.regularizationWindowDays}-day regularization window. Contact HR for an override.`);
-      return;
-    }
-    const stage = state.rules.twoLevelApproval.attendance ? 'rm' : 'hr';
-    await persistRegularizations([
-      { id: 'R-' + Date.now(), emp: empName, date: dateStr, punchType: showRegForm, requestedTime: time, reason, stage, status: 'pending', rmRemarks: '', hrRemarks: '' },
-      ...state.regularizations,
-    ]);
+    // Goes through the server so the SAME rules apply here as on the employee portal: cycle
+    // date limit, per-cycle quota, duplicate check, and the on-time-punch check. This screen used
+    // to build the row itself and save it straight to state, which applied none of them.
+    const res = await fetch('/api/admin/hr-tool/regularizations', {
+      method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emp: empName, date: dateStr, reason, punchType: showRegForm, requestedTime: time }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.success) { alert(json?.error || 'Could not submit the regularization request.'); return; }
+    addRegularizationToState(json.data);
     onClose();
   }
   async function decideReg(id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) {

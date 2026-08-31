@@ -1,6 +1,7 @@
 "use client";
 
 import { WhatHappensNext } from "./WhatHappensNext";
+import { Button } from "@/components/ui/Button";
 
 interface ConfirmationPanelProps {
   organizerFirstName: string;
@@ -48,9 +49,9 @@ export function ConfirmationPanel({
       <WhatHappensNext activeIndex={1} />
       <div className="confirm-id">Reference: {referenceId}</div>
       <div>
-        <button className="btn-ghost" onClick={onSubmitAnother}>
+        <Button variant="ghost" onClick={onSubmitAnother}>
           Submit another event
-        </button>
+        </Button>
       </div>
     </div>
   );

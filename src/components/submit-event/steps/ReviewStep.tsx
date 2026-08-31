@@ -2,6 +2,7 @@
 
 import { SOCIAL_PLATFORMS } from "../constants";
 import { formatConfirmDate } from "../format";
+import { Button } from "@/components/ui/Button";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
 import { resolveEndDateTime, resolvedCity, resolvedCountry, resolvedPhoneCode, countWords } from "../validation";
 
@@ -90,21 +91,23 @@ export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
       {submitError ? <div className="error-text">{submitError}</div> : null}
 
       <div className="wizard-nav">
-        <button type="button" className="btn-ghost" onClick={ctrl.goBack} disabled={submitting}>
+        <Button variant="ghost" onClick={ctrl.goBack} disabled={submitting}>
           Back
-        </button>
+        </Button>
         <div className="submit-row">
-          <button
+          <Button
             type="submit"
-            className="btn-primary"
+            variant="primary"
             disabled={submitting}
+            busy={submitting}
+            busyLabel="Submitting…"
             onClick={(e) => {
               e.preventDefault();
               ctrl.submit();
             }}
           >
-            {submitting ? "Submitting…" : "Submit event"}
-          </button>
+            Submit event
+          </Button>
         </div>
       </div>
     </div>

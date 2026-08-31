@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
-import { ApprovalBadge, applyApprovalDecision, rmOf, scopedApprovals } from '../utils';
+import { ApprovalBadge, applyApprovalDecision, scopedApprovals } from '../utils';
 
 export default function Expenses() {
   const { state, persistExpenses } = useHrTool();
@@ -21,7 +21,10 @@ export default function Expenses() {
   }
   async function submit() {
     if (!state.currentUser) return;
-    const stage = state.rules.twoLevelApproval.expense && rmOf(state.employees, state.currentUser.name) ? 'rm' : 'hr';
+    // Single approval step for every module now (see Rules → Approval chain): HR Head when the
+    // toggle is on, Founder/admin when it's off. Leaving these on 'rm' would strand leave and
+    // expense requests exactly the way attendance regularizations were stranded.
+    const stage = 'hr';
     await persistExpenses([{
       id: 'X-' + Date.now(), emp: state.currentUser.name, category, amount: Number(amount) || 0,
       stage, status: 'pending', rmRemarks: '', hrRemarks: '',

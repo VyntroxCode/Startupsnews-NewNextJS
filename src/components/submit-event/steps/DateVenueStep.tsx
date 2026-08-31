@@ -1,6 +1,7 @@
 "use client";
 
-import { FormField } from "../FormField";
+import { FormField } from "@/components/ui/FormField";
+import { Button } from "@/components/ui/Button";
 import { SpeakersEditor } from "../SpeakersEditor";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
 import {
@@ -95,12 +96,12 @@ export function DateVenueStep({ ctrl }: { ctrl: SubmitEventFormController }) {
       />
 
       <div className="wizard-nav">
-        <button type="button" className="btn-ghost" onClick={ctrl.goBack}>
+        <Button variant="ghost" onClick={ctrl.goBack}>
           Back
-        </button>
-        <button type="button" className="btn-primary" onClick={ctrl.goNext}>
+        </Button>
+        <Button variant="primary" onClick={ctrl.goNext}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );

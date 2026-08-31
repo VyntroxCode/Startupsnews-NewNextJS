@@ -1,8 +1,9 @@
 "use client";
 
 import { CountryCityFields } from "../CountryCityFields";
-import { CustomSelect } from "../CustomSelect";
-import { FormField } from "../FormField";
+import { CustomSelect } from "@/components/ui/CustomSelect";
+import { FormField } from "@/components/ui/FormField";
+import { Button } from "@/components/ui/Button";
 import { DESC_TARGET_WORDS } from "../constants";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
 import { countWords } from "../validation";
@@ -111,12 +112,12 @@ export function EventBasicsStep({ ctrl }: { ctrl: SubmitEventFormController }) {
       </div>
 
       <div className="wizard-nav">
-        <button type="button" className="btn-ghost" onClick={ctrl.goBack}>
+        <Button variant="ghost" onClick={ctrl.goBack}>
           Back
-        </button>
-        <button type="button" className="btn-primary" onClick={ctrl.goNext}>
+        </Button>
+        <Button variant="primary" onClick={ctrl.goNext}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   );
