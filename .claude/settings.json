@@ -378,7 +378,10 @@
       "Bash(mysql -h127.0.0.1 -P3306 -uzox_user -p\"ZoxPr0d_S3cur3_2026\" --skip-ssl zox_db -e \"SELECT slug FROM partnership_events WHERE site_status='draft' AND slug IS NOT NULL LIMIT 1;\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3000/startup-events/et-now-bharat-infravision-2026\")",
       "Bash(curl -s \"http://localhost:3000/sitemap.xml\")",
-      "Bash(curl -s \"http://localhost:3000/events\" -o /tmp/events_page.html -w \"size:%{size_download} code:%{http_code}\\\\n\")"
+      "Bash(curl -s \"http://localhost:3000/events\" -o /tmp/events_page.html -w \"size:%{size_download} code:%{http_code}\\\\n\")",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)"
     ],
     "additionalDirectories": [
       "/home/tech/Startupsnews-NewNextJS-main/src",
