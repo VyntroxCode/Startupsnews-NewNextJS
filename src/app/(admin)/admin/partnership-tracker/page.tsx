@@ -247,6 +247,27 @@ function isListedStatus(statusBucket: string): boolean {
 function isLiveListed(e: PartnershipEvent, statusBucket: string): boolean {
   return isListedStatus(statusBucket) && !!e.linkedEvent && e.linkedEvent.status !== 'draft';
 }
+/**
+ * The status card this event *would* sit on if classifyStatus hadn't overridden its stored status
+ * — i.e. the card that reports it in its sub-line — or null when it's already on its own card.
+ *
+ * Only the two override reasons produce this: the event's date has passed (bucket 'Expired') or
+ * its linked website listing isn't published yet (bucket 'Draft'). Both are classifyStatus
+ * decisions layered on top of what the admin actually set, which is why e.g. 113 events stored as
+ * "Partnership Done" show as 70 on that card.
+ *
+ * Deliberately shared by the KPI counts and the table's card filter: the sub-line's number and the
+ * rows you get when you click the card come from this one rule, so a card can never advertise
+ * "3 unpublished" and then open a table that doesn't contain them.
+ */
+function divertedFromCard(e: PartnershipEvent, statusBucket: string): string | null {
+  if (statusBucket !== 'Expired' && statusBucket !== 'Draft') return null;
+  const stored = normalizeStatusForEdit(e.partnershipStatus);
+  // Stored 'Expired' has no card of its own; a stored-Draft row in the Draft bucket isn't
+  // "missing" from that card, it's sitting right there in it.
+  if (!STATUS_FILTER_ORDER.includes(stored) || stored === statusBucket) return null;
+  return stored;
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -889,13 +910,31 @@ export default function PartnershipTrackerPage() {
     // of the same two buckets, so the KPI card can flag when the two disagree (an event says
     // Partnership Done/Only Listed but has no live page yet, or the reverse).
     let listedLive = 0, listedClaimed = 0;
+    // "All Active events" counts only what the other cards and the default table actually show —
+    // i.e. everything except the DEFAULT_HIDDEN_STATUSES buckets (Expired/Unmapped). It used to
+    // be a flat events.length, which contradicted its own "Active" label: expired events were
+    // silently folded into the headline number but into none of the per-status cards, so the
+    // total never matched the cards beneath it (152 against 13+70+16=99) and never matched the
+    // rows in the table either. Counting by bucket keeps all three in agreement automatically.
+    let hidden = 0;
+    // Why a card's number is lower than the raw count of that status in the data — see
+    // divertedFromCard. The two override reasons are tallied separately because they mean
+    // different things and need different follow-ups (a date that has passed vs. a listing still
+    // waiting to be published).
+    const elsewhere: Record<string, { expired: number; draft: number }> = {};
     events.forEach((e) => {
       const d = derivedById.get(e.id)!;
       byStatus[d.statusBucket] = (byStatus[d.statusBucket] || 0) + 1;
+      if (DEFAULT_HIDDEN_STATUSES.includes(d.statusBucket)) hidden++;
+      const from = divertedFromCard(e, d.statusBucket);
+      if (from) {
+        elsewhere[from] = elsewhere[from] || { expired: 0, draft: 0 };
+        elsewhere[from][d.statusBucket === 'Expired' ? 'expired' : 'draft']++;
+      }
       if (isListedStatus(d.statusBucket)) listedClaimed++;
       if (isLiveListed(e, d.statusBucket)) listedLive++;
     });
-    return { byStatus, listed: listedLive, listedClaimed, total: events.length };
+    return { byStatus, listed: listedLive, listedClaimed, total: events.length - hidden, hidden, elsewhere };
   }, [events, derivedById]);
 
   // Who created/updated what today, with exact datetime — feeds the Daily Report's
@@ -928,7 +967,15 @@ export default function PartnershipTrackerPage() {
     let list = events.slice();
     if (monthFilter) list = list.filter((e) => e.eventStartDate && monthKey(e.eventStartDate) === monthFilter);
     if (cardFilter === 'Listed') list = list.filter((e) => isListedStatus(derivedById.get(e.id)!.statusBucket));
-    else if (cardFilter) list = list.filter((e) => derivedById.get(e.id)!.statusBucket === cardFilter);
+    // Clicking a status card is a drill-down into that status as the admin actually set it, so it
+    // opens the rows the card counts PLUS the ones its sub-line reports as diverted elsewhere —
+    // click "Initiated" and you get its 3 unpublished events, not an empty table under a card
+    // that just told you about them. Each row still shows its real bucket in the Status column,
+    // so a past-dated one is visibly Expired rather than silently mixed in.
+    else if (cardFilter) list = list.filter((e) => {
+      const d = derivedById.get(e.id)!;
+      return d.statusBucket === cardFilter || divertedFromCard(e, d.statusBucket) === cardFilter;
+    });
 
     const q = deferredSearch.trim().toLowerCase();
     if (q) list = list.filter((e) => e.eventName.toLowerCase().includes(q) || e.organiser.toLowerCase().includes(q) || e.poc.toLowerCase().includes(q));
@@ -936,7 +983,14 @@ export default function PartnershipTrackerPage() {
     // The default "all" view excludes Unmapped/Expired so they don't clutter the everyday list —
     // Expired is still explicitly selectable from this same dropdown for a deliberate manual
     // check; Unmapped isn't offered there at all (not a real status, just "couldn't classify").
-    if (statusFilter === 'all') list = list.filter((e) => !DEFAULT_HIDDEN_STATUSES.includes(derivedById.get(e.id)!.statusBucket));
+    if (statusFilter === 'all') list = list.filter((e) => {
+      const bucket = derivedById.get(e.id)!.statusBucket;
+      if (!DEFAULT_HIDDEN_STATUSES.includes(bucket)) return true;
+      // Don't hide what a card drill-down just promised — the expired rows behind e.g.
+      // "42 expired" are the whole point of clicking that card, even though the default
+      // all-statuses view keeps them out of the everyday list.
+      return !!cardFilter && divertedFromCard(e, bucket) === cardFilter;
+    });
     else if (statusFilter === 'Listed') list = list.filter((e) => isListedStatus(derivedById.get(e.id)!.statusBucket));
     else list = list.filter((e) => derivedById.get(e.id)!.statusBucket === statusFilter);
     if (typeFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.partnershipTypeResolved === typeFilter);
@@ -1465,21 +1519,39 @@ export default function PartnershipTrackerPage() {
         ) : (
           <>
             <div className="pt-cards">
-              <div className={`pt-card pt-card-all ${cardFilter === null ? 'active' : ''}`} style={{ ['--dot' as string]: '#71798A' }} onClick={() => setCard(null)}>
-                <div className="pt-card-label"><span className="pt-dot" />All events</div>
+              <div
+                className={`pt-card pt-card-all ${cardFilter === null ? 'active' : ''}`}
+                style={{ ['--dot' as string]: '#71798A' }}
+                onClick={() => setCard(null)}
+                title={counts.hidden ? `${counts.hidden} past/expired ${counts.hidden === 1 ? 'event is' : 'events are'} not counted here — pick "Expired" in the status dropdown to see them.` : undefined}
+              >
+                <div className="pt-card-label"><span className="pt-dot" />All Active events</div>
                 <div className="pt-card-count">{counts.total}</div>
+                {counts.hidden > 0 && <div className="pt-card-sub-text">{counts.hidden} expired</div>}
               </div>
               {STATUS_FILTER_ORDER.map((s) => {
                 const isAlertCard = (s === 'Initiated' || s === 'Draft') && (counts.byStatus[s] || 0) > 0;
+                // Same "what isn't in this number" note the All Active events card carries, per
+                // status — see counts.elsewhere. Without it a card like Partnership Done reads as
+                // simply wrong against the data (70 shown, 113 stored) with nothing explaining the
+                // gap; the two reasons are kept distinct because they mean different things and
+                // need different follow-ups (a passed date vs. a page still waiting to publish).
+                const away = counts.elsewhere[s];
+                const parts = away ? [
+                  away.expired ? `${away.expired} expired` : '',
+                  away.draft ? `${away.draft} unpublished` : '',
+                ].filter(Boolean) : [];
                 return (
                   <div
                     key={s}
                     className={`pt-card ${cardFilter === s ? 'active' : ''} ${isAlertCard ? 'pt-card-blink' : ''}`}
                     style={{ ['--dot' as string]: isAlertCard ? '#C22B44' : STATUS_COLOR_HEX[s] }}
                     onClick={() => setCard(s)}
+                    title={parts.length ? `${away!.expired + away!.draft} more event(s) are set to "${s}" but aren't counted here${away!.expired ? ` — ${away!.expired} whose date has passed (counted under Expired)` : ''}${away!.draft ? `${away!.expired ? ', and' : ' —'} ${away!.draft} whose website listing isn't published yet (counted under Draft)` : ''}. Click this card to see them all in the table.` : undefined}
                   >
                     <div className="pt-card-label"><span className="pt-dot" />{s}</div>
                     <div className="pt-card-count">{counts.byStatus[s] || 0}</div>
+                    {parts.length > 0 && <div className="pt-card-sub-text">{parts.join(' · ')}</div>}
                   </div>
                 );
               })}
@@ -1609,7 +1681,7 @@ export default function PartnershipTrackerPage() {
                 <option value="Expired">Expired</option>
               </select>
               <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); resetToPage1(); }}>
-                <option value="all">All Events</option>
+                <option value="all">All Active Events</option>
                 {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <select value={listingFilter} onChange={(e) => { setListingFilter(e.target.value); resetToPage1(); }}>
@@ -2269,6 +2341,9 @@ export default function PartnershipTrackerPage() {
         .pt-card-count { font-family: var(--font-pt-display), sans-serif; font-size: 24px; font-weight: 700; margin-top: 5px; }
         .pt-card-warn-icon { margin-left: 5px; color: #C22B44; font-size: 11px; }
         .pt-card-warn-text { margin-top: 4px; font-size: 10px; color: #C22B44; font-weight: 600; }
+        /* Same slot as pt-card-warn-text but muted — this is a neutral "what's excluded" note on
+           the All Active events card, not a data-disagreement warning like the Listed card's. */
+        .pt-card-sub-text { margin-top: 4px; font-size: 10px; color: #71798A; font-weight: 600; }
         .pt-card-blink { border-color: #C22B44; animation: pt-card-blink-anim 1.2s ease-in-out infinite; }
         .pt-card-blink .pt-card-count { color: #C22B44; }
         @keyframes pt-card-blink-anim {

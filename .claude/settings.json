@@ -330,7 +330,10 @@
       "Bash(bash -n /home/ubuntu/zox-nextjs/.git/hooks/post-commit)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(npx tsx *)",
+      "Bash(git -C /home/ubuntu/zox-nextjs status --short)",
+      "Bash(./scripts/db-backup.sh)"
     ],
     "additionalDirectories": [
       "/home/tech/Startupsnews-NewNextJS-main/src",
