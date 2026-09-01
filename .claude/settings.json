@@ -381,7 +381,10 @@
       "Bash(curl -s \"http://localhost:3000/events\" -o /tmp/events_page.html -w \"size:%{size_download} code:%{http_code}\\\\n\")",
       "Bash(git pull *)",
       "Bash(git fetch *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "Bash(git -C /home/ubuntu/zox-nextjs status --short)",
+      "Bash(./scripts/db-backup.sh)",
+      "Bash(python3 -c \"import json; json.load\\(open\\('/home/tech/Startupsnews-NewNextJS/.claude/settings.json'\\)\\); print\\('valid JSON'\\)\")"
     ],
     "additionalDirectories": [
       "/home/tech/Startupsnews-NewNextJS-main/src",

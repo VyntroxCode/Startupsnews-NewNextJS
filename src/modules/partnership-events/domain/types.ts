@@ -183,9 +183,12 @@ export interface PartnershipEventFilters {
   offset?: number;
 }
 
-// 'In Progress' / 'On Hold' / 'Dropped' / 'Only Listed (No Partnership)' were retired from this
-// list — any event still carrying that stored text buckets to 'Unmapped' (classifyStatus in
-// partnership-tracker/page.tsx) for the admin to manually reclassify, it's not auto-migrated.
+// 'In Progress' / 'On Hold' / 'Dropped' were retired from this list — any event still carrying
+// that stored text buckets to 'Unmapped' (classifyStatus in partnership-tracker/page.tsx) for the
+// admin to manually reclassify, it's not auto-migrated.
+// 'Only Listed (No Partnership)' was retired too, but it's an exact synonym of 'Only Listing'
+// rather than a dropped concept, so its rows were rewritten in place by
+// scripts/migrate-only-listed-to-only-listing.ts.
 export const PARTNERSHIP_STATUS_OPTIONS = ['Draft', 'Initiated', 'Partnership Done', 'Only Listing', 'Ticketing', 'Cancelled', 'Expired'] as const;
 /** The real, public-site-facing status — separate from PARTNERSHIP_STATUS_OPTIONS (deal stage) and the existing, unwired `listing` field. No "Completed" here — that's automatic, driven by event date (see PartnershipEventsRepository.markSiteStatusPastAsCompleted). */
 export const SITE_STATUS_OPTIONS: { value: 'draft' | 'upcoming' | 'cancelled'; label: string }[] = [

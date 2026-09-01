@@ -94,8 +94,10 @@ export class PartnershipEventsRepository {
    *   published website Event linked, it's treated as still current/upcoming rather than force-
    *   flipped, regardless of the tracker's own dates.
    * - Only touches events still in a non-terminal status — Partnership Done / Dropped / Only
-   *   Listed (No Partnership) / already-Expired are left alone so a resolved outcome is never
-   *   silently overwritten.
+   *   Listing / already-Expired are left alone so a resolved outcome is never silently
+   *   overwritten. ('Only Listed (No Partnership)' was the pre-STATUS_EDIT_ORDER wording for
+   *   'Only Listing'; its rows were migrated by scripts/migrate-only-listed-to-only-listing.ts,
+   *   so the modern spelling carries that same terminal protection here.)
    */
   async markPastPartnershipsAsExpired(): Promise<void> {
     await query(
@@ -104,7 +106,7 @@ export class PartnershipEventsRepository {
        WHERE event_id IS NULL
        AND COALESCE(event_end_date, event_start_date) IS NOT NULL
        AND COALESCE(event_end_date, event_start_date) < CURDATE()
-       AND partnership_status NOT IN ('Partnership Done', 'Dropped', 'Only Listed (No Partnership)', 'Expired')`
+       AND partnership_status NOT IN ('Partnership Done', 'Dropped', 'Only Listing', 'Expired')`
     );
   }
 
