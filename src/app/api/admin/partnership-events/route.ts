@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
     // Same lazy-sweep pattern for the tracker's own partnership_status — see
     // PartnershipEventsRepository.markPastPartnershipsAsExpired for the exact rule.
     await partnershipEventsRepository.markPastPartnershipsAsExpired();
+    // And for the record's own public site_status (now the source of truth for /events, /startup-events/:slug).
+    await partnershipEventsRepository.markSiteStatusPastAsCompleted();
 
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || undefined;

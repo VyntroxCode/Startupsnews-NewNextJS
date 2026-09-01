@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { hrApi } from './api';
 import { todayStr } from './utils';
 import { payrollCycleToRunKey } from '@/modules/hr-tool/utils/time';
+import { hhmmToMinutes, formatTime12h } from '@/modules/hr-tool/utils/lateness';
 import { getAdminUser } from '@/lib/admin-auth';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 import type {
@@ -143,6 +144,7 @@ interface HrToolContextValue {
   persistOnboarding: (v: HrOnboarding[]) => Promise<void>;
   persistRegularizations: (v: HrRegularization[]) => Promise<void>;
   addRegularizationToState: (r: HrRegularization) => void;
+  decideRegularization: (id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) => Promise<boolean>;
   persistLeaveRequests: (v: HrLeaveRequest[]) => Promise<void>;
   persistExpenses: (v: HrExpense[]) => Promise<void>;
   persistTickets: (v: HrTicket[]) => Promise<void>;
@@ -271,6 +273,41 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const addRegularizationToState = useCallback((r: HrRegularization) => {
     setState((s) => ({ ...s, regularizations: [r, ...s.regularizations] }));
   }, []);
+  /** Finalizes one regularization's approve/reject decision through the server (see
+   * HrToolService.decideRegularization) — replacing the old client-only compute-and-PUT-the-
+   * whole-array path, which never actually corrected the attendance record an approval was
+   * supposed to fix. On a fully-approved decision, mirrors the server's hr_attendance write-back
+   * into local state too (same hhmmToMinutes/formatTime12h the server used), so the calendar and
+   * Today table update immediately instead of waiting on a manual reload — writes to
+   * /api/admin/hr-tool/* don't trigger the shared admin layout's auto-refresh (see (admin)/
+   * layout.tsx's isSpecialPath), so without this the correction wouldn't show until later. */
+  const decideRegularization = useCallback(async (id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string): Promise<boolean> => {
+    try {
+      const res = await hrApi.decideRegularization(id, level, decision, remarks);
+      if (!res.success || !res.data) { warnSaveFailed(); return false; }
+      const updated = res.data;
+      setState((s) => {
+        const regularizations = s.regularizations.map((r) => (r.id === id ? updated : r));
+        if (!(updated.status === 'approved' && updated.stage === 'done' && updated.requestedTime)) {
+          return { ...s, regularizations };
+        }
+        const minutes = hhmmToMinutes(updated.requestedTime);
+        const timeLabel = formatTime12h(minutes);
+        const idx = s.attendance.findIndex((a) => a.emp === updated.emp && a.date === updated.date);
+        const existing = idx >= 0 ? s.attendance[idx] : null;
+        const rec: HrAttendanceRecord = {
+          emp: updated.emp, date: updated.date, status: 'Present',
+          inTime: updated.punchType === 'in' ? timeLabel : (existing?.inTime || '—'),
+          inMinutes: updated.punchType === 'in' ? minutes : (existing?.inMinutes ?? null),
+          outTime: updated.punchType === 'out' ? timeLabel : (existing?.outTime || '—'),
+          outMinutes: updated.punchType === 'out' ? minutes : (existing?.outMinutes ?? null),
+        };
+        const attendance = idx >= 0 ? s.attendance.map((a, i) => (i === idx ? rec : a)) : [...s.attendance, rec];
+        return { ...s, regularizations, attendance };
+      });
+      return true;
+    } catch { warnSaveFailed(); return false; }
+  }, []);
   const persistLeaveRequests = useCallback(async (v: HrLeaveRequest[]) => { setState((s) => ({ ...s, leaveRequests: v })); try { await hrApi.saveLeaveRequests(v); } catch { warnSaveFailed(); } }, []);
   const persistExpenses = useCallback(async (v: HrExpense[]) => { setState((s) => ({ ...s, expenses: v })); try { await hrApi.saveExpenses(v); } catch { warnSaveFailed(); } }, []);
   const persistTickets = useCallback(async (v: HrTicket[]) => { setState((s) => ({ ...s, tickets: v })); try { await hrApi.saveTickets(v); } catch { warnSaveFailed(); } }, []);
@@ -344,13 +381,13 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   }, [state.currentUser, state.teams, logRuleChange]);
 
   const value = useMemo<HrToolContextValue>(() => ({
-    state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState,
+    state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
-    state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState,
+    state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,

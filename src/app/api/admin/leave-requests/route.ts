@@ -16,14 +16,15 @@ export async function GET(request: NextRequest) {
   try {
     const credential = await hrCredentialsService.getByLinkedPanelAdminId(auth.user.id);
     if (!credential) {
-      return NextResponse.json({ success: true, data: { linked: false, leaveRequests: [], leaveTypes: {} } } as const);
+      return NextResponse.json({ success: true, data: { linked: false, leaveRequests: [], leaveTypes: {}, leaveBalance: {} } } as const);
     }
 
-    const [leaveRequests, policy] = await Promise.all([
+    const [leaveRequests, policy, leaveBalance] = await Promise.all([
       hrToolService.getLeaveRequestsForEmployee(credential.name),
       hrToolService.getPolicySummary(),
+      hrToolService.getLeaveBalancesForEmployee(credential.name),
     ]);
-    return NextResponse.json({ success: true, data: { linked: true, leaveRequests, leaveTypes: policy.leaveTypes } });
+    return NextResponse.json({ success: true, data: { linked: true, leaveRequests, leaveTypes: policy.leaveTypes, leaveBalance } });
   } catch (error) {
     console.error('Error fetching leave requests:', error);
     return NextResponse.json(

@@ -10,12 +10,12 @@ export async function GET(request: NextRequest) {
   if (!slug) return NextResponse.json({ httpStatus: 200 });
 
   try {
-    const row = await queryOne<{ status: string }>(
-      'SELECT status FROM events WHERE slug = ? LIMIT 1',
+    const row = await queryOne<{ site_status: string | null }>(
+      'SELECT site_status FROM partnership_events WHERE slug = ? LIMIT 1',
       [slug]
     );
     if (!row) return NextResponse.json({ httpStatus: 200 });
-    const httpStatus = row.status === 'draft' ? 410 : 200;
+    const httpStatus = row.site_status === 'draft' ? 410 : 200;
     return NextResponse.json({ httpStatus }, {
       headers: { 'Cache-Control': 'private, max-age=300' },
     });

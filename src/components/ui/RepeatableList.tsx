@@ -11,11 +11,19 @@ interface RepeatableListProps<T> {
   min: number;
   max: number;
   createRow: () => T;
-  renderRow: (item: T, idx: number, update: (patch: Partial<T>) => void) => ReactNode;
+  /** `update` replaces the whole row value — works uniformly whether T is a primitive (a plain
+   * string/url row) or an object (merge it yourself: `update({ ...item, name: v })`). */
+  renderRow: (item: T, idx: number, update: (value: T) => void) => ReactNode;
   addLabel: string;
   error?: string;
   onBlurValidate?: () => void;
   removeTitle?: string;
+  /** Override the wrapper/row/remove-button class names — needed when an existing stylesheet
+   * targets specific class names (e.g. /submit-event's `.speakers-box`/`.speaker-row` grid CSS)
+   * rather than this component's generic defaults. */
+  boxClassName?: string;
+  rowClassName?: string;
+  removeButtonClassName?: string;
 }
 
 /** Generic add/remove row list (repeatable text/url fields, etc.) — generalized from the
@@ -33,9 +41,12 @@ export function RepeatableList<T>({
   error,
   onBlurValidate,
   removeTitle = "Remove this row",
+  boxClassName = "repeatable-box",
+  rowClassName = "repeatable-row",
+  removeButtonClassName = "sp-remove-btn",
 }: RepeatableListProps<T>) {
-  function update(idx: number, patch: Partial<T>) {
-    onChange(items.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
+  function update(idx: number, value: T) {
+    onChange(items.map((item, i) => (i === idx ? value : item)));
   }
 
   function removeRow(idx: number) {
@@ -53,14 +64,14 @@ export function RepeatableList<T>({
 
   return (
     <div className={"field" + (error ? " has-error" : "")} id={`field-${fieldId}`}>
-      <div className="repeatable-box">
+      <div className={boxClassName}>
         {items.map((item, idx) => (
-          <div className="repeatable-row" data-idx={idx} key={idx}>
-            {renderRow(item, idx, (patch) => update(idx, patch))}
+          <div className={rowClassName} data-idx={idx} key={idx}>
+            {renderRow(item, idx, (value) => update(idx, value))}
             {items.length > min && (
               <button
                 type="button"
-                className="sp-remove-btn"
+                className={removeButtonClassName}
                 title={removeTitle}
                 aria-label={removeTitle}
                 onClick={() => removeRow(idx)}

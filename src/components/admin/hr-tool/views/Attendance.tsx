@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
-import { ApprovalBadge, StatusBadge, applyApprovalDecision, isAdmin, latenessBucket, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
+import AttendanceCalendar from './AttendanceCalendar';
+import { ApprovalBadge, StatusBadge, arrivalBucket, isAdmin, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
+import { realDayHoursBucket } from '@/modules/hr-tool/utils/lateness';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
@@ -16,13 +18,14 @@ function nowTimeStr(): string { return new Date().toLocaleTimeString('en-IN', { 
 function nowMinutesSinceMidnight(): number { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
 
 export default function Attendance() {
-  const { state, persistAttendance, persistPunch, persistRegularizations, addRegularizationToState } = useHrTool();
+  const { state, persistAttendance, persistPunch, decideRegularization, addRegularizationToState } = useHrTool();
   const [regOpen, setRegOpen] = useState(false);
   const [regDate, setRegDate] = useState(todayStr());
   const [regPunchType, setRegPunchType] = useState<'in' | 'out'>('in');
   const [regTime, setRegTime] = useState('');
   const [regReason, setRegReason] = useState(REG_REASONS[0]);
   const [regReasonOther, setRegReasonOther] = useState('');
+  const [calendarEmp, setCalendarEmp] = useState<string | null>(null);
 
   const isEmployeeOnly = state.role === 'Employee';
   const scopeFilter = isAdmin(state.role)
@@ -102,7 +105,7 @@ export default function Attendance() {
     setRegOpen(false);
   }
   async function decideReg(id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) {
-    await persistRegularizations(state.regularizations.map((r) => (r.id === id ? applyApprovalDecision(r, level, decision, remarks, state.rules.twoLevelApproval.attendance) : r)));
+    await decideRegularization(id, level, decision, remarks);
   }
 
   return (
@@ -128,23 +131,33 @@ export default function Attendance() {
             {attRows.map((a) => {
               const cred = credentialByName.get(a.emp);
               const rowInMinutes = state.punchLog[a.emp]?.inMinutes ?? null;
-              const rowBucket = latenessBucket(rowInMinutes, state.rules);
+              const rowBucket = arrivalBucket(rowInMinutes, state.rules);
               const rowLateness = latenessInfo(rowInMinutes, state.rules);
+              // Real hours worked, not the raw stored status (always 'Present' from the moment
+              // of punch-in) — a punch-in with no punch-out shows Absent immediately, until
+              // punch-out is actually clicked. See realDayHoursBucket.
+              const dayBucket = realDayHoursBucket(a.inMinutes ?? null, a.outMinutes ?? null, state.rules);
               return (
-                <tr key={a.emp}>
+                <tr key={a.emp} onClick={() => setCalendarEmp(a.emp)} style={{ cursor: 'pointer' }}>
                   <td>{a.emp}</td>
                   <td>{cred ? <code>{cred.employeeCode}</code> : <span className="meta">—</span>}</td>
                   <td>{cred?.panelRole ? PANEL_ROLE_LABEL[cred.panelRole] : <span className="meta">—</span>}</td>
-                  <td><StatusBadge status={a.status === 'Present' ? 'active' : 'pending'} /></td>
+                  <td>
+                    {dayBucket === 'absent' && <span style={{ fontWeight: 700, color: 'var(--red)' }}>⚠ Absent</span>}
+                    {dayBucket === 'half-day' && <span style={{ fontWeight: 700, color: 'var(--orange)' }}>Half Day</span>}
+                    {dayBucket === 'short-leave' && <span style={{ fontWeight: 700, color: 'var(--orange)' }}>Short Leave</span>}
+                    {dayBucket === 'full-time' && <StatusBadge status="active" />}
+                    {dayBucket === null && <StatusBadge status="pending" />}
+                  </td>
                   <td>{a.inTime}</td>
                   <td>{a.outTime}</td>
                   <td>
                     {rowBucket === null && <span className="meta">—</span>}
                     {rowBucket === 'on-time' && <span>On time</span>}
                     {rowBucket === 'grace' && <span style={{ fontWeight: 700, color: 'var(--orange)' }}>⚠ Within grace period</span>}
-                    {rowBucket === 'short-leave' && <span style={{ fontWeight: 700, color: 'var(--orange)' }}>⚠ {rowLateness?.text}</span>}
-                    {rowBucket === 'half-day' && <span style={{ fontWeight: 700, color: 'var(--red)' }}>⚠ {rowLateness?.text}</span>}
-                    {rowBucket === 'absent' && <span style={{ fontWeight: 700, color: 'var(--red)' }}>⚠ {rowLateness?.text}</span>}
+                    {rowBucket === 'short-leave' && <span style={{ fontWeight: 700, color: 'var(--orange)' }} title={rowLateness?.text}>⚠ Short Leave</span>}
+                    {rowBucket === 'half-day' && <span style={{ fontWeight: 700, color: 'var(--red)' }} title={rowLateness?.text}>⚠ Half Day</span>}
+                    {rowBucket === 'absent' && <span style={{ fontWeight: 700, color: 'var(--red)' }} title={rowLateness?.text}>⚠ Absent</span>}
                   </td>
                 </tr>
               );
@@ -194,6 +207,12 @@ export default function Attendance() {
             </select>
           </div>
           {regReason === '__other__' && <div className="field"><label className="field-label">Please specify</label><textarea placeholder="Describe the reason..." value={regReasonOther} onChange={(e) => setRegReasonOther(e.target.value)} /></div>}
+        </ModalShell>
+      )}
+
+      {calendarEmp && (
+        <ModalShell title={`${calendarEmp} — Attendance calendar`} onClose={() => setCalendarEmp(null)} actions={[{ label: 'Close', cls: 'btn', onClick: () => setCalendarEmp(null) }]} maxWidth="80vw">
+          <AttendanceCalendar empName={calendarEmp} />
         </ModalShell>
       )}
     </>

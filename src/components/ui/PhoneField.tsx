@@ -3,10 +3,14 @@
 import { CustomSelect } from "./CustomSelect";
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES } from "./constants/phone";
 
+// Flag emoji (regional-indicator character pairs) don't render as flags on every platform —
+// Windows Chrome/Edge in particular falls back to showing the raw two-letter sequence as plain
+// text ("ES", "SA", "NZ"...), which reads as a rendering bug rather than a country code. Showing
+// the ISO code as deliberate, uniformly-formatted text ("ES +34") instead is deterministic on
+// every platform and reads as intentional rather than a broken glyph.
 const PHONE_CODE_OPTIONS = COUNTRY_CODE_OPTIONS.map((c) => ({
   value: c.code,
-  label: c.code === "other" ? "Other" : c.code,
-  emoji: c.emoji,
+  label: c.code === "other" ? "Other" : `${c.iso.toUpperCase()} ${c.code}`,
 }));
 
 interface PhoneFieldProps {

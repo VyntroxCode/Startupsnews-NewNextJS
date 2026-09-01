@@ -14,11 +14,12 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const [leaveRequests, policy] = await Promise.all([
+    const [leaveRequests, policy, leaveBalance] = await Promise.all([
       hrToolService.getLeaveRequestsForEmployee(auth.credential.name),
       hrToolService.getPolicySummary(),
+      hrToolService.getLeaveBalancesForEmployee(auth.credential.name),
     ]);
-    return NextResponse.json({ success: true, data: { leaveRequests, leaveTypes: policy.leaveTypes } });
+    return NextResponse.json({ success: true, data: { leaveRequests, leaveTypes: policy.leaveTypes, leaveBalance } });
   } catch (error) {
     console.error('Error fetching employee leave requests:', error);
     return NextResponse.json(

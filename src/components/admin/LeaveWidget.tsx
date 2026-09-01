@@ -10,7 +10,8 @@ interface LeaveRequestRow {
 interface LeaveMeData {
   linked?: boolean;
   leaveRequests?: LeaveRequestRow[];
-  leaveTypes?: Record<string, boolean>;
+  leaveTypes?: Record<string, { enabled: boolean; perMonth: number }>;
+  leaveBalance?: Record<string, number>;
 }
 
 const cardStyle: CSSProperties = {
@@ -26,6 +27,15 @@ const thStyle: CSSProperties = {
   letterSpacing: '0.04em', color: '#64748b', fontWeight: 600, borderBottom: '1px solid #e2e8f0',
 };
 const tdStyle: CSSProperties = { padding: '0.75rem 0.9rem', borderBottom: '1px solid #f1f5f9', color: '#0f172a', verticalAlign: 'top' };
+const labelStyle: CSSProperties = { display: 'block', fontSize: '0.8rem', color: '#475569', marginBottom: '0.4rem', fontWeight: 600 };
+// This project has no global `box-sizing: border-box` reset, so a plain `width: '100%'` plus
+// padding renders WIDER than its container by the padding amount — that's what was making the
+// From/To fields (each `flex: 1` in a row) visually overlap. Every form control below sets
+// boxSizing explicitly so `width: 100%` means what it looks like it means.
+const inputStyle: CSSProperties = {
+  width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid #cbd5e1',
+  padding: '0.6rem 0.75rem', fontSize: '0.875rem', color: '#0f172a', background: '#fff',
+};
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   pending: { bg: '#ffedd5', text: '#c2410c', label: 'Pending approval' },
@@ -98,7 +108,7 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBase]);
 
-  const enabledTypes = Object.entries(data?.leaveTypes || {}).filter(([, on]) => on).map(([k]) => k);
+  const enabledTypes = Object.entries(data?.leaveTypes || {}).filter(([, cfg]) => cfg.enabled).map(([k]) => k);
 
   function openApply() {
     setType(enabledTypes[0] || '');
@@ -166,6 +176,19 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
         </div>
       )}
 
+      {enabledTypes.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
+          {enabledTypes.map((t) => (
+            <span
+              key={t}
+              style={{ background: '#eef2ff', color: '#4338ca', padding: '0.3rem 0.75rem', borderRadius: 999, fontSize: '0.8rem', fontWeight: 600 }}
+            >
+              {t}: {data?.leaveBalance?.[t] ?? 0} left
+            </span>
+          ))}
+        </div>
+      )}
+
       {requests.length === 0 ? (
         <div style={{ color: '#64748b' }}>No leave requests yet.</div>
       ) : (
@@ -193,45 +216,48 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
       )}
 
       {applyOpen && (
-        <div style={{ marginTop: '1.25rem', padding: '1.25rem', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <div style={{ display: 'grid', gap: '0.75rem', maxWidth: 420 }}>
+        <div style={{ marginTop: '1.25rem', padding: '1.5rem', borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+          <h4 style={{ margin: '0 0 1.1rem', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>New leave request</h4>
+          <div style={{ display: 'grid', gap: '1rem', maxWidth: 480 }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>Leave type</label>
-              <select value={type} onChange={(e) => setType(e.target.value)} style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.5rem 0.6rem', fontSize: '0.875rem' }}>
+              <label style={labelStyle}>Leave type</label>
+              <select value={type} onChange={(e) => setType(e.target.value)} style={inputStyle}>
                 {enabledTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                 <option value="__other__">Other (please specify)</option>
               </select>
             </div>
             {type === '__other__' && (
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>Please specify</label>
-                <input type="text" placeholder="e.g. Bereavement leave" value={typeOther} onChange={(e) => setTypeOther(e.target.value)} style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.5rem 0.6rem', fontSize: '0.875rem' }} />
+                <label style={labelStyle}>Please specify</label>
+                <input type="text" placeholder="e.g. Bereavement leave" value={typeOther} onChange={(e) => setTypeOther(e.target.value)} style={inputStyle} />
               </div>
             )}
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>From</label>
-                <input type="date" value={from} min={tomorrow} onChange={(e) => { setFrom(e.target.value); if (to < e.target.value) setTo(e.target.value); }} style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.5rem 0.6rem', fontSize: '0.875rem' }} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+                <label style={labelStyle}>From</label>
+                <input type="date" value={from} min={tomorrow} onChange={(e) => { setFrom(e.target.value); if (to < e.target.value) setTo(e.target.value); }} style={inputStyle} />
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>To</label>
-                <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.5rem 0.6rem', fontSize: '0.875rem' }} />
+              <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+                <label style={labelStyle}>To</label>
+                <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} style={inputStyle} />
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>Reason</label>
-              <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Reason for leave…" style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.6rem', fontSize: '0.875rem', fontFamily: 'inherit' }} />
+              <label style={labelStyle}>Reason</label>
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Reason for leave…" style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
             </div>
-            <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Leave can only be applied for future dates, starting tomorrow. For today or a past date, use Regularization instead.</div>
+            <div style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1.5 }}>Leave can only be applied for future dates, starting tomorrow. For today or a past date, use Regularization instead.</div>
+            {submitError && (
+              <div style={{ padding: '0.6rem 0.85rem', background: '#fef2f2', color: '#991b1b', fontSize: '0.8rem', borderRadius: 8, border: '1px solid #fca5a5' }}>{submitError}</div>
+            )}
             <div style={{ display: 'flex', gap: '0.6rem' }}>
-              <button type="button" onClick={submit} disabled={submitting} style={{ padding: '0.5rem 1rem', background: submitting ? '#a0aec0' : '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', cursor: submitting ? 'not-allowed' : 'pointer' }}>
+              <button type="button" onClick={submit} disabled={submitting} style={{ padding: '0.6rem 1.1rem', background: submitting ? '#a0aec0' : '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', cursor: submitting ? 'not-allowed' : 'pointer' }}>
                 {submitting ? 'Submitting…' : 'Submit request'}
               </button>
-              <button type="button" onClick={() => setApplyOpen(false)} disabled={submitting} style={{ padding: '0.5rem 1rem', background: '#fff', color: '#334155', border: '1px solid #e2e8f0', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setApplyOpen(false)} disabled={submitting} style={{ padding: '0.6rem 1.1rem', background: '#fff', color: '#334155', border: '1px solid #cbd5e1', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>
-            {submitError && <div style={{ color: '#b91c1c', fontSize: '0.8rem' }}>{submitError}</div>}
           </div>
         </div>
       )}

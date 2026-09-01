@@ -105,6 +105,12 @@ export class HrToolRepository {
     const rows = await findAllRows<EmployeeRow>('hr_employees', 'created_at ASC');
     return rows.map((r) => this.employeeFromRow(r));
   }
+  /** Single employee by name — used for lookups keyed off `emp` strings (leave/attendance
+   * records store the name, not the id), e.g. resolving `doj` for leave-balance accrual. */
+  async findEmployeeByName(name: string): Promise<HrEmployee | null> {
+    const row = await queryOne<EmployeeRow>('SELECT * FROM hr_employees WHERE name = ?', [name]);
+    return row ? this.employeeFromRow(row) : null;
+  }
   /**
    * Every attendance/leave/expense table keys its employee by NAME, not by id — so renaming an
    * employee used to orphan their entire history: attendance, punches, leave, expenses and
@@ -363,6 +369,15 @@ export class HrToolRepository {
     await query(
       'INSERT INTO hr_regularizations (id, emp, reg_date, punch_type, reason, requested_time, stage, status, rm_remarks, hr_remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [reg.id, reg.emp, reg.date, reg.punchType, reg.reason || null, reg.requestedTime || null, reg.stage, reg.status, reg.rmRemarks || null, reg.hrRemarks || null]
+    );
+  }
+  /** Single-row update by id — used to finalize one regularization's approve/reject decision
+   * (see HrToolService.decideRegularization), so the attendance write-back on approval happens
+   * atomically alongside the status change instead of through the whole-table replace. */
+  async updateRegularization(reg: HrRegularization): Promise<void> {
+    await query(
+      'UPDATE hr_regularizations SET stage = ?, status = ?, rm_remarks = ?, hr_remarks = ? WHERE id = ?',
+      [reg.stage, reg.status, reg.rmRemarks || null, reg.hrRemarks || null, reg.id]
     );
   }
   async countRegularizationsForEmployeeInRange(emp: string, fromDate: string, toDate: string): Promise<number> {

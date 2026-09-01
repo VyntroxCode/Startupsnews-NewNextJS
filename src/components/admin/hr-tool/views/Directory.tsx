@@ -5,9 +5,9 @@ import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import HireEmployeeButton from './HireEmployeeButton';
 import EditCredentialModal from './EditCredentialModal';
-import AttendanceCalendar from './AttendanceCalendar';
 import { PANEL_ROLE_LABEL } from './CredentialFields';
 import { StatusBadge, addDays, initialLeaveBalance, computeCtcBreakdown, daysLeft, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
+import { computeLeaveBalances } from '@/modules/hr-tool/utils/leave-balance';
 
 /** How many days a new hire has to submit their required-documents checklist, counted from doj. */
 const DOCUMENTS_WINDOW_DAYS = 5;
@@ -67,8 +67,14 @@ function PageHead({ title, sub }: { title: string; sub: string }) {
 export default function Directory() {
   const { state, persistEmployees, deleteEmployee, persistDesignations, logRuleChange, upsertEmployeeCredentialInState } = useHrTool();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
+  // The Directory's one status control: Active (anyone not exited — onboarding/probation/active
+  // all count as currently working here) vs Exited. Used to offer the four granular statuses
+  // (onboarding/active/probation/exited) as separate filter options, which just duplicated this
+  // same active/exited signal with extra steps — collapsed down to the one control that answers
+  // "is this employee currently active or not", defaulting to Active so exited employees don't
+  // clutter the main table.
+  const [employmentFilter, setEmploymentFilter] = useState<'active' | 'inactive'>('active');
   const [profileId, setProfileId] = useState<string | null>(null);
   const [ctcSplitId, setCtcSplitId] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -111,12 +117,13 @@ export default function Directory() {
   const rows = useMemo(() => {
     const filtered = visibleEmployees.filter((e) =>
       (e.name.toLowerCase().includes(search.toLowerCase()) || e.designation.toLowerCase().includes(search.toLowerCase())) &&
-      (!statusFilter || e.status === statusFilter) && (!teamFilter || e.team === teamFilter)
+      (!teamFilter || e.team === teamFilter) &&
+      (employmentFilter === 'active' ? e.status !== 'exited' : e.status === 'exited')
     );
     return [...filtered].sort((a, b) =>
       employeeCodeNum(credentialByEmployee(a)?.employeeCode) - employeeCodeNum(credentialByEmployee(b)?.employeeCode)
     );
-  }, [visibleEmployees, search, statusFilter, teamFilter, credentialByEmployee]);
+  }, [visibleEmployees, search, teamFilter, employmentFilter, credentialByEmployee]);
 
   // Employee IDs issued (e.g. via the old Assigning IDs flow, or a partial failure right after
   // hiring) that never got a matching Directory record — auto-healed below so every created
@@ -169,6 +176,17 @@ export default function Directory() {
   async function saveEmployeeEdits(e: HrEmployee, updates: Partial<HrEmployee>) {
     await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, ...updates } : x)));
     logRuleChange(`Updated ${e.name}'s details`);
+  }
+
+  /** Manual catch-up for employees who ended up with no document checklist at all — e.g. hired
+   * during a window when Rules & Org Structure's required-documents list was empty. Mirrors the
+   * hire-time snapshot (see line ~141/261) but deadlines from today, not doj, since there's no
+   * reason to hand someone a checklist that's already overdue. */
+  async function assignChecklist(e: HrEmployee) {
+    const documents = state.orgStructure.requiredDocuments.map((name) => ({ name, status: 'not_uploaded' as const, url: null, uploadedAt: null, remarks: null }));
+    if (documents.length === 0) return;
+    await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, documents, documentsDeadline: addDays(todayStr(), DOCUMENTS_WINDOW_DAYS) } : x)));
+    logRuleChange(`Assigned document checklist to ${e.name}`);
   }
 
   function exportDirectory(fmt: 'csv' | 'excel') {
@@ -324,11 +342,16 @@ export default function Directory() {
       <div className="toolbar" style={{ marginBottom: 16, justifyContent: 'space-between' }}>
         <div className="toolbar">
           <input className="search" type="text" placeholder="Search by name or designation" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 150 }}>
-            <option value="">All statuses</option><option value="onboarding">Onboarding</option><option value="active">Active</option><option value="probation">Probation</option><option value="exited">Exited</option>
-          </select>
           <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} style={{ width: 170 }}>
             <option value="">All teams</option>{state.teams.map((t) => <option key={t.name}>{t.name}</option>)}
+          </select>
+          <select
+            value={employmentFilter}
+            onChange={(e) => setEmploymentFilter(e.target.value as 'active' | 'inactive')}
+            style={{ width: 150 }}
+            aria-label="Employee status"
+          >
+            <option value="active">Active</option><option value="inactive">Exited</option>
           </select>
         </div>
         {admin && (
@@ -355,7 +378,21 @@ export default function Directory() {
               <td>{e.designation}</td><td>{e.team}</td><td>{fmtDoj(e.doj)}</td>
               <td>{(() => {
                 const { total, uploaded, rejected } = docProgress(e);
-                if (total === 0) return <span className="badge rejected" title="No checklist assigned">No checklist</span>;
+                if (total === 0) return (
+                  <>
+                    <span className="badge rejected" title="No checklist assigned">No checklist</span>
+                    {admin && state.orgStructure.requiredDocuments.length > 0 && (
+                      <button
+                        className="btn ghost sm"
+                        style={{ marginLeft: 6 }}
+                        title="Assign the current required-documents checklist to this employee"
+                        onClick={(ev) => { ev.stopPropagation(); assignChecklist(e); }}
+                      >
+                        Assign checklist
+                      </button>
+                    )}
+                  </>
+                );
                 return (
                   <>
                     <span className={`badge ${documentsIncomplete(e) ? 'rejected' : 'approved'}`}>{uploaded}/{total}</span>
@@ -652,8 +689,6 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
       + (kycAwaiting ? ` · ${kycAwaiting} awaiting review` : '')
       + (kycProvided === 0 ? ' · nothing uploaded yet' : '');
 
-  const monthLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-
   const buttons = editing
     ? [
         // Admins land straight in this editable form (see the comment above), so there is no
@@ -741,7 +776,14 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
         );
       })()}
       <div className="field"><label className="field-label">Leave balance</label>
-        {Object.entries(employee.leaveBalance).filter(([k]) => state.rules.leaveTypes[k]?.enabled !== false).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>)}
+        {(() => {
+          // Live-computed (join date + this year's accrual + approved usage), not the stored
+          // employee.leaveBalance snapshot — that field is only ever written once at hire/
+          // probation-confirm and never accrues or resets, so it goes stale immediately.
+          const myLeave = state.leaveRequests.filter((l) => l.emp === employee.name);
+          const balances = computeLeaveBalances(employee.doj, state.rules.leaveTypes, myLeave, todayStr());
+          return Object.entries(balances).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>);
+        })()}
       </div>
       </Section>
 
@@ -862,11 +904,6 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
         )}
       </Section>
 
-      {admin && (
-        <Section title="Attendance calendar" summary={`${monthLabel} — present, absent, leave and week-off totals with a day-by-day grid`}>
-          <AttendanceCalendar empName={employee.name} />
-        </Section>
-      )}
       {founder && (
         <Section title="Login & credentials" summary={credential ? `${credential.employeeCode} · ${credential.isActive ? 'Active' : 'Inactive'}` : 'No login issued yet'}>
           {credential ? (

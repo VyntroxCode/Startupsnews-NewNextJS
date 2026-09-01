@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import { computeCtcBreakdown } from '../utils';
-import type { HrLeaveTypeConfig, HrRules } from '../types';
+import type { HrHoliday, HrLeaveTypeConfig, HrRules, HrTeam } from '../types';
 
 /** Plain-English names for the confirmation dialog's change list — the raw camelCase keys mean
  * nothing to whoever is approving the change. */
@@ -26,10 +26,52 @@ const RULE_LABELS: Partial<Record<keyof HrRules, string>> = {
  * rather than letting an admin silently make full days impossible. */
 const MAX_WORKED_HOURS = 8.5;
 
-function clampWorkedHours(raw: string): number {
-  const n = Number(raw);
-  if (!isFinite(n) || n < 0) return 0;
-  return Math.min(n, MAX_WORKED_HOURS);
+/** Company-wide grace period — no longer admin-editable (see the "Grace period" row below), so
+ * this is the one and only place the number can come from. commitRuleEdits forces every save to
+ * carry this value regardless of what's in the draft, so a historical value other than 15 (from
+ * back when this WAS editable) self-heals the next time any Attendance & leave rule is saved. */
+const FIXED_GRACE_MINUTES = 15;
+
+/** Every 15-minute punch-in/punch-out slot from 09:00 to 18:30 inclusive — the admin can only
+ * pick from these, never type an arbitrary/invalid time like 12:63. */
+const TIME_SLOTS: string[] = (() => {
+  const out: string[] = [];
+  for (let h = 9; h <= 18; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      if (h === 18 && m > 30) break;
+      out.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    }
+  }
+  return out;
+})();
+
+/** TIME_SLOTS, plus the currently-saved value if it isn't already one of those 15-minute slots
+ * (e.g. a value saved before this dropdown existed) — so an out-of-grid legacy value still shows
+ * correctly instead of silently not matching any `<option>`, and is left alone until the admin
+ * deliberately picks a real slot. */
+function timeSelectOptions(current: string): string[] {
+  return TIME_SLOTS.includes(current) ? TIME_SLOTS : [...TIME_SLOTS, current].sort();
+}
+
+/** Every quarter-hour (15-minute) value from 0 up to MAX_WORKED_HOURS inclusive, for the
+ * hours-worked thresholds — same "pick from a grid, can't type an arbitrary number" rule as the
+ * shift-time dropdowns above. */
+const HOURS_SLOTS: number[] = (() => {
+  const out: number[] = [];
+  for (let q = 0; q <= MAX_WORKED_HOURS * 4; q++) out.push(Math.round(q * 25) / 100);
+  return out;
+})();
+
+function hoursSelectOptions(current: number): number[] {
+  return HOURS_SLOTS.includes(current) ? HOURS_SLOTS : [...HOURS_SLOTS, current].sort((a, b) => a - b);
+}
+
+/** "H:MM" — e.g. 4.5 -> "4:30" — short and consistent-width, matching the shift-time dropdowns
+ * above rather than a verbose "4h 30m" that made every option a different length. */
+function formatHoursLabel(h: number): string {
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60), mm = totalMin % 60;
+  return `${hh}:${String(mm).padStart(2, '0')}`;
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -39,6 +81,101 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       <span className="toggle-slider" />
     </label>
   );
+}
+
+/** One section's Save control — always visible but disabled until that section has unsaved
+ * edits, so the admin never has to hunt for a button and can never apply a change without an
+ * explicit click plus this confirmation. `validate` (optional) runs before the confirmation
+ * opens; returning a string blocks the save and alerts that message instead. */
+function SectionSaveBar({ dirty, saving, onDiscard, onSave, title, notice, changeLines, validate }: {
+  dirty: boolean; saving: boolean; onDiscard: () => void; onSave: () => void | Promise<void>;
+  title: string; notice: string; changeLines: string[]; validate?: () => string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  function handleSaveClick() {
+    if (validate) {
+      const err = validate();
+      if (err) { alert(err); return; }
+    }
+    setOpen(true);
+  }
+  return (
+    <div className="rule-inputs" style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <button className="btn sm" onClick={onDiscard} disabled={!dirty || saving}>Discard</button>
+      <button className="btn sm primary" onClick={handleSaveClick} disabled={!dirty || saving}>Save changes</button>
+      {dirty && <span className="meta">Unsaved changes in this section</span>}
+      {open && (
+        <ModalShell
+          title={title}
+          onClose={() => setOpen(false)}
+          actions={[
+            { label: 'Cancel', cls: 'btn', onClick: () => setOpen(false) },
+            { label: saving ? 'Saving…' : 'Yes, apply changes', cls: 'btn primary', onClick: async () => { await onSave(); setOpen(false); } },
+          ]}
+        >
+          <div className="notice">{notice}</div>
+          <div className="field">
+            <label className="field-label">About to change</label>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {changeLines.length === 0
+                ? <li className="meta">No differences detected.</li>
+                : changeLines.map((l, i) => <li key={i} style={{ fontSize: 13, marginBottom: 2 }}>{l}</li>)}
+            </ul>
+          </div>
+        </ModalShell>
+      )}
+    </div>
+  );
+}
+
+function stringListDiff(before: string[], after: string[]): string[] {
+  const added = after.filter((x) => !before.includes(x));
+  const removed = before.filter((x) => !after.includes(x));
+  const lines: string[] = [];
+  if (added.length) lines.push(`Added: ${added.join(', ')}`);
+  if (removed.length) lines.push(`Removed: ${removed.join(', ')}`);
+  return lines;
+}
+
+function teamsDiff(before: HrTeam[], after: HrTeam[]): string[] {
+  const beforeNames = before.map((t) => t.name), afterNames = after.map((t) => t.name);
+  const added = after.filter((t) => !beforeNames.includes(t.name)).map((t) => t.name);
+  const removed = before.filter((t) => !afterNames.includes(t.name)).map((t) => t.name);
+  const lines: string[] = [];
+  if (added.length) lines.push(`Added team(s): ${added.join(', ')}`);
+  if (removed.length) lines.push(`Removed team(s): ${removed.join(', ')}`);
+  for (const t of after) {
+    const prev = before.find((b) => b.name === t.name);
+    if (prev && prev.manager !== t.manager) lines.push(`${t.name}: Reporting Manager ${prev.manager || 'none'} → ${t.manager || 'none'}`);
+  }
+  return lines;
+}
+
+function holidaysDiff(before: HrHoliday[], after: HrHoliday[]): string[] {
+  const key = (h: HrHoliday) => `${h.date}|${h.name}`;
+  const beforeKeys = before.map(key), afterKeys = after.map(key);
+  const added = after.filter((h) => !beforeKeys.includes(key(h)));
+  const removed = before.filter((h) => !afterKeys.includes(key(h)));
+  const lines: string[] = [];
+  if (added.length) lines.push(`Added: ${added.map((h) => `${h.name} (${h.date})`).join(', ')}`);
+  if (removed.length) lines.push(`Removed: ${removed.map((h) => `${h.name} (${h.date})`).join(', ')}`);
+  return lines;
+}
+
+/** A local draft that mirrors `source` until edited, and snaps back to it when `source` itself
+ * changes (initial load, or this section's own save completing) — without clobbering an edit in
+ * progress in a DIFFERENT section, since those don't touch `source`. Adjusts state directly
+ * during render rather than in a useEffect (React's documented pattern for "resetting state when
+ * a prop changes" — https://react.dev/learn/you-might-not-need-an-effect) so it doesn't cost an
+ * extra post-commit render pass. */
+function useSyncedDraft<T>(source: T): [T, Dispatch<SetStateAction<T>>] {
+  const [draft, setDraft] = useState(source);
+  const [prevSource, setPrevSource] = useState(source);
+  if (prevSource !== source) {
+    setPrevSource(source);
+    setDraft(source);
+  }
+  return [draft, setDraft];
 }
 
 export default function Rules() {
@@ -61,21 +198,41 @@ export default function Rules() {
   const [newLeaveType, setNewLeaveType] = useState('');
   const [newLeavePerMonth, setNewLeavePerMonth] = useState('1');
 
-  // Every toggle and number field below edits THIS local copy, not the saved rules. Before, each
-  // one called persistRules() directly, so a single keystroke in a number field was a server
-  // write plus an audit-log entry plus a full-tree re-render — the "it saves/reloads as I type"
-  // problem. Nothing leaves this component now until Save changes is confirmed.
-  const [ruleDraft, setRuleDraft] = useState<HrRules>(r);
-  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
-  const [savingRules, setSavingRules] = useState(false);
-  // Re-sync when the saved rules genuinely change (initial load, or a save completing). Local
-  // edits don't touch `r`, so this can't clobber work in progress.
-  useEffect(() => { setRuleDraft(r); }, [r]);
+  // Every section below edits its OWN local draft, not the saved data directly — nothing
+  // leaves this component (and nothing is lost on refresh, or kept, until Save is clicked) for
+  // ANY section: Teams, Designations, Expense categories, Required documents, Holiday calendar,
+  // CTC structure, and every HrRules-backed rule. Before, most of these persisted to the server
+  // on every single click/keystroke (add a team, change a manager, remove a category) with no
+  // button and no confirmation at all. Each draft re-syncs (via useSyncedDraft) when the saved
+  // data genuinely changes — local edits don't touch the saved copies, so a save in one section
+  // can't clobber work in progress in a different section.
+  const [teamsDraft, setTeamsDraft] = useSyncedDraft(state.teams);
+  const [teamsSaving, setTeamsSaving] = useState(false);
+  const [designationsDraft, setDesignationsDraft] = useSyncedDraft(state.orgStructure.designations);
+  const [designationsSaving, setDesignationsSaving] = useState(false);
+  const [expenseCategoriesDraft, setExpenseCategoriesDraft] = useSyncedDraft(state.orgStructure.expenseCategories);
+  const [expenseCategoriesSaving, setExpenseCategoriesSaving] = useState(false);
+  const [requiredDocumentsDraft, setRequiredDocumentsDraft] = useSyncedDraft(state.orgStructure.requiredDocuments);
+  const [requiredDocumentsSaving, setRequiredDocumentsSaving] = useState(false);
+  const [holidaysDraft, setHolidaysDraft] = useSyncedDraft(state.orgStructure.holidays);
+  const [holidaysSaving, setHolidaysSaving] = useState(false);
+  const [ctcSaving, setCtcSaving] = useState(false);
 
-  const rulesDirty = JSON.stringify(ruleDraft) !== JSON.stringify(r);
+  // shiftGraceMinutes needs a transform on top of the plain "mirror the source" behaviour
+  // useSyncedDraft gives every other section (see FIXED_GRACE_MINUTES) — same render-time
+  // adjustment pattern, just inlined instead of going through the generic hook.
+  const [ruleDraft, setRuleDraft] = useState<HrRules>({ ...r, shiftGraceMinutes: FIXED_GRACE_MINUTES });
+  const [prevSavedRules, setPrevSavedRules] = useState(r);
+  if (prevSavedRules !== r) {
+    setPrevSavedRules(r);
+    setRuleDraft({ ...r, shiftGraceMinutes: FIXED_GRACE_MINUTES });
+  }
+  const [savingRules, setSavingRules] = useState(false);
 
   // Spelled out in the confirmation rather than a bare "are you sure?", so the admin can see
-  // exactly what they're about to apply — these settings reach payroll.
+  // exactly what they're about to apply — these settings reach payroll. Shared by all four
+  // HrRules-backed sections below (Attendance & leave, Approval chain, Leave types, Other rules)
+  // since they're one settings row saved with one call — see the note by ATTENDANCE_KEYS etc.
   const changedRuleLabels = (Object.keys(ruleDraft) as (keyof HrRules)[])
     .filter((k) => JSON.stringify(ruleDraft[k]) !== JSON.stringify(r[k]))
     .map((k) => {
@@ -94,13 +251,32 @@ export default function Rules() {
   function setDraftLeaveType(type: string, cfg: HrLeaveTypeConfig) {
     setRuleDraft((d) => ({ ...d, leaveTypes: { ...d.leaveTypes, [type]: cfg } }));
   }
-  function discardRuleEdits() { setRuleDraft(r); }
+
+  // The four HrRules-backed sections below are all part of ONE database row, saved with ONE
+  // call — so "Save" on any one of them applies the WHOLE draft (any other section's pending
+  // edits included), not just that section's fields. That's shown honestly: the confirmation
+  // list (changedRuleLabels, above) always reflects everything actually being saved, not just
+  // the section the button was clicked from. Each section's OWN button only controls whether
+  // it's enabled (via its own scoped dirty check) and what "Discard" resets.
+  const ATTENDANCE_KEYS: (keyof HrRules)[] = ['shiftStartTime', 'shiftEndTime', 'regularizationMonthlyQuota', 'shortLeaveMonthlyQuota', 'halfDayMinWorkedHours', 'shortLeaveMinWorkedHours', 'fullDayMinWorkedHours'];
+  const APPROVAL_KEYS: (keyof HrRules)[] = ['twoLevelApproval'];
+  const LEAVE_TYPES_KEYS: (keyof HrRules)[] = ['leaveTypes'];
+  const OTHER_RULES_KEYS: (keyof HrRules)[] = ['lateMarkPenalty', 'geoFencing', 'selfieCheckin', 'pfEsi', 'optionalHolidayChoice', 'assetChecklist'];
+  function sectionDirty(keys: (keyof HrRules)[]): boolean {
+    return keys.some((k) => JSON.stringify(ruleDraft[k]) !== JSON.stringify(r[k]));
+  }
+  function discardSection(keys: (keyof HrRules)[]) {
+    setRuleDraft((d) => {
+      const next = { ...d };
+      for (const k of keys) (next as Record<string, unknown>)[k] = r[k];
+      return next;
+    });
+  }
   async function commitRuleEdits() {
     setSavingRules(true);
-    await persistRules(ruleDraft);
+    await persistRules({ ...ruleDraft, shiftGraceMinutes: FIXED_GRACE_MINUTES });
     logRuleChange('Updated attendance, approval, leave-type and other rules');
     setSavingRules(false);
-    setConfirmSaveOpen(false);
   }
 
   // Live preview against the (unsaved) draft values in the fields above, not the saved rules —
@@ -109,98 +285,132 @@ export default function Rules() {
     basicPct: Number(ctcBasicPct) || 0, hraPctOfBasic: Number(ctcHraPct) || 0,
     convenienceType: ctcConvType, convenienceValue: Number(ctcConvValue) || 0,
   });
+  const ctcDirty = Number(ctcBasicPct) !== r.ctcSplit.basicPct || Number(ctcHraPct) !== r.ctcSplit.hraPctOfBasic
+    || ctcConvType !== r.ctcSplit.convenienceType || Number(ctcConvValue) !== r.ctcSplit.convenienceValue;
+  const ctcChangeLines: string[] = [];
+  if (Number(ctcBasicPct) !== r.ctcSplit.basicPct) ctcChangeLines.push(`Basic: ${r.ctcSplit.basicPct}% → ${Number(ctcBasicPct) || 0}%`);
+  if (Number(ctcHraPct) !== r.ctcSplit.hraPctOfBasic) ctcChangeLines.push(`HRA: ${r.ctcSplit.hraPctOfBasic}% of Basic → ${Number(ctcHraPct) || 0}% of Basic`);
+  if (ctcConvType !== r.ctcSplit.convenienceType || Number(ctcConvValue) !== r.ctcSplit.convenienceValue) {
+    const fmt = (t: 'amount' | 'percent', v: number) => (t === 'amount' ? `₹${v}` : `${v}%`);
+    ctcChangeLines.push(`Convenience Allowance: ${fmt(r.ctcSplit.convenienceType, r.ctcSplit.convenienceValue)} → ${fmt(ctcConvType, Number(ctcConvValue) || 0)}`);
+  }
+  function validateCtc(): string | null {
+    const basicPct = Number(ctcBasicPct) || 0, hraPct = Number(ctcHraPct) || 0, convValue = Number(ctcConvValue) || 0;
+    if (basicPct <= 0 || basicPct > 100) return 'Basic must be between 0 and 100% of monthly salary.';
+    if (hraPct < 0 || hraPct > 100) return 'HRA must be between 0 and 100% of Basic.';
+    if (ctcConvType === 'percent' && (convValue < 0 || convValue > 100)) return 'Convenience Allowance % must be between 0 and 100.';
+    if (convValue < 0) return 'Convenience Allowance cannot be negative.';
+    if (sampleBreakdown.specialAllowance < 0) return 'Basic + HRA + Convenience already exceeds the ₹50,000/month sample salary shown below — Special Allowance can\'t go negative. Lower one of them first.';
+    return null;
+  }
+  async function saveCtcSplit() {
+    setCtcSaving(true);
+    const basicPct = Number(ctcBasicPct) || 0, hraPct = Number(ctcHraPct) || 0, convValue = Number(ctcConvValue) || 0;
+    await persistRules({ ...r, ctcSplit: { basicPct, hraPctOfBasic: hraPct, convenienceType: ctcConvType, convenienceValue: convValue } });
+    logRuleChange(`Updated CTC structure: Basic ${basicPct}% of salary / HRA ${hraPct}% of Basic / Convenience ${ctcConvType === 'amount' ? '₹' + convValue : convValue + '%'} — Special Allowance auto-computed as the remainder`);
+    setCtcSaving(false);
+  }
+  function discardCtc() {
+    setCtcBasicPct(String(r.ctcSplit.basicPct));
+    setCtcHraPct(String(r.ctcSplit.hraPctOfBasic));
+    setCtcConvType(r.ctcSplit.convenienceType);
+    setCtcConvValue(String(r.ctcSplit.convenienceValue));
+  }
 
-
-  async function addTeam() {
+  function addTeam() {
     const name = newTeam.trim();
     if (!name) return;
-    if (state.teams.some((t) => t.name === name)) { alert('That team already exists.'); return; }
-    await persistTeams([...state.teams, { name, manager: null }]);
-    logRuleChange(`Added team: ${name}`);
+    if (teamsDraft.some((t) => t.name === name)) { alert('That team already exists.'); return; }
+    setTeamsDraft((d) => [...d, { name, manager: null }]);
     setNewTeam('');
   }
-  async function removeTeam(name: string) {
+  function removeTeam(name: string) {
     if (state.employees.some((e) => e.team === name && e.status !== 'exited')) {
       alert("Can't remove a team that still has employees assigned. Move them to another team first.");
       return;
     }
-    await persistTeams(state.teams.filter((t) => t.name !== name));
-    logRuleChange(`Removed team: ${name}`);
+    setTeamsDraft((d) => d.filter((t) => t.name !== name));
   }
-  async function setTeamManager(name: string, manager: string) {
-    await persistTeams(state.teams.map((t) => (t.name === name ? { ...t, manager: manager || null } : t)));
-    logRuleChange(`Set Reporting Manager for ${name} to ${manager || 'none'}`);
+  function setTeamManagerDraft(name: string, manager: string) {
+    setTeamsDraft((d) => d.map((t) => (t.name === name ? { ...t, manager: manager || null } : t)));
+  }
+  async function saveTeams() {
+    setTeamsSaving(true);
+    await persistTeams(teamsDraft);
+    logRuleChange(`Updated Teams & Reporting Managers: ${teamsDiff(state.teams, teamsDraft).join('; ') || 'no changes'}`);
+    setTeamsSaving(false);
   }
 
-  async function addDesignation() {
+  function addDesignation() {
     const name = newDesig.trim();
-    if (!name || state.orgStructure.designations.includes(name)) return;
-    await persistDesignations([...state.orgStructure.designations, name]);
-    logRuleChange(`Added designation: ${name}`);
+    if (!name || designationsDraft.includes(name)) return;
+    setDesignationsDraft((d) => [...d, name]);
     setNewDesig('');
   }
-  async function removeDesignation(name: string) {
+  function removeDesignation(name: string) {
     const count = state.employees.filter((e) => e.designation === name).length;
     const msg = count > 0 ? `${count} employee(s) currently hold "${name}". Remove it from the list anyway? Their existing records won't change.` : `Remove "${name}" from Organisation Structure?`;
     if (!confirm(msg)) return;
-    await persistDesignations(state.orgStructure.designations.filter((d) => d !== name));
-    logRuleChange(`Removed designation: ${name}`);
+    setDesignationsDraft((d) => d.filter((x) => x !== name));
+  }
+  async function saveDesignations() {
+    setDesignationsSaving(true);
+    await persistDesignations(designationsDraft);
+    logRuleChange(`Updated Designations: ${stringListDiff(state.orgStructure.designations, designationsDraft).join('; ') || 'no changes'}`);
+    setDesignationsSaving(false);
   }
 
-  async function addExpenseCategory() {
+  function addExpenseCategory() {
     const name = newExpCat.trim();
-    if (!name || state.orgStructure.expenseCategories.includes(name)) return;
-    await persistExpenseCategories([...state.orgStructure.expenseCategories, name]);
-    logRuleChange(`Added expense category: ${name}`);
+    if (!name || expenseCategoriesDraft.includes(name)) return;
+    setExpenseCategoriesDraft((d) => [...d, name]);
     setNewExpCat('');
   }
-  async function removeExpenseCategory(name: string) {
+  function removeExpenseCategory(name: string) {
     const count = state.expenses.filter((x) => x.category === name).length;
     const msg = count > 0 ? `${count} expense record(s) use "${name}". Remove it from the list anyway? Their existing records won't change.` : `Remove "${name}" from Organisation Structure?`;
     if (!confirm(msg)) return;
-    await persistExpenseCategories(state.orgStructure.expenseCategories.filter((c) => c !== name));
-    logRuleChange(`Removed expense category: ${name}`);
+    setExpenseCategoriesDraft((d) => d.filter((c) => c !== name));
+  }
+  async function saveExpenseCategories() {
+    setExpenseCategoriesSaving(true);
+    await persistExpenseCategories(expenseCategoriesDraft);
+    logRuleChange(`Updated Expense categories: ${stringListDiff(state.orgStructure.expenseCategories, expenseCategoriesDraft).join('; ') || 'no changes'}`);
+    setExpenseCategoriesSaving(false);
   }
 
-  async function addRequiredDoc() {
+  function addRequiredDoc() {
     const name = newReqDoc.trim();
-    if (!name || state.orgStructure.requiredDocuments.includes(name)) return;
-    await persistRequiredDocuments([...state.orgStructure.requiredDocuments, name]);
-    logRuleChange(`Added required onboarding document: ${name}`);
+    if (!name || requiredDocumentsDraft.includes(name)) return;
+    setRequiredDocumentsDraft((d) => [...d, name]);
     setNewReqDoc('');
   }
-  async function removeRequiredDoc(name: string) {
-    await persistRequiredDocuments(state.orgStructure.requiredDocuments.filter((d) => d !== name));
-    logRuleChange(`Removed required onboarding document: ${name}`);
+  function removeRequiredDoc(name: string) {
+    setRequiredDocumentsDraft((d) => d.filter((x) => x !== name));
+  }
+  async function saveRequiredDocuments() {
+    setRequiredDocumentsSaving(true);
+    await persistRequiredDocuments(requiredDocumentsDraft);
+    logRuleChange(`Updated required onboarding documents: ${stringListDiff(state.orgStructure.requiredDocuments, requiredDocumentsDraft).join('; ') || 'no changes'}`);
+    setRequiredDocumentsSaving(false);
   }
 
-  async function addHoliday() {
+  function addHoliday() {
     if (!newHolidayDate || !newHolidayName.trim()) { alert('Both a date and a name are needed.'); return; }
-    const holidays = [...state.orgStructure.holidays, { date: newHolidayDate, name: newHolidayName.trim() }].sort((a, b) => a.date.localeCompare(b.date));
-    await persistHolidays(holidays);
-    logRuleChange(`Added holiday: ${newHolidayName.trim()} (${newHolidayDate})`);
+    setHolidaysDraft((d) => [...d, { date: newHolidayDate, name: newHolidayName.trim() }].sort((a, b) => a.date.localeCompare(b.date)));
     setNewHolidayDate(''); setNewHolidayName('');
   }
-  async function removeHoliday(date: string, name: string) {
-    await persistHolidays(state.orgStructure.holidays.filter((h) => !(h.date === date && h.name === name)));
-    logRuleChange(`Removed holiday: ${name} (${date})`);
+  function removeHolidayDraft(date: string, name: string) {
+    setHolidaysDraft((d) => d.filter((h) => !(h.date === date && h.name === name)));
+  }
+  async function saveHolidaysSection() {
+    setHolidaysSaving(true);
+    await persistHolidays(holidaysDraft);
+    logRuleChange(`Updated Holiday calendar: ${holidaysDiff(state.orgStructure.holidays, holidaysDraft).join('; ') || 'no changes'}`);
+    setHolidaysSaving(false);
   }
 
-  async function saveCtcSplit() {
-    const basicPct = Number(ctcBasicPct) || 0, hraPct = Number(ctcHraPct) || 0, convValue = Number(ctcConvValue) || 0;
-    if (basicPct <= 0 || basicPct > 100) { alert('Basic must be between 0 and 100% of monthly salary.'); return; }
-    if (hraPct < 0 || hraPct > 100) { alert('HRA must be between 0 and 100% of Basic.'); return; }
-    if (ctcConvType === 'percent' && (convValue < 0 || convValue > 100)) { alert('Convenience Allowance % must be between 0 and 100.'); return; }
-    if (convValue < 0) { alert('Convenience Allowance cannot be negative.'); return; }
-    if (sampleBreakdown.specialAllowance < 0) {
-      alert('Basic + HRA + Convenience already exceeds the ₹50,000/month sample salary shown below — Special Allowance can\'t go negative. Lower one of them first. (A lower-CTC employee would hit this even sooner — check their individual CTC structure override too.)');
-      return;
-    }
-    await persistRules({ ...r, ctcSplit: { basicPct, hraPctOfBasic: hraPct, convenienceType: ctcConvType, convenienceValue: convValue } });
-    logRuleChange(`Updated CTC structure: Basic ${basicPct}% of salary / HRA ${hraPct}% of Basic / Convenience ${ctcConvType === 'amount' ? '₹' + convValue : convValue + '%'} — Special Allowance auto-computed as the remainder`);
-  }
-
-  async function addLeaveType() {
+  function addLeaveType() {
     const name = newLeaveType.trim();
     if (!name) return;
     if (ruleDraft.leaveTypes[name] !== undefined) { alert('That leave type already exists.'); return; }
@@ -219,7 +429,7 @@ export default function Rules() {
   return (
     <>
       <div className="topbar">
-        <div><h1 className="page-title">Rules &amp; Organisation Structure</h1><div className="page-sub">Build out your org here — designations, teams, categories — and every rule below is a toggle you can flip anytime.</div></div>
+        <div><h1 className="page-title">Rules &amp; Organisation Structure</h1><div className="page-sub">Build out your org here — designations, teams, categories — and every rule below is a toggle you can flip anytime. Nothing takes effect until you save that section.</div></div>
         <div className="as-role">{state.currentUser ? state.currentUser.name : ''} · {state.role}</div>
       </div>
 
@@ -229,9 +439,9 @@ export default function Rules() {
           <div className="rule-desc" style={{ marginBottom: 10 }}>Add as many teams as you need. Each team has one Reporting Manager, who then sees only that team plus their own chain upward.</div>
           <table><thead><tr><th>Team</th><th>Reporting Manager</th><th></th></tr></thead>
             <tbody>
-              {state.teams.map((t) => (
+              {teamsDraft.map((t) => (
                 <tr key={t.name}><td>{t.name}</td>
-                  <td><select value={t.manager || ''} onChange={(e) => setTeamManager(t.name, e.target.value)} style={{ width: 220 }}>
+                  <td><select value={t.manager || ''} onChange={(e) => setTeamManagerDraft(t.name, e.target.value)} style={{ width: 220 }}>
                     <option value="">— None —</option>
                     {state.employees.filter((e) => e.status !== 'exited').map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
                   </select></td>
@@ -244,6 +454,15 @@ export default function Rules() {
             <input type="text" placeholder="e.g. Tech" value={newTeam} onChange={(e) => setNewTeam(e.target.value)} />
             <button className="btn sm" onClick={addTeam}>+ Add team</button>
           </div>
+          <SectionSaveBar
+            dirty={JSON.stringify(teamsDraft) !== JSON.stringify(state.teams)}
+            saving={teamsSaving}
+            onDiscard={() => setTeamsDraft(state.teams)}
+            onSave={saveTeams}
+            title="Apply Teams & Reporting Managers changes?"
+            notice="This changes who reports to whom, and which teams show up across the HR Tool."
+            changeLines={teamsDiff(state.teams, teamsDraft)}
+          />
         </div>
       </section>
 
@@ -251,22 +470,40 @@ export default function Rules() {
         <div className="block-head"><h2>Designations</h2></div>
         <div className="card pad">
           <div className="rule-desc" style={{ marginBottom: 10 }}>This list feeds the Designation dropdown everywhere — offer letters, onboarding, directory, and Assigning IDs.</div>
-          <div className="chip-list">{state.orgStructure.designations.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeDesignation(d)} title="Remove">×</button></span>)}</div>
+          <div className="chip-list">{designationsDraft.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeDesignation(d)} title="Remove">×</button></span>)}</div>
           <div className="add-inline">
             <input type="text" placeholder="e.g. Growth Marketer" value={newDesig} onChange={(e) => setNewDesig(e.target.value)} />
             <button className="btn sm" onClick={addDesignation}>+ Add designation</button>
           </div>
+          <SectionSaveBar
+            dirty={JSON.stringify(designationsDraft) !== JSON.stringify(state.orgStructure.designations)}
+            saving={designationsSaving}
+            onDiscard={() => setDesignationsDraft(state.orgStructure.designations)}
+            onSave={saveDesignations}
+            title="Apply Designations changes?"
+            notice="This changes the Designation dropdown everywhere it's used — offer letters, onboarding, directory, Assigning IDs."
+            changeLines={stringListDiff(state.orgStructure.designations, designationsDraft)}
+          />
         </div>
       </section>
 
       <section className="block">
         <div className="block-head"><h2>Expense categories</h2></div>
         <div className="card pad">
-          <div className="chip-list">{state.orgStructure.expenseCategories.map((c) => <span className="chip" key={c}>{c} <button onClick={() => removeExpenseCategory(c)} title="Remove">×</button></span>)}</div>
+          <div className="chip-list">{expenseCategoriesDraft.map((c) => <span className="chip" key={c}>{c} <button onClick={() => removeExpenseCategory(c)} title="Remove">×</button></span>)}</div>
           <div className="add-inline">
             <input type="text" placeholder="e.g. Events" value={newExpCat} onChange={(e) => setNewExpCat(e.target.value)} />
             <button className="btn sm" onClick={addExpenseCategory}>+ Add category</button>
           </div>
+          <SectionSaveBar
+            dirty={JSON.stringify(expenseCategoriesDraft) !== JSON.stringify(state.orgStructure.expenseCategories)}
+            saving={expenseCategoriesSaving}
+            onDiscard={() => setExpenseCategoriesDraft(state.orgStructure.expenseCategories)}
+            onSave={saveExpenseCategories}
+            title="Apply Expense categories changes?"
+            notice="This changes the category dropdown employees pick from when filing an expense."
+            changeLines={stringListDiff(state.orgStructure.expenseCategories, expenseCategoriesDraft)}
+          />
         </div>
       </section>
 
@@ -274,11 +511,20 @@ export default function Rules() {
         <div className="block-head"><h2>Required onboarding documents</h2></div>
         <div className="card pad">
           <div className="rule-desc" style={{ marginBottom: 10 }}>This checklist is what every new hire is asked to upload, and what shows up in every employee&apos;s My Documents.</div>
-          <div className="chip-list">{state.orgStructure.requiredDocuments.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeRequiredDoc(d)} title="Remove">×</button></span>)}</div>
+          <div className="chip-list">{requiredDocumentsDraft.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeRequiredDoc(d)} title="Remove">×</button></span>)}</div>
           <div className="add-inline">
             <input type="text" placeholder="e.g. PF Nomination Form" value={newReqDoc} onChange={(e) => setNewReqDoc(e.target.value)} />
             <button className="btn sm" onClick={addRequiredDoc}>+ Add document type</button>
           </div>
+          <SectionSaveBar
+            dirty={JSON.stringify(requiredDocumentsDraft) !== JSON.stringify(state.orgStructure.requiredDocuments)}
+            saving={requiredDocumentsSaving}
+            onDiscard={() => setRequiredDocumentsDraft(state.orgStructure.requiredDocuments)}
+            onSave={saveRequiredDocuments}
+            title="Apply Required onboarding documents changes?"
+            notice="This changes the checklist every new hire is asked to upload, and what shows in every employee's My Documents."
+            changeLines={stringListDiff(state.orgStructure.requiredDocuments, requiredDocumentsDraft)}
+          />
         </div>
       </section>
 
@@ -287,8 +533,8 @@ export default function Rules() {
         <div className="card pad">
           <div className="rule-desc" style={{ marginBottom: 10 }}>Feeds the attendance calendar&apos;s week-off/holiday colouring and the optional-holiday pool.</div>
           <table><thead><tr><th>Date</th><th>Holiday</th><th></th></tr></thead>
-            <tbody>{state.orgStructure.holidays.map((h) => (
-              <tr key={h.date + h.name}><td>{h.date}</td><td>{h.name}</td><td style={{ textAlign: 'right' }}><button className="btn ghost sm" onClick={() => removeHoliday(h.date, h.name)}>Remove</button></td></tr>
+            <tbody>{holidaysDraft.map((h) => (
+              <tr key={h.date + h.name}><td>{h.date}</td><td>{h.name}</td><td style={{ textAlign: 'right' }}><button className="btn ghost sm" onClick={() => removeHolidayDraft(h.date, h.name)}>Remove</button></td></tr>
             ))}</tbody>
           </table>
           <div className="add-inline" style={{ marginTop: 12 }}>
@@ -296,6 +542,15 @@ export default function Rules() {
             <input type="text" placeholder="e.g. Holi" value={newHolidayName} onChange={(e) => setNewHolidayName(e.target.value)} />
             <button className="btn sm" onClick={addHoliday}>+ Add holiday</button>
           </div>
+          <SectionSaveBar
+            dirty={JSON.stringify(holidaysDraft) !== JSON.stringify(state.orgStructure.holidays)}
+            saving={holidaysSaving}
+            onDiscard={() => setHolidaysDraft(state.orgStructure.holidays)}
+            onSave={saveHolidaysSection}
+            title="Apply Holiday calendar changes?"
+            notice="This changes the attendance calendar's week-off/holiday colouring and the optional-holiday pool for everyone."
+            changeLines={holidaysDiff(state.orgStructure.holidays, holidaysDraft)}
+          />
         </div>
       </section>
 
@@ -328,9 +583,16 @@ export default function Rules() {
           <div className="rule-row">
             <div><div className="rule-name">Special Allowance</div><div className="rule-desc">Auto-calculated — whatever&apos;s left of monthly salary after Basic, HRA, and Convenience Allowance.</div></div>
           </div>
-          <div className="rule-inputs" style={{ marginTop: 4 }}>
-            <button className="btn sm" onClick={saveCtcSplit}>Save CTC structure</button>
-          </div>
+          <SectionSaveBar
+            dirty={ctcDirty}
+            saving={ctcSaving}
+            onDiscard={discardCtc}
+            onSave={saveCtcSplit}
+            validate={validateCtc}
+            title="Apply CTC structure changes?"
+            notice="This changes how salary is split into Basic/HRA/Convenience/Special Allowance in offer letters and employment agreements going forward."
+            changeLines={ctcChangeLines}
+          />
           <div className="meta" style={{ marginTop: 10 }}>
             Example on a ₹6,00,000 annual CTC (₹50,000/month): Basic {sampleBreakdown.basic.toLocaleString('en-IN')}
             {' · '}HRA {sampleBreakdown.hra.toLocaleString('en-IN')}
@@ -349,31 +611,54 @@ export default function Rules() {
         <div className="block-head"><h2>Attendance &amp; leave window rules</h2></div>
         <div className="card pad">
           <div className="rule-row">
-            <div><div className="rule-name">Shift timings (punch in / punch out)</div><div className="rule-desc">Official shift start and end time.</div></div>
+            <div><div className="rule-name">Shift timings (punch in / punch out)</div><div className="rule-desc">Official shift start and end time — 15-minute slots, 9:00 am to 6:30 pm.</div></div>
             <div className="rule-inputs">
-              In <input type="time" value={ruleDraft.shiftStartTime} onChange={(e) => setDraftRule('shiftStartTime', e.target.value)} style={{ width: 120 }} />
-              Out <input type="time" value={ruleDraft.shiftEndTime} onChange={(e) => setDraftRule('shiftEndTime', e.target.value)} style={{ width: 120 }} />
+              In <select value={ruleDraft.shiftStartTime} onChange={(e) => setDraftRule('shiftStartTime', e.target.value)} style={{ width: 120 }}>
+                {timeSelectOptions(ruleDraft.shiftStartTime).map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              Out <select value={ruleDraft.shiftEndTime} onChange={(e) => setDraftRule('shiftEndTime', e.target.value)} style={{ width: 120 }}>
+                {timeSelectOptions(ruleDraft.shiftEndTime).map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
             </div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Grace period</div><div className="rule-desc">Minutes after shift start before a punch-in counts as late.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={ruleDraft.shiftGraceMinutes} onChange={(e) => setDraftRule('shiftGraceMinutes', Number(e.target.value))} /> min</div>
+            <div><div className="rule-name">Grace period</div><div className="rule-desc">Minutes after shift start before a punch-in counts as late. Fixed company-wide — not admin-editable.</div></div>
+            <div className="rule-inputs"><strong>{FIXED_GRACE_MINUTES} min</strong></div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">Regularization limit per payroll cycle</div><div className="rule-desc">How many regularization requests an employee may submit per payroll cycle (26th → 25th). Dates are limited to that same cycle — earlier cycles are already paid out and can no longer be corrected.</div></div>
             <div className="rule-inputs"><input className="mini-input" type="number" value={ruleDraft.regularizationMonthlyQuota} onChange={(e) => setDraftRule('regularizationMonthlyQuota', Number(e.target.value))} /> / cycle</div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Hours worked — day status</div><div className="rule-desc">Total hours worked decides the day — counted only inside the shift window above, so time before the shift starts or after it ends is not credited. Maximum {MAX_WORKED_HOURS} hrs. Below the first number is Absent, below the second is Half Day, below the third is Short Leave, at or above it is a full day. Punch-in time no longer changes the outcome — it only marks the arrival on time or late against the grace period above.</div></div>
+            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month. Shown to employees, publisher admins, and event admins on their Rules &amp; Policy page.</div></div>
+            <div className="rule-inputs"><input className="mini-input" type="number" value={ruleDraft.shortLeaveMonthlyQuota} onChange={(e) => setDraftRule('shortLeaveMonthlyQuota', Number(e.target.value))} /> / month</div>
+          </div>
+          <div className="rule-row">
+            <div><div className="rule-name">Hours worked — day status</div><div className="rule-desc">Below 1st = Absent, below 2nd = Half Day, below 3rd = Short Leave, at/above 3rd = Full day. Max {formatHoursLabel(MAX_WORKED_HOURS)}.</div></div>
             <div className="rule-inputs">
-              <input className="mini-input" type="number" step="0.25" min={0} max={MAX_WORKED_HOURS} value={ruleDraft.halfDayMinWorkedHours} onChange={(e) => setDraftRule('halfDayMinWorkedHours', clampWorkedHours(e.target.value))} style={{ width: 70 }} />
+              <select className="mini-input" value={ruleDraft.halfDayMinWorkedHours} onChange={(e) => setDraftRule('halfDayMinWorkedHours', Number(e.target.value))} style={{ width: 68 }}>
+                {hoursSelectOptions(ruleDraft.halfDayMinWorkedHours).map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
+              </select>
               {' / '}
-              <input className="mini-input" type="number" step="0.25" min={0} max={MAX_WORKED_HOURS} value={ruleDraft.shortLeaveMinWorkedHours} onChange={(e) => setDraftRule('shortLeaveMinWorkedHours', clampWorkedHours(e.target.value))} style={{ width: 70 }} />
+              <select className="mini-input" value={ruleDraft.shortLeaveMinWorkedHours} onChange={(e) => setDraftRule('shortLeaveMinWorkedHours', Number(e.target.value))} style={{ width: 68 }}>
+                {hoursSelectOptions(ruleDraft.shortLeaveMinWorkedHours).map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
+              </select>
               {' / '}
-              <input className="mini-input" type="number" step="0.25" min={0} max={MAX_WORKED_HOURS} value={ruleDraft.fullDayMinWorkedHours} onChange={(e) => setDraftRule('fullDayMinWorkedHours', clampWorkedHours(e.target.value))} style={{ width: 70 }} />
+              <select className="mini-input" value={ruleDraft.fullDayMinWorkedHours} onChange={(e) => setDraftRule('fullDayMinWorkedHours', Number(e.target.value))} style={{ width: 68 }}>
+                {hoursSelectOptions(ruleDraft.fullDayMinWorkedHours).map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
+              </select>
               {' hrs worked'}
             </div>
           </div>
+          <SectionSaveBar
+            dirty={sectionDirty(ATTENDANCE_KEYS)}
+            saving={savingRules}
+            onDiscard={() => discardSection(ATTENDANCE_KEYS)}
+            onSave={commitRuleEdits}
+            title="Apply rule changes?"
+            notice="These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately."
+            changeLines={changedRuleLabels}
+          />
         </div>
       </section>
 
@@ -386,6 +671,15 @@ export default function Rules() {
               <Toggle checked={ruleDraft.twoLevelApproval[m]} onChange={(v) => setDraftApproval(m, v)} />
             </div>
           ))}
+          <SectionSaveBar
+            dirty={sectionDirty(APPROVAL_KEYS)}
+            saving={savingRules}
+            onDiscard={() => discardSection(APPROVAL_KEYS)}
+            onSave={commitRuleEdits}
+            title="Apply rule changes?"
+            notice="These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately."
+            changeLines={changedRuleLabels}
+          />
         </div>
       </section>
 
@@ -414,6 +708,15 @@ export default function Rules() {
             <button className="btn sm" onClick={addLeaveType}>+ Add leave type</button>
           </div>
           <div className="rule-desc" style={{ marginTop: 6 }}>New types are added switched on, with the monthly allowance you enter beside the name.</div>
+          <SectionSaveBar
+            dirty={sectionDirty(LEAVE_TYPES_KEYS)}
+            saving={savingRules}
+            onDiscard={() => discardSection(LEAVE_TYPES_KEYS)}
+            onSave={commitRuleEdits}
+            title="Apply rule changes?"
+            notice="These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately."
+            changeLines={changedRuleLabels}
+          />
         </div>
       </section>
 
@@ -426,50 +729,31 @@ export default function Rules() {
           <div className="rule-row"><div><div className="rule-name">PF / ESI statutory modules</div><div className="rule-desc">Keep off until headcount/wage crosses the statutory threshold.</div></div><Toggle checked={ruleDraft.pfEsi} onChange={(v) => setDraftRule('pfEsi', v)} /></div>
           <div className="rule-row"><div><div className="rule-name">Optional holiday self-selection</div><div className="rule-desc">Let employees pick their own festival holidays from a pool.</div></div><Toggle checked={ruleDraft.optionalHolidayChoice} onChange={(v) => setDraftRule('optionalHolidayChoice', v)} /></div>
           <div className="rule-row"><div><div className="rule-name">Asset issuance/return checklist</div><div className="rule-desc">Track laptop/ID/access card handover in onboarding and offboarding.</div></div><Toggle checked={ruleDraft.assetChecklist} onChange={(v) => setDraftRule('assetChecklist', v)} /></div>
+          <SectionSaveBar
+            dirty={sectionDirty(OTHER_RULES_KEYS)}
+            saving={savingRules}
+            onDiscard={() => discardSection(OTHER_RULES_KEYS)}
+            onSave={commitRuleEdits}
+            title="Apply rule changes?"
+            notice="These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately."
+            changeLines={changedRuleLabels}
+          />
         </div>
       </section>
 
-      <section className="block">
-        <div className="block-head"><h2>Sample data</h2></div>
-        <div className="card pad" style={{ borderColor: '#FECACA' }}>
-          <div className="rule-desc" style={{ marginBottom: 10 }}>Wipes every sample employee, onboarding record, attendance/leave/expense entry, and ticket — so you can start entering real data. Your Teams, Designations, Rules, and Templates are kept. Your own login is kept so you don&apos;t get locked out. This can&apos;t be undone.</div>
-          <button className="btn reject" onClick={handleResetSampleData}>⚠ Delete all sample data</button>
-        </div>
-      </section>
-
-      {/* Sticky because the drafted rules span four sections — the admin shouldn't have to
-          scroll hunting for the button after changing something near the top. */}
-      {rulesDirty && (
-        <div className="rules-savebar">
-          <div>
-            <div className="rule-name">You have unsaved rule changes</div>
-            <div className="rule-desc">Nothing is applied until you save. These rules affect attendance status, approvals and payroll.</div>
+      {/* Destructive — hard-deletes real rows (see resetSampleData). Only rendered when this
+          deployment's build explicitly opted in via NEXT_PUBLIC_ALLOW_SAMPLE_DATA_RESET; a
+          production build that never sets it won't compile this section into the bundle at all.
+          The actual enforcement is server-side (see /api/admin/hr-tool/reset-sample-data) —
+          this is just so production admins never see a button that would 403 anyway. */}
+      {process.env.NEXT_PUBLIC_ALLOW_SAMPLE_DATA_RESET === 'true' && (
+        <section className="block">
+          <div className="block-head"><h2>Sample data</h2></div>
+          <div className="card pad" style={{ borderColor: '#FECACA' }}>
+            <div className="rule-desc" style={{ marginBottom: 10 }}>Wipes every sample employee, onboarding record, attendance/leave/expense entry, and ticket — so you can start entering real data. Your Teams, Designations, Rules, and Templates are kept. Your own login is kept so you don&apos;t get locked out. This can&apos;t be undone.</div>
+            <button className="btn reject" onClick={handleResetSampleData}>⚠ Delete all sample data</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button className="btn" onClick={discardRuleEdits} disabled={savingRules}>Discard</button>
-            <button className="btn primary" onClick={() => setConfirmSaveOpen(true)} disabled={savingRules}>Save changes</button>
-          </div>
-        </div>
-      )}
-      {confirmSaveOpen && (
-        <ModalShell
-          title="Apply rule changes?"
-          onClose={() => setConfirmSaveOpen(false)}
-          actions={[
-            { label: 'Cancel', cls: 'btn', onClick: () => setConfirmSaveOpen(false) },
-            { label: savingRules ? 'Saving…' : 'Yes, apply changes', cls: 'btn primary', onClick: commitRuleEdits },
-          ]}
-        >
-          <div className="notice">These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately.</div>
-          <div className="field">
-            <label className="field-label">About to change</label>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {changedRuleLabels.length === 0
-                ? <li className="meta">No differences detected.</li>
-                : changedRuleLabels.map((label) => <li key={label} style={{ fontSize: 13, marginBottom: 2 }}>{label}</li>)}
-            </ul>
-          </div>
-        </ModalShell>
+        </section>
       )}
 
       <section className="block">

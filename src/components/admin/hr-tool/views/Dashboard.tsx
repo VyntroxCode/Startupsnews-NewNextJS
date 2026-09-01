@@ -2,6 +2,7 @@
 
 import { useHrTool } from '../HrToolContext';
 import { StatusBadge, ApprovalBadge, initials, rmOf, todayStr, monthKeyToLabel } from '../utils';
+import { computeLeaveBalances } from '@/modules/hr-tool/utils/leave-balance';
 import type { HrView } from '../types';
 
 /** `tone` is an optional green/red accent for tiles that represent a done/not-done state (e.g.
@@ -123,6 +124,9 @@ function EmployeeDashboard() {
   const myLeave = state.leaveRequests.filter((l) => l.emp === me.name);
   const myTix = state.tickets.filter((t) => t.emp === me.name);
   const myAtt = state.attendance.find((a) => a.emp === me.name && a.date === todayStr());
+  // Live-computed, same accrual rule as Directory.tsx's profile modal — not the stored,
+  // never-accruing me.leaveBalance snapshot.
+  const myLeaveBalance = computeLeaveBalances(me.doj, state.rules.leaveTypes, myLeave, todayStr());
   return (
     <>
       <PageHead title={`Welcome back, ${me.name.split(' ')[0]}`} sub="Here's where things stand for you today." />
@@ -132,7 +136,7 @@ function EmployeeDashboard() {
           <div className="stat-num" style={{ fontSize: 19 }}>{myAtt ? myAtt.status : 'Not punched in'}</div>
           <div className="stat-note">{myAtt ? `${myAtt.inTime} – ${myAtt.outTime}` : 'Punch in from Attendance'}</div>
         </div>
-        {Object.entries(me.leaveBalance).filter(([k]) => state.rules.leaveTypes[k]?.enabled !== false).map(([k, v]) => (
+        {Object.entries(myLeaveBalance).map(([k, v]) => (
           <div className="card pad" key={k}><div className="stat-label">{k} Leave</div><div className="stat-num">{v}</div><div className="stat-note">days remaining</div></div>
         ))}
       </div>

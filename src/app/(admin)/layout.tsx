@@ -158,11 +158,19 @@ export default function AdminLayout({
 
       const response = await originalFetch(input, init);
 
-      // Exclude specific upload/auth paths that shouldn't trigger random full-page refreshes
+      // Exclude specific upload/auth paths that shouldn't trigger random full-page refreshes.
+      // hr-tool is excluded too — it manages its own client-side state via HrToolContext (a
+      // single bootstrap fetch + optimistic local updates on every save) and doesn't need or
+      // want this blanket remount; without this, every single save in the HR Tool (rules,
+      // directory edits, etc) force-remounted the whole widget ~150ms later, which reset all of
+      // its state to initialState() and was reported as "saving kicks me back to the Dashboard"
+      // — the sessionStorage-remembered `view` (see HrToolContext's VIEW_STORAGE_KEY) papers
+      // over the worst of it, but the full state wipe + reloading flash still happened every time.
       const isSpecialPath = requestUrl.includes('/api/admin/upload') ||
                             requestUrl.includes('/api/admin/presign') ||
                             requestUrl.includes('/api/admin/auth/') ||
-                            requestUrl.includes('/api/admin/media/ingest');
+                            requestUrl.includes('/api/admin/media/ingest') ||
+                            requestUrl.includes('/api/admin/hr-tool');
 
       if (response.ok && method !== 'GET' && requestUrl.includes('/api/admin/') && !isSpecialPath) {
         // Clear the cache directly here, not just via the event below — the event only reaches a

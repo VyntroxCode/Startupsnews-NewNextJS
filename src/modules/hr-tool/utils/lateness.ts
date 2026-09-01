@@ -31,14 +31,13 @@ export interface LatenessInfo {
   text: string;
 }
 
-/** Five-way punch-in bucket against shift start + grace/short-leave/half-day cutoffs —
- * 'on-time' (at/before shift start), 'grace' (within the grace period), 'short-leave' (past
- * grace but within the short-leave cutoff), 'half-day' (past that but within the half-day
- * cutoff), 'absent' (past the half-day cutoff, or no punch at all — see the `null` case).
- * Drives both attendance-calendar coloring and, via HrToolService.computePayrollForMonth,
- * real payroll deductions — half-day-bucket days (and every 3rd short-leave day) cost half a
- * day's pay; absent-bucket days with no covering approved leave cost a full day's pay. */
-export type LatenessBucket = 'on-time' | 'grace' | 'short-leave' | 'half-day' | 'absent';
+/** Punch-in bucket against shift start + grace cutoff — 'on-time' (at/before shift start),
+ * 'grace' (within the grace period), 'late' (past the grace period; arrival time alone no
+ * longer says how late — see latenessInfo for that), plus 'short-leave' / 'half-day' / 'absent'
+ * which combinedAttendanceBucket can produce from hours worked (see hoursWorkedBucket). Drives
+ * attendance-calendar coloring; payroll deductions in HrToolService.computePayrollForMonth are
+ * computed from hoursWorkedBucket directly and don't read this type. */
+export type LatenessBucket = 'on-time' | 'grace' | 'late' | 'short-leave' | 'half-day' | 'absent';
 
 function shiftBoundaries(rules: ShiftSettings): { shiftStart: number; graceEnd: number; shortLeaveEnd: number; halfDayEnd: number } {
   const [h, m] = rules.shiftStartTime.split(':').map(Number);
@@ -64,7 +63,25 @@ export function latenessBucket(inMinutes: number | null, rules: ShiftSettings): 
   if (inMinutes <= graceEnd) return 'grace';
   // Past the grace period is simply "late". It costs nothing on its own; what the day is worth
   // comes from how long they actually worked.
-  return 'grace';
+  return 'late';
+}
+
+/**
+ * Same cutoffs as latenessBucket, but classifies arrival time itself into the short-leave/
+ * half-day/absent tiers instead of collapsing everything past grace into 'late'. Used only by
+ * the HR "Today" table, which wants to flag arrival severity directly and immediately (before
+ * there's even a punch-out to compute hours worked from). The employee calendar and payroll
+ * intentionally stay on hours-worked (hoursWorkedBucket / combinedAttendanceBucket) so a late
+ * arrival doesn't count against someone who ends up working a full day — see latenessBucket.
+ */
+export function arrivalBucket(inMinutes: number | null, rules: ShiftSettings): LatenessBucket | null {
+  if (inMinutes == null) return null;
+  const { shiftStart, graceEnd, shortLeaveEnd, halfDayEnd } = shiftBoundaries(rules);
+  if (inMinutes <= shiftStart) return 'on-time';
+  if (inMinutes <= graceEnd) return 'grace';
+  if (inMinutes <= shortLeaveEnd) return 'short-leave';
+  if (inMinutes <= halfDayEnd) return 'half-day';
+  return 'absent';
 }
 
 export function latenessInfo(inMinutes: number | null, rules: ShiftSettings): LatenessInfo | null {
@@ -94,6 +111,59 @@ export function hoursWorkedBucket(inMinutes: number | null, outMinutes: number |
   if (workedHours < Number(rules.shortLeaveMinWorkedHours || 0)) return 'half-day';
   if (workedHours < Number(rules.fullDayMinWorkedHours || 0)) return 'short-leave';
   return 'full-time';
+}
+
+/** "HH:MM" -> minutes since midnight. */
+export function hhmmToMinutes(hhmm: string): number {
+  const [h, m] = (hhmm || '0:0').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** Minutes since midnight -> "hh:mm am/pm", matching the display format real punches already
+ * use (see utils/time.ts's nowTimeStr) — so an approved regularization's requestedTime reads
+ * identically to a real punch's inTime/outTime everywhere it's shown. Pure digit arithmetic, no
+ * Date/timezone conversion, since the source is already a plain IST wall-clock value. Shared by
+ * the server (HrToolService.decideRegularization, writing hr_attendance) and the client
+ * (HrToolContext's optimistic update of the same record) so both agree exactly. */
+export function formatTime12h(totalMinutes: number): string {
+  const hh = Math.floor(totalMinutes / 60) % 24, mm = totalMinutes % 60;
+  const period = hh >= 12 ? 'pm' : 'am';
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${String(h12).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${period}`;
+}
+
+/**
+ * Credited working minutes for a day, clamped to the shift window. Time before the shift starts
+ * and after it ends is not paid time: punching in at 9:45 and punching out at 22:00 credits
+ * shift-start→shift-end, not the full raw span — a punch-out recorded late at night still only
+ * counts up to shift end, exactly as if they'd clicked it right at shift end.
+ */
+export function creditedMinutes(inMinutes: number | null, outMinutes: number | null, shiftStart: string, shiftEnd: string): { inM: number | null; outM: number | null } {
+  if (inMinutes == null || outMinutes == null) return { inM: null, outM: null };
+  const start = hhmmToMinutes(shiftStart);
+  const end = hhmmToMinutes(shiftEnd);
+  const a = Math.max(inMinutes, start);
+  const b = Math.min(outMinutes, end);
+  return { inM: a, outM: Math.max(a, b) };
+}
+
+/** The day's REAL hours-worked bucket. A punch-in with no punch-out is a straight Absent — no
+ * auto-close standing in for a real punch, no benefit of the doubt for however long it's been:
+ * the day only earns a real bucket once punch-out has actually been clicked, whether that's
+ * minutes later or at midnight (credited hours still clamp to the shift window either way — see
+ * creditedMinutes). Applies uniformly to today and to past days alike; there's no "wait until
+ * the day is over" grace period. Returns null only when there's no punch-in at all — that's not
+ * this function's call, see the caller for how an unpunched day is treated (e.g. covered by
+ * approved leave, or plain absent). Single source of truth for payroll
+ * (HrToolService.computePayrollForMonth) and every attendance display (the Today table, the
+ * attendance calendar) — one answer, everywhere. */
+export function realDayHoursBucket(
+  inMinutes: number | null, outMinutes: number | null, rules: ShiftSettings & { shiftEndTime: string }
+): HoursWorkedBucket | null {
+  if (inMinutes == null) return null;
+  if (outMinutes == null) return 'absent';
+  const { inM, outM } = creditedMinutes(inMinutes, outMinutes, rules.shiftStartTime, rules.shiftEndTime);
+  return hoursWorkedBucket(inM, outM, rules);
 }
 
 /** The bucket that actually decides a day's status/pay: the punch-in-time bucket (primary) vs.

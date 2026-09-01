@@ -129,7 +129,7 @@ export function exportExcel(filename: string, rows: (string | number)[][]): void
    Publisher/Event Admin and plain-employee attendance widgets — see
    src/modules/hr-tool/utils/lateness.ts for the actual implementation.
 --------------------------------------------------------- */
-export { latenessInfo, latenessBucket } from '@/modules/hr-tool/utils/lateness';
+export { latenessInfo, latenessBucket, arrivalBucket } from '@/modules/hr-tool/utils/lateness';
 
 export const STAGE_LABEL: Record<string, string> = {
   awaiting_signature: "Awaiting candidate's e-signature",

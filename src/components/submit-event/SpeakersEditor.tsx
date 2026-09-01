@@ -21,6 +21,8 @@ export function SpeakersEditor({ speakers, error, onChange, onBlurValidate }: Sp
       createRow={() => ({ name: "", designation: "", company: "", others: "" })}
       addLabel="Add speaker/guest"
       removeTitle="Remove this guest"
+      boxClassName="speakers-box"
+      rowClassName="speaker-row"
       error={error}
       onBlurValidate={onBlurValidate}
       renderRow={(s, idx, update) => (
@@ -31,7 +33,7 @@ export function SpeakersEditor({ speakers, error, onChange, onBlurValidate }: Sp
               type="text"
               className="sp-name"
               value={s.name}
-              onChange={(e) => update({ name: e.target.value })}
+              onChange={(e) => update({ ...s, name: e.target.value })}
               onBlur={() => {
                 if (error) onBlurValidate();
               }}
@@ -43,7 +45,7 @@ export function SpeakersEditor({ speakers, error, onChange, onBlurValidate }: Sp
               type="text"
               className="sp-designation"
               value={s.designation}
-              onChange={(e) => update({ designation: e.target.value })}
+              onChange={(e) => update({ ...s, designation: e.target.value })}
             />
           </div>
           <div className="field">
@@ -52,7 +54,7 @@ export function SpeakersEditor({ speakers, error, onChange, onBlurValidate }: Sp
               type="text"
               className="sp-company"
               value={s.company}
-              onChange={(e) => update({ company: e.target.value })}
+              onChange={(e) => update({ ...s, company: e.target.value })}
             />
           </div>
           <div className="field">
@@ -61,7 +63,7 @@ export function SpeakersEditor({ speakers, error, onChange, onBlurValidate }: Sp
               type="text"
               className="sp-others"
               value={s.others}
-              onChange={(e) => update({ others: e.target.value })}
+              onChange={(e) => update({ ...s, others: e.target.value })}
             />
           </div>
         </>

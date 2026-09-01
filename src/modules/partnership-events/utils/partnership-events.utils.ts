@@ -49,6 +49,8 @@ export function entityToPartnershipEvent(entity: PartnershipEventEntity): Partne
   return {
     id: entity.id,
     eventId: entity.event_id ?? null,
+    slug: entity.slug || '',
+    siteStatus: entity.site_status || 'draft',
     eventName: entity.event_name || '',
     city: entity.city || '',
     country: entity.country || '',

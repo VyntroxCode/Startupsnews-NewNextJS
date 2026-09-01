@@ -68,6 +68,21 @@ export function s3KeyForEventSubmissionUpload(originalName: string): string {
   return s3KeyWithPrefix(`uploads/${y}/${m}/event-submission-${unique}.${ext}`);
 }
 
+/** Generate S3 key for an IncubatX dossier document upload: prefix/uploads/YYYY/MM/incubatx-{draftId}-{field}-{timestamp}-{random}.ext
+ * Keyed by the client-generated draftId (not the dossier reference) because documents upload
+ * incrementally during the Documents step, before a reference exists — the reference is only
+ * generated server-side once the whole dossier is submitted. */
+export function s3KeyForIncubatxUpload(originalName: string, draftId: string, field: string): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const ext = (originalName.split('.').pop()?.split(/[?#]/)[0] || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '') || 'pdf';
+  const safeDraftId = draftId.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40) || 'unknown';
+  const safeField = field.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 30) || 'doc';
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return s3KeyWithPrefix(`uploads/${y}/${m}/incubatx-${safeDraftId}-${safeField}-${unique}.${ext}`);
+}
+
 /** Generate S3 key for event image: prefix/uploads/YYYY/MM/event-{slug}.ext */
 export function s3KeyForEventImage(slug: string, imageUrlOrExt: string): string {
   const d = new Date();

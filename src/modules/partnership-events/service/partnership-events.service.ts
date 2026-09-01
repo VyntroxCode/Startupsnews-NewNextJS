@@ -122,6 +122,20 @@ export class PartnershipEventsService {
     return this.repository.findById(id);
   }
 
+  /** Public listing source for /events, the sidebar widget, sitemap, etc. — no caching here,
+   * callers (data-adapter.ts) already wrap their own Redis cache around the whole result. */
+  async getUpcomingForPublic() {
+    return this.repository.findForPublicUpcoming();
+  }
+
+  /** Public single-event lookup by slug — returns null for a draft the same way
+   * data-adapter's old getEventBySlug did for the `events` table's status column. */
+  async getPublicEventBySlug(slug: string) {
+    const entity = await this.repository.findBySlug(slug);
+    if (!entity || entity.site_status === 'draft') return null;
+    return entity;
+  }
+
   validateInput(input: PartnershipEventInput): string | null {
     if (!input.eventName || !input.eventName.trim()) return 'Event name is required';
     return null;
@@ -130,7 +144,12 @@ export class PartnershipEventsService {
   async createEvent(input: PartnershipEventInput, actor?: string): Promise<SyncResult> {
     const error = this.validateInput(input);
     if (error) throw new Error(error);
-    const entity = await this.repository.create(clipInput({ ...input, eventName: input.eventName.trim() }), actor);
+    const slug = await this.resolveSlug(input.slug, input.eventName);
+    const siteStatus = input.siteStatus ?? 'draft';
+    const entity = await this.repository.create(
+      clipInput({ ...input, eventName: input.eventName.trim(), slug, siteStatus }),
+      actor
+    );
     const synced = await this.syncLinkedEvent(entity, input, actor);
     return this.syncHomepageBanner(synced, input, actor);
   }
@@ -143,10 +162,35 @@ export class PartnershipEventsService {
     // is exactly what could make syncLinkedEvent's findByTitle safety net miss a still-live event
     // and wrongly create a duplicate instead of updating it.
     const normalizedInput = input.eventName !== undefined ? { ...input, eventName: input.eventName.trim() } : input;
-    const entity = await this.repository.update(id, clipInput(normalizedInput), actor);
+    // Only re-resolve the slug when the caller actually sent one (or the modal's Add/Edit path,
+    // which always sends region/siteStatus) — bulk CSV import updates (dedupKey matches) don't
+    // touch slug/siteStatus at all, so an already-listed row's public URL never moves under it.
+    const touchesPublicFields = input.slug !== undefined || input.siteStatus !== undefined;
+    const withSlug = touchesPublicFields
+      ? { ...normalizedInput, slug: await this.resolveSlug(input.slug, normalizedInput.eventName, id) }
+      : normalizedInput;
+    const entity = await this.repository.update(id, clipInput(withSlug), actor);
     if (!entity) return null;
     const synced = await this.syncLinkedEvent(entity, input, actor);
     return this.syncHomepageBanner(synced, input, actor);
+  }
+
+  /**
+   * Auto-generates a unique slug from the event name when none is supplied, mirroring
+   * EventsService.createEvent/updateEvent's algorithm exactly (kept in sync intentionally —
+   * this is the same pattern applied to partnership_events' own slug column now that it's the
+   * public read source instead of a downstream copy).
+   */
+  private async resolveSlug(explicit: string | undefined, eventName: string | undefined, excludeId?: number): Promise<string> {
+    const base = (explicit && explicit.trim())
+      || (eventName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    let candidate = base;
+    let counter = 1;
+    while (await this.repository.slugExists(candidate, excludeId)) {
+      candidate = `${base}-${counter}`;
+      counter++;
+    }
+    return candidate;
   }
 
   /**

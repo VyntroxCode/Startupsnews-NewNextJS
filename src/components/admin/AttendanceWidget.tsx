@@ -82,6 +82,7 @@ const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const BUCKET_COLORS: Record<LatenessBucket, { bg: string; border: string; text: string }> = {
   'on-time': { bg: '#dcfce7', border: '#4ade80', text: '#166534' },
   grace: { bg: '#fef9c3', border: '#facc15', text: '#854d0e' },
+  late: { bg: '#ffe4d5', border: '#fb923c', text: '#c2410c' },
   'short-leave': { bg: '#ffedd5', border: '#fb923c', text: '#c2410c' },
   'half-day': { bg: '#fed7aa', border: '#f97316', text: '#9a3412' },
   absent: { bg: '#fee2e2', border: '#f87171', text: '#b91c1c' },
@@ -91,7 +92,7 @@ const BUCKET_COLORS: Record<LatenessBucket, { bg: string; border: string; text: 
  * HrToolService.computePayrollForMonth), so unlike the old 3-way grace/late split these are
  * shown to employees by their real name, not a vague "late"/"very late". */
 const BUCKET_LABEL: Record<LatenessBucket, string> = {
-  'on-time': 'On time', grace: 'Grace Period', 'short-leave': 'Short Leave', 'half-day': 'Half Day', absent: 'Absent',
+  'on-time': 'On time', grace: 'Grace Period', late: 'Late', 'short-leave': 'Short Leave', 'half-day': 'Half Day', absent: 'Absent',
 };
 
 /** A date with a regularization request on file shows light blue on the calendar, overriding
@@ -413,7 +414,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                   onChange={(e) => setRegReason(e.target.value)}
                   placeholder="Reason for regularization…"
                   rows={3}
-                  style={{ width: '100%', maxWidth: 420, display: 'block', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.6rem', fontSize: '0.875rem', fontFamily: 'inherit' }}
+                  style={{ width: '100%', maxWidth: 420, boxSizing: 'border-box', display: 'block', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.6rem', fontSize: '0.875rem', fontFamily: 'inherit' }}
                 />
                 <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.5rem' }}>
                   <button type="button" onClick={submitRegularization} disabled={regSubmitting} style={punchButtonStyle('#60a5fa', '#3b82f6', regSubmitting)}>

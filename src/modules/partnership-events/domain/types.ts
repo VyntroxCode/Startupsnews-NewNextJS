@@ -36,6 +36,10 @@ export interface LinkedEventSummary {
 export interface PartnershipEventEntity {
   id: number;
   event_id: number | null;
+  /** Public URL slug for /startup-events/:slug — the record's own copy, no longer only on the linked events row. */
+  slug: string | null;
+  /** Public visibility — 'draft' | 'upcoming' | 'cancelled' are admin-set; 'completed' is automatic (see markPastAsCompleted). */
+  site_status: 'draft' | 'upcoming' | 'completed' | 'cancelled' | null;
   event_name: string;
   city: string | null;
   country: string | null;
@@ -84,6 +88,8 @@ export interface PartnershipEventEntity {
 export interface PartnershipEvent {
   id: number;
   eventId: number | null;
+  slug: string;
+  siteStatus: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   eventName: string;
   city: string;
   country: string;
@@ -162,10 +168,10 @@ export interface PartnershipEventInput {
   listing?: string;
   listingLink?: string;
   source?: string;
-  /** Drives the linked public Event — not a partnership_events column, consumed by the create/update sync. */
+  /** Also drives the (still-maintained) linked public Event's country field — see syncLinkedEvent. */
   region?: string;
-  /** Drives the linked public Event's URL slug — not a partnership_events column. Left blank, the
-   * linked Event falls back to auto-generating one from the event name (see EventsService.createEvent). */
+  /** Public URL slug. Left blank, one is auto-generated from the event name (see
+   * PartnershipEventsService's slug generation, mirroring EventsService.createEvent). */
   slug?: string;
   siteStatus?: 'draft' | 'upcoming' | 'cancelled';
 }
@@ -181,7 +187,7 @@ export interface PartnershipEventFilters {
 // list — any event still carrying that stored text buckets to 'Unmapped' (classifyStatus in
 // partnership-tracker/page.tsx) for the admin to manually reclassify, it's not auto-migrated.
 export const PARTNERSHIP_STATUS_OPTIONS = ['Draft', 'Initiated', 'Partnership Done', 'Only Listing', 'Ticketing', 'Cancelled', 'Expired'] as const;
-/** The real, public-site-facing status — separate from PARTNERSHIP_STATUS_OPTIONS (deal stage) and the existing, unwired `listing` field. No "Completed" here — that's automatic, driven by event date (see EventsRepository.markPastEventsAsExpired). */
+/** The real, public-site-facing status — separate from PARTNERSHIP_STATUS_OPTIONS (deal stage) and the existing, unwired `listing` field. No "Completed" here — that's automatic, driven by event date (see PartnershipEventsRepository.markSiteStatusPastAsCompleted). */
 export const SITE_STATUS_OPTIONS: { value: 'draft' | 'upcoming' | 'cancelled'; label: string }[] = [
   { value: 'draft', label: 'Draft' },
   { value: 'upcoming', label: 'Published' },

@@ -10,6 +10,9 @@ import { PostsRepository } from "@/modules/posts/repository/posts.repository";
 import { RssFeedsRepository } from "@/modules/rss-feeds/repository/rss-feeds.repository";
 import { EventsService } from "@/modules/events/service/events.service";
 import { EventsRepository } from "@/modules/events/repository/events.repository";
+import { PartnershipEventsService } from "@/modules/partnership-events/service/partnership-events.service";
+import { PartnershipEventsRepository } from "@/modules/partnership-events/repository/partnership-events.repository";
+import { partnershipEntityToStartupEvent } from "@/modules/partnership-events/utils/public-event.utils";
 import { CategoriesService } from "@/modules/categories/service/categories.service";
 import { CategoriesRepository } from "@/modules/categories/repository/categories.repository";
 import { UsersRepository } from "@/modules/users/repository/users.repository";
@@ -17,7 +20,6 @@ import {
   entityToPost,
   entitiesToPosts,
 } from "@/modules/posts/utils/posts.utils";
-import { entityToEvent } from "@/modules/events/utils/events.utils";
 import type { StartupEvent } from "@/modules/events/domain/types";
 import { slugify } from "@/shared/utils/string.utils";
 import { toCdnUrl } from "@/shared/utils/image-cdn";
@@ -68,6 +70,7 @@ const rssFeedsRepository = new RssFeedsRepository();
 const usersRepository = new UsersRepository();
 const eventsRepository = new EventsRepository();
 const eventsService = new EventsService(eventsRepository);
+const partnershipEventsService = new PartnershipEventsService(new PartnershipEventsRepository(), eventsService);
 
 import { EventRegionsRepository } from "@/modules/events/repository/event-regions.repository";
 const eventRegionsRepository = new EventRegionsRepository();
@@ -833,7 +836,7 @@ export async function getEventsByRegion(): Promise<
 
   try {
     const [entities, dbRegions] = await Promise.all([
-      eventsService.getUpcomingForPublic(),
+      partnershipEventsService.getUpcomingForPublic(),
       eventRegionsRepository.findAll(),
     ]);
 
@@ -843,14 +846,14 @@ export async function getEventsByRegion(): Promise<
     );
 
     for (const e of entities) {
-      const loc = (e.location || "").trim();
+      const event = partnershipEntityToStartupEvent(e);
+      const loc = (event.location || "").trim();
       // Case-insensitive match against DB region names
       const matched = regionNames.find(
         (n) => n.toLowerCase() === loc.toLowerCase(),
       );
       const key = matched ?? loc; // fall back to raw location if not in DB
       if (!eventsByRegion[key]) eventsByRegion[key] = [];
-      const event = entityToEvent(e);
       event.image = toCdnUrl(event.image) || event.image;
       eventsByRegion[key].push(event);
     }
@@ -873,9 +876,9 @@ export async function getStartupEvents(): Promise<StartupEvent[]> {
   if (cached) return cached;
 
   try {
-    const entities = await eventsService.getUpcomingForPublic();
+    const entities = await partnershipEventsService.getUpcomingForPublic();
     const events = entities.map((e) => {
-      const event = entityToEvent(e);
+      const event = partnershipEntityToStartupEvent(e);
       event.image = toCdnUrl(event.image) || event.image;
       return event;
     });
@@ -895,10 +898,9 @@ export async function getEventBySlug(
   slug: string,
 ): Promise<StartupEvent | null> {
   try {
-    const entity = await eventsService.getEventBySlug(slug);
+    const entity = await partnershipEventsService.getPublicEventBySlug(slug);
     if (!entity) return null;
-    if (entity.status === "draft") return null;
-    const event = entityToEvent(entity);
+    const event = partnershipEntityToStartupEvent(entity);
     event.image = toCdnUrl(event.image) || event.image;
     return event;
   } catch (error) {

@@ -5,6 +5,8 @@ type SqlParam = string | number | null;
 
 const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
   ['eventName', 'event_name'],
+  ['slug', 'slug'],
+  ['siteStatus', 'site_status'],
   ['city', 'city'],
   ['country', 'country'],
   ['organiser', 'organiser'],
@@ -114,6 +116,45 @@ export class PartnershipEventsRepository {
 
   async findById(id: number): Promise<PartnershipEventEntity | null> {
     return queryOne<PartnershipEventEntity>('SELECT * FROM partnership_events WHERE id = ?', [id]);
+  }
+
+  async findBySlug(slug: string): Promise<PartnershipEventEntity | null> {
+    return queryOne<PartnershipEventEntity>('SELECT * FROM partnership_events WHERE slug = ?', [slug]);
+  }
+
+  /**
+   * Public listing query — mirrors EventsRepository.findForPublicUpcoming, now against
+   * partnership_events directly instead of its shadow copy in `events`.
+   */
+  async findForPublicUpcoming(): Promise<PartnershipEventEntity[]> {
+    return query<PartnershipEventEntity>(
+      `SELECT * FROM partnership_events
+       WHERE site_status = 'upcoming' AND event_start_date >= CURDATE()
+       ORDER BY event_start_date ASC`
+    );
+  }
+
+  async slugExists(slug: string, excludeId?: number): Promise<boolean> {
+    let sql = 'SELECT COUNT(*) as count FROM partnership_events WHERE slug = ?';
+    const params: SqlParam[] = [slug];
+    if (excludeId) {
+      sql += ' AND id != ?';
+      params.push(excludeId);
+    }
+    const result = await queryOne<{ count: number | bigint }>(sql, params);
+    return Number(result?.count || 0) > 0;
+  }
+
+  /**
+   * Flip site_status to 'completed' once the event's date has passed — mirrors
+   * EventsRepository.markPastEventsAsExpired's rule (end date if set, else start date).
+   */
+  async markSiteStatusPastAsCompleted(): Promise<void> {
+    await query(
+      `UPDATE partnership_events SET site_status = 'completed'
+       WHERE site_status = 'upcoming'
+       AND COALESCE(event_end_date, event_start_date) < CURDATE()`
+    );
   }
 
   async create(input: PartnershipEventInput, actor?: string): Promise<PartnershipEventEntity> {

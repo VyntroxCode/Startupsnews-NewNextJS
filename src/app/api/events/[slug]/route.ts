@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { EventsService } from '@/modules/events/service/events.service';
-import { EventsRepository } from '@/modules/events/repository/events.repository';
-import { entityToEvent } from '@/modules/events/utils/events.utils';
+import { PartnershipEventsRepository } from '@/modules/partnership-events/repository/partnership-events.repository';
+import { partnershipEntityToStartupEvent } from '@/modules/partnership-events/utils/public-event.utils';
 import { toCdnUrl } from '@/shared/utils/image-cdn';
 
-// Initialize services
-const eventsRepository = new EventsRepository();
-const eventsService = new EventsService(eventsRepository);
+const partnershipEventsRepository = new PartnershipEventsRepository();
 
 interface RouteParams {
   params: Promise<{ slug: string }>;
@@ -22,17 +19,17 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const entity = await eventsService.getEventBySlug(slug);
+    const entity = await partnershipEventsRepository.findBySlug(slug);
 
     if (!entity) {
       return NextResponse.json({ success: false, error: 'Event not found' }, { status: 404 });
     }
 
-    if (entity.status === 'draft') {
+    if (entity.site_status === 'draft') {
       return NextResponse.json({ success: false, error: 'Event not available' }, { status: 410 });
     }
 
-    const event = entityToEvent(entity);
+    const event = partnershipEntityToStartupEvent(entity);
     // CDN rewrite only on this public display path — see shared/utils/image-cdn.ts.
     event.image = toCdnUrl(event.image) || event.image;
 
@@ -51,4 +48,3 @@ export async function GET(
     );
   }
 }
-

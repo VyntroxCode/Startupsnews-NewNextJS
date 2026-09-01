@@ -5,7 +5,8 @@ import {
   HrLeaveTypeConfig,
 } from '../domain/types';
 import { todayStr, nowTimeStr, nowMinutesSinceMidnight, nowMysqlDatetime, payrollPeriodRange, eachDateInRange, isSunday, addDaysUTC, daysUntil } from '../utils/time';
-import { latenessBucket, hoursWorkedBucket } from '../utils/lateness';
+import { latenessBucket, realDayHoursBucket, hhmmToMinutes, formatTime12h } from '../utils/lateness';
+import { computeLeaveBalances } from '../utils/leave-balance';
 import { HrKycDocuments, getKycSlotDef, mergeKycDocuments, validateKycField, computeKycProgress } from '../domain/kyc';
 
 export interface PayrollPreview {
@@ -152,6 +153,19 @@ export class HrToolService {
       fullDayMinWorkedHours: source.fullDayMinWorkedHours,
       leaveTypes: source.leaveTypes,
     };
+  }
+  /** Live-computed remaining balance per enabled leave type for one employee — see
+   * computeLeaveBalances for the accrual rule. Nothing is stored/cached; this is recomputed
+   * from doj + this year's approved leave requests on every call, so it's always correct
+   * without needing a cron job to keep a counter in sync. */
+  async getLeaveBalancesForEmployee(empName: string): Promise<Record<string, number>> {
+    const [employee, rules, requests] = await Promise.all([
+      this.repository.findEmployeeByName(empName),
+      this.repository.findRules(),
+      this.repository.findLeaveRequestsForEmployee(empName),
+    ]);
+    const source = rules || DEFAULT_RULES;
+    return computeLeaveBalances(employee?.doj || '', source.leaveTypes, requests, todayStr());
   }
   getRegularizationsForEmployee(emp: string) { return this.repository.findRegularizationsForEmployee(emp); }
   countRegularizationsForEmployeeInRange(emp: string, fromDate: string, toDate: string) {
@@ -494,42 +508,6 @@ export class HrToolService {
    * Admin, plain employees). The single place that enforces "can't punch twice today" so
    * every caller gets identical, real server-side enforcement instead of separate copies.
    */
-  /** "HH:MM" -> minutes since midnight. */
-  private static toMinutes(hhmm: string): number {
-    const [h, m] = (hhmm || '0:0').split(':').map(Number);
-    return (h || 0) * 60 + (m || 0);
-  }
-
-  /**
-   * The punch-out minute a day should be scored on. A real punch-out wins. Failing that, a day
-   * that has already ended with a punch-in but no punch-out is auto-closed at the shift end —
-   * the employee clearly worked, they just forgot to punch out, and treating that as "no
-   * punch-out" previously cost them the entire day's pay. Never applied to today, which is
-   * still in progress.
-   */
-  private autoClosedOutMinutes(
-    date: string, today: string, inMinutes: number | null, outMinutes: number | null, shiftEndTime: string
-  ): number | null {
-    if (outMinutes != null) return outMinutes;
-    if (inMinutes == null || date >= today) return null;
-    return HrToolService.toMinutes(shiftEndTime);
-  }
-
-  /**
-   * Credited working minutes for a day, clamped to the shift window. Time before the shift
-   * starts and after it ends is not paid time: arriving at 12:15 and punching out at 22:00 from
-   * home credits 12:15→18:35, not 9h45m. Raw punch spans were previously used as-is, so a very
-   * late arrival with a very late punch-out could look like a full day.
-   */
-  private creditedMinutes(inMinutes: number | null, outMinutes: number | null, shiftStart: string, shiftEnd: string): { inM: number | null; outM: number | null } {
-    if (inMinutes == null || outMinutes == null) return { inM: null, outM: null };
-    const start = HrToolService.toMinutes(shiftStart);
-    const end = HrToolService.toMinutes(shiftEnd);
-    const a = Math.max(inMinutes, start);
-    const b = Math.min(outMinutes, end);
-    return { inM: a, outM: Math.max(a, b) };
-  }
-
   async punchEmployee(emp: string, type: 'in' | 'out'): Promise<PunchResult> {
     const today = todayStr();
     const existing = await this.getPunchByEmp(emp);
@@ -550,13 +528,10 @@ export class HrToolService {
       if (todaysPunch?.outTime) {
         return { ok: false, error: 'Already punched out today.' };
       }
-      // Punch-out closes at the shift end. Past that the day is auto-closed at the shift end
-      // instead (see autoClosedOutMinutes), so a later punch would only ever overstate hours.
-      const rules = (await this.repository.findRules()) || DEFAULT_RULES;
-      const shiftEnd = HrToolService.toMinutes(rules.shiftEndTime);
-      if (nowMinutesSinceMidnight() > shiftEnd) {
-        return { ok: false, error: `Punch-out closed at ${rules.shiftEndTime}. Your day is recorded up to ${rules.shiftEndTime} — raise a regularization if that is wrong.` };
-      }
+      // Punch-out is always clickable, any time of day — no cutoff at shift end. Credited hours
+      // still clamp to the shift window regardless of when it's actually clicked (see
+      // creditedMinutes), so punching out at 22:00 is recorded as 22:00 but only ever pays out
+      // up to shift end — the clock time isn't blocked, only what it's worth.
       if (!todaysPunch?.inTime) note = 'No punch-in recorded today.';
       await this.recordPunch({
         emp, date: today, inTime: todaysPunch?.inTime || null,
@@ -578,6 +553,53 @@ export class HrToolService {
     };
   }
   saveRegularizations(items: HrRegularization[]) { return this.repository.replaceRegularizations(items); }
+
+  /**
+   * Finalizes one regularization request's approve/reject decision server-side — replacing the
+   * old client-only path (compute the decision in the browser, PUT the whole regularizations
+   * array). That path only ever flipped stage/status on the hr_regularizations row; NOTHING
+   * updated the actual hr_attendance row the calendar and payroll read, so an approved
+   * regularization had zero real effect — the employee stayed however their raw punch (or lack
+   * of one) left them. Once a decision fully finalizes to 'approved' here, the regularized
+   * in/out time is written into hr_attendance, preserving whichever punch ISN'T being
+   * regularized (and never inventing it if it's still missing).
+   */
+  async decideRegularization(
+    id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string
+  ): Promise<{ ok: boolean; error?: string; updated?: HrRegularization }> {
+    const all = await this.repository.findRegularizations();
+    const reg = all.find((r) => r.id === id);
+    if (!reg) return { ok: false, error: 'Regularization request not found.' };
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+
+    let updated: HrRegularization;
+    if (level === 'rm') {
+      if (decision === 'rejected') {
+        updated = { ...reg, rmRemarks: remarks, status: 'rejected', stage: 'done' };
+      } else {
+        const stage = rules.twoLevelApproval.attendance ? 'hr' : 'done';
+        updated = { ...reg, rmRemarks: remarks, stage, status: stage === 'done' ? 'approved' : reg.status };
+      }
+    } else {
+      updated = { ...reg, hrRemarks: remarks, status: decision, stage: 'done' };
+    }
+    await this.repository.updateRegularization(updated);
+
+    if (updated.status === 'approved' && updated.stage === 'done' && updated.requestedTime) {
+      const [dayRecord] = await this.repository.findAttendanceForEmployeeInRange(updated.emp, updated.date, updated.date);
+      const minutes = hhmmToMinutes(updated.requestedTime);
+      const timeLabel = formatTime12h(minutes);
+      await this.repository.upsertAttendance({
+        emp: updated.emp, date: updated.date, status: 'Present',
+        inTime: updated.punchType === 'in' ? timeLabel : (dayRecord?.inTime || '—'),
+        inMinutes: updated.punchType === 'in' ? minutes : (dayRecord?.inMinutes ?? null),
+        outTime: updated.punchType === 'out' ? timeLabel : (dayRecord?.outTime || '—'),
+        outMinutes: updated.punchType === 'out' ? minutes : (dayRecord?.outMinutes ?? null),
+      });
+    }
+
+    return { ok: true, updated };
+  }
   saveLeaveRequests(items: HrLeaveRequest[]) { return this.repository.replaceLeaveRequests(items); }
   saveExpenses(items: HrExpense[]) { return this.repository.replaceExpenses(items); }
   saveTickets(items: HrTicket[]) { return this.repository.replaceTickets(items); }
@@ -711,11 +733,10 @@ export class HrToolService {
         if (isSunday(date) || holidaySet.has(date)) { weekOffDays++; continue; }
         if (date > evalTo) { futureDays++; continue; }
         const att = attendanceByDate.get(date);
-        // A punched-in day that ended without a punch-out is auto-closed at the shift end rather
-        // than treated as absent — forgetting to punch out used to cost a whole day's pay.
-        const effectiveOut = this.autoClosedOutMinutes(date, today, att?.inMinutes ?? null, att?.outMinutes ?? null, rules.shiftEndTime);
-        const { inM, outM } = this.creditedMinutes(att?.inMinutes ?? null, effectiveOut, rules.shiftStartTime, rules.shiftEndTime);
-        const bucket = hoursWorkedBucket(inM, outM, rules);
+        // A punch-in with no punch-out is a straight Absent — no auto-close, no benefit of the
+        // doubt. Same shared function the attendance calendar and Today table use
+        // (realDayHoursBucket), so a day reads the same way everywhere.
+        const bucket = realDayHoursBucket(att?.inMinutes ?? null, att?.outMinutes ?? null, rules);
         if (bucket === null) {
           // Never punched in — approved leave covers the day, otherwise it is loss of pay.
           if (approvedLeaveDates.has(date)) leaveDays++;

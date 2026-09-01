@@ -5,30 +5,41 @@ import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
 import { getAuthHeaders } from '@/lib/admin-auth';
-import { applyApprovalDecision, ApprovalBadge, attendanceKey, isAdmin } from '../utils';
-import { isSunday } from '@/modules/hr-tool/utils/time';
+import { ApprovalBadge, attendanceKey, isAdmin } from '../utils';
+import { isSunday, shiftMonthKey } from '@/modules/hr-tool/utils/time';
+import { realDayHoursBucket } from '@/modules/hr-tool/utils/lateness';
 
 const REG_REASONS = ['Forgot to punch out', 'Forgot to punch in', 'System/network issue', 'Worked from a client site'];
 
 function daysInMonth(year: number, monthIndex: number): number { return new Date(year, monthIndex + 1, 0).getDate(); }
 const DOWS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-type DayStatus = 'present' | 'absent' | 'leave' | 'off' | null;
+type DayStatus = 'present' | 'absent' | 'leave' | 'off' | 'half-day' | null;
 
-/** Attendance calendar for the current real month — a real record (or an HR override) drives
- * each day's colour; days with neither show as "not recorded" instead of a fabricated status.
- * (The old standalone tool filled every blank day with a deterministic pseudo-random
- * present/absent/leave value seeded off the employee's name length — that's the fake data
- * this component replaces with an honest "not recorded" state.) */
+/** Attendance calendar, navigable to any past month (never into the future) — a real record
+ * (or an HR override) drives each day's colour; days with neither show as "not recorded"
+ * instead of a fabricated status. (The old standalone tool filled every blank day with a
+ * deterministic pseudo-random present/absent/leave value seeded off the employee's name
+ * length — that's the fake data this component replaces with an honest "not recorded" state.) */
 export default function AttendanceCalendar({ empName }: { empName: string }) {
   const { state } = useHrTool();
   const [selected, setSelected] = useState<{ dateStr: string } | null>(null);
 
-  const now = new Date();
-  const year = now.getFullYear(), month = now.getMonth();
+  const realNow = new Date();
+  const realTodayIso = `${realNow.getFullYear()}-${String(realNow.getMonth() + 1).padStart(2, '0')}-${String(realNow.getDate()).padStart(2, '0')}`;
+  const currentMonthKey = realTodayIso.slice(0, 7);
+  const [monthKey, setMonthKey] = useState(currentMonthKey);
+  const [monthKeyYear, monthKeyMonth] = monthKey.split('-').map(Number);
+  const year = monthKeyYear, month = monthKeyMonth - 1;
+  const isCurrentMonth = monthKey === currentMonthKey;
+  const canGoNext = monthKey < currentMonthKey;
+  function goToMonth(delta: number) { setSelected(null); setMonthKey((k) => shiftMonthKey(k, delta)); }
+
   const totalDays = daysInMonth(year, month);
-  const todayNum = now.getDate();
-  const todayIso = `${year}-${String(month + 1).padStart(2, '0')}-${String(todayNum).padStart(2, '0')}`;
+  // "Elapsed" days for the summary tile: every day up to and including real-today for the
+  // current month, the whole month for a past month — never day-of-month-number math, which
+  // only meant anything back when this calendar was locked to the real current month.
+  const daysElapsedInMonth = isCurrentMonth ? realNow.getDate() : totalDays;
   const firstDow = new Date(year, month, 1).getDay();
   const holidaySet = useMemo(() => new Set(state.orgStructure.holidays.map((h) => h.date)), [state.orgStructure.holidays]);
   // Nobody can be absent before they joined, so days earlier than the employee's date of joining
@@ -45,6 +56,15 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
     if (isSunday(dateStr) || holidaySet.has(dateStr)) return 'off';
     const real = state.attendance.find((a) => a.emp === empName && a.date === dateStr);
     if (real) {
+      // The stored status is stamped 'Present' the instant someone punches in and is never
+      // revisited — so on its own it can't tell "worked a normal day" from "punched in at
+      // 10:07 and never came back". Real hours worked decide instead — a punch-in with no
+      // punch-out is a straight Absent, no matter how recently they punched in or whether the
+      // day is even over yet (see realDayHoursBucket).
+      const bucket = realDayHoursBucket(real.inMinutes ?? null, real.outMinutes ?? null, state.rules);
+      if (bucket === 'full-time' || bucket === 'short-leave') return 'present';
+      if (bucket === 'half-day') return 'half-day';
+      if (bucket === 'absent') return 'absent';
       const s = real.status.toLowerCase();
       if (s === 'present' || s === 'absent' || s === 'leave' || s === 'off') return s;
       return 'present';
@@ -53,25 +73,26 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
     // (Purely derived — nothing is written to hr_attendance — so the moment a punch or an HR
     // correction lands for that date it takes over. Future days and pre-joining days stay null.)
     if (isBeforeJoining(dateStr)) return null;
-    return dateStr <= todayIso ? 'absent' : null;
+    return dateStr <= realTodayIso ? 'absent' : null;
   }
 
   // Walk the month once, building both the visible cells and the numeric summary above them —
   // the calendar used to render colours with no totals at all, so "how many days was this person
   // actually present?" meant counting squares by eye.
   const cells: ReactNode[] = [];
-  const tally = { present: 0, absent: 0, leave: 0, off: 0, preJoining: 0, upcoming: 0, regPending: 0, regApproved: 0, workedElapsed: 0 };
+  const tally = { present: 0, absent: 0, leave: 0, off: 0, halfDay: 0, preJoining: 0, upcoming: 0, regPending: 0, regApproved: 0, workedElapsed: 0 };
   for (let i = 0; i < firstDow; i++) cells.push(<div key={'b' + i} className="cal-cell blank" />);
   for (let d = 1; d <= totalDays; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const status = getDayStatus(dateStr);
     const reg = state.regularizations.find((r) => r.emp === empName && r.date === dateStr);
-    const elapsed = d <= todayNum;
+    const elapsed = dateStr <= realTodayIso;
     const preJoining = isBeforeJoining(dateStr);
 
     if (status === 'off') tally.off++;
     else if (status === 'present') tally.present++;
     else if (status === 'absent') tally.absent++;
+    else if (status === 'half-day') tally.halfDay++;
     else if (status === 'leave') tally.leave++;
     else if (preJoining) tally.preJoining++;
     else tally.upcoming++;
@@ -90,31 +111,36 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
   }
   const workingDays = totalDays - tally.off - tally.preJoining;
   const attendancePct = tally.workedElapsed ? Math.round((tally.present / tally.workedElapsed) * 100) : null;
-  const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const monthLabel = new Date(year, month, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
   return (
     <>
       <div className="cal-summary">
         <div className="cal-summary-head">
-          <span className="cal-summary-month">{monthLabel}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button type="button" className="btn ghost sm" onClick={() => goToMonth(-1)} aria-label="Previous month">‹</button>
+            <span className="cal-summary-month">{monthLabel}</span>
+            <button type="button" className="btn ghost sm" onClick={() => canGoNext && goToMonth(1)} disabled={!canGoNext} aria-label="Next month" style={{ opacity: canGoNext ? 1 : 0.4, cursor: canGoNext ? 'pointer' : 'not-allowed' }}>›</button>
+          </div>
           <span className="cal-summary-note">
             {attendancePct === null
-              ? 'No working days elapsed yet this month'
-              : <><strong>{tally.present}</strong> of <strong>{tally.workedElapsed}</strong> working days so far marked present · <strong>{attendancePct}%</strong> attendance</>}
+              ? (isCurrentMonth ? 'No working days elapsed yet this month' : 'No working days in this month')
+              : <><strong>{tally.present}</strong> of <strong>{tally.workedElapsed}</strong> working days {isCurrentMonth ? 'so far ' : ''}marked present · <strong>{attendancePct}%</strong> attendance</>}
           </span>
         </div>
         {tally.workedElapsed > 0 && (
           <div className="cal-summary-bar" role="img"
-            aria-label={`${tally.present} present, ${tally.absent} absent, ${tally.leave} on leave out of ${tally.workedElapsed} working days so far`}>
-            {([['present', tally.present], ['absent', tally.absent], ['leave', tally.leave]] as const)
+            aria-label={`${tally.present} present, ${tally.halfDay} half day, ${tally.absent} absent, ${tally.leave} on leave out of ${tally.workedElapsed} working days so far`}>
+            {([['present', tally.present], ['half-day', tally.halfDay], ['absent', tally.absent], ['leave', tally.leave]] as const)
               .filter(([, n]) => n > 0)
               .map(([k, n]) => <span key={k} className={`seg ${k}`} style={{ width: `${(n / tally.workedElapsed) * 100}%` }} />)}
           </div>
         )}
         <div className="cal-stats">
-          <CalStat label="Days in month" value={totalDays} sub={`${todayNum} elapsed`} tone="neutral" />
+          <CalStat label="Days in month" value={totalDays} sub={`${daysElapsedInMonth} elapsed`} tone="neutral" />
           <CalStat label="Working days" value={workingDays} sub={`${tally.workedElapsed} so far`} tone="neutral" />
           <CalStat label="Present" value={tally.present} tone="present" />
+          <CalStat label="Half day" value={tally.halfDay} tone="half-day" />
           <CalStat label="Absent" value={tally.absent} tone="absent" />
           <CalStat label="On leave" value={tally.leave} tone="leave" />
           <CalStat label="Week-offs" value={tally.off} sub="Sundays + holidays" tone="off" />
@@ -122,7 +148,9 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
           <CalStat label="Regularized" value={tally.regApproved} tone="regapproved" />
         </div>
         <div className="cal-summary-rule">
-          A working day with no punch-in/punch-out counts as absent.
+          A working day with no punch-in, or a punch-in with no punch-out, counts as absent. Hours
+          credited toward a full/half/short day still cap at shift end ({state.rules.shiftEndTime}),
+          even if punch-out is clicked later.
           {tally.upcoming > 0 && ` ${tally.upcoming} working day${tally.upcoming === 1 ? '' : 's'} still to come this month.`}
           {tally.preJoining > 0 && ` ${tally.preJoining} day${tally.preJoining === 1 ? '' : 's'} before joining excluded.`}
         </div>
@@ -133,6 +161,7 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
       </div>
       <div className="cal-legend">
         <span><span className="dot" style={{ background: 'var(--green-soft)', border: '1px solid #14532D' }} />Present</span>
+        <span><span className="dot" style={{ background: '#FED7AA', border: '1px solid #9A3412' }} />Half day</span>
         <span><span className="dot" style={{ background: '#FECACA', border: '1px solid #7F1D1D' }} />Absent</span>
         <span><span className="dot" style={{ background: '#DBEAFE', border: '1px solid #1E3A8A' }} />On leave</span>
         <span><span className="dot" style={{ background: '#FDE68A', border: '1px solid #78350F' }} />Regularization pending</span>
@@ -160,7 +189,7 @@ function CalStat({ label, value, sub, tone }: { label: string; value: number; su
 }
 
 function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string; dateStr: string; status: DayStatus; onClose: () => void }) {
-  const { state, persistAttendanceOverride, persistRegularizations, logRuleChange, addRegularizationToState } = useHrTool();
+  const { state, persistAttendanceOverride, decideRegularization, logRuleChange, addRegularizationToState } = useHrTool();
   const [manualStatus, setManualStatus] = useState<DayStatus>(status || 'present');
   const [showRegForm, setShowRegForm] = useState<'in' | 'out' | null>(null);
   const [regTime, setRegTime] = useState('');
@@ -170,7 +199,10 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
   const real = state.attendance.find((a) => a.emp === empName && a.date === dateStr);
   const regIn = state.regularizations.find((r) => r.emp === empName && r.date === dateStr && r.punchType === 'in');
   const regOut = state.regularizations.find((r) => r.emp === empName && r.date === dateStr && r.punchType === 'out');
-  const statusLabel = status === 'off' ? 'Week-off' : real ? real.status : (status ? { present: 'Present', absent: 'Absent', leave: 'On leave' }[status] : 'Not recorded');
+  // Uses the computed `status` (real hours worked, auto-close applied — see getDayStatus), not
+  // the raw stored real.status, which is always 'Present' from the moment of punch-in and never
+  // revisited — showing it directly here would silently contradict the cell colour above it.
+  const statusLabel = status ? { present: 'Present', absent: 'Absent', leave: 'On leave', off: 'Week-off', 'half-day': 'Half Day' }[status] : 'Not recorded';
   const times = real ? { inTime: real.inTime, outTime: real.outTime } : { inTime: '—', outTime: '—' };
 
   async function saveCorrection() {
@@ -197,7 +229,7 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
     onClose();
   }
   async function decideReg(id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) {
-    await persistRegularizations(state.regularizations.map((r) => (r.id === id ? applyApprovalDecision(r, level, decision, remarks, state.rules.twoLevelApproval.attendance) : r)));
+    await decideRegularization(id, level, decision, remarks);
     onClose();
   }
 
@@ -247,7 +279,7 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
       {isAdmin(state.role) && (
         <div className="field"><label className="field-label">HR correction</label>
           <select value={manualStatus || 'present'} onChange={(e) => setManualStatus(e.target.value as DayStatus)}>
-            <option value="present">Present</option><option value="absent">Absent</option><option value="leave">On leave</option><option value="off">Week-off</option>
+            <option value="present">Present</option><option value="half-day">Half Day</option><option value="absent">Absent</option><option value="leave">On leave</option><option value="off">Week-off</option>
           </select>
           <button className="btn sm" style={{ marginTop: 8 }} onClick={saveCorrection}>Save correction</button>
         </div>

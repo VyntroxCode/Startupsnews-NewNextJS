@@ -22,31 +22,34 @@ const ROBOTS_TTL_MS = 60 * 60 * 1000;
 // article) so they share a single in-flight fetch instead of each firing one.
 const inFlight = new Map<string, Promise<{ robots: string; httpStatus: number }>>();
 
-async function getPostMeta(slug: string, origin: string): Promise<{ robots: string; httpStatus: number }> {
+async function getPostMeta(categorySlug: string, postSlug: string, origin: string): Promise<{ robots: string; httpStatus: number }> {
+  // Cache key includes the category segment: legacy-imported posts store their
+  // DB slug as "category/leaf", so the same leaf under two categories must not collide.
+  const cacheKey = `${categorySlug}/${postSlug}`;
   const now = Date.now();
-  const cached = robotsCache.get(slug);
+  const cached = robotsCache.get(cacheKey);
   if (cached && cached.expiresAt > now) return { robots: cached.robots, httpStatus: cached.httpStatus };
 
-  const pending = inFlight.get(slug);
+  const pending = inFlight.get(cacheKey);
   if (pending) return pending;
 
   const promise = (async () => {
     try {
-      const url = `${toInternalOrigin(origin)}/api/posts/robots?slug=${encodeURIComponent(slug)}`;
+      const url = `${toInternalOrigin(origin)}/api/posts/robots?slug=${encodeURIComponent(postSlug)}&category=${encodeURIComponent(categorySlug)}`;
       const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
       if (!res.ok) return { robots: 'index,follow', httpStatus: 200 };
       const data = await res.json() as { robots?: string; httpStatus?: number };
       const robots = data?.robots || 'index,follow';
       const httpStatus = data?.httpStatus || 200;
-      robotsCache.set(slug, { robots, httpStatus, expiresAt: now + ROBOTS_TTL_MS });
+      robotsCache.set(cacheKey, { robots, httpStatus, expiresAt: now + ROBOTS_TTL_MS });
       return { robots, httpStatus };
     } catch {
       return { robots: 'index,follow', httpStatus: 200 };
     } finally {
-      inFlight.delete(slug);
+      inFlight.delete(cacheKey);
     }
   })();
-  inFlight.set(slug, promise);
+  inFlight.set(cacheKey, promise);
   return promise;
 }
 
@@ -209,8 +212,9 @@ export async function proxy(request: NextRequest) {
     !pathname.startsWith('/dashboard')
   ) {
     const postSlug = segments[segments.length - 1];
+    const categorySlug = segments[0];
     const origin = toInternalOrigin(request.nextUrl.origin);
-    const { robots, httpStatus } = await getPostMeta(postSlug, origin);
+    const { robots, httpStatus } = await getPostMeta(categorySlug, postSlug, origin);
 
     if (httpStatus === 410) {
       if (request.method === 'HEAD') {

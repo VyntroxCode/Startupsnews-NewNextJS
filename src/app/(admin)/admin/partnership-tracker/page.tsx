@@ -15,7 +15,7 @@ import {
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
   type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
-import { COUNTRY_NAMES, citiesForCountry, countryForCity, flagForCountry } from '@/modules/partnership-events/domain/country-city-data';
+import { COUNTRY_NAMES, citiesForCountry, countryForCity } from '@/modules/partnership-events/domain/country-city-data';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey } from '@/modules/partnership-events/utils/partnership-events.utils';
 
@@ -30,6 +30,8 @@ interface PartnershipEvent {
   id: number;
   eventId: number | null;
   linkedEvent: LinkedEventSummary | null;
+  slug: string;
+  siteStatus: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   eventName: string;
   city: string;
   country: string;
@@ -70,13 +72,13 @@ interface PartnershipEvent {
   updatedBy: string;
 }
 
-type EventDraft = Omit<PartnershipEvent, 'id' | 'eventId' | 'linkedEvent' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'> & {
-  /** Not a partnership_events column — drives the linked public Event (location). */
+type EventDraft = Omit<PartnershipEvent, 'id' | 'eventId' | 'linkedEvent' | 'slug' | 'siteStatus' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'> & {
+  /** Also drives the (still-maintained) linked public Event's country field — see syncLinkedEvent. */
   region: string;
-  /** Not a partnership_events column — drives the linked public Event's real status. No "Completed" here; that's automatic (see markPastEventsAsExpired). */
+  /** The record's own public status column. No "Completed" here as a selectable option — that's automatic (see markSiteStatusPastAsCompleted). */
   siteStatus: 'draft' | 'upcoming' | 'cancelled';
-  /** Not a partnership_events column — drives the linked public Event's URL slug. Auto-follows
-   * Event Name until the admin edits it directly (see slugManuallyEdited). */
+  /** The record's own public URL slug. Auto-follows Event Name until the admin edits it
+   * directly (see slugManuallyEdited). */
   slug: string;
 };
 
@@ -170,9 +172,8 @@ function daysBetween(a: number, b: number): number {
   return Math.floor((a - b) / (1000 * 60 * 60 * 24));
 }
 /**
- * `siteStatus` is the linked website Event's own publish status ('draft'/'upcoming'/'completed'),
- * i.e. what the Add/Edit modal's "Website Listing Status *" field controls — pass
- * `e.linkedEvent?.status` (undefined when there's no linked website Event at all yet).
+ * `siteStatus` is the record's own persisted public status ('draft'/'upcoming'/'completed'),
+ * i.e. what the Add/Edit modal's "Website Listing Status *" field controls — pass `e.siteStatus`.
  *
  * "Draft" is bucketed purely from this — NOT from a blank/unset Partnership Status — since
  * whether an event is actually live on the public site is ground truth, while the Partnership
@@ -240,12 +241,12 @@ function normalizeListing(rawListing: string, rawLink: string, statusBucket: str
 function isListedStatus(statusBucket: string): boolean {
   return statusBucket === 'Partnership Done' || statusBucket === 'Only Listing';
 }
-/** Actually live on the public site right now — a real linked Event that isn't sitting in
- * Draft. The "Listed" KPI card compares this against isListedStatus's count and warns when
- * they disagree (an event claims Partnership Done/Only Listed but has no live page, or vice
- * versa) instead of silently trusting the tracker's own status field. */
+/** Actually live on the public site right now — siteStatus isn't sitting in Draft. The
+ * "Listed" KPI card compares this against isListedStatus's count and warns when they disagree
+ * (an event claims Partnership Done/Only Listed but has no live page, or vice versa) instead of
+ * silently trusting the tracker's own status field. */
 function isLiveListed(e: PartnershipEvent, statusBucket: string): boolean {
-  return isListedStatus(statusBucket) && !!e.linkedEvent && e.linkedEvent.status !== 'draft';
+  return isListedStatus(statusBucket) && !!e.siteStatus && e.siteStatus !== 'draft';
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -320,7 +321,7 @@ function computeDerived(e: PartnershipEvent): Derived {
   const effectiveEndMs = explicitEndMs ?? startMs;
   const refMs = effectiveEndMs ?? startMs;
   const isExpired = refMs !== null ? refMs < today : false;
-  const statusBucket = classifyStatus(e.partnershipStatus, e.linkedEvent?.status, isExpired);
+  const statusBucket = classifyStatus(e.partnershipStatus, e.siteStatus, isExpired);
   const isUpcoming = !isExpired || !!e.linkedEvent;
   const dateOrderSuspect = !!(startMs !== null && explicitEndMs !== null && explicitEndMs < startMs);
   // Total days from Initiated Date to the event's end date (falling back to start date if no
@@ -538,9 +539,9 @@ function downloadEventsExcel(list: PartnershipEvent[], filename: string) {
     'Banner Start Date': e.bannerStartDate || '',
     'Social Media Post Content': e.socialMediaPosts || '',
     'Social Media Creative Link': creativesExportText(e.socialCreatives),
-    'Website Region': e.linkedEvent?.location || '',
-    'Website Listing Status': e.linkedEvent ? (SITE_STATUS_BADGE[e.linkedEvent.status]?.label || e.linkedEvent.status) : 'Not listed yet',
-    'Website Event Link': e.linkedEvent ? `/startup-events/${e.linkedEvent.slug}` : '',
+    'Website Region': e.city || e.country || '',
+    'Website Listing Status': SITE_STATUS_BADGE[e.siteStatus]?.label || e.siteStatus,
+    'Website Event Link': e.slug ? `/startup-events/${e.slug}` : '',
   }));
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(rows, { header: allHeaders });
@@ -661,7 +662,13 @@ async function api<T = unknown>(url: string, init?: RequestInit): Promise<{ succ
  * currently-selected value so editing an older event never silently blanks its region out. */
 function buildRegionOptions(currentValue: string): string[] {
   const set = new Set<string>(COUNTRY_NAMES);
-  if (currentValue) set.add(currentValue);
+  const trimmed = currentValue.trim();
+  // Older records can have a stored country that differs from the canonical name only by case
+  // or whitespace (e.g. "usa" vs "USA") — skip adding those so the list doesn't show a
+  // near-identical duplicate entry.
+  if (trimmed && !COUNTRY_NAMES.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
+    set.add(trimmed);
+  }
   return [...set].sort((a, b) => a.localeCompare(b));
 }
 
@@ -1043,12 +1050,17 @@ export default function PartnershipTrackerPage() {
     // Previously this used `linkedEvent.location` alone, which is normally a CITY, not a country
     // — showing e.g. "Delhi" in both the Region/Country and City fields for older events instead
     // of "India", while every one of the sources above sat unused.
-    const regionValue =
+    const rawRegionValue =
       e.country
       || linkedEvent?.country
       || (linkedEvent?.location && COUNTRY_NAMES.includes(linkedEvent.location) ? linkedEvent.location : '')
       || (linkedEvent?.location ? countryForCity(linkedEvent.location) : null)
       || '';
+    // Older rows can have this stored in a case/whitespace variant of the canonical name (e.g.
+    // "usa" instead of "USA") — snap it to the canonical spelling so the dropdown actually shows
+    // it selected instead of matching no option, and so re-saving doesn't perpetuate the variant.
+    const canonicalRegionMatch = COUNTRY_NAMES.find((n) => n.toLowerCase() === rawRegionValue.trim().toLowerCase());
+    const regionValue = canonicalRegionMatch || rawRegionValue;
     setDraft({
       ...rest,
       region: regionValue,
@@ -1072,9 +1084,13 @@ export default function PartnershipTrackerPage() {
       eventStartTime: rest.eventStartTime || linkedEvent?.eventTime || '',
       website: rest.website || linkedEvent?.externalUrl || '',
       // "Completed" is automatic, never a dropdown option — reopening a published-then-auto-completed
-      // event should still show/resave as "Published", not silently reset to Draft.
-      siteStatus: linkedEvent?.status === 'completed' ? 'upcoming' : (linkedEvent?.status || 'draft'),
-      slug: linkedEvent?.slug || '',
+      // event should still show/resave as "Published", not silently reset to Draft. Prefers the
+      // record's own persisted siteStatus/slug; linkedEvent is only a fallback for any row that
+      // predates the public-fields migration and hasn't been backfilled.
+      siteStatus: (e.siteStatus === 'completed' ? 'upcoming' : e.siteStatus)
+        || (linkedEvent?.status === 'completed' ? 'upcoming' : linkedEvent?.status)
+        || 'draft',
+      slug: e.slug || linkedEvent?.slug || '',
     });
     setModalError('');
     // Auto-expand any platform that already has images, so editing an event doesn't hide its own data.
@@ -1088,7 +1104,7 @@ export default function PartnershipTrackerPage() {
     setRegionOther(false);
     // A record with an already-live slug keeps it fixed (renaming the event shouldn't silently
     // break its existing URL); a not-yet-listed record still auto-follows Event Name edits.
-    setSlugManuallyEdited(!!linkedEvent?.slug);
+    setSlugManuallyEdited(!!(e.slug || linkedEvent?.slug));
     setCityOther(false);
     const parsedPhone = parseContact(e.contact);
     setPhoneCode(parsedPhone.code);
@@ -1869,10 +1885,7 @@ export default function PartnershipTrackerPage() {
                         }}
                       >
                         <option value="">Select region/country</option>
-                        {regionOptions.map((r) => {
-                          const flag = flagForCountry(r);
-                          return <option key={r} value={r}>{flag ? `${flag} ${r}` : r}</option>;
-                        })}
+                        {regionOptions.map((r) => <option key={r} value={r}>{r}</option>)}
                         <option value="__other__">Others…</option>
                       </select>
                       <div className="pt-hint">Not listed? Pick &quot;Others…&quot; and type it in.</div>

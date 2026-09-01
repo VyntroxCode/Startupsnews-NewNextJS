@@ -57,6 +57,8 @@ export const hrApi = {
   deleteEmployee: (id: string) => apiDelete('/employees/' + encodeURIComponent(id)),
   saveOnboarding: (v: HrOnboarding[]) => apiPut('/onboarding', v),
   saveRegularizations: (v: HrRegularization[]) => apiPut('/regularizations', v),
+  decideRegularization: (id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) =>
+    apiRaw<HrRegularization>('/regularizations/decide', { method: 'POST', body: JSON.stringify({ id, level, decision, remarks }) }),
   saveLeaveRequests: (v: HrLeaveRequest[]) => apiPut('/leave-requests', v),
   saveExpenses: (v: HrExpense[]) => apiPut('/expenses', v),
   saveTickets: (v: HrTicket[]) => apiPut('/tickets', v),

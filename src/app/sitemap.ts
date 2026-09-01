@@ -72,9 +72,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ),
       query<EventSitemapRow>(
         `SELECT slug, updated_at, created_at
-         FROM events
-         WHERE status IN ('upcoming', 'ongoing') AND slug IS NOT NULL AND slug != ''
-         ORDER BY event_date ASC`
+         FROM partnership_events
+         WHERE site_status = 'upcoming' AND slug IS NOT NULL AND slug != ''
+         ORDER BY event_start_date ASC`
       ),
     ]);
 

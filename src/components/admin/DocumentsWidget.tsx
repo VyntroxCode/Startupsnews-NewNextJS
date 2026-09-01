@@ -225,7 +225,7 @@ export default function DocumentsWidget({
                 onChange={(e) => setReqReason(e.target.value)}
                 placeholder="Why do you need the window reopened?"
                 rows={3}
-                style={{ width: '100%', padding: '0.5rem 0.65rem', borderRadius: 8, border: '1px solid #fcd34d', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', borderRadius: 8, border: '1px solid #fcd34d', fontSize: '0.85rem', fontFamily: 'inherit' }}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: '0.5rem' }}>
                 <button type="button" onClick={submitAccessRequest} disabled={reqBusy}

@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
+import { clearAdminSession } from '@/lib/admin-auth';
 import { useHrTool } from './HrToolContext';
 import Dashboard from './views/Dashboard';
 import Directory from './views/Directory';
@@ -102,9 +104,23 @@ function useIsNarrowViewport(breakpoint: number): boolean {
 
 function HrToolShell() {
   const ctx2 = useHrTool();
-  const { state, setView, logout } = ctx2;
+  const { state, setView } = ctx2;
   const role = state.role;
   const currentUser = state.currentUser;
+  const router = useRouter();
+
+  // The HR Tool's own `logout()` only resets its internal "acting as" role back to Founder —
+  // it never touched the real admin session, so clicking this button left the admin fully
+  // logged in with no login screen shown, just silently bounced to the Dashboard as Founder.
+  // This matches AdminHeader's real logout instead: clear the actual session, then navigate to
+  // the real login page (src/components/admin/hr-tool/views/Login.tsx is a separate, unused
+  // internal-only screen — this button was never meant to reach it).
+  function handleLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+      clearAdminSession();
+      router.push('/admin/login');
+    }
+  }
 
   // Sidebar collapses to an icon rail either because the viewport is narrow or because the
   // user hit the minimize button — whichever happened, a manual click always wins from then on.
@@ -167,7 +183,7 @@ function HrToolShell() {
           <div className="role-switch">
             <label>Logged in as</label>
             <div className="who">{currentUser.name} · {role}</div>
-            <button className="logout-btn" onClick={logout} title="Switch user / Log out">
+            <button className="logout-btn" onClick={handleLogout} title="Switch user / Log out">
               <span className="logout-icon">⇄</span>
               <span className="nav-label">Switch user / Log out</span>
             </button>
@@ -334,6 +350,7 @@ function HrToolStyles() {
       .hr-tool-app .cal-dow { font-size: 10px; text-transform: uppercase; color: var(--muted); text-align: center; font-weight: 700; padding-bottom: 2px; }
       .hr-tool-app .cal-cell { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 6px 7px; min-height: 50px; font-size: 11px; background: #fff; }
       .hr-tool-app .cal-cell.present { background: var(--green-soft); color: #14532D; }
+      .hr-tool-app .cal-cell.half-day { background: #FED7AA; color: #9A3412; }
       .hr-tool-app .cal-cell.absent { background: #FECACA; color: #7F1D1D; }
       .hr-tool-app .cal-cell.leave { background: #DBEAFE; color: #1E3A8A; }
       .hr-tool-app .cal-cell.regpending { background: #FDE68A; color: #78350F; }
@@ -366,6 +383,7 @@ function HrToolStyles() {
       .hr-tool-app .cal-summary-note strong { color: var(--ink); font-weight: 700; }
       .hr-tool-app .cal-summary-bar { display: flex; height: 6px; border-radius: 6px; overflow: hidden; background: #E2E8F0; margin-top: 11px; }
       .hr-tool-app .cal-summary-bar .seg.present { background: var(--green); }
+      .hr-tool-app .cal-summary-bar .seg.half-day { background: #F97316; }
       .hr-tool-app .cal-summary-bar .seg.absent { background: var(--red); }
       .hr-tool-app .cal-summary-bar .seg.leave { background: var(--blue); }
       .hr-tool-app .cal-summary-bar .seg.unrecorded { background: #CBD5E1; }
@@ -377,6 +395,7 @@ function HrToolStyles() {
       .hr-tool-app .cal-stat-sub { font-size: 10.5px; line-height: 1.2; margin-top: 5px; opacity: 0.72; }
       .hr-tool-app .cal-stat.neutral { color: var(--ink); }
       .hr-tool-app .cal-stat.present { background: var(--green-soft); border-color: #BBF7D0; color: #14532D; }
+      .hr-tool-app .cal-stat.half-day { background: #FFEDD5; border-color: #FED7AA; color: #9A3412; }
       .hr-tool-app .cal-stat.absent { background: var(--red-soft); border-color: #FECACA; color: #7F1D1D; }
       .hr-tool-app .cal-stat.leave { background: var(--blue-soft); border-color: #BFDBFE; color: #1E3A8A; }
       .hr-tool-app .cal-stat.off { background: #F1F5F9; border-color: #E2E8F0; color: #475569; }

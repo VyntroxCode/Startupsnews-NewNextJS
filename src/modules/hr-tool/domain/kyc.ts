@@ -87,7 +87,7 @@ export const KYC_SECTIONS: KycSectionDef[] = [
     title: 'Bank Details',
     slots: [
       { key: 'bank_statement', label: 'Bank Statement (3 Months)', required: true, fields: [] },
-      { key: 'cheque', label: 'Cancelled Cheque', required: true, fields: [] },
+      { key: 'cheque', label: 'Cancelled Cheque', required: false, fields: [] },
       { key: 'salary_slip', label: 'Last Salary Slip', required: false, fields: [] },
     ],
   },
