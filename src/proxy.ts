@@ -53,7 +53,16 @@ async function getPostMeta(categorySlug: string, postSlug: string, origin: strin
   return promise;
 }
 
-function renderGoneHtml(slug: string): string {
+function renderGoneHtml(slug: string, kind: 'post' | 'event' = 'post'): string {
+  const isEvent = kind === 'event';
+  const pageTitle = isEvent ? '410 - Event Removed' : '410 - Post Removed';
+  const heading = isEvent
+    ? 'This event is no longer available'
+    : 'This post is no longer available';
+  const body = isEvent
+    ? 'The requested event listing has been removed or renamed and is no longer accessible.'
+    : 'The requested article has been intentionally removed and is no longer accessible.';
+
   const safeSlug = slug.replace(/[&<>"']/g, (ch) => {
     switch (ch) {
       case '&': return '&amp;';
@@ -70,7 +79,7 @@ function renderGoneHtml(slug: string): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>410 - Post Removed</title>
+  <title>${pageTitle}</title>
   <meta name="robots" content="noindex, nofollow" />
   <style>
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; color: #0f172a; }
@@ -86,8 +95,8 @@ function renderGoneHtml(slug: string): string {
   <main class="wrap">
     <section class="card">
       <div class="code">410 Gone</div>
-      <h2>This post is no longer available</h2>
-      <p>The requested article has been intentionally removed and is no longer accessible.</p>
+      <h2>${heading}</h2>
+      <p>${body}</p>
       <p class="slug">Slug: ${safeSlug}</p>
     </section>
   </main>
@@ -171,34 +180,52 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // --- Handle /startup-events/:slug — 410 for draft events ---
+  // --- Handle /startup-events/:slug — 410 for draft events, and for slugs that no longer exist ---
+  // A miss here is never a transient 404: events are renamed (which regenerates the slug and
+  // orphans the old URL) or deleted outright, so the old URL is gone for good. Serving 410 +
+  // noindex gets it dropped from search instead of being re-crawled for months as a soft 404,
+  // and keeps these hits off the GA "Event not found" page-title bucket, since this response
+  // carries no analytics script.
   const segments = pathname.split('/').filter(Boolean);
-  if (pathname.startsWith('/startup-events/') && segments.length === 2) {
-    const eventSlug = segments[1];
-    const origin = toInternalOrigin(request.nextUrl.origin);
-    try {
-      const url = `${origin}/api/events/robots?slug=${encodeURIComponent(eventSlug)}`;
-      const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json() as { httpStatus?: number };
-        if (data?.httpStatus === 410) {
-          if (request.method === 'HEAD') {
-            return new NextResponse(null, {
-              status: 410,
-              headers: { 'Cache-Control': 'public, max-age=60', 'X-Robots-Tag': 'noindex, nofollow' },
-            });
-          }
-          return new NextResponse(renderGoneHtml(eventSlug), {
-            status: 410,
-            headers: {
-              'Content-Type': 'text/html; charset=utf-8',
-              'Cache-Control': 'public, max-age=60',
-              'X-Robots-Tag': 'noindex, nofollow',
-            },
-          });
-        }
+  if (pathname.startsWith('/startup-events/')) {
+    const goneResponse = (label: string) => {
+      if (request.method === 'HEAD') {
+        return new NextResponse(null, {
+          status: 410,
+          headers: { 'Cache-Control': 'public, max-age=60', 'X-Robots-Tag': 'noindex, nofollow' },
+        });
       }
-    } catch { /* fall through */ }
+      return new NextResponse(renderGoneHtml(label, 'event'), {
+        status: 410,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=60',
+          'X-Robots-Tag': 'noindex, nofollow',
+        },
+      });
+    };
+
+    // The route is a single dynamic segment, so anything deeper can never resolve to an event.
+    // These are almost all scheme-less external URLs in the DB (e.g. `ecell.in/eureka`) that the
+    // browser resolved relative to the detail page — see the Book Now / venue links.
+    if (segments.length > 2) {
+      return goneResponse(segments.slice(1).join('/'));
+    }
+
+    if (segments.length === 2) {
+      const eventSlug = segments[1];
+      const origin = toInternalOrigin(request.nextUrl.origin);
+      try {
+        const url = `${origin}/api/events/robots?slug=${encodeURIComponent(eventSlug)}`;
+        const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json() as { httpStatus?: number };
+          if (data?.httpStatus === 410) {
+            return goneResponse(eventSlug);
+          }
+        }
+      } catch { /* fail open — an unreachable API must not 410 a live event */ }
+    }
   }
 
   // --- Handle post pages: /category/post-slug — 410 for drafts, X-Robots-Tag for others ---
