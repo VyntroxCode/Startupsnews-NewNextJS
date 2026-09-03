@@ -9,6 +9,11 @@
  *
  * Run once: npx tsx scripts/seed-partner-logos-initial.ts
  */
+import { loadEnvConfig } from '@next/env';
+
+// tsx doesn't read .env.local the way `next` does — load it before the DB pool is built.
+loadEnvConfig(process.cwd());
+
 import { query, queryOne, closeDbConnection } from '@/shared/database/connection';
 
 const INDIAN_PARTNERSHIPS = [

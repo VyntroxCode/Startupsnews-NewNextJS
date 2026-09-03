@@ -13,6 +13,7 @@ import { EventsRepository } from "@/modules/events/repository/events.repository"
 import { PartnershipEventsService } from "@/modules/partnership-events/service/partnership-events.service";
 import { PartnershipEventsRepository } from "@/modules/partnership-events/repository/partnership-events.repository";
 import { partnershipEntityToStartupEvent } from "@/modules/partnership-events/utils/public-event.utils";
+import { parentCityForSubCity } from "@/modules/partnership-events/domain/country-city-data";
 import { CategoriesService } from "@/modules/categories/service/categories.service";
 import { CategoriesRepository } from "@/modules/categories/repository/categories.repository";
 import { UsersRepository } from "@/modules/users/repository/users.repository";
@@ -848,11 +849,16 @@ export async function getEventsByRegion(): Promise<
     for (const e of entities) {
       const event = partnershipEntityToStartupEvent(e);
       const loc = (event.location || "").trim();
+      // A sub-city groups under its parent region but keeps its own name on the card: a Gurugram
+      // event belongs in the single "Delhi NCR" carousel, not a Gurugram carousel of its own,
+      // while its card still reads "Gurugram". Only the grouping key is rewritten here —
+      // event.location is left alone, which is what EventByCountryCard renders.
+      const groupName = parentCityForSubCity(loc) ?? loc;
       // Case-insensitive match against DB region names
       const matched = regionNames.find(
-        (n) => n.toLowerCase() === loc.toLowerCase(),
+        (n) => n.toLowerCase() === groupName.toLowerCase(),
       );
-      const key = matched ?? loc; // fall back to raw location if not in DB
+      const key = matched ?? groupName; // fall back to raw location if not in DB
       if (!eventsByRegion[key]) eventsByRegion[key] = [];
       event.image = toCdnUrl(event.image) || event.image;
       eventsByRegion[key].push(event);

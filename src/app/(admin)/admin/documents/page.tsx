@@ -1,7 +1,6 @@
 'use client';
 
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
-import DocumentsWidget from '@/components/admin/DocumentsWidget';
 import KycDocumentsWidget from '@/components/admin/KycDocumentsWidget';
 
 export default function DocumentsPage() {
@@ -28,7 +27,6 @@ export default function DocumentsPage() {
           </p>
         </div>
 
-        <DocumentsWidget />
         <KycDocumentsWidget apiBase="/api/admin/kyc" presignEndpoint="/api/admin/presign" />
       </div>
     </AdminErrorBoundary>

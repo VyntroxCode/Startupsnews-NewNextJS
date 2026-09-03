@@ -1,4 +1,4 @@
-import { PartnershipEvent, PartnershipEventEntity, Speaker, SocialCreative, SOCIAL_CREATIVE_PLATFORMS } from '../domain/types';
+import { PartnershipEvent, PartnershipEventEntity, Speaker, SocialCreative, SOCIAL_CREATIVE_PLATFORMS, PARTNERSHIP_STATUS_OPTIONS } from '../domain/types';
 
 function parseJsonArray(value: unknown): unknown[] {
   if (!value) return [];
@@ -139,4 +139,85 @@ export function dedupKey(e: { eventName: string; city?: string | null; country?:
   const start = (e.eventStartDate || '').trim();
   if (!city && !country && !start) return null;
   return [(e.eventName || '').trim().toLowerCase(), city, country, start].join('|');
+}
+
+/* ============================================================
+   STATUS CLASSIFICATION
+   Shared by the Partnership Tracker screen and /api/admin/stats.
+   These moved here out of the tracker page so the dashboard's
+   "Events" card and the tracker's own "All Active events" card
+   are computed by the same code and can never drift apart.
+   ============================================================ */
+
+/** Buckets excluded from the tracker's default table view AND from every "active" count —
+ * they need a deliberate, manual look rather than sitting in the everyday list. */
+export const DEFAULT_HIDDEN_STATUSES = ['Unmapped', 'Expired'];
+
+/**
+ * `siteStatus` is the record's own persisted public status ('draft'/'upcoming'/'completed'),
+ * i.e. what the Add/Edit modal's "Website Listing Status *" field controls — pass `e.siteStatus`.
+ *
+ * "Draft" is bucketed purely from this — NOT from a blank/unset Partnership Status — since
+ * whether an event is actually live on the public site is ground truth, while the Partnership
+ * Status dropdown is just the internal CRM deal-stage (Initiated/Partnership Done/Only
+ * Listing/Ticketing) and was never meant to double as an on/off switch for site-publish state.
+ * Draft takes priority over those in-progress CRM stages (an unpublished event showing as e.g.
+ * "Only Listing" is misleading), but NOT over the terminal Cancelled/Expired outcomes, which are
+ * checked first.
+ *
+ * `isDateExpired` is passed in rather than derived here so the caller decides what "today" means
+ * (the browser's local midnight on the tracker screen, the server's on the API) — see
+ * `isPartnershipEventDateExpired`. The date is checked directly, not just the raw CRM text
+ * already saying "expir", because the automatic DB sweep that rewrites that text
+ * (markPastPartnershipsAsExpired) only ever touches rows with no linked website Event at all
+ * (`event_id IS NULL`) — so a past-dated event that IS linked but still unpublished never got
+ * its text updated and kept falling into the Draft bucket by date alone.
+ */
+export function classifyPartnershipStatus(raw: string, siteStatus?: string, isDateExpired?: boolean): string {
+  const s = (raw || '').toLowerCase().trim();
+  if (s.includes('cancel')) return 'Cancelled';
+  if (s.includes('expir') || isDateExpired) return 'Expired';
+  if (!siteStatus || siteStatus === 'draft') return 'Draft';
+  if (!s) return 'Unmapped';
+  if ((PARTNERSHIP_STATUS_OPTIONS as readonly string[]).includes(raw)) return raw;
+  // Catches bare "listed" too (a lot of real historical data uses that exact word), not just
+  // "only listed"/"listed only" — anything mentioning "listed" at all means this bucket.
+  if (s.includes('listed') || s.includes('listing') || s.includes('no partnership')) return 'Only Listing';
+  if (s.includes('ticket')) return 'Ticketing';
+  if (s.includes('done') || s.includes('confirm') || s.includes('complete') || s.includes('executed')) return 'Partnership Done';
+  if (s.includes('initiat')) return 'Initiated';
+  if (s.includes('draft')) return 'Draft';
+  // Legacy "In Progress" / "On Hold" / "Dropped" text (retired concepts) also lands here — the
+  // admin reclassifies these manually, they're not auto-migrated to a new bucket.
+  return 'Unmapped';
+}
+
+/** End date if set, else start date — the single date "has this event passed?" is judged on. */
+export function isPartnershipEventDateExpired(
+  e: { eventStartDate?: string | null; eventEndDate?: string | null },
+  todayMs: number,
+): boolean {
+  const parse = (s: string | null | undefined): number | null => {
+    if (!s) return null;
+    const d = new Date(s + 'T00:00:00');
+    return isNaN(d.getTime()) ? null : d.getTime();
+  };
+  const refMs = parse(e.eventEndDate) ?? parse(e.eventStartDate);
+  return refMs !== null ? refMs < todayMs : false;
+}
+
+/**
+ * The tracker's "All Active events" headline number: every partnership event except the
+ * Expired/Unmapped buckets. Counting by bucket (rather than a flat `length`) is what keeps this
+ * number in agreement with the per-status cards and the default table rows — a flat total folded
+ * expired events into the headline but into none of the cards beneath it.
+ */
+export function countActivePartnershipEvents(
+  events: Array<{ partnershipStatus: string; siteStatus?: string; eventStartDate?: string | null; eventEndDate?: string | null }>,
+  todayMs: number,
+): number {
+  return events.filter((e) => {
+    const bucket = classifyPartnershipStatus(e.partnershipStatus, e.siteStatus, isPartnershipEventDateExpired(e, todayMs));
+    return !DEFAULT_HIDDEN_STATUSES.includes(bucket);
+  }).length;
 }

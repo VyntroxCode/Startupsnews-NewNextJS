@@ -8564,6 +8564,85 @@ body .banner-carousel-container,
 .snf-page .preview-eyebrow { font-size: 12.5px; font-weight: 400; color: var(--muted); margin-bottom: 6px; }
 .snf-page .preview-title { font-size: 17px; font-weight: 600; line-height: 1.3; margin: 0; color: var(--ink); }
 
+/* Wizard step transition viewport — see SubmitEventForm's comment for why clip-on-x only. */
+.snf-page .step-viewport { overflow-x: clip; overflow-y: visible; }
+
+/* "What happens next" — a horizontal lifecycle strip at the foot of the submit form.
+   Geometry note: .whn-items is a 3-column grid with NO gap (items pad themselves instead), so
+   each dot sits exactly at 0%, 33.33% and 66.66% of the row. The track therefore has to run from
+   the CENTRE of the first dot to the CENTRE of the last one — hence left:6px and
+   right:calc(33.3333% - 6px) for a 12px dot — which is what makes the fill percentage map
+   cleanly onto the stages: 0% = stage 1, 50% = stage 2, 100% = stage 3. */
+.snf-page .whn-strip {
+  grid-column: 1 / -1;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px 20px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(22, 22, 24, 0.05);
+}
+
+.snf-page .whn-strip .ribbon { padding: 7px 16px 7px 12px; font-size: 12.5px; margin-bottom: 20px; display: inline-block; }
+
+.snf-page .whn-items { display: grid; grid-template-columns: repeat(3, 1fr); position: relative; }
+
+.snf-page .whn-track {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  right: calc(33.3333% - 6px);
+  height: 2px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.snf-page .whn-track-fill {
+  height: 100%;
+  background: var(--brand);
+  border-radius: 2px;
+  transition: width .45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.snf-page .whn-item { position: relative; padding: 24px 22px 0 0; }
+
+.snf-page .whn-item .step-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--line);
+  box-sizing: border-box;
+  transition: background .25s ease;
+}
+
+.snf-page .whn-item .step-title { font-size: 13.5px; font-weight: 700; color: var(--muted); margin-bottom: 3px; transition: color .25s ease; }
+.snf-page .whn-item .step-body { font-size: 12px; color: var(--muted); line-height: 1.5; opacity: 0.75; transition: opacity .25s ease; }
+
+.snf-page .whn-item[data-state="done"] .step-dot { background: var(--brand); }
+.snf-page .whn-item[data-state="done"] .step-title { color: var(--ink); }
+.snf-page .whn-item[data-state="done"] .step-badge { display: inline-block; color: var(--muted); background: var(--rail); border: 1px solid var(--line); }
+.snf-page .whn-item[data-state="active"] .step-dot { background: var(--brand); animation: snf-step-pulse 1.6s ease-out infinite; }
+.snf-page .whn-item[data-state="active"] .step-title { color: var(--brand); }
+.snf-page .whn-item[data-state="active"] .step-body { color: var(--ink); opacity: 1; }
+.snf-page .whn-item[data-state="active"] .step-badge { display: inline-block; color: var(--brand); background: var(--brand-tint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .snf-page .whn-item[data-state="active"] .step-dot { animation: none; }
+  .snf-page .whn-track-fill { transition: none; }
+}
+
+/* Stacked below the strip's breakpoint: the horizontal track has nothing to span, so it is
+   dropped and each stage reads as a plain list item. */
+@media (max-width: 700px) {
+  .snf-page .whn-items { grid-template-columns: 1fr; gap: 16px; }
+  .snf-page .whn-track { display: none; }
+  .snf-page .whn-item { padding: 0 0 0 22px; }
+  .snf-page .whn-item .step-dot { top: 3px; }
+}
+
 .snf-page .rail-box {
   border: 1px solid var(--line);
   border-radius: 12px;

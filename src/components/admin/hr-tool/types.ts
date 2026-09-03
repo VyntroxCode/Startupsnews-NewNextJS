@@ -6,7 +6,7 @@ export type {
 } from '@/modules/hr-tool/domain/types';
 
 export type { HrKycDocuments, KycSlotDef, KycSectionDef } from '@/modules/hr-tool/domain/kyc';
-export { KYC_SECTIONS, emptyKycDocuments } from '@/modules/hr-tool/domain/kyc';
+export { KYC_SECTIONS, KYC_SLOTS, emptyKycDocuments, computeKycProgress } from '@/modules/hr-tool/domain/kyc';
 
 export type HrRole = 'HR Head' | 'Founder' | 'Reporting Manager' | 'Employee';
 

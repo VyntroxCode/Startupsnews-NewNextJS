@@ -8,6 +8,9 @@ import { isPathAllowed } from '@/lib/admin-role-access';
 
 interface AdminSidebarProps {
   isOpen: boolean;
+  /** Called as the pointer (or keyboard focus) enters and leaves the rail, so the layout can
+   * expand it on hover. Optional — without it the sidebar just follows isOpen as before. */
+  onHoverChange?: (hovering: boolean) => void;
 }
 
 type IconProps = { size?: number; color?: string };
@@ -182,7 +185,7 @@ const menuItems: MenuItem[] = [
   { href: '/admin/users', label: 'Users', icon: UsersIcon },
 ];
 
-export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
+export default function AdminSidebar({ isOpen, onHoverChange }: AdminSidebarProps) {
   const pathname = usePathname();
   const headerHeight = 60;
   const [tools, setTools] = useState<ToolItem[]>([]);
@@ -206,6 +209,13 @@ export default function AdminSidebar({ isOpen }: AdminSidebarProps) {
   return (
     <aside
       className="admin-sidebar-scroll"
+      onMouseEnter={() => onHoverChange?.(true)}
+      onMouseLeave={() => onHoverChange?.(false)}
+      // Keyboard parity with hover: React maps onFocus/onBlur to focusin/focusout so they fire
+      // for descendants, and the relatedTarget check keeps the rail open while focus moves
+      // between two links inside it rather than collapsing on every Tab.
+      onFocus={() => onHoverChange?.(true)}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onHoverChange?.(false); }}
       style={{
         position: 'fixed',
         left: 0,

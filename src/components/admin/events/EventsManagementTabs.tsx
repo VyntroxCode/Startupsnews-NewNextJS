@@ -47,18 +47,28 @@ interface Banner {
 
 export default function EventsManagementTabs() {
   const role = getAdminUser()?.role || '';
-  const canRegions = isPathAllowed(role, '/admin/event-regions');
+  // const canRegions = isPathAllowed(role, '/admin/event-regions'); // unused while the Event Regions tab is disabled
   const canBanners = isPathAllowed(role, '/admin/banners');
+  // ── Events / Event Regions tabs disabled ──
+  // partnership_events is now the direct public source for /events and
+  // /startup-events, so the legacy `events` + `event_regions` tables are no
+  // longer what the site reads. The tabs are commented out rather than deleted
+  // so this is a one-line revert if the old tables are ever needed again; all
+  // the render blocks and handlers below are left intact but unreachable.
   const tabs = useMemo(() => ([
-    { id: 'events' as Tab, label: 'Events' },
-    ...(canRegions ? [{ id: 'regions' as Tab, label: 'Event Regions' }] : []),
+    // { id: 'events' as Tab, label: 'Events' },
+    // ...(canRegions ? [{ id: 'regions' as Tab, label: 'Event Regions' }] : []),
     ...(canBanners ? [{ id: 'banners' as Tab, label: 'Banners' }] : []),
-  ]), [canRegions, canBanners]);
+  ]), [canBanners]);
 
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') as Tab | null;
-  const initialTab: Tab = requestedTab && tabs.some((t) => t.id === requestedTab) ? requestedTab : 'events';
-  const [tab, setTab] = useState<Tab>(initialTab);
+  // Falls back to the first tab the role can actually see (null when none),
+  // so a stale ?tab=events / ?tab=regions link can't re-open a disabled tab.
+  const initialTab: Tab | null = requestedTab && tabs.some((t) => t.id === requestedTab)
+    ? requestedTab
+    : (tabs[0]?.id ?? null);
+  const [tab, setTab] = useState<Tab | null>(initialTab);
 
   /* ── Events tab state ── */
   const [filterRegions, setFilterRegions] = useState<FilterRegion[]>([]);
@@ -340,7 +350,9 @@ export default function EventsManagementTabs() {
               fontSize: '1rem',
               margin: 0,
             }}>
-              Manage events, regions, and homepage banners
+              {/* Was: "Manage events, regions, and homepage banners" — restore if the
+                  Events / Event Regions tabs are ever re-enabled. */}
+              Manage homepage banners
             </p>
           </div>
           {tab === 'events' && (
@@ -451,8 +463,16 @@ export default function EventsManagementTabs() {
           ))}
         </div>
 
+        {/* With Events / Event Regions disabled, a role without Banners access has
+            nothing left on this page — say so instead of rendering a blank screen. */}
+        {tabs.length === 0 && (
+          <p style={{ color: '#64748b', fontSize: '0.9375rem', margin: 0 }}>
+            No sections are available to your role on this page.
+          </p>
+        )}
+
         {/* ══════════════════════════════════════
-            TAB 1 — EVENTS
+            TAB 1 — EVENTS (disabled — see the tabs array above)
         ══════════════════════════════════════ */}
         {tab === 'events' && (
           <>
@@ -833,7 +853,7 @@ export default function EventsManagementTabs() {
         )}
 
         {/* ══════════════════════════════════════
-            TAB 2 — EVENT REGIONS
+            TAB 2 — EVENT REGIONS (disabled — see the tabs array above)
         ══════════════════════════════════════ */}
         {tab === 'regions' && (
           <>

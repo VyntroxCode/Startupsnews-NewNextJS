@@ -82,6 +82,28 @@ export function partnershipEntityToStartupEvent(entity: PartnershipEventEntity):
   };
 }
 
+const MONTH_ABBR_INDEX = new Map(MONTH_ABBR.map((m, i) => [m, i]));
+
+/**
+ * Sort key for an event's already-formatted `date` ("9 SEPT 2026") — 20260909 for that example.
+ *
+ * Deliberately parsed with the same MONTH_ABBR table that produced the string rather than
+ * Date.parse, which is not specified to accept the four-letter "SEPT" this project emits.
+ * Anything unparseable sorts last instead of silently becoming NaN and scrambling the order.
+ *
+ * Needed because /events merges several regions' event lists into one "Other Cities" carousel:
+ * each list arrives date-ascending on its own, but concatenated they interleave wrongly.
+ */
+export function eventDateSortKey(event: Pick<StartupEvent, 'date'>): number {
+  const parts = (event.date || '').trim().split(/\s+/);
+  if (parts.length !== 3) return Number.MAX_SAFE_INTEGER;
+  const day = Number(parts[0]);
+  const month = MONTH_ABBR_INDEX.get(parts[1].toUpperCase());
+  const year = Number(parts[2]);
+  if (!day || month === undefined || !year) return Number.MAX_SAFE_INTEGER;
+  return year * 10000 + (month + 1) * 100 + day;
+}
+
 export function partnershipEntitiesToStartupEvents(entities: PartnershipEventEntity[]): StartupEvent[] {
   return entities.map(partnershipEntityToStartupEvent);
 }

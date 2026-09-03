@@ -15,9 +15,10 @@ import {
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
   type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
-import { COUNTRY_NAMES, citiesForCountry, countryForCity } from '@/modules/partnership-events/domain/country-city-data';
+import { COUNTRY_NAMES, aliasesForCountry, canonicalCountryName, citiesForCountry, countryForCity, flagForCountry, splitCityValue, subCitiesForCity } from '@/modules/partnership-events/domain/country-city-data';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/admin/SearchableSelect';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
-import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey } from '@/modules/partnership-events/utils/partnership-events.utils';
+import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey, classifyPartnershipStatus, DEFAULT_HIDDEN_STATUSES } from '@/modules/partnership-events/utils/partnership-events.utils';
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-pt-display' });
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-pt-body' });
@@ -110,6 +111,13 @@ const STATUS_ORDER = [...PARTNERSHIP_STATUS_OPTIONS] as string[];
 // accurate by a server-side sweep, see PartnershipEventsRepository.markPastPartnershipsAsExpired,
 // not something the admin ever needs to set manually).
 const STATUS_FILTER_ORDER = STATUS_ORDER.filter((s) => s !== 'Expired');
+// The KPI cards row drops "Cancelled" on top of that — a dead deal isn't something the team
+// tracks day to day, and the card mostly sat there as noise between the live pipeline numbers.
+// Cancelled events are untouched everywhere else: still classified, still counted, still
+// reachable via the "All Statuses" dropdown and the month-on-month chart's Cancelled segment
+// (which is why divertedFromCard above still recognises it — it stays a valid cardFilter value,
+// just not one you can reach by clicking a card).
+const STATUS_CARD_ORDER = STATUS_FILTER_ORDER.filter((s) => s !== 'Cancelled');
 // The Add/Edit modal's own status editor (the one place status can actually be changed — the
 // table just displays it read-only) only offers the active deal-pipeline statuses — Draft,
 // Cancelled and Expired are set some other way (Draft is driven by the Website Listing Status
@@ -118,9 +126,10 @@ const STATUS_FILTER_ORDER = STATUS_ORDER.filter((s) => s !== 'Expired');
 // from this dropdown. An event already holding one of those (or any other legacy value) still
 // shows and keeps it via the "(legacy)" fallback option below.
 const STATUS_EDIT_ORDER = ['Initiated', 'Partnership Done', 'Only Listing', 'Ticketing'];
-// Excluded from the default "All Statuses" table view — these need a deliberate, manual look,
-// not a permanent fixture cluttering the everyday list.
-const DEFAULT_HIDDEN_STATUSES = ['Unmapped', 'Expired'];
+// DEFAULT_HIDDEN_STATUSES (excluded from the default "All Statuses" table view) now lives in
+// partnership-events.utils alongside classifyPartnershipStatus — the admin dashboard's Events
+// card counts active events with the same pair, and a second local copy here would let the two
+// numbers drift.
 const STATUS_COLOR_HEX: Record<string, string> = {
   Draft: '#9333EA', Initiated: '#7C3FE0', 'Partnership Done': '#1E9E64', 'Only Listing': '#0E7C8B',
   Ticketing: '#2563C7', Cancelled: '#C22B44', Expired: '#3F4552', Unmapped: '#9CA3AF',
@@ -171,46 +180,10 @@ function parseYmd(s: string): number | null {
 function daysBetween(a: number, b: number): number {
   return Math.floor((a - b) / (1000 * 60 * 60 * 24));
 }
-/**
- * `siteStatus` is the record's own persisted public status ('draft'/'upcoming'/'completed'),
- * i.e. what the Add/Edit modal's "Website Listing Status *" field controls — pass `e.siteStatus`.
- *
- * "Draft" is bucketed purely from this — NOT from a blank/unset Partnership Status — since
- * whether an event is actually live on the public site is ground truth, while the Partnership
- * Status dropdown is just the internal CRM deal-stage (Initiated/Partnership Done/Only
- * Listing/Ticketing) and was never meant to double as an on/off switch for site-publish state.
- * Draft takes priority over those in-progress CRM stages (an unpublished event showing as e.g.
- * "Only Listing" is misleading), but NOT over the terminal Cancelled/Expired outcomes, which are
- * deliberate admin decisions/date-based facts that hold regardless of publish state.
- *
- * `isDateExpired` (the event's own end/start date vs today, computed in computeDerived) is
- * checked directly here too, not just the raw CRM text already saying "expir" — the automatic
- * DB sweep that rewrites that text (markPastPartnershipsAsExpired) only ever touches rows with
- * no linked website Event at all (`event_id IS NULL`), so a past-dated event that IS linked but
- * still sitting unpublished (siteStatus 'draft') never got its text updated and kept falling into
- * the Draft bucket above by date alone — a real event stuck in Draft forever, past its own date.
- * Checking the date live here means it's correct on every load regardless of that sweep's scope,
- * and self-heals going forward: the moment any event's date passes, it moves to Expired even
- * while still in Draft, instead of only Cancelled and text-already-marked-Expired doing so.
- */
-function classifyStatus(raw: string, siteStatus?: string, isDateExpired?: boolean): string {
-  const s = (raw || '').toLowerCase().trim();
-  if (s.includes('cancel')) return 'Cancelled';
-  if (s.includes('expir') || isDateExpired) return 'Expired';
-  if (!siteStatus || siteStatus === 'draft') return 'Draft';
-  if (!s) return 'Unmapped';
-  if (STATUS_ORDER.includes(raw)) return raw;
-  // Catches bare "listed" too (a lot of real historical data uses that exact word), not just
-  // "only listed"/"listed only" — anything mentioning "listed" at all means this bucket.
-  if (s.includes('listed') || s.includes('listing') || s.includes('no partnership')) return 'Only Listing';
-  if (s.includes('ticket')) return 'Ticketing';
-  if (s.includes('done') || s.includes('confirm') || s.includes('complete') || s.includes('executed')) return 'Partnership Done';
-  if (s.includes('initiat')) return 'Initiated';
-  if (s.includes('draft')) return 'Draft';
-  // Legacy "In Progress" / "On Hold" / "Dropped" text (retired concepts) also lands here — the
-  // admin reclassifies these manually, they're not auto-migrated to a new bucket.
-  return 'Unmapped';
-}
+// classifyStatus moved to partnership-events.utils as classifyPartnershipStatus (with its full
+// rationale comment) so /api/admin/stats can bucket the same way for the dashboard's Events card.
+// Kept as a local alias rather than renaming three call sites and the comments that reference it.
+const classifyStatus = classifyPartnershipStatus;
 /** Maps old freeform partnership_status text (from before STATUS_EDIT_ORDER existed — e.g. bulk
  * CSV imports) to its closest modern equivalent, so opening an old event for edit pre-selects a
  * real, editable option instead of showing a locked "(legacy)" placeholder with no obvious next
@@ -249,23 +222,29 @@ function isLiveListed(e: PartnershipEvent, statusBucket: string): boolean {
   return isListedStatus(statusBucket) && !!e.siteStatus && e.siteStatus !== 'draft';
 }
 /**
- * The status card this event *would* sit on if classifyStatus hadn't overridden its stored status
- * — i.e. the card that reports it in its sub-line — or null when it's already on its own card.
+ * The status card this event *would* sit on if classifyStatus hadn't overridden its stored status,
+ * or null when it's already on its own card.
  *
- * Only the two override reasons produce this: the event's date has passed (bucket 'Expired') or
- * its linked website listing isn't published yet (bucket 'Draft'). Both are classifyStatus
- * decisions layered on top of what the admin actually set, which is why e.g. 113 events stored as
- * "Partnership Done" show as 70 on that card.
+ * Only ONE override reason produces this: the event's linked website listing isn't published yet
+ * (bucket 'Draft'). Those are still live deals, so a card that claims to show every event set to
+ * e.g. "Partnership Done" has to include them — that's what lets that card count 71 rather than
+ * only the 69 sitting in the bucket.
  *
- * Deliberately shared by the KPI counts and the table's card filter: the sub-line's number and the
- * rows you get when you click the card come from this one rule, so a card can never advertise
- * "3 unpublished" and then open a table that doesn't contain them.
+ * Date-expired events (bucket 'Expired') are deliberately NOT diverted, even though classifyStatus
+ * overrode their stored status just the same. Every count on this screen is an *active* count —
+ * the headline card says "All Active events" and subtracts them, the default table hides them —
+ * so folding 42 expired events into the Partnership Done card would have made it the one number
+ * on the row that silently counted dead events.
+ *
+ * Deliberately shared by the KPI counts and the table's card filter: the number on the card and
+ * the rows you get when you click it come from this one rule, so a card can never advertise a
+ * count it then fails to open.
  */
 function divertedFromCard(e: PartnershipEvent, statusBucket: string): string | null {
-  if (statusBucket !== 'Expired' && statusBucket !== 'Draft') return null;
+  if (statusBucket !== 'Draft') return null;
   const stored = normalizeStatusForEdit(e.partnershipStatus);
-  // Stored 'Expired' has no card of its own; a stored-Draft row in the Draft bucket isn't
-  // "missing" from that card, it's sitting right there in it.
+  // A stored-Draft row in the Draft bucket isn't "missing" from that card, it's sitting right
+  // there in it; stored 'Expired' has no card of its own.
   if (!STATUS_FILTER_ORDER.includes(stored) || stored === statusBucket) return null;
   return stored;
 }
@@ -679,18 +658,28 @@ async function api<T = unknown>(url: string, init?: RequestInit): Promise<{ succ
    PAGE
    ============================================================ */
 
-/** Region/Country dropdown options: the static country list, always including the
- * currently-selected value so editing an older event never silently blanks its region out. */
-function buildRegionOptions(currentValue: string): string[] {
-  const set = new Set<string>(COUNTRY_NAMES);
+/** Region/Country dropdown options: every country, always including the currently-selected
+ * value so editing an older event never silently blanks its region out. The list is ~200 long,
+ * hence SearchableSelect rather than a plain <select> — it filters as you type. */
+function buildRegionOptions(currentValue: string): SearchableSelectOption[] {
+  const names = [...COUNTRY_NAMES];
   const trimmed = currentValue.trim();
-  // Older records can have a stored country that differs from the canonical name only by case
-  // or whitespace (e.g. "usa" vs "USA") — skip adding those so the list doesn't show a
-  // near-identical duplicate entry.
-  if (trimmed && !COUNTRY_NAMES.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
-    set.add(trimmed);
+  // Records can hold a value that isn't on the list at all — a legacy/variant spelling ("USA"),
+  // a non-sovereign territory ("Hong Kong"), or a non-geographic label ("Cohort", "Online").
+  // Canonical spellings and case variants are excluded so the list shows no near-duplicate.
+  if (trimmed && !names.some((n) => n.toLowerCase() === canonicalCountryName(trimmed).toLowerCase())) {
+    names.push(trimmed);
   }
-  return [...set].sort((a, b) => a.localeCompare(b));
+  return names
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => ({
+      value: name,
+      label: name,
+      emoji: flagForCountry(name) || undefined,
+      // USA / UK / UAE keep the short spelling the existing records use, so their full names are
+      // matched as hidden search terms — typing "united arab" still lands on UAE.
+      keywords: aliasesForCountry(name),
+    }));
 }
 
 export default function PartnershipTrackerPage() {
@@ -924,24 +913,28 @@ export default function PartnershipTrackerPage() {
     // total never matched the cards beneath it (152 against 13+70+16=99) and never matched the
     // rows in the table either. Counting by bucket keeps all three in agreement automatically.
     let hidden = 0;
-    // Why a card's number is lower than the raw count of that status in the data — see
-    // divertedFromCard. The two override reasons are tallied separately because they mean
-    // different things and need different follow-ups (a date that has passed vs. a listing still
-    // waiting to be published).
-    const elsewhere: Record<string, { expired: number; draft: number }> = {};
     events.forEach((e) => {
       const d = derivedById.get(e.id)!;
+      // A status card shows every ACTIVE event set to that status — the same rows clicking it
+      // opens — not just the ones classifyStatus left sitting in that bucket. It used to show only
+      // the bucket (Partnership Done read 69) with a "42 expired · 2 unpublished" sub-line
+      // explaining the shortfall; now the number is whole and the sub-line is gone. Counted via
+      // the same divertedFromCard() the table's cardFilter uses, so card number === rows in the
+      // drill-down, by construction.
+      //
+      // "Active" is the same meaning the whole screen uses: expired events are excluded here just
+      // as they're excluded from the All Active events total and the default table — see
+      // divertedFromCard for why they aren't folded in. Unpublished ones ARE included (still live
+      // deals), which is the one place a card can double-count: an unpublished Initiated event is
+      // genuinely both Initiated and Draft, so it shows on both cards.
       byStatus[d.statusBucket] = (byStatus[d.statusBucket] || 0) + 1;
-      if (DEFAULT_HIDDEN_STATUSES.includes(d.statusBucket)) hidden++;
       const from = divertedFromCard(e, d.statusBucket);
-      if (from) {
-        elsewhere[from] = elsewhere[from] || { expired: 0, draft: 0 };
-        elsewhere[from][d.statusBucket === 'Expired' ? 'expired' : 'draft']++;
-      }
+      if (from) byStatus[from] = (byStatus[from] || 0) + 1;
+      if (DEFAULT_HIDDEN_STATUSES.includes(d.statusBucket)) hidden++;
       if (isListedStatus(d.statusBucket)) listedClaimed++;
       if (isLiveListed(e, d.statusBucket)) listedLive++;
     });
-    return { byStatus, listed: listedLive, listedClaimed, total: events.length - hidden, hidden, elsewhere };
+    return { byStatus, listed: listedLive, listedClaimed, total: events.length - hidden, hidden };
   }, [events, derivedById]);
 
   // Who created/updated what today, with exact datetime — feeds the Daily Report's
@@ -975,10 +968,11 @@ export default function PartnershipTrackerPage() {
     if (monthFilter) list = list.filter((e) => e.eventStartDate && monthKey(e.eventStartDate) === monthFilter);
     if (cardFilter === 'Listed') list = list.filter((e) => isListedStatus(derivedById.get(e.id)!.statusBucket));
     // Clicking a status card is a drill-down into that status as the admin actually set it, so it
-    // opens the rows the card counts PLUS the ones its sub-line reports as diverted elsewhere —
-    // click "Initiated" and you get its 3 unpublished events, not an empty table under a card
-    // that just told you about them. Each row still shows its real bucket in the Status column,
-    // so a past-dated one is visibly Expired rather than silently mixed in.
+    // opens every active event with that status — including the ones classifyStatus re-bucketed as
+    // Draft because their listing isn't published. Same rule the card's number is counted with
+    // (see counts.byStatus), so the table always holds exactly as many rows as the card
+    // advertised. Each row still shows its real bucket in the Status column, so an unpublished one
+    // is visibly Draft rather than silently mixed in.
     else if (cardFilter) list = list.filter((e) => {
       const d = derivedById.get(e.id)!;
       return d.statusBucket === cardFilter || divertedFromCard(e, d.statusBucket) === cardFilter;
@@ -990,14 +984,10 @@ export default function PartnershipTrackerPage() {
     // The default "all" view excludes Unmapped/Expired so they don't clutter the everyday list —
     // Expired is still explicitly selectable from this same dropdown for a deliberate manual
     // check; Unmapped isn't offered there at all (not a real status, just "couldn't classify").
-    if (statusFilter === 'all') list = list.filter((e) => {
-      const bucket = derivedById.get(e.id)!.statusBucket;
-      if (!DEFAULT_HIDDEN_STATUSES.includes(bucket)) return true;
-      // Don't hide what a card drill-down just promised — the expired rows behind e.g.
-      // "42 expired" are the whole point of clicking that card, even though the default
-      // all-statuses view keeps them out of the everyday list.
-      return !!cardFilter && divertedFromCard(e, bucket) === cardFilter;
-    });
+    // No card drill-down needs an exemption here any more: divertedFromCard only ever claims rows
+    // in the Draft bucket, which isn't hidden — so a card can't promise rows this clause then
+    // takes away.
+    if (statusFilter === 'all') list = list.filter((e) => !DEFAULT_HIDDEN_STATUSES.includes(derivedById.get(e.id)!.statusBucket));
     else if (statusFilter === 'Listed') list = list.filter((e) => isListedStatus(derivedById.get(e.id)!.statusBucket));
     else list = list.filter((e) => derivedById.get(e.id)!.statusBucket === statusFilter);
     if (typeFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.partnershipTypeResolved === typeFilter);
@@ -1064,7 +1054,26 @@ export default function PartnershipTrackerPage() {
     setSearch(''); setStatusFilter('all'); setTypeFilter('all'); setListingFilter('all');
     setCardFilter(null); setMonthFilter(null); setSortKey('eventStartDate'); setSortDir(1); setPage(1);
   }
-  function setCard(bucket: string | null) { setCardFilter(bucket); setMonthFilter(null); setPage(1); }
+  /**
+   * Clicking a KPI card resets the search box and the three filter dropdowns back to their
+   * defaults, instead of keeping whatever was last set.
+   *
+   * A card advertises an exact number and its click has to open exactly that many rows (see
+   * counts.byStatus) — but a leftover Event Statuses / Partnership Statuses / type selection would
+   * narrow the result silently, so a card reading 71 would open e.g. 12 rows with nothing on
+   * screen explaining the gap. The card is the new starting point for a lookup, not another
+   * condition stacked on the old one.
+   *
+   * Sort order is deliberately left alone: it changes the order of the rows, not which rows are
+   * there, so it can't break the card's count. clearFilters() below still resets it, since that
+   * button means "back to a clean slate" rather than "start a new drill-down".
+   */
+  function setCard(bucket: string | null) {
+    setCardFilter(bucket);
+    setMonthFilter(null);
+    setSearch(''); setStatusFilter('all'); setTypeFilter('all'); setListingFilter('all');
+    setPage(1);
+  }
   function toggleSort(key: string) {
     if (sortKey === key) setSortDir((d) => (d === 1 ? -1 : 1));
     else { setSortKey(key); setSortDir(1); }
@@ -1110,11 +1119,12 @@ export default function PartnershipTrackerPage() {
       || (linkedEvent?.location && COUNTRY_NAMES.includes(linkedEvent.location) ? linkedEvent.location : '')
       || (linkedEvent?.location ? countryForCity(linkedEvent.location) : null)
       || '';
-    // Older rows can have this stored in a case/whitespace variant of the canonical name (e.g.
-    // "usa" instead of "USA") — snap it to the canonical spelling so the dropdown actually shows
-    // it selected instead of matching no option, and so re-saving doesn't perpetuate the variant.
-    const canonicalRegionMatch = COUNTRY_NAMES.find((n) => n.toLowerCase() === rawRegionValue.trim().toLowerCase());
-    const regionValue = canonicalRegionMatch || rawRegionValue;
+    // Older rows can have this stored in a case/whitespace variant ("usa ") or a legacy spelling
+    // ("USA", "Turkey") of a name the dropdown now lists differently — snap it to the canonical
+    // spelling so the dropdown actually shows it selected instead of matching no option, and so
+    // re-saving stops perpetuating the variant (which /events renders as its own duplicate
+    // country section). Unrecognised values ("Cohort", "Online") come back unchanged.
+    const regionValue = canonicalCountryName(rawRegionValue);
     setDraft({
       ...rest,
       region: regionValue,
@@ -1426,16 +1436,36 @@ export default function PartnershipTrackerPage() {
   const activityCreatedFiltered = todayActivity.created.filter((x) => activityPersonFilter === 'all' || x.event.createdBy === activityPersonFilter);
   const activityUpdatedFiltered = todayActivity.updated.filter((x) => activityPersonFilter === 'all' || x.event.updatedBy === activityPersonFilter);
 
-  const regionOptions = buildRegionOptions(draft.region);
+  // Memoised: this rebuilds a ~200-entry list, and the modal re-renders on every keystroke in
+  // any of its other fields. The pinned "Others…" entry stays visible however the list is
+  // filtered — it's exactly what an admin reaches for when their search comes back empty.
+  const regionOptions: SearchableSelectOption[] = useMemo(() => [
+    ...buildRegionOptions(draft.region),
+    { value: '__other__', label: 'Others…', alwaysShow: true },
+  ], [draft.region]);
   const citiesForSelectedCountry = citiesForCountry(draft.region);
-  // Whatever city the record already holds stays selectable even when it isn't one of the
-  // curated ones for that country, so switching to another city is always a plain dropdown pick.
-  const cityOptions = (() => {
-    if (!citiesForSelectedCountry) return null;
-    const current = draft.city.trim();
-    return current && !citiesForSelectedCountry.includes(current)
-      ? [...citiesForSelectedCountry, current]
-      : citiesForSelectedCountry;
+  // draft.city holds ONE value, but the form edits it as two fields: a sub-city is stored there
+  // directly ("Gurugram") and split back out for display into City "Delhi NCR" + Sub City
+  // "Gurugram". Storing the sub-city — not the parent — is what makes the public card read
+  // "Gurugram" while /events still groups it into the single Delhi NCR carousel.
+  const { city: cityField, subCity: subCityField } = splitCityValue(draft.city);
+  // Every country gets the dropdown now, including the ~180 we curate no cities for — those
+  // simply offer "Others…" and nothing else, so adding a city is the same two-step everywhere.
+  const cityOptions = citiesForSelectedCountry ?? [];
+  // "Others" is a DERIVED state, not just a button the admin pressed: a city that isn't on its
+  // country's list is an other-city by definition (that's the same rule /events groups by), so
+  // reopening such a record shows Others + the name in Add City rather than smuggling it into
+  // the dropdown as a one-off option. cityOther covers the moment after the pick, when the name
+  // is still blank; the empty-list case has nothing else to offer, so it starts there.
+  const otherCityMode =
+    !!draft.region &&
+    (cityOther || cityOptions.length === 0 || (!!cityField && !cityOptions.includes(cityField)));
+  // Same rule one level down: a record already saved as "New Delhi" keeps it as an option even
+  // though the dropdown itself only offers Delhi / Gurugram / Noida.
+  const subCityOptions = (() => {
+    const subs = subCitiesForCity(cityField);
+    if (!subs) return null;
+    return subCityField && !subs.includes(subCityField) ? [...subs, subCityField] : subs;
   })();
   const effectivePhoneCode = phoneCode === 'other' ? (phoneCodeCustom.trim() || 'other') : phoneCode;
   const phoneRule = PHONE_RULES[effectivePhoneCode] || PHONE_RULES.other;
@@ -1525,7 +1555,10 @@ export default function PartnershipTrackerPage() {
 
         <div className="pt-main-tabs">
           <button className={mainTab === 'tracker' ? 'active' : ''} onClick={() => setMainTab('tracker')}>Partnership Tracker</button>
-          <button className={mainTab === 'events' ? 'active' : ''} onClick={() => setMainTab('events')}>Events, Regions &amp; Banners</button>
+          {/* Was "Events, Regions & Banners" — the Events and Event Regions tabs inside
+              EventsManagementTabs are commented out (partnership_events is the public
+              source now), so Banners is all this section still shows. */}
+          <button className={mainTab === 'events' ? 'active' : ''} onClick={() => setMainTab('events')}>Banners</button>
         </div>
 
         {mainTab === 'events' && <EventsManagementTabs />}
@@ -1545,29 +1578,20 @@ export default function PartnershipTrackerPage() {
                 <div className="pt-card-count">{counts.total}</div>
                 {counts.hidden > 0 && <div className="pt-card-sub-text">{counts.hidden} expired</div>}
               </div>
-              {STATUS_FILTER_ORDER.map((s) => {
+              {/* No sub-line under these numbers any more: the count IS the full count for that
+                  status, so there is nothing left over to explain. See counts.byStatus. */}
+              {STATUS_CARD_ORDER.map((s) => {
                 const isAlertCard = (s === 'Initiated' || s === 'Draft') && (counts.byStatus[s] || 0) > 0;
-                // Same "what isn't in this number" note the All Active events card carries, per
-                // status — see counts.elsewhere. Without it a card like Partnership Done reads as
-                // simply wrong against the data (70 shown, 113 stored) with nothing explaining the
-                // gap; the two reasons are kept distinct because they mean different things and
-                // need different follow-ups (a passed date vs. a page still waiting to publish).
-                const away = counts.elsewhere[s];
-                const parts = away ? [
-                  away.expired ? `${away.expired} expired` : '',
-                  away.draft ? `${away.draft} unpublished` : '',
-                ].filter(Boolean) : [];
                 return (
                   <div
                     key={s}
                     className={`pt-card ${cardFilter === s ? 'active' : ''} ${isAlertCard ? 'pt-card-blink' : ''}`}
                     style={{ ['--dot' as string]: isAlertCard ? '#C22B44' : STATUS_COLOR_HEX[s] }}
                     onClick={() => setCard(s)}
-                    title={parts.length ? `${away!.expired + away!.draft} more event(s) are set to "${s}" but aren't counted here${away!.expired ? ` — ${away!.expired} whose date has passed (counted under Expired)` : ''}${away!.draft ? `${away!.expired ? ', and' : ' —'} ${away!.draft} whose website listing isn't published yet (counted under Draft)` : ''}. Click this card to see them all in the table.` : undefined}
+                    title={`Every active event set to "${s}" — expired ones aren't counted (pick "Expired" in the status dropdown for those). Click to see them all in the table.`}
                   >
                     <div className="pt-card-label"><span className="pt-dot" />{s}</div>
                     <div className="pt-card-count">{counts.byStatus[s] || 0}</div>
-                    {parts.length > 0 && <div className="pt-card-sub-text">{parts.join(' · ')}</div>}
                   </div>
                 );
               })}
@@ -1942,10 +1966,12 @@ export default function PartnershipTrackerPage() {
                     </>
                   ) : (
                     <>
-                      <select
+                      <SearchableSelect
+                        ariaLabel="Region/Country"
+                        placeholder="Select region/country"
                         value={draft.region}
-                        onChange={(e) => {
-                          const value = e.target.value;
+                        options={regionOptions}
+                        onChange={(value) => {
                           if (value === '__other__') {
                             setRegionOther(true);
                             setCityOther(false);
@@ -1955,39 +1981,58 @@ export default function PartnershipTrackerPage() {
                           setCityOther(false);
                           setDraft({ ...draft, region: value, city: '' });
                         }}
-                      >
-                        <option value="">Select region/country</option>
-                        {regionOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-                        <option value="__other__">Others…</option>
-                      </select>
-                      <div className="pt-hint">Not listed? Pick &quot;Others…&quot; and type it in.</div>
+                      />
+                      <div className="pt-hint">Start typing to search. Not listed? Pick &quot;Others…&quot; and type it in.</div>
                     </>
                   )}
                 </div>
                 <div className="pt-fg">
                   <label>City</label>
-                  {cityOptions ? (
-                    cityOther ? (
-                      <>
-                        <input placeholder="Enter city" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
-                        <div className="pt-hint"><span className="pt-add-line" onClick={() => setCityOther(false)}>← Choose from list</span></div>
-                      </>
-                    ) : (
-                      <select
+                  <div className="pt-city-row">
+                    <select
+                      aria-label="City"
+                      value={otherCityMode ? '__other__' : cityField}
+                      // Never disabled, even in Others mode: picking a real city here is the only
+                      // way back out, and a locked field with no exit would trap the admin.
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '__other__') { setCityOther(true); setDraft({ ...draft, city: '' }); return; }
+                        // Changing the city drops any sub-city with it — "Gurugram" is
+                        // meaningless once the city is no longer Delhi NCR.
+                        setCityOther(false);
+                        setDraft({ ...draft, city: value });
+                      }}
+                    >
+                      <option value="">Select city</option>
+                      {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                      <option value="__other__">Others…</option>
+                    </select>
+                    {otherCityMode && (
+                      <input
+                        aria-label="Add city"
+                        placeholder="Add City"
                         value={draft.city}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === '__other__') { setCityOther(true); setDraft({ ...draft, city: '' }); return; }
-                          setDraft({ ...draft, city: value });
-                        }}
+                        onChange={(e) => setDraft({ ...draft, city: e.target.value })}
+                      />
+                    )}
+                    {!otherCityMode && subCityOptions && (
+                      <select
+                        aria-label="Sub city"
+                        value={subCityField}
+                        // Selecting a sub-city REPLACES the stored city with it; clearing the
+                        // dropdown puts the parent city back. Only ever one value.
+                        onChange={(e) => setDraft({ ...draft, city: e.target.value || cityField })}
                       >
-                        <option value="">Select city</option>
-                        {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                        <option value="__other__">Others…</option>
+                        <option value="">Select Sub City</option>
+                        {subCityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
-                    )
-                  ) : (
-                    <input value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
+                    )}
+                  </div>
+                  {otherCityMode && (
+                    <div className="pt-hint">Listed under “Other Cities” for {draft.region || 'this country'} — the card shows the city name you type.</div>
+                  )}
+                  {!otherCityMode && subCityOptions && (
+                    <div className="pt-hint">Optional — shown on the event card. Still listed under {cityField}.</div>
                   )}
                 </div>
                 <div className="pt-fg"><label>Organiser/Company Name</label><input value={draft.organiser} onChange={(e) => setDraft({ ...draft, organiser: e.target.value })} /></div>
@@ -2462,7 +2507,7 @@ export default function PartnershipTrackerPage() {
         .pt-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
         .pt-form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
         @media (max-width: 700px) { .pt-form-grid-3 { grid-template-columns: 1fr; } }
-        .pt-fg { display: flex; flex-direction: column; gap: 5px; }
+        .pt-fg { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
         .pt-fg.pt-full { grid-column: 1/-1; }
         .pt-fg label { font-size: 11px; color: var(--muted); }
         .pt-fg input, .pt-fg select, .pt-fg textarea { min-height: 36px; padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; font-family: inherit; }
@@ -2477,6 +2522,12 @@ export default function PartnershipTrackerPage() {
         .pt-switch input:focus-visible + .pt-switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
         .pt-switch-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
         .pt-switch-copy strong { font-size: 12.5px; color: var(--text); font-weight: 700; }
+        /* City + Sub City share one grid cell. Both need box-sizing: border-box — this page has
+           no universal border-box rule, so under the default content-box a flex-basis of 0
+           resolves against the CONTENT box and each select ends up 22px (padding + border)
+           wider than its share, overflowing the cell and overlapping the field beside it. */
+        .pt-city-row { display: flex; gap: 6px; min-width: 0; }
+        .pt-city-row > select, .pt-city-row > input { flex: 1 1 0; min-width: 0; box-sizing: border-box; }
         .pt-phone-row { display: flex; gap: 6px; }
         .pt-phone-row select { flex: 0 0 88px; width: 88px; padding: 0 6px; }
         .pt-fg textarea { min-height: 64px; padding: 10px 12px; resize: vertical; width: 100%; }

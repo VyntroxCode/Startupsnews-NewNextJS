@@ -97,7 +97,7 @@ function GlobalStatTile({ stat, index, active }: { stat: GlobalStat; index: numb
 function IntelligenceStrip() {
 	const { ref, inView } = useInView<HTMLDivElement>();
 	return (
-		<div ref={ref} className="px-5 md:px-10 pt-4 sm:pt-6 lg:pt-8 pb-12 sm:pb-16 lg:pb-20 text-center">
+		<div ref={ref} className="px-5 md:px-10 pt-4 sm:pt-6 lg:pt-8 pb-6 sm:pb-8 lg:pb-10 text-center">
 			<h3
 				className={`text-[21px] sm:text-[28px] lg:text-[38px] font-extrabold leading-snug mb-8 sm:mb-10 lg:mb-12 transition-all duration-700 ease-out ${
 					inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
@@ -153,7 +153,7 @@ function AboutSection({ contentHtml }: { contentHtml: string }) {
 	const { ref, inView } = useInView<HTMLDivElement>();
 
 	return (
-		<section ref={ref} className="px-5 md:px-10 py-12 sm:py-16 lg:py-20 text-center overflow-hidden">
+		<section ref={ref} className="px-5 md:px-10 pt-4 sm:pt-6 lg:pt-8 pb-6 sm:pb-8 lg:pb-10 text-center overflow-hidden">
 			<h2
 				className={`text-[28px] sm:text-[38px] lg:text-[48px] font-extrabold text-au-ink leading-tight transition-all duration-700 ease-out ${
 					inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
@@ -275,7 +275,7 @@ function OfferingsSection() {
 	const { ref, inView } = useInView<HTMLDivElement>();
 
 	return (
-		<section ref={ref} className="px-5 md:px-10 pt-12 sm:pt-16 lg:pt-20 pb-8 sm:pb-10 lg:pb-12">
+		<section ref={ref} className="px-5 md:px-10 pt-4 sm:pt-6 lg:pt-8 pb-8 sm:pb-10 lg:pb-12">
 			<div className="text-center">
 				<h2
 					className={`text-[24px] sm:text-[30px] lg:text-[36px] font-extrabold text-au-ink leading-tight transition-all duration-700 ease-out ${

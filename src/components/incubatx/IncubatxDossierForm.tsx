@@ -37,6 +37,12 @@ export function IncubatxDossierForm() {
                 "wait" mode fully removes the old step before mounting the new one, so it never
                 shows both directions crossing. popLayout pulls the exiting element out of layout
                 flow immediately so the heights of two different steps don't fight each other. */}
+            {/* Clips the long horizontal travel so a step sliding in from 55% off-frame never
+                widens the document and flashes a page-level scrollbar. `clip` rather than
+                `hidden` on purpose, and only on the x axis: unlike `hidden`, `clip` does not
+                force the other axis to `auto`, so the y axis stays `visible` and the country /
+                stage dropdowns can still open past the bottom edge of the step card. */}
+            <div className="ix-step-viewport">
             <AnimatePresence mode="popLayout" initial={false} custom={direction}>
               <motion.div
                 key={currentStep}
@@ -54,6 +60,7 @@ export function IncubatxDossierForm() {
                 {currentStep === 6 && <ReviewStep ctrl={ctrl} />}
               </motion.div>
             </AnimatePresence>
+            </div>
           </form>
         </div>
       )}
@@ -67,7 +74,11 @@ export function IncubatxDossierForm() {
           --muted: #6b7280;
           --line: #e5e7eb;
           --panel: #ffffff;
-          --paper: #fafafa;
+          --paper: #ffffff;
+          /* --paper is the page ground and is now white, so anything that needs a subtle
+             fill INSIDE the white card (the upload dropzone) takes this instead — sharing
+             --paper would have left it invisible against the card behind it. */
+          --tint: #f7f8fa;
           --amber: #f59e0b;
           --amber-soft: #fef3c7;
           --green: #16a34a;
@@ -79,7 +90,7 @@ export function IncubatxDossierForm() {
           padding: 24px 16px 60px;
         }
         .incubatx-page * { box-sizing: border-box; }
-        .incubatx-page .ix-hero { max-width: 900px; margin: 0 auto 32px; }
+        .incubatx-page .ix-hero { max-width: 1080px; margin: 0 auto 32px; }
         .incubatx-page .ix-hero-kicker {
           display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: 1px;
           text-transform: uppercase; color: var(--accent); margin-bottom: 10px;
@@ -87,7 +98,8 @@ export function IncubatxDossierForm() {
         .incubatx-page .ix-hero-kicker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
         .incubatx-page .ix-hero h1 { font-size: 30px; font-weight: 700; margin: 0; letter-spacing: -0.3px; }
 
-        .incubatx-page .ix-layout { max-width: 900px; margin: 0 auto; }
+        .incubatx-page .ix-layout { max-width: 1080px; margin: 0 auto; }
+        .incubatx-page .ix-step-viewport { overflow-x: clip; overflow-y: visible; }
 
         /* Rail — a single continuous progress track behind evenly-spaced nodes (CSS grid, not
            flex+fixed-width connectors, so labels of different lengths never crowd each other). */
@@ -219,7 +231,7 @@ export function IncubatxDossierForm() {
         .incubatx-page .ix-dropzone {
           display: flex; align-items: center; justify-content: center; text-align: center; gap: 8px;
           border: 1.5px dashed var(--line); border-radius: 8px; padding: 18px; font-size: 12.5px; color: var(--muted);
-          cursor: pointer; background: var(--paper);
+          cursor: pointer; background: var(--tint);
         }
         .incubatx-page .ix-dropzone:hover { border-color: var(--accent); color: var(--accent); }
         .incubatx-page .ix-dropzone input { display: none; }

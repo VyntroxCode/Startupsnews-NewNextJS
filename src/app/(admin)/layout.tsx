@@ -27,7 +27,12 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // The sidebar rests as a 70px icon rail and opens on hover, matching the HR Tool's own
+  // sidebar. The header button PINS it open rather than toggling it, because once hover
+  // drives the width a plain "close" has nothing to hold against the next mouse-over.
+  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const sidebarOpen = sidebarPinned || sidebarHovered;
   const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -213,7 +218,7 @@ export default function AdminLayout({
   }, [router]);
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    setSidebarPinned((pinned) => !pinned);
   };
 
   // Show loading state
@@ -247,6 +252,10 @@ export default function AdminLayout({
 
   // Header height constant (must match AdminSidebar)
   const headerHeight = 60;
+  // Follows the sidebar's ACTUAL width, hover included — not just the pin. Keying this to the pin
+  // alone let a hover-opened sidebar float over the page, which read as the content being cut off:
+  // the sidebar is position:fixed, so the 190px it gains on hover simply covered the page title,
+  // the tab bar and the table's first column. The content moves with it instead.
   const sidebarWidth = sidebarOpen ? 260 : 70;
   // HR Management renders its own full-bleed app shell (sidebar, header, rounded card) —
   // the standard 2rem content padding left a visible gap around it instead of the widget
@@ -265,19 +274,19 @@ export default function AdminLayout({
       {/* Fixed Header */}
       <AdminHeader
         user={user}
-        sidebarOpen={sidebarOpen}
+        sidebarOpen={sidebarPinned}
         onToggleSidebar={toggleSidebar}
       />
 
       {/* Fixed Sidebar - positioned below header */}
-      <AdminSidebar isOpen={sidebarOpen} />
+      <AdminSidebar isOpen={sidebarOpen} onHoverChange={setSidebarHovered} />
 
       {/* Main Content Area - accounts for fixed header and sidebar */}
       <div
         style={{
           marginTop: `${headerHeight}px`,
           marginLeft: `${sidebarWidth}px`,
-          transition: 'margin-left 0.3s ease',
+          transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           minHeight: `calc(100vh - ${headerHeight}px)`,
         }}
       >

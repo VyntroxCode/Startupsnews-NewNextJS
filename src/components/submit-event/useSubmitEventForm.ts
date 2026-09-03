@@ -16,6 +16,10 @@ export function useSubmitEventForm() {
   const [data, setData] = useState<SubmitEventFormData>(createInitialFormData);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [currentStep, setCurrentStep] = useState(1);
+  // +1 when moving forward, -1 when going back. Only the step transition reads it, but it
+  // has to live here because the rail lets you jump to an arbitrary step, so the direction
+  // cannot be inferred from the button that was pressed.
+  const [direction, setDirection] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState<SubmissionResult | null>(null);
@@ -90,16 +94,17 @@ export function useSubmitEventForm() {
     const stepErrors = validateStep(currentStep, data);
     setErrors((prev) => ({ ...prev, ...stepErrors }));
     if (stepHasErrors(stepErrors)) return;
-    if (currentStep < TOTAL_STEPS) setCurrentStep(currentStep + 1);
+    if (currentStep < TOTAL_STEPS) { setDirection(1); setCurrentStep(currentStep + 1); }
   }
 
   function goBack() {
     setSubmitError("");
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+    if (currentStep > 1) { setDirection(-1); setCurrentStep(currentStep - 1); }
   }
 
   function goToStep(step: number) {
     setSubmitError("");
+    setDirection(step >= currentStep ? 1 : -1);
     setCurrentStep(step);
   }
 
@@ -145,6 +150,7 @@ export function useSubmitEventForm() {
     data,
     errors,
     currentStep,
+    direction,
     submitting,
     submitError,
     submitted,

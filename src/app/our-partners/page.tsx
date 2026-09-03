@@ -75,8 +75,10 @@ export default async function OurPartnersPage() {
           font-style: italic;
         }
 
-        /* Logo marquees — see PartnerLogosMarquee.tsx. Purely transform-animated, no overflow-
-           scroll element anywhere here, so there is nothing that could ever show a scrollbar. */
+        /* Logo marquees — see PartnerLogosMarquee.tsx. The rows auto-scroll and can be
+           grabbed and slid by hand; both are driven from one rAF loop in that component, so
+           the only thing owed here is layout, the edge fade and the grab cursor. No overflow-
+           scroll element anywhere, so there is nothing that could ever show a scrollbar. */
         .partners-marquee-group {
           display: flex;
           flex-direction: column;
@@ -86,30 +88,24 @@ export default async function OurPartnersPage() {
         .partners-marquee-row {
           overflow: hidden;
           width: 100%;
+          cursor: grab;
+          /* Horizontal is ours (pointer events); vertical stays with the page, so a touch drag
+             that starts on a logo row can still scroll the article. */
+          touch-action: pan-y;
+          -webkit-user-select: none;
+          user-select: none;
           -webkit-mask-image: linear-gradient(to right, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
           mask-image: linear-gradient(to right, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
         }
+        .partners-marquee-row.is-dragging { cursor: grabbing; }
         .partners-marquee-track {
           display: flex;
           gap: 16px;
           width: max-content;
-          animation-timing-function: linear;
-          animation-iteration-count: infinite;
+          will-change: transform;
         }
-        .partners-marquee-track.partners-marquee-left { animation-name: partners-marquee-scroll-left; }
-        .partners-marquee-track.partners-marquee-right { animation-name: partners-marquee-scroll-right; }
-        .partners-marquee-row:hover .partners-marquee-track { animation-play-state: paused; }
-        @keyframes partners-marquee-scroll-left {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        @keyframes partners-marquee-scroll-right {
-          from { transform: translateX(-50%); }
-          to { transform: translateX(0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .partners-marquee-track { animation: none !important; }
-        }
+        /* Hover-pause and prefers-reduced-motion both live in PartnerLogosMarquee.tsx now —
+           a CSS animation-play-state can't be reconciled with a hand-dragged offset. */
 
         .partners-logo-tile {
           flex: 0 0 auto;

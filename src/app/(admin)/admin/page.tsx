@@ -14,6 +14,10 @@ interface DashboardStats {
   users: number;
   eventRegions: number;
   authors: number;
+  /** Partnership Tracker's "All Active events" total — everything except the Expired/Unmapped
+   * buckets, the same number its own headline card shows. This is what the Events card reports
+   * now; `events` above is the legacy `events` table, which the public site no longer reads. */
+  partnershipEventsActive: number;
 }
 
 export default function AdminDashboard() {
@@ -200,30 +204,27 @@ export default function AdminDashboard() {
     </svg>
   );
 
-  const RegionsIcon = ({ color }: { color: string }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"></circle>
-      <line x1="2" y1="12" x2="22" y2="12"></line>
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-    </svg>
-  );
+  // Globe icon — only user was the retired Event Regions card; kept for an easy restore.
+  // const RegionsIcon = ({ color }: { color: string }) => (
+  //   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  //     <circle cx="12" cy="12" r="10"></circle>
+  //     <line x1="2" y1="12" x2="22" y2="12"></line>
+  //     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+  //   </svg>
+  // );
 
   const statCards = isEventAdmin
     ? [
         {
           title: 'Events',
-          value: stats?.events || 0,
-          href: '/admin/events',
+          value: stats?.partnershipEventsActive || 0,
+          href: '/admin/partnership-tracker',
           gradient: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
           icon: EventsIcon,
         },
-        {
-          title: 'Event Regions',
-          value: stats?.eventRegions || 0,
-          href: '/admin/events?tab=regions',
-          gradient: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-          icon: RegionsIcon,
-        },
+        // Event Regions card retired along with the Event Regions admin tab — the count came
+        // from the legacy `event_regions` table and the card linked to a tab that no longer
+        // renders. Partnership Tracker (the Events card above) is the entry point now.
       ]
     : isPublisherAdmin
     ? [
@@ -259,8 +260,8 @@ export default function AdminDashboard() {
         },
         {
           title: 'Events',
-          value: stats?.events || 0,
-          href: '/admin/events',
+          value: stats?.partnershipEventsActive || 0,
+          href: '/admin/partnership-tracker',
           gradient: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
           icon: EventsIcon,
         },

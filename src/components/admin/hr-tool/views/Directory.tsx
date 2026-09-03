@@ -6,14 +6,14 @@ import ModalShell from '../ModalShell';
 import HireEmployeeButton from './HireEmployeeButton';
 import EditCredentialModal from './EditCredentialModal';
 import { PANEL_ROLE_LABEL } from './CredentialFields';
-import { StatusBadge, addDays, initialLeaveBalance, computeCtcBreakdown, daysLeft, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
+import { StatusBadge, addDays, initialLeaveBalance, computeCtcBreakdown, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
 import { computeLeaveBalances } from '@/modules/hr-tool/utils/leave-balance';
 
 /** How many days a new hire has to submit their required-documents checklist, counted from doj. */
 const DOCUMENTS_WINDOW_DAYS = 5;
 import type { HrEmployee } from '../types';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
-import { KYC_SECTIONS, emptyKycDocuments } from '../types';
+import { KYC_SECTIONS, KYC_SLOTS, emptyKycDocuments, computeKycProgress } from '../types';
 
 function fmtDoj(doj: string): string {
   if (!doj) return '—';
@@ -22,36 +22,57 @@ function fmtDoj(doj: string): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-/** How far through their document checklist an employee is. `uploaded` counts anything that is
- * no longer 'not_uploaded' — including items still awaiting HR review — because from the
- * employee's side the file has been handed over. `rejected` is tracked separately: a rejected
- * item was uploaded, but still needs re-uploading, so it must not read as complete. */
-function docProgress(e: HrEmployee): { total: number; uploaded: number; rejected: number } {
-  const total = e.documents.length;
+/** How far through the KYC & Personal Documents checklist an employee is — now the ONLY set of
+ * documents collected from employees, since the old admin-configurable generic list
+ * (hr_required_documents) asked for the same real-world documents a second time and was retired.
+ *
+ * Two different counts, deliberately, because they answer two different questions:
+ *   • `uploaded`/`total` — how many of ALL 12 slots they have handed over. This is the number on
+ *     screen, so an employee gets visible credit for optional uploads (Cancelled Cheque, extra
+ *     education/experience entries) instead of them vanishing from the count.
+ *   • `requiredDone`/`requiredTotal` — the 5 compulsory slots. This, and only this, decides the
+ *     red/green colour, so the badge stays a compliance signal: green means "we have everything
+ *     we actually need from this person", not "they uploaded all 12".
+ * `requiredDone` reuses computeKycProgress, the same figure the employee sees on their own
+ * profile strip, so the two surfaces can never disagree.
+ *
+ * A slot counts as uploaded once it is pending OR approved — from the employee's side the file
+ * has been handed over. A rejected slot deliberately does NOT count: it needs re-uploading. That
+ * also means a rejected REQUIRED document turns the badge red on its own, while a rejected
+ * optional one leaves it green and is surfaced by `rejected` as a separate line instead. */
+function docProgress(e: HrEmployee): { total: number; uploaded: number; requiredTotal: number; requiredDone: number; rejected: number } {
+  const submitted = (key: string) => {
+    const st = e.kycDocuments[key]?.status;
+    return st === 'pending' || st === 'approved';
+  };
+  const { total: requiredTotal, submitted: requiredDone } = computeKycProgress(e.kycDocuments);
   return {
-    total,
-    uploaded: e.documents.filter((d) => d.status !== 'not_uploaded').length,
-    rejected: e.documents.filter((d) => d.status === 'rejected').length,
+    total: KYC_SLOTS.length,
+    uploaded: KYC_SLOTS.filter((s) => submitted(s.key)).length,
+    requiredTotal,
+    requiredDone,
+    rejected: KYC_SLOTS.filter((s) => e.kycDocuments[s.key]?.status === 'rejected').length,
   };
 }
 
-/** The Employee ID is black ONLY when the whole checklist is in and nothing was rejected.
- * Anything short of that — a single missing item, a single rejection, or no checklist assigned
- * at all — shows red. Previously this flagged only employees with NOTHING uploaded, so someone
- * sitting at 4 of 5, or whose upload had been rejected, looked identical to someone fully done. */
+/** Red/green is decided by the COMPULSORY slots alone — the Employee ID and the badge are black
+ * green only once all 5 required KYC documents are in. Optional slots never hold an employee in
+ * the red, which is why this ignores `uploaded`/`total` (the 12-slot figure shown on screen). */
 function documentsIncomplete(e: HrEmployee): boolean {
-  const { total, uploaded, rejected } = docProgress(e);
-  if (total === 0) return true;
-  return uploaded < total || rejected > 0;
+  const { requiredTotal, requiredDone } = docProgress(e);
+  return requiredDone < requiredTotal;
 }
 
-/** Why a given employee is flagged — the remedy differs per case, so the tooltip has to say. */
-function documentsIssue(e: HrEmployee): string | undefined {
-  const { total, uploaded, rejected } = docProgress(e);
-  if (total === 0) return 'No document checklist assigned — nothing has been requested from this employee yet';
-  if (rejected > 0) return `${rejected} document${rejected === 1 ? '' : 's'} rejected — needs re-uploading (${uploaded}/${total} submitted)`;
-  if (uploaded < total) return `Only ${uploaded} of ${total} documents uploaded`;
-  return undefined;
+/** Why a given employee is flagged — and, when they are not, what the 12-slot number means, so
+ * nobody reads a green "5/12" as a mistake. The remedy differs per case, so the tooltip says. */
+function documentsIssue(e: HrEmployee): string {
+  const { total, uploaded, requiredTotal, requiredDone, rejected } = docProgress(e);
+  const tail = `${uploaded} of ${total} KYC slots uploaded in total`
+    + (rejected > 0 ? ` · ${rejected} rejected, needs re-uploading` : '');
+  if (requiredDone < requiredTotal) {
+    return `Only ${requiredDone} of ${requiredTotal} required KYC documents uploaded — ${tail}`;
+  }
+  return `All ${requiredTotal} required KYC documents uploaded — ${tail}. The remaining slots are optional.`;
 }
 
 function PageHead({ title, sub }: { title: string; sub: string }) {
@@ -83,12 +104,8 @@ export default function Directory() {
   const [issuingCredentialFor, setIssuingCredentialFor] = useState<HrEmployee | null>(null);
   const [addingOrphanId, setAddingOrphanId] = useState<number | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [docRejectTarget, setDocRejectTarget] = useState<{ empId: string; idx: number } | null>(null);
-  const [docRejectRemarks, setDocRejectRemarks] = useState('');
   const [kycRejectTarget, setKycRejectTarget] = useState<{ empId: string; slotKey: string } | null>(null);
   const [kycRejectRemarks, setKycRejectRemarks] = useState('');
-  const [docSearch, setDocSearch] = useState('');
-  const [docStatusFilter, setDocStatusFilter] = useState('');
 
   const admin = isAdmin(state.role);
   const founder = state.role === 'Founder';
@@ -178,17 +195,6 @@ export default function Directory() {
     logRuleChange(`Updated ${e.name}'s details`);
   }
 
-  /** Manual catch-up for employees who ended up with no document checklist at all — e.g. hired
-   * during a window when Rules & Org Structure's required-documents list was empty. Mirrors the
-   * hire-time snapshot (see line ~141/261) but deadlines from today, not doj, since there's no
-   * reason to hand someone a checklist that's already overdue. */
-  async function assignChecklist(e: HrEmployee) {
-    const documents = state.orgStructure.requiredDocuments.map((name) => ({ name, status: 'not_uploaded' as const, url: null, uploadedAt: null, remarks: null }));
-    if (documents.length === 0) return;
-    await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, documents, documentsDeadline: addDays(todayStr(), DOCUMENTS_WINDOW_DAYS) } : x)));
-    logRuleChange(`Assigned document checklist to ${e.name}`);
-  }
-
   function exportDirectory(fmt: 'csv' | 'excel') {
     const exportRows: (string | number)[][] = [['Employee ID', 'Name', 'Email', 'Designation', 'Team', 'Status', 'DOJ', 'Annual CTC']];
     [...visibleEmployees]
@@ -239,10 +245,6 @@ export default function Directory() {
     setProfileId(null);
   }
 
-  async function docAction(empId: string, idx: number, status: 'approved' | 'rejected') {
-    if (status === 'rejected') { setDocRejectTarget({ empId, idx }); setDocRejectRemarks(''); return; }
-    await persistEmployees(state.employees.map((e) => (e.id === empId ? { ...e, documents: e.documents.map((d, i) => (i === idx ? { ...d, status: 'approved', remarks: null } : d)) } : e)));
-  }
   async function kycDocAction(empId: string, slotKey: string, status: 'approved' | 'rejected') {
     if (status === 'rejected') { setKycRejectTarget({ empId, slotKey }); setKycRejectRemarks(''); return; }
     await persistEmployees(state.employees.map((e) => (e.id === empId ? { ...e, kycDocuments: { ...e.kycDocuments, [slotKey]: { ...e.kycDocuments[slotKey], status: 'approved', remarks: null } } } : e)));
@@ -251,11 +253,6 @@ export default function Directory() {
     if (!kycRejectTarget || !kycRejectRemarks.trim()) { alert('Remarks are required on rejection.'); return; }
     await persistEmployees(state.employees.map((e) => (e.id === kycRejectTarget.empId ? { ...e, kycDocuments: { ...e.kycDocuments, [kycRejectTarget.slotKey]: { ...e.kycDocuments[kycRejectTarget.slotKey], status: 'rejected', remarks: kycRejectRemarks.trim() } } } : e)));
     setKycRejectTarget(null);
-  }
-  async function confirmDocReject() {
-    if (!docRejectTarget || !docRejectRemarks.trim()) { alert('Remarks are required on rejection.'); return; }
-    await persistEmployees(state.employees.map((e) => (e.id === docRejectTarget.empId ? { ...e, documents: e.documents.map((d, i) => (i === docRejectTarget.idx ? { ...d, status: 'rejected', remarks: docRejectRemarks.trim() } : d)) } : e)));
-    setDocRejectTarget(null);
   }
 
   async function importCsv() {
@@ -291,43 +288,8 @@ export default function Directory() {
 
   const profile = profileId ? state.employees.find((e) => e.id === profileId) || null : null;
 
-  // Merged in from the old standalone "Employee Documents" page — every non-exited employee
-  // with a documents checklist at all, not just new hires still mid-window.
-  const docEmployees = useMemo(() => {
-    if (!admin) return [];
-    return state.employees.filter((e) => e.status !== 'exited' && e.documents.length > 0);
-  }, [state.employees, admin]);
 
-  const docStats = useMemo(() => {
-    const allDocs = docEmployees.flatMap((e) => e.documents);
-    return {
-      total: allDocs.length,
-      notUploaded: allDocs.filter((d) => d.status === 'not_uploaded').length,
-      pending: allDocs.filter((d) => d.status === 'pending').length,
-      approved: allDocs.filter((d) => d.status === 'approved').length,
-      rejected: allDocs.filter((d) => d.status === 'rejected').length,
-    };
-  }, [docEmployees]);
 
-  const filteredDocEmployees = useMemo(() => {
-    const term = docSearch.trim().toLowerCase();
-    return docEmployees
-      .filter((e) => {
-        const matchesTerm = !term || e.name.toLowerCase().includes(term) || e.documents.some((d) => d.name.toLowerCase().includes(term));
-        const matchesStatus = !docStatusFilter || e.documents.some((d) => d.status === docStatusFilter);
-        return matchesTerm && matchesStatus;
-      })
-      // Most urgent first: whoever's window is closing soonest (or already closed) floats to
-      // the top; employees with no deadline sink to the bottom.
-      .sort((a, b) => {
-        const da = a.documentsDeadline ? daysLeft(a.documentsDeadline) : null;
-        const db = b.documentsDeadline ? daysLeft(b.documentsDeadline) : null;
-        if (da === null && db === null) return a.name.localeCompare(b.name);
-        if (da === null) return 1;
-        if (db === null) return -1;
-        return da - db;
-      });
-  }, [docEmployees, docSearch, docStatusFilter]);
 
   return (
     <>
@@ -377,25 +339,11 @@ export default function Directory() {
               <td><div className="row-name"><div className="avatar">{initials(e.name)}</div><div><div>{e.name}</div><div className="meta">{e.email}</div></div></div></td>
               <td>{e.designation}</td><td>{e.team}</td><td>{fmtDoj(e.doj)}</td>
               <td>{(() => {
-                const { total, uploaded, rejected } = docProgress(e);
-                if (total === 0) return (
-                  <>
-                    <span className="badge rejected" title="No checklist assigned">No checklist</span>
-                    {admin && state.orgStructure.requiredDocuments.length > 0 && (
-                      <button
-                        className="btn ghost sm"
-                        style={{ marginLeft: 6 }}
-                        title="Assign the current required-documents checklist to this employee"
-                        onClick={(ev) => { ev.stopPropagation(); assignChecklist(e); }}
-                      >
-                        Assign checklist
-                      </button>
-                    )}
-                  </>
-                );
+                const { total, uploaded, requiredTotal, requiredDone, rejected } = docProgress(e);
                 return (
                   <>
-                    <span className={`badge ${documentsIncomplete(e) ? 'rejected' : 'approved'}`}>{uploaded}/{total}</span>
+                    <span className={`badge ${documentsIncomplete(e) ? 'rejected' : 'approved'}`} title={documentsIssue(e)}>{uploaded}/{total}</span>
+                    <div className="meta" style={{ marginTop: 2 }}>{requiredDone}/{requiredTotal} required</div>
                     {rejected > 0 && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>{rejected} rejected</div>}
                   </>
                 );
@@ -410,40 +358,7 @@ export default function Directory() {
 
       {admin && <DocumentUploadRequests currentUser={state.currentUser?.name || 'HR'} />}
 
-      {admin && docEmployees.length > 0 && (
-        <section className="block" style={{ marginTop: 16 }}>
-          <div className="block-head"><h2>Documents</h2></div>
-          <div className="grid grid-4" style={{ marginBottom: 16 }}>
-            <div className="card pad"><div className="stat-label">Not Uploaded</div><div className="stat-num">{docStats.notUploaded}</div><div className="stat-note">of {docStats.total} total documents</div></div>
-            <div className="card pad"><div className="stat-label">Pending Review</div><div className="stat-num">{docStats.pending}</div><div className="stat-note">awaiting your approval</div></div>
-            <div className="card pad"><div className="stat-label">Approved</div><div className="stat-num">{docStats.approved}</div><div className="stat-note">on file</div></div>
-            <div className="card pad"><div className="stat-label">Rejected</div><div className="stat-num">{docStats.rejected}</div><div className="stat-note">need a re-upload</div></div>
-          </div>
-          <div className="toolbar" style={{ marginBottom: 16 }}>
-            <input className="search" type="text" placeholder="Search by employee or document" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} />
-            <select value={docStatusFilter} onChange={(e) => setDocStatusFilter(e.target.value)} style={{ width: 180 }}>
-              <option value="">All statuses</option>
-              <option value="not_uploaded">Not uploaded</option>
-              <option value="pending">Pending review</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-          {filteredDocEmployees.map((e) => (
-            <DocumentTrackerCard key={e.id} employee={e} onApprove={(idx) => docAction(e.id, idx, 'approved')} onReject={(idx) => docAction(e.id, idx, 'rejected')} />
-          ))}
-          {filteredDocEmployees.length === 0 && <div className="card pad"><div className="empty">No employees match this search.</div></div>}
-        </section>
-      )}
 
-      {docRejectTarget && (
-        <ModalShell title="Reject document" onClose={() => setDocRejectTarget(null)} actions={[
-          { label: 'Cancel', cls: 'btn', onClick: () => setDocRejectTarget(null) },
-          { label: 'Reject', cls: 'btn reject', onClick: confirmDocReject },
-        ]}>
-          <div className="field"><label className="field-label">Remarks (required — shown to the employee)</label><textarea value={docRejectRemarks} onChange={(e) => setDocRejectRemarks(e.target.value)} /></div>
-        </ModalShell>
-      )}
 
       {kycRejectTarget && (
         <ModalShell title="Reject KYC document" onClose={() => setKycRejectTarget(null)} actions={[
@@ -467,8 +382,6 @@ export default function Directory() {
           onMarkExited={() => markExited(profile)}
           onEditCredential={(c) => setEditingCredential(c)}
           onIssueCredential={() => setIssuingCredentialFor(profile)}
-          onApproveDoc={(idx) => docAction(profile.id, idx, 'approved')}
-          onRejectDoc={(idx) => docAction(profile.id, idx, 'rejected')}
           onApproveKyc={(slotKey) => kycDocAction(profile.id, slotKey, 'approved')}
           onRejectKyc={(slotKey) => kycDocAction(profile.id, slotKey, 'rejected')}
           onSaveEdits={(updates) => saveEmployeeEdits(profile, updates)}
@@ -513,98 +426,6 @@ export default function Directory() {
   );
 }
 
-/** One employee's document-checklist card in Directory's merged "Documents" section — mirrors
- * the old (now-removed) Onboarding.tsx OnboardingCard's layout (name/window/badge/progress) but
- * driven by the real HrEmployee.documents + documentsDeadline instead of the dead HrOnboarding
- * pipeline. Split two ways per employee: documents actually provided (uploaded, whatever their
- * review state) on the left, documents still outstanding (never uploaded) on the right — reusing
- * the app's existing `grid grid-2` layout rather than one-off CSS. */
-function DocumentTrackerCard({ employee, onApprove, onReject }: {
-  employee: HrEmployee; onApprove: (idx: number) => void; onReject: (idx: number) => void;
-}) {
-  const { state } = useHrTool();
-  const employeeCode = (employee.credentialId != null
-    ? state.employeeCredentials.find((c) => c.id === employee.credentialId)
-    : state.employeeCredentials.find((c) => c.name === employee.name))?.employeeCode || '';
-  const docs = employee.documents;
-  const approvedCount = docs.filter((d) => d.status === 'approved').length;
-  const indexed = docs.map((d, i) => ({ ...d, idx: i }));
-  const provided = indexed.filter((d) => d.status !== 'not_uploaded');
-  const pending = indexed.filter((d) => d.status === 'not_uploaded');
-  const pct = docs.length ? Math.round((approvedCount / docs.length) * 100) : 0;
-  const dl = employee.documentsDeadline ? daysLeft(employee.documentsDeadline) : null;
-  const overdue = dl !== null && dl < 0 && pct < 100;
-
-  return (
-    <div className="card pad" style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-        <div className="row-name">
-          <div className="avatar">{initials(employee.name)}</div>
-          <div>
-            <div style={{ fontWeight: 600 }}>{employee.name}</div>
-            {/* Employee ID here is the SNFYI credential code, never the internal E-### row key. */}
-            <div className="meta">{employee.designation}{employeeCode ? ` · ${employeeCode}` : ''}{employee.documentsDeadline ? ` · window ${employee.doj} → ${employee.documentsDeadline}` : ''}</div>
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <span className={`badge ${pct === 100 ? 'approved' : overdue ? 'rejected' : 'pending'}`}>
-            {pct === 100 ? 'All docs approved' : overdue ? 'Window closed' : dl !== null ? `${dl} day${dl === 1 ? '' : 's'} left` : 'No deadline set'}
-          </span>
-          <div className="meta" style={{ marginTop: 4 }}>{approvedCount}/{docs.length} approved · {provided.length}/{docs.length} uploaded</div>
-        </div>
-      </div>
-      <div className="progress-track" style={{ marginBottom: 14 }}><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
-
-      <div className="grid grid-2">
-        <div>
-          <div className="stat-label" style={{ marginBottom: 8 }}>Provided ({provided.length})</div>
-          {provided.length === 0 ? <div className="meta">Nothing uploaded yet.</div> : (
-            <div className="table-scroll"><table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
-              <tbody>{provided.map((d) => (
-                <tr key={d.name}>
-                  <td>
-                    {d.name}
-                    {d.status === 'rejected' && d.remarks && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>Rejected: {d.remarks}</div>}
-                  </td>
-                  <td><StatusBadge status={d.status} /></td>
-                  <td style={{ textAlign: 'right' }}>
-                    <span className="action-row">
-                      {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="btn ghost sm">View</a>}
-                      {d.status === 'pending' && (
-                        <>
-                          <button className="btn approve sm" onClick={() => onApprove(d.idx)}>Approve</button>
-                          <button className="btn reject sm" onClick={() => onReject(d.idx)}>Reject</button>
-                        </>
-                      )}
-                    </span>
-                  </td>
-                </tr>
-              ))}</tbody>
-            </table></div>
-          )}
-        </div>
-        <div>
-          <div className="stat-label" style={{ marginBottom: 8 }}>Pending ({pending.length})</div>
-          {pending.length === 0 ? <div className="meta">Nothing outstanding.</div> : (
-            <div className="table-scroll"><table><thead><tr><th>Document</th></tr></thead>
-              <tbody>{pending.map((d) => (
-                <tr key={d.name}><td>{d.name}<div className="meta" style={{ marginTop: 2 }}>not yet uploaded</div></td></tr>
-              ))}</tbody>
-            </table></div>
-          )}
-        </div>
-      </div>
-      {overdue && <div className="notice" style={{ marginTop: 14 }}>Upload window has closed with documents still missing or unreviewed. Follow up with {employee.name.split(' ')[0]} directly.</div>}
-    </div>
-  );
-}
-
-/** Collapsible block inside the employee profile modal. The profile is long — identity, CTC,
- * two document checklists, a month of attendance and credentials all stacked — so everything
- * past "Employee details" is folded away by default, with the header carrying enough of a
- * summary that HR can see whether it's worth opening. Styled with the tool's own `.acc-*`
- * rules in HrToolApp: this repo only compiles Tailwind for the two `*-tailwind.css` pages
- * (see postcss.config.mjs), so utility classes are inert everywhere in /admin. */
 function Section({ title, summary, defaultOpen = false, children }: {
   title: string; summary?: ReactNode; defaultOpen?: boolean; children: ReactNode;
 }) {
@@ -623,11 +444,10 @@ function Section({ title, summary, defaultOpen = false, children }: {
   );
 }
 
-function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSplit, onRemove, onConfirmProbation, onExtendProbation, onMarkExited, onEditCredential, onIssueCredential, onApproveDoc, onRejectDoc, onApproveKyc, onRejectKyc, onSaveEdits }: {
+function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSplit, onRemove, onConfirmProbation, onExtendProbation, onMarkExited, onEditCredential, onIssueCredential, onApproveKyc, onRejectKyc, onSaveEdits }: {
   employee: HrEmployee; admin: boolean; founder: boolean; onClose: () => void; onEditCtcSplit: () => void;
   onRemove: () => void; onConfirmProbation: () => void; onExtendProbation: () => void; onMarkExited: () => void;
   onEditCredential: (c: HrEmployeeCredential) => void; onIssueCredential: () => void;
-  onApproveDoc: (idx: number) => void; onRejectDoc: (idx: number) => void;
   onApproveKyc: (slotKey: string) => void; onRejectKyc: (slotKey: string) => void;
   onSaveEdits: (updates: Partial<HrEmployee>) => Promise<void>;
 }) {
@@ -668,26 +488,20 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
     setEditing(false);
   }
 
-  // Header summaries, so a collapsed section still says what's inside it.
-  const docTotal = employee.documents.length;
-  const docApproved = employee.documents.filter((d) => d.status === 'approved').length;
-  const docUploaded = employee.documents.filter((d) => d.status !== 'not_uploaded').length;
-  const docWindowLeft = employee.documentsDeadline ? daysLeft(employee.documentsDeadline) : null;
-  const docSummary = !admin
-    ? 'Restricted — HR Head/Founder and the employee only'
-    : docTotal === 0
-      ? 'No document checklist on this record'
-      : `${docApproved}/${docTotal} approved · ${docUploaded}/${docTotal} uploaded`
-        + (docApproved === docTotal ? '' : docWindowLeft === null ? '' : docWindowLeft < 0 ? ' · window closed' : ` · ${docWindowLeft} day${docWindowLeft === 1 ? '' : 's'} left`);
+  // Header summary, so a collapsed section still says what's inside it.
 
+  // Same two numbers, same definitions, as the Directory table's badge (see docProgress) — the
+  // header used to count anything not 'not_uploaded' (so a rejected document read as provided)
+  // and never mentioned the required subset, which is what made a green 5/12 in the table look
+  // like it disagreed with the modal.
   const kycSlots = KYC_SECTIONS.flatMap((sec) => sec.slots);
-  const kycProvided = kycSlots.filter((slot) => employee.kycDocuments[slot.key]?.status !== 'not_uploaded').length;
+  const kycProg = docProgress(employee);
   const kycAwaiting = kycSlots.filter((slot) => employee.kycDocuments[slot.key]?.status === 'pending').length;
   const kycSummary = !admin
     ? 'Restricted — HR Head/Founder and the employee only'
-    : `${kycProvided}/${kycSlots.length} provided`
+    : `${kycProg.uploaded}/${kycProg.total} uploaded · ${kycProg.requiredDone}/${kycProg.requiredTotal} required`
       + (kycAwaiting ? ` · ${kycAwaiting} awaiting review` : '')
-      + (kycProvided === 0 ? ' · nothing uploaded yet' : '');
+      + (kycProg.uploaded === 0 ? ' · nothing uploaded yet' : '');
 
   const buttons = editing
     ? [
@@ -787,75 +601,6 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
       </div>
       </Section>
 
-      <Section title="Documents" summary={docSummary}>
-        {!admin ? (
-          <span className="meta">Restricted — visible only to HR Head/Founder and the employee.</span>
-        ) : employee.documents.length === 0 ? (
-          <span className="meta">No document checklist on this record.</span>
-        ) : (
-          <>
-            {employee.documentsDeadline && (() => {
-              const dl = daysLeft(employee.documentsDeadline!);
-              const allApproved = employee.documents.every((d) => d.status === 'approved');
-              return (
-                <div className="meta" style={{ marginBottom: 6 }}>
-                  Window {employee.doj} → {employee.documentsDeadline} ·{' '}
-                  {allApproved ? <span style={{ color: 'var(--green, #166534)', fontWeight: 600 }}>all docs approved</span>
-                    : dl !== null && dl < 0 ? <span style={{ color: 'var(--red)', fontWeight: 600 }}>window closed</span>
-                    : <span style={{ fontWeight: 600 }}>{dl} day{dl === 1 ? '' : 's'} left</span>}
-                </div>
-              );
-            })()}
-          {(() => {
-            const indexed = employee.documents.map((d, i) => ({ ...d, idx: i }));
-            const provided = indexed.filter((d) => d.status !== 'not_uploaded');
-            const pending = indexed.filter((d) => d.status === 'not_uploaded');
-            return (
-              <div className="grid grid-2">
-                <div>
-                  <div className="stat-label" style={{ marginBottom: 8 }}>Provided ({provided.length})</div>
-                  {provided.length === 0 ? <div className="meta">Nothing uploaded yet.</div> : (
-                    <div className="table-scroll"><table><thead><tr><th>Document</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
-                      <tbody>{provided.map((d) => (
-                        <tr key={d.name}>
-                          <td>
-                            {d.name}
-                            {d.status === 'rejected' && d.remarks && <div className="meta" style={{ color: 'var(--red)', marginTop: 2 }}>Rejected: {d.remarks}</div>}
-                            {d.uploadedAt && <div className="meta" style={{ marginTop: 2 }}>Uploaded {d.uploadedAt}</div>}
-                          </td>
-                          <td><StatusBadge status={d.status} /></td>
-                          <td style={{ textAlign: 'right' }}>
-                            <span className="action-row">
-                              {d.url && <button className="btn ghost sm" onClick={() => setViewerDoc({ name: d.name, url: d.url! })}>View</button>}
-                              {d.status === 'pending' && (
-                                <>
-                                  <button className="btn approve sm" onClick={() => onApproveDoc(d.idx)}>Approve</button>
-                                  <button className="btn reject sm" onClick={() => onRejectDoc(d.idx)}>Reject</button>
-                                </>
-                              )}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}</tbody>
-                    </table></div>
-                  )}
-                </div>
-                <div>
-                  <div className="stat-label" style={{ marginBottom: 8 }}>Pending ({pending.length})</div>
-                  {pending.length === 0 ? <div className="meta">Nothing outstanding.</div> : (
-                    <div className="table-scroll"><table><thead><tr><th>Document</th></tr></thead>
-                      <tbody>{pending.map((d) => (
-                        <tr key={d.name}><td>{d.name}<div className="meta" style={{ marginTop: 2 }}>not yet uploaded</div></td></tr>
-                      ))}</tbody>
-                    </table></div>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-          </>
-        )}
-      </Section>
 
       <Section title="KYC & personal documents" summary={kycSummary}>
         {!admin ? (

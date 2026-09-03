@@ -122,11 +122,17 @@ function HrToolShell() {
     }
   }
 
-  // Sidebar collapses to an icon rail either because the viewport is narrow or because the
-  // user hit the minimize button — whichever happened, a manual click always wins from then on.
+  // The sidebar rests as a 64px icon rail and opens on hover, closing again when the pointer
+  // leaves. The toggle button is a PIN rather than a minimize: pinned, the sidebar stays open and
+  // hover stops mattering; unpinned, hover is back in charge. A plain minimize button would have
+  // been a dead end here — once hover drives the width, "collapse" has nothing to hold against
+  // the next mouse-over, so the only meaningful manual state is "keep it open".
+  // Narrow viewports keep their existing behaviour: always the rail, since there is no pointer to
+  // hover with and expanding would eat most of the screen.
   const isNarrow = useIsNarrowViewport(860);
-  const [manualCollapsed, setManualCollapsed] = useState<boolean | null>(null);
-  const collapsed = manualCollapsed ?? isNarrow;
+  const [pinnedOpen, setPinnedOpen] = useState(false);
+  const [pointerInside, setPointerInside] = useState(false);
+  const collapsed = isNarrow || !(pinnedOpen || pointerInside);
 
   useEffect(() => {
     if (role && !VIEW_ACCESS[state.view].includes(role)) setView('dashboard');
@@ -140,18 +146,28 @@ function HrToolShell() {
   return (
     <div className="hr-tool-app">
       <div className={`app${collapsed ? ' collapsed' : ''}`}>
-        <aside className="sidebar">
+        <aside
+          className="sidebar"
+          onMouseEnter={() => setPointerInside(true)}
+          onMouseLeave={() => setPointerInside(false)}
+          // Keyboard users get the same expansion: React's onFocus/onBlur map to focusin/focusout,
+          // so they fire for descendants too. The relatedTarget check is what stops the sidebar
+          // collapsing as focus moves between two nav items inside it.
+          onFocus={() => setPointerInside(true)}
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPointerInside(false); }}
+        >
           <div className="brand">
             <div className="brand-mark">H</div>
             <div className="brand-text"><div className="brand-name">Huey</div><div className="brand-sub">HR Console</div></div>
             <button
               type="button"
-              className="sidebar-toggle"
-              onClick={() => setManualCollapsed(!collapsed)}
-              title={collapsed ? 'Expand sidebar' : 'Minimize sidebar'}
-              aria-label={collapsed ? 'Expand sidebar' : 'Minimize sidebar'}
+              className={`sidebar-toggle${pinnedOpen ? ' pinned' : ''}`}
+              onClick={() => setPinnedOpen((p) => !p)}
+              aria-pressed={pinnedOpen}
+              title={pinnedOpen ? 'Unpin — close the sidebar when the pointer leaves' : 'Keep the sidebar open'}
+              aria-label={pinnedOpen ? 'Unpin sidebar' : 'Keep sidebar open'}
             >
-              {collapsed ? '»' : '«'}
+              {pinnedOpen ? '«' : '»'}
             </button>
           </div>
           <nav>
@@ -222,6 +238,13 @@ function HrToolStyles() {
       .hr-tool-app .brand-sub { font-size: 10px; color: #C7D2FE; letter-spacing: 0.6px; text-transform: uppercase; margin-top: 1px; white-space: nowrap; }
       .hr-tool-app .sidebar-toggle { flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
       .hr-tool-app .sidebar-toggle:hover { background: rgba(255,255,255,0.2); }
+      .hr-tool-app .sidebar-toggle.pinned { background: rgba(255,255,255,0.32); border-color: rgba(255,255,255,0.55); }
+      /* The rail is what the eye tracks while the width animates, so the panel gets a
+         shadow to sit above the page rather than appearing to shove it. */
+      .hr-tool-app .app:not(.collapsed) .sidebar { box-shadow: 4px 0 16px rgba(79,70,229,0.18); }
+      @media (prefers-reduced-motion: reduce) {
+        .hr-tool-app .app { transition: none; }
+      }
       .hr-tool-app .nav-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #A5B4FC; padding: 14px 12px 6px; white-space: nowrap; overflow: hidden; }
       .hr-tool-app .nav-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: #E0E7FF; background: transparent; border: none; text-align: left; width: 100%; transition: background .12s; }
       .hr-tool-app .nav-item:hover { background: rgba(255,255,255,0.12); }
@@ -330,7 +353,14 @@ function HrToolStyles() {
       .hr-tool-app .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
       .hr-tool-app .search { max-width: 220px; }
       .hr-tool-app .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-      .hr-tool-app .modal { background: #fff; border-radius: 12px; max-width: 520px; width: 100%; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(15,23,42,0.25); }
+      /* The white-space and min-width resets are load-bearing, not tidiness. A ModalShell
+         renders inline wherever its trigger lives, and some of those hosts set
+         white-space: nowrap (.rule-inputs does) - which INHERITS into the modal and stops
+         its notice text from wrapping. The unwrappable line then pushes the modal past
+         max-width, because a flex item's default min-width:auto lets the content-based
+         minimum beat max-width, and overflow-y:auto makes overflow-x compute to auto, so it
+         grew a sideways scrollbar. Resetting both here fixes every modal, not one caller. */
+      .hr-tool-app .modal { background: #fff; border-radius: 12px; max-width: 520px; width: 100%; min-width: 0; max-height: 88vh; overflow-y: auto; white-space: normal; box-shadow: 0 20px 60px rgba(15,23,42,0.25); }
       .hr-tool-app .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
       .hr-tool-app .modal-head h3 { margin: 0; font-size: 16px; }
       .hr-tool-app .modal-body { padding: 18px 22px; }
@@ -412,10 +442,29 @@ function HrToolStyles() {
       .hr-tool-app .rule-row > *:nth-child(2) { justify-self: end; }
       .hr-tool-app .rule-inputs { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: nowrap; white-space: nowrap; font-size: 12.5px; color: var(--muted); width: 100%; }
       .hr-tool-app .rule-inputs input, .hr-tool-app .rule-inputs select { width: auto; }
+      /* Must be listed AFTER (and outrank) the width:auto rule above, which is why the
+         .mini-input declaration further down was losing: .rule-inputs input is (0,2,1) and
+         beat .mini-input at (0,2,0), so number fields fell back to the browser's default
+         ~20-character box. Only the hours dropdowns looked right, and only because they
+         carry an inline width. Three classes puts this above both. */
+      .hr-tool-app .rule-inputs .mini-input { width: 70px; }
+      /* CTC structure rows. Three fixed slots — type / field / unit — so all four rows put
+         their control in the same column no matter how long the trailing unit text is.
+         Written as .rule-inputs.ctc-inputs (0,3,0) so it beats the plain .rule-inputs flex
+         rule above rather than relying on source order. */
+      .hr-tool-app .rule-inputs.ctc-inputs { display: grid; grid-template-columns: 96px 96px 84px; align-items: center; gap: 8px; justify-content: end; width: auto; }
+      .hr-tool-app .ctc-inputs .ctc-type { display: flex; justify-content: flex-end; }
+      .hr-tool-app .ctc-inputs .ctc-type select { width: 100%; }
+      .hr-tool-app .ctc-inputs .ctc-field { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+      .hr-tool-app .ctc-inputs .ctc-field .mini-input { width: 78px; text-align: right; }
+      .hr-tool-app .ctc-inputs .ctc-prefix { color: var(--muted); }
+      .hr-tool-app .ctc-inputs .ctc-unit { text-align: left; color: var(--muted); }
+      .hr-tool-app .ctc-inputs .ctc-auto { color: var(--muted); font-style: italic; }
       @media (max-width: 760px) {
         .hr-tool-app .rule-row { grid-template-columns: minmax(0, 1fr); }
         .hr-tool-app .rule-row > *:nth-child(2) { justify-self: start; }
         .hr-tool-app .rule-inputs { justify-content: flex-start; }
+        .hr-tool-app .rule-inputs.ctc-inputs { grid-template-columns: auto auto auto; justify-content: start; }
       }
       /* Document preview — sits ABOVE the profile modal (z-index 1000), hence 1100. */
       .hr-tool-app .doc-viewer-backdrop { position: fixed; inset: 0; z-index: 1100; background: rgba(15,23,42,0.62); display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; }

@@ -106,9 +106,9 @@ export default async function StartupEventPage({
             </header>
 
             <div className="event-detail-body">
-              {event.excerpt && (
-                <p className="event-detail-excerpt">{event.excerpt}</p>
-              )}
+              {/* Excerpt intentionally not rendered — it is a truncated copy of the
+                  description below and duplicated the text on the page. It is still
+                  used for the meta/OG description in generateMetadata(). */}
               {(() => {
                 const sanitizedDescription = sanitizeContent(event.description);
                 if (sanitizedDescription) {

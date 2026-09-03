@@ -31,6 +31,10 @@ const MAX_WORKED_HOURS = 8.5;
  * carry this value regardless of what's in the draft, so a historical value other than 15 (from
  * back when this WAS editable) self-heals the next time any Attendance & leave rule is saved. */
 const FIXED_GRACE_MINUTES = 15;
+/** Upper bounds for the two per-cycle counters. Both are whole numbers — half a
+ * regularization request or half a short leave is not a thing an employee can take. */
+const REGULARIZATION_MAX = 8;
+const SHORT_LEAVE_MAX = 5;
 
 /** Every 15-minute punch-in/punch-out slot from 09:00 to 18:30 inclusive — the admin can only
  * pick from these, never type an arbitrary/invalid time like 12:63. */
@@ -62,8 +66,41 @@ const HOURS_SLOTS: number[] = (() => {
   return out;
 })();
 
-function hoursSelectOptions(current: number): number[] {
-  return HOURS_SLOTS.includes(current) ? HOURS_SLOTS : [...HOURS_SLOTS, current].sort((a, b) => a - b);
+/** Snaps a saved hours value onto the 15-minute grid the dropdown offers.
+ *
+ * The saved rules held 8.15 for "full day at" — someone entered 8:15 as if it were a decimal —
+ * and 0.15h is 9 minutes, so the field read the nonsense "8:09". This rounds it to the nearest
+ * real slot (8.25 = 8:15). Applied when the draft is built rather than when it is saved, so the
+ * section shows as having unsaved changes and the admin fixes it with a deliberate Save, seeing
+ * "8:09 -> 8:15" in the confirmation, instead of the value being rewritten behind their back. */
+function snapToSlot(hours: number): number {
+  const h = Number(hours);
+  if (!Number.isFinite(h)) return HOURS_SLOTS[0];
+  return HOURS_SLOTS.reduce((best, slot) => (Math.abs(slot - h) < Math.abs(best - h) ? slot : best), HOURS_SLOTS[0]);
+}
+
+/** The grid, and only the grid. Drafts are snapped by toRuleDraft, so there is no longer an
+ * off-grid value to accommodate — and no way to reintroduce one through this dropdown. */
+function hoursSelectOptions(): number[] {
+  return HOURS_SLOTS;
+}
+
+/** Whole numbers only, clamped to 0..max.
+ *
+ * `type="number"` with min/max/step does NOT prevent any of this: the browser only enforces those
+ * on the spinner arrows and on form validation, while typing "4.5" or "90" straight into the box
+ * is allowed and would be saved as-is. Normalising in the change handler is what actually holds,
+ * because the normalised number is the one that goes into the draft. */
+function clampWholeNumber(raw: string, max: number): number {
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(max, Math.max(0, n));
+}
+
+/** Keys that would put a decimal point or an exponent into a number field. Blocked so the value
+ * doesn't visibly jump while the admin types, on top of the clamp above which is the real guard. */
+function blockNonInteger(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (['.', ',', 'e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
 }
 
 /** "H:MM" — e.g. 4.5 -> "4:30" — short and consistent-width, matching the shift-time dropdowns
@@ -72,6 +109,19 @@ function formatHoursLabel(h: number): string {
   const totalMin = Math.round(h * 60);
   const hh = Math.floor(totalMin / 60), mm = totalMin % 60;
   return `${hh}:${String(mm).padStart(2, '0')}`;
+}
+
+/** Builds the editable draft from the saved rules. Two normalisations live here so the form can
+ * never display a value its own controls cannot represent: the grace period is fixed
+ * company-wide, and the three hours-worked thresholds are snapped onto the 15-minute grid. */
+function toRuleDraft(saved: HrRules): HrRules {
+  return {
+    ...saved,
+    shiftGraceMinutes: FIXED_GRACE_MINUTES,
+    halfDayMinWorkedHours: snapToSlot(saved.halfDayMinWorkedHours),
+    shortLeaveMinWorkedHours: snapToSlot(saved.shortLeaveMinWorkedHours),
+    fullDayMinWorkedHours: snapToSlot(saved.fullDayMinWorkedHours),
+  };
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -221,11 +271,11 @@ export default function Rules() {
   // shiftGraceMinutes needs a transform on top of the plain "mirror the source" behaviour
   // useSyncedDraft gives every other section (see FIXED_GRACE_MINUTES) — same render-time
   // adjustment pattern, just inlined instead of going through the generic hook.
-  const [ruleDraft, setRuleDraft] = useState<HrRules>({ ...r, shiftGraceMinutes: FIXED_GRACE_MINUTES });
+  const [ruleDraft, setRuleDraft] = useState<HrRules>(() => toRuleDraft(r));
   const [prevSavedRules, setPrevSavedRules] = useState(r);
   if (prevSavedRules !== r) {
     setPrevSavedRules(r);
-    setRuleDraft({ ...r, shiftGraceMinutes: FIXED_GRACE_MINUTES });
+    setRuleDraft(toRuleDraft(r));
   }
   const [savingRules, setSavingRules] = useState(false);
 
@@ -266,9 +316,12 @@ export default function Rules() {
     return keys.some((k) => JSON.stringify(ruleDraft[k]) !== JSON.stringify(r[k]));
   }
   function discardSection(keys: (keyof HrRules)[]) {
+    // Restores from toRuleDraft, not from `r` directly — resetting to the raw saved value would
+    // put an off-grid 8.15 back into a dropdown that has no such option.
+    const base = toRuleDraft(r);
     setRuleDraft((d) => {
       const next = { ...d };
-      for (const k of keys) (next as Record<string, unknown>)[k] = r[k];
+      for (const k of keys) (next as Record<string, unknown>)[k] = base[k];
       return next;
     });
   }
@@ -560,28 +613,57 @@ export default function Rules() {
           <div className="rule-desc" style={{ marginBottom: 10 }}>
             Used to split monthly salary into Basic / HRA / Convenience Allowance / Special Allowance wherever it&apos;s shown (offer letters, employment agreements). Special Allowance is never set directly — it&apos;s always whatever&apos;s left after the other three.
           </div>
+          {/* Every row uses the same three-slot grid — type / field / unit — so the four inputs
+              line up in one column. Previously each row was a right-aligned flex whose input
+              position depended on how long its trailing unit text happened to be, which is why
+              "%", "% of Basic" and "₹" each pushed their field to a different place. */}
           <div className="rule-row">
             <div><div className="rule-name">Basic</div><div className="rule-desc">% of monthly salary (ctc ÷ 12).</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={ctcBasicPct} onChange={(e) => setCtcBasicPct(e.target.value)} />%</div>
+            <div className="rule-inputs ctc-inputs">
+              <span className="ctc-type" />
+              <span className="ctc-field">
+                <input className="mini-input" type="number" min={0} max={100} value={ctcBasicPct} onChange={(e) => setCtcBasicPct(e.target.value)} />
+              </span>
+              <span className="ctc-unit">%</span>
+            </div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">HRA</div><div className="rule-desc">% of Basic — auto-calculated from Basic above, not of salary directly.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={ctcHraPct} onChange={(e) => setCtcHraPct(e.target.value)} />% of Basic</div>
+            <div className="rule-inputs ctc-inputs">
+              <span className="ctc-type" />
+              <span className="ctc-field">
+                <input className="mini-input" type="number" min={0} max={100} value={ctcHraPct} onChange={(e) => setCtcHraPct(e.target.value)} />
+              </span>
+              <span className="ctc-unit">% of Basic</span>
+            </div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">Convenience Allowance</div><div className="rule-desc">A flat Rupees/month amount, or a % of monthly salary — your choice.</div></div>
-            <div className="rule-inputs">
-              <select value={ctcConvType} onChange={(e) => setCtcConvType(e.target.value as 'amount' | 'percent')} style={{ marginRight: 8 }}>
-                <option value="amount">Amount</option>
-                <option value="percent">%</option>
-              </select>
-              {ctcConvType === 'amount' && '₹'}
-              <input className="mini-input" type="number" value={ctcConvValue} onChange={(e) => setCtcConvValue(e.target.value)} />
-              {ctcConvType === 'percent' && '%'}
+            <div className="rule-inputs ctc-inputs">
+              <span className="ctc-type">
+                <select value={ctcConvType} onChange={(e) => setCtcConvType(e.target.value as 'amount' | 'percent')}>
+                  <option value="amount">Amount</option>
+                  <option value="percent">%</option>
+                </select>
+              </span>
+              <span className="ctc-field">
+                {/* The rupee sign is a prefix inside the field slot, not a separate column, so
+                    switching Amount <-> % never shifts the input itself. */}
+                {ctcConvType === 'amount' && <span className="ctc-prefix">₹</span>}
+                <input className="mini-input" type="number" min={0} value={ctcConvValue} onChange={(e) => setCtcConvValue(e.target.value)} />
+              </span>
+              <span className="ctc-unit">{ctcConvType === 'percent' ? '% of salary' : '/ month'}</span>
             </div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">Special Allowance</div><div className="rule-desc">Auto-calculated — whatever&apos;s left of monthly salary after Basic, HRA, and Convenience Allowance.</div></div>
+            {/* Not editable, but it still occupies the grid so the row reads as part of the same
+                table instead of a stray line with nothing on its right. */}
+            <div className="rule-inputs ctc-inputs">
+              <span className="ctc-type" />
+              <span className="ctc-field"><span className="ctc-auto">the remainder</span></span>
+              <span className="ctc-unit" />
+            </div>
           </div>
           <SectionSaveBar
             dirty={ctcDirty}
@@ -626,26 +708,42 @@ export default function Rules() {
             <div className="rule-inputs"><strong>{FIXED_GRACE_MINUTES} min</strong></div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Regularization limit per payroll cycle</div><div className="rule-desc">How many regularization requests an employee may submit per payroll cycle (26th → 25th). Dates are limited to that same cycle — earlier cycles are already paid out and can no longer be corrected.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={ruleDraft.regularizationMonthlyQuota} onChange={(e) => setDraftRule('regularizationMonthlyQuota', Number(e.target.value))} /> / cycle</div>
+            <div><div className="rule-name">Regularization limit per payroll cycle</div><div className="rule-desc">How many regularization requests an employee may submit per payroll cycle (26th → 25th). Dates are limited to that same cycle — earlier cycles are already paid out and can no longer be corrected. Whole numbers up to 8.</div></div>
+            <div className="rule-inputs">
+              <input
+                className="mini-input" type="number" min={0} max={REGULARIZATION_MAX} step={1}
+                value={ruleDraft.regularizationMonthlyQuota}
+                onKeyDown={blockNonInteger}
+                onChange={(e) => setDraftRule('regularizationMonthlyQuota', clampWholeNumber(e.target.value, REGULARIZATION_MAX))}
+              />
+              <span>/ cycle</span>
+            </div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month. Shown to employees, publisher admins, and event admins on their Rules &amp; Policy page.</div></div>
-            <div className="rule-inputs"><input className="mini-input" type="number" value={ruleDraft.shortLeaveMonthlyQuota} onChange={(e) => setDraftRule('shortLeaveMonthlyQuota', Number(e.target.value))} /> / month</div>
+            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month. Shown to employees, publisher admins, and event admins on their Rules &amp; Policy page. Whole numbers up to 5.</div></div>
+            <div className="rule-inputs">
+              <input
+                className="mini-input" type="number" min={0} max={SHORT_LEAVE_MAX} step={1}
+                value={ruleDraft.shortLeaveMonthlyQuota}
+                onKeyDown={blockNonInteger}
+                onChange={(e) => setDraftRule('shortLeaveMonthlyQuota', clampWholeNumber(e.target.value, SHORT_LEAVE_MAX))}
+              />
+              <span>/ month</span>
+            </div>
           </div>
           <div className="rule-row">
             <div><div className="rule-name">Hours worked — day status</div><div className="rule-desc">Below 1st = Absent, below 2nd = Half Day, below 3rd = Short Leave, at/above 3rd = Full day. Max {formatHoursLabel(MAX_WORKED_HOURS)}.</div></div>
             <div className="rule-inputs">
               <select className="mini-input" value={ruleDraft.halfDayMinWorkedHours} onChange={(e) => setDraftRule('halfDayMinWorkedHours', Number(e.target.value))} style={{ width: 68 }}>
-                {hoursSelectOptions(ruleDraft.halfDayMinWorkedHours).map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
+                {hoursSelectOptions().map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
               </select>
               {' / '}
               <select className="mini-input" value={ruleDraft.shortLeaveMinWorkedHours} onChange={(e) => setDraftRule('shortLeaveMinWorkedHours', Number(e.target.value))} style={{ width: 68 }}>
-                {hoursSelectOptions(ruleDraft.shortLeaveMinWorkedHours).map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
+                {hoursSelectOptions().map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
               </select>
               {' / '}
               <select className="mini-input" value={ruleDraft.fullDayMinWorkedHours} onChange={(e) => setDraftRule('fullDayMinWorkedHours', Number(e.target.value))} style={{ width: 68 }}>
-                {hoursSelectOptions(ruleDraft.fullDayMinWorkedHours).map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
+                {hoursSelectOptions().map((h) => <option key={h} value={h}>{formatHoursLabel(h)}</option>)}
               </select>
               {' hrs worked'}
             </div>
@@ -656,7 +754,7 @@ export default function Rules() {
             onDiscard={() => discardSection(ATTENDANCE_KEYS)}
             onSave={commitRuleEdits}
             title="Apply rule changes?"
-            notice="These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately."
+            notice="Takes effect immediately for every employee."
             changeLines={changedRuleLabels}
           />
         </div>
@@ -677,7 +775,7 @@ export default function Rules() {
             onDiscard={() => discardSection(APPROVAL_KEYS)}
             onSave={commitRuleEdits}
             title="Apply rule changes?"
-            notice="These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately."
+            notice="Takes effect immediately for every employee."
             changeLines={changedRuleLabels}
           />
         </div>
@@ -714,7 +812,7 @@ export default function Rules() {
             onDiscard={() => discardSection(LEAVE_TYPES_KEYS)}
             onSave={commitRuleEdits}
             title="Apply rule changes?"
-            notice="These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately."
+            notice="Takes effect immediately for every employee."
             changeLines={changedRuleLabels}
           />
         </div>
@@ -735,7 +833,7 @@ export default function Rules() {
             onDiscard={() => discardSection(OTHER_RULES_KEYS)}
             onSave={commitRuleEdits}
             title="Apply rule changes?"
-            notice="These rules drive attendance status, approval routing and payroll deductions for every employee. Applying them takes effect immediately."
+            notice="Takes effect immediately for every employee."
             changeLines={changedRuleLabels}
           />
         </div>

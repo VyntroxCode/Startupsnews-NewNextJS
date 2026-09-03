@@ -22,6 +22,8 @@
 		"db:migrate-only-listed-to-only-listing": "tsx scripts/migrate-only-listed-to-only-listing.ts",
 		"report:thin-content-posts": "tsx scripts/export-thin-content-posts-csv.ts",
 		"report:publish-buckets": "tsx scripts/export-publish-buckets-csv.ts",
+		"logos:snapshot": "tsx scripts/partner-logos-snapshot.ts",
+		"logos:restore": "tsx scripts/partner-logos-snapshot.ts restore",
 		"db:seed-rss-feeds": "tsx scripts/seed-rss-feeds.ts",
 		"db:sync-events-startupnews": "tsx scripts/sync-events-from-startupnews.ts",
 		"cron:rss-feeds": "RUN_ONCE=1 tsx cron/index.ts",

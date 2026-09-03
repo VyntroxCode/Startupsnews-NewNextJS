@@ -10,6 +10,8 @@ export function PartnerLogoTile({ imageUrl, linkUrl }: { imageUrl: string; linkU
       alt=""
       className="partners-logo-img"
       loading="lazy"
+      // Native image dragging would fight the row's grab-to-slide with a ghost drag image.
+      draggable={false}
       onError={(e) => {
         const tile = (e.target as HTMLImageElement).closest("[data-logo-tile]") as HTMLElement | null;
         if (tile) tile.style.display = "none";
@@ -20,7 +22,7 @@ export function PartnerLogoTile({ imageUrl, linkUrl }: { imageUrl: string; linkU
   return (
     <div className="partners-logo-tile" data-logo-tile="1">
       {linkUrl ? (
-        <a href={linkUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit partner site">
+        <a href={linkUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit partner site" draggable={false}>
           {img}
         </a>
       ) : (
