@@ -5,12 +5,12 @@ import {
   getS3BaseUrl,
 } from '@/modules/rss-feeds/utils/image-to-s3';
 
-const ALLOWED_CONTENT_TYPES = new Set(['image/jpeg', 'image/png']);
+const ALLOWED_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 /**
  * POST /api/events/submit-event/presign
  * Public, unauthenticated presigned S3 PUT URL for the "Submit Your Event" form.
- * Deliberately scoped to JPG/PNG only and its own S3 key prefix (event-submission-*)
+ * Deliberately scoped to JPG/PNG/WebP only and its own S3 key prefix (event-submission-*)
  * so it can't be used to write arbitrary files under the admin upload paths.
  *
  * Body: { filename: string, contentType: string }
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Missing filename or contentType' }, { status: 400 });
   }
   if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
-    return NextResponse.json({ success: false, error: 'Only JPG or PNG images are allowed' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Only JPG, PNG or WebP images are allowed' }, { status: 400 });
   }
 
   try {

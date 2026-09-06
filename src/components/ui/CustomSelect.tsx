@@ -23,6 +23,8 @@ interface CustomSelectProps {
   /** Shown on the trigger while nothing is selected — without it an unset select
    * renders as a blank box that reads as broken rather than as "nothing picked yet". */
   placeholder?: string;
+  /** Locks the control: it still shows its current value but cannot be opened or changed. */
+  disabled?: boolean;
   ariaLabel: string;
 }
 
@@ -35,6 +37,7 @@ export function CustomSelect({
   searchable = false,
   searchPlaceholder = "Search…",
   placeholder = "Select…",
+  disabled = false,
   ariaLabel,
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
@@ -64,6 +67,10 @@ export function CustomSelect({
     return () => document.removeEventListener("click", handleClick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (disabled && open) close();
+  }, [disabled, open]);
 
   useEffect(() => {
     if (open && searchable) {
@@ -111,6 +118,7 @@ export function CustomSelect({
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (disabled) return;
     if (e.key === "Escape") {
       close();
       return;
@@ -171,8 +179,9 @@ export function CustomSelect({
     return (
       <div className="custom-select-wrap" ref={wrapRef}>
         <div
-          className={"custom-select-btn is-combobox" + (open ? " open" : "")}
+          className={"custom-select-btn is-combobox" + (open ? " open" : "") + (disabled ? " is-disabled" : "")}
           onClick={() => {
+            if (disabled) return;
             setOpen(true);
             inputRef.current?.focus();
           }}
@@ -187,6 +196,7 @@ export function CustomSelect({
             aria-autocomplete="list"
             aria-label={ariaLabel}
             autoComplete="off"
+            disabled={disabled}
             // Closed, the field reads as the current selection; open, it's a blank search box
             // whose placeholder still shows what's selected so nothing feels lost while typing.
             value={open ? query : label}
@@ -195,7 +205,9 @@ export function CustomSelect({
               if (!open) setOpen(true);
               setQuery(e.target.value);
             }}
-            onFocus={() => setOpen(true)}
+            onFocus={() => {
+              if (!disabled) setOpen(true);
+            }}
             onKeyDown={handleKeyDown}
           />
           <span className="caret" aria-hidden="true">▾</span>
@@ -209,10 +221,11 @@ export function CustomSelect({
     <div className="custom-select-wrap" ref={wrapRef}>
       <button
         type="button"
-        className={"custom-select-btn" + (open ? " open" : "")}
+        className={"custom-select-btn" + (open ? " open" : "") + (disabled ? " is-disabled" : "")}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
+        disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={handleKeyDown}
       >

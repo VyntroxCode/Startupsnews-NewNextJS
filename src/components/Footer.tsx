@@ -101,7 +101,6 @@ export function Footer() {
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Submit your Funding Round</a></li>
               <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Submit your press release</a></li>
               <li><Link href="/advertise-with-us">Get Media Coverage</Link></li>
-              <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Sponsor an Event</a></li>
             </ul>
           </div>
 

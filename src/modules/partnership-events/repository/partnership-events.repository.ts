@@ -8,6 +8,7 @@ const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
   ['slug', 'slug'],
   ['siteStatus', 'site_status'],
   ['city', 'city'],
+  ['citySectionOverride', 'city_section_override'],
   ['country', 'country'],
   ['organiser', 'organiser'],
   ['poc', 'poc'],

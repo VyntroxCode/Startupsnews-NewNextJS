@@ -95,12 +95,10 @@ export default async function StartupEventPage({
               <h2 className="event-detail-title">{event.title}</h2>
               <div className="event-detail-meta">
                 <span className="event-detail-date">{event.dateRange}</span>
-                {event.eventTime && !event.eventTime.startsWith('00:00') && (
-                  <span className="event-detail-time">
-                    {event.eventTime}
-                    {event.eventEndTime && !event.eventEndTime.startsWith('00:00') ? ` - ${event.eventEndTime}` : ''}
-                  </span>
-                )}
+                {/* Pre-built in the mapper (buildTimeRange) — already 12-hour, already handles a
+                    missing or 00:00 time by coming back empty, so there is nothing to test here
+                    beyond "is there a label". */}
+                {event.timeRange && <span className="event-detail-time">{event.timeRange}</span>}
                 <span className="event-detail-location">{event.location}</span>
               </div>
             </header>

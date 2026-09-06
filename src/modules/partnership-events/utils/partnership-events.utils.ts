@@ -54,6 +54,7 @@ export function entityToPartnershipEvent(entity: PartnershipEventEntity): Partne
     eventName: entity.event_name || '',
     city: entity.city || '',
     country: entity.country || '',
+    citySectionOverride: entity.city_section_override || '',
     organiser: entity.organiser || '',
     poc: entity.poc || '',
     contact: entity.contact || '',

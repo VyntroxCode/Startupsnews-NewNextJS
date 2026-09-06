@@ -20,11 +20,19 @@ export interface StartupEvent {
    * of nesting under India. Optional because older events created before this field existed
    * don't have it — /events falls back to the old guessing behavior for those. */
   country?: string;
+  /** 'own' | 'other' | undefined — admin override for which section this event's CITY renders
+   * under on /events, set in the Partnership Tracker. Undefined for events from the legacy
+   * `events` table, which has no such column, so those keep the automatic behaviour. */
+  citySectionOverride?: string;
   date: string;
   /** Pre-formatted "23 August - 25 August 2026"-style single/range label — build once in
    * entityToEvent so every consumer (cards, detail page) renders the same clean date, instead of
    * each concatenating date/eventEndDate/times separately. */
   dateRange: string;
+  /** Pre-formatted "10:00 AM - 6:00 PM" label, built alongside dateRange for the same reason —
+   * one place decides how a time reads. Empty string when the organiser gave no start time (the
+   * admin form stores an unset time as 00:00), which callers use to render nothing. */
+  timeRange: string;
   title: string;
   url: string;
   excerpt?: string;

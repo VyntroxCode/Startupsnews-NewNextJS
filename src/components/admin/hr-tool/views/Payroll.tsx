@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import AttendanceCalendar from './AttendanceCalendar';
 import { StatusBadge, exportCSV, exportExcel, salaryPeriodLabel, monthKeyToLabel, computeCtcBreakdown } from '../utils';
-import { payrollCycleToRunKey } from '@/modules/hr-tool/utils/time';
+import { payrollCycleToRunKey, currentPayrollMonthKey, payrollPeriodRange } from '@/modules/hr-tool/utils/time';
 import { hrApi, type PayrollApiResult } from '../api';
 import type { HrPayrollEntry, HrPayrollRun } from '../types';
 import { generatePayslipPdf, generateBulkPayslipPdf, triggerPdfDownload, type PayslipData } from '../payslipPdf';
@@ -38,9 +38,24 @@ export default function Payroll() {
   // locally before "Run Payroll" actually persists it. Keyed by employee name.
   const [tdsInputs, setTdsInputs] = useState<Record<string, string>>({});
 
-  // The most recently ENDED cycle, not the one in progress — Run Payroll only ever unlocks
-  // once a cycle is fully over, so this is the one the page should actually show/act on.
-  const month = payrollCycleToRunKey(state.rules);
+  // Two cycles are reachable from this page. `runnableMonth` is the most recently ENDED one —
+  // Run Payroll only ever unlocks once a cycle is fully over, so that stays the default and the
+  // only one the button can act on. `liveMonth` is the cycle today actually falls inside; with a
+  // wrapping 26→25 period those are different for all but the last day of a cycle, and there was
+  // previously no way at all to see the running cycle's attendance-to-date (present/absent/week
+  // off so far) — the admin could only ever look at the month that had already closed.
+  const runnableMonth = payrollCycleToRunKey(state.rules);
+  const liveMonth = currentPayrollMonthKey(state.rules);
+  const hasLiveCycle = liveMonth !== runnableMonth;
+  const [month, setMonth] = useState(runnableMonth);
+  const viewingLive = month === liveMonth && hasLiveCycle;
+
+  /** "26 Aug – 25 Sep 2026" — the actual window a cycle covers. Necessary now that a cycle
+   * wraps two calendar months: "September 2026" alone doesn't say whether 26 Aug is in it. */
+  function cycleRangeLabel(key: string): string {
+    const { from, to } = payrollPeriodRange(key, state.rules);
+    return `${fmtShortDate(from)} – ${fmtShortDate(to)}`;
+  }
 
   async function loadPayroll(signal?: { cancelled: boolean }) {
     setLoading(true);
@@ -55,6 +70,11 @@ export default function Payroll() {
     }
     setLoading(false);
   }
+
+  // `month` is seeded from the client's DEFAULT_RULES on first render; once the real hr_rules
+  // arrive (or a cycle rolls over) the runnable cycle can move, so snap the selection back onto
+  // it rather than leaving the page pinned to a stale key.
+  useEffect(() => { setMonth(runnableMonth); }, [runnableMonth]);
 
   useEffect(() => {
     const signal = { cancelled: false };
@@ -282,7 +302,28 @@ export default function Payroll() {
         <div className="as-role">{state.currentUser ? state.currentUser.name : ''} · {state.role}</div>
       </div>
       <div className="card pad" style={{ marginBottom: 20 }}>
-        <div className="block-head"><h2>{alreadyRun ? 'Payroll' : 'Ready to run'} — {monthKeyToLabel(month)}</h2></div>
+        <div className="block-head" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <h2>{alreadyRun ? 'Payroll' : viewingLive ? 'Cycle in progress' : 'Ready to run'} — {monthKeyToLabel(month)}</h2>
+            <div className="meta">{cycleRangeLabel(month)}</div>
+          </div>
+          {hasLiveCycle && (
+            <div className="toolbar">
+              <button
+                className={'btn sm' + (month === runnableMonth ? ' primary' : '')}
+                onClick={() => setMonth(runnableMonth)}
+              >
+                Ready to run · {monthKeyToLabel(runnableMonth)}
+              </button>
+              <button
+                className={'btn sm' + (month === liveMonth ? ' primary' : '')}
+                onClick={() => setMonth(liveMonth)}
+              >
+                In progress · {monthKeyToLabel(liveMonth)}
+              </button>
+            </div>
+          )}
+        </div>
         {loading && <div className="empty">Loading…</div>}
         {loadError && <div className="notice" style={{ borderColor: '#FECACA' }}>{loadError}</div>}
         {!loading && !loadError && (
@@ -327,7 +368,14 @@ export default function Payroll() {
             )}
             {runError && <div className="notice" style={{ borderColor: '#FECACA', marginTop: 12 }}>{runError}</div>}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-              <div className="meta">Total payout: <strong>₹{totalPayout.toLocaleString('en-IN')}</strong>{alreadyRun ? ' · frozen for this cycle' : ' · cycle ended, ready to run'}</div>
+              <div className="meta">
+                Total payout: <strong>₹{totalPayout.toLocaleString('en-IN')}</strong>
+                {alreadyRun
+                  ? ' · frozen for this cycle'
+                  : payroll?.periodEnded
+                    ? ' · cycle ended, ready to run'
+                    : ` · live preview — cycle ends ${fmtShortDate(payroll?.periodTo || '')}, days not yet reached are not counted as absent`}
+              </div>
               <div className="toolbar">
                 <button className="btn sm" onClick={() => exportPayroll('csv')} disabled={entries.length === 0}>⇩ CSV</button>
                 <button className="btn sm" onClick={() => exportPayroll('excel')} disabled={entries.length === 0}>⇩ Excel</button>
@@ -337,7 +385,13 @@ export default function Payroll() {
                 <button
                   className="btn primary"
                   disabled={!(payroll?.canRun ?? false) || entries.length === 0 || running || missingCtc.length > 0}
-                  title={missingCtc.length > 0 ? `Set CTC for: ${missingCtc.join(', ')}` : undefined}
+                  title={
+                    missingCtc.length > 0
+                      ? `Set CTC for: ${missingCtc.join(', ')}`
+                      : payroll && !payroll.periodEnded
+                        ? `This cycle is still running — Run Payroll unlocks on ${fmtShortDate(payroll.periodTo)}.`
+                        : undefined
+                  }
                   onClick={handleRunPayroll}
                 >
                   {running ? 'Running…' : alreadyRun ? 'Recompute & Run Payroll' : 'Run Payroll'}

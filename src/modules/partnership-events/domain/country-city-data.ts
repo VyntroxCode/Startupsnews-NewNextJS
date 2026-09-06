@@ -11,8 +11,9 @@
  * Country name -> ISO 3166-1 alpha-2, the single source for both the dropdown list and the
  * flag emoji (derived from the code, so there's no second 195-entry table to keep in sync).
  *
- * Three entries deliberately keep the SHORT form this form has always used — USA, UK, UAE —
- * rather than the "United States"/"United Kingdom"/"United Arab Emirates" of the standard list.
+ * Two entries deliberately keep the SHORT form this form has always used — UK, UAE — rather than
+ * the "United Kingdom"/"United Arab Emirates" of the standard list. The United States is listed as
+ * "America" by request; "USA" and the rest are aliases so old records still group under it.
  * /events builds its section headings from this exact string (groupByCountry), so renaming them
  * would have split each of those countries into two sections for as long as records saved under
  * the old name existed. The long names are searchable aliases instead (see
@@ -56,7 +57,7 @@ export const COUNTRY_ISO2: Record<string, string> = {
   Sweden: 'SE', Switzerland: 'CH', Syria: 'SY', Tajikistan: 'TJ', Tanzania: 'TZ',
   Thailand: 'TH', 'Timor-Leste': 'TL', Togo: 'TG', Tonga: 'TO',
   'Trinidad and Tobago': 'TT', Tunisia: 'TN', 'Türkiye': 'TR', Turkmenistan: 'TM',
-  Tuvalu: 'TV', Uganda: 'UG', UAE: 'AE', UK: 'GB', Ukraine: 'UA', USA: 'US',
+  Tuvalu: 'TV', Uganda: 'UG', UAE: 'AE', UK: 'GB', Ukraine: 'UA', America: 'US',
   Uruguay: 'UY', Uzbekistan: 'UZ',
   Vanuatu: 'VU', 'Vatican City / Holy See': 'VA', Venezuela: 'VE', Vietnam: 'VN',
   Yemen: 'YE', Zambia: 'ZM', Zimbabwe: 'ZW',
@@ -74,7 +75,11 @@ export const COUNTRY_ISO2: Record<string, string> = {
  * options, but a record already holding one keeps its flag — see NON_SOVEREIGN_ISO2.
  */
 const LEGACY_COUNTRY_ALIASES: Record<string, string> = {
-  'United States': 'USA', 'United States of America': 'USA', US: 'USA',
+  // 'USA' is itself an alias now — the canonical name is 'America'. Keeping every old spelling
+  // pointed at the new canonical is what stops /events rendering "USA" and "America" as two
+  // separate country sections while records saved under the old name still exist.
+  USA: 'America', 'United States': 'America', 'United States of America': 'America',
+  US: 'America', 'U.S.': 'America', 'U.S.A.': 'America',
   'United Kingdom': 'UK', 'Great Britain': 'UK', 'Britain': 'UK',
   'United Arab Emirates': 'UAE', 'U.A.E.': 'UAE',
   Turkey: 'Türkiye', 'Czech Republic': 'Czechia', 'Ivory Coast': 'Côte d’Ivoire',
@@ -82,6 +87,11 @@ const LEGACY_COUNTRY_ALIASES: Record<string, string> = {
   Burma: 'Myanmar', Holland: 'Netherlands', 'Vatican City': 'Vatican City / Holy See',
   'Sao Tome and Principe': 'São Tomé and Príncipe', 'Korea': 'South Korea',
   'Republic of Korea': 'South Korea',
+  // Records entered as the CONTINENT where the country was meant — see the Johannesburg events.
+  // Deliberate caveat: this cannot tell a genuinely pan-African entry from a South African one,
+  // so anything actually elsewhere in Africa must carry its own country (row #79 was corrected to
+  // Kenya for exactly this reason).
+  Africa: 'South Africa',
 };
 
 /** Extra ISO codes for names that aren't dropdown options but do turn up in saved records. */
@@ -102,7 +112,7 @@ export const COUNTRY_CITY_DATA: Record<string, string[]> = {
     'Mumbai', 'Delhi NCR', 'Bengaluru', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata',
     'Ahmedabad', 'Jaipur', 'Chandigarh', 'Kochi', 'Goa',
   ],
-  USA: ['New York', 'San Francisco', 'Los Angeles', 'Chicago', 'Austin', 'Boston', 'Seattle', 'Washington DC'],
+  America: ['New York', 'San Francisco', 'Los Angeles', 'Chicago', 'Austin', 'Boston', 'Seattle', 'Washington DC'],
   UK: ['London', 'Manchester', 'Birmingham', 'Edinburgh'],
   UAE: ['Dubai', 'Abu Dhabi', 'Sharjah'],
   Singapore: ['Singapore'],
@@ -207,6 +217,27 @@ export function countryForCity(city: string): string | null {
  */
 export const OTHER_CITIES_SECTION = 'Other Cities';
 
+/**
+ * How many listed events an UNCURATED city needs before it earns its own carousel instead of
+ * sitting in "Other Cities". Counted from the events actually on the page (upcoming only), so a
+ * city can fall back into Other Cities once its events pass — the section always reflects what is
+ * currently listed rather than a historical high-water mark.
+ */
+export const AUTO_SECTION_MIN_EVENTS = 3;
+
+/**
+ * The full "does this city get its own carousel?" rule: curated for its country, OR it has enough
+ * listed events to have earned one on its own.
+ *
+ * Kept beside isOwnSectionCity rather than folded into it because the two answer different
+ * questions — isOwnSectionCity is the static curation check that also defines what "an other city"
+ * MEANS (see OTHER_CITIES_SECTION), while this one is the render-time decision that depends on how
+ * many events happen to be listed right now.
+ */
+export function citySectionQualifies(country: string, city: string, eventCount: number): boolean {
+  return isOwnSectionCity(country, city) || eventCount >= AUTO_SECTION_MIN_EVENTS;
+}
+
 /** Whether a city gets its own section under `country`, or falls into OTHER_CITIES_SECTION.
  * Sub-cities resolve through their parent, so Gurugram counts as Delhi NCR and stays out of it. */
 export function isOwnSectionCity(country: string, city: string): boolean {
@@ -215,6 +246,102 @@ export function isOwnSectionCity(country: string, city: string): boolean {
   const curated = citiesForCountry(country);
   if (!curated) return false;
   return curated.includes(parentCityForSubCity(name) || name);
+}
+
+/**
+ * Cities that have EARNED a dropdown slot by reaching AUTO_SECTION_MIN_EVENTS listed events,
+ * grouped by canonical country name. Curated cities are excluded — they are already offered.
+ *
+ * Deliberately the same threshold and the same input (currently-listed events) as the /events
+ * section rule, so the dropdown and the page always agree: a city appears here at the moment it
+ * gains its own heading, and disappears again if its events pass and it drops back below three.
+ *
+ * Sub-cities fold into their parent first (Gurugram counts toward Delhi NCR), and cities are
+ * counted case-insensitively with the first spelling seen used as the label — otherwise
+ * "guangzhou" and "Guangzhou" would each sit below the threshold and neither would qualify.
+ */
+export function promotedCitiesByCountry(
+  rows: { country?: string | null; city?: string | null }[]
+): Record<string, string[]> {
+  const counts = new Map<string, Map<string, { label: string; n: number }>>();
+  for (const row of rows) {
+    const country = canonicalCountryName(row.country || '');
+    const rawCity = (row.city || '').trim();
+    if (!country || !rawCity) continue;
+    const city = parentCityForSubCity(rawCity) ?? rawCity;
+    if (isOwnSectionCity(country, city)) continue;
+    const byCity = counts.get(country) ?? new Map();
+    const key = city.toLowerCase();
+    const hit = byCity.get(key) ?? { label: city, n: 0 };
+    hit.n += 1;
+    byCity.set(key, hit);
+    counts.set(country, byCity);
+  }
+  const out: Record<string, string[]> = {};
+  for (const [country, byCity] of counts) {
+    const cities = [...byCity.values()]
+      .filter((c) => c.n >= AUTO_SECTION_MIN_EVENTS)
+      .map((c) => c.label)
+      .sort((a, b) => a.localeCompare(b));
+    if (cities.length) out[country] = cities;
+  }
+  return out;
+}
+
+/**
+ * The City dropdown's full option list: the curated cities for `country` plus any that have
+ * earned a slot (promotedCitiesByCountry). Returns null only when there is nothing to offer at
+ * all, which is the signal both forms use to fall back to free-text entry.
+ */
+export function cityOptionsForCountry(
+  country: string,
+  promoted?: Record<string, string[]> | null
+): string[] | null {
+  const curated = citiesForCountry(country);
+  const earned = promoted?.[canonicalCountryName(country)] ?? [];
+  if (!curated) return earned.length ? [...earned] : null;
+  return earned.length ? [...curated, ...earned] : curated;
+}
+
+/**
+ * Countries where the city legitimately shares the country's name. Without this, the
+ * location-check below would flag Singapore/Singapore and Hong Kong/Hong Kong as mistakes.
+ */
+const CITY_STATE_COUNTRIES = new Set(['Singapore', 'Hong Kong', 'Macau', 'Monaco', 'Malta', 'Bahrain', 'Vatican City / Holy See']);
+
+/** Labels that aren't a country but ARE valid in the Region/Country field. */
+const NON_COUNTRY_REGIONS = new Set(['Online', 'Cohort', 'International Events', 'Other Cities']);
+
+/** Whether a string is a country this codebase recognises (canonical name, alias or territory). */
+export function isKnownCountry(value: string): boolean {
+  const name = canonicalCountryName(value);
+  return !!name && (name in COUNTRY_ISO2 || name in NON_SOVEREIGN_ISO2);
+}
+
+/** Sovereign countries only — excludes territories like Macau and Hong Kong, which are perfectly
+ * good CITY values (Macau is a city in China) and must not be flagged as "a country in the City
+ * field". */
+function isSovereignCountry(value: string): boolean {
+  return canonicalCountryName(value) in COUNTRY_ISO2;
+}
+
+/**
+ * Why an event's Region/Country + City pair looks wrong, or '' when it looks fine. Powers the
+ * Partnership Tracker's location warning so these can be found and corrected by hand — the values
+ * arrive from free-text entry and CSV import, so the table accumulates things like a blank
+ * country, a continent ("Africa"), a city used as the country ("Mumbai"), or a country name
+ * sitting in the City field ("USA", "Egypt").
+ */
+export function locationIssue(country: string, city: string): string {
+  const rawCountry = (country || '').trim();
+  const rawCity = (city || '').trim();
+  if (!rawCountry) return 'No Region/Country set';
+  if (NON_COUNTRY_REGIONS.has(canonicalCountryName(rawCountry))) return '';
+  if (!isKnownCountry(rawCountry)) return `"${rawCountry}" is not a recognised country`;
+  if (rawCity && isSovereignCountry(rawCity) && !CITY_STATE_COUNTRIES.has(canonicalCountryName(rawCountry))) {
+    return `City "${rawCity}" is a country name, not a city`;
+  }
+  return '';
 }
 
 const CANONICAL_BY_LOWER_NAME = new Map<string, string>([

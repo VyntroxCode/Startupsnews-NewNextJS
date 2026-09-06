@@ -17,7 +17,6 @@ export interface SubmitEventFormData {
 
   title: string;
   slug: string;
-  slugManuallyEdited: boolean;
   country: string;
   countryOther: string;
   city: string;
@@ -54,7 +53,6 @@ export function createInitialFormData(): SubmitEventFormData {
 
     title: '',
     slug: '',
-    slugManuallyEdited: false,
     country: '',
     countryOther: '',
     city: '',

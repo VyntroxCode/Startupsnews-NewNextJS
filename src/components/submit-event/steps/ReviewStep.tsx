@@ -4,15 +4,18 @@ import { SOCIAL_PLATFORMS } from "../constants";
 import { formatConfirmDate } from "../format";
 import { Button } from "@/components/ui/Button";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
-import { resolveEndDateTime, resolvedCity, resolvedCountry, resolvedPhoneCode, countWords } from "../validation";
+import { isOnlineEvent, resolveEndDateTime, resolvedCity, resolvedCountry, resolvedPhoneCode, countWords } from "../validation";
 
 export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
   const { data, submitting, submitError } = ctrl;
 
   const city = resolvedCity(data);
   const country = resolvedCountry(data);
-  const locationText =
-    country === "India" ? `India${city ? " · " + city : ""}` : `International${country ? " · " + country : ""}${city ? " · " + city : ""}`;
+  const locationText = isOnlineEvent(data)
+    ? "Online (virtual)"
+    : country === "India"
+      ? `India${city ? " · " + city : ""}`
+      : `International${country ? " · " + country : ""}${city ? " · " + city : ""}`;
 
   const { endDate, endTime } = resolveEndDateTime(data);
   const wordCount = countWords(data.description);
@@ -22,8 +25,6 @@ export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
 
   return (
     <div className="wizard-step" data-step="5">
-      <div className="subhead">Review &amp; Submit</div>
-
       <div className="review-group">
         <div className="review-group-head">
           <span className="review-group-title">Organizer Contact</span>
@@ -47,17 +48,18 @@ export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
           </button>
         </div>
         <div className="confirm-summary review">
+          <div className="row"><span className="k">Event Type</span><span className="v">{data.eventType || "—"}</span></div>
           <div className="row"><span className="k">Title</span><span className="v">{data.title || "—"}</span></div>
           <div className="row"><span className="k">Location</span><span className="v">{locationText}</span></div>
-          <div className="row"><span className="k">Registration Link</span><span className="v">{data.externalUrl || "—"}</span></div>
-          <div className="row"><span className="k">Event Type</span><span className="v">{data.eventType || "—"}</span></div>
-          <div className="row"><span className="k">Description</span><span className="v">{wordCount ? `${wordCount} words` : "—"}</span></div>
+          <div className="row"><span className="k">Venue</span><span className="v">{data.venueAddress || "—"}</span></div>
+          <div className="row"><span className="k">Google Location</span><span className="v">{data.venueMapLink || "—"}</span></div>
+          <div className="row"><span className="k">Event Registration Link</span><span className="v">{data.externalUrl || "—"}</span></div>
         </div>
       </div>
 
       <div className="review-group">
         <div className="review-group-head">
-          <span className="review-group-title">Date, Time, Venue &amp; Speakers</span>
+          <span className="review-group-title">Date &amp; Details</span>
           <button type="button" className="review-edit-btn" onClick={() => ctrl.goToStep(3)}>
             Edit
           </button>
@@ -65,7 +67,7 @@ export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
         <div className="confirm-summary review">
           <div className="row"><span className="k">Starts</span><span className="v">{data.startDate ? `${formatConfirmDate(data.startDate)} · ${data.startTime || "—"}` : "—"}</span></div>
           <div className="row"><span className="k">Ends</span><span className="v">{data.startDate ? `${formatConfirmDate(endDate)} · ${endTime}` : "—"}</span></div>
-          <div className="row"><span className="k">Venue</span><span className="v">{data.venueAddress || "—"}</span></div>
+          <div className="row"><span className="k">Description</span><span className="v">{wordCount ? `${wordCount} words` : "—"}</span></div>
           <div className="row"><span className="k">Speakers/Guests</span><span className="v">{speakerCount ? `${speakerCount} added` : "—"}</span></div>
         </div>
       </div>

@@ -59,6 +59,38 @@ export function usePrefersReducedMotion() {
 
 type RevealTag = "div" | "span" | "p" | "li" | "ul" | "h2" | "h3" | "section" | "header" | "article";
 
+export type RevealDirection = "up" | "left" | "right";
+
+const REVEAL_DURATION_MS = 700;
+
+/**
+ * The reveal's hidden/visible styling, as INLINE STYLE rather than Tailwind utility classes.
+ *
+ * This is the whole reason the animation works at all. Tailwind is not global in this project:
+ * `isolated-tailwind.css` is imported by only four route layouts and scoped with `source(none)`
+ * plus an explicit `@source` list. This component is on neither list, and `/editorial-policy`
+ * loads no Tailwind at all — so the previous `opacity-0 translate-y-6 duration-700` classes
+ * generated no CSS whatsoever and every element simply rendered static and fully visible.
+ * Inline styles need no build-time class generation, so this works on any route.
+ */
+export function revealStyle(
+	inView: boolean,
+	{ direction = "up", delayMs = 0, distance = 24 }: { direction?: RevealDirection; delayMs?: number; distance?: number } = {}
+): React.CSSProperties {
+	const hidden =
+		direction === "left"
+			? `translateX(-${distance * 2}px)`
+			: direction === "right"
+				? `translateX(${distance * 2}px)`
+				: `translateY(${distance}px)`;
+	return {
+		opacity: inView ? 1 : 0,
+		transform: inView ? "none" : hidden,
+		transition: `opacity ${REVEAL_DURATION_MS}ms ease-out, transform ${REVEAL_DURATION_MS}ms ease-out`,
+		transitionDelay: `${delayMs}ms`,
+	};
+}
+
 /** Reveal-on-scroll wrapper — fades in while sliding from the left, right, or up, so a page
  * reads as animated rather than static. Under prefers-reduced-motion the content is simply
  * shown: no fade, no travel, and no transition delay holding it back. */
@@ -91,16 +123,13 @@ export function Reveal({
 		);
 	}
 
-	const hiddenTransform =
-		direction === "left" ? "-translate-x-12" : direction === "right" ? "translate-x-12" : "translate-y-6";
-
 	return (
 		<Tag
 			ref={ref as never}
-			className={`transition-all duration-700 ease-out ${
-				inView ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${hiddenTransform}`
-			} ${className}`}
-			style={{ ...style, transitionDelay: `${delay}ms` }}
+			className={className}
+			// Caller styles first so the reveal's own opacity/transform win — a caller passing
+			// margins keeps them, but cannot accidentally cancel the animation.
+			style={{ ...style, ...revealStyle(inView, { direction, delayMs: delay }) }}
 		>
 			{children}
 		</Tag>

@@ -1,8 +1,14 @@
 import { PartnershipEventsService } from '@/modules/partnership-events/service/partnership-events.service';
-import { PartnershipEventInput } from '@/modules/partnership-events/domain/types';
-import { SubmitEventPayload, SubmitEventValidationError } from '../domain/types';
+import { ONLINE_PARTNERSHIP_TYPE, PartnershipEventInput } from '@/modules/partnership-events/domain/types';
+import { resolveDefaultEndTime, SubmitEventPayload, SubmitEventValidationError } from '../domain/types';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Trims a time to HH:MM so a client sending "18:00:00" still compares correctly against "18:00"
+ * — lexicographic comparison needs both operands the same width. */
+function normalizeTime(value?: string): string {
+  return (value || '').slice(0, 5);
+}
 
 function isValidHttpUrl(value: string): boolean {
   try {
@@ -31,19 +37,25 @@ export class EventSubmissionService {
     const venueMapLink = payload.venueMapLink?.trim();
     const image1 = payload.image1?.trim();
 
+    // An online (virtual) event genuinely has no country, city, street address or map link — the
+    // submit form locks/relaxes those same fields for this type, and none of them is stored. The
+    // public "Online" location label is derived from the event type at render time
+    // (partnershipEntityToStartupEvent), so nothing downstream needs a stand-in value here.
+    const isOnline = payload.eventType?.trim() === ONLINE_PARTNERSHIP_TYPE;
+
     const missing: string[] = [];
     if (!organizerName) missing.push('organizer name');
     if (!organizerOrg) missing.push('company name');
     if (!organizerEmail) missing.push('organizer email');
     if (!organizerPhone) missing.push('contact number');
     if (!title) missing.push('event title');
-    if (!country) missing.push('country');
-    if (!city) missing.push('city');
+    if (!country && !isOnline) missing.push('country');
+    if (!city && !isOnline) missing.push('city');
     if (!description) missing.push('description');
     if (!startDate) missing.push('start date');
     if (!startTime) missing.push('start time');
-    if (!venueAddress) missing.push('venue address');
-    if (!venueMapLink) missing.push('Google Maps link');
+    if (!venueAddress && !isOnline) missing.push('venue address');
+    if (!venueMapLink && !isOnline) missing.push('Google Maps link');
     if (!image1) missing.push('cover image');
     if (missing.length) {
       throw new SubmitEventValidationError(`Please fill the following required fields: ${missing.join(', ')}.`);
@@ -52,11 +64,23 @@ export class EventSubmissionService {
     if (!EMAIL_RE.test(organizerEmail!)) {
       throw new SubmitEventValidationError('Enter a valid organizer email address.');
     }
-    if (!isValidHttpUrl(venueMapLink!)) {
+    // Checked only when present: optional for an online event, but a value that IS sent must be
+    // a real URL either way.
+    if (venueMapLink && !isValidHttpUrl(venueMapLink)) {
       throw new SubmitEventValidationError('Enter a valid Google Maps link.');
     }
     if (payload.externalUrl?.trim() && !isValidHttpUrl(payload.externalUrl.trim())) {
       throw new SubmitEventValidationError('Enter a valid registration link.');
+    }
+    // The end of the event must not precede its start. Resolved the same way the row is written
+    // below (blank end date = start date, blank end time = DEFAULT_END_TIME) so what is checked is
+    // what is stored, and compared as ISO strings rather than via `new Date()` — an unparseable
+    // value there becomes `Invalid Date`, whose comparisons are all false, so it would pass silently.
+    const endDate = payload.endDate?.trim() || startDate!;
+    const endTime =
+      normalizeTime(payload.endTime?.trim()) || resolveDefaultEndTime(startTime, endDate === startDate);
+    if (`${endDate}T${endTime}` < `${startDate}T${normalizeTime(startTime)}`) {
+      throw new SubmitEventValidationError('The event end date/time cannot be before the start date/time.');
     }
 
     return {
@@ -65,13 +89,19 @@ export class EventSubmissionService {
       organizerEmail: organizerEmail!,
       organizerPhone: organizerPhone!,
       title: title!,
-      country: country!,
-      city: city!,
+      // Empty string, not undefined, for an online event — every one of these columns is nullable,
+      // and the public mappers already handle the blanks (location falls back to the "Online"
+      // label off the event type, and the detail page hides its whole venue block when both venue
+      // fields are empty).
+      country: country || '',
+      city: city || '',
       description: description!,
       startDate: startDate!,
       startTime: startTime!,
-      venueAddress: venueAddress!,
-      venueMapLink: venueMapLink!,
+      endDate,
+      endTime,
+      venueAddress: venueAddress || '',
+      venueMapLink: venueMapLink || '',
       image1: image1!,
     };
   }
@@ -112,8 +142,8 @@ export class EventSubmissionService {
       initiatedDate: new Date().toISOString().slice(0, 10),
       eventStartDate: required.startDate,
       eventStartTime: required.startTime,
-      eventEndDate: payload.endDate?.trim() || required.startDate,
-      eventEndTime: payload.endTime?.trim() || '23:59',
+      eventEndDate: required.endDate,
+      eventEndTime: required.endTime,
       venueAddress: required.venueAddress,
       googleLocationLink: required.venueMapLink,
       description: required.description,

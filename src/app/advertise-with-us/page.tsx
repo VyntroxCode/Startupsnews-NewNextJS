@@ -284,7 +284,7 @@ export default function AdvertisePage() {
 				</Reveal>
 				<Reveal direction="right" delay={120} className="flex flex-col gap-7 items-start min-w-0">
 					<p className="text-lg leading-[1.65] text-adv-muted max-w-[58ch]">
-						StartupNews.fyi connects your brand with 10M+ monthly readers — founders,
+						StartupNews.fyi connects your brand with 10M+ monthly readers: founders,
 						investors, and tech decision-makers across India and 24 countries. AI-curated,
 						founder-first, globally distributed.
 					</p>
@@ -302,9 +302,6 @@ export default function AdvertisePage() {
 							Contact Us
 						</Link>
 					</div>
-					<p className="text-sm text-adv-muted">
-						Takes 5–7 minutes · Get expert media consultation within 24 hours
-					</p>
 				</Reveal>
 			</section>
 
@@ -347,10 +344,15 @@ export default function AdvertisePage() {
 								as="li"
 								direction="left"
 								delay={150 + i * 100}
-								className="grid grid-cols-[44px_1fr] gap-4 items-baseline py-5 border-t border-adv-line-2"
+								className="grid grid-cols-[22px_1fr] gap-4 items-baseline py-5 border-t border-adv-line-2"
 							>
-								<span className="text-[13px] font-extrabold text-adv-red tracking-[0.08em]">
-									{String(i + 1).padStart(2, "0")}
+								{/* Marker, not a counter — these five are alternatives to pick from, and numbering
+								    them implied an order or a ranking that doesn't exist. A glyph rather than an
+								    SVG so it shares the label's baseline for free: `items-baseline` would align an
+								    SVG by its bottom edge, needing a hand-tuned nudge that drifts at other sizes.
+								    aria-hidden so the item still reads as just its text. */}
+								<span className="text-adv-red text-xl font-bold leading-none" aria-hidden="true">
+									&rarr;
 								</span>
 								<span className="text-base sm:text-lg lg:text-xl font-bold tracking-[-0.01em] uppercase leading-[1.35]">
 									{w}

@@ -1743,12 +1743,15 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin-top: 2px;
 }
 
+/* The city sits between the muted date and the card title, so it was competing with the date at
+   the same 0.8rem. Bumped so it reads as the card's location line rather than more small print —
+   still clearly below the title in the hierarchy. */
 .event-by-country-venue {
   display: block;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #555;
-  margin-top: 2px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #3a3a3a;
+  margin-top: 4px;
 }
 
 .event-by-country-card-title {
@@ -2399,17 +2402,50 @@ img.mvp-big-img {
   margin-bottom: 28px;
 }
 
+/* The Venue line reads as the next paragraph of the description, so it sits at the
+   description's own 12px paragraph rhythm rather than after its full 32px block
+   gap. Applied as a negative top margin on the venue (32 - 20 = 12px effective)
+   because the margin to cancel belongs to the PREVIOUS sibling — and only when a
+   description is actually there, so an event without one is unaffected. */
+.event-detail-description + .event-detail-venue {
+  margin-top: -20px;
+}
+
+/* The Venue line reads as part of the description copy above it (e.g. the bold
+   "Register Now!!" paragraph), not as a section heading like "Key Speakers /
+   Guests" — so it matches .event-detail-description's body type rather than the
+   larger 1.15rem title. Scoped to .event-detail-venue so the speakers heading,
+   which IS a section heading, keeps the original size. */
+.event-detail-venue .event-detail-section-title {
+  font-size: 1rem;
+  line-height: 1.7;
+  font-weight: 700;
+  color: #444;
+}
+
 .event-detail-venue-address-link,
 .event-detail-venue-address-inline {
   font-weight: 500;
 }
 
+/* Link states: pink from the moment the page loads so the address is visibly a
+   link, and DARK pink only once it has actually been clicked (:visited) or while
+   it is being pressed (:active). It used to be the other way round — inheriting
+   the heading's near-black until the browser's own visited styling kicked in. */
 .event-detail-venue-address-link {
-  text-decoration: none;
+  color: #e91e63;
+  text-decoration: underline;
   cursor: pointer;
 }
 
-.event-detail-venue-address-link:hover {
+.event-detail-venue-address-link:visited {
+  color: #ad1457;
+}
+
+.event-detail-venue-address-link:hover,
+.event-detail-venue-address-link:focus-visible,
+.event-detail-venue-address-link:active {
+  color: #ad1457;
   text-decoration: underline;
 }
 
@@ -8778,18 +8814,18 @@ body .banner-carousel-container,
 
 .snf-page .wizard-stepper {
   display: flex;
-  margin-bottom: 28px;
+  margin-bottom: 34px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
   -webkit-overflow-scrolling: touch;
 }
 
 .snf-page .wizard-step-tab {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
-  min-width: 64px;
+  min-width: 84px;
   white-space: nowrap;
   background: none;
   border: none;
@@ -8804,29 +8840,33 @@ body .banner-carousel-container,
   content: '';
   flex: 1;
   align-self: center;
-  height: 1.5px;
+  height: 2px;
   background: var(--line);
-  margin: 0 8px;
+  margin: 0 10px;
   min-width: 12px;
 }
+
+/* The rail behind a step already reached is filled in, so the row reads as a progress bar —
+   it is the only progress cue on the step now that the per-step headings are gone. */
+.snf-page .wizard-step-tab[data-state="done"]:not(:last-child)::after { background: var(--brand); }
 
 .snf-page .wizard-dot {
   position: relative;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--line);
   color: var(--muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   transition: background .25s ease, color .25s ease;
 }
 
-.snf-page .wizard-step-label { font-size: 12px; font-weight: 700; color: var(--muted); transition: color .25s ease; }
+.snf-page .wizard-step-label { font-size: 15px; font-weight: 700; color: var(--muted); transition: color .25s ease; }
 
 .snf-page .wizard-step-tab[data-state="active"] .wizard-dot { background: var(--brand); color: #fff; animation: snf-step-pulse 1.6s ease-out infinite; }
 .snf-page .wizard-step-tab[data-state="active"] .wizard-step-label { color: var(--brand); }
@@ -8839,11 +8879,26 @@ body .banner-carousel-container,
   .snf-page .wizard-step-tab[data-state="active"] .wizard-dot { animation: none; }
 }
 
+@media (max-width:720px) {
+  .snf-page .wizard-step-label { font-size: 13px; }
+  .snf-page .wizard-step-tab { min-width: 64px; gap: 8px; }
+}
+
 @media (max-width:560px) {
   .snf-page .wizard-step-label { display: none; }
   .snf-page .wizard-step-tab { min-width: auto; justify-content: center; }
   .snf-page .wizard-step-tab:not(:last-child)::after { margin: 0 3px; min-width: 6px; }
+  .snf-page .wizard-dot { width: 30px; height: 30px; font-size: 13px; }
 }
+
+.snf-page .custom-select-btn.is-disabled,
+.snf-page .custom-select-btn.is-disabled .cs-input {
+  background: #F4F4F5;
+  color: var(--muted);
+  cursor: not-allowed;
+  border-color: var(--line);
+}
+.snf-page .custom-select-btn.is-disabled .caret { opacity: .4; }
 
 .snf-page .wizard-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; flex-wrap: wrap; gap: 12px; }
 .snf-page .wizard-nav.no-back { justify-content: flex-end; }

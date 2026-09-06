@@ -1,11 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { IMAGE_SPECS, SOCIAL_PLATFORMS } from "./constants";
+import {
+  ALLOWED_IMAGE_ACCEPT,
+  ALLOWED_IMAGE_ERROR,
+  ALLOWED_IMAGE_LABEL,
+  IMAGE_SPECS,
+  SOCIAL_PLATFORMS,
+} from "./constants";
 import type { SocialImageData } from "./types";
 import {
   MAX_UPLOAD_BYTES,
-  compressImage,
+  exactSizeError,
+  getImageDimensions,
+  getUrlImageDimensions,
   hasAllowedImageExtension,
   isAllowedImageFile,
   uploadFileToS3,
@@ -39,7 +47,7 @@ export function SocialImagesSection({ socialImages, onChange }: SocialImagesSect
 
   async function handleFile(key: string, file: File) {
     if (!isAllowedImageFile(file)) {
-      setSlotError(key, "Only JPG, JPEG, or PNG files are allowed.");
+      setSlotError(key, ALLOWED_IMAGE_ERROR);
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
@@ -48,8 +56,15 @@ export function SocialImagesSection({ socialImages, onChange }: SocialImagesSect
     }
     setBusy((prev) => ({ ...prev, [key]: true }));
     try {
-      const toUpload = await compressImage(file);
-      const fileUrl = await uploadFileToS3(toUpload);
+      // Checked before the upload so a wrong-sized image never reaches S3. compressImage() is
+      // deliberately no longer called here: its 2600px longest-edge downscale would resize the
+      // file straight back out of the spec this check just verified.
+      const dims = await getImageDimensions(file);
+      if (!dims || dims.width !== spec.width || dims.height !== spec.height) {
+        setSlotError(key, exactSizeError(spec, dims));
+        return;
+      }
+      const fileUrl = await uploadFileToS3(file);
       onChange({ ...socialImages, [key]: [...(socialImages[key] || []), { src: fileUrl, filename: file.name }] });
       setSlotError(key, "");
     } catch (err) {
@@ -61,11 +76,21 @@ export function SocialImagesSection({ socialImages, onChange }: SocialImagesSect
     }
   }
 
-  function handleUrlBlur(key: string) {
+  async function handleUrlBlur(key: string) {
     const url = (urlDrafts[key] || "").trim();
     if (!url) return;
     if (!hasAllowedImageExtension(url)) {
-      setSlotError(key, "Only JPG, JPEG, or PNG files are allowed.");
+      setSlotError(key, ALLOWED_IMAGE_ERROR);
+      return;
+    }
+    // A pasted link is held to the same fixed size as an upload — otherwise the URL box is a
+    // way straight past the check. A link that can't be loaded at all resolves null and is
+    // accepted (see getUrlImageDimensions): "couldn't verify" must not read as "wrong size".
+    setBusy((prev) => ({ ...prev, [key]: true }));
+    const dims = await getUrlImageDimensions(url);
+    setBusy((prev) => ({ ...prev, [key]: false }));
+    if (dims && (dims.width !== spec.width || dims.height !== spec.height)) {
+      setSlotError(key, exactSizeError(spec, dims));
       return;
     }
     onChange({ ...socialImages, [key]: [...(socialImages[key] || []), { src: url, filename: "" }] });
@@ -82,7 +107,7 @@ export function SocialImagesSection({ socialImages, onChange }: SocialImagesSect
       <div className="field">
         <label>Social Media Images</label>
         <div className="hint">
-          JPG/JPEG/PNG only · Recommended {spec.width} × {spec.height} px · Click a platform to add images for it
+          {ALLOWED_IMAGE_LABEL} only · Required size {spec.width} × {spec.height} px · Click a platform to add images for it
         </div>
         <div className="platform-toggle-row">
           {SOCIAL_PLATFORMS.map((p) => {
@@ -142,7 +167,7 @@ export function SocialImagesSection({ socialImages, onChange }: SocialImagesSect
                       fileInputRefs.current[key] = el;
                     }}
                     type="file"
-                    accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                    accept={ALLOWED_IMAGE_ACCEPT}
                     style={{ display: "none" }}
                     onChange={(e) => {
                       const file = e.target.files?.[0];

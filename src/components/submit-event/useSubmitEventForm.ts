@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createInitialFormData, type FieldErrors, type SubmitEventFormData } from "./types";
-import { slugify } from "./constants";
-import { stepHasErrors, validateAllSteps, validateStep } from "./validation";
+import { ONLINE_PARTNERSHIP_TYPE, resolveDefaultEndTime, slugify } from "./constants";
+import { stepHasErrors, validateAllSteps, validateEndDate, validateEndTime, validateStartDate, validateStartTime, validateStep } from "./validation";
 import { buildSubmitPayload } from "./payload";
 
 export const TOTAL_STEPS = 5;
@@ -77,16 +77,89 @@ export function useSubmitEventForm() {
     setErrors((prev) => ({ ...prev, [errorField]: validator(data) }));
   }
 
-  function onTitleChange(value: string) {
-    if (data.slugManuallyEdited) {
-      setField("title", value);
-    } else {
-      setFields({ title: value, slug: slugify(value) });
-    }
+  /**
+   * Picking a start date fills the end date in with it, so a single-day event needs one date
+   * instead of two and the field shows what will actually be submitted rather than staying blank.
+   *
+   * It keeps mirroring only while the organiser has not set an end date of their own: the moment
+   * they type a different one, `endDate !== startDate` and later start-date edits leave it alone.
+   * That check is why no extra "was this auto-filled?" flag is needed — an end date deliberately
+   * set equal to the start date wants to follow it anyway, so the two cases behave identically.
+   */
+  function onStartDateChange(value: string) {
+    setData((prev) => {
+      // Still following the start date: nothing of the organiser's own to preserve.
+      const mirrors = !prev.endDate || prev.endDate === prev.startDate;
+      // An end date entered BEFORE the start date was picked — the order these two fields get
+      // filled in is not ours to assume — can be left sitting before it, which no `min` on the
+      // input can prevent because that end date was legal when it was chosen. Pull it forward
+      // instead of leaving the form in a state that only complains on Next.
+      const nowBeforeStart = !!value && !!prev.endDate && prev.endDate < value;
+      return { ...prev, startDate: value, endDate: mirrors || nowBeforeStart ? value : prev.endDate };
+    });
+    if (errors.startDate) pendingRevalidation.current.set("startDate", validateStartDate);
+    // The end date just moved relative to the start, so both end-field errors can be stale.
+    if (errors.endDate) pendingRevalidation.current.set("endDate", validateEndDate);
+    if (errors.endTime) pendingRevalidation.current.set("endTime", validateEndTime);
   }
 
-  function onSlugChange(value: string) {
-    setFields({ slug: value, slugManuallyEdited: true });
+  /** Picking a start time fills the end time in with the standard finish (11:00 PM) while none is
+   * set, the same way the start date fills the end date — the value used to be applied invisibly
+   * at submit time, so the field sat blank and the organiser never saw what would be stored.
+   * resolveDefaultEndTime keeps it valid for an event that itself starts after 11:00 PM on its own
+   * last day, where that default would fall before the start. */
+  function onStartTimeChange(value: string) {
+    setData((prev) => {
+      const sameDay = !prev.endDate || prev.endDate === prev.startDate;
+      return {
+        ...prev,
+        startTime: value,
+        endTime: value && !prev.endTime ? resolveDefaultEndTime(value, sameDay) : prev.endTime,
+      };
+    });
+    if (errors.startTime) pendingRevalidation.current.set("startTime", validateStartTime);
+    // The start moved against a possibly just-filled end time, so its error can be stale.
+    if (errors.endTime) pendingRevalidation.current.set("endTime", validateEndTime);
+  }
+
+  /** Editing the end date can clear or raise EITHER end-field error — a date pulled back to the
+   * start day hands the check over to the time comparison — so both are recomputed together.
+   * updateAndMaybeValidate only takes one error field, hence its own handler. */
+  function onEndDateChange(value: string) {
+    setField("endDate", value);
+    // Validated on every change, not only once an error is already showing (the usual rule here):
+    // a date picker has no partially-typed state to be nagged about, and this is the one field a
+    // user can put in an invalid order by hand, so it should say so as soon as it happens.
+    pendingRevalidation.current.set("endDate", validateEndDate);
+    if (errors.endTime) pendingRevalidation.current.set("endTime", validateEndTime);
+  }
+
+  /** The slug is no longer a visible field — it is always derived from the title and passed along
+   * with the submission as a suggestion for the editor who reviews the lead. */
+  function onTitleChange(value: string) {
+    setFields({ title: value, slug: slugify(value) });
+  }
+
+  /** Picking "Online (virtual)" locks Country and City and clears BOTH — an online event has no
+   * country and no city, so nothing is stored for either rather than a stand-in value. The public
+   * "Online" label is derived from the event type at render time (see ONLINE_LOCATION_LABEL), so
+   * blanking them here costs the listing nothing. Switching back to a physical type leaves the two
+   * fields empty and selectable again. */
+  function onEventTypeChange(value: string) {
+    const goingOnline = value === ONLINE_PARTNERSHIP_TYPE;
+    const wasOnline = data.eventType === ONLINE_PARTNERSHIP_TYPE;
+    if (goingOnline) {
+      setFields({ eventType: value, country: "", countryOther: "", city: "", cityOther: "" });
+      // The locked fields can no longer be corrected by hand, so any error already on screen for
+      // them has to be cleared here — venue included, since it goes optional at the same moment.
+      setErrors((prev) => ({ ...prev, country: "", city: "", venueAddress: "", venueMapLink: "" }));
+      return;
+    }
+    if (wasOnline) {
+      setFields({ eventType: value, country: "", countryOther: "", city: "", cityOther: "" });
+      return;
+    }
+    setField("eventType", value);
   }
 
   function goNext() {
@@ -161,7 +234,10 @@ export function useSubmitEventForm() {
     updateAndMaybeValidate,
     blurValidate,
     onTitleChange,
-    onSlugChange,
+    onStartDateChange,
+    onStartTimeChange,
+    onEndDateChange,
+    onEventTypeChange,
     goNext,
     goBack,
     goToStep,

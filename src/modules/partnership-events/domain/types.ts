@@ -42,6 +42,9 @@ export interface PartnershipEventEntity {
   site_status: 'draft' | 'upcoming' | 'completed' | 'cancelled' | null;
   event_name: string;
   city: string | null;
+  /** 'own' | 'other' | null — manual override for the /events city section. See
+   * CITY_SECTION_OVERRIDE_OPTIONS and the add-partnership-events-city-section-override migration. */
+  city_section_override: string | null;
   country: string | null;
   organiser: string | null;
   poc: string | null;
@@ -92,6 +95,8 @@ export interface PartnershipEvent {
   siteStatus: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   eventName: string;
   city: string;
+  /** '' (auto) | 'own' | 'other' — see CITY_SECTION_OVERRIDE_OPTIONS. Applied city-wide. */
+  citySectionOverride: string;
   country: string;
   organiser: string;
   poc: string;
@@ -134,6 +139,7 @@ export interface PartnershipEvent {
 export interface PartnershipEventInput {
   eventName: string;
   city?: string;
+  citySectionOverride?: string;
   country?: string;
   organiser?: string;
   poc?: string;
@@ -200,7 +206,37 @@ export const SITE_STATUS_OPTIONS: { value: 'draft' | 'upcoming' | 'cancelled'; l
 // old stored 'Domestic'/'International' values show as "(legacy)" in the dropdown until an
 // admin manually reclassifies them.
 export const PARTNERSHIP_TYPE_OPTIONS = ['In-person', 'Cohort', 'Online (virtual)'] as const;
+/**
+ * The one PARTNERSHIP_TYPE_OPTIONS value with no physical location. Single source of truth: the
+ * public submit form locks its Country/City selects on it, and EventSubmissionService drops the
+ * city / venue / maps-link requirements for it — those two must never drift apart, or the form
+ * lets a submission through that the API then rejects with a 400.
+ */
+export const ONLINE_PARTNERSHIP_TYPE: string = 'Online (virtual)';
+/**
+ * Display label for an online event's location. DERIVED AT RENDER TIME, never stored: an online
+ * event has no country and no city, so both columns stay genuinely blank and
+ * partnershipEntityToStartupEvent falls back to this label off `partnership_type`.
+ *
+ * It has to be this exact string because the public pages already treat "Online" as a real,
+ * non-geographic region: /events lists it in NON_GEOGRAPHIC_REGIONS so it keeps its own section
+ * instead of being grouped under a country, and canonicalCountryName passes it through untouched.
+ * Deriving rather than storing matters because /events keys its region buckets off `location`
+ * (data-adapter's getEventsByRegion) — a blank location would land every online event in an
+ * unnamed "" bucket and render a section with no heading.
+ */
+export const ONLINE_LOCATION_LABEL = 'Online';
 export const LISTING_OPTIONS = ['No', 'Pending', 'In process', 'Yes'] as const;
+/**
+ * Manual override for which /events section a city renders under, stored in `city_section_override`.
+ * '' means auto — the normal rule (curated city, or AUTO_SECTION_MIN_EVENTS reached) decides.
+ * Applied CITY-WIDE: read off any event of the city, so a city is never split across two sections.
+ */
+export const CITY_SECTION_OVERRIDE_OPTIONS = [
+  { value: '', label: 'Auto — decide from the rules' },
+  { value: 'own', label: 'Always its own city section' },
+  { value: 'other', label: 'Always under "Other Cities"' },
+] as const;
 /** Stored in the `eventType`/`event_type` field — repurposed from the old Free/Paid ticketing dropdown. */
 export const PARTNERSHIP_KIND_OPTIONS = ['Media Partnership', 'Ticketing Partnership', 'No Partnership'] as const;
 export const SOCIAL_CREATIVE_PLATFORMS = ['instagram', 'facebook', 'linkedin', 'whatsapp'] as const;
@@ -210,6 +246,6 @@ export const SOCIAL_CREATIVE_PLATFORM_LABELS: Record<string, string> = {
 
 /** Guidance shown next to each upload/text field in the Add/Edit modal. */
 export const EVENT_DESCRIPTION_MIN_LENGTH = 150;
-export const POSTER_SPEC = '1260×630px, JPG or PNG, under 2MB — used on the event listing page.';
+export const POSTER_SPEC = '1260×630px, JPG, PNG or WebP, under 2MB — used on the event listing page.';
 export const BANNER_SPEC = '2438×413px, JPG, PNG or WebP, under 2MB — used on the homepage.';
-export const SOCIAL_CREATIVE_SPEC = '1080×1440px, JPG or PNG.';
+export const SOCIAL_CREATIVE_SPEC = '1080×1440px, JPG, PNG or WebP.';

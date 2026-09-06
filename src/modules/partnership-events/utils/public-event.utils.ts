@@ -1,4 +1,5 @@
-import { PartnershipEventEntity } from '../domain/types';
+import { ONLINE_LOCATION_LABEL, ONLINE_PARTNERSHIP_TYPE, PartnershipEventEntity } from '../domain/types';
+import { buildDateRange, buildTimeRange } from '@/modules/events/utils/event-date-format';
 import { StartupEvent, EventSpeaker } from '@/modules/events/domain/types';
 import { parseSpeakers, autoExcerpt } from './partnership-events.utils';
 
@@ -11,7 +12,6 @@ const EVENTS_SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fy
 const EVENTS_BASE = `${EVENTS_SITE}/startup-events`;
 
 const MONTH_ABBR = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEPT', 'OCT', 'NOV', 'DEC'];
-const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function toYmd(d: Date | string): { year: number; month: number; day: number } {
   if (d instanceof Date) {
@@ -26,16 +26,6 @@ function formatDateString(d: Date | string): string {
   return `${day} ${MONTH_ABBR[month - 1]} ${year}`;
 }
 
-function buildDateRange(start: Date | string, end: Date | string | null | undefined): string {
-  const s = toYmd(start);
-  const startLabel = `${s.day} ${MONTH_FULL[s.month - 1]} ${s.year}`;
-  if (!end) return startLabel;
-  const e = toYmd(end);
-  if (e.year === s.year && e.month === s.month && e.day === s.day) return startLabel;
-  const endMonthDay = `${e.day} ${MONTH_FULL[e.month - 1]}`;
-  if (e.year === s.year) return `${s.day} ${MONTH_FULL[s.month - 1]} - ${endMonthDay} ${s.year}`;
-  return `${startLabel} - ${endMonthDay} ${e.year}`;
-}
 
 function normalizeEventText(value?: string | null): string | undefined {
   if (!value) return undefined;
@@ -60,13 +50,24 @@ export function partnershipEntityToStartupEvent(entity: PartnershipEventEntity):
   const speakers: EventSpeaker[] = parseSpeakers(entity.speakers);
   const status = entity.site_status || 'draft';
 
+  // An online event genuinely has no city and no country — both columns are blank by design (see
+  // ONLINE_LOCATION_LABEL). The label is derived here from partnership_type instead, because
+  // /events keys its region buckets off `location`: a blank one would put every online event in an
+  // unnamed "" bucket and render a section with no heading. `country` is deliberately left
+  // undefined — resolveCountry then falls back to the region name, which is already "Online", so
+  // it lands in its own non-geographic section rather than claiming to be a country.
+  const isOnline = entity.partnership_type?.trim() === ONLINE_PARTNERSHIP_TYPE;
+  const location = entity.city?.trim() || entity.country?.trim() || (isOnline ? ONLINE_LOCATION_LABEL : '');
+
   return {
     id: entity.id.toString(),
     slug,
-    location: entity.city?.trim() || entity.country?.trim() || '',
+    location,
     country: entity.country?.trim() || undefined,
+    citySectionOverride: entity.city_section_override?.trim() || undefined,
     date: formatDateString(startDate),
     dateRange: buildDateRange(startDate, entity.event_end_date),
+    timeRange: buildTimeRange(entity.event_start_time, entity.event_end_time),
     title: entity.event_name,
     url: entity.website || `${EVENTS_BASE}/${slug}/`,
     excerpt: autoExcerpt(entity.description, 200) ?? normalizeEventText(entity.description),

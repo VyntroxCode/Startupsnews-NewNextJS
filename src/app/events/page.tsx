@@ -3,7 +3,7 @@ import { getEventsByRegion } from "@/lib/data-adapter";
 import { EventsCarousel } from "@/components/EventsCarousel";
 import { EventsSearchBar } from "@/components/EventsSearchBar";
 import type { StartupEvent } from "@/modules/events/domain/types";
-import { OTHER_CITIES_SECTION, canonicalCountryName, isOwnSectionCity } from "@/modules/partnership-events/domain/country-city-data";
+import { OTHER_CITIES_SECTION, canonicalCountryName, citySectionQualifies } from "@/modules/partnership-events/domain/country-city-data";
 import { eventDateSortKey } from "@/modules/partnership-events/utils/public-event.utils";
 
 import type { Metadata } from "next";
@@ -86,8 +86,26 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
     // heading. Each card still names its own city, so nothing is lost by merging them.
     // A region that IS the country ("India" with no city set) or a non-place label ("Online")
     // keeps its own section.
+    //
+    // An uncurated city also EARNS its own section once it reaches AUTO_SECTION_MIN_EVENTS listed
+    // events (citySectionQualifies) — the point of merging was to avoid one-card carousels, and a
+    // city with three of them is no longer that. `events.length` is the right count with no extra
+    // work: getEventsByRegion has already collected every listed event for this city into this one
+    // bucket. Promotion is symmetric — a city that drops back below the threshold as its events
+    // pass returns to Other Cities, so the page always reflects what is actually listed.
+    // An admin override on ANY event of this city decides for the whole city — the setting is
+    // city-wide by design (see CITY_SECTION_OVERRIDE_OPTIONS), which is what stops a city being
+    // split across two sections when only some of its events carry the value. 'other' beats 'own'
+    // if both somehow appear: keeping a city merged is the quieter, easily-reversed outcome.
+    const overrides = new Set(events.map((e) => e.citySectionOverride).filter(Boolean));
+    const forcedOther = overrides.has('other');
+    const forcedOwn = !forcedOther && overrides.has('own');
     const section =
-      region === country || NON_GEOGRAPHIC_REGIONS.has(region) || isOwnSectionCity(country, region)
+      !forcedOther &&
+      (forcedOwn ||
+        region === country ||
+        NON_GEOGRAPHIC_REGIONS.has(region) ||
+        citySectionQualifies(country, region, events.length))
         ? region
         : OTHER_CITIES_SECTION;
     if (!grouped[country]) grouped[country] = {};

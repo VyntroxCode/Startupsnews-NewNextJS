@@ -15,7 +15,6 @@ export function ContactStep({ ctrl }: { ctrl: SubmitEventFormController }) {
   const { data, errors } = ctrl;
   return (
     <div className="wizard-step" data-step="1">
-      <div className="subhead">Organizer Contact</div>
       <div className="field-row">
         <FormField
           id="organizer-name"

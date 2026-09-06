@@ -10,6 +10,8 @@ export default function LoadingSkeleton({ rows = 5, columns = 5 }: LoadingSkelet
     <div style={{
       background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
       borderRadius: '12px',
+
+      
       overflow: 'hidden',
       border: '1px solid rgba(0, 0, 0, 0.04)',
     }}>

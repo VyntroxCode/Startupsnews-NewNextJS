@@ -11,12 +11,12 @@ export function ImagesStep({ ctrl }: { ctrl: SubmitEventFormController }) {
 
   return (
     <div className="wizard-step" data-step="4">
-      <div className="subhead">Images</div>
       <ImageUploadField
         id="1"
         label="Cover Image"
         required
         spec={IMAGE_SPECS.cover}
+        exactSize
         value={data.image1}
         filename={data.image1Filename}
         error={errors.image1}
@@ -37,6 +37,7 @@ export function ImagesStep({ ctrl }: { ctrl: SubmitEventFormController }) {
         id="3"
         label="Banner Image"
         spec={IMAGE_SPECS.banner}
+        exactSize
         value={data.image3}
         filename={data.image3Filename}
         error={errors.image3}

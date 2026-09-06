@@ -9,7 +9,7 @@ const API_BASE = '/api/admin/hr-tool';
 
 async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(API_BASE + path, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Request failed');
+  if (!res.ok) throw new Error('Request failed'); 
   return (await res.json()).data as T;
 }
 async function apiPut(path: string, body: unknown): Promise<void> {

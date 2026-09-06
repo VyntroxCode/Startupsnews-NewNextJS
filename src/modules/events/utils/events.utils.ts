@@ -1,4 +1,5 @@
 import { EventEntity, EventSpeaker } from '../domain/types';
+import { buildDateRange, buildTimeRange } from './event-date-format';
 import { StartupEvent } from '../domain/types';
 
 const DEFAULT_EVENT_IMAGE = "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&q=80";
@@ -29,7 +30,6 @@ function normalizeEventDescription(value?: string | null): string | undefined {
 }
 
 const MONTH_ABBR = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEPT', 'OCT', 'NOV', 'DEC'];
-const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function toYmd(d: Date | string): { year: number; month: number; day: number } {
   if (d instanceof Date) {
@@ -39,21 +39,6 @@ function toYmd(d: Date | string): { year: number; month: number; day: number } {
   return { year, month, day };
 }
 
-/**
- * "23 August 2026", or "23 August - 25 August 2026" / "23 August 2026 - 5 January 2027" when an
- * end date is set and differs from the start date — single clean label for cards + detail page,
- * instead of each caller concatenating date/eventEndDate/times separately.
- */
-function buildDateRange(start: Date | string, end: Date | string | null | undefined): string {
-  const s = toYmd(start);
-  const startLabel = `${s.day} ${MONTH_FULL[s.month - 1]} ${s.year}`;
-  if (!end) return startLabel;
-  const e = toYmd(end);
-  if (e.year === s.year && e.month === s.month && e.day === s.day) return startLabel;
-  const endMonthDay = `${e.day} ${MONTH_FULL[e.month - 1]}`;
-  if (e.year === s.year) return `${s.day} ${MONTH_FULL[s.month - 1]} - ${endMonthDay} ${s.year}`;
-  return `${startLabel} - ${endMonthDay} ${e.year}`;
-}
 
 function parseSpeakersJson(value: unknown): EventSpeaker[] {
   if (!value) return [];
@@ -94,6 +79,7 @@ export function entityToEvent(entity: EventEntity): StartupEvent {
     country: entity.country || undefined,
     date: formatDateString(entity.event_date),
     dateRange: buildDateRange(entity.event_date, entity.event_end_date),
+    timeRange: buildTimeRange(entity.event_time, entity.event_end_time),
     title: entity.title,
     url: entity.external_url || `${EVENTS_BASE}/${entity.slug}/`,
     excerpt: normalizeEventText(entity.excerpt),

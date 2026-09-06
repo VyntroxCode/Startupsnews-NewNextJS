@@ -15,7 +15,8 @@ import {
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
   type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
-import { COUNTRY_NAMES, aliasesForCountry, canonicalCountryName, citiesForCountry, countryForCity, flagForCountry, splitCityValue, subCitiesForCity } from '@/modules/partnership-events/domain/country-city-data';
+import { AUTO_SECTION_MIN_EVENTS, COUNTRY_NAMES, aliasesForCountry, canonicalCountryName, cityOptionsForCountry, countryForCity, flagForCountry, locationIssue, promotedCitiesByCountry, splitCityValue, subCitiesForCity } from '@/modules/partnership-events/domain/country-city-data';
+import { CITY_SECTION_OVERRIDE_OPTIONS } from '@/modules/partnership-events/domain/types';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/admin/SearchableSelect';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey, classifyPartnershipStatus, DEFAULT_HIDDEN_STATUSES } from '@/modules/partnership-events/utils/partnership-events.utils';
@@ -35,6 +36,8 @@ interface PartnershipEvent {
   siteStatus: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   eventName: string;
   city: string;
+  /** '' (auto) | 'own' | 'other' — see CITY_SECTION_OVERRIDE_OPTIONS. City-wide. */
+  citySectionOverride: string;
   country: string;
   organiser: string;
   poc: string;
@@ -86,7 +89,7 @@ type EventDraft = Omit<PartnershipEvent, 'id' | 'eventId' | 'linkedEvent' | 'slu
 const emptySpeaker = (): Speaker => ({ name: '', designation: '', company: '', others: '' });
 
 const emptyDraft = (): EventDraft => ({
-  eventName: '', city: '', country: '', organiser: '', poc: '', contact: '', email: '', website: '', emailThread: '',
+  eventName: '', city: '', citySectionOverride: '', country: '', organiser: '', poc: '', contact: '', email: '', website: '', emailThread: '',
   // Auto-set to today and never manually editable (see the read-only Initiated Date field in
   // the modal) — mirrors how the public /submit-event flow already stamps it server-side.
   initiatedDate: todayStr(), eventStartDate: '', eventStartTime: '', eventEndDate: '', eventEndTime: '',
@@ -159,6 +162,8 @@ interface Derived {
    * the server-side auto-expiry sweep uses (see markPastPartnershipsAsExpired). */
   isUpcoming: boolean;
   dateOrderSuspect: boolean;
+  /** Why this row's Region/Country + City look wrong, '' when they look fine. */
+  locationIssue: string;
   daysInStatus: number | null;
   listingResolved: string;
   partnershipTypeResolved: string;
@@ -296,8 +301,8 @@ const KNOWN_CITIES: Record<string, string> = {
   jaipur: 'India', noida: 'India', gurugram: 'India', gurgaon: 'India', chandigarh: 'India',
   goa: 'India', kochi: 'India', cochin: 'India', indore: 'India', lucknow: 'India', surat: 'India',
   nagpur: 'India', bhopal: 'India', coimbatore: 'India', vadodara: 'India', visakhapatnam: 'India',
-  dubai: 'UAE', 'abu dhabi': 'UAE', singapore: 'Singapore', london: 'UK', 'new york': 'USA',
-  'san francisco': 'USA', dublin: 'Ireland', berlin: 'Germany', paris: 'France', tokyo: 'Japan',
+  dubai: 'UAE', 'abu dhabi': 'UAE', singapore: 'Singapore', london: 'UK', 'new york': 'America',
+  'san francisco': 'America', dublin: 'Ireland', berlin: 'Germany', paris: 'France', tokyo: 'Japan',
 };
 const KNOWN_COUNTRIES = ['india', 'usa', 'united states', 'uk', 'united kingdom', 'uae', 'singapore', 'germany', 'france', 'japan', 'ireland', 'canada', 'australia'];
 function inferLocationFromName(name: string): { city: string; country: string } {
@@ -330,7 +335,7 @@ function computeDerived(e: PartnershipEvent): Derived {
   const daysInStatus = (initiatedMs !== null && effectiveEndMs !== null) ? daysBetween(effectiveEndMs, initiatedMs) : null;
   const partnershipTypeResolved = e.partnershipType;
   const listingResolved = normalizeListing(e.listing, e.listingLink, statusBucket);
-  return { statusBucket, isExpired, isUpcoming, dateOrderSuspect, daysInStatus, listingResolved, partnershipTypeResolved };
+  return { statusBucket, isExpired, isUpcoming, dateOrderSuspect, locationIssue: locationIssue(e.country, e.city), daysInStatus, listingResolved, partnershipTypeResolved };
 }
 
 /* ============================================================
@@ -676,8 +681,9 @@ function buildRegionOptions(currentValue: string): SearchableSelectOption[] {
       value: name,
       label: name,
       emoji: flagForCountry(name) || undefined,
-      // USA / UK / UAE keep the short spelling the existing records use, so their full names are
-      // matched as hidden search terms — typing "united arab" still lands on UAE.
+      // UK / UAE keep the short spelling the existing records use, and the United States is
+      // listed as "America", so their other spellings are matched as hidden search terms —
+      // typing "united arab" still lands on UAE, and "USA" or "united states" lands on America.
       keywords: aliasesForCountry(name),
     }));
 }
@@ -697,6 +703,7 @@ export default function PartnershipTrackerPage() {
   const [chartsExpanded, setChartsExpanded] = useState(false);
 
   // Defaults to soonest-first by event date ("current to future") rather than alphabetical.
+  const [onlyLocationIssues, setOnlyLocationIssues] = useState(false);
   const [sortKey, setSortKey] = useState<string | null>('eventStartDate');
   const [sortDir, setSortDir] = useState<1 | -1>(1);
 
@@ -705,7 +712,6 @@ export default function PartnershipTrackerPage() {
   const [pageSize, setPageSize] = useState(50);
 
   const [modalOpen, setModalOpen] = useState(false);
-  useEscapeKey(() => setModalOpen(false), modalOpen);
   const [mainTab, setMainTab] = useState<'tracker' | 'events'>('tracker');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<EventDraft>(emptyDraft());
@@ -732,6 +738,58 @@ export default function PartnershipTrackerPage() {
   // (a normal text-selection drag) was misread as a backdrop click and closed the modal.
   const modalMouseDownOnBackdrop = useRef(false);
   const dailyReportMouseDownOnBackdrop = useRef(false);
+
+  /* ---------- Add/Edit modal unsaved-changes guard ----------
+   * The modal closes on a backdrop click, Esc, ✕ and Cancel, and every one of those used to throw
+   * the half-filled form away without a word — openAddModal/openEditModal rebuild `draft` from
+   * scratch on the next open, so a mis-click while writing up a lead lost the lot. Every close
+   * path now goes through requestCloseModal, which stops and asks when the form has been touched. */
+  // Snapshot of the draft as the modal opened it. Comparing against this — rather than against
+  // emptyDraft() — is what distinguishes "the admin typed something" from "an existing event was
+  // merely opened and looked at", so only the former is warned about. null until the modal has been
+  // opened at least once, so the idle `draft` state this page always carries never counts as dirty.
+  const baselineDraft = useRef<string | null>(null);
+  const modalDirty = modalOpen && baselineDraft.current !== null && JSON.stringify(draft) !== baselineDraft.current;
+  const [closeWarning, setCloseWarning] = useState(false);
+  /* Whether the warning may offer to SAVE on the way out, rather than only to discard.
+   *
+   * The line is "is this event on the public site", which is exactly `siteStatus === 'draft'` —
+   * every Draft and every not-yet-published Initiated lead is behind it, and anything the site is
+   * actually serving is in front. Saving a record nobody can see costs nothing if it turns out to
+   * be half-finished; pushing a stray keystroke onto a live listing is a different matter, so a
+   * published event has to be saved deliberately with the Save button, never by a dialog the admin
+   * only opened because they mis-clicked. saveModal's publish-time validation draws the same line,
+   * which is why a draft can be saved at all with most of the form still empty.
+   *
+   * Read off the STORED record, not `draft.siteStatus`: the form's own dropdown is one of the
+   * things being edited, so trusting it would let "switch a live event to Draft, then mis-click"
+   * take the save-on-close path and quietly pull that event off the website. A new event has no
+   * stored row yet and is by definition not published. */
+  const storedSiteStatus = editingId === null ? 'draft' : events.find((e) => e.id === editingId)?.siteStatus ?? 'draft';
+  // Both halves must agree: the record is not on the site AND this edit isn't the one putting it
+  // there. Going live stays a deliberate Save-button action either way.
+  const canSaveOnClose = storedSiteStatus === 'draft' && draft.siteStatus === 'draft';
+
+  /** Every way out of the modal lands here: a stray backdrop click, Esc, ✕ and Cancel alike.
+   * Untouched form — close immediately, no dialog to dismiss. Touched — hand over to the warning. */
+  function requestCloseModal() {
+    if (modalDirty) { setCloseWarning(true); return; }
+    setModalOpen(false);
+  }
+  function discardAndClose() {
+    setCloseWarning(false);
+    setModalOpen(false);
+  }
+  /** "Save changes" on the warning. saveModal owns the outcome: on success it closes the modal
+   * itself, and on a validation failure it leaves it open with the reason in modalError — which is
+   * why the warning is dismissed first, so the message isn't hidden behind it. */
+  async function saveAndClose() {
+    setCloseWarning(false);
+    await saveModal();
+  }
+  // Esc belongs to the warning while the warning is up, so it dismisses that rather than reaching
+  // past it to close the form the warning is asking about.
+  useEscapeKey(() => { if (closeWarning) setCloseWarning(false); else requestCloseModal(); }, modalOpen);
 
   const [busy, setBusy] = useState(false);
   interface ImportLogEntry {
@@ -898,6 +956,24 @@ export default function PartnershipTrackerPage() {
     events.forEach((e) => map.set(e.id, computeDerived(e)));
     return map;
   }, [events]);
+  // Cities that have earned a dropdown slot. Counted from the SAME set /events groups — site
+  // status 'upcoming' and not yet started — so a city appears in this dropdown at the moment it
+  // gains its own heading on the site, and drops out again once its events pass. No extra query:
+  // every event is already loaded on this page.
+  const promotedCities = useMemo(() => {
+    const today = todayStr();
+    return promotedCitiesByCountry(
+      events
+        .filter((e) => e.siteStatus === 'upcoming' && !!e.eventStartDate && e.eventStartDate >= today)
+        .map((e) => ({ country: e.country, city: e.city }))
+    );
+  }, [events]);
+  // Counted across EVERY event, not the filtered page — the toggle has to advertise the whole
+  // backlog to clean up, not just what the current filters happen to show.
+  const locationIssueCount = useMemo(
+    () => events.reduce((n, e) => n + (derivedById.get(e.id)?.locationIssue ? 1 : 0), 0),
+    [events, derivedById]
+  );
 
   const counts = useMemo(() => {
     const byStatus: Record<string, number> = {};
@@ -991,6 +1067,9 @@ export default function PartnershipTrackerPage() {
     else if (statusFilter === 'Listed') list = list.filter((e) => isListedStatus(derivedById.get(e.id)!.statusBucket));
     else list = list.filter((e) => derivedById.get(e.id)!.statusBucket === statusFilter);
     if (typeFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.partnershipTypeResolved === typeFilter);
+    // Deliberately applied AFTER the status filter, so the toggle narrows whatever is on screen
+    // rather than pulling back rows the current status filter has excluded.
+    if (onlyLocationIssues) list = list.filter((e) => !!derivedById.get(e.id)!.locationIssue);
     if (listingFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.statusBucket === listingFilter);
 
     if (sortKey) {
@@ -1011,7 +1090,7 @@ export default function PartnershipTrackerPage() {
       });
     }
     return list;
-  }, [events, derivedById, monthFilter, cardFilter, deferredSearch, statusFilter, typeFilter, listingFilter, sortKey, sortDir]);
+  }, [events, derivedById, monthFilter, cardFilter, deferredSearch, statusFilter, typeFilter, listingFilter, onlyLocationIssues, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const clampedPage = Math.min(page, totalPages);
@@ -1052,7 +1131,7 @@ export default function PartnershipTrackerPage() {
   function resetToPage1() { setPage(1); }
   function clearFilters() {
     setSearch(''); setStatusFilter('all'); setTypeFilter('all'); setListingFilter('all');
-    setCardFilter(null); setMonthFilter(null); setSortKey('eventStartDate'); setSortDir(1); setPage(1);
+    setCardFilter(null); setMonthFilter(null); setOnlyLocationIssues(false); setSortKey('eventStartDate'); setSortDir(1); setPage(1);
   }
   /**
    * Clicking a KPI card resets the search box and the three filter dropdowns back to their
@@ -1083,7 +1162,10 @@ export default function PartnershipTrackerPage() {
   /* ---------------- CRUD ---------------- */
   function openAddModal() {
     setEditingId(null);
-    setDraft(emptyDraft());
+    const fresh = emptyDraft();
+    setDraft(fresh);
+    baselineDraft.current = JSON.stringify(fresh);
+    setCloseWarning(false);
     setModalError('');
     setOpenCreativePlatforms(new Set());
     setRegionOther(false);
@@ -1125,7 +1207,7 @@ export default function PartnershipTrackerPage() {
     // re-saving stops perpetuating the variant (which /events renders as its own duplicate
     // country section). Unrecognised values ("Cohort", "Online") come back unchanged.
     const regionValue = canonicalCountryName(rawRegionValue);
-    setDraft({
+    const opened: EventDraft = {
       ...rest,
       region: regionValue,
       partnershipType: rest.partnershipType,
@@ -1155,7 +1237,10 @@ export default function PartnershipTrackerPage() {
         || (linkedEvent?.status === 'completed' ? 'upcoming' : linkedEvent?.status)
         || 'draft',
       slug: e.slug || linkedEvent?.slug || '',
-    });
+    };
+    setDraft(opened);
+    baselineDraft.current = JSON.stringify(opened);
+    setCloseWarning(false);
     setModalError('');
     // Auto-expand any platform that already has images, so editing an event doesn't hide its own data.
     setOpenCreativePlatforms(new Set(SOCIAL_CREATIVE_PLATFORMS.filter((p) => e.socialCreatives.some((c) => c.platform === p))));
@@ -1261,6 +1346,9 @@ export default function PartnershipTrackerPage() {
           showToast(editingId ? 'Event updated.' : 'Event added.');
         }
         logActivity(editingId ? 'edited' : 'added', draft.eventName);
+        // The form now matches what's in the database, so it stops counting as unsaved and the
+        // close warning below stays quiet.
+        baselineDraft.current = JSON.stringify(effectiveDraft);
         setModalOpen(false);
         await loadEvents();
       } else {
@@ -1443,7 +1531,7 @@ export default function PartnershipTrackerPage() {
     ...buildRegionOptions(draft.region),
     { value: '__other__', label: 'Others…', alwaysShow: true },
   ], [draft.region]);
-  const citiesForSelectedCountry = citiesForCountry(draft.region);
+  const citiesForSelectedCountry = cityOptionsForCountry(draft.region, promotedCities);
   // draft.city holds ONE value, but the form edits it as two fields: a sub-city is stored there
   // directly ("Gurugram") and split back out for display into City "Delhi NCR" + Sub City
   // "Gurugram". Storing the sub-city — not the parent — is what makes the public card read
@@ -1467,6 +1555,9 @@ export default function PartnershipTrackerPage() {
     if (!subs) return null;
     return subCityField && !subs.includes(subCityField) ? [...subs, subCityField] : subs;
   })();
+  // The Sub City select is now shown for every city but only usable where sub-cities exist, and
+  // never in Others mode — a hand-typed city has no curated sub-list to pick from.
+  const subCityEnabled = !otherCityMode && !!subCityOptions;
   const effectivePhoneCode = phoneCode === 'other' ? (phoneCodeCustom.trim() || 'other') : phoneCode;
   const phoneRule = PHONE_RULES[effectivePhoneCode] || PHONE_RULES.other;
   // Draft = nothing but the name + the two core images need to be filled in yet. The moment
@@ -1724,6 +1815,20 @@ export default function PartnershipTrackerPage() {
                 <option value="all">All Active Events</option>
                 {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
+              {/* Cleanup handle for bad location data: shows how many rows have a Region/Country +
+                  City pair that looks wrong and narrows the table to just those, so they can be
+                  opened and corrected one by one in the existing Edit modal. Hidden entirely when
+                  the table is clean, so it costs nothing on a good day. */}
+              {locationIssueCount > 0 && (
+                <button
+                  type="button"
+                  className={'btn btn-sm' + (onlyLocationIssues ? ' btn-danger' : '')}
+                  title="Show only events whose Region/Country or City looks wrong"
+                  onClick={() => { setOnlyLocationIssues((v) => !v); resetToPage1(); }}
+                >
+                  ⚠ {locationIssueCount} location {locationIssueCount === 1 ? 'issue' : 'issues'}
+                </button>
+              )}
               <select value={listingFilter} onChange={(e) => { setListingFilter(e.target.value); resetToPage1(); }}>
                 <option value="all">Partnership Statuses</option>
                 <option value="Initiated">Initiated</option>
@@ -1804,7 +1909,10 @@ export default function PartnershipTrackerPage() {
                           <td className="pt-sticky">
                             <div className="pt-ev-title">{e.eventName}</div>
                           </td>
-                          <td className="pt-col-city">{e.city || <span className="pt-muted">—</span>}</td>
+                          <td className="pt-col-city">
+                            {e.city || <span className="pt-muted">—</span>}
+                            {d.locationIssue && <span className="pt-badge" style={{ color: '#C22B44' }} title={`${d.locationIssue} — open the row to correct Region/Country and City`}>⚠ location</span>}
+                          </td>
                           <td className="pt-col-country">
                             {e.country ? (
                               (() => {
@@ -1882,12 +1990,12 @@ export default function PartnershipTrackerPage() {
         <div
           className={`pt-overlay ${modalOpen ? 'open' : ''}`}
           onMouseDown={(e) => { modalMouseDownOnBackdrop.current = e.target === e.currentTarget; }}
-          onClick={(e) => { if (e.target === e.currentTarget && modalMouseDownOnBackdrop.current) setModalOpen(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget && modalMouseDownOnBackdrop.current) requestCloseModal(); }}
         >
           <div className="pt-modal">
             <div className="pt-modal-header">
               <h2>{editingId ? 'Edit event' : 'Add event'}</h2>
-              <button className="pt-modal-close" onClick={() => setModalOpen(false)}>✕</button>
+              <button className="pt-modal-close" onClick={requestCloseModal}>✕</button>
             </div>
             <div className="pt-modal-body">
               <div className="pt-form-grid pt-form-grid-3">
@@ -2015,25 +2123,49 @@ export default function PartnershipTrackerPage() {
                         onChange={(e) => setDraft({ ...draft, city: e.target.value })}
                       />
                     )}
-                    {!otherCityMode && subCityOptions && (
-                      <select
-                        aria-label="Sub city"
-                        value={subCityField}
-                        // Selecting a sub-city REPLACES the stored city with it; clearing the
-                        // dropdown puts the parent city back. Only ever one value.
-                        onChange={(e) => setDraft({ ...draft, city: e.target.value || cityField })}
-                      >
-                        <option value="">Select Sub City</option>
-                        {subCityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    )}
+                    {/* Always rendered, disabled when the chosen city has no sub-cities (today only
+                        Delhi NCR has any). Kept in the layout rather than mounted on demand so the
+                        row doesn't reflow — the City select used to jump from half-width to a third
+                        the instant Delhi NCR was picked, which reads as the form glitching. */}
+                    <select
+                      aria-label="Sub city"
+                      disabled={!subCityEnabled}
+                      title={subCityEnabled ? undefined : 'Sub city applies only to cities that have one (e.g. Delhi NCR).'}
+                      value={subCityField}
+                      // Selecting a sub-city REPLACES the stored city with it; clearing the
+                      // dropdown puts the parent city back. Only ever one value.
+                      onChange={(e) => setDraft({ ...draft, city: e.target.value || cityField })}
+                    >
+                      <option value="">{subCityEnabled ? 'Select Sub City' : 'No sub cities'}</option>
+                      {(subCityOptions ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
                   </div>
                   {otherCityMode && (
                     <div className="pt-hint">Listed under “Other Cities” for {draft.region || 'this country'} — the card shows the city name you type.</div>
                   )}
-                  {!otherCityMode && subCityOptions && (
+                  {subCityEnabled && (
                     <div className="pt-hint">Optional — shown on the event card. Still listed under {cityField}.</div>
                   )}
+                </div>
+                <div className="pt-fg">
+                  <label>Section on /events</label>
+                  <select
+                    aria-label="Section on /events"
+                    value={draft.citySectionOverride}
+                    onChange={(e) => setDraft({ ...draft, citySectionOverride: e.target.value })}
+                  >
+                    {CITY_SECTION_OVERRIDE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  {/* Says "this city" rather than "this event" on purpose — the setting is read off
+                      ANY event of the city, so it moves all of them together and the city can never
+                      appear in two places at once. */}
+                  <div className="pt-hint">
+                    {draft.citySectionOverride === 'own'
+                      ? `Forces a "${cityField || 'this city'}" section even below ${AUTO_SECTION_MIN_EVENTS} events — applies to every event in this city.`
+                      : draft.citySectionOverride === 'other'
+                        ? `Keeps ${cityField || 'this city'} under "Other Cities" even at ${AUTO_SECTION_MIN_EVENTS}+ events — applies to every event in this city.`
+                        : `Auto: its own section if the city is curated or has ${AUTO_SECTION_MIN_EVENTS}+ listed events, otherwise "Other Cities".`}
+                  </div>
                 </div>
                 <div className="pt-fg"><label>Organiser/Company Name</label><input value={draft.organiser} onChange={(e) => setDraft({ ...draft, organiser: e.target.value })} /></div>
                 <div className="pt-fg">
@@ -2261,6 +2393,11 @@ export default function PartnershipTrackerPage() {
               {modalError && <div className="pt-modal-error">{modalError}</div>}
             </div>
             <div className="pt-modal-footer">
+              {modalDirty && (
+                <span className={`pt-dirty-note${editingId ? '' : ' pt-dirty-note-lead'}`}>
+                  ● Unsaved changes
+                </span>
+              )}
               {editingId && (
                 <button
                   className="btn btn-danger"
@@ -2270,9 +2407,34 @@ export default function PartnershipTrackerPage() {
                   Delete event
                 </button>
               )}
-              <button className="btn" onClick={() => setModalOpen(false)}>Cancel</button>
+              <button className="btn" onClick={requestCloseModal}>Cancel</button>
               <button className="btn btn-accent" disabled={saving} onClick={saveModal}>{saving ? 'Saving…' : editingId ? 'Save changes' : 'Add event'}</button>
             </div>
+
+            {closeWarning && (
+              <div className="pt-confirm-layer" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <div className="pt-confirm" role="alertdialog" aria-modal="true" aria-labelledby="pt-confirm-title">
+                  <h3 id="pt-confirm-title">⚠ Unsaved changes</h3>
+                  <p>
+                    Your changes to <strong>{draft.eventName.trim() || 'this event'}</strong> haven&apos;t been saved yet.{' '}
+                    {canSaveOnClose
+                      ? 'This event isn\u2019t on the website yet, so you can save your progress now and finish it later \u2014 or close and lose it.'
+                      : storedSiteStatus === 'draft'
+                        ? 'Putting an event on the website is a deliberate step, so go back and use Save changes to save them \u2014 or close and lose them.'
+                        : 'This event is live on the website, so nothing is saved automatically \u2014 go back and use Save changes to publish them, or close and lose them.'}
+                  </p>
+                  <div className="pt-confirm-actions">
+                    <button type="button" className="btn btn-danger" onClick={discardAndClose}>Close without saving</button>
+                    <button type="button" className="btn" onClick={() => setCloseWarning(false)}>Keep editing</button>
+                    {canSaveOnClose && (
+                      <button type="button" className="btn btn-accent" disabled={saving} onClick={saveAndClose}>
+                        {saving ? 'Saving…' : 'Save changes'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2528,6 +2690,9 @@ export default function PartnershipTrackerPage() {
            wider than its share, overflowing the cell and overlapping the field beside it. */
         .pt-city-row { display: flex; gap: 6px; min-width: 0; }
         .pt-city-row > select, .pt-city-row > input { flex: 1 1 0; min-width: 0; box-sizing: border-box; }
+        /* The Sub City select is always present now, so it needs to LOOK inert when it isn't
+           usable — a normal-looking dropdown that does nothing reads as broken. */
+        .pt-city-row > select:disabled { opacity: .55; background: #F3F4F6; cursor: not-allowed; }
         .pt-phone-row { display: flex; gap: 6px; }
         .pt-phone-row select { flex: 0 0 88px; width: 88px; padding: 0 6px; }
         .pt-fg textarea { min-height: 64px; padding: 10px 12px; resize: vertical; width: 100%; }
@@ -2544,6 +2709,13 @@ export default function PartnershipTrackerPage() {
         .pt-remove-social-btn { background: none; border: none; color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 0; }
         .pt-remove-social-btn:hover { color: #C22B44; }
         .pt-modal-error { color: #C22B44; font-size: 12px; margin-top: 10px; }
+        .pt-confirm-layer { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(16,26,43,0.4); }
+        .pt-confirm { width: 100%; max-width: 440px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; box-shadow: 0 18px 50px rgba(16,26,43,0.28); }
+        .pt-confirm h3 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--text); }
+        .pt-confirm p { margin: 0 0 18px; font-size: 13px; line-height: 1.6; color: var(--muted); }
+        .pt-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+        .pt-dirty-note { font-size: 11.5px; color: #B26B00; font-weight: 500; }
+        .pt-dirty-note-lead { margin-right: auto; }
         .pt-readonly-field { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 13px; }
         .pt-activity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
         @media (max-width: 640px) { .pt-activity-grid { grid-template-columns: 1fr; } }

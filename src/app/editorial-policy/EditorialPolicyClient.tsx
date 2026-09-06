@@ -3,7 +3,7 @@
 import React from "react";
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";
-import { Reveal, useInView, usePrefersReducedMotion } from "@/components/Reveal";
+import { Reveal, revealStyle, useInView, usePrefersReducedMotion } from "@/components/Reveal";
 
 const listStyle: React.CSSProperties = {
 	paddingLeft: "20px",
@@ -32,11 +32,11 @@ function RevealList({ children, style }: { children: React.ReactNode; style?: Re
 			{React.Children.map(children, (child, i) => {
 				if (!React.isValidElement(child) || reduced) return child;
 				const item = child as React.ReactElement<{ className?: string; style?: React.CSSProperties }>;
+				// Same inline-style reveal as <Reveal> — these were Tailwind utility classes, which
+				// generate no CSS on this route (see revealStyle's note), so the stagger never ran.
+				// A shorter travel than a full section: list items only need a nudge.
 				return React.cloneElement(item, {
-					className: `transition-all duration-700 ease-out ${
-						inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-					} ${item.props.className || ""}`,
-					style: { ...item.props.style, transitionDelay: `${i * LIST_STAGGER_MS}ms` },
+					style: { ...item.props.style, ...revealStyle(inView, { delayMs: i * LIST_STAGGER_MS, distance: 14 }) },
 				});
 			})}
 		</ul>

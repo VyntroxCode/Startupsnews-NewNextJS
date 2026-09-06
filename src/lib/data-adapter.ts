@@ -13,7 +13,7 @@ import { EventsRepository } from "@/modules/events/repository/events.repository"
 import { PartnershipEventsService } from "@/modules/partnership-events/service/partnership-events.service";
 import { PartnershipEventsRepository } from "@/modules/partnership-events/repository/partnership-events.repository";
 import { partnershipEntityToStartupEvent } from "@/modules/partnership-events/utils/public-event.utils";
-import { parentCityForSubCity } from "@/modules/partnership-events/domain/country-city-data";
+import { parentCityForSubCity, promotedCitiesByCountry } from "@/modules/partnership-events/domain/country-city-data";
 import { CategoriesService } from "@/modules/categories/service/categories.service";
 import { CategoriesRepository } from "@/modules/categories/repository/categories.repository";
 import { UsersRepository } from "@/modules/users/repository/users.repository";
@@ -846,6 +846,7 @@ export async function getEventsByRegion(): Promise<
       regionNames.map((n) => [n, []]),
     );
 
+    const spellingByCity = new Map<string, string>();
     for (const e of entities) {
       const event = partnershipEntityToStartupEvent(e);
       const loc = (event.location || "").trim();
@@ -858,7 +859,16 @@ export async function getEventsByRegion(): Promise<
       const matched = regionNames.find(
         (n) => n.toLowerCase() === groupName.toLowerCase(),
       );
-      const key = matched ?? groupName; // fall back to raw location if not in DB
+      // Fall back to the raw location when the city isn't in the DB region list — but keep ONE
+      // spelling per city, first one wins, so "las vegas" and "Las Vegas" share a bucket instead
+      // of splitting into two. This used to be invisible (both spellings merged into "Other
+      // Cities" anyway); it matters now that the number of events in a bucket is what decides
+      // whether a city earns its own section, because a split would hold a city below the
+      // threshold forever. City values reach here from free-text entry (the tracker's "Others…"
+      // box, CSV import), so variants are entirely possible.
+      const lower = groupName.toLowerCase();
+      const key = matched ?? spellingByCity.get(lower) ?? groupName;
+      if (!matched) spellingByCity.set(lower, key);
       if (!eventsByRegion[key]) eventsByRegion[key] = [];
       event.image = toCdnUrl(event.image) || event.image;
       eventsByRegion[key].push(event);
@@ -868,6 +878,31 @@ export async function getEventsByRegion(): Promise<
     return eventsByRegion;
   } catch (error) {
     console.error("Error fetching events by region:", error);
+    return {};
+  }
+}
+
+/**
+ * Cities that have earned a City-dropdown slot by reaching the listed-event threshold, keyed by
+ * canonical country. Counted from exactly the same set /events groups (site_status 'upcoming',
+ * start date today or later), so the dropdown gains a city at the same moment the page gives it
+ * its own heading — and loses it again when its events pass.
+ */
+export async function getPromotedCityOptions(): Promise<Record<string, string[]>> {
+  const cacheKey = "events:promoted-city-options";
+  const cached = await getCache<Record<string, string[]>>(cacheKey);
+  if (cached) return cached;
+  try {
+    const entities = await partnershipEventsService.getUpcomingForPublic();
+    const promoted = promotedCitiesByCountry(
+      entities.map((e) => ({ country: e.country, city: e.city }))
+    );
+    await setCache(cacheKey, promoted, 300);
+    return promoted;
+  } catch (error) {
+    // A dropdown that is merely missing its earned extras is far better than a form that fails to
+    // render, so this degrades to "curated only" rather than throwing.
+    console.error("Error computing promoted city options:", error);
     return {};
   }
 }

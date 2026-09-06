@@ -11,8 +11,9 @@ import { DateVenueStep } from "./steps/DateVenueStep";
 import { EventBasicsStep } from "./steps/EventBasicsStep";
 import { ImagesStep } from "./steps/ImagesStep";
 import { ReviewStep } from "./steps/ReviewStep";
+import { ONLINE_LOCATION_LABEL } from "./constants";
 import { TOTAL_STEPS, useSubmitEventForm } from "./useSubmitEventForm";
-import { resolvedCity, resolvedCountry } from "./validation";
+import { isOnlineEvent, resolvedCity, resolvedCountry } from "./validation";
 
 /** Slide duration in seconds. One constant so the incoming and outgoing halves stay in step. */
 const STEP_SLIDE_SECONDS = 0.55;
@@ -44,7 +45,7 @@ const reducedStepVariants = {
   exit: { opacity: 0, transition: { duration: 0.1 } },
 };
 
-export function SubmitEventForm() {
+export function SubmitEventForm({ promotedCities }: { promotedCities?: Record<string, string[]> }) {
   const ctrl = useSubmitEventForm();
   const { data, currentStep, direction, submitted } = ctrl;
   const reducedMotion = useReducedMotion();
@@ -52,7 +53,11 @@ export function SubmitEventForm() {
   if (submitted) {
     const whenText = `${formatConfirmDate(data.startDate)} · ${data.startTime || ""}`;
     const country = resolvedCountry(data);
-    const whereText = country === "India" ? resolvedCity(data) || "India" : country || "International";
+    const whereText = isOnlineEvent(data)
+      ? "Online (virtual)"
+      : country === "India"
+        ? resolvedCity(data) || "India"
+        : country || "International";
     return (
       <ConfirmationPanel
         organizerFirstName={data.organizerName.trim().split(" ")[0] || ""}
@@ -88,7 +93,7 @@ export function SubmitEventForm() {
               exit="exit"
             >
               {currentStep === 1 && <ContactStep ctrl={ctrl} />}
-              {currentStep === 2 && <EventBasicsStep ctrl={ctrl} />}
+              {currentStep === 2 && <EventBasicsStep ctrl={ctrl} promotedCities={promotedCities} />}
               {currentStep === 3 && <DateVenueStep ctrl={ctrl} />}
               {currentStep === 4 && <ImagesStep ctrl={ctrl} />}
               {currentStep === 5 && <ReviewStep ctrl={ctrl} />}
@@ -101,8 +106,8 @@ export function SubmitEventForm() {
         <PreviewCard
           title={data.title}
           image1={data.image1}
-          country={resolvedCountry(data)}
-          region={resolvedCity(data)}
+          country={isOnlineEvent(data) ? ONLINE_LOCATION_LABEL : resolvedCountry(data)}
+          region={isOnlineEvent(data) ? "" : resolvedCity(data)}
           startDate={data.startDate}
           endDate={data.endDate || data.startDate}
         />
