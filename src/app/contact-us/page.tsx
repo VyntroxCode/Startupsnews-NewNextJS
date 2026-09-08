@@ -1,7 +1,7 @@
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";
 import { getInnerPageContent } from "@/lib/data-adapter";
-import { HeadphonesIcon, MegaphoneIcon, BriefcaseIcon, GlobeIcon } from "@/components/icons";
+import { HeadphonesIcon, MegaphoneIcon, BriefcaseIcon } from "@/components/icons";
 
 export const revalidate = 60;
 export const dynamic = "force-dynamic";
@@ -51,13 +51,6 @@ const DEFAULT_CONTENT = (
         </a>
       </p>
     </div>
-
-    <div className="contact-us-section-item">
-      <h2 className="contact-us-section-item-title">
-        <span className="contact-us-section-item-icon"><GlobeIcon /></span>
-        Website Support
-      </h2>
-    </div>
   </div>
 );
 
@@ -69,7 +62,7 @@ export default async function ContactUsPage() {
       id="mvp-article-cont"
       className="left relative contact-us-custom-page">
       <div className="page-intro-animate">
-        <div className="px-6 pt-2">
+        <div className="mvp-main-box event-by-country-container">
           <PageBreadcrumb current="Contact Us" />
         </div>
         <PageHeading title="Contact Us" />

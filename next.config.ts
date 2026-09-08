@@ -33,6 +33,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.unsplash.com", pathname: "/**" },
       // CloudFront distribution in front of the S3 bucket (ImagesStartupNews)
       { protocol: "https", hostname: "images.startupnews.fyi", pathname: "/**" },
+      // Sister site's image CDN — its posts/images get cross-referenced on this site too
+      { protocol: "https", hostname: "images.themorningpulse.fyi", pathname: "/**" },
       // S3 bucket: startupnews-media-2026 (us-east-1) – images from DB
       { protocol: "https", hostname: "startupnews-media-2026.s3.amazonaws.com", pathname: "/**" },
       { protocol: "https", hostname: "startupnews-media-2026.s3.us-east-1.amazonaws.com", pathname: "/**" },
@@ -89,11 +91,17 @@ const nextConfig: NextConfig = {
         destination: "/cyber-security/:path*",
         permanent: true,
       },
+      {
+        // "Funding" category was renamed to "Funding Tracker" (slug: funding -> funding-tracker)
+        source: "/funding",
+        destination: "/funding-tracker",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {
     return [
-      { source: "/funding", destination: "/category/funding" },
+      { source: "/funding-tracker", destination: "/category/funding-tracker" },
     ];
   },
   // Optional: shorten CDN cache for HTML so deploys don’t serve old chunk refs.

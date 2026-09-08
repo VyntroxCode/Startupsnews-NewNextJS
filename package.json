@@ -24,6 +24,7 @@
 		"report:publish-buckets": "tsx scripts/export-publish-buckets-csv.ts",
 		"logos:snapshot": "tsx scripts/partner-logos-snapshot.ts",
 		"logos:restore": "tsx scripts/partner-logos-snapshot.ts restore",
+		"logos:rehost": "tsx scripts/rehost-partner-logos.ts",
 		"db:seed-rss-feeds": "tsx scripts/seed-rss-feeds.ts",
 		"db:sync-events-startupnews": "tsx scripts/sync-events-from-startupnews.ts",
 		"cron:rss-feeds": "RUN_ONCE=1 tsx cron/index.ts",

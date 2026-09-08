@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { PageBreadcrumb } from "@/components/PageBreadcrumb";
+import { PageHeading } from "@/components/PageHeading";
 
 /**
  * PrivacyPolicyPage - Implemented with content provided in Step 2069.
@@ -9,22 +11,13 @@ export default function PrivacyPolicyPage() {
     return (
         <div id="mvp-article-cont" className="left relative privacy-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}>
 
-            <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
+            {/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
+            <div className="mvp-main-box event-by-country-container">
+                <PageBreadcrumb current="Privacy Policy" />
+            </div>
+            <PageHeading title="Privacy Policy" />
 
-                <header style={{ marginBottom: "60px", textAlign: "center" }}>
-                    <h2 style={{
-                        fontSize: "42px",
-                        fontWeight: 900,
-                        color: "#000",
-                        textTransform: "uppercase",
-                        fontFamily: "Inter, sans-serif",
-                        marginBottom: "20px",
-                        letterSpacing: "1px"
-                    }}>
-                        Privacy Policy
-                    </h2>
-                    <div style={{ width: "60px", height: "4px", background: "#ee1761", margin: "0 auto" }}></div>
-                </header>
+            <div className="kt-row-column-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px 20px 80px" }}>
 
                 <article style={{
                     fontSize: "16px",

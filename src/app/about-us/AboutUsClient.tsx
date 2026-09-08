@@ -328,7 +328,7 @@ export default function AboutUsClient({ contentHtml }: { contentHtml: string }) 
 				style={{ fontFamily: SITE_FONT_FAMILY }}
 			>
 				<div className="page-intro-animate">
-					<div className="px-5 md:px-10">
+					<div className="event-by-country-container">
 						<PageBreadcrumb current="About Us" />
 					</div>
 					<PageHeading title="About Us" />

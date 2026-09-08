@@ -26,6 +26,8 @@ import { slugify } from "@/shared/utils/string.utils";
 import { toCdnUrl } from "@/shared/utils/image-cdn";
 import { PartnerLogosRepository, InnerPageContentRepository } from "@/modules/inner-pages/repository/inner-pages.repository";
 import { toPartnerLogo, toInnerPageContent, PARTNER_LOGO_SECTIONS, type PartnerLogo } from "@/modules/inner-pages/domain/types";
+import * as fs from "fs";
+import * as path from "path";
 
 // Post interface (backward compatible)
 export interface Post {
@@ -956,6 +958,43 @@ export async function getEventBySlug(
  * counter-scrolling marquee rows each logo lands in (see PartnerLogosMarquee: alternates by
  * index). Sections with no logos yet still get an empty array key.
  */
+/** Cached in-process (not Redis — see below) once loaded; undefined means "not attempted yet",
+ * null means "attempted and there's no usable snapshot on disk". */
+let partnerLogosSnapshotFallback: Record<string, PartnerLogo[]> | null | undefined;
+
+/** The committed `data/partner-logos.snapshot.json` (see scripts/partner-logos-snapshot.ts),
+ * read straight off disk as a last resort when the DB table itself is empty. This has happened
+ * twice now (agent.md #619, #657) from causes outside the app — a DB/container rebuild whose
+ * restore step didn't carry this table — so the public page falling back to committed, known-good
+ * data beats it silently going blank again the next time that happens. */
+function loadPartnerLogosSnapshotFallback(): Record<string, PartnerLogo[]> | null {
+  if (partnerLogosSnapshotFallback !== undefined) return partnerLogosSnapshotFallback;
+  try {
+    const raw = fs.readFileSync(path.join(process.cwd(), "data", "partner-logos.snapshot.json"), "utf8");
+    const snapshot = JSON.parse(raw) as {
+      logos: { section: string; imageUrl: string; linkUrl: string | null; sortOrder: number }[];
+    };
+    const grouped: Record<string, PartnerLogo[]> = Object.fromEntries(
+      PARTNER_LOGO_SECTIONS.map((s) => [s, []])
+    );
+    snapshot.logos.forEach((logo, i) => {
+      if (!grouped[logo.section]) grouped[logo.section] = [];
+      grouped[logo.section].push({
+        id: -(i + 1),
+        section: logo.section,
+        imageUrl: toCdnUrl(logo.imageUrl) || logo.imageUrl,
+        linkUrl: logo.linkUrl,
+        sortOrder: logo.sortOrder,
+      });
+    });
+    partnerLogosSnapshotFallback = grouped;
+  } catch (error) {
+    console.error("Could not load partner-logos snapshot fallback:", error);
+    partnerLogosSnapshotFallback = null;
+  }
+  return partnerLogosSnapshotFallback;
+}
+
 export async function getPartnerLogosBySection(): Promise<Record<string, PartnerLogo[]>> {
   const cacheKey = "partner-logos:by-section";
   const cached = await getCache<Record<string, PartnerLogo[]>>(cacheKey);
@@ -974,6 +1013,20 @@ export async function getPartnerLogosBySection(): Promise<Record<string, Partner
     }
   } catch (error) {
     console.error("Error fetching partner logos:", error);
+  }
+
+  const hasAnyFromDb = Object.values(grouped).some((arr) => arr.length > 0);
+  if (!hasAnyFromDb) {
+    const fallback = loadPartnerLogosSnapshotFallback();
+    if (fallback) {
+      console.error(
+        "partner_logos table is empty — serving the committed snapshot fallback instead of a blank page. " +
+          "Run `npm run logos:restore` to fix the DB itself."
+      );
+      // Deliberately not cached: keep checking the DB on every request so this self-heals the
+      // moment someone restores it, instead of serving stale fallback data for the cache's TTL.
+      return fallback;
+    }
   }
 
   await setCache(cacheKey, grouped, 300);

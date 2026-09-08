@@ -93,6 +93,18 @@ export function s3KeyForEventImage(slug: string, imageUrlOrExt: string): string 
   return s3KeyWithPrefix(`uploads/${y}/${m}/event-${safeSlug}.${ext}`);
 }
 
+const KNOWN_IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp']);
+
+/** Generate S3 key for a re-hosted partner logo: prefix/uploads/partner-logos/{id}.ext
+ * Most source URLs here are query-string-based (e.g. Google's encrypted-tbn0.gstatic.com
+ * thumbnail links have no real file extension at all), so an extension not on the known list
+ * falls back to jpg rather than keying off garbage lifted from the query string. */
+export function s3KeyForPartnerLogo(id: number, imageUrl: string): string {
+  const raw = (imageUrl.split('.').pop()?.split(/[?#]/)[0] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const ext = KNOWN_IMAGE_EXTS.has(raw) ? raw : 'jpg';
+  return s3KeyWithPrefix(`uploads/partner-logos/${id}.${ext}`);
+}
+
 /** Generate S3 key for manual post image (from URL): prefix/uploads/YYYY/MM/manual-{timestamp}-{random}.ext */
 export function s3KeyForManualPostImage(imageUrl: string): string {
   const d = new Date();

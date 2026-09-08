@@ -39,7 +39,7 @@ export default async function OurPartnersPage() {
           padding-top: 20px;
         }
         .partners-inner {
-          max-width: 1100px;
+          max-width: 1200px;
           margin: 0 auto;
           padding: 40px 24px 40px;
         }
@@ -167,10 +167,12 @@ export default async function OurPartnersPage() {
 				id="mvp-article-cont"
 				className="left relative our-partners-custom-page partners-wrap"
 			>
-				<div className="kt-row-column-wrap partners-inner">
+				<div className="mvp-main-box event-by-country-container">
 					<PageBreadcrumb current="Our Partners" />
-					<PageHeading title="Our Partners" />
+				</div>
+				<PageHeading title="Our Partners" />
 
+				<div className="kt-row-column-wrap partners-inner">
 					<header className="partners-header">
 						{contentHtml ? (
 							<div dangerouslySetInnerHTML={{ __html: contentHtml }} />

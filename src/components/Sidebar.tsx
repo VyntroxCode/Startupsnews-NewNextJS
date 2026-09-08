@@ -13,7 +13,7 @@ const SIDEBAR_CATEGORIES = [
   { label: "eCommerce", href: "/ecommerce" },
   { label: "EV & Mobility", href: "/ev-mobility" },
   { label: "Fintech", href: "/fintech" },
-  { label: "Funding", href: "/funding" },
+  { label: "Funding", href: "/funding-tracker" },
   { label: "Gaming", href: "/gaming" },
   { label: "Healthtech", href: "/healthtech" },
   { label: "Robotics", href: "/robotics" },

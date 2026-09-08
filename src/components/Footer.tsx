@@ -97,10 +97,10 @@ export function Footer() {
           <div>
             <h3>For Founders</h3>
             <ul>
-              <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Feature your Startup</a></li>
-              <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Submit your Funding Round</a></li>
-              <li><a href="https://forms.gle/FrCjzLGAs1gNaVyG7" target="_blank" rel="noopener noreferrer">Submit your press release</a></li>
-              <li><Link href="/advertise-with-us">Get Media Coverage</Link></li>
+              <li><Link href="/feature-your-startup">Feature your Startup</Link></li>
+              <li><Link href="/submit-funding-round">Submit your Funding Round</Link></li>
+              <li><Link href="/submit-press-release">Submit your press release</Link></li>
+              <li><Link href="#">Get Media Coverage</Link></li>
             </ul>
           </div>
 
@@ -122,7 +122,7 @@ export function Footer() {
               {/* <li><Link href="/dealflow-newsletter">Dealflow Newsletter</Link></li>
               <li><Link href="/regional-reports">Regional Reports</Link></li>
               <li><Link href="/speak-sponsor">Speak / Sponsor Opportunities</Link></li> */}
-              <li><Link href="/funding"> Funding Tracker</Link></li>
+              <li><Link href="/funding-tracker"> Funding Tracker</Link></li>
               <li><Link href="/dashboard/reports">Indian Startup Funding Report</Link></li>
             </ul>
           </div>

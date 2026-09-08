@@ -57,28 +57,26 @@ export default function EditorialPolicyClient() {
 	return (
 		<div style={{ width: "100%", background: "#fff" }}>
 			<style>{`
-        .ep-breadcrumb-wrap { padding: 20px 20px 0 24px; }
-        .ep-wrap { max-width: 800px; margin: 0 auto; padding: 40px 20px 40px; }
+        .ep-wrap { max-width: 1200px; margin: 0 auto; padding: 40px 20px 40px; }
         .ep-header { margin-bottom: 40px; text-align: center; }
         .ep-section-title { font-size: 24px; font-weight: 800; color: #000; margin-top: 50px; margin-bottom: 20px; font-family: Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
         .ep-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .ep-article { font-size: 16px; line-height: 1.8; color: #333; font-family: 'NB International', sans-serif; }
         @media (max-width: 768px) {
-          .ep-breadcrumb-wrap { padding: 14px 16px 0 16px; }
           .ep-wrap { padding: 20px 16px 28px; }
           .ep-header { margin-bottom: 24px; }
           .ep-section-title { font-size: 18px; margin-top: 32px; margin-bottom: 14px; }
           .ep-article { font-size: 15px; }
         }
         @media (max-width: 480px) {
-          .ep-breadcrumb-wrap { padding: 12px 14px 0 14px; }
           .ep-wrap { padding: 16px 14px 22px; }
           .ep-header { margin-bottom: 20px; }
           .ep-section-title { font-size: 16px; margin-top: 28px; }
           .ep-article { font-size: 14px; line-height: 1.7; }
         }
       `}</style>
-			<div className="ep-breadcrumb-wrap">
+			{/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
+			<div className="mvp-main-box event-by-country-container">
 				<PageBreadcrumb current="Editorial Policy" />
 			</div>
 			<PageHeading title="Editorial Policy" />

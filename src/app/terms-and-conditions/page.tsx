@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { PageBreadcrumb } from "@/components/PageBreadcrumb";
+import { PageHeading } from "@/components/PageHeading";
 
 /**
  * TermsPage - Implemented with content provided in Step 2089.
@@ -10,29 +12,25 @@ export default function TermsPage() {
         <div id="mvp-article-cont" className="left relative terms-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}>
 
             <style>{`
-                .terms-wrap { max-width: 800px; margin: 0 auto; padding: 80px 20px; }
-                .terms-title { font-size: 42px; font-weight: 900; color: #000; text-transform: uppercase; font-family: Inter, sans-serif; margin-bottom: 20px; letter-spacing: 1px; }
+                .terms-wrap { max-width: 1200px; margin: 0 auto; padding: 20px 20px 80px; }
                 .terms-section-title { font-size: 24px; font-weight: 800; color: #000; margin-top: 50px; margin-bottom: 20px; font-family: Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
                 @media (max-width: 768px) {
-                    .terms-wrap { padding: 40px 16px 60px; }
-                    .terms-title { font-size: 26px; letter-spacing: 0.5px; }
+                    .terms-wrap { padding: 12px 16px 60px; }
                     .terms-section-title { font-size: 18px; margin-top: 36px; }
                 }
                 @media (max-width: 480px) {
-                    .terms-wrap { padding: 28px 14px 48px; }
-                    .terms-title { font-size: 22px; }
+                    .terms-wrap { padding: 10px 14px 48px; }
                     .terms-section-title { font-size: 16px; }
                 }
             `}</style>
 
-            <div className="kt-row-column-wrap terms-wrap">
+            {/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
+            <div className="mvp-main-box event-by-country-container">
+                <PageBreadcrumb current="Terms and Conditions" />
+            </div>
+            <PageHeading title="Terms and Conditions" />
 
-                <header style={{ marginBottom: "60px", textAlign: "center" }}>
-                    <h2 className="terms-title">
-                        Terms and Conditions
-                    </h2>
-                    <div style={{ width: "60px", height: "4px", background: "#ee1761", margin: "0 auto" }}></div>
-                </header>
+            <div className="kt-row-column-wrap terms-wrap">
 
                 <article style={{
                     fontSize: "16px",

@@ -1,20 +1,22 @@
 "use client";
 
 import React from "react";
+import { PageBreadcrumb } from "@/components/PageBreadcrumb";
+import { PageHeading } from "@/components/PageHeading";
 
 export default function ReturnRefundPolicyPage() {
     return (
         <div id="mvp-article-cont" className="left relative refund-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}>
 
-            <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
+            {/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
+            <div className="mvp-main-box event-by-country-container">
+                <PageBreadcrumb current="Return and Refund Policy" />
+            </div>
+            <PageHeading title="Cancellation, Refund & Returns Policy" />
 
-                <header style={{ marginBottom: "60px", textAlign: "center" }}>
-                    <h2 style={{ fontSize: "clamp(22px, 3.5vw, 36px)", fontWeight: 900, color: "#000", textTransform: "uppercase", fontFamily: "Inter, sans-serif", marginBottom: "12px", letterSpacing: "1px", lineHeight: "1.25" }}>
-                        Cancellation, Refund &amp; Returns Policy
-                    </h2>
-                    <p style={{ fontSize: "14px", color: "#666", marginBottom: "4px" }}>Last updated: May 3, 2025 &nbsp;|&nbsp; Effective: May 3, 2025</p>
-                    <div style={{ width: "60px", height: "4px", background: "#ee1761", margin: "16px auto 0" }}></div>
-                </header>
+            <div className="kt-row-column-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px 20px 80px" }}>
+
+                <p style={{ fontSize: "14px", color: "#666", textAlign: "center", marginBottom: "40px" }}>Last updated: May 3, 2025 &nbsp;|&nbsp; Effective: May 3, 2025</p>
 
                 <article style={{ fontSize: "16px", lineHeight: "1.8", color: "#333", fontFamily: "'NB International', sans-serif" }}>
 

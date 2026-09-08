@@ -240,11 +240,15 @@ export default function AdvertisePage() {
 
 	return (
 		<div className="bg-white text-adv-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
-			{/* Breadcrumb + page title */}
-			<div className="px-5 sm:px-8 lg:px-10">
+			{/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
+			<div className="mvp-main-box event-by-country-container">
 				<PageBreadcrumb current="Advertise With Us" />
 			</div>
 			<PageHeading title="Advertise With Us" />
+
+			{/* Everything below is capped at the site's standard 1200px width instead of
+			    stretching edge-to-edge on wide screens. */}
+			<div className="max-w-[1200px] mx-auto">
 
 			{/* HERO */}
 			<section className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-7 lg:gap-[72px] items-center px-5 sm:px-8 lg:px-10 py-6 sm:py-8 lg:py-12">
@@ -399,8 +403,8 @@ export default function AdvertisePage() {
 				<div className="mt-12 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-5">
 					{WHY_CARDS.map((c, i) => (
 						<Reveal key={c.title} delay={150 + i * 100}>
-							<article className="border border-[#23272e] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0 h-full transition-transform duration-300 hover:-translate-y-1.5">
-								<span className="text-[30px] sm:text-[38px] lg:text-[46px] font-black tracking-[-0.04em] leading-none text-[#3d434c]">
+							<article className="border border-[#23272e] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0 h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1.5">
+								<span className="block text-[26px] sm:text-[32px] lg:text-[38px] font-black tracking-[-0.04em] leading-none text-[#3d434c] break-words">
 									{c.label}
 								</span>
 								<h3 className="text-white text-[22px] font-extrabold tracking-[-0.02em] leading-[1.35]">{c.title}</h3>
@@ -411,10 +415,11 @@ export default function AdvertisePage() {
 				</div>
 			</section>
 
-			{/* ENQUIRY FORM */}
+			{/* ENQUIRY FORM — scroll-mt so the sticky nav doesn't cover the top fields when
+			    "#sn-form" links (Learn More / Submit Your Advertising Enquiry) jump here. */}
 			<section
 				id="sn-form"
-				className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 pt-10 sm:pt-12 lg:pt-16 pb-6 sm:pb-8 lg:pb-10"
+				className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 pt-10 sm:pt-12 lg:pt-16 pb-6 sm:pb-8 lg:pb-10 scroll-mt-24"
 			>
 				<Reveal direction="left" className="min-w-0">
 					<h2 className="text-adv-ink text-[30px] sm:text-[40px] lg:text-[52px] font-black tracking-[-0.035em] leading-[1.05]">
@@ -564,6 +569,7 @@ export default function AdvertisePage() {
 					</form>
 				</Reveal>
 			</section>
+			</div>
 		</div>
 	);
 }
