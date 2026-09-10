@@ -92,6 +92,7 @@ export const metadata: Metadata = {
   verification: {
     other: {
       "msvalidate.01": ["7AA71D3ABAB34C6C1C8E9654A46C1EE7"],
+      "google-adsense-account": ["ca-pub-2201007872031999"],
     },
   },
 };
@@ -229,6 +230,18 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/*
+          AdSense loader must be a real <script> in the server-rendered <head>:
+          AdSense's site-verification crawler reads the raw HTML, so next/script's
+          "afterInteractive" strategy (which only emits a <link rel="preload"> and
+          injects the tag after hydration) fails detection. Kept verbatim as Google
+          supplies it.
+        */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2201007872031999"
+          crossOrigin="anonymous"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(graphJsonLd) }}
