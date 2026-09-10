@@ -12,13 +12,20 @@ import mariadb from 'mariadb';
 // Build process runs multiple workers in parallel, so we need to limit connections
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || 
   (process.env.NODE_ENV === 'production' && process.env.npm_lifecycle_event === 'build');
-const connectionLimit = isBuildTime 
+const connectionLimit = isBuildTime
   ? Math.min(parseInt(process.env.DB_CONNECTION_LIMIT || '18', 10), 5) // Max 5 during build
   : parseInt(process.env.DB_CONNECTION_LIMIT || '18', 10);
 // In development use shorter acquire timeout so we fail fast if DB is down (avoid long hang before client timeout)
 const defaultAcquireTimeout = process.env.NODE_ENV === 'development' ? 8000 : 30000;
 const acquireTimeout = parseInt(process.env.DB_ACQUIRE_TIMEOUT || String(defaultAcquireTimeout), 10);
 const idleTimeout = parseInt(process.env.DB_IDLE_TIMEOUT || '60000', 10);
+// mariadb defaults `minimumIdle` to `connectionLimit` when unset, which means idleTimeout above
+// never actually fires — the pool grows to connectionLimit under load and then holds every one
+// of those connections open forever, even once traffic drops back to nothing. Capping it well
+// below connectionLimit lets the pool grow for bursts but actually give idle connections back
+// after idleTimeout, so a long-running process doesn't permanently pin most of MySQL's
+// max_connections just because it once saw a traffic spike.
+const minimumIdle = isBuildTime ? connectionLimit : Math.min(5, connectionLimit);
 
 let pool: mariadb.Pool | null = null;
 
@@ -31,6 +38,7 @@ function getPool(): mariadb.Pool {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       connectionLimit,
+      minimumIdle,
       acquireTimeout,
       idleTimeout,
       ssl: process.env.DB_SSL === 'true' ? true : undefined,

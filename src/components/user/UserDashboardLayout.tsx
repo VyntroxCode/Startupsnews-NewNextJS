@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useHasMounted } from '@/hooks/useHasMounted';
 import CompleteProfileWizard from './CompleteProfileWizard';
 
 interface AuthUser {
@@ -30,12 +31,18 @@ function avatarColor(name: string) {
 
 const NAV_GROUPS = [
   {
+    title: '',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', badge: '', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg> },
+    ]
+  },
+  {
     title: 'RESEARCH',
     items: [
-      { href: '/dashboard/reports', label: 'Reports', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
-      { href: '/dashboard/brand-stories', label: 'Brand Stories', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> },
-      { href: '/dashboard/newsletter', label: 'Newsletter', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
-      { href: '/dashboard/settings', label: 'Profile', badge: '', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
+      { href: '/dashboard/reports', label: 'Reports', badge: '', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
+      { href: '/dashboard/brand-stories', label: 'Brand Stories', badge: '', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> },
+      { href: '/dashboard/newsletter', label: 'Newsletter', badge: '', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
+      { href: '/dashboard/settings', label: 'Profile', badge: '', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
     ]
   }
 ];
@@ -44,14 +51,21 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  // Starts collapsed (icon-only) on desktop — the sidebar opens on hover/focus and closes again
+  // once the cursor/focus leaves it (see the <aside> below), rather than a manual pin toggle.
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHasMounted();
   const [reportSections, setReportSections] = useState<ReportSection[]>([]);
   const [reportsExpanded, setReportsExpanded] = useState(false);
   const [brandStorySections, setBrandStorySections] = useState<ReportSection[]>([]);
   const [brandStoriesExpanded, setBrandStoriesExpanded] = useState(false);
+
+  // Which expandable nav row (by href) the cursor is currently over — lets Reports/Brand
+  // Stories preview their submenu on hover without permanently pinning it open the way the
+  // chevron-click toggle (reportsExpanded/brandStoriesExpanded) does.
+  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
 
   const [showWizard, setShowWizard] = useState(false);
   const [profilePercent, setProfilePercent] = useState<number | null>(null);
@@ -87,8 +101,6 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   }, []);
 
   useEffect(() => {
-    setMounted(true);
-
     const checkMobile = () => setIsMobile(window.innerWidth < 960);
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -168,6 +180,9 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   const userColor = avatarColor(user.name);
 
   const sidebarWidth = collapsed ? 72 : 260;
+  // Mobile's slide-out drawer always shows full labels (it opens via the hamburger tap, not
+  // hover, and touch devices have no hover state) — only the desktop rail auto-collapses.
+  const showCollapsed = !isMobile && collapsed;
 
   const sidebar = (
     <div
@@ -183,51 +198,24 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
       }}
     >
       {/* Header / Logo */}
-      <div style={{ position: 'relative', padding: collapsed ? '16px 10px 14px' : '20px 16px 16px', borderBottom: '1px solid #f3f4f6' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', minWidth: 0, gap: 10, flex: collapsed ? '0 0 auto' : 1, maxWidth: collapsed ? 40 : 'calc(100% - 44px)' }}>
-            <div style={{ width: collapsed ? 32 : '100%', height: collapsed ? 32 : 72, display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', flexShrink: 0 }}>
-              <Image src="/logo.png" alt="StartupNews" width={collapsed ? 28 : 180} height={collapsed ? 28 : 64} style={{ objectFit: 'contain', width: collapsed ? 28 : '100%', height: collapsed ? 28 : '100%', maxWidth: collapsed ? 28 : 180, maxHeight: collapsed ? 28 : 64 }} />
+      <div style={{ position: 'relative', padding: showCollapsed ? '16px 10px 14px' : '20px 16px 16px', borderBottom: '1px solid #f3f4f6' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: showCollapsed ? 'center' : 'space-between' }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', minWidth: 0, gap: 10, flex: showCollapsed ? '0 0 auto' : 1, maxWidth: showCollapsed ? 40 : 'calc(100% - 44px)' }}>
+            <div style={{ width: showCollapsed ? 32 : '100%', height: showCollapsed ? 32 : 72, display: 'flex', alignItems: 'center', justifyContent: showCollapsed ? 'center' : 'flex-start', flexShrink: 0 }}>
+              <Image src="/logo.png" alt="StartupNews" width={showCollapsed ? 28 : 180} height={showCollapsed ? 28 : 64} style={{ objectFit: 'contain', width: showCollapsed ? 28 : '100%', height: showCollapsed ? 28 : '100%', maxWidth: showCollapsed ? 28 : 180, maxHeight: showCollapsed ? 28 : 64 }} />
             </div>
-            {/* {!collapsed && <span style={{ fontWeight: 800, fontSize: 18, color: '#111827', letterSpacing: '-0.02em' }}>StartupNews</span>} */}
+            {/* {!showCollapsed && <span style={{ fontWeight: 800, fontSize: 18, color: '#111827', letterSpacing: '-0.02em' }}>StartupNews</span>} */}
           </Link>
-
-          {!isMobile && !collapsed && (
-            <button
-              type="button"
-              onClick={() => setCollapsed(true)}
-              style={{
-                width: 26, height: 26, borderRadius: 6, border: '1px solid #e5e7eb', background: '#fff',
-                color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
-            </button>
-          )}
-          {!isMobile && collapsed && (
-            <button
-              type="button"
-              onClick={() => setCollapsed(false)}
-              style={{
-                position: 'absolute', top: 22, right: -12, width: 24, height: 24, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#fff',
-                color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                zIndex: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
-            </button>
-          )}
         </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ position: 'relative', flex: 1, padding: collapsed ? '10px' : '0 12px', overflowY: 'auto' }}>
+      <nav style={{ position: 'relative', flex: 1, padding: showCollapsed ? '10px' : '0 12px', overflowY: 'auto' }}>
         {NAV_GROUPS.map((group, gIdx) => (
-          <div key={gIdx} style={{ marginBottom: 20 }}>
-            {!collapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px', marginBottom: 6 }}>
-                <p style={{ margin: 0, fontSize: 11, color: '#9ca3af', fontWeight: 700, letterSpacing: '0.04em' }}>{group.title}</p>
+          <div key={gIdx} style={{ marginBottom: group.title ? 40 : 26 }}>
+            {!showCollapsed && group.title && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', marginBottom: 14 }}>
+                <p style={{ margin: 0, fontSize: 13, color: '#9ca3af', fontWeight: 700, letterSpacing: '0.04em' }}>{group.title}</p>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
               </div>
             )}
@@ -242,38 +230,46 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                 : () => setBrandStoriesExpanded((v) => !v);
               const active = item.href === '/dashboard' ? pathname === '/dashboard' : (item.href !== '#' && pathname?.startsWith(item.href));
               const hasSections = isExpandable && itemSections.length > 0;
+              // Pinned open (chevron click / being on that section's page) OR just being
+              // previewed because the cursor is over this row right now.
+              const showSubmenu = hasSections && (expanded || hoveredNav === item.href);
 
               return (
                 <div key={item.label}>
                   {/* Nav row — expandable items get a toggle chevron instead of being a plain link */}
-                  {isExpandable && !collapsed ? (
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+                  {isExpandable && !showCollapsed ? (
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}
+                      onMouseEnter={() => setHoveredNav(item.href)}
+                      onMouseLeave={() => setHoveredNav((h) => (h === item.href ? null : h))}
+                    >
                       <Link
                         href={item.href}
                         onClick={() => setMobileOpen(false)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 12,
-                          flex: 1, padding: '9px 10px', borderRadius: 6,
+                          display: 'flex', alignItems: 'center', gap: 14,
+                          flex: 1, padding: '15px 14px', borderRadius: 8,
                           textDecoration: 'none',
-                          color: '#4b5563',
-                          background: 'transparent',
+                          color: active ? '#ee1761' : '#4b5563',
+                          background: active ? '#fde8f0' : 'transparent',
+                          fontWeight: active ? 600 : 400,
                           transition: 'background 0.15s, color 0.15s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4b5563'; }}
+                        onMouseEnter={e => { if (active) return; e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                        onMouseLeave={e => { if (active) return; e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4b5563'; }}
                       >
-                        <span style={{ display: 'flex', flexShrink: 0, color: '#9ca3af' }}>{item.icon}</span>
-                        <span style={{ fontSize: 14, fontWeight: 500, flex: 1 }}>{item.label}</span>
+                        <span style={{ display: 'flex', flexShrink: 0, color: active ? '#ee1761' : '#374151' }}>{item.icon}</span>
+                        <span style={{ fontSize: 18, fontWeight: 500, flex: 1 }}>{item.label}</span>
                       </Link>
                       {hasSections && (
                         <button
                           type="button"
                           onClick={toggleExpanded}
-                          style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', borderRadius: 6, flexShrink: 0, transition: 'color 0.15s' }}
+                          style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', borderRadius: 6, flexShrink: 0, transition: 'color 0.15s' }}
                           onMouseEnter={e => { e.currentTarget.style.color = '#374151'; }}
                           onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af'; }}
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showSubmenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s ease' }}>
                             <polyline points="6 9 12 15 18 9" />
                           </svg>
                         </button>
@@ -282,25 +278,26 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                   ) : (
                     <Link
                       href={item.href}
-                      title={collapsed ? item.label : undefined}
+                      title={showCollapsed ? item.label : undefined}
                       onClick={() => setMobileOpen(false)}
                       style={{
                         display: 'flex', alignItems: 'center',
-                        justifyContent: collapsed ? 'center' : 'flex-start',
-                        gap: collapsed ? 0 : 12,
-                        padding: collapsed ? '10px 0' : '9px 10px',
-                        marginBottom: 2, borderRadius: 6, textDecoration: 'none',
-                        color: '#4b5563',
-                        background: 'transparent',
+                        justifyContent: showCollapsed ? 'center' : 'flex-start',
+                        gap: showCollapsed ? 0 : 14,
+                        padding: showCollapsed ? '10px 0' : '15px 14px',
+                        marginBottom: 6, borderRadius: 8, textDecoration: 'none',
+                        color: active ? '#ee1761' : '#4b5563',
+                        background: active ? '#fde8f0' : 'transparent',
+                        fontWeight: active ? 600 : 400,
                         transition: 'background 0.15s, color 0.15s',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4b5563'; }}
+                      onMouseEnter={e => { if (active) return; e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                      onMouseLeave={e => { if (active) return; e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4b5563'; }}
                     >
-                      <span style={{ display: 'flex', flexShrink: 0, color: '#9ca3af' }}>{item.icon}</span>
-                      {!collapsed && (
+                      <span style={{ display: 'flex', flexShrink: 0, color: active ? '#ee1761' : '#374151' }}>{item.icon}</span>
+                      {!showCollapsed && (
                         <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
-                          <span style={{ display: 'block', fontSize: 14, fontWeight: 500 }}>{item.label}</span>
+                          <span style={{ display: 'block', fontSize: 18, fontWeight: 500 }}>{item.label}</span>
                           {item.badge && (
                             <span style={{ fontSize: 9, border: '1px solid #d1d5db', color: '#6b7280', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>{item.badge}</span>
                           )}
@@ -309,9 +306,20 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                     </Link>
                   )}
 
-                  {/* Sections submenu */}
-                  {isExpandable && !collapsed && expanded && hasSections && (
-                    <div style={{ paddingLeft: 34, marginBottom: 6 }}>
+                  {/* Sections submenu — always mounted (when the parent has sections) and
+                      animated open/closed via a grid-rows 0fr/1fr collapse, rather than being
+                      mounted/unmounted on toggle, so it slides in smoothly on hover instead of
+                      just popping in. */}
+                  {isExpandable && !showCollapsed && hasSections && (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateRows: showSubmenu ? '1fr' : '0fr',
+                        transition: 'grid-template-rows 0.25s ease',
+                      }}
+                    >
+                      <div style={{ overflow: 'hidden', minHeight: 0 }}>
+                      <div style={{ paddingLeft: 34, marginBottom: 6, paddingTop: 2 }}>
                       {/* One row per section */}
                       {itemSections.map((section) => {
                         const sectionHref = `${item.href}?section=${section.id}`;
@@ -338,6 +346,8 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                           </Link>
                         );
                       })}
+                      </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -349,8 +359,8 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
 
       {/* Profile completeness */}
       {profilePercent !== null && profilePercent < 100 && (
-        <div style={{ padding: collapsed ? '0 10px 12px' : '0 16px 14px' }}>
-          {collapsed ? (
+        <div style={{ padding: showCollapsed ? '0 10px 12px' : '0 16px 14px' }}>
+          {showCollapsed ? (
             <button
               type="button"
               onClick={() => setShowWizard(true)}
@@ -393,18 +403,18 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
       )}
 
       {/* Logout bottom */}
-      <div style={{ padding: collapsed ? '14px 10px' : '0 16px 16px' }}>
+      <div style={{ padding: showCollapsed ? '14px 10px' : '0 16px 16px' }}>
         <button
           type="button"
           onClick={handleLogout}
-          title={collapsed ? 'Logout' : undefined}
+          title={showCollapsed ? 'Logout' : undefined}
           style={{
             width: '100%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: collapsed ? '12px 0' : '11px 0',
-            borderRadius: collapsed ? 6 : 4,
+            padding: showCollapsed ? '12px 0' : '11px 0',
+            borderRadius: showCollapsed ? 6 : 4,
             background: '#ee1761',
             color: '#fff',
             border: 'none',
@@ -416,7 +426,7 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
           onMouseEnter={e => e.currentTarget.style.background = '#c8114d'}
           onMouseLeave={e => e.currentTarget.style.background = '#ee1761'}
         >
-          {collapsed ? (
+          {showCollapsed ? (
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <polyline points="16 17 21 12 16 7" />
@@ -472,11 +482,24 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
 
       {!isMobile && (
         <div style={{ display: 'flex', minHeight: '100vh' }}>
-          <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: sidebarWidth, transition: 'width 0.25s ease', zIndex: 100 }}>
+          <aside
+            onMouseEnter={() => setCollapsed(false)}
+            onMouseLeave={() => setCollapsed(true)}
+            onFocus={() => setCollapsed(false)}
+            onBlur={(e) => {
+              // Only re-collapse once focus has actually left the sidebar (e.g. Tab past the
+              // last link) — not while it's just moving from one nav item to the next inside it.
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCollapsed(true);
+            }}
+            style={{
+              position: 'fixed', top: 0, left: 0, bottom: 0, width: sidebarWidth,
+              transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', zIndex: 100,
+            }}
+          >
             {sidebar}
           </aside>
 
-          <div style={{ marginLeft: sidebarWidth, flex: 1, minWidth: 0, transition: 'margin-left 0.25s ease' }}>
+          <div style={{ marginLeft: sidebarWidth, flex: 1, minWidth: 0, transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
             <main style={{ minHeight: '100vh' }}>{children}</main>
           </div>
         </div>

@@ -133,23 +133,35 @@ export default async function StartupEventPage({
                 return null;
               })()}
 
-              {(event.venueAddress || event.googleLocationLink) && (
+              {(event.dateRange || event.timeRange || event.venueAddress || event.googleLocationLink) && (
                 <div className="event-detail-venue">
-                  <h3 className="event-detail-section-title">
-                    Venue :-{" "}
-                    {event.googleLocationLink ? (
-                      <a
-                        href={event.googleLocationLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="event-detail-venue-address-link"
-                      >
-                        {event.venueAddress || "View on Google Maps"}
-                      </a>
-                    ) : (
-                      <span className="event-detail-venue-address-inline">{event.venueAddress}</span>
-                    )}
-                  </h3>
+                  {event.dateRange && (
+                    <h3 className="event-detail-section-title">
+                      Date :- <span className="event-detail-venue-address-inline">{event.dateRange}</span>
+                    </h3>
+                  )}
+                  {event.dateRange && event.timeRange && (
+                    <h3 className="event-detail-section-title">
+                      Time :- <span className="event-detail-venue-address-inline">{event.timeRange}</span>
+                    </h3>
+                  )}
+                  {(event.venueAddress || event.googleLocationLink) && (
+                    <h3 className="event-detail-section-title">
+                      Venue :-{" "}
+                      {event.googleLocationLink ? (
+                        <a
+                          href={event.googleLocationLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="event-detail-venue-address-link"
+                        >
+                          {event.venueAddress || "View on Google Maps"}
+                        </a>
+                      ) : (
+                        <span className="event-detail-venue-address-inline">{event.venueAddress}</span>
+                      )}
+                    </h3>
+                  )}
                 </div>
               )}
 
@@ -169,14 +181,14 @@ export default async function StartupEventPage({
                 </div>
               )}
 
-              <div className="event-detail-actions" style={{ flexDirection: 'column', justifyContent: 'center', marginTop: '20px', gap: '20px' }}>
+              <div className="event-detail-actions" style={{ marginTop: '20px' }}>
                 {event.url && (
                   <a href={event.url} target="_blank" rel="noopener noreferrer" className="event-detail-book-btn">
-                    Book Now
+                    Get Access Now
                   </a>
                 )}
                 <Link href="/events" className="event-detail-back">
-                  Back to Events <ArrowRightIcon aria-hidden="true" />
+                  More Events <ArrowRightIcon aria-hidden="true" />
                 </Link>
               </div>
             </div>

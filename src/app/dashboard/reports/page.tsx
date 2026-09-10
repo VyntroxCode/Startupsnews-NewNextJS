@@ -21,6 +21,67 @@ const Page = dynamic(() => import('react-pdf').then((m) => m.Page), { ssr: false
 // matters most for users far from the S3 bucket's region (high per-request latency).
 const PDF_LOAD_OPTIONS = { rangeChunkSize: 1024 * 1024 };
 
+// Cards are mounted a batch at a time as the user scrolls — a section can hold 100+ reports,
+// each with two <Image> layers, and mounting them all up front stalls the first paint.
+const CARD_BATCH = 12;
+
+const HIDDEN_TRANSFORMS = [
+  'perspective(1200px) translate3d(-70px, 30px, -60px) scale(0.94)',
+  'perspective(1200px) translate3d(0, 40px, -220px) scale(0.88)',
+  'perspective(1200px) translate3d(0, 40px, -220px) scale(0.88)',
+  'perspective(1200px) translate3d(70px, 30px, -60px) scale(0.94)',
+];
+
+function RevealCard({ index, columns, children }: { index: number; columns: number; children: React.ReactNode }) {
+  const [shown, setShown] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setShown(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setShown(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0.05 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  const col = index % columns;
+  const hidden = columns === 1
+    ? HIDDEN_TRANSFORMS[index % 2 === 0 ? 0 : 3]
+    : HIDDEN_TRANSFORMS[col % HIDDEN_TRANSFORMS.length];
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        height: '100%',
+        opacity: shown || reduceMotion ? 1 : 0,
+        transform: shown || reduceMotion ? 'none' : hidden,
+        transition: reduceMotion ? 'none' : 'opacity 0.55s ease-out, transform 0.65s cubic-bezier(0.22, 1, 0.36, 1)',
+        transitionDelay: reduceMotion ? '0ms' : `${col * 80}ms`,
+        willChange: shown ? 'auto' : 'transform, opacity',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 interface Report {
   id: string;
   title: string;
@@ -65,6 +126,8 @@ export default function ReportsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [brokenPreviewImages, setBrokenPreviewImages] = useState<Record<string, boolean>>({});
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [visibleCount, setVisibleCount] = useState(CARD_BATCH);
+  const gridSentinelObserver = useRef<IntersectionObserver | null>(null);
   const [pdfNumPages, setPdfNumPages] = useState(0);
   const [pdfViewportWidth, setPdfViewportWidth] = useState(0);
   const [pdfVisiblePages, setPdfVisiblePages] = useState(2);
@@ -86,6 +149,22 @@ export default function ReportsPage() {
     io.observe(node);
     pdfSentinelObserver.current = io;
   }, []);
+
+  const gridSentinelRef = useCallback((node: HTMLDivElement | null) => {
+    gridSentinelObserver.current?.disconnect();
+    gridSentinelObserver.current = null;
+    if (!node) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) setVisibleCount((c) => c + CARD_BATCH);
+      },
+      { rootMargin: '250px 0px' }
+    );
+    io.observe(node);
+    gridSentinelObserver.current = io;
+  }, []);
+
+  useEffect(() => () => gridSentinelObserver.current?.disconnect(), []);
 
   useEffect(() => {
     const sync = () => setIsMobile(window.innerWidth <= 768);
@@ -114,6 +193,10 @@ export default function ReportsPage() {
     setSelectedReport(null);
     setSearch('');
   }, [sectionFilter]);
+
+  useEffect(() => {
+    setVisibleCount(CARD_BATCH);
+  }, [sectionFilter, search]);
 
   useEffect(() => {
     if (!selectedReport) return;
@@ -260,16 +343,17 @@ export default function ReportsPage() {
           <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>Try adjusting your search.</p>
         </div>
       ) : (
+        <>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, minmax(0, 1fr))', gap: isMobile ? 14 : 18 }}>
-          {filtered.map((report) => {
+          {filtered.slice(0, visibleCount).map((report, index) => {
             const hovered = hoveredCard === report.id;
             const imagePreviewUrl = report.thumbnailUrl || (report.mimeType?.startsWith('image/') ? report.fileUrl : null);
             const hasPreview = Boolean(imagePreviewUrl) && !brokenPreviewImages[report.id];
 
             return (
+              <RevealCard key={report.id} index={index} columns={isMobile ? 1 : 4}>
               <div
-                key={report.id}
-                style={{ background: '#fff', borderRadius: 0, border: hovered ? '1px solid #d7dce5' : '1px solid #dfe5ee', boxShadow: hovered ? '0 18px 40px rgba(15,23,42,0.08)' : '0 10px 24px rgba(15,23,42,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column', transform: hovered ? 'translateY(-2px)' : 'none', transition: 'all 0.2s ease' }}
+                style={{ height: '100%', boxSizing: 'border-box', background: '#fff', borderRadius: 0, border: hovered ? '1px solid #d7dce5' : '1px solid #dfe5ee', boxShadow: hovered ? '0 18px 40px rgba(15,23,42,0.08)' : '0 10px 24px rgba(15,23,42,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column', transform: hovered ? 'translateY(-2px)' : 'none', transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease' }}
                 onMouseEnter={() => setHoveredCard(report.id)}
                 onMouseLeave={() => setHoveredCard(null)}
               >
@@ -302,9 +386,14 @@ export default function ReportsPage() {
                   </div>
                 </div>
               </div>
+              </RevealCard>
             );
           })}
         </div>
+        {visibleCount < filtered.length && (
+          <div key={visibleCount} ref={gridSentinelRef} style={{ height: 1 }} />
+        )}
+        </>
       )}
 
       {/* Preview modal */}

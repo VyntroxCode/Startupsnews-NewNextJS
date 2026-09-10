@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getEventsByRegion } from "@/lib/data-adapter";
 import { EventsCarousel } from "@/components/EventsCarousel";
 import { ArrowRightIcon } from "@/components/icons";
+import { NON_GEOGRAPHIC_REGIONS, resolveCountry } from "@/modules/events/utils/region-country.utils";
 
 // Helper to convert region name to slug (e.g. "Delhi NCR" -> "delhi-ncr")
 function slugify(text: string) {
@@ -57,6 +58,8 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
     }
 
     const upcomingEvents = eventsByRegion[region] || [];
+    const country = resolveCountry(region, upcomingEvents);
+    const showCityHeading = region !== country && !NON_GEOGRAPHIC_REGIONS.has(region);
 
     return (
         <div className="mvp-main-blog-wrap left relative mvp-main-blog-marg event-by-country-page">
@@ -83,14 +86,16 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
                         <div className="mvp-main-blog-in event-by-country-in">
                             <div className="mvp-main-blog-body left relative event-by-country-body">
                                 <section className="event-by-country-section" style={{ paddingTop: "20px" }}>
-                                    <h2 className="event-by-country-region">Events In {region}</h2>
+                                    <h2 className="event-by-country-region">{country}</h2>
                                     {upcomingEvents.length > 0 ? (
-                                        <EventsCarousel
-                                            events={upcomingEvents}
-                                            maxEvents={upcomingEvents.length}
-                                            title={null}
-                                            className="event-country-carousel"
-                                        />
+                                        <div className="event-by-country-city-group">
+                                            <EventsCarousel
+                                                events={upcomingEvents}
+                                                maxEvents={upcomingEvents.length}
+                                                title={showCityHeading ? region : null}
+                                                className="event-country-carousel"
+                                            />
+                                        </div>
                                     ) : (
                                         <p>No upcoming events found for {region} at this time.</p>
                                     )}

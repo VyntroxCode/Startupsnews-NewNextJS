@@ -97,6 +97,12 @@ const nextConfig: NextConfig = {
         destination: "/funding-tracker",
         permanent: true,
       },
+      {
+        // Public event submission page renamed from "Submit Your Event" to "List Your Event"
+        source: "/submit-event",
+        destination: "/list-your-event",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {

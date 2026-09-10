@@ -35,6 +35,7 @@
 @source "./advertise-with-us/page.tsx";
 @source "./ecosystem-partners/page.tsx";
 @source "./contact-us/page.tsx";
+@source "./careers/page.tsx";
 
 @theme {
   /* About Us page tokens */
@@ -56,4 +57,15 @@
   --color-adv-line: #E9EBEE;
   --color-adv-line-2: #DFE3E7;
   --color-adv-panel: #F6F7F8;
+
+  /* Careers page tokens — same brand pink family as .site-page-heading's underline (#E62E69)
+     and the shared --brand form accent (#E23A63), so the page reads as this site rather than
+     a reskin of Advertise's red. */
+  --color-cr-pink: #E23A63;
+  --color-cr-pink-deep: #B8213F;
+  --color-cr-ink: #14131A;
+  --color-cr-muted: #6B7280;
+  --color-cr-muted-2: #9AA1A9;
+  --color-cr-line: #ECE7EA;
+  --color-cr-panel: #FAF6F8;
 }

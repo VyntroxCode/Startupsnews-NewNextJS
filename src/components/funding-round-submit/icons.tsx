@@ -27,12 +27,18 @@ export function ContactPinIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export function DeckIcon(props: SVGProps<SVGSVGElement>) {
+export function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M6 2.5h9l3 3V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z" />
-      <path d="M14.5 2.5V6h3.5" />
-      <path d="M8 13h8M8 16.5h8M8 9.5h4" />
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+export function ArrowDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 5v14M6 13l6 6 6-6" />
     </svg>
   );
 }

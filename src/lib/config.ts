@@ -84,7 +84,7 @@ export const siteConfig = {
         { label: "Mumbai", href: "/events/mumbai" },
       ],
     },
-    { label: "SUBMIT YOUR EVENT", href: "/submit-event" },
+    { label: "LIST YOUR EVENT", href: "/list-your-event" },
     { label: "PARTNER WITH US" },
     { label: "REPORTS", href: "/dashboard/reports", requiresAuth: true },
     {

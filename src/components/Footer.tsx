@@ -111,8 +111,8 @@ export function Footer() {
                <li><Link href="/events/dubai">Tech Events in Dubai</Link></li>
                <li><Link href="/events/singapore">Tech Events in Singapore</Link></li>
                <li><Link href="/events/bengaluru">Startup Events in Bengaluru </Link></li>
-              <li><a href="https://forms.gle/G4ZxCP3G1gTHJf1v5" target="_blank" rel="noopener noreferrer">Partner / Sponsor an Event</a></li>
-              <li><Link href="/submit-event">Submit Your Event</Link></li>
+              <li><Link href="/sponsor-event">Partner / Sponsor an Event</Link></li>
+              <li><Link href="/list-your-event">List Your Event</Link></li>
             </ul>
           </div>
 
@@ -134,7 +134,7 @@ export function Footer() {
               <li><Link href="/advertise-with-us">Advertise with Us</Link></li>
               <li><Link href="/editorial-policy">Editorial Policy</Link></li>
               <li><Link href="/our-partners">Our Partners</Link></li>
-              <li> <a href="mailto:office@startupnews.fyi">Careers</a></li>
+              <li><Link href="/careers">Careers</Link></li>
               <li><Link href="/contact-us">Contact Us</Link></li>
             </ul>
           </div>
@@ -148,6 +148,8 @@ export function Footer() {
             <Link href="/terms-and-conditions">Terms and Conditions</Link>
             <span className="footer-separator">/</span>
             <Link href="/return-refund-policy">Return and Refund Policy</Link>
+            <span className="footer-separator">/</span>
+            <Link href="/editorial-policy">Editorial Policy</Link>
             {/* <span className="footer-separator">/</span>
             <Link href="/delete-your-account">Delete Your Account</Link> */}
           </div>

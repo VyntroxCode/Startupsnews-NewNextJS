@@ -273,11 +273,11 @@ export function Header() {
                             setUserMenuOpen(prev => !prev);
                           }}
                           title={`${authUser.name} — click for dashboard, double-click to sign out`}
+                          className="header-avatar-btn"
                           style={{
                             width: 34, height: 34, borderRadius: '50%',
                             background: avatarColor(authUser.name),
                             border: '2px solid #fff',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
                             color: '#fff', fontWeight: 800, fontSize: 14,
                             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             letterSpacing: 0, lineHeight: 1, flexShrink: 0,

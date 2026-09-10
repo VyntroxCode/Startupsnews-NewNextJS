@@ -6,6 +6,7 @@ import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import AttendanceWidget from '@/components/admin/AttendanceWidget';
 import ProfileProgressStrip from '@/components/admin/ProfileProgressStrip';
+import ImageUpload from '@/components/admin/ImageUpload';
 
 interface DashboardStats {
   posts: number;
@@ -32,6 +33,12 @@ export default function AdminDashboard() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [heroStep1, setHeroStep1] = useState('');
+  const [heroStep2, setHeroStep2] = useState('');
+  const [heroLoading, setHeroLoading] = useState(true);
+  const [heroSaving, setHeroSaving] = useState(false);
+  const [heroMessage, setHeroMessage] = useState<string | null>(null);
+  const [heroError, setHeroError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -110,6 +117,60 @@ export default function AdminDashboard() {
       setSettingsError('An error occurred while saving footer copyright text');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isEventAdmin || isPublisherAdmin) {
+      setHeroLoading(false);
+      return;
+    }
+
+    const fetchHeroImages = async () => {
+      try {
+        const response = await fetch(withAdminToken('/api/admin/site-settings/feature-startup-images'), {
+          headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (data?.success) {
+          setHeroStep1(data.data?.step1 || '');
+          setHeroStep2(data.data?.step2 || '');
+        }
+      } catch (err) {
+        console.error('Error fetching feature-startup-images setting:', err);
+      } finally {
+        setHeroLoading(false);
+      }
+    };
+
+    fetchHeroImages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveHeroImages = async () => {
+    setHeroSaving(true);
+    setHeroMessage(null);
+    setHeroError(null);
+
+    try {
+      const response = await fetch('/api/admin/site-settings/feature-startup-images', {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ step1: heroStep1, step2: heroStep2 }),
+      });
+      const data = await response.json();
+
+      if (!data?.success) {
+        setHeroError(data?.error || 'Failed to save hero images');
+        return;
+      }
+
+      setHeroMessage('Feature Your Startup hero images updated successfully.');
+    } catch (err) {
+      console.error('Error saving feature-startup-images setting:', err);
+      setHeroError('An error occurred while saving the hero images');
+    } finally {
+      setHeroSaving(false);
     }
   };
 
@@ -463,6 +524,71 @@ export default function AdminDashboard() {
               </div>
               {settingsMessage && <p style={{ margin: 0, color: '#166534', fontSize: '0.9rem' }}>{settingsMessage}</p>}
               {settingsError && <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.9rem' }}>{settingsError}</p>}
+            </div>
+          </div>
+        )}
+
+        {!isEventAdmin && !isPublisherAdmin && (
+          <div style={{
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+            padding: '2rem',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+            border: '1px solid rgba(0, 0, 0, 0.04)',
+            marginTop: '1.5rem',
+          }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: '600',
+              marginBottom: '0.5rem',
+              color: '#0f172a',
+              letterSpacing: '-0.01em',
+            }}>
+              Feature Your Startup — Hero Images
+            </h2>
+            <p style={{
+              color: '#64748b',
+              fontSize: '0.9375rem',
+              marginBottom: '1rem',
+            }}>
+              Replace the two split-screen hero photos on <code>/feature-your-startup</code> with real
+              photography, uploaded to the CDN. Leave a field empty to fall back to the page&apos;s
+              bundled placeholder image.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
+              <ImageUpload
+                label="Step 1 — Your Details & Contact"
+                value={heroStep1}
+                onChange={setHeroStep1}
+              />
+              <ImageUpload
+                label="Step 2 — Pitch Deck"
+                value={heroStep2}
+                onChange={setHeroStep2}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={saveHeroImages}
+                disabled={heroLoading || heroSaving}
+                style={{
+                  padding: '0.7rem 1.2rem',
+                  background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: heroLoading || heroSaving ? 'not-allowed' : 'pointer',
+                  opacity: heroLoading || heroSaving ? 0.7 : 1,
+                }}
+              >
+                {heroSaving ? 'Saving...' : 'Save Hero Images'}
+              </button>
+              {heroMessage && <p style={{ margin: 0, color: '#166534', fontSize: '0.9rem' }}>{heroMessage}</p>}
+              {heroError && <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.9rem' }}>{heroError}</p>}
             </div>
           </div>
         )}

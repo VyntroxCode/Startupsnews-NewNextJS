@@ -127,7 +127,7 @@ export class EventSubmissionService {
       : [];
 
     const slug = payload.slug?.trim();
-    const commentParts = ['Submitted via /submit-event.'];
+    const commentParts = ['Submitted via /list-your-event.'];
     if (slug) commentParts.push(`Suggested slug: ${slug}`);
 
     return {

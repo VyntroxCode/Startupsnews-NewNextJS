@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";
 import { getInnerPageContent } from "@/lib/data-adapter";
@@ -45,7 +46,11 @@ const DEFAULT_CONTENT = (
         Careers
       </h2>
       <p className="contact-us-section-item-body">
-        For information regarding careers with us, please email at{" "}
+        Visit our{" "}
+        <Link className="contact-us-section-item-link" href="/careers">
+          Careers page
+        </Link>{" "}
+        to see how to apply, or email us directly at{" "}
         <a className="contact-us-section-item-link" href="mailto:office@startupnews.fyi">
           office@startupnews.fyi
         </a>
