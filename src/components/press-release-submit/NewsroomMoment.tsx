@@ -7,7 +7,7 @@ import { pressReleaseImages } from "./images";
 import { useReducedMotion } from "./hooks";
 import { PR_EASE } from "./motion";
 
-/** Section 08 — the cinematic pause. A full-bleed photograph that slowly zooms as it passes, with
+/** Section 06 — the cinematic pause. A full-bleed photograph that slowly zooms as it passes, with
  * the overlay deepening at the same time so the type stays legible at every scroll position, and a
  * pink rule growing under the statement.
  *

@@ -1,14 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "motion/react";
 import { SectionLabel } from "./SectionLabel";
-import { AppIcon, GoogleIcon, NetworkIcon, WhatsAppIcon } from "./icons";
+import { GoogleIcon, NetworkIcon, WhatsAppIcon } from "./icons";
 import { useReducedMotion } from "./hooks";
 
 /** Only things this business already states publicly: the 2019 founding date in the site-wide
  * Organization JSON-LD (src/app/layout.tsx), and the media-partner / community / search figures
- * published on /advertise-with-us. The editorial-policy and app links are real routes. */
+ * published on /advertise-with-us. */
 const REASONS = [
   {
     key: "since",
@@ -49,7 +48,7 @@ export function WhyStartupNews() {
     <section className="fys-why" aria-labelledby="fys-why-title">
       <div className="fys-why-inner">
         <div className="fys-why-aside">
-          <SectionLabel index="06" align="left">
+          <SectionLabel align="left">
             Credibility
           </SectionLabel>
           <motion.h2
@@ -69,19 +68,8 @@ export function WhyStartupNews() {
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.55, delay: 0.1 }}
           >
-            Every submission is read by our editorial team and handled under our{" "}
-            <Link href="/editorial-policy">editorial policy</Link>. We&apos;ll tell you if it&apos;s
-            a fit — and we won&apos;t promise coverage we can&apos;t stand behind.
-          </motion.p>
-          <motion.p
-            className="fys-why-apps"
-            initial={reducedMotion ? false : { opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <AppIcon className="fys-why-apps-icon" />
-            Also read on our iOS and Android apps.
+            A feature puts your startup in front of the founders, investors and builders who
+            follow what&apos;s being built next — told clearly, and edited by our desk.
           </motion.p>
         </div>
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SponsorEventPage } from "@/components/sponsor-event/SponsorEventPage";
+import { getPromotedCityOptions } from "@/lib/data-adapter";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -18,6 +19,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SponsorEventRoute() {
-  return <SponsorEventPage />;
+// Fetched here rather than in the client form, as /list-your-event and the other submission pages
+// do: the City dropdown is complete on first paint — no endpoint, no loading state, no flash of a
+// list missing its earned cities.
+export default async function SponsorEventRoute() {
+  const promotedCities = await getPromotedCityOptions();
+  return <SponsorEventPage promotedCities={promotedCities} />;
 }

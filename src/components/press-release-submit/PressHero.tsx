@@ -14,31 +14,33 @@ const HEADLINE_LINES = ["Your Story", "Starts Here."];
  * reader's eye is led rather than ambushed:
  *
  *   0.00  the gray ground is simply there (no animation — it is the page background)
- *   0.30  the masthead label fades in
  *   0.50  the headline reveals line by line from under a clip
  *   1.00  the supporting paragraph rises
  *   1.30  the photograph opens from a bottom mask while settling from 1.06 → 1
- *   1.80  the pink marker draws across the composition
  *   2.20  the editorial card and its metadata stagger in
- *   2.45  the actions and the scroll cue appear last
+ *
+ * The pink marker that drew across the top of the photograph at 1.80s was removed on request,
+ * along with its `marker` timing.
+ *
+ * Removed on request: the "StartupNews.fyi / Press Desk" masthead that opened the sequence, the
+ * two buttons under the paragraph, and the "Scroll to read" cue that closed it — with them went
+ * the `onStart`/`onHowItWorks` props, so the hero takes none and links nowhere. The `masthead` and
+ * `actions` timings went with their elements; the beats that remain keep their original times
+ * rather than being packed up, since the point of the sequence is the pacing, not the count.
  *
  * Everything here is `animate` (not `whileInView`) because it must run on load; every section
  * below the fold uses `whileInView` instead. */
 const T = {
-  masthead: 0.3,
   headline: 0.5,
   sub: 1.0,
   image: 1.3,
-  marker: 1.8,
   card: 2.2,
-  actions: 2.45,
 } as const;
 
-export function PressHero({ onStart, onHowItWorks }: { onStart: () => void; onHowItWorks: () => void }) {
+export function PressHero() {
   const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
-  const cueOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0]);
   const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "-9%"]);
 
   const enter = (delay: number, y = 24) =>
@@ -54,11 +56,6 @@ export function PressHero({ onStart, onHowItWorks }: { onStart: () => void; onHo
     <header className="pr-hero" ref={sectionRef}>
       <div className="pr-hero-grid">
         <div className="pr-hero-copy">
-          <motion.p className="pr-hero-masthead" {...enter(T.masthead, 12)}>
-            <span className="pr-hero-dot" aria-hidden="true" />
-            StartupNews.fyi <span className="pr-hero-slash">/</span> Press Desk
-          </motion.p>
-
           <h1 className="pr-hero-headline" aria-label={HEADLINE_LINES.join(" ")}>
             {HEADLINE_LINES.map((line, i) => (
               <span className="pr-hero-line-clip" key={line} aria-hidden="true">
@@ -80,15 +77,6 @@ export function PressHero({ onStart, onHowItWorks }: { onStart: () => void; onHo
             understand what happened, and why it matters.
           </motion.p>
 
-          <motion.div className="pr-hero-actions" {...enter(T.actions, 16)}>
-            <button type="button" className="pr-btn pr-btn-primary" onClick={onStart}>
-              Submit Your Story
-              <span className="pr-btn-arrow" aria-hidden="true">→</span>
-            </button>
-            <button type="button" className="pr-btn pr-btn-ghost" onClick={onHowItWorks}>
-              See How It Works
-            </button>
-          </motion.div>
         </div>
 
         <div className="pr-hero-visual">
@@ -142,42 +130,8 @@ export function PressHero({ onStart, onHowItWorks }: { onStart: () => void; onHo
             <p className="pr-hero-card-foot">Illustrative — not a published story</p>
           </motion.div>
 
-          <motion.span
-            className="pr-hero-marker"
-            aria-hidden="true"
-            initial={reducedMotion ? { scaleX: 1 } : { scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.9, delay: T.marker, ease: PR_EASE }}
-          />
-          <motion.span className="pr-hero-folio" aria-hidden="true" {...enter(T.marker + 0.2, 10)}>
-            01
-          </motion.span>
         </div>
       </div>
-
-      {/* Two elements, not one: the scroll-linked fade lives on the wrapper and the entrance fade
-          on the button, because a MotionValue passed through `style` and an `animate` target
-          cannot both drive `opacity` on the same element — the scroll value would simply win and
-          the entrance would never be seen. */}
-      <motion.div className="pr-scroll-cue-wrap" style={reducedMotion ? undefined : { opacity: cueOpacity }}>
-        <motion.button
-          type="button"
-          className="pr-scroll-cue"
-          onClick={onHowItWorks}
-          initial={reducedMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: T.actions + 0.15 }}
-        >
-          <span>Scroll to read</span>
-          <span className="pr-scroll-track" aria-hidden="true">
-            <motion.span
-              className="pr-scroll-thumb"
-              animate={reducedMotion ? {} : { y: ["-100%", "150%"] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-            />
-          </span>
-        </motion.button>
-      </motion.div>
     </header>
   );
 }

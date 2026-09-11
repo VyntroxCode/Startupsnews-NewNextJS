@@ -1,3 +1,5 @@
+import { PHONE_RULES } from "@/components/ui/constants/phone";
+import { hasValidCustomCode, resolvePhoneCode } from "./compose";
 import type { LeadFormData } from "./types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -12,11 +14,31 @@ export function validateCompanyName(data: LeadFormData): string {
   return data.companyName.trim() ? "" : "Please enter your company name.";
 }
 
+/** Two collection modes, one rule set.
+ *
+ * A page that collects a dial code separately (Feature Your Startup, via the shared PhoneField)
+ * gets the same per-country check /list-your-event applies — a 10-digit Indian number starting
+ * 6-9, an 8-digit Singapore number, and so on — because a "phone number" that is valid everywhere
+ * is valid nowhere, and the reader would only find out after we failed to reach them.
+ *
+ * A page that still takes one typed string keeps the original loose digit count. The branch is on
+ * `phoneCode` being set at all, which only a page using the structured control ever does, so the
+ * other two forms are unaffected by this living here. */
 export function validatePhone(data: LeadFormData): string {
-  const digits = data.phone.replace(/\D/g, "");
+  if (!data.phoneCode) {
+    const digits = data.phone.replace(/\D/g, "");
+    if (!digits) return "Please enter a phone number.";
+    if (digits.length < 7) return "Enter a valid phone number.";
+    return "";
+  }
+
+  if (data.phoneCode === "other" && !hasValidCustomCode(data)) {
+    return "Enter a valid country code (e.g. +34).";
+  }
+  const digits = data.phoneNumber.replace(/\D/g, "");
   if (!digits) return "Please enter a phone number.";
-  if (digits.length < 7) return "Enter a valid phone number.";
-  return "";
+  const rule = PHONE_RULES[resolvePhoneCode(data)] || PHONE_RULES.other;
+  return rule.pattern.test(digits) ? "" : rule.message;
 }
 
 export function validateEmail(data: LeadFormData): string {

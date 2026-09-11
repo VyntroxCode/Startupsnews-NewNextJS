@@ -10,12 +10,18 @@ import type { FeatureStartupFormController } from "./useFeatureStartupForm";
  * it and the remaining fields are simply asked for on one page. The controller is unchanged — it
  * is still the shared `useLeadForm` instance, with the same field set, the same validators and the
  * same submit path; it just runs with a single step group now. */
-export function FormPanel({ ctrl }: { ctrl: FeatureStartupFormController }) {
+export function FormPanel({
+  ctrl,
+  promotedCities,
+}: {
+  ctrl: FeatureStartupFormController;
+  promotedCities?: Record<string, string[]>;
+}) {
   return (
     <div className="fys-form-col">
       <div className="fys-form-inner">
         <form onSubmit={(e) => e.preventDefault()}>
-          <DetailsContactStep ctrl={ctrl} />
+          <DetailsContactStep ctrl={ctrl} promotedCities={promotedCities} />
         </form>
 
         <p className="fys-form-privacy">

@@ -10,10 +10,13 @@ const STEPS = [
 ] as const;
 
 /** The form's progress indicator: a rule-led masthead treatment rather than a pill bar
- * ("01 STORY ──── 02 SOURCE ──── 03 REVIEW"). The connecting rule between two steps fills
- * left→right once the reader has passed the first of them, the current step reads in black with a
- * pink marker under its number, completed steps swap their number for a pink check, and steps
- * still ahead stay muted gray.
+ * ("STORY ──── SOURCE ──── REVIEW"). The connecting rule between two steps fills left→right once
+ * the reader has passed the first of them, the current step reads in black, completed steps show a
+ * pink check, and steps still ahead stay muted gray.
+ *
+ * It printed "01"/"02"/"03" ahead of each label until all numbering was removed from this page.
+ * The check for a completed step stays — it is a state, not a number — and it now sits where the
+ * number was, so the row keeps its rhythm rather than collapsing to three bare words.
  *
  * Presentational only — `currentStep` is owned by the form controller. The rule fill is a scaleX
  * transition rather than a width change so it never triggers layout. */
@@ -38,9 +41,7 @@ export function PressProgress({ currentStep }: { currentStep: number }) {
                   <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" className="pr-progress-check">
                     <path d="M3.5 8.4 L6.6 11.4 L12.5 4.9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                ) : (
-                  step.n
-                )}
+                ) : null}
               </span>
               {i < STEPS.length - 1 && (
                 <span className="pr-progress-rule" aria-hidden="true">

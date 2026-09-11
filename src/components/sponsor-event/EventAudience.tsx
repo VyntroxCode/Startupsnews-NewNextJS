@@ -8,38 +8,34 @@ import { useReducedMotion } from "./hooks";
 import {
   ArrowRightIcon,
   BuilderIcon,
-  CommunityIcon,
   FounderIcon,
   InvestorIcon,
-  MediaIcon,
-  TeamIcon,
 } from "./icons";
 
 /** Who reads StartupNews.fyi and turns up to ecosystem events. Described as the kinds of people an
  * event can be put in front of — never as a guaranteed headcount, and with no numbers attached. */
 const AUDIENCE = [
   { key: "founders", Icon: FounderIcon, title: "Founders", body: "People building the next generation of startups — and looking for the rooms where that gets easier.", photo: audienceImages.founders },
-  { key: "investors", Icon: InvestorIcon, title: "Investors", body: "People looking for ideas, teams and opportunities before everyone else is talking about them." },
+  { key: "investors", Icon: InvestorIcon, title: "Investors", body: "People looking for ideas, teams and opportunities before everyone else is talking about them.", photo: audienceImages.investors },
   { key: "builders", Icon: BuilderIcon, title: "Builders", body: "Developers, designers, product leaders and operators who show up for the substance.", photo: audienceImages.builders },
-  { key: "teams", Icon: TeamIcon, title: "Technology teams", body: "Companies creating the tools the rest of the ecosystem is built on." },
-  { key: "communities", Icon: CommunityIcon, title: "Communities", body: "Startup groups, accelerators, incubators and founder networks with their own audiences.", photo: audienceImages.community },
-  { key: "media", Icon: MediaIcon, title: "Media", body: "People and platforms covering the startup ecosystem, looking for what's worth writing about." },
 ] as const;
 
-/** 04 — who you can reach. Motion language: *staggered card entrance plus a hover that opens the
- * card up* — the icon lifts and tints, the border ignites, the arrow slides, and on the three
- * cards that carry a photograph the image fades up behind the text. First light section on the
- * page, and the point where the abstract nodes of the section above become actual people. */
+/** 04 — who you can reach. All three cards carry a photograph, and it is now the card rather than
+ * a texture behind it: the picture runs at full strength under a scrim, with the type reversed out
+ * white over it (it used to sit at 7% opacity, which is why the images did not read at all and the
+ * middle card, which had no picture, did not look out of place). Motion language: *staggered card
+ * entrance plus a hover that opens the card up* — the icon lifts and tints, the arrow slides, and
+ * the photograph brightens and pushes in. First light section on the page, and the point where the
+ * abstract nodes of the section above become actual people. */
 export function EventAudience() {
   const reducedMotion = useReducedMotion();
   return (
     <section className="sp-audience" aria-labelledby="sp-audience-title">
       <div className="sp-wrap">
         <SectionHead
-          index="04"
           kicker="Audience"
           tone="light"
-          title={<span id="sp-audience-title">Bring the right people into the room.</span>}
+          title={<span id="sp-audience-title">Bring The <em>Right People</em> Into The Room.</span>}
           lede="An event is only as good as who is in it. These are the groups your event can be put in front of through StartupNews.fyi."
         />
 

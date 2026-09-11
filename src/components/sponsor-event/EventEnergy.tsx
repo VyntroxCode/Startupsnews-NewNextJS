@@ -27,10 +27,10 @@ export function EventEnergy() {
 
       <div className="sp-energy-copy">
         <motion.h2 id="sp-energy-title" className="sp-energy-line" style={reducedMotion ? undefined : { y: topY }}>
-          Bring people together.
+          Bring People Together.
         </motion.h2>
         <motion.p className="sp-energy-line sp-energy-line-b" style={reducedMotion ? undefined : { y: bottomY }}>
-          Create moments that move the ecosystem forward.
+          Create Moments That Move The Ecosystem Forward.
         </motion.p>
       </div>
 

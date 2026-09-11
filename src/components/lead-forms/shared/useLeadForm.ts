@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { composeCountryCity, composePhone } from "./compose";
 import { createInitialLeadFormData, type LeadFormData, type FieldErrors, type LeadFormSource } from "./types";
 import { stepHasErrors, validateStep } from "./validation";
 
@@ -18,14 +19,46 @@ const DEFAULT_STEP_GROUPS: number[][] = [[1], [2], [3]];
  * round shared across all 3 pages. */
 const FAKE_SUBMIT_DELAY_MS = 900;
 
+/** Structured inputs whose edits have to be folded back into a canonical field — see LeadFormData.
+ * Kept as one map so a new sub-field cannot be added to the shape and forgotten here. */
+const DERIVED_FROM: Record<string, keyof LeadFormData> = {
+  phoneCode: "phone",
+  phoneCodeCustom: "phone",
+  phoneNumber: "phone",
+  country: "countryCity",
+  countryOther: "countryCity",
+  city: "countryCity",
+  cityOther: "countryCity",
+};
+
+/** Recomposes `phone` / `countryCity` from whichever structured field just changed.
+ *
+ * This is done here rather than in the step components on purpose: a form that stored the parts in
+ * one place and the assembled string in another would eventually be edited on one side only, and
+ * the bug (a submission carrying a stale phone number) would be silent. One writer, no drift. */
+function withDerived(next: LeadFormData, key: string): LeadFormData {
+  const target = DERIVED_FROM[key];
+  if (!target) return next;
+  if (target === "phone") return { ...next, phone: composePhone(next) };
+  return { ...next, countryCity: composeCountryCity(next) };
+}
+
 /** One step/field/validation engine shared by every lead-capture page on the site (Feature Your
  * Startup, Submit Your Funding Round, Submit Your Press Release). Each page supplies its own
  * visual design (layout, CSS, images/animation) around this controller — only the mechanics are
  * shared, not the UI. `source` is stamped on the controller so a future submission payload always
  * knows which page it was collected on. `stepGroups` lets a page combine multiple canonical
  * validation steps into fewer visual pages without touching the other callers' behavior. */
-export function useLeadForm(source: LeadFormSource, stepGroups: number[][] = DEFAULT_STEP_GROUPS) {
-  const [data, setData] = useState<LeadFormData>(createInitialLeadFormData);
+export function useLeadForm(
+  source: LeadFormSource,
+  stepGroups: number[][] = DEFAULT_STEP_GROUPS,
+  initialData?: Partial<LeadFormData>
+) {
+  // The lazy initializer runs on the first render only, so it reads the prop directly — the ref
+  // exists purely so `reset` (an event handler, long after that render) can land on the same
+  // starting values the form opened on even if the caller passed a fresh object literal since.
+  const [data, setData] = useState<LeadFormData>(() => createInitialLeadFormData(initialData));
+  const initialRef = useRef(initialData);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [currentStep, setCurrentStep] = useState(1);
   // +1 moving forward, -1 moving back — read by each page's own step-transition animation.
@@ -42,7 +75,7 @@ export function useLeadForm(source: LeadFormSource, stepGroups: number[][] = DEF
   }
 
   function setField<K extends keyof LeadFormData>(key: K, value: LeadFormData[K]) {
-    setData((prev) => ({ ...prev, [key]: value }));
+    setData((prev) => withDerived({ ...prev, [key]: value }, key as string));
   }
 
   // Error messages queued by updateAndMaybeValidate, recomputed once the matching `data` commit
@@ -69,7 +102,7 @@ export function useLeadForm(source: LeadFormSource, stepGroups: number[][] = DEF
     errorField: string,
     validator: (d: LeadFormData) => string
   ) {
-    setData((prev) => ({ ...prev, [key]: value }));
+    setData((prev) => withDerived({ ...prev, [key]: value }, key as string));
     if (errors[errorField]) pendingRevalidation.current.set(errorField, validator);
   }
 
@@ -116,7 +149,7 @@ export function useLeadForm(source: LeadFormSource, stepGroups: number[][] = DEF
   }
 
   function reset() {
-    setData(createInitialLeadFormData());
+    setData(createInitialLeadFormData(initialRef.current));
     setErrors({});
     setCurrentStep(1);
     setDirection(1);

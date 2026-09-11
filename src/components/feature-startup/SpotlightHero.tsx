@@ -3,8 +3,6 @@
 import { motion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
 import {
-  ArrowDownIcon,
-  ArrowRightIcon,
   InstagramIcon,
   LinkedInIcon,
   NewsletterIcon,
@@ -13,6 +11,8 @@ import {
   XIcon,
 } from "./icons";
 import { useReducedMotion } from "./hooks";
+import { featureStartupBackgrounds } from "./backgrounds";
+import { BackgroundVideo } from "./BackgroundVideo";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -22,16 +22,19 @@ const EASE = [0.22, 1, 0.36, 1] as const;
  * `float` its period, varied per card so the ring never pulses in unison.
  *
  * Each card is centred on its `x` by a translate, so its half-width has to clear the feature card
- * behind it: that card is 340px wide in an 880px stage, i.e. it occupies 31%–69%. Anything past
- * roughly 76% (or short of 24%) keeps a whole chip outside it — the ring is meant to frame the
- * card, and a chip sliding under it just reads as a layout bug. */
+ * behind it on BOTH sides: that card is 460px wide in a 1120px stage, i.e. it occupies 29.5%–70.5%,
+ * and the widest chip ("StartupNews.fyi") is roughly 215px, i.e. ±9.6% of the stage. So the usable
+ * band for a chip centre is about 11%–88% — further out and the chip hangs off the stage, further
+ * in and it slides under the card, which just reads as a layout bug. The right-hand three sit a
+ * little further out than the left: the stage keeps shrinking below its max-width down to 900px
+ * while the chips hold their pixel width, and that is where the margin gets thin. */
 const ORBIT = [
-  { key: "instagram", label: "Instagram", Icon: InstagramIcon, x: 8, y: 14, drift: -9, float: 5.4, delay: 0.35 },
-  { key: "linkedin", label: "LinkedIn", Icon: LinkedInIcon, x: 80, y: 9, drift: -7, float: 6.2, delay: 0.42 },
-  { key: "x", label: "X / Twitter", Icon: XIcon, x: 89, y: 46, drift: -8, float: 4.8, delay: 0.49 },
-  { key: "newsletter", label: "Newsletter", Icon: NewsletterIcon, x: 82, y: 81, drift: -6, float: 5.9, delay: 0.56 },
-  { key: "whatsapp", label: "Communities", Icon: WhatsAppIcon, x: 13, y: 77, drift: -8, float: 6.6, delay: 0.63 },
-  { key: "site", label: "StartupNews.fyi", Icon: SiteIcon, x: 7, y: 46, drift: -6, float: 5.1, delay: 0.7 },
+  { key: "instagram", label: "Instagram", Icon: InstagramIcon, x: 12, y: 13, drift: -9, float: 5.4, delay: 0.35 },
+  { key: "linkedin", label: "LinkedIn", Icon: LinkedInIcon, x: 81, y: 9, drift: -7, float: 6.2, delay: 0.42 },
+  { key: "x", label: "X / Twitter", Icon: XIcon, x: 87, y: 46, drift: -8, float: 4.8, delay: 0.49 },
+  { key: "newsletter", label: "Newsletter", Icon: NewsletterIcon, x: 83, y: 82, drift: -6, float: 5.9, delay: 0.56 },
+  { key: "whatsapp", label: "Communities", Icon: WhatsAppIcon, x: 15, y: 79, drift: -8, float: 6.6, delay: 0.63 },
+  { key: "site", label: "StartupNews.fyi", Icon: SiteIcon, x: 12, y: 46, drift: -6, float: 5.1, delay: 0.7 },
 ] as const;
 
 /** Icons shown inside the example feature card's "featured on" strip. */
@@ -43,10 +46,17 @@ const CARD_CHANNELS = [InstagramIcon, LinkedInIcon, XIcon, NewsletterIcon, SiteI
  * has to earn the next scroll.
  *
  * Motion language here is *stagger + scale + float*, distinct from every section under it: the
- * headline, sub, buttons and card enter on one staggered timeline, then the orbit cards settle
- * into a slow, tiny, permanent drift. A scroll-linked parallax lifts the whole composition and
- * fades it as the next section arrives so the hero dissolves into the page rather than cutting. */
-export function SpotlightHero({ onFeature, onHowItWorks }: { onFeature: () => void; onHowItWorks: () => void }) {
+ * headline, sub and card enter on one staggered timeline, then the orbit cards settle into a slow,
+ * tiny, permanent drift. A scroll-linked parallax lifts the whole composition and fades it as the
+ * next section arrives so the hero dissolves into the page rather than cutting.
+ *
+ * The "Feature My Startup" / "See How It Works" buttons that sat under the lede were removed on
+ * request, along with the `onFeature`/`onHowItWorks` props they called and the whole `.fys-btn`
+ * family in globals.css, which nothing else used. The hero no longer links anywhere: the reader
+ * reaches the form by scrolling the page, which is the order the sections were written in. The
+ * 0.24 slot they held in the entrance ladder is simply left out — the gap between the lede at 0.16
+ * and the card at 0.3 is too short to read as a pause. */
+export function SpotlightHero() {
   const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
@@ -65,6 +75,14 @@ export function SpotlightHero({ onFeature, onHowItWorks }: { onFeature: () => vo
   return (
     <section className="fys-hero" ref={sectionRef} aria-labelledby="fys-hero-title">
       <div className="fys-hero-bg" aria-hidden="true">
+        {/* Footage first, scrim over it, then the glows and grid — so the brand light sources
+            tint the picture rather than being flattened under it. */}
+        <BackgroundVideo
+          video={featureStartupBackgrounds.hero}
+          className="fys-hero-photo"
+          scrimClassName="fys-hero-scrim"
+          preload="auto"
+        />
         <motion.span
           className="fys-hero-glow fys-hero-glow-a"
           initial={reducedMotion ? false : { opacity: 0 }}
@@ -82,15 +100,26 @@ export function SpotlightHero({ onFeature, onHowItWorks }: { onFeature: () => vo
       </div>
 
       <motion.div className="fys-hero-inner" style={reducedMotion ? undefined : { y: parallaxY, opacity: fade }}>
-        <motion.p className="fys-hero-eyebrow" {...enter(0)}>
-          <span className="fys-hero-dot" aria-hidden="true" />
-          StartupNews.fyi · Feature Your Startup
-        </motion.p>
-
         <motion.h1 id="fys-hero-title" className="fys-hero-title" {...enter(0.06)}>
           Put Your Startup
           <br />
-          in the <em>Spotlight.</em>
+          in the{" "}
+          {/* "Spotlight." travels in from the right — the one word on the page that gets its own
+              move, which is the point of it. It STARTS inside the h1's own entrance (delay 0.2,
+              against the line's 0.6s) and then keeps going for a beat after the line has settled:
+              starting late would leave a visible hole where the word belongs, but finishing late
+              is the whole effect. Slowed from 0.42s on request — 0.42 read as a snap rather than
+              as travel.
+              `x` in px rather than a percentage: a percentage of the em's own width would start
+              the word from a different place at every headline reflow.
+              Under reduced motion it simply appears with the rest of the line. */}
+          <motion.em
+            initial={reducedMotion ? false : { opacity: 0, x: 190 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.95, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          >
+            Spotlight.
+          </motion.em>
         </motion.h1>
 
         <motion.p className="fys-hero-sub" {...enter(0.16)}>
@@ -98,18 +127,8 @@ export function SpotlightHero({ onFeature, onHowItWorks }: { onFeature: () => vo
           ecosystem through StartupNews.fyi.
         </motion.p>
 
-        <motion.div className="fys-hero-actions" {...enter(0.24)}>
-          <button type="button" className="fys-btn fys-btn-primary" onClick={onFeature}>
-            Feature My Startup
-            <ArrowRightIcon className="fys-btn-icon" />
-          </button>
-          <button type="button" className="fys-btn fys-btn-outline" onClick={onHowItWorks}>
-            See How It Works
-          </button>
-        </motion.div>
-
         <div className="fys-stage">
-          {/* Centre: an illustrative feature card, not a real published startup — see the caption.
+          {/* Centre: an illustrative feature card, not a real published startup.
               The wrapper carries the centering transform so Motion's scale below can own
               `transform` outright — the two cannot share one element. */}
           <div className="fys-stage-center">
@@ -180,27 +199,7 @@ export function SpotlightHero({ onFeature, onHowItWorks }: { onFeature: () => vo
             ))}
           </ul>
         </div>
-
-        <p className="fys-stage-note">Example of how a feature can be presented — not a published post.</p>
       </motion.div>
-
-      <motion.button
-        type="button"
-        className="fys-scroll-hint"
-        onClick={onHowItWorks}
-        initial={reducedMotion ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.9 }}
-      >
-        <span>Scroll to explore</span>
-        <motion.span
-          className="fys-scroll-arrow"
-          animate={reducedMotion ? {} : { y: [0, 6, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <ArrowDownIcon />
-        </motion.span>
-      </motion.button>
 
       <div className="fys-hero-seam" aria-hidden="true" />
     </section>

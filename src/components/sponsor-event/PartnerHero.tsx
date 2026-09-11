@@ -2,26 +2,30 @@
 
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
-import { ParallaxImage } from "./ParallaxImage";
-import { eventImages } from "./eventImages";
+import { BackgroundVideo } from "@/components/feature-startup/BackgroundVideo";
+import { sponsorEventBackgrounds } from "./backgrounds";
 import { useReducedMotion } from "./hooks";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-const HEADLINE = ["Bring your event", "to the startup", "ecosystem."];
+const HEADLINE = ["Bring Your Event", "To The Startup", "Ecosystem."];
 
 /** The audience chips floating around the example event card. */
 const CROWD = ["Founders", "Investors", "Builders", "Communities"];
 
-/** 01 — the first viewport. A cinematic full-bleed event photograph, the headline revealed line by
- * line from behind its own mask, and an example event card floating over the image.
+/** 01 — the first viewport. Full-bleed event footage, the headline revealed line by line from
+ * behind its own mask, and an example event card floating over the clip.
  *
  * Motion language: *masked line reveal + staggered entrance*, then a slow parallax as the reader
  * scrolls out. Nothing here repeats lower down the page.
  *
  * The card is explicitly labelled an example — it is a layout demonstration, not a real
  * StartupNews.fyi event, and nothing on it should be readable as one. */
-export function PartnerHero({ onPartner, onExplore }: { onPartner: () => void; onExplore: () => void }) {
+/** The "Partner with us" eyebrow and the two CTA buttons under the lede were removed on request,
+ * and `onPartner` with them — nothing in the hero jumps to the form any more. `onExplore` stays:
+ * it is what the "Scroll To Explore" cue at the bottom of the hero calls, and that was not part of
+ * the removal. */
+export function PartnerHero({ onExplore }: { onExplore: () => void }) {
   const reducedMotion = useReducedMotion();
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
@@ -40,8 +44,15 @@ export function PartnerHero({ onPartner, onExplore }: { onPartner: () => void; o
   return (
     <section className="sp-hero" ref={ref} aria-labelledby="sp-hero-title">
       <div className="sp-hero-bg" aria-hidden="true">
-        <ParallaxImage image={eventImages.hero} strength={9} priority sizes="100vw" />
-        <span className="sp-hero-scrim" />
+        {/* The still that used to sit here was replaced by footage on request — same treatment as
+            /feature-your-startup, same component, so the two heroes behave identically. `preload`
+            is "auto" because this one is on screen at load. */}
+        <BackgroundVideo
+          video={sponsorEventBackgrounds.hero}
+          className="sp-hero-video"
+          scrimClassName="sp-hero-scrim"
+          preload="auto"
+        />
         <span className="sp-hero-glow" />
       </div>
 
@@ -50,11 +61,6 @@ export function PartnerHero({ onPartner, onExplore }: { onPartner: () => void; o
         style={reducedMotion ? undefined : { y: contentY, opacity: contentFade }}
       >
         <div className="sp-hero-copy">
-          <motion.p className="sp-hero-eyebrow" {...rise(0.05)}>
-            <span className="sp-hero-live" aria-hidden="true" />
-            Partner with us
-          </motion.p>
-
           <h1 id="sp-hero-title" className="sp-hero-title">
             {HEADLINE.map((line, i) => (
               <span className="sp-line" key={line}>
@@ -75,15 +81,6 @@ export function PartnerHero({ onPartner, onExplore }: { onPartner: () => void; o
             community event in front of a relevant and engaged startup audience.
           </motion.p>
 
-          <motion.div className="sp-hero-ctas" {...rise(0.66)}>
-            <button type="button" className="sp-btn sp-btn-primary" onClick={onPartner}>
-              Partner With Us
-              <span className="sp-btn-arrow" aria-hidden="true">→</span>
-            </button>
-            <button type="button" className="sp-btn sp-btn-ghost" onClick={onExplore}>
-              Explore the Experience
-            </button>
-          </motion.div>
         </div>
 
         <div className="sp-hero-stage">
@@ -117,7 +114,7 @@ export function PartnerHero({ onPartner, onExplore }: { onPartner: () => void; o
               </div>
               <div>
                 <span className="sp-ticket-label">When</span>
-                <span className="sp-ticket-value">Your date</span>
+                <span className="sp-ticket-value">Your Date</span>
               </div>
             </div>
             <p className="sp-ticket-note">Example event — a layout preview, not a listing.</p>
@@ -162,7 +159,7 @@ export function PartnerHero({ onPartner, onExplore }: { onPartner: () => void; o
         onClick={onExplore}
         style={reducedMotion ? undefined : { opacity: contentFade }}
       >
-        <span className="sp-scroll-cue-text">Scroll to explore</span>
+        <span className="sp-scroll-cue-text">Scroll To Explore</span>
         <span className="sp-scroll-cue-rail" aria-hidden="true">
           <motion.i
             animate={reducedMotion ? {} : { y: ["-100%", "320%"] }}

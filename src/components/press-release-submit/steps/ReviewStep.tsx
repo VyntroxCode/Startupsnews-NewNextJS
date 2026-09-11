@@ -58,9 +58,7 @@ export function ReviewStep({ ctrl }: { ctrl: LeadFormController }) {
   return (
     <motion.div className="pr-step" variants={staggerVariants} initial="hidden" animate="show">
       <motion.div className="pr-step-head" variants={staggerItemVariants}>
-        <p className="pr-step-kicker">
-          <span className="pr-step-kicker-n">03</span> Review
-        </p>
+        <p className="pr-step-kicker">Review</p>
         <p className="pr-step-hint">A last look before this reaches the desk. Nothing is sent until you submit.</p>
       </motion.div>
 

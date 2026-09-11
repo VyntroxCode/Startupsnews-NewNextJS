@@ -11,9 +11,11 @@
  * Country name -> ISO 3166-1 alpha-2, the single source for both the dropdown list and the
  * flag emoji (derived from the code, so there's no second 195-entry table to keep in sync).
  *
- * Two entries deliberately keep the SHORT form this form has always used — UK, UAE — rather than
- * the "United Kingdom"/"United Arab Emirates" of the standard list. The United States is listed as
- * "America" by request; "USA" and the rest are aliases so old records still group under it.
+ * Three entries deliberately keep the SHORT form this form has always used — USA, UK, UAE —
+ * rather than the "United States"/"United Kingdom"/"United Arab Emirates" of the standard list.
+ * (The United States was listed as "America" for a while, by request, and was switched back to
+ * "USA" on 2026-09-11, also by request — "USA" is what every stored record already holds.
+ * "America" is now an alias, so a record saved under it still groups and flags as USA.)
  * /events builds its section headings from this exact string (groupByCountry), so renaming them
  * would have split each of those countries into two sections for as long as records saved under
  * the old name existed. The long names are searchable aliases instead (see
@@ -57,7 +59,7 @@ export const COUNTRY_ISO2: Record<string, string> = {
   Sweden: 'SE', Switzerland: 'CH', Syria: 'SY', Tajikistan: 'TJ', Tanzania: 'TZ',
   Thailand: 'TH', 'Timor-Leste': 'TL', Togo: 'TG', Tonga: 'TO',
   'Trinidad and Tobago': 'TT', Tunisia: 'TN', 'Türkiye': 'TR', Turkmenistan: 'TM',
-  Tuvalu: 'TV', Uganda: 'UG', UAE: 'AE', UK: 'GB', Ukraine: 'UA', America: 'US',
+  Tuvalu: 'TV', Uganda: 'UG', UAE: 'AE', UK: 'GB', Ukraine: 'UA', USA: 'US',
   Uruguay: 'UY', Uzbekistan: 'UZ',
   Vanuatu: 'VU', 'Vatican City / Holy See': 'VA', Venezuela: 'VE', Vietnam: 'VN',
   Yemen: 'YE', Zambia: 'ZM', Zimbabwe: 'ZW',
@@ -75,11 +77,12 @@ export const COUNTRY_ISO2: Record<string, string> = {
  * options, but a record already holding one keeps its flag — see NON_SOVEREIGN_ISO2.
  */
 const LEGACY_COUNTRY_ALIASES: Record<string, string> = {
-  // 'USA' is itself an alias now — the canonical name is 'America'. Keeping every old spelling
-  // pointed at the new canonical is what stops /events rendering "USA" and "America" as two
-  // separate country sections while records saved under the old name still exist.
-  USA: 'America', 'United States': 'America', 'United States of America': 'America',
-  US: 'America', 'U.S.': 'America', 'U.S.A.': 'America',
+  // 'USA' is the canonical name again (it was 'America' for a while). 'America' stays as an alias
+  // so any record saved while it was canonical still groups under USA on /events — rather than
+  // splitting into a second "America" section — and snaps back to USA when reopened in the admin
+  // form. scripts/migrations/rename-america-to-usa.sql rewrites such rows in one pass.
+  America: 'USA', 'United States': 'USA', 'United States of America': 'USA',
+  US: 'USA', 'U.S.': 'USA', 'U.S.A.': 'USA',
   'United Kingdom': 'UK', 'Great Britain': 'UK', 'Britain': 'UK',
   'United Arab Emirates': 'UAE', 'U.A.E.': 'UAE',
   Turkey: 'Türkiye', 'Czech Republic': 'Czechia', 'Ivory Coast': 'Côte d’Ivoire',
@@ -112,7 +115,7 @@ export const COUNTRY_CITY_DATA: Record<string, string[]> = {
     'Mumbai', 'Delhi NCR', 'Bengaluru', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata',
     'Ahmedabad', 'Jaipur', 'Chandigarh', 'Kochi', 'Goa',
   ],
-  America: ['New York', 'San Francisco', 'Los Angeles', 'Chicago', 'Austin', 'Boston', 'Seattle', 'Washington DC'],
+  USA: ['New York', 'San Francisco', 'Los Angeles', 'Chicago', 'Austin', 'Boston', 'Seattle', 'Washington DC'],
   UK: ['London', 'Manchester', 'Birmingham', 'Edinburgh'],
   UAE: ['Dubai', 'Abu Dhabi', 'Sharjah'],
   Singapore: ['Singapore'],
@@ -210,36 +213,47 @@ export function countryForCity(city: string): string | null {
  * single-card carousel per city; they all share this one carousel instead, each card still
  * naming its own city.
  *
- * Membership is derived, not stored: a city IS an "other city" exactly when it isn't one of the
- * curated cities for its country (COUNTRY_CITY_DATA) — which is the same thing as the admin
- * having had to reach for the form's "Others…" option to enter it. Giving a city its own
- * section on the site therefore means adding it to that country's list here.
+ * Membership is derived, not stored, and it depends on ONE thing only: how many events that city
+ * currently has listed. Below AUTO_SECTION_MIN_EVENTS it sits here; at or above it, it gets its
+ * own heading. Being curated in COUNTRY_CITY_DATA no longer exempts a city — that list controls
+ * what the admin City dropdown offers, nothing more. Giving a city its own section on the site
+ * therefore means listing enough events in it, not editing a list here.
  */
 export const OTHER_CITIES_SECTION = 'Other Cities';
 
 /**
- * How many listed events an UNCURATED city needs before it earns its own carousel instead of
- * sitting in "Other Cities". Counted from the events actually on the page (upcoming only), so a
- * city can fall back into Other Cities once its events pass — the section always reflects what is
+ * How many listed events a city needs before it earns its own carousel instead of sitting in
+ * "Other Cities". Counted from the events actually on the page (upcoming only), so a city can
+ * fall back into Other Cities once its events pass — the section always reflects what is
  * currently listed rather than a historical high-water mark.
+ *
+ * Applies to EVERY city, curated or not. It used to apply only to uncurated ones, which is why
+ * single-event sections such as Kochi, Boston, Jeddah and Abu Dhabi kept their own one-card
+ * carousels — exactly the thing "Other Cities" exists to prevent.
  */
 export const AUTO_SECTION_MIN_EVENTS = 3;
 
 /**
- * The full "does this city get its own carousel?" rule: curated for its country, OR it has enough
- * listed events to have earned one on its own.
+ * The "does this city get its own carousel?" rule: purely how many events it currently has
+ * listed. Two or fewer and it shares its country's "Other Cities" carousel; the third event
+ * gives it a heading of its own, and losing one takes it away again.
  *
- * Kept beside isOwnSectionCity rather than folded into it because the two answer different
- * questions — isOwnSectionCity is the static curation check that also defines what "an other city"
- * MEANS (see OTHER_CITIES_SECTION), while this one is the render-time decision that depends on how
- * many events happen to be listed right now.
+ * Curation deliberately plays no part. It used to (`isOwnSectionCity(...) ||`), which meant a
+ * curated city with a single event still rendered a one-card carousel while an uncurated city
+ * with two was merged — two different answers to the same question, decided by a hand-edited
+ * list rather than by what is actually on the page.
+ *
+ * Takes the count alone so there is no way to reintroduce that asymmetry by passing a city in.
  */
-export function citySectionQualifies(country: string, city: string, eventCount: number): boolean {
-  return isOwnSectionCity(country, city) || eventCount >= AUTO_SECTION_MIN_EVENTS;
+export function citySectionQualifies(eventCount: number): boolean {
+  return eventCount >= AUTO_SECTION_MIN_EVENTS;
 }
 
-/** Whether a city gets its own section under `country`, or falls into OTHER_CITIES_SECTION.
- * Sub-cities resolve through their parent, so Gurugram counts as Delhi NCR and stays out of it. */
+/** Whether `city` is one of the curated cities listed for `country` in COUNTRY_CITY_DATA.
+ *
+ * This is a question about the admin City DROPDOWN — which cities it offers ready-made — not
+ * about /events sections; those are decided by citySectionQualifies on event count alone.
+ * Sub-cities resolve through their parent, so Gurugram counts as Delhi NCR. */
 export function isOwnSectionCity(country: string, city: string): boolean {
   const name = (city || '').trim();
   if (!name) return false;
@@ -252,9 +266,11 @@ export function isOwnSectionCity(country: string, city: string): boolean {
  * Cities that have EARNED a dropdown slot by reaching AUTO_SECTION_MIN_EVENTS listed events,
  * grouped by canonical country name. Curated cities are excluded — they are already offered.
  *
- * Deliberately the same threshold and the same input (currently-listed events) as the /events
- * section rule, so the dropdown and the page always agree: a city appears here at the moment it
- * gains its own heading, and disappears again if its events pass and it drops back below three.
+ * Same threshold and same input (currently-listed events) as the /events section rule, so a city
+ * that has earned its own heading is also offered by name in the dropdown, and stops being
+ * offered once its events pass and it drops back below three. Curated cities are the one
+ * asymmetry, and only here: they are always offered by the dropdown regardless of count, while
+ * on /events they are merged into "Other Cities" like anything else until they reach three.
  *
  * Sub-cities fold into their parent first (Gurugram counts toward Delhi NCR), and cities are
  * counted case-insensitively with the first spelling seen used as the label — otherwise

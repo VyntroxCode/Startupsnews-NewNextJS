@@ -5,22 +5,22 @@ import { motion } from "motion/react";
 import { useReducedMotion } from "./hooks";
 import { PR_EASE } from "./motion";
 
-/** The opening of nearly every section below the hero: a small numbered running-order label
- * ("03 / THE PRESS DESK"), the section heading, and an optional lede.
+/** The opening of every section below the hero: a small label, the section heading, and an
+ * optional lede.
  *
- * Deliberately one component rather than three: the brief asks for a magazine running order the
- * reader can follow down the page, which only works if the label, its pink marker and the heading
- * keep identical proportions and identical timing everywhere they appear. The pieces still enter
- * in sequence (label → marker draw → heading → lede) rather than together, which is what gives the
- * page its rhythm. */
+ * It opened with a running-order number ("03 / THE PRESS DESK") and a short pink marker that drew
+ * out beside it; both were removed on request, along with the `index` prop, so nothing has to be
+ * renumbered when a section is added or dropped — and five sections were dropped in the same pass.
+ *
+ * Deliberately one component rather than three: the label and heading keep identical proportions
+ * and identical timing everywhere they appear. The pieces still enter in sequence (label → heading
+ * → lede) rather than together, which is what gives the page its rhythm. */
 export function SectionIntro({
-  index,
   label,
   heading,
   lede,
   headingId,
 }: {
-  index: string;
   label: string;
   heading: ReactNode;
   lede?: ReactNode;
@@ -37,15 +37,6 @@ export function SectionIntro({
   return (
     <div className="pr-intro">
       <motion.p className="pr-eyebrow" {...rise(0)}>
-        <span className="pr-eyebrow-n">{index}</span>
-        <motion.span
-          className="pr-eyebrow-rule"
-          aria-hidden="true"
-          initial={reducedMotion ? { scaleX: 1 } : { scaleX: 0 }}
-          whileInView={{ scaleX: 1 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.55, delay: 0.18, ease: PR_EASE }}
-        />
         <span className="pr-eyebrow-text">{label}</span>
       </motion.p>
       <motion.h2 className="pr-h2" id={headingId} {...rise(0.14)}>

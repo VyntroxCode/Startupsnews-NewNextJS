@@ -299,6 +299,8 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     return {
       title,
       description,
+      // Category listing pages are kept out of search — only the articles are indexed.
+      robots: NOT_FOUND_META.robots,
       alternates: { canonical: `${SITE_BASE}/${categorySlug}` },
       openGraph: {
         title,

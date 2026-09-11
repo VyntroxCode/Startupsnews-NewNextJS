@@ -1,49 +1,34 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
-import { Button } from "@/components/ui/Button";
-import { ArrowRightIcon } from "./icons";
-import { fadeUp, fadeUpSmall, FR_VIEWPORT } from "./motion";
+import { motion } from "motion/react";
+import { useReducedMotion } from "./hooks";
+import { FR_EASE } from "./motion";
 
-/** Final full-bleed CTA before the site's own global footer — a second on-ramp back to the
- * wizard for anyone who scrolled all the way down reading rather than filling fields as they
- * went. */
-export function FundingClosing({ onStart, submitted }: { onStart: () => void; submitted: boolean }) {
+/** The page's last words, between the form and the site's own footer — a full stop rather than a
+ * second call to action, so nothing competes with the form directly above it. */
+export function FundingClosing() {
   const reducedMotion = useReducedMotion();
+
   return (
     <section className="fr-closing">
       <div className="fr-container">
-        <motion.p
-          className="fr-closing-statement"
-          initial={reducedMotion ? false : "hidden"}
-          whileInView="show"
-          viewport={FR_VIEWPORT}
-          variants={fadeUp}
+        <motion.span
+          className="fr-closing-rule"
+          aria-hidden="true"
+          initial={reducedMotion ? { scaleX: 1 } : { scaleX: 0 }}
+          whileInView={{ scaleX: 1 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={{ duration: 0.9, ease: FR_EASE }}
+        />
+        <motion.blockquote
+          className="fr-closing-quote"
+          initial={reducedMotion ? false : { opacity: 0, y: 22 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={{ duration: 0.8, ease: FR_EASE }}
         >
-          Raised a round worth knowing about?
-        </motion.p>
-        <motion.p
-          className="fr-closing-copy"
-          initial={reducedMotion ? false : "hidden"}
-          whileInView="show"
-          viewport={FR_VIEWPORT}
-          variants={fadeUpSmall}
-        >
-          Share your next milestone with the StartupNews.fyi community — it takes a few minutes.
-        </motion.p>
-        {!submitted && (
-          <motion.div
-            initial={reducedMotion ? false : "hidden"}
-            whileInView="show"
-            viewport={FR_VIEWPORT}
-            variants={fadeUpSmall}
-          >
-            <Button variant="primary" onClick={onStart}>
-              Submit Your Funding Round
-              <ArrowRightIcon width={15} height={15} />
-            </Button>
-          </motion.div>
-        )}
+          Capital changes the story. <em>Telling it is still up to you.</em>
+        </motion.blockquote>
       </div>
     </section>
   );

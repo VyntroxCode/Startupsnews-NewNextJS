@@ -4,7 +4,6 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { SectionLabel } from "./SectionLabel";
 import { useCardTilt, useReducedMotion } from "./hooks";
-import { ArrowRightIcon } from "./icons";
 
 const META = [
   { label: "Category", value: "————" },
@@ -40,7 +39,7 @@ export function FeatureShowcase() {
 
   return (
     <section className="fys-showcase" aria-labelledby="fys-showcase-title">
-      <SectionLabel index="05">Feature</SectionLabel>
+      <SectionLabel>Feature</SectionLabel>
       <motion.h2
         id="fys-showcase-title"
         className="fys-h2"
@@ -70,7 +69,6 @@ export function FeatureShowcase() {
               <i />
               <i />
             </span>
-            <span className="fys-showcase-url">startupnews.fyi/your-startup</span>
           </div>
 
           <div className="fys-showcase-body">
@@ -96,10 +94,6 @@ export function FeatureShowcase() {
                   </div>
                 ))}
               </motion.dl>
-              <motion.span className="fys-showcase-fakebtn" aria-hidden="true" {...line(0.5)}>
-                Explore startup
-                <ArrowRightIcon />
-              </motion.span>
             </div>
 
             {/* Masked reveal, done with a curtain rather than an animated clip-path: Motion writes
@@ -127,10 +121,6 @@ export function FeatureShowcase() {
             </div>
           </div>
         </motion.div>
-
-        <figcaption className="fys-showcase-caption">
-          Preview layout with placeholder content — your own feature is written with you.
-        </figcaption>
       </figure>
     </section>
   );

@@ -77,6 +77,8 @@ export function SubmissionSuccess({ ctrl }: { ctrl: FeatureStartupFormController
         <Button variant="ghost" onClick={ctrl.reset}>
           Submit another startup
         </Button>
+        {/* The homepage link stays: the rule is that the four submission pages never link to EACH
+            OTHER (e.g. no Press Release link on Funding Round) — the homepage is not one of them. */}
         <Link href="/" className="fys-success-link">
           Back to StartupNews.fyi
         </Link>

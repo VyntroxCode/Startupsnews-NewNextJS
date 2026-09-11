@@ -69,7 +69,7 @@ export function ProcessTimeline() {
 
   return (
     <section className="fys-timeline" id="fys-process" aria-labelledby="fys-timeline-title">
-      <SectionLabel index="04">Process</SectionLabel>
+      <SectionLabel>Process</SectionLabel>
       <motion.h2
         id="fys-timeline-title"
         className="fys-h2"

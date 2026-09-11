@@ -22,7 +22,7 @@ export function SpotlightStory() {
   const revealed = titleInView || !!reducedMotion;
   return (
     <section className="fys-story" aria-labelledby="fys-story-title">
-      <SectionLabel index="01">Discover</SectionLabel>
+      <SectionLabel>Discover</SectionLabel>
 
       {/* Driven by a class + CSS transition rather than a Motion keyframe: Motion writes nothing
           for a percentage-transform target of `0%` on these inline spans, and the mask reveal
@@ -33,7 +33,11 @@ export function SpotlightStory() {
         className={"fys-story-title" + (revealed ? " is-revealed" : "")}
       >
         {HEADLINE.map((word, i) => (
-          <span key={word} className="fys-word">
+          <span
+            key={word}
+            /* Last word italic, so this headline lands the same way the hero's does. */
+            className={"fys-word" + (i === HEADLINE.length - 1 ? " fys-word-accent" : "")}
+          >
             <span className="fys-word-inner" style={{ transitionDelay: `${i * 75}ms` }}>
               {word}
             </span>

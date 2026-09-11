@@ -16,11 +16,17 @@ import { useReducedMotion } from "./hooks";
  * from /admin without a deploy, via the feature-startup-images site setting — and that capability
  * has to survive the redesign. On success the whole card is replaced by SubmissionSuccess rather
  * than only the right column, so the confirmation gets the full width it deserves. */
-export function FormSection({ ctrl }: { ctrl: FeatureStartupFormController }) {
+export function FormSection({
+  ctrl,
+  promotedCities,
+}: {
+  ctrl: FeatureStartupFormController;
+  promotedCities?: Record<string, string[]>;
+}) {
   const reducedMotion = useReducedMotion();
   return (
     <section className="fys-form-section" id="fys-form" aria-labelledby="fys-form-title">
-      <SectionLabel index="07">Submit</SectionLabel>
+      <SectionLabel>Submit</SectionLabel>
       <motion.h2
         id="fys-form-title"
         className="fys-h2"
@@ -61,7 +67,7 @@ export function FormSection({ ctrl }: { ctrl: FeatureStartupFormController }) {
               exit={{ opacity: 0, transition: { duration: 0.25 } }}
             >
               <ImagePanel />
-              <FormPanel ctrl={ctrl} />
+              <FormPanel ctrl={ctrl} promotedCities={promotedCities} />
             </motion.div>
           )}
         </AnimatePresence>

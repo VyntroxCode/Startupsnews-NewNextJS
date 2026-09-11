@@ -5,7 +5,6 @@ import { EventTimeline } from "./EventTimeline";
 import { EventPreviewCard } from "./EventPreviewCard";
 import { SubmissionSuccess } from "./SubmissionSuccess";
 import { EventDetailsStep } from "./steps/EventDetailsStep";
-import { ScheduleStep } from "./steps/ScheduleStep";
 import { PosterContactStep } from "./steps/PosterContactStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import type { SponsorEventFormController } from "./useSponsorEventForm";
@@ -25,7 +24,13 @@ const reducedStepVariants: Variants = {
   exit: { opacity: 0, transition: { duration: 0.1 } },
 };
 
-export function SponsorFormCard({ ctrl }: { ctrl: SponsorEventFormController }) {
+export function SponsorFormCard({
+  ctrl,
+  promotedCities,
+}: {
+  ctrl: SponsorEventFormController;
+  promotedCities?: Record<string, string[]>;
+}) {
   const { currentStep, direction, submitted, data } = ctrl;
   const reducedMotion = useReducedMotion();
 
@@ -52,10 +57,9 @@ export function SponsorFormCard({ ctrl }: { ctrl: SponsorEventFormController }) 
                 animate="center"
                 exit="exit"
               >
-                {currentStep === 1 && <EventDetailsStep ctrl={ctrl} />}
-                {currentStep === 2 && <ScheduleStep ctrl={ctrl} />}
-                {currentStep === 3 && <PosterContactStep ctrl={ctrl} />}
-                {currentStep === 4 && <ReviewStep ctrl={ctrl} />}
+                {currentStep === 1 && <EventDetailsStep ctrl={ctrl} promotedCities={promotedCities} />}
+                {currentStep === 2 && <PosterContactStep ctrl={ctrl} />}
+                {currentStep === 3 && <ReviewStep ctrl={ctrl} />}
               </motion.div>
             </AnimatePresence>
           </div>

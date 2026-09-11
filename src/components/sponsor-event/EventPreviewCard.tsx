@@ -30,7 +30,7 @@ export function EventPreviewCard({ data }: { data: SponsorEventFormData }) {
         {!data.posterUrl && <span className="sp-preview-poster-placeholder">POSTER</span>}
       </div>
       <div className="sp-preview-body">
-        <p className="sp-preview-title">{data.title || "Your event title"}</p>
+        <p className="sp-preview-title">{data.title || "Your Event Title"}</p>
         {data.location && (
           <p className="sp-preview-location">
             <span className="sp-preview-pulse" aria-hidden="true" />

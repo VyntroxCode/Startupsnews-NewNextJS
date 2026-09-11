@@ -29,8 +29,9 @@ const unsplash = (id: string, width = 1600) =>
 
 /** Standalone images, keyed by where they appear. */
 export const eventImages = {
-  /** 01 — Hero background. The first thing anyone sees; keep it wide and dark enough for
-   *  white text to sit on top of it. */
+  /** 01 — Hero poster. The hero's background is now a video (see backgrounds.ts); this still is
+   *  what shows before the clip's first frame decodes, and what stays up if the clip is missing.
+   *  Keep it wide and dark enough for white text to sit on top of it. */
   hero: {
     src: unsplash("photo-1540575467063-178a50c2df87", 2000),
     alt: "A packed audience at a startup and technology conference",
@@ -103,11 +104,19 @@ export const storyStages: StoryStage[] = [
   },
 ];
 
-/** 05 — Small photographs behind the audience cards. */
+/** 05 — The photographs behind the audience cards. One per card: the Investors card was the only
+ *  one in the grid without a picture, which is why it read as a plain white panel between two
+ *  image cards. Its frame is the same networking-conversation shot the story's "The Connections"
+ *  stage uses — already vetted in this file, and the closest thing here to "people finding each
+ *  other", which is what that card is about. */
 export const audienceImages = {
   founders: {
     src: unsplash("photo-1523580494863-6f3031224c94", 900),
     alt: "A founder speaking on stage",
+  },
+  investors: {
+    src: unsplash("photo-1531058020387-3be344556be6", 900),
+    alt: "Two people in conversation at a networking session",
   },
   community: {
     src: unsplash("photo-1587825140708-dfaf72ae4b04", 900),

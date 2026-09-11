@@ -28,8 +28,8 @@ export function ReviewStep({ ctrl }: { ctrl: SponsorEventFormController }) {
 
   return (
     <div className="sp-step" data-step="4">
-      <p className="sp-step-kicker">04 REVIEW</p>
-      <h3 className="sp-step-heading">Your event is ready.</h3>
+      <p className="sp-step-kicker">Review</p>
+      <h3 className="sp-step-heading">Your Event Is Ready.</h3>
 
       {/* A visual summary of the submission only — not an actual ticket or registration pass. */}
       <div className="sp-review">

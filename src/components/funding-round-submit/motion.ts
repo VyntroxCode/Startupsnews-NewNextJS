@@ -19,12 +19,6 @@ export const fadeUpSmall: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: FR_EASE } },
 };
 
-/** For the large chapter/section numbers — a slightly slower, subtler settle than body text. */
-export const numberReveal: Variants = {
-  hidden: { opacity: 0, y: 30, scale: 0.92 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: FR_EASE } },
-};
-
 export const imageReveal: Variants = {
   hidden: { opacity: 0, scale: 1.08 },
   show: { opacity: 1, scale: 1, transition: { duration: 1.1, ease: FR_EASE } },

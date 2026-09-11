@@ -13,16 +13,21 @@ import type { SponsorEventFormController } from "./useSponsorEventForm";
  * renders the same four steps against the same controller, still uploads the poster to S3, still
  * gates submission on Turnstile, and still POSTs to /api/events/sponsor-event. Nothing about the
  * fields, validation or submission path changed with the redesign. */
-export function SponsorFormSection({ ctrl }: { ctrl: SponsorEventFormController }) {
+export function SponsorFormSection({
+  ctrl,
+  promotedCities,
+}: {
+  ctrl: SponsorEventFormController;
+  promotedCities?: Record<string, string[]>;
+}) {
   const reducedMotion = useReducedMotion();
   return (
     <section className="sp-form-section" id="sp-form" aria-labelledby="sp-form-title">
       <div className="sp-wrap">
         {!ctrl.submitted && (
           <SectionHead
-            index="14"
             kicker="Submit"
-            title={<span id="sp-form-title">Tell us about your event.</span>}
+            title={<span id="sp-form-title">Tell Us About Your Event.</span>}
             lede="Four short steps: the event itself, when it happens, how it looks and who to talk to. Our team reads every submission."
           />
         )}
@@ -33,7 +38,7 @@ export function SponsorFormSection({ ctrl }: { ctrl: SponsorEventFormController 
           viewport={{ once: true, amount: 0.1 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
-          <SponsorFormCard ctrl={ctrl} />
+          <SponsorFormCard ctrl={ctrl} promotedCities={promotedCities} />
         </motion.div>
       </div>
     </section>

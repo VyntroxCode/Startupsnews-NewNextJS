@@ -2,7 +2,9 @@
 
 import { motion } from "motion/react";
 
-const STEPS = ["Event", "Schedule", "Identity", "Review"];
+/** Three stops, down from four ("Event / Schedule / Identity / Review") — the schedule fields
+ * moved into step 1 and "Identity" was renamed to what it actually collects. */
+const STEPS = ["Event", "Contact", "Review"];
 
 /** Primary step navigation for the wizard — a vertical sticky timeline on desktop (replacing the
  * old horizontal 4-dot stepper), collapsing to a compact "01 / 04 + progress bar" readout on

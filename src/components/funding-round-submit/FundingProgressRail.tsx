@@ -6,7 +6,8 @@ import { CHAPTERS } from "./chapters";
  * CSS breakpoint swap, see `.fr-rail` in globals.css). Purely presentational: `activeId` is driven
  * by FundingRoundPage's scroll-spy IntersectionObserver, `onSelect` smooth-scrolls to a chapter.
  * Deliberately built as a plain nav list rather than a numbered wizard — no "step 2 of 4" text,
- * just which chapter is current/done/upcoming, so it reads as editorial rather than administrative. */
+ * just which chapter is current/done/upcoming, so it reads as editorial rather than administrative.
+ * It did print a small "01"/"02" beside each label; that went with the rest of the page's numbering. */
 export function FundingProgressRail({
   activeId,
   submitted,
@@ -32,7 +33,6 @@ export function FundingProgressRail({
                 onClick={() => onSelect(chapter.id)}
                 aria-current={isActive ? "step" : undefined}
               >
-                <span className="fr-rail-num">{chapter.n}</span>
                 <span className="fr-rail-label">{chapter.label}</span>
               </button>
             </li>

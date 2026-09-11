@@ -20,7 +20,7 @@ const SATELLITES = [
 const CENTER = { x: 50, y: 46 };
 
 function formatDate(value: string): string {
-  if (!value) return "Your date";
+  if (!value) return "Your Date";
   const d = new Date(`${value}T00:00:00`);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -107,9 +107,9 @@ export function SubmissionSuccess({ ctrl }: { ctrl: SponsorEventFormController }
           </div>
           <div className="sp-success-card-body">
             <p className="sp-success-card-kicker">StartupNews.fyi · Event</p>
-            <p className="sp-success-card-title">{data.title || "Your event"}</p>
+            <p className="sp-success-card-title">{data.title || "Your Event"}</p>
             <p className="sp-success-card-meta">
-              {data.location || "Your location"} · {formatDate(data.date)}
+              {data.location || "Your Location"} · {formatDate(data.date)}
             </p>
           </div>
 
@@ -137,10 +137,10 @@ export function SubmissionSuccess({ ctrl }: { ctrl: SponsorEventFormController }
       </div>
 
       <motion.p className="sp-success-stamp" {...rise(0.85)}>
-        Submission received
+        Submission Received
       </motion.p>
       <motion.h2 className="sp-success-title" {...rise(0.95)}>
-        Your event is now in review.
+        Your Event Is Now In Review.
       </motion.h2>
       <motion.p className="sp-success-body" {...rise(1.05)}>
         Thanks for sharing {data.title ? `“${data.title}”` : "your event"}. Our team will review the
@@ -149,7 +149,7 @@ export function SubmissionSuccess({ ctrl }: { ctrl: SponsorEventFormController }
       </motion.p>
       <motion.div className="sp-success-actions" {...rise(1.15)}>
         <Button variant="ghost" onClick={ctrl.reset}>
-          Submit another event
+          Submit Another Event
         </Button>
       </motion.div>
     </div>

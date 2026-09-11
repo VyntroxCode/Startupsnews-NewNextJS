@@ -5,7 +5,7 @@ import { SectionIntro } from "./SectionIntro";
 import { useReducedMotion } from "./hooks";
 import { PR_EASE } from "./motion";
 
-/** Section 03 — what a submission looks like once it is on the desk, drawn as a small stack of
+/** Section 02 — what a submission looks like once it is on the desk, drawn as a small stack of
  * paper rather than described in prose: a review slip on top, two sheets fanned behind it, a pink
  * sticky note, and the desk's own markings.
  *
@@ -30,11 +30,20 @@ export function EditorialDesk() {
     <section className="pr-section pr-desk" aria-labelledby="pr-desk-title">
       <div className="pr-desk-grid">
         <SectionIntro
-          index="03"
           label="The Desk"
-          heading="Where a submission lands."
+          heading={
+            <>
+              Where a submission <em>lands</em>.
+            </>
+          }
           headingId="pr-desk-title"
-          lede="Every release arrives as a slip on an editor's desk: the headline, who it came from, the context around it, and a status that stays open until a person has read it."
+          lede={
+            <>
+              Every release arrives as a slip on an editor&apos;s desk: the headline, who it came
+              from, the context around it, and a status that stays open{" "}
+              <em>until a person has read it</em>.
+            </>
+          }
         />
 
         <div className="pr-desk-stack" role="img" aria-label="Illustration of a submission on an editorial desk, showing an example review slip">
@@ -87,7 +96,6 @@ export function EditorialDesk() {
           />
         </div>
       </div>
-      <p className="pr-caption pr-desk-caption">Illustrative example — not a real submission under review.</p>
     </section>
   );
 }

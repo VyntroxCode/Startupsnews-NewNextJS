@@ -28,19 +28,21 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
     // "Mathura") used to silently become its own top-level section instead of nesting under
     // India. Falls back to the old guess only for events created before `country` existed.
     const country = resolveCountry(region, events);
-    // Cities we don't curate a list entry for share one "Other Cities" carousel per country
-    // instead of each getting a section of its own — the common case being a country where we
-    // list a single event in a single city, which used to render as a one-card row with a
-    // heading. Each card still names its own city, so nothing is lost by merging them.
-    // A region that IS the country ("India" with no city set) or a non-place label ("Online")
-    // keeps its own section.
+    // A city earns its own carousel by having AUTO_SECTION_MIN_EVENTS listed events, and nothing
+    // else (citySectionQualifies). Below that it shares one "Other Cities" carousel per country
+    // rather than rendering a heading over a one- or two-card row, which is the whole point of
+    // that bucket; each card still names its own city, so nothing is lost by merging them.
+    // `events.length` is the right count with no extra work — getEventsByRegion has already
+    // collected every listed event for this city into this one bucket. The rule is symmetric: a
+    // city that drops back below the threshold as its events pass returns to Other Cities, so the
+    // page always reflects what is actually listed.
     //
-    // An uncurated city also EARNS its own section once it reaches AUTO_SECTION_MIN_EVENTS listed
-    // events (citySectionQualifies) — the point of merging was to avoid one-card carousels, and a
-    // city with three of them is no longer that. `events.length` is the right count with no extra
-    // work: getEventsByRegion has already collected every listed event for this city into this one
-    // bucket. Promotion is symmetric — a city that drops back below the threshold as its events
-    // pass returns to Other Cities, so the page always reflects what is actually listed.
+    // Curation (COUNTRY_CITY_DATA) used to grant an exemption here and no longer does — that is
+    // what kept single-event sections like Kochi, Boston and Abu Dhabi on the page.
+    //
+    // Two things that are NOT cities keep their own section either way: a region that IS the
+    // country ("Kuwait" with no city set — there is no city name to merge, and its card would
+    // read as the country anyway) and a non-place label ("Online").
     // An admin override on ANY event of this city decides for the whole city — the setting is
     // city-wide by design (see CITY_SECTION_OVERRIDE_OPTIONS), which is what stops a city being
     // split across two sections when only some of its events carry the value. 'other' beats 'own'
@@ -53,7 +55,7 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
       (forcedOwn ||
         region === country ||
         NON_GEOGRAPHIC_REGIONS.has(region) ||
-        citySectionQualifies(country, region, events.length))
+        citySectionQualifies(events.length))
         ? region
         : OTHER_CITIES_SECTION;
     if (!grouped[country]) grouped[country] = {};

@@ -14,7 +14,7 @@ const PHASES = [
     beats: [
       { title: "Plan", body: "Work out what the event is really for, and who it needs in the room." },
       { title: "Announce", body: "Put it somewhere the right people will actually run into it." },
-      { title: "Build awareness", body: "Give the story enough runway to reach people before the date." },
+      { title: "Build Awareness", body: "Give the story enough runway to reach people before the date." },
     ],
   },
   {
@@ -32,7 +32,7 @@ const PHASES = [
     beats: [
       { title: "Amplify", body: "What happened, told properly, for the people who weren't there." },
       { title: "Share", body: "Give attendees something worth passing on." },
-      { title: "Keep going", body: "The conversations that outlive the day are the real outcome." },
+      { title: "Keep Going", body: "The conversations that outlive the day are the real outcome." },
     ],
   },
 ] as const;
@@ -50,10 +50,9 @@ export function EventJourney() {
     <section className="sp-journey" aria-labelledby="sp-journey-title">
       <div className="sp-wrap">
         <SectionHead
-          index="08"
           kicker="Journey"
           tone="light"
-          title={<span id="sp-journey-title">Visibility starts before the doors open.</span>}
+          title={<span id="sp-journey-title">Visibility Starts Before The Doors Open.</span>}
           lede="An event isn't one day. It's the run-up, the room itself, and everything that carries on afterwards."
         />
 

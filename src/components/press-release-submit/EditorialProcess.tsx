@@ -3,6 +3,8 @@
 import { useRef } from "react";
 import { motion, useInView, useScroll, useSpring } from "motion/react";
 import { SectionIntro } from "./SectionIntro";
+import { ParallaxImage } from "./ParallaxImage";
+import { pressReleaseImages } from "./images";
 import { useReducedMotion } from "./hooks";
 import { PR_EASE } from "./motion";
 
@@ -47,9 +49,10 @@ function ProcessStep({ step }: { step: (typeof STEPS)[number] }) {
 
   return (
     <li ref={ref} className={"pr-process-step" + (active ? " is-active" : "")}>
-      <span className="pr-process-node" aria-hidden="true">
-        <span className="pr-process-node-n">{step.n}</span>
-      </span>
+      {/* The node printed the step number until all numbering was removed from this page; it is a
+          plain marker now, and still the thing that lights as the reader passes it. `n` stays on
+          the data as the React key and as the reading order for whoever edits this copy. */}
+      <span className="pr-process-node" aria-hidden="true" />
       <motion.div
         className="pr-process-card"
         initial={reducedMotion ? false : { opacity: 0, y: 24 }}
@@ -64,7 +67,7 @@ function ProcessStep({ step }: { step: (typeof STEPS)[number] }) {
   );
 }
 
-/** Section 06 — what happens after the send button. Motion language: *scroll-linked progress*.
+/** Section 04 — what happens after the send button. Motion language: *scroll-linked progress*.
  * The rail fills in direct proportion to scroll position (a spring takes the jitter out) rather
  * than animating once on entry, so the reader can always see where they are in the process. */
 export function EditorialProcess() {
@@ -76,22 +79,43 @@ export function EditorialProcess() {
   return (
     <section className="pr-section pr-process" id="pr-process" aria-labelledby="pr-process-title">
       <SectionIntro
-        index="06"
         label="The Process"
-        heading="After you hit send."
+        heading={
+          <>
+            After you <em>hit send</em>.
+          </>
+        }
         headingId="pr-process-title"
-        lede="Submissions are read by people, on their own schedule. Here is the path yours takes."
+        lede={
+          <>
+            Submissions are <em>read by people, on their own schedule</em>. Here is the path yours
+            takes.
+          </>
+        }
       />
 
-      <div className="pr-process-track" ref={trackRef}>
-        <div className="pr-process-rail" aria-hidden="true">
-          <motion.span className="pr-process-rail-fill" style={reducedMotion ? { scaleY: 1 } : { scaleY: fill }} />
+      <div className="pr-process-layout">
+        {/* Holds its position while the five steps scroll past it, so the reader keeps the desk in
+            view for the whole of the process rather than losing it after the first step. */}
+        <div className="pr-process-media">
+          <ParallaxImage
+            image={pressReleaseImages.process}
+            className="pr-process-figure"
+            strength={6}
+            sizes="(max-width: 1000px) 100vw, 38vw"
+          />
         </div>
-        <ol className="pr-process-list">
-          {STEPS.map((step) => (
-            <ProcessStep key={step.n} step={step} />
-          ))}
-        </ol>
+
+        <div className="pr-process-track" ref={trackRef}>
+          <div className="pr-process-rail" aria-hidden="true">
+            <motion.span className="pr-process-rail-fill" style={reducedMotion ? { scaleY: 1 } : { scaleY: fill }} />
+          </div>
+          <ol className="pr-process-list">
+            {STEPS.map((step) => (
+              <ProcessStep key={step.n} step={step} />
+            ))}
+          </ol>
+        </div>
       </div>
     </section>
   );

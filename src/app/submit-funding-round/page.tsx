@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FundingRoundPage } from "@/components/funding-round-submit/FundingRoundPage";
+import { getPromotedCityOptions } from "@/lib/data-adapter";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -18,6 +19,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SubmitFundingRoundRoute() {
-  return <FundingRoundPage />;
+// Fetched here rather than in the client form, for the same reason /list-your-event and
+// /feature-your-startup do it here: the City dropdown is then complete on first paint — no
+// endpoint, no loading state, no flash of a list missing its earned cities.
+export default async function SubmitFundingRoundRoute() {
+  const promotedCities = await getPromotedCityOptions();
+  return <FundingRoundPage promotedCities={promotedCities} />;
 }

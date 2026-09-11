@@ -15,8 +15,7 @@ import {
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
   type Speaker, type SocialCreative, type LinkedEventSummary,
 } from '@/modules/partnership-events/domain/types';
-import { AUTO_SECTION_MIN_EVENTS, COUNTRY_NAMES, aliasesForCountry, canonicalCountryName, cityOptionsForCountry, countryForCity, flagForCountry, locationIssue, promotedCitiesByCountry, splitCityValue, subCitiesForCity } from '@/modules/partnership-events/domain/country-city-data';
-import { CITY_SECTION_OVERRIDE_OPTIONS } from '@/modules/partnership-events/domain/types';
+import { COUNTRY_NAMES, aliasesForCountry, canonicalCountryName, cityOptionsForCountry, countryForCity, flagForCountry, locationIssue, promotedCitiesByCountry, splitCityValue, subCitiesForCity } from '@/modules/partnership-events/domain/country-city-data';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/admin/SearchableSelect';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey, classifyPartnershipStatus, DEFAULT_HIDDEN_STATUSES } from '@/modules/partnership-events/utils/partnership-events.utils';
@@ -36,7 +35,9 @@ interface PartnershipEvent {
   siteStatus: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   eventName: string;
   city: string;
-  /** '' (auto) | 'own' | 'other' — see CITY_SECTION_OVERRIDE_OPTIONS. City-wide. */
+  /** '' (auto) | 'own' | 'other' — see CITY_SECTION_OVERRIDE_OPTIONS. City-wide.
+   *  No longer editable in the form: /events picks the section from the rules. Kept on the
+   *  draft so any override already stored for the city round-trips through an edit intact. */
   citySectionOverride: string;
   country: string;
   organiser: string;
@@ -301,8 +302,8 @@ const KNOWN_CITIES: Record<string, string> = {
   jaipur: 'India', noida: 'India', gurugram: 'India', gurgaon: 'India', chandigarh: 'India',
   goa: 'India', kochi: 'India', cochin: 'India', indore: 'India', lucknow: 'India', surat: 'India',
   nagpur: 'India', bhopal: 'India', coimbatore: 'India', vadodara: 'India', visakhapatnam: 'India',
-  dubai: 'UAE', 'abu dhabi': 'UAE', singapore: 'Singapore', london: 'UK', 'new york': 'America',
-  'san francisco': 'America', dublin: 'Ireland', berlin: 'Germany', paris: 'France', tokyo: 'Japan',
+  dubai: 'UAE', 'abu dhabi': 'UAE', singapore: 'Singapore', london: 'UK', 'new york': 'USA',
+  'san francisco': 'USA', dublin: 'Ireland', berlin: 'Germany', paris: 'France', tokyo: 'Japan',
 };
 const KNOWN_COUNTRIES = ['india', 'usa', 'united states', 'uk', 'united kingdom', 'uae', 'singapore', 'germany', 'france', 'japan', 'ireland', 'canada', 'australia'];
 function inferLocationFromName(name: string): { city: string; country: string } {
@@ -681,9 +682,9 @@ function buildRegionOptions(currentValue: string): SearchableSelectOption[] {
       value: name,
       label: name,
       emoji: flagForCountry(name) || undefined,
-      // UK / UAE keep the short spelling the existing records use, and the United States is
-      // listed as "America", so their other spellings are matched as hidden search terms —
-      // typing "united arab" still lands on UAE, and "USA" or "united states" lands on America.
+      // USA / UK / UAE keep the short spelling the existing records use, so their other
+      // spellings are matched as hidden search terms — typing "united arab" still lands on UAE,
+      // and "america" or "united states" lands on USA.
       keywords: aliasesForCountry(name),
     }));
 }
@@ -1911,7 +1912,6 @@ export default function PartnershipTrackerPage() {
                           </td>
                           <td className="pt-col-city">
                             {e.city || <span className="pt-muted">—</span>}
-                            {d.locationIssue && <span className="pt-badge" style={{ color: '#C22B44' }} title={`${d.locationIssue} — open the row to correct Region/Country and City`}>⚠ location</span>}
                           </td>
                           <td className="pt-col-country">
                             {e.country ? (
@@ -2146,26 +2146,6 @@ export default function PartnershipTrackerPage() {
                   {subCityEnabled && (
                     <div className="pt-hint">Optional — shown on the event card. Still listed under {cityField}.</div>
                   )}
-                </div>
-                <div className="pt-fg">
-                  <label>Section on /events</label>
-                  <select
-                    aria-label="Section on /events"
-                    value={draft.citySectionOverride}
-                    onChange={(e) => setDraft({ ...draft, citySectionOverride: e.target.value })}
-                  >
-                    {CITY_SECTION_OVERRIDE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                  {/* Says "this city" rather than "this event" on purpose — the setting is read off
-                      ANY event of the city, so it moves all of them together and the city can never
-                      appear in two places at once. */}
-                  <div className="pt-hint">
-                    {draft.citySectionOverride === 'own'
-                      ? `Forces a "${cityField || 'this city'}" section even below ${AUTO_SECTION_MIN_EVENTS} events — applies to every event in this city.`
-                      : draft.citySectionOverride === 'other'
-                        ? `Keeps ${cityField || 'this city'} under "Other Cities" even at ${AUTO_SECTION_MIN_EVENTS}+ events — applies to every event in this city.`
-                        : `Auto: its own section if the city is curated or has ${AUTO_SECTION_MIN_EVENTS}+ listed events, otherwise "Other Cities".`}
-                  </div>
                 </div>
                 <div className="pt-fg"><label>Organiser/Company Name</label><input value={draft.organiser} onChange={(e) => setDraft({ ...draft, organiser: e.target.value })} /></div>
                 <div className="pt-fg">

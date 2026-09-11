@@ -5,7 +5,6 @@ import { SectionLabel } from "./SectionLabel";
 import {
   FacebookIcon,
   GoogleIcon,
-  HeartIcon,
   InstagramIcon,
   LinkedInIcon,
   NewsletterIcon,
@@ -14,6 +13,8 @@ import {
   YouTubeIcon,
 } from "./icons";
 import { useReducedMotion } from "./hooks";
+import { featureStartupBackgrounds } from "./backgrounds";
+import { BackgroundVideo } from "./BackgroundVideo";
 
 /** The channels StartupNews.fyi actually operates — the social accounts in `siteConfig.social`,
  * the WhatsApp communities and search presence quoted on /advertise-with-us, and this site's own
@@ -31,36 +32,6 @@ const NODES = [
   { key: "facebook", label: "Facebook", Icon: FacebookIcon, x: 20.3, y: 23.1 },
 ] as const;
 
-/** Illustrative post mock-ups. Every one of these is generic on purpose — no real company name,
- * no real handle, no engagement number that could be read as a published result. The caption
- * under the row says so in as many words. */
-const FORMATS = [
-  {
-    key: "instagram",
-    chrome: "Instagram",
-    Icon: InstagramIcon,
-    handle: "startupnews.fyi",
-    body: "Meet the team building —————. Here's what they're shipping next.",
-    foot: "Example carousel format",
-  },
-  {
-    key: "linkedin",
-    chrome: "LinkedIn",
-    Icon: LinkedInIcon,
-    handle: "StartupNews.fyi",
-    body: "Featured today: how one founding team went from prototype to first customers.",
-    foot: "Example post format",
-  },
-  {
-    key: "newsletter",
-    chrome: "Newsletter",
-    Icon: NewsletterIcon,
-    handle: "StartupNews.fyi Digest",
-    body: "In this edition — the startups we featured this week, and what they're working on.",
-    foot: "Example newsletter slot",
-  },
-] as const;
-
 const CENTER = { x: 50, y: 50 };
 
 /** Section 05/06 — where a feature can travel. Motion language here is *line drawing*: eight
@@ -75,8 +46,16 @@ export function PlatformEcosystem() {
   const reducedMotion = useReducedMotion();
   return (
     <section className="fys-eco" aria-labelledby="fys-eco-title">
+      <div className="fys-eco-bg" aria-hidden="true">
+        <BackgroundVideo
+          video={featureStartupBackgrounds.ecosystem}
+          className="fys-eco-photo"
+          scrimClassName="fys-eco-scrim"
+        />
+      </div>
+
       <div className="fys-eco-inner">
-        <SectionLabel index="03" tone="dark">
+        <SectionLabel tone="dark">
           Ecosystem
         </SectionLabel>
 
@@ -100,7 +79,7 @@ export function PlatformEcosystem() {
         >
           Your story can be shaped for the channels where the startup audience already spends its
           time — the site itself, our social accounts, our communities and the newsletter. Which
-          surfaces a given feature runs on is decided editorially, case by case.
+          surfaces a given feature runs on is <em>decided editorially, case by case</em>.
         </motion.p>
 
         <div className="fys-eco-stage" role="img" aria-label="A StartupNews.fyi feature connected to the site's social channels, communities, newsletter and search presence">
@@ -171,47 +150,6 @@ export function PlatformEcosystem() {
             ))}
           </ul>
         </div>
-
-        <div className="fys-formats">
-          {FORMATS.map((format, i) => (
-            <motion.figure
-              key={format.key}
-              className="fys-format-card"
-              initial={reducedMotion ? false : { opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.5, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="fys-format-chrome">
-                <format.Icon className="fys-format-chrome-icon" />
-                <span>{format.chrome}</span>
-              </div>
-              <div className="fys-format-body">
-                <div className="fys-format-head">
-                  <span className="fys-format-avatar" aria-hidden="true" />
-                  <div>
-                    <p className="fys-format-handle">{format.handle}</p>
-                    <p className="fys-format-sub">Featured startup</p>
-                  </div>
-                </div>
-                <p className="fys-format-text">{format.body}</p>
-                <div className="fys-format-media" aria-hidden="true">
-                  <span className="fys-format-media-logo" />
-                  <span className="fys-format-media-line" />
-                  <span className="fys-format-media-line short" />
-                </div>
-                <div className="fys-format-foot">
-                  <HeartIcon className="fys-format-heart" />
-                  <span>{format.foot}</span>
-                </div>
-              </div>
-            </motion.figure>
-          ))}
-        </div>
-
-        <p className="fys-formats-note">
-          Illustrative formats only — mock-ups of how a feature can be laid out, not published posts.
-        </p>
       </div>
     </section>
   );

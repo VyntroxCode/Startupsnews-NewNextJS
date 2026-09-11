@@ -1,11 +1,49 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { slugify } from "@/components/submit-event/constants";
+import { slugify, OTHER_CITY_VALUE, OTHER_COUNTRY_VALUE } from "@/components/submit-event/constants";
 import { createInitialFormData, type FieldErrors, type SponsorEventFormData } from "./types";
 import { stepHasErrors, validateAllSteps, validateStep } from "./validation";
 
-export const TOTAL_STEPS = 4;
+export const TOTAL_STEPS = 3;
+
+/** Structured inputs whose edits have to be folded back into a canonical field on
+ * SponsorEventFormData — `location` (what the API validates and emails) and `phone`.
+ *
+ * Done here rather than in the step components on purpose: a form that stored the parts in one
+ * place and the assembled string in another would eventually be edited on one side only, and the
+ * bug — a submission emailing a stale location — would be silent. One writer, no drift. */
+const DERIVED_FROM: Record<string, "location" | "phone"> = {
+  country: "location",
+  countryOther: "location",
+  city: "location",
+  cityOther: "location",
+  phoneCode: "phone",
+  phoneCodeCustom: "phone",
+  phoneNumber: "phone",
+};
+
+function composeLocation(d: SponsorEventFormData): string {
+  const country = d.country === OTHER_COUNTRY_VALUE ? d.countryOther.trim() : d.country;
+  const city = d.city === OTHER_CITY_VALUE ? d.cityOther.trim() : d.city;
+  // City first: the API emails this straight through, and "Bengaluru, India" is how a venue reads.
+  return [city, country].filter(Boolean).join(", ");
+}
+
+function composePhone(d: SponsorEventFormData): string {
+  const digits = d.phoneNumber.replace(/\D/g, "");
+  if (!digits) return "";
+  const code = d.phoneCode === "other" ? d.phoneCodeCustom.trim() : d.phoneCode;
+  return code ? `${code} ${digits}` : digits;
+}
+
+function withDerived(next: SponsorEventFormData, key: string): SponsorEventFormData {
+  const target = DERIVED_FROM[key];
+  if (!target) return next;
+  return target === "phone"
+    ? { ...next, phone: composePhone(next) }
+    : { ...next, location: composeLocation(next) };
+}
 
 export function useSponsorEventForm() {
   const [data, setData] = useState<SponsorEventFormData>(createInitialFormData);
@@ -25,7 +63,7 @@ export function useSponsorEventForm() {
   const slugTouched = useRef(false);
 
   function setField<K extends keyof SponsorEventFormData>(key: K, value: SponsorEventFormData[K]) {
-    setData((prev) => ({ ...prev, [key]: value }));
+    setData((prev) => withDerived({ ...prev, [key]: value }, key as string));
   }
 
   const pendingRevalidation = useRef(new Map<string, (d: SponsorEventFormData) => string>());
@@ -47,7 +85,7 @@ export function useSponsorEventForm() {
     errorField: string,
     validator: (d: SponsorEventFormData) => string
   ) {
-    setData((prev) => ({ ...prev, [key]: value }));
+    setData((prev) => withDerived({ ...prev, [key]: value }, key as string));
     if (errors[errorField]) pendingRevalidation.current.set(errorField, validator);
   }
 

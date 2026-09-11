@@ -15,6 +15,9 @@ type SponsorEventPayload = {
   posterUrl?: string;
   contactName?: string;
   contactEmail?: string;
+  /** Composed on the client ("+91 9876543210"). Added when the form gained a country-code phone
+   * control — without carrying it here the number would be collected and silently dropped. */
+  phone?: string;
   turnstileToken?: string;
 };
 
@@ -67,6 +70,7 @@ export async function POST(request: NextRequest) {
   const contactName = body?.contactName?.trim();
   const contactEmail = body?.contactEmail?.trim();
   const externalUrl = body?.externalUrl?.trim();
+  const phone = body?.phone?.trim();
 
   const missing: string[] = [];
   if (!title) missing.push('event title');
@@ -106,6 +110,7 @@ export async function POST(request: NextRequest) {
     description,
     '',
     `Submitted by: ${contactName} <${contactEmail}>`,
+    phone ? `Phone: ${phone}` : null,
   ]
     .filter((line) => line !== null)
     .join('\n');
@@ -125,6 +130,7 @@ export async function POST(request: NextRequest) {
       <p>${description!.replace(/\n/g, '<br />')}</p>
       <hr />
       <p><strong>Submitted by:</strong> ${contactName} &lt;${contactEmail}&gt;</p>
+      ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ''}
     </div>
   `;
 

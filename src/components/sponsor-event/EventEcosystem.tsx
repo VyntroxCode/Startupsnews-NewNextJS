@@ -17,7 +17,7 @@ const NODES = [
   { key: "media", label: "Media", x: 80, y: 82 },
   { key: "attendees", label: "Attendees", x: 50, y: 94 },
   { key: "communities", label: "Communities", x: 20, y: 82 },
-  { key: "teams", label: "Tech teams", x: 6, y: 52 },
+  { key: "teams", label: "Tech Teams", x: 6, y: 52 },
   { key: "partners", label: "Partners", x: 18, y: 22 },
 ] as const;
 
@@ -42,9 +42,8 @@ export function EventEcosystem() {
     <section className="sp-eco" aria-labelledby="sp-eco-title">
       <div className="sp-wrap">
         <SectionHead
-          index="02"
           kicker="Ecosystem"
-          title={<span id="sp-eco-title">An event is more than a room full of people.</span>}
+          title={<span id="sp-eco-title">An Event Is <em>More Than A Room Full Of People</em>.</span>}
           lede="It is a moment where founders meet investors, ideas meet opportunity, and communities come together around what comes next."
         />
 

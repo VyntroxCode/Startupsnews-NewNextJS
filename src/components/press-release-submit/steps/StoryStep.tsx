@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { FormField } from "@/components/ui/FormField";
+import { PhoneField } from "@/components/ui/PhoneField";
 import type { LeadFormController } from "@/components/lead-forms/shared/useLeadForm";
 import {
   validateCompanyName,
@@ -21,9 +22,7 @@ export function StoryStep({ ctrl }: { ctrl: LeadFormController }) {
   return (
     <motion.div className="pr-step" variants={staggerVariants} initial="hidden" animate="show">
       <motion.div className="pr-step-head" variants={staggerItemVariants}>
-        <p className="pr-step-kicker">
-          <span className="pr-step-kicker-n">01</span> The Story
-        </p>
+        <p className="pr-step-kicker">The Story</p>
         <p className="pr-step-hint">Who is announcing, and the fastest way for an editor to reach you.</p>
       </motion.div>
 
@@ -50,16 +49,25 @@ export function StoryStep({ ctrl }: { ctrl: LeadFormController }) {
         />
       </motion.div>
       <motion.div variants={staggerItemVariants}>
-        <FormField
+        {/* The site's shared country-code control, as on /list-your-event — it brings the
+            per-country length rules with it (see validatePhone). It replaced a free-text box whose
+            "+1 555 000 0000" placeholder was the only hint a dial code was wanted. */}
+        <PhoneField
           id="pr-phone"
           label="Phone / WhatsApp"
-          required
-          type="tel"
-          placeholder="+1 555 000 0000"
-          value={data.phone}
+          phoneCode={data.phoneCode}
+          phoneCodeCustom={data.phoneCodeCustom}
+          phoneNumber={data.phoneNumber}
           error={errors.phone}
-          onChange={(v) => ctrl.updateAndMaybeValidate("phone", v, "phone", validatePhone)}
-          onBlur={() => ctrl.blurValidate("phone", validatePhone)}
+          /* updateAndMaybeValidate, not setField: PhoneField fires onBlurValidate straight after a
+             code change, which validates the state as it was BEFORE the change landed. An error
+             already on screen would be re-asserted from stale values and stick. */
+          onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
+          onChangeCustomCode={(v) =>
+            ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
+          }
+          onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
+          onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
         />
       </motion.div>
 

@@ -22,16 +22,6 @@ export function ClosingQuote() {
       >
         Every story begins with a detail worth telling.
       </motion.blockquote>
-      <motion.p
-        className="pr-closing-mark"
-        aria-hidden="true"
-        initial={reducedMotion ? false : { opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.6 }}
-        transition={{ duration: 0.6, delay: 0.3 }}
-      >
-        StartupNews.fyi · Press Desk
-      </motion.p>
     </section>
   );
 }

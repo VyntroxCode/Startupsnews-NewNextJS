@@ -1,59 +1,60 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "motion/react";
 import { useCountUp, useReducedMotion } from "./hooks";
 
 /** Audience figures, taken verbatim from the numbers this business already publishes on
  * /advertise-with-us (src/app/advertise-with-us/page.tsx `STATS`) — the same source the sibling
  * Funding Round page quotes. Nothing here is estimated or invented for this page; if the media
- * desk revises those figures, this list is updated from that one place and the link below lets a
- * reader check them.
+ * desk revises those figures, this list is updated from that one place. (The footnote that used
+ * to link /advertise-with-us was removed on request — the figures are still sourced from there.)
  *
  * `x`/`y` scatter each card across the field (percentages of the field box, desktop only — under
  * 900px CSS drops the absolute positioning for a plain 2×2 grid). `drift` is that card's own
  * closed loop: it wanders right, down, back left and home over `seconds`, and since no two cards
  * share a path, a duration or a phase, they never drift in formation. The scatter positions are
- * spaced so that even at full drift no two cards can touch. */
+ * spaced so that even at full drift no two cards can touch — checked against the card's CURRENT
+ * 290px width in the 1160px field, so both of those numbers and these percentages have to be
+ * re-checked together if either changes. */
 const REACH = [
   {
     target: 10,
     suffix: "M+",
     label: "Monthly impressions",
-    x: 11,
-    y: 27,
+    x: 15,
+    y: 23,
     drift: { x: [0, 24, 8, -16, 0], y: [0, -18, 14, -7, 0] },
-    seconds: 17,
+    seconds: 6,
     delay: 0,
   },
   {
     target: 15,
     suffix: "M+",
     label: "Instagram organic reach",
-    x: 39,
-    y: 72,
+    x: 38,
+    y: 77,
     drift: { x: [0, -20, 11, 22, 0], y: [0, 15, -13, 7, 0] },
-    seconds: 21,
+    seconds: 7.5,
     delay: 0.6,
   },
   {
     target: 445,
     suffix: "K+",
     label: "Instagram followers",
-    x: 63,
-    y: 24,
+    x: 64,
+    y: 22,
     drift: { x: [0, 18, -22, 9, 0], y: [0, 13, -11, 16, 0] },
-    seconds: 19,
+    seconds: 6.5,
     delay: 0.3,
   },
   {
     target: 24,
-    suffix: "",
+    suffix: "+",
     label: "Countries reached",
-    x: 89,
-    y: 69,
+    x: 85,
+    y: 74,
     drift: { x: [0, -16, 20, -9, 0], y: [0, -13, 16, -9, 0] },
-    seconds: 23,
+    seconds: 8,
     delay: 0.9,
   },
 ] as const;
@@ -66,7 +67,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
  * owns the endless wander. */
 function ReachStat({ stat, index }: { stat: (typeof REACH)[number]; index: number }) {
   const reducedMotion = useReducedMotion();
-  const { ref, value } = useCountUp(stat.target, { durationMs: 1500 });
+  const { ref, value } = useCountUp(stat.target, { durationMs: 750 });
 
   return (
     <li
@@ -77,7 +78,7 @@ function ReachStat({ stat, index }: { stat: (typeof REACH)[number]; index: numbe
         initial={reducedMotion ? false : { opacity: 0, y: 24, scale: 0.94 }}
         whileInView={{ opacity: 1, y: 0, scale: 1 }}
         viewport={{ once: true, amount: 0.4 }}
-        transition={{ duration: 0.6, delay: index * 0.1, ease: EASE }}
+        transition={{ duration: 0.38, delay: index * 0.05, ease: EASE }}
       >
         <motion.div
           className="fys-reach-drift"
@@ -131,11 +132,6 @@ export function ReachStrip() {
           <ReachStat key={stat.label} stat={stat} index={i} />
         ))}
       </ul>
-
-      <p className="fys-reach-source">
-        Audience figures as published on our <Link href="/advertise-with-us">Advertise With Us</Link>{" "}
-        page.
-      </p>
     </section>
   );
 }

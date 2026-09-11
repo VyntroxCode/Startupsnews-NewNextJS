@@ -25,10 +25,6 @@ type PostSitemapRow = {
   created_at: Date | string | null;
 };
 
-type CategorySitemapRow = {
-  slug: string;
-};
-
 type EventSitemapRow = {
   slug: string;
   updated_at: Date | string | null;
@@ -59,10 +55,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const [categories, posts, events] = await Promise.all([
-      query<CategorySitemapRow>(
-        "SELECT slug FROM categories ORDER BY id DESC"
-      ),
+    // Category listing pages are noindex,nofollow (see app/[...slug]/page.tsx), so they are
+    // deliberately left out — a sitemap must only list URLs we want indexed.
+    const [posts, events] = await Promise.all([
       query<PostSitemapRow>(
         `SELECT p.slug, c.slug AS category_slug, p.updated_at, p.published_at, p.created_at
          FROM posts p
@@ -77,14 +72,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
          ORDER BY event_start_date ASC`
       ),
     ]);
-
-    const categoryRoutes: MetadataRoute.Sitemap = categories
-      .filter((c) => (c.slug || "").trim().length > 0)
-      .map((c) => ({
-        url: `${SITE_URL}/${encodeURIComponent(c.slug.trim())}`,
-        changeFrequency: "hourly",
-        priority: 0.8,
-      }));
 
     const postRoutes: MetadataRoute.Sitemap = posts
       .filter((p) => (p.slug || "").trim().length > 0 && (p.category_slug || "").trim().length > 0)
@@ -115,7 +102,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     }));
 
-    return [...staticRoutes, ...categoryRoutes, ...postRoutes, ...eventRoutes, ...staffAuthorRoutes];
+    return [...staticRoutes, ...postRoutes, ...eventRoutes, ...staffAuthorRoutes];
   } catch (error) {
     console.error("Failed to generate sitemap from database:", error);
     return staticRoutes;

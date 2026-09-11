@@ -9,12 +9,12 @@ import { CheckIcon } from "./icons";
  * more useful to an organiser than a list of tiers — and it is honest about the fact that not
  * every submission leads to a partnership. */
 const QUALITIES = [
-  { title: "A clear purpose", body: "A real reason for people to give up an evening or a day." },
-  { title: "A relevant audience", body: "A defined group who genuinely benefit from being there." },
-  { title: "A strong story", body: "Something to say about why this event matters now." },
-  { title: "Good timing", body: "Enough runway to build awareness before the date arrives." },
-  { title: "A quality experience", body: "Thought put into the room, the format and the people in it." },
-  { title: "A meaningful outcome", body: "Something attendees leave with that they didn't arrive with." },
+  { title: "A Clear Purpose", body: "A real reason for people to give up an evening or a day." },
+  { title: "A Relevant Audience", body: "A defined group who genuinely benefit from being there." },
+  { title: "A Strong Story", body: "Something to say about why this event matters now." },
+  { title: "Good Timing", body: "Enough runway to build awareness before the date arrives." },
+  { title: "A Quality Experience", body: "Thought put into the room, the format and the people in it." },
+  { title: "A Meaningful Outcome", body: "Something attendees leave with that they didn't arrive with." },
 ] as const;
 
 /** 10 — what we look for. Motion language: *a checklist ticking itself off*, each row sliding in
@@ -27,10 +27,9 @@ export function PartnershipQualities() {
       <div className="sp-wrap sp-qualities-inner">
         <div className="sp-qualities-aside">
           <SectionHead
-            index="10"
-            kicker="What we look for"
+            kicker="What We Look For"
             align="left"
-            title={<span id="sp-qualities-title">What makes a great event partnership?</span>}
+            title={<span id="sp-qualities-title">What Makes A Great Event Partnership?</span>}
             lede="Not every submission becomes one, and we'd rather say so up front. These are the things our team weighs when reading through what you send."
           />
         </div>

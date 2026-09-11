@@ -229,7 +229,8 @@ export const ONLINE_LOCATION_LABEL = 'Online';
 export const LISTING_OPTIONS = ['No', 'Pending', 'In process', 'Yes'] as const;
 /**
  * Manual override for which /events section a city renders under, stored in `city_section_override`.
- * '' means auto — the normal rule (curated city, or AUTO_SECTION_MIN_EVENTS reached) decides.
+ * '' means auto — the normal rule decides, which is AUTO_SECTION_MIN_EVENTS listed events and
+ * nothing else (curation stopped exempting a city; see citySectionQualifies).
  * Applied CITY-WIDE: read off any event of the city, so a city is never split across two sections.
  */
 export const CITY_SECTION_OVERRIDE_OPTIONS = [

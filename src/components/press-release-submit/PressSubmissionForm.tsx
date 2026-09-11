@@ -26,7 +26,7 @@ const reducedStepVariants = {
   exit: { opacity: 0, transition: { duration: 0.12 } },
 };
 
-/** Section 12 — the submission itself, and the last chapter of the page.
+/** Section 10 — the submission itself, and the last chapter of the page.
  *
  * Three visual steps over the six fields the shared `useLeadForm` controller has always had: The
  * Story (canonical validation step 1), The Source (canonical step 2), then a Review read-back that
@@ -37,18 +37,32 @@ const reducedStepVariants = {
  * incoming one arrives, or two absolutely-positioned steps of different heights fight over the
  * card's height mid-transition. Field values live in the controller above this component, so they
  * survive every step change and every re-render of the story sections above. */
-export function PressSubmissionForm({ ctrl }: { ctrl: LeadFormController }) {
+export function PressSubmissionForm({
+  ctrl,
+  promotedCities,
+}: {
+  ctrl: LeadFormController;
+  promotedCities?: Record<string, string[]>;
+}) {
   const reducedMotion = useReducedMotion();
   const { currentStep, direction, submitted } = ctrl;
 
   return (
     <section className="pr-section pr-form-section" id="pr-form" aria-labelledby="pr-form-title">
       <SectionIntro
-        index="12"
         label="Your Submission"
-        heading="Tell us what happened."
+        heading={
+          <>
+            Tell us <em>what happened</em>.
+          </>
+        }
         headingId="pr-form-title"
-        lede="Six details, three short steps. A person on our editorial team reads every submission that comes through this desk."
+        lede={
+          <>
+            Six details, three short steps. <em>A person on our editorial team reads every
+            submission</em> that comes through this desk.
+          </>
+        }
       />
 
       <div className={"pr-form-shell" + (submitted ? " is-done" : "")}>
@@ -76,7 +90,7 @@ export function PressSubmissionForm({ ctrl }: { ctrl: LeadFormController }) {
                 onSubmit={(e) => e.preventDefault()}
               >
                 {currentStep === 1 && <StoryStep ctrl={ctrl} />}
-                {currentStep === 2 && <SourceStep ctrl={ctrl} />}
+                {currentStep === 2 && <SourceStep ctrl={ctrl} promotedCities={promotedCities} />}
                 {currentStep === 3 && <ReviewStep ctrl={ctrl} />}
               </motion.form>
             )}

@@ -12,8 +12,12 @@ const FEATURE_STARTUP_STEP_GROUPS: number[][] = [[1, 2]];
 
 export const TOTAL_STEPS = FEATURE_STARTUP_STEP_GROUPS.length;
 
+/** The country-code select opens on India, exactly as /list-your-event's does — this page's
+ * audience is majority Indian, and an unset code reads as one more thing to fill in. */
+const FEATURE_STARTUP_INITIAL = { phoneCode: "+91" };
+
 export function useFeatureStartupForm() {
-  return useLeadForm("feature-startup", FEATURE_STARTUP_STEP_GROUPS);
+  return useLeadForm("feature-startup", FEATURE_STARTUP_STEP_GROUPS, FEATURE_STARTUP_INITIAL);
 }
 
 export type FeatureStartupFormController = LeadFormController;

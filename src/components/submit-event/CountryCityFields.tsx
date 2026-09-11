@@ -15,6 +15,10 @@ interface CountryCityFieldsProps {
   /** Cities that have earned a dropdown slot, keyed by country — see promotedCitiesByCountry.
    * Fetched server-side by the page so the list is complete on first paint. */
   promotedCities?: Record<string, string[]>;
+  /** Both fields are required by default, as an event listing needs a location. Feature Your
+   * Startup asks for the same two fields but does not insist on them, so it passes false and the
+   * labels pick up the site's "(optional)" hint instead of an asterisk. */
+  required?: boolean;
   /** Locks both selects — used for an online (virtual) event, which has no venue location. */
   locked?: boolean;
   lockedHint?: string;
@@ -29,11 +33,15 @@ interface CountryCityFieldsProps {
 /**
  * The City dropdown offers exactly what the admin Partnership Tracker's Add/Edit Event form
  * offers — the curated COUNTRY_CITY_DATA list plus any city that has earned a slot by reaching
- * the listed-event threshold — not a second list of this form's own. That matters beyond
- * consistency: /events gives a city its own section only when it is curated or has hit that same
- * threshold, so a city this form invented would silently land the event in "Other Cities".
- * cityOptionsForCountry canonicalises, so the long names this form uses ("United States") still
- * resolve to the tracker's key ("America").
+ * the listed-event threshold — not a second list of this form's own. Keeping the two in step is
+ * what stops the same city being stored under two spellings, which would split its event count
+ * and hold it below the threshold /events uses.
+ *
+ * Being offered here does NOT promise a city its own /events section: that is decided by event
+ * count alone (AUTO_SECTION_MIN_EVENTS), so a curated city with one or two listed events shows
+ * under "Other Cities" like any other. cityOptionsForCountry canonicalises, so a long name
+ * ("United States") still resolves to the tracker's key ("USA") — which is also what this form's
+ * own country list shows (constants.ts, switched from "United States" on 2026-09-11).
  *
  * Left in the admin's order, NOT alphabetised — the curated lists are hand-ordered by market
  * importance (India leads with Mumbai / Delhi NCR / Bengaluru), which sorting would throw away.
@@ -51,6 +59,7 @@ export function CountryCityFields({
   countryError,
   cityError,
   promotedCities,
+  required = true,
   locked = false,
   lockedHint,
   onChangeCountry,
@@ -75,7 +84,10 @@ export function CountryCityFields({
   return (
     <div className="field-row">
       <div className={"field" + (countryError ? " has-error" : "")} id="field-country">
-        <label>Country *</label>
+        <label>
+          Country{required ? " *" : ""}
+          {required ? null : <span className="opt"> (optional)</span>}
+        </label>
         <CustomSelect
           options={COUNTRY_OPTIONS}
           value={country}
@@ -113,7 +125,10 @@ export function CountryCityFields({
         </div>
       </div>
       <div className={"field" + (cityError ? " has-error" : "")} id="field-city">
-        <label>City *</label>
+        <label>
+          City{required ? " *" : ""}
+          {required ? null : <span className="opt"> (optional)</span>}
+        </label>
         <CustomSelect
           options={cityOptions}
           value={city}

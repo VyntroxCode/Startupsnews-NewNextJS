@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { FormField } from "@/components/ui/FormField";
+import { PhoneField } from "@/components/ui/PhoneField";
 import { Button } from "@/components/ui/Button";
 import { ALLOWED_IMAGE_ACCEPT, ALLOWED_IMAGE_ERROR, ALLOWED_IMAGE_LABEL } from "@/components/submit-event/constants";
 import { compressImage, isAllowedImageFile, uploadFileToS3 } from "@/components/submit-event/imageUpload";
 import type { SponsorEventFormController } from "../useSponsorEventForm";
-import { validateContactEmail, validateContactName, validatePoster } from "../validation";
+import { validateContactEmail, validateContactName, validatePhone, validatePoster } from "../validation";
 
 // The Google Form this page replaces capped the poster at 10MB — stricter than the 20MB hard
 // ceiling shared imageUpload.ts otherwise applies, so it's enforced here rather than there.
@@ -49,8 +50,8 @@ export function PosterContactStep({ ctrl }: { ctrl: SponsorEventFormController }
 
   return (
     <div className="sp-step" data-step="3">
-      <p className="sp-step-kicker">03 IDENTITY</p>
-      <h3 className="sp-step-heading">Give your event a face.</h3>
+      <p className="sp-step-kicker">Contact</p>
+      <h3 className="sp-step-heading">Give Your Event A Face.</h3>
       <div className={"field sp-upload-field" + (errors.posterUrl ? " has-error" : "")}>
         <label>Event Poster *</label>
         <div
@@ -103,7 +104,7 @@ export function PosterContactStep({ ctrl }: { ctrl: SponsorEventFormController }
         </div>
         {data.posterUrl && (
           <div className="sp-upload-file">
-            <span>{data.posterFilename || "Poster uploaded"}</span>
+            <span>{data.posterFilename || "Poster Uploaded"}</span>
             <button type="button" aria-label="Remove poster" onClick={clearPoster}>
               &times;
             </button>
@@ -134,6 +135,22 @@ export function PosterContactStep({ ctrl }: { ctrl: SponsorEventFormController }
         error={errors.contactEmail}
         onChange={(v) => ctrl.updateAndMaybeValidate("contactEmail", v, "contactEmail", validateContactEmail)}
         onBlur={() => ctrl.blurValidate("contactEmail", validateContactEmail)}
+      />
+      {/* New on this form — the API had no phone field at all, so the route was extended to carry
+          it into the notification email rather than letting it be collected and dropped. */}
+      <PhoneField
+        id="sp-phone"
+        label="Phone / WhatsApp"
+        phoneCode={data.phoneCode}
+        phoneCodeCustom={data.phoneCodeCustom}
+        phoneNumber={data.phoneNumber}
+        error={errors.phone}
+        onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
+        onChangeCustomCode={(v) =>
+          ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
+        }
+        onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
+        onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
       />
 
       <div className="wizard-nav">

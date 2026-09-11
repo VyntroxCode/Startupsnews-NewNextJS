@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FeatureStartupPage } from "@/components/feature-startup/FeatureStartupPage";
+import { getPromotedCityOptions } from "@/lib/data-adapter";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -18,6 +19,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function FeatureYourStartupRoute() {
-  return <FeatureStartupPage />;
+// Fetched here rather than in the client form, for the same reason /list-your-event does it here:
+// the City dropdown is then complete on first paint — no endpoint, no loading state, and no flash
+// of a list missing the cities that have earned a slot.
+export default async function FeatureYourStartupRoute() {
+  const promotedCities = await getPromotedCityOptions();
+  return <FeatureStartupPage promotedCities={promotedCities} />;
 }

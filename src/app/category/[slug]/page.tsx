@@ -26,14 +26,19 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   const displayName = slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const title = `${displayName} News & Updates`;
   const description = `Latest ${displayName} startup news, funding rounds, and industry analysis on StartupNews.fyi.`;
+  // This route is only reached through a rewrite (/funding-tracker → /category/funding-tracker);
+  // /category/:slug itself 308s to /:slug, so the public URL — and canonical — is /:slug.
+  const canonical = `${SITE_BASE}/${slug}`;
   return {
     title,
     description,
-    alternates: { canonical: `${SITE_BASE}/category/${slug}` },
+    // Category listing pages are kept out of search — only the articles are indexed.
+    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+    alternates: { canonical },
     openGraph: {
       title,
       description,
-      url: `${SITE_BASE}/category/${slug}`,
+      url: canonical,
       siteName: "StartupNews.fyi",
       type: "website",
     },
