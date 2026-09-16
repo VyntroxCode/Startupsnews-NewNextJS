@@ -42,7 +42,7 @@ export function EventsSearchBar({ allEvents, title, subtitle, children }: Events
             keeps the title optically centred on the page instead of drifting left. */}
         <div className="event-by-country-header-side" aria-hidden="true" />
         <div className="event-by-country-header-text">
-          <h2 className="event-by-country-title">{title}</h2>
+          <h1 className="event-by-country-title">{title}</h1>
           <p className="event-by-country-subtitle">{subtitle}</p>
         </div>
         <div className="event-search-bar">

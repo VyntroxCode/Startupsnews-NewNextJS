@@ -10,12 +10,13 @@ import ImageUpload from '@/components/admin/ImageUpload';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import EventsManagementTabs from '@/components/admin/events/EventsManagementTabs';
 import {
-  PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, SITE_STATUS_OPTIONS,
+  PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, SITE_STATUS_OPTIONS, ONLINE_PARTNERSHIP_TYPE,
   EVENT_DESCRIPTION_MIN_LENGTH,
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
-  type Speaker, type SocialCreative, type LinkedEventSummary,
+  SOCIAL_LINK_FIELDS,
+  type Speaker, type SocialCreative, type LinkedEventSummary, type SocialLinkKey,
 } from '@/modules/partnership-events/domain/types';
-import { COUNTRY_NAMES, aliasesForCountry, canonicalCountryName, cityOptionsForCountry, countryForCity, flagForCountry, locationIssue, promotedCitiesByCountry, splitCityValue, subCitiesForCity } from '@/modules/partnership-events/domain/country-city-data';
+import { COUNTRY_NAMES, aliasesForCountry, canonicalCountryName, cityOptionsForCountry, countryForCity, flagForCountry, promotedCitiesByCountry, splitCityValue, subCitiesForCity } from '@/modules/partnership-events/domain/country-city-data';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/admin/SearchableSelect';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey, classifyPartnershipStatus, DEFAULT_HIDDEN_STATUSES } from '@/modules/partnership-events/utils/partnership-events.utils';
@@ -64,6 +65,11 @@ interface PartnershipEvent {
   bannerActive: boolean;
   socialMediaPosts: string;
   socialCreatives: SocialCreative[];
+  /** Organiser's own social links from /list-your-event — read-only here, never on the draft. */
+  socialInstagram: string;
+  socialLinkedin: string;
+  socialX: string;
+  socialFacebook: string;
   partnershipStatus: string;
   partnershipType: string;
   lastUpdatedDate: string;
@@ -77,7 +83,7 @@ interface PartnershipEvent {
   updatedBy: string;
 }
 
-type EventDraft = Omit<PartnershipEvent, 'id' | 'eventId' | 'linkedEvent' | 'slug' | 'siteStatus' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'> & {
+type EventDraft = Omit<PartnershipEvent, 'id' | 'eventId' | 'linkedEvent' | 'slug' | 'siteStatus' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy' | SocialLinkKey> & {
   /** Also drives the (still-maintained) linked public Event's country field — see syncLinkedEvent. */
   region: string;
   /** The record's own public status column. No "Completed" here as a selectable option — that's automatic (see markSiteStatusPastAsCompleted). */
@@ -163,8 +169,6 @@ interface Derived {
    * the server-side auto-expiry sweep uses (see markPastPartnershipsAsExpired). */
   isUpcoming: boolean;
   dateOrderSuspect: boolean;
-  /** Why this row's Region/Country + City look wrong, '' when they look fine. */
-  locationIssue: string;
   daysInStatus: number | null;
   listingResolved: string;
   partnershipTypeResolved: string;
@@ -336,7 +340,7 @@ function computeDerived(e: PartnershipEvent): Derived {
   const daysInStatus = (initiatedMs !== null && effectiveEndMs !== null) ? daysBetween(effectiveEndMs, initiatedMs) : null;
   const partnershipTypeResolved = e.partnershipType;
   const listingResolved = normalizeListing(e.listing, e.listingLink, statusBucket);
-  return { statusBucket, isExpired, isUpcoming, dateOrderSuspect, locationIssue: locationIssue(e.country, e.city), daysInStatus, listingResolved, partnershipTypeResolved };
+  return { statusBucket, isExpired, isUpcoming, dateOrderSuspect, daysInStatus, listingResolved, partnershipTypeResolved };
 }
 
 /* ============================================================
@@ -436,7 +440,11 @@ function rowToDraft(row: Record<string, unknown>, map: Record<string, string>, s
     if (rawText && !draft[f]) stats.unparseableDates++;
   }
 
-  if (!draft.city && !draft.country) {
+  if (draft.partnershipType === ONLINE_PARTNERSHIP_TYPE) {
+    // Online events carry no location (the server clears these too) — never guess one.
+    draft.city = '';
+    draft.country = '';
+  } else if (!draft.city && !draft.country) {
     const guess = inferLocationFromName(eventName);
     if (guess.city || guess.country) {
       draft.city = guess.city;
@@ -517,6 +525,7 @@ const EXPORT_EXTRA_HEADERS = [
   'Event Start Time', 'Event End Time', 'Venue Address', 'Google Location Link', 'Event Description',
   'Event Type', 'Ticket Currency', 'Ticket Starts From', 'Key Speakers/Guests',
   'Event Poster Link', 'Event Banner Link', 'Banner Start Date', 'Social Media Post Content', 'Social Media Creative Link',
+  'Instagram Link', 'LinkedIn Link', 'X (Twitter) Link', 'Facebook Link',
   'Website Region', 'Website Listing Status', 'Website Event Link',
 ];
 function speakersExportText(list: Speaker[]): string {
@@ -545,6 +554,10 @@ function downloadEventsExcel(list: PartnershipEvent[], filename: string) {
     'Banner Start Date': e.bannerStartDate || '',
     'Social Media Post Content': e.socialMediaPosts || '',
     'Social Media Creative Link': creativesExportText(e.socialCreatives),
+    'Instagram Link': e.socialInstagram || '',
+    'LinkedIn Link': e.socialLinkedin || '',
+    'X (Twitter) Link': e.socialX || '',
+    'Facebook Link': e.socialFacebook || '',
     'Website Region': e.city || e.country || '',
     'Website Listing Status': SITE_STATUS_BADGE[e.siteStatus]?.label || e.siteStatus,
     'Website Event Link': e.slug ? `/startup-events/${e.slug}` : '',
@@ -704,7 +717,6 @@ export default function PartnershipTrackerPage() {
   const [chartsExpanded, setChartsExpanded] = useState(false);
 
   // Defaults to soonest-first by event date ("current to future") rather than alphabetical.
-  const [onlyLocationIssues, setOnlyLocationIssues] = useState(false);
   const [sortKey, setSortKey] = useState<string | null>('eventStartDate');
   const [sortDir, setSortDir] = useState<1 | -1>(1);
 
@@ -969,12 +981,6 @@ export default function PartnershipTrackerPage() {
         .map((e) => ({ country: e.country, city: e.city }))
     );
   }, [events]);
-  // Counted across EVERY event, not the filtered page — the toggle has to advertise the whole
-  // backlog to clean up, not just what the current filters happen to show.
-  const locationIssueCount = useMemo(
-    () => events.reduce((n, e) => n + (derivedById.get(e.id)?.locationIssue ? 1 : 0), 0),
-    [events, derivedById]
-  );
 
   const counts = useMemo(() => {
     const byStatus: Record<string, number> = {};
@@ -1068,9 +1074,6 @@ export default function PartnershipTrackerPage() {
     else if (statusFilter === 'Listed') list = list.filter((e) => isListedStatus(derivedById.get(e.id)!.statusBucket));
     else list = list.filter((e) => derivedById.get(e.id)!.statusBucket === statusFilter);
     if (typeFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.partnershipTypeResolved === typeFilter);
-    // Deliberately applied AFTER the status filter, so the toggle narrows whatever is on screen
-    // rather than pulling back rows the current status filter has excluded.
-    if (onlyLocationIssues) list = list.filter((e) => !!derivedById.get(e.id)!.locationIssue);
     if (listingFilter !== 'all') list = list.filter((e) => derivedById.get(e.id)!.statusBucket === listingFilter);
 
     if (sortKey) {
@@ -1091,7 +1094,7 @@ export default function PartnershipTrackerPage() {
       });
     }
     return list;
-  }, [events, derivedById, monthFilter, cardFilter, deferredSearch, statusFilter, typeFilter, listingFilter, onlyLocationIssues, sortKey, sortDir]);
+  }, [events, derivedById, monthFilter, cardFilter, deferredSearch, statusFilter, typeFilter, listingFilter, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const clampedPage = Math.min(page, totalPages);
@@ -1132,7 +1135,7 @@ export default function PartnershipTrackerPage() {
   function resetToPage1() { setPage(1); }
   function clearFilters() {
     setSearch(''); setStatusFilter('all'); setTypeFilter('all'); setListingFilter('all');
-    setCardFilter(null); setMonthFilter(null); setOnlyLocationIssues(false); setSortKey('eventStartDate'); setSortDir(1); setPage(1);
+    setCardFilter(null); setMonthFilter(null); setSortKey('eventStartDate'); setSortDir(1); setPage(1);
   }
   /**
    * Clicking a KPI card resets the search box and the three filter dropdowns back to their
@@ -1180,8 +1183,13 @@ export default function PartnershipTrackerPage() {
   }
   function openEditModal(e: PartnershipEvent) {
     setEditingId(e.id);
-    const { id: _id, eventId: _eventId, linkedEvent, createdAt: _createdAt, updatedAt: _updatedAt, createdBy: _createdBy, updatedBy: _updatedBy, ...rest } = e;
-    void _id; void _eventId; void _createdAt; void _updatedAt; void _createdBy; void _updatedBy;
+    const {
+      id: _id, eventId: _eventId, linkedEvent, createdAt: _createdAt, updatedAt: _updatedAt, createdBy: _createdBy, updatedBy: _updatedBy,
+      // Read-only (shown from `events` by editingId), so kept off the draft and out of every save.
+      socialInstagram: _si, socialLinkedin: _sl, socialX: _sx, socialFacebook: _sf,
+      ...rest
+    } = e;
+    void _id; void _eventId; void _createdAt; void _updatedAt; void _createdBy; void _updatedBy; void _si; void _sl; void _sx; void _sf;
     // Best-effort recovery of Region/Country for events created before this record had a
     // reliable place to store it — several real sources may each hold a piece of the answer:
     //  1. `e.country` — the partnership record's own stored value, kept in sync on every save
@@ -1208,9 +1216,13 @@ export default function PartnershipTrackerPage() {
     // re-saving stops perpetuating the variant (which /events renders as its own duplicate
     // country section). Unrecognised values ("Cohort", "Online") come back unchanged.
     const regionValue = canonicalCountryName(rawRegionValue);
+    // Online events have no country/city — don't let the recovery above (or a stale stored value)
+    // refill them; re-saving then clears any leftover value from the record too.
+    const isOnlineEvent = e.partnershipType === ONLINE_PARTNERSHIP_TYPE;
     const opened: EventDraft = {
       ...rest,
-      region: regionValue,
+      region: isOnlineEvent ? '' : regionValue,
+      city: isOnlineEvent ? '' : rest.city,
       partnershipType: rest.partnershipType,
       partnershipStatus: normalizeStatusForEdit(rest.partnershipStatus),
       // Old events (33 of 62 real rows — mostly bulk-imported before `initiated_date` was
@@ -1272,15 +1284,17 @@ export default function PartnershipTrackerPage() {
     if (!effectiveDraft.eventName.trim()) { setModalError('Event name is required.'); return; }
     const publishRequiredMsg = (field: string) =>
       `${field} is required to Publish or Cancel this on the website — fill it in, or leave Website Listing Status as Draft for now.`;
+    // Online (virtual) events have no country, city or venue — those checks don't apply to them.
+    const isOnline = draft.partnershipType === ONLINE_PARTNERSHIP_TYPE;
     if (draft.siteStatus !== 'draft') {
       // Poster is only required (with its exact 1260×630 size enforced client-side by
       // ImageUpload, see the `required` prop below) once the admin is actually publishing —
       // a Draft can be saved without one while the rest of the listing is still being prepared.
       if (!draft.posterUrl.trim()) { setModalError(publishRequiredMsg('Event poster')); return; }
-      if (!draft.region.trim()) { setModalError(publishRequiredMsg('Region/Country')); return; }
+      if (!isOnline && !draft.region.trim()) { setModalError(publishRequiredMsg('Region/Country')); return; }
       if (!draft.eventStartDate.trim()) { setModalError(publishRequiredMsg('Event Start Date')); return; }
-      if (!draft.venueAddress.trim()) { setModalError(publishRequiredMsg('Complete Address')); return; }
-      if (!draft.googleLocationLink.trim()) { setModalError(publishRequiredMsg('Google Location (Maps link)')); return; }
+      if (!isOnline && !draft.venueAddress.trim()) { setModalError(publishRequiredMsg('Complete Address')); return; }
+      if (!isOnline && !draft.googleLocationLink.trim()) { setModalError(publishRequiredMsg('Google Location (Maps link)')); return; }
     }
     // The banner image itself stays optional; a go-live date is mandatory as soon as one is
     // added, so nothing can reach the homepage carousel without an explicit start date.
@@ -1330,7 +1344,9 @@ export default function PartnershipTrackerPage() {
     // lastUpdatedDate is stamped here rather than editable in the form — mirrors initiatedDate.
     const payload = {
       ...effectiveDraft,
-      country: effectiveDraft.region,
+      // Online: no country/city, whatever the fields held (the repository enforces this too).
+      ...(isOnline ? { region: '', city: '' } : {}),
+      country: isOnline ? '' : effectiveDraft.region,
       slug: slugify(effectiveDraft.slug),
       website: cleanWebsite(effectiveDraft.website),
       socialCreatives: effectiveDraft.socialCreatives.filter((c) => c.image.trim()),
@@ -1565,6 +1581,10 @@ export default function PartnershipTrackerPage() {
   // Website Listing Status leaves Draft (Published/Cancelled), the fields a real public event
   // page actually needs become required — mirrors saveModal()'s own validation exactly.
   const requiredToPublish = draft.siteStatus !== 'draft';
+  // Online (virtual) locks Region/Country + City empty and drops the venue requirements.
+  const isOnlineDraft = draft.partnershipType === ONLINE_PARTNERSHIP_TYPE;
+  // The saved record behind the Edit modal — source of the read-only social links (never on `draft`).
+  const editingEvent = editingId ? events.find((x) => x.id === editingId) || null : null;
 
   /* ---------------- Render ---------------- */
   return (
@@ -1816,20 +1836,6 @@ export default function PartnershipTrackerPage() {
                 <option value="all">All Active Events</option>
                 {PARTNERSHIP_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
-              {/* Cleanup handle for bad location data: shows how many rows have a Region/Country +
-                  City pair that looks wrong and narrows the table to just those, so they can be
-                  opened and corrected one by one in the existing Edit modal. Hidden entirely when
-                  the table is clean, so it costs nothing on a good day. */}
-              {locationIssueCount > 0 && (
-                <button
-                  type="button"
-                  className={'btn btn-sm' + (onlyLocationIssues ? ' btn-danger' : '')}
-                  title="Show only events whose Region/Country or City looks wrong"
-                  onClick={() => { setOnlyLocationIssues((v) => !v); resetToPage1(); }}
-                >
-                  ⚠ {locationIssueCount} location {locationIssueCount === 1 ? 'issue' : 'issues'}
-                </button>
-              )}
               <select value={listingFilter} onChange={(e) => { setListingFilter(e.target.value); resetToPage1(); }}>
                 <option value="all">Partnership Statuses</option>
                 <option value="Initiated">Initiated</option>
@@ -2025,7 +2031,21 @@ export default function PartnershipTrackerPage() {
                 </div>
                 <div className="pt-fg">
                   <label>Event Type</label>
-                  <select value={draft.partnershipType} onChange={(e) => setDraft({ ...draft, partnershipType: e.target.value })}>
+                  <select
+                    value={draft.partnershipType}
+                    onChange={(e) => {
+                      const partnershipType = e.target.value;
+                      // Online (virtual) has no country or city — clear and lock both (same as
+                      // /list-your-event), so /events lists it under "Online", not a country.
+                      if (partnershipType === ONLINE_PARTNERSHIP_TYPE) {
+                        setRegionOther(false);
+                        setCityOther(false);
+                        setDraft({ ...draft, partnershipType, region: '', city: '' });
+                        return;
+                      }
+                      setDraft({ ...draft, partnershipType });
+                    }}
+                  >
                     <option value="">—</option>
                     {draft.partnershipType && !(PARTNERSHIP_TYPE_OPTIONS as readonly string[]).includes(draft.partnershipType) && (
                       <option value={draft.partnershipType} disabled>{draft.partnershipType} — old value, please pick one below</option>
@@ -2060,8 +2080,13 @@ export default function PartnershipTrackerPage() {
                   <div className="pt-hint">Auto-fills from the event name — edit only if this event is already listed and you don&apos;t want to change its live URL.</div>
                 </div>
                 <div className="pt-fg">
-                  <label>Region/Country (for website listing){requiredToPublish && ' *'}</label>
-                  {regionOther ? (
+                  <label>Region/Country (for website listing){requiredToPublish && !isOnlineDraft && ' *'}</label>
+                  {isOnlineDraft ? (
+                    <>
+                      <input aria-label="Region/Country" placeholder="Online — no country" value="" disabled />
+                      <div className="pt-hint">Online (virtual) events have no country or city — listed under “Online” on the events page.</div>
+                    </>
+                  ) : regionOther ? (
                     <>
                       <input
                         placeholder="Enter region/country"
@@ -2100,8 +2125,10 @@ export default function PartnershipTrackerPage() {
                     <select
                       aria-label="City"
                       value={otherCityMode ? '__other__' : cityField}
-                      // Never disabled, even in Others mode: picking a real city here is the only
-                      // way back out, and a locked field with no exit would trap the admin.
+                      // Never disabled in Others mode: picking a real city here is the only way
+                      // back out, and a locked field with no exit would trap the admin. Locked
+                      // only for Online events, which have no city at all.
+                      disabled={isOnlineDraft}
                       onChange={(e) => {
                         const value = e.target.value;
                         if (value === '__other__') { setCityOther(true); setDraft({ ...draft, city: '' }); return; }
@@ -2234,10 +2261,10 @@ export default function PartnershipTrackerPage() {
                 <div className="pt-fg"><label>Last Updated Date</label><div className="pt-readonly-field">{draft.lastUpdatedDate ? fmtDisplay(draft.lastUpdatedDate) : '—'}</div></div>
               </div>
 
-              <div className="pt-section-title">3. Venue{requiredToPublish && ' *'}</div>
+              <div className="pt-section-title">3. Venue{requiredToPublish && !isOnlineDraft && ' *'}</div>
               <div className="pt-form-grid">
-                <div className="pt-fg pt-full"><label>Complete Address{requiredToPublish && ' *'}</label><textarea value={draft.venueAddress} onChange={(e) => setDraft({ ...draft, venueAddress: e.target.value })} /></div>
-                <div className="pt-fg pt-full"><label>Google Location (Maps link){requiredToPublish && ' *'}</label><input value={draft.googleLocationLink} onChange={(e) => setDraft({ ...draft, googleLocationLink: e.target.value })} placeholder="https://maps.google.com/…" /></div>
+                <div className="pt-fg pt-full"><label>Complete Address{requiredToPublish && !isOnlineDraft && ' *'}</label><textarea value={draft.venueAddress} onChange={(e) => setDraft({ ...draft, venueAddress: e.target.value })} /></div>
+                <div className="pt-fg pt-full"><label>Google Location (Maps link){requiredToPublish && !isOnlineDraft && ' *'}</label><input value={draft.googleLocationLink} onChange={(e) => setDraft({ ...draft, googleLocationLink: e.target.value })} placeholder="https://maps.google.com/…" /></div>
               </div>
 
               <div className="pt-section-title">4. Event description{requiredToPublish && ' *'}</div>
@@ -2359,6 +2386,26 @@ export default function PartnershipTrackerPage() {
                   )}
                 </div>
               ))}
+
+              {editingEvent && (
+                <>
+                  <div className="pt-section-title" style={{ marginTop: 18 }}>11. Social media links</div>
+                  <div className="pt-hint" style={{ marginBottom: 6 }}>From the organiser&apos;s /list-your-event submission — read-only, not editable here.</div>
+                  <div className="pt-form-grid">
+                    {SOCIAL_LINK_FIELDS.map(({ key, label }) => {
+                      const link = editingEvent[key];
+                      return (
+                        <div className="pt-fg" key={key}>
+                          <label>{label}</label>
+                          <div className="pt-readonly-field pt-readonly-link">
+                            {link ? <a href={link} target="_blank" rel="noopener noreferrer">{link}</a> : '—'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
 
               <div className="pt-section-title" style={{ marginTop: 18 }}>Partnership tracking</div>
               <div className="pt-form-grid">
@@ -2697,6 +2744,8 @@ export default function PartnershipTrackerPage() {
         .pt-dirty-note { font-size: 11.5px; color: #B26B00; font-weight: 500; }
         .pt-dirty-note-lead { margin-right: auto; }
         .pt-readonly-field { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+        .pt-readonly-link { overflow-wrap: anywhere; }
+        .pt-readonly-link a { color: var(--accent, #2563c7); text-decoration: underline; }
         .pt-activity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
         @media (max-width: 640px) { .pt-activity-grid { grid-template-columns: 1fr; } }
         .pt-activity-col { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; max-height: 180px; overflow-y: auto; }

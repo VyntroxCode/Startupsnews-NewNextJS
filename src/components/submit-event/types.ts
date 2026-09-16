@@ -38,6 +38,12 @@ export interface SubmitEventFormData {
   image3: string;
   image3Filename: string;
   socialImages: SocialImageData;
+
+  // Optional organiser profile links — keys match SOCIAL_LINK_FIELDS.
+  socialInstagram: string;
+  socialLinkedin: string;
+  socialX: string;
+  socialFacebook: string;
 }
 
 export const SOCIAL_SLOT_KEYS = ['social-1', 'social-2', 'social-3', 'social-4'] as const;
@@ -74,6 +80,11 @@ export function createInitialFormData(): SubmitEventFormData {
     image3: '',
     image3Filename: '',
     socialImages: { 'social-1': [], 'social-2': [], 'social-3': [], 'social-4': [] },
+
+    socialInstagram: '',
+    socialLinkedin: '',
+    socialX: '',
+    socialFacebook: '',
   };
 }
 

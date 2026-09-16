@@ -5,19 +5,24 @@ import { composeCountryCity, composePhone } from "./compose";
 import { createInitialLeadFormData, type LeadFormData, type FieldErrors, type LeadFormSource } from "./types";
 import { stepHasErrors, validateStep } from "./validation";
 
-/** Which canonical field-validation step(s) (1/2/3, per validation.ts's STEP_VALIDATOR_MAP) map to
+/** Which canonical field-validation step(s) (1-5, per validation.ts's STEP_VALIDATOR_MAP) map to
  * each *visual* page of the wizard. Defaults to one canonical step per visual page — the original
  * 3-page behavior, which no caller relies on any more (Funding Round is now a flat chaptered
  * scroll that never calls goNext). Feature Your Startup groups two canonical steps into a single
- * first page ([[1, 2], [3]]) to run a 2-page wizard; Submit Your Press Release passes [[1, 2]] for
- * a single page, having dropped its PDF step (canonical step 3) entirely. */
+ * first page ([[1, 2], [3]]) to run a 2-page wizard; Submit Your Press Release passes
+ * [[1, 4], [5], []] — email (step 4) on its first page, website (step 5) on its second, an empty
+ * Review page — having dropped its PDF step (canonical step 3) entirely. */
 const DEFAULT_STEP_GROUPS: number[][] = [[1], [2], [3]];
 
-/** Front-end only for now (see the Feature Your Startup plan doc) — "submit" has no network call
- * yet, it just fakes a brief in-flight moment so the button's busy state feels real, then flips to
- * each page's own confirmation UI. Wiring this to a real API + DB, tagged by `source`, is a later
- * round shared across all 3 pages. */
+/** Used only by pages that pass no `onSubmit` — "submit" fakes a brief in-flight moment so the
+ * button's busy state feels real, then flips to the page's confirmation UI. All three current
+ * callers pass a real `onSubmit` that saves to the database (see useFeatureStartupForm,
+ * useFundingRoundForm and PressReleasePage's submitPressRelease), so this is only a fallback. */
 const FAKE_SUBMIT_DELAY_MS = 900;
+
+/** Saves a validated submission. Throw to keep the form on screen — the thrown message is shown
+ * to the reader as `submitError`. */
+export type LeadFormSubmitHandler = (data: LeadFormData) => Promise<void>;
 
 /** Structured inputs whose edits have to be folded back into a canonical field — see LeadFormData.
  * Kept as one map so a new sub-field cannot be added to the shape and forgotten here. */
@@ -52,7 +57,8 @@ function withDerived(next: LeadFormData, key: string): LeadFormData {
 export function useLeadForm(
   source: LeadFormSource,
   stepGroups: number[][] = DEFAULT_STEP_GROUPS,
-  initialData?: Partial<LeadFormData>
+  initialData?: Partial<LeadFormData>,
+  onSubmit?: LeadFormSubmitHandler
 ) {
   // The lazy initializer runs on the first render only, so it reads the prop directly — the ref
   // exists purely so `reset` (an event handler, long after that render) can land on the same
@@ -65,6 +71,7 @@ export function useLeadForm(
   const [direction, setDirection] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const totalSteps = stepGroups.length;
 
   function validateVisualStep(step: number): Record<string, string> {
@@ -141,11 +148,27 @@ export function useLeadForm(
     const stepErrors = validateVisualStep(currentStep);
     setErrors((prev) => ({ ...prev, ...stepErrors }));
     if (stepHasErrors(stepErrors)) return;
+    if (submitting) return;
+    setSubmitError("");
     setSubmitting(true);
-    window.setTimeout(() => {
-      setSubmitting(false);
-      setSubmitted(true);
-    }, FAKE_SUBMIT_DELAY_MS);
+    if (!onSubmit) {
+      window.setTimeout(() => {
+        setSubmitting(false);
+        setSubmitted(true);
+      }, FAKE_SUBMIT_DELAY_MS);
+      return;
+    }
+    const snapshot = data;
+    void (async () => {
+      try {
+        await onSubmit(snapshot);
+        setSubmitted(true);
+      } catch (err) {
+        setSubmitError(err instanceof Error && err.message ? err.message : "Something went wrong. Please try again.");
+      } finally {
+        setSubmitting(false);
+      }
+    })();
   }
 
   function reset() {
@@ -155,6 +178,7 @@ export function useLeadForm(
     setDirection(1);
     setSubmitting(false);
     setSubmitted(false);
+    setSubmitError("");
   }
 
   return {
@@ -166,6 +190,7 @@ export function useLeadForm(
     direction,
     submitting,
     submitted,
+    submitError,
     setField,
     updateAndMaybeValidate,
     blurValidate,

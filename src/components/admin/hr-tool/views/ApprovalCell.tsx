@@ -5,7 +5,7 @@ import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import { isAdmin, rmOf } from '../utils';
 
-interface ApprovableRequest { id: string; emp: string; stage: string; status: string; }
+interface ApprovableRequest { id: string; employeeId: string; stage: string; status: string; }
 
 /** Inline Approve / Reject buttons for a two-level (Reporting Manager → HR) approval row,
  * shared by Attendance regularizations, Leave requests, and Expense claims. */
@@ -17,7 +17,7 @@ export default function ApprovalCell({ req, onDecide }: {
   const [pending, setPending] = useState<{ level: 'rm' | 'hr'; decision: 'approved' | 'rejected' } | null>(null);
   const [remarks, setRemarks] = useState('');
 
-  const canActRM = state.role === 'Reporting Manager' && req.stage === 'rm' && rmOf(state.employees, req.emp) === state.currentUser?.name && req.status === 'pending';
+  const canActRM = state.role === 'Reporting Manager' && req.stage === 'rm' && rmOf(state.employees, req.employeeId) === state.currentUser?.id && req.status === 'pending';
   // HR Head / Founder can act at ANY stage, not just 'hr'. Gating them on stage === 'hr' left
   // every request permanently stuck the moment the employee had no Reporting Manager set:
   // two-level approval creates the request at stage 'rm', only an actual RM could clear that

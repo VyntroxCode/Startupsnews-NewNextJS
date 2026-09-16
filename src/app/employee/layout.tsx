@@ -52,6 +52,15 @@ function RulesPolicyIcon({ size = 20, color = 'currentColor' }: { size?: number;
   );
 }
 
+function TicketIcon({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4Z"></path>
+      <line x1="9" y1="7" x2="9" y2="17" strokeDasharray="2 2"></line>
+    </svg>
+  );
+}
+
 // Written as a list so future employee-facing sections slot in the same way without
 // restructuring the sidebar.
 const NAV_ITEMS: { href: string; label: string; icon: typeof AttendanceIcon }[] = [
@@ -59,6 +68,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof AttendanceIcon }[] 
   { href: '/employee/leave', label: 'Leave', icon: LeaveIcon },
   { href: '/employee/documents', label: 'Documents', icon: DocumentsIcon },
   { href: '/employee/rules-policy', label: 'Rules & Policy', icon: RulesPolicyIcon },
+  { href: '/employee/it-tickets', label: 'IT Support', icon: TicketIcon },
 ];
 
 const SIDEBAR_WIDTH = 260;
@@ -94,6 +104,10 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
       </div>
     );
   }
+
+  // IT Support's board (five columns) and ticket table need more than the 1100px reading width the
+  // other employee pages use, so that one route gets the full content width.
+  const wideContent = pathname.startsWith('/employee/it-tickets');
 
   const asideStyle: CSSProperties = {
     width: SIDEBAR_WIDTH, flexShrink: 0, background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
@@ -163,7 +177,8 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
         </button>
       </aside>
 
-      <main style={{ flex: 1, padding: '2rem 2.5rem', maxWidth: 1100 }}>
+      {/* minWidth 0 lets a wide table scroll inside <main> instead of stretching the whole page. */}
+      <main style={{ flex: 1, padding: '2rem 2.5rem', maxWidth: wideContent ? 'none' : 1100, minWidth: 0 }}>
         <ProfileProgressStrip apiBase="/api/employee/documents" getHeaders={getEmployeeAuthHeaders} documentsHref="/employee/documents" />
         {children}
       </main>

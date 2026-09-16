@@ -144,15 +144,23 @@ export function nextEmployeeId(employees: HrEmployee[]): string {
   return 'E-' + (max + 1);
 }
 
-export function rmOf(employees: HrEmployee[], name: string): string | null {
-  const e = employees.find((x) => x.name === name);
-  return e ? e.manager : null;
+/** hr_employees.id of this employee's Reporting Manager. Approvals and scoping compare ids, never
+ * names — two employees may share a name. */
+export function rmOf(employees: HrEmployee[], employeeId: string): string | null {
+  const e = employees.find((x) => x.id === employeeId);
+  return e ? e.managerId ?? null : null;
 }
 
-export function scopedApprovals<T extends { emp: string }>(list: T[], role: string | null, currentUserName: string | undefined, employees: HrEmployee[]): T[] {
+/** The current display name for an employee id, falling back to the name snapshot stored on the
+ * record (e.g. an employee who has since been removed). */
+export function employeeName(employees: HrEmployee[], employeeId: string, fallback = ''): string {
+  return employees.find((x) => x.id === employeeId)?.name || fallback;
+}
+
+export function scopedApprovals<T extends { employeeId: string }>(list: T[], role: string | null, currentUserId: string | undefined, employees: HrEmployee[]): T[] {
   if (isAdmin(role)) return list;
-  if (role === 'Reporting Manager') return list.filter((x) => x.emp === currentUserName || rmOf(employees, x.emp) === currentUserName);
-  return list.filter((x) => x.emp === currentUserName);
+  if (role === 'Reporting Manager') return list.filter((x) => x.employeeId === currentUserId || rmOf(employees, x.employeeId) === currentUserId);
+  return list.filter((x) => x.employeeId === currentUserId);
 }
 
 export function applyApprovalDecision<T extends { stage: string; status: string; rmRemarks: string; hrRemarks: string }>(
@@ -166,7 +174,7 @@ export function applyApprovalDecision<T extends { stage: string; status: string;
   return { ...req, hrRemarks: remarks, status: decision, stage: 'done' };
 }
 
-export function attendanceKey(emp: string, date: string): string { return emp + '|' + date; }
+export function attendanceKey(employeeId: string, date: string): string { return employeeId + '|' + date; }
 
 /** Dynamically loads a CDN script exactly once — used for the Word-document import in the
  * Company Profile template editor (mammoth.js), which isn't an npm dependency here. */

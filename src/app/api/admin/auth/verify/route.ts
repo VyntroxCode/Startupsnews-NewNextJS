@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Allow admin, editor, author (author can create posts), and the scoped panel roles
-    const allowed = ['admin', 'editor', 'author', 'administrator', 'event_admin', 'publisher_admin'];
+    const allowed = ['admin', 'editor', 'author', 'administrator', 'event_admin', 'publisher_admin', 'it_support'];
     const role = (auth.user.role || '').toLowerCase().trim();
     const normalized = role === 'administrator' ? 'admin' : role;
     if (!allowed.includes(normalized)) {

@@ -45,6 +45,17 @@ export interface StartupEvent {
   venueAddress?: string | null;
   googleLocationLink?: string | null;
   speakers?: EventSpeaker[];
+  /** Raw "YYYY-MM-DD" start/end dates — `date` / `eventEndDate` are display strings ("9 SEPT 2026")
+   * and can't be turned back into the ISO-8601 dates the Event JSON-LD needs. */
+  startDateRaw?: string;
+  endDateRaw?: string | null;
+  /** City on its own — `location` falls back to the country or "Online", so it isn't always a city. */
+  city?: string;
+  organiser?: string;
+  /** Free text as the admin typed it ("499", "Free", "₹1,999") — parsed only for JSON-LD offers. */
+  ticketPrice?: string;
+  ticketCurrency?: string;
+  isOnline?: boolean;
 }
 
 /**

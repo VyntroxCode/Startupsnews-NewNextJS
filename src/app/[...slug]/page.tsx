@@ -15,6 +15,7 @@ import {
   getRelatedPosts,
   getMoreNewsSlugs,
   getPrevNextPosts,
+  getCategoryMeta,
 } from "@/lib/data-adapter";
 import { getPostPath, normalizePostSlugForCategory } from "@/lib/post-utils";
 import { CategoryMorePosts } from "@/components/CategoryMorePosts";
@@ -32,7 +33,9 @@ function parseRobots(value: string | null | undefined): Metadata["robots"] {
   const str = (value || "index,follow").toLowerCase().replace(/\s/g, "");
   const index = !str.includes("noindex");
   const follow = !str.includes("nofollow");
-  return { index, follow, googleBot: { index, follow } };
+  // Keep the layout's large-preview directives on indexable posts (Discover needs max-image-preview:large).
+  const previews = index ? { "max-image-preview": "large" as const, "max-snippet": -1, "max-video-preview": -1 } : {};
+  return { index, follow, googleBot: { index, follow, ...previews } };
 }
 
 function formatTitle(slug: string): string {
@@ -43,14 +46,14 @@ function formatTitle(slug: string): string {
 }
 
 async function renderCategoryPage(slug: string) {
-  const posts = await getPostsByCategory(slug, 20);
+  const posts = await getPostsByCategory(slug, 30);
 
   if (posts.length === 0) {
     notFound();
   }
 
   const title = formatTitle(slug);
-  const listPosts = posts.slice(0, 20);
+  const listPosts = posts.slice(0, 30);
   const heroPost = listPosts[0] ?? null;
   const remainingPosts = listPosts.slice(1);
   const startupEvents = await getStartupEvents();
@@ -77,9 +80,9 @@ async function renderCategoryPage(slug: string) {
               {title}
             </span>
           </nav>
-          <h2 className="mvp-feat1-pop-head sector-page-theme-title">
+          <h1 className="mvp-feat1-pop-head sector-page-theme-title">
             <span className="mvp-feat1-pop-head">{title}</span>
-          </h2>
+          </h1>
 
           {heroPost && (
             <div className="sector-hero-wrap left relative">
@@ -223,7 +226,7 @@ async function renderPostPage(categorySlug: string, postPath: string) {
     "articleSection": post.category,
     "keywords": post.tags?.length ? post.tags.join(', ') : post.category,
     "datePublished": dateIso,
-    "dateModified": dateIso,
+    "dateModified": post.updatedAt || dateIso,
     "isAccessibleForFree": true,
     ...(wordCount ? { "wordCount": wordCount } : {}),
     "image": {
@@ -240,14 +243,14 @@ async function renderPostPage(categorySlug: string, postPath: string) {
     },
     "publisher": {
       "@type": "NewsMediaOrganization",
-      "@id": "https://www.startupnews.fyi/#organization",
+      "@id": "https://startupnews.fyi/#organization",
       "name": "StartupNews.fyi",
-      "url": "https://www.startupnews.fyi/",
+      "url": "https://startupnews.fyi/",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://www.startupnews.fyi/wp-content/uploads/2024/01/logo.png",
-        "width": 512,
-        "height": 512,
+        "url": "https://startupnews.fyi/logo.png",
+        "width": 9886,
+        "height": 2062,
       },
     },
     "mainEntityOfPage": {
@@ -255,13 +258,13 @@ async function renderPostPage(categorySlug: string, postPath: string) {
       "@id": postUrl,
     },
     "isPartOf": {
-      "@id": "https://www.startupnews.fyi/#website",
+      "@id": "https://startupnews.fyi/#website",
     },
     "copyrightHolder": {
-      "@id": "https://www.startupnews.fyi/#organization",
+      "@id": "https://startupnews.fyi/#organization",
     },
     "copyrightYear": new Date(dateIso).getFullYear(),
-    "publishingPrinciples": "https://www.startupnews.fyi/editorial-policy",
+    "publishingPrinciples": "https://startupnews.fyi/editorial-policy",
   };
 
   return (
@@ -292,9 +295,8 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     const posts = await getPostsByCategory(categorySlug, 1);
     if (posts.length === 0) return NOT_FOUND_META;
 
-    const displayName = formatTitle(categorySlug);
-    const title = `${displayName} News & Updates`;
-    const description = `Latest ${displayName} startup news, funding rounds, and industry analysis on StartupNews.fyi.`;
+    const { name, description } = await getCategoryMeta(categorySlug, formatTitle(categorySlug));
+    const title = `${name} News & Updates`;
 
     return {
       title,
@@ -335,6 +337,7 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
         url: postUrl,
         siteName: "StartupNews.fyi",
         publishedTime: post.publishedAt || post.date,
+        modifiedTime: post.updatedAt || post.publishedAt || post.date,
         section: post.category,
         tags: post.tags,
         ...(image && { images: [{ url: image, width: 1200, height: 630, alt: title }] }),

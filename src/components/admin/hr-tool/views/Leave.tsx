@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
-import { ApprovalBadge, applyApprovalDecision, scopedApprovals, todayStr } from '../utils';
+import { ApprovalBadge, applyApprovalDecision, employeeName, scopedApprovals, todayStr } from '../utils';
 
 export default function Leave() {
   const { state, persistLeaveRequests } = useHrTool();
@@ -12,17 +12,17 @@ export default function Leave() {
   const enabledTypes = Object.entries(state.rules.leaveTypes).filter(([, cfg]) => cfg.enabled).map(([k]) => k);
 
   const [applyOpen, setApplyOpen] = useState(false);
-  const [empName, setEmpName] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
   const [type, setType] = useState('');
   const [typeOther, setTypeOther] = useState('');
   const [from, setFrom] = useState(todayStr());
   const [to, setTo] = useState(todayStr());
   const [remarks, setRemarks] = useState('');
 
-  const rows = scopedApprovals(state.leaveRequests, state.role, state.currentUser?.name, state.employees);
+  const rows = scopedApprovals(state.leaveRequests, state.role, state.currentUser?.id, state.employees);
 
   function openApply() {
-    setEmpName(lockedToSelf ? (state.currentUser?.name || '') : (state.employees.find((e) => e.status !== 'exited')?.name || ''));
+    setEmployeeId(lockedToSelf ? (state.currentUser?.id || '') : (state.employees.find((e) => e.status !== 'exited')?.id || ''));
     setType(enabledTypes[0] || '');
     setTypeOther('');
     setFrom(todayStr());
@@ -33,13 +33,14 @@ export default function Leave() {
   async function submit() {
     const finalType = type === '__other__' ? typeOther.trim() : type;
     if (!finalType) { alert('Please specify the leave type.'); return; }
-    const targetEmp = lockedToSelf ? state.currentUser!.name : empName;
+    const target = lockedToSelf ? state.currentUser : state.employees.find((e) => e.id === employeeId);
+    if (!target) { alert('Please choose the employee.'); return; }
     // Single approval step for every module now (see Rules → Approval chain): HR Head when the
     // toggle is on, Founder/admin when it's off. Leaving these on 'rm' would strand leave and
     // expense requests exactly the way attendance regularizations were stranded.
     const stage = 'hr';
     await persistLeaveRequests([{
-      id: 'L-' + Date.now(), emp: targetEmp, type: finalType, from: from || todayStr(), to: to || from || todayStr(),
+      id: 'L-' + Date.now(), employeeId: target.id, emp: target.name, type: finalType, from: from || todayStr(), to: to || from || todayStr(),
       remarks, stage, status: 'pending', rmRemarks: '', hrRemarks: '',
     }, ...state.leaveRequests]);
     setApplyOpen(false);
@@ -58,7 +59,7 @@ export default function Leave() {
       <div className="card"><table><thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th>Remarks</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
         <tbody>
           {rows.map((l) => (
-            <tr key={l.id}><td>{l.emp}</td><td>{l.type}</td><td>{l.from}{l.to !== l.from ? ` – ${l.to}` : ''}</td><td>{l.remarks || '—'}</td><td><ApprovalBadge req={l} /></td>
+            <tr key={l.id}><td>{employeeName(state.employees, l.employeeId, l.emp)}</td><td>{l.type}</td><td>{l.from}{l.to !== l.from ? ` – ${l.to}` : ''}</td><td>{l.remarks || '—'}</td><td><ApprovalBadge req={l} /></td>
               <td style={{ textAlign: 'right' }}><ApprovalCell req={l} onDecide={(level, decision, r) => decide(l.id, level, decision, r)} /></td>
             </tr>
           ))}
@@ -74,8 +75,8 @@ export default function Leave() {
         ]}>
           <div className="field"><label className="field-label">Employee</label>
             {lockedToSelf ? <input type="text" value={state.currentUser?.name || ''} disabled /> : (
-              <select value={empName} onChange={(e) => setEmpName(e.target.value)}>
-                {state.employees.filter((e) => e.status !== 'exited').map((e) => <option key={e.id}>{e.name}</option>)}
+              <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+                {state.employees.filter((e) => e.status !== 'exited').map((e) => <option key={e.id} value={e.id}>{e.name} · {e.designation}</option>)}
               </select>
             )}
           </div>

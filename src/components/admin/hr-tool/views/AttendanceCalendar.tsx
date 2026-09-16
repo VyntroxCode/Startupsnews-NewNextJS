@@ -5,7 +5,7 @@ import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
 import { getAuthHeaders } from '@/lib/admin-auth';
-import { ApprovalBadge, attendanceKey, isAdmin } from '../utils';
+import { ApprovalBadge, attendanceKey, employeeName, isAdmin } from '../utils';
 import { isSunday, shiftMonthKey } from '@/modules/hr-tool/utils/time';
 import { realDayHoursBucket } from '@/modules/hr-tool/utils/lateness';
 
@@ -21,7 +21,7 @@ type DayStatus = 'present' | 'absent' | 'leave' | 'off' | 'half-day' | null;
  * instead of a fabricated status. (The old standalone tool filled every blank day with a
  * deterministic pseudo-random present/absent/leave value seeded off the employee's name
  * length — that's the fake data this component replaces with an honest "not recorded" state.) */
-export default function AttendanceCalendar({ empName }: { empName: string }) {
+export default function AttendanceCalendar({ employeeId }: { employeeId: string }) {
   const { state } = useHrTool();
   const [selected, setSelected] = useState<{ dateStr: string } | null>(null);
 
@@ -45,16 +45,16 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
   // Nobody can be absent before they joined, so days earlier than the employee's date of joining
   // are held out of the absent rule (and out of every total) rather than back-dated into
   // absences the moment a mid-month hire is opened.
-  const doj = useMemo(() => state.employees.find((e) => e.name === empName)?.doj || null, [state.employees, empName]);
+  const doj = useMemo(() => state.employees.find((e) => e.id === employeeId)?.doj || null, [state.employees, employeeId]);
   function isBeforeJoining(dateStr: string): boolean { return !!doj && dateStr < doj; }
 
   function getDayStatus(dateStr: string): DayStatus {
-    const override = state.attendanceOverrides[attendanceKey(empName, dateStr)];
+    const override = state.attendanceOverrides[attendanceKey(employeeId, dateStr)];
     if (override) return override as DayStatus;
     // A Sunday or a company holiday is a day off regardless of any punch that happens to
     // exist for it — it shouldn't be judged present/absent just because nobody worked it.
     if (isSunday(dateStr) || holidaySet.has(dateStr)) return 'off';
-    const real = state.attendance.find((a) => a.emp === empName && a.date === dateStr);
+    const real = state.attendance.find((a) => a.employeeId === employeeId && a.date === dateStr);
     if (real) {
       // The stored status is stamped 'Present' the instant someone punches in and is never
       // revisited — so on its own it can't tell "worked a normal day" from "punched in at
@@ -85,7 +85,7 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
   for (let d = 1; d <= totalDays; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const status = getDayStatus(dateStr);
-    const reg = state.regularizations.find((r) => r.emp === empName && r.date === dateStr);
+    const reg = state.regularizations.find((r) => r.employeeId === employeeId && r.date === dateStr);
     const elapsed = dateStr <= realTodayIso;
     const preJoining = isBeforeJoining(dateStr);
 
@@ -170,7 +170,7 @@ export default function AttendanceCalendar({ empName }: { empName: string }) {
         <span><span className="dot" style={{ background: '#fff', border: '1px solid var(--border-strong, #CBD5E1)' }} />Not due yet</span>
       </div>
       <div className="footnote">Click any day for details{isAdmin(state.role) ? ' — HR can also correct a day\'s status directly.' : '.'}</div>
-      {selected && <DayDetailModal empName={empName} dateStr={selected.dateStr} status={getDayStatus(selected.dateStr)} onClose={() => setSelected(null)} />}
+      {selected && <DayDetailModal employeeId={employeeId} dateStr={selected.dateStr} status={getDayStatus(selected.dateStr)} onClose={() => setSelected(null)} />}
     </>
   );
 }
@@ -188,17 +188,18 @@ function CalStat({ label, value, sub, tone }: { label: string; value: number; su
   );
 }
 
-function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string; dateStr: string; status: DayStatus; onClose: () => void }) {
+function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: string; dateStr: string; status: DayStatus; onClose: () => void }) {
   const { state, persistAttendanceOverride, decideRegularization, logRuleChange, addRegularizationToState } = useHrTool();
+  const empName = employeeName(state.employees, employeeId);
   const [manualStatus, setManualStatus] = useState<DayStatus>(status || 'present');
   const [showRegForm, setShowRegForm] = useState<'in' | 'out' | null>(null);
   const [regTime, setRegTime] = useState('');
   const [regReason, setRegReason] = useState(REG_REASONS[0]);
   const [regReasonOther, setRegReasonOther] = useState('');
 
-  const real = state.attendance.find((a) => a.emp === empName && a.date === dateStr);
-  const regIn = state.regularizations.find((r) => r.emp === empName && r.date === dateStr && r.punchType === 'in');
-  const regOut = state.regularizations.find((r) => r.emp === empName && r.date === dateStr && r.punchType === 'out');
+  const real = state.attendance.find((a) => a.employeeId === employeeId && a.date === dateStr);
+  const regIn = state.regularizations.find((r) => r.employeeId === employeeId && r.date === dateStr && r.punchType === 'in');
+  const regOut = state.regularizations.find((r) => r.employeeId === employeeId && r.date === dateStr && r.punchType === 'out');
   // Uses the computed `status` (real hours worked, auto-close applied — see getDayStatus), not
   // the raw stored real.status, which is always 'Present' from the moment of punch-in and never
   // revisited — showing it directly here would silently contradict the cell colour above it.
@@ -206,7 +207,7 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
   const times = real ? { inTime: real.inTime, outTime: real.outTime } : { inTime: '—', outTime: '—' };
 
   async function saveCorrection() {
-    await persistAttendanceOverride({ emp: empName, date: dateStr, status: manualStatus || 'present' });
+    await persistAttendanceOverride({ employeeId, emp: empName, date: dateStr, status: manualStatus || 'present' });
     logRuleChange(`Manually set ${empName}'s attendance on ${dateStr} to ${manualStatus}`);
     onClose();
   }
@@ -221,7 +222,7 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
     // to build the row itself and save it straight to state, which applied none of them.
     const res = await fetch('/api/admin/hr-tool/regularizations', {
       method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emp: empName, date: dateStr, reason, punchType: showRegForm, requestedTime: time }),
+      body: JSON.stringify({ employeeId, date: dateStr, reason, punchType: showRegForm, requestedTime: time }),
     });
     const json = await res.json().catch(() => null);
     if (!res.ok || !json?.success) { alert(json?.error || 'Could not submit the regularization request.'); return; }
@@ -257,7 +258,7 @@ function DayDetailModal({ empName, dateStr, status, onClose }: { empName: string
           )}
         </div>
       )}
-      {(!regIn || !regOut) && empName === state.currentUser?.name && !showRegForm && (
+      {(!regIn || !regOut) && employeeId === state.currentUser?.id && !showRegForm && (
         <div className="field" style={{ display: 'flex', gap: 8 }}>
           {!regIn && <button className="btn sm" onClick={() => { setShowRegForm('in'); setRegTime(''); }}>+ Regularize Punch In</button>}
           {!regOut && <button className="btn sm" onClick={() => { setShowRegForm('out'); setRegTime(''); }}>+ Regularize Punch Out</button>}

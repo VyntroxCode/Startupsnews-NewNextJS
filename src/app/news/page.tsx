@@ -5,6 +5,7 @@ import { getPostPath } from "@/lib/post-utils";
 // import { Sidebar } from "@/components/Sidebar"; // Unused
 import { StickySidebarContent } from "@/components/StickySidebarContent";
 import { StartupEventsSection } from "@/components/StartupEventsSection";
+import { PageHeading } from "@/components/PageHeading";
 
 // Prevent build-time DB access; render at request time.
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,7 @@ export default async function NewsPage() {
   return (
     <div className="mvp-main-blog-wrap left relative mvp-main-blog-marg">
       <div className="mvp-main-box">
+        <PageHeading title="Latest News" />
         <div className="mvp-main-blog-cont left relative">
           <div className="mvp-main-blog-out left relative">
             <div className="mvp-main-blog-in">

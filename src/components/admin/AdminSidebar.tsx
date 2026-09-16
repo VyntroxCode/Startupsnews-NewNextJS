@@ -153,6 +153,13 @@ const InnerPagesIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
+const TicketIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"></path>
+    <line x1="10" y1="7" x2="10" y2="17" strokeDasharray="2 2"></line>
+  </svg>
+);
+
 interface MenuItem {
   href: string;
   label: string;
@@ -171,6 +178,7 @@ const menuItems: MenuItem[] = [
   { href: '/admin/partnership-tracker', label: 'Partnership Tracker', icon: EventsIcon },
   { href: '/admin/newsletter', label: 'Newsletter', icon: NewsletterIcon },
   { href: '/admin/sales-tracker', label: 'Sales Tracker', icon: ReportsIcon },
+  { href: '/admin/it-tickets', label: 'IT Tickets', icon: TicketIcon },
   { href: '/admin/hr-tool', label: 'HR Management', icon: RegisteredUsersIcon },
   { href: '/admin/attendance', label: 'Attendance', icon: AttendanceIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/leave', label: 'Leave', icon: LeaveIcon, roles: ['event_admin', 'publisher_admin'] },

@@ -108,6 +108,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/funding-tracker", destination: "/category/funding-tracker" },
+      // Numbered post sitemaps listed in /sitemap_index.xml (handler: app/sitemap-posts/[page]/route.ts)
+      { source: "/sitemap-posts-:page(\\d+).xml", destination: "/sitemap-posts/:page" },
     ];
   },
   // Optional: shorten CDN cache for HTML so deploys don’t serve old chunk refs.

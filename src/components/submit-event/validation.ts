@@ -8,6 +8,7 @@ import {
 } from './constants';
 import type { SubmitEventFormData } from './types';
 import { resolveDefaultEndTime } from '@/modules/event-submission/domain/types';
+import { SOCIAL_LINK_FIELDS, socialLinkError, type SocialLinkKey } from '@/modules/partnership-events/domain/types';
 
 export function countWords(text: string): number {
   const trimmed = text.trim();
@@ -171,7 +172,12 @@ export function validateImage1(data: SubmitEventFormData): string {
   return data.image1 ? '' : 'Please add a cover image (upload or link).';
 }
 
-export const STEP_1_VALIDATORS = [validateOrganizerName, validateOrganizerOrg, validateEmail, validatePhone] as const;
+/** One validator per optional social link field, keyed by its form field / error name. */
+export const SOCIAL_LINK_VALIDATORS = Object.fromEntries(
+  SOCIAL_LINK_FIELDS.map(({ key }) => [key, (data: SubmitEventFormData) => socialLinkError(key, data[key])])
+) as Record<SocialLinkKey, (data: SubmitEventFormData) => string>;
+
+export const STEP_1_VALIDATORS =[validateOrganizerName, validateOrganizerOrg, validateEmail, validatePhone] as const;
 export const STEP_2_VALIDATORS = [validateTitle, validateCountry, validateCity, validateVenueAddress, validateVenueMapLink, validateExternalUrl] as const;
 export const STEP_3_VALIDATORS = [validateStartDate, validateStartTime, validateEndDate, validateEndTime, validateDescription, validateSpeakers] as const;
 export const STEP_4_VALIDATORS = [validateImage1] as const;
@@ -221,7 +227,10 @@ const STEP_VALIDATOR_MAP: Record<number, { field: string; fn: (data: SubmitEvent
     { field: FIELD_NAMES.description, fn: validateDescription },
     { field: FIELD_NAMES.speakers, fn: validateSpeakers },
   ],
-  4: [{ field: FIELD_NAMES.image1, fn: validateImage1 }],
+  4: [
+    { field: FIELD_NAMES.image1, fn: validateImage1 },
+    ...SOCIAL_LINK_FIELDS.map(({ key }) => ({ field: key, fn: SOCIAL_LINK_VALIDATORS[key] })),
+  ],
 };
 
 /** Runs every validator for a step, returns a partial FieldErrors map (only non-empty messages included is up to caller). */

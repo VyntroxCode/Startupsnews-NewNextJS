@@ -57,16 +57,16 @@ function pendingCountFor(view: HrView, state: ReturnType<typeof useHrTool>['stat
   if (!state.currentUser) return 0;
   const role = state.role, me = state.currentUser;
   if (view === 'attendance') {
-    return scopedApprovals(state.regularizations, role, me.name, state.employees).filter((r) => r.status === 'pending' &&
-      ((role === 'Reporting Manager' && r.stage === 'rm' && rmOf(state.employees, r.emp) === me.name) || isAdmin(role))).length;
+    return scopedApprovals(state.regularizations, role, me.id, state.employees).filter((r) => r.status === 'pending' &&
+      ((role === 'Reporting Manager' && r.stage === 'rm' && rmOf(state.employees, r.employeeId) === me.id) || isAdmin(role))).length;
   }
   if (view === 'leave') {
-    return scopedApprovals(state.leaveRequests, role, me.name, state.employees).filter((l) => l.status === 'pending' &&
-      ((role === 'Reporting Manager' && l.stage === 'rm' && rmOf(state.employees, l.emp) === me.name) || isAdmin(role))).length;
+    return scopedApprovals(state.leaveRequests, role, me.id, state.employees).filter((l) => l.status === 'pending' &&
+      ((role === 'Reporting Manager' && l.stage === 'rm' && rmOf(state.employees, l.employeeId) === me.id) || isAdmin(role))).length;
   }
   if (view === 'expenses') {
-    return scopedApprovals(state.expenses, role, me.name, state.employees).filter((x) => x.status === 'pending' &&
-      ((role === 'Reporting Manager' && x.stage === 'rm' && rmOf(state.employees, x.emp) === me.name) || isAdmin(role))).length;
+    return scopedApprovals(state.expenses, role, me.id, state.employees).filter((x) => x.status === 'pending' &&
+      ((role === 'Reporting Manager' && x.stage === 'rm' && rmOf(state.employees, x.employeeId) === me.id) || isAdmin(role))).length;
   }
   if (view === 'directory' && isAdmin(role)) {
     return state.employees.reduce((n, e) => n + e.documents.filter((d) => d.status === 'pending').length, 0);

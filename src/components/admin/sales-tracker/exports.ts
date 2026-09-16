@@ -42,7 +42,9 @@ export async function exportLeadsPdf(leads: SalesLead[]): Promise<void> {
       head: [headers], body, startY: 45,
       styles: { fontSize: 7, cellPadding: 4, overflow: 'linebreak' },
       headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-      columnStyles: { 7: { cellWidth: 160 }, 12: { cellWidth: 140 } },
+      // Indices into leadExportRow's key order: Query and Last Call Discussion get extra width.
+      // Shifted +2 from before now that Country/City sit ahead of them in that order.
+      columnStyles: { 9: { cellWidth: 160 }, 14: { cellWidth: 140 } },
     });
     doc.save(`sales-tracker-leads-${todayStr()}.pdf`);
   } catch {

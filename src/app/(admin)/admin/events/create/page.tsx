@@ -208,9 +208,9 @@ export default function CreateEventPage() {
         >
           ← Back to Events
         </Link>
-        <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
           Create New Event
-        </h2>
+        </h1>
       </div>
 
       {error && (

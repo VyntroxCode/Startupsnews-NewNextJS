@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { useReducedMotion as useMotionReducedMotion } from "motion/react";
 
 const neverChanges = () => () => {};
@@ -25,20 +25,29 @@ export function useReducedMotion(): boolean {
   return useHydrated() && !!reduced;
 }
 
-const FINE_POINTER = "(hover: hover) and (pointer: fine)";
-
-function subscribeToPointer(onChange: () => void) {
-  const query = window.matchMedia(FINE_POINTER);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
+/** A media query as a hydration-safe boolean: false on the server and on the first client
+ * render, then the real value. Below-the-fold layouts that switch on it (the pinned gallery, the
+ * network graph's geometry) therefore render their mobile shape first and settle a frame later,
+ * which never shows because none of them is on screen at load. */
+function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const list = window.matchMedia(query);
+      list.addEventListener("change", onChange);
+      return () => list.removeEventListener("change", onChange);
+    },
+    [query]
+  );
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
 }
 
-/** True only on a device that can actually drive a hover/tilt effect. Used to switch off the
- * pointer-driven card tilt on touch screens, where it is pure cost. */
+/** True only on a device that can actually drive a hover / magnetic effect. */
 export function useFinePointer(): boolean {
-  return useSyncExternalStore(
-    subscribeToPointer,
-    () => window.matchMedia(FINE_POINTER).matches,
-    () => false
-  );
+  return useMediaQuery("(hover: hover) and (pointer: fine)");
+}
+
+/** The desktop layout — the only place the scroll-pinned and scroll-scattered compositions run.
+ * Below it every section falls back to a plain stacked or swipeable layout. */
+export function useWideScreen(): boolean {
+  return useMediaQuery("(min-width: 960px)");
 }

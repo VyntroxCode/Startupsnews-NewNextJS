@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLeadForm } from "@/components/lead-forms/shared/useLeadForm";
+import { useFundingRoundForm } from "./useFundingRoundForm";
 import {
   validateCompanyName,
   validateEmail,
@@ -95,19 +95,16 @@ function useActiveChapter(submitted: boolean): string {
  * replaced the violet this page launched with so it reads as part of StartupNews.fyi rather than a
  * separate product. See the SUBMIT YOUR FUNDING ROUND block in globals.css for the tokens.
  *
- * WHAT THE FORM COLLECTS HAS NOT CHANGED, and could not: `useLeadForm("funding-round")` is a
- * front-end-only controller over six shared fields (company, name, phone, email, website,
- * country/city) with no backend behind it — `submit()` fakes a short delay and flips to the
- * confirmation. There is no funding-amount, round-stage or investor field anywhere in the data
- * model, so this redesign does not render one: every funding figure on the page is labelled as an
- * example, and the round's actual details are described as something the desk follows up for.
- * Adding real funding fields is a backend change first, a form change second. */
-/** The country-code select opens on India, as /list-your-event's and Feature Your Startup's do —
- * an unset code reads as one more thing to fill in. */
-const FUNDING_ROUND_INITIAL = { phoneCode: "+91" };
-
+ * WHAT THE FORM COLLECTS HAS NOT CHANGED: `useFundingRoundForm()` (a thin wrapper over the shared
+ * `useLeadForm("funding-round")` controller, see useFundingRoundForm.ts) still only collects the six
+ * shared fields (company, name, phone, email, website, country/city) — `submit()` now saves them to
+ * `funding_round_submissions` instead of faking a delay. There is no funding-amount, round-stage or
+ * investor field anywhere in the data model, so this redesign does not render one: every funding
+ * figure on the page is labelled as an example, and the round's actual details are described as
+ * something the desk follows up for. Adding real funding fields is a backend change first, a form
+ * change second. */
 export function FundingRoundPage({ promotedCities }: { promotedCities?: Record<string, string[]> }) {
-  const ctrl = useLeadForm("funding-round", undefined, FUNDING_ROUND_INITIAL);
+  const ctrl = useFundingRoundForm();
   const activeChapter = useActiveChapter(ctrl.submitted);
   const submittedRef = useRef(false);
 

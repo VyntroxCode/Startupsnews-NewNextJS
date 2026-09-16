@@ -1,4 +1,3 @@
-import { COUNTRY_CODES } from './constants';
 import type { SalesLead } from './types';
 
 export function todayStr(): string { return new Date().toISOString().slice(0, 10); }
@@ -43,25 +42,15 @@ export function leadExportRow(l: SalesLead): Record<string, string> {
   const typeLabel = l.type === 'Others' && l.otherType ? `Others: ${l.otherType}` : (l.type || '');
   return {
     Date: l.date || '', Name: l.name || '', Company: l.company || '', Contact: l.contact || '',
-    Email: l.email || '', Source: l.source || '', Type: typeLabel, Query: l.query || '',
+    Email: l.email || '', Country: l.country || '', City: l.city || '', Source: l.source || '', Type: typeLabel, Query: l.query || '',
     'Assigned To': l.assignedTo || '', 'Current Status': l.status || '', 'Next Follow-up': l.nextFollowUpDate || '',
     'Last Connect Date': l.lastConnectDate || '', 'Last Call Discussion': l.lastCallDiscussion || '',
   };
 }
 
-export function parseContactValue(raw: string): { code: string; custom: string; number: string } {
-  const trimmed = (raw || '').trim();
-  const m = trimmed.match(/^(\+\d{1,4})\s*(.*)$/);
-  if (!m) return { code: '+91', custom: '', number: trimmed.replace(/\D/g, '') };
-  const code = m[1];
-  const digits = m[2].replace(/\D/g, '');
-  if (COUNTRY_CODES.includes(code)) return { code, custom: '', number: digits };
-  return { code: 'other', custom: code, number: digits };
-}
-
 export function emptyLead(): SalesLead {
   return {
-    id: '', date: todayStr(), name: '', company: '', contact: '', email: '', source: '',
+    id: '', date: todayStr(), name: '', company: '', contact: '', email: '', country: '', city: '', source: '',
     type: 'Social Media', otherType: '', query: '', assignedTo: '', status: 'Query received',
     nextFollowUpDate: '', lastConnectDate: '', lastCallDiscussion: '',
   };

@@ -103,7 +103,7 @@ export default function CreateAuthorPage() {
         <Link href="/admin/posts?tab=authors" style={{ color: '#0ea5e9', textDecoration: 'none', display: 'inline-block', marginBottom: '2rem', fontSize: '0.875rem' }}>
           ← Back to Authors
         </Link>
-        <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Add Author</h2>
+        <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Add Author</h1>
       </div>
 
       {error && (

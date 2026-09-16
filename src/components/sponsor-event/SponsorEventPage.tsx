@@ -1,75 +1,84 @@
 "use client";
 
+import "./sponsor-event.css";
 import { useCallback, useEffect, useRef } from "react";
-import { PartnerHero } from "./PartnerHero";
-import { EventEcosystem } from "./EventEcosystem";
-import { EventScrollStory } from "./EventScrollStory";
-import { EventAudience } from "./EventAudience";
-import { EventJourney } from "./EventJourney";
-import { PartnershipQualities } from "./PartnershipQualities";
-import { EventEnergy } from "./EventEnergy";
+import { MotionConfig } from "motion/react";
+import { SponsorHero } from "./SponsorHero";
+import { EventReel } from "./EventReel";
+import { EventStory } from "./EventStory";
+import { WhyPartner } from "./WhyPartner";
+import { EcosystemNetwork } from "./EcosystemNetwork";
+import { EventShowcase } from "./EventShowcase";
+import { SubmissionJourney } from "./SubmissionJourney";
+import { EventAmplification } from "./EventAmplification";
+import { RoomBreak } from "./RoomBreak";
 import { SponsorFormSection } from "./SponsorFormSection";
 import { useSponsorEventForm } from "./useSponsorEventForm";
+import { useReducedMotion } from "./hooks";
 
-/** Partner / Sponsor an Event — a long-form partnership story that ends in the submission form,
- * rather than a form with three benefit cards above it.
+/** Partner / Sponsor an Event — a cinematic partnership story, written for organisers and brands
+ * who want StartupNews.fyi on board, that ends in the submission form.
  *
- * Running order. Each section owns its own motion language on purpose, so the page never settles
- * into a single repeated reveal, and the backgrounds run dark → light → dark in three acts (the
- * setup, the offer, the ask) instead of alternating section by section:
+ * Running order and ground:
  *
- *   hero          dark    masked line reveal + floating example ticket + background video
- *   ecosystem     light   SVG graph drawing itself, then a scroll-driven highlight
- *   story         light   self-advancing carousel, photographs sliding in from alternate sides
- *   audience      light   photo cards, staggered entrance, open on hover
- *   energy        image   full-bleed zoom with counter-drifting type
- *   qualities     light   a checklist ticking itself off
- *   journey       light   scroll-linked horizontal progress rail
- *   form          light   the existing wizard, untouched
- *   success               the event joining the network
+ *   hero            video   headline word by word, curtain lift, floating reach cards, pointer glow
+ *   reel            light   rounded video card resolving into focus
+ *   story           white   Discover / Connect / Amplify beats, alternating sides
+ *   why partner     light   four expanding panels (Community runs on its own clip)
+ *   network         dark    scroll-built ecosystem graph with travelling particles — signature
+ *   showcase        white   pinned horizontal gallery driven by vertical scroll (desktop)
+ *   journey         white   scroll-filled timeline + an example card that updates per step
+ *   amplification   light   channel cards scattering out of the event listing on scroll
+ *   room break      video   huge counter-sliding type, then the one CTA left on the page
+ *   form            light   the existing 3-step wizard with a progress indicator, then success
  *
- * (Energy and journey swapped places on request — the photograph used to sit just before the form.
- * Partnership, discovery, showcase, benefits, process and cta were all removed in earlier passes.)
+ * Removed on request (2026-09-15): the hero's "Partner with StartupNews.fyi" eyebrow and its two
+ * buttons, the reel's play/pause button and formats marquee, and the whole "How you can partner"
+ * section (PartnershipOptions.tsx, its handshake clip and styles). No visible copy on the page uses
+ * an em dash, and no heading or step carries a number.
  *
- * Every photograph on the page comes from eventImages.ts and nowhere else, so swapping the
- * placeholder set for real StartupNews.fyi event photography is a one-file edit.
+ * Every clip comes from backgrounds.ts and every still from eventImages.ts. `MotionConfig
+ * reducedMotion="user"` backs up the per-component reduced-motion paths.
  *
- * The form controller is owned here so the page can scroll to the form and so the wizard's state
- * survives everything above it re-rendering. It is the same `useSponsorEventForm` as before the
- * redesign — same fields, same validators, same S3 poster upload, same Turnstile gate, same POST
- * to /api/events/sponsor-event. This redesign is the experience around that, never the mechanics. */
+ * The form controller is owned here so the room-break CTA can scroll to the form and so the
+ * wizard's state survives everything above it re-rendering. It is the same `useSponsorEventForm`
+ * as before — same fields, validators, S3 poster upload, Turnstile gate and POST to
+ * /api/events/sponsor-event. */
 export function SponsorEventPage({ promotedCities }: { promotedCities?: Record<string, string[]> }) {
   const ctrl = useSponsorEventForm();
+  const reducedMotion = useReducedMotion();
   const announced = useRef(false);
 
-  const scrollTo = useCallback((id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  const startSubmission = useCallback(() => {
+    document
+      .getElementById("sp-form")
+      ?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+  }, [reducedMotion]);
 
-  // The success state replaces a tall wizard with a much shorter card, which can otherwise leave
+  // The success state replaces a tall wizard with a much shorter card, which could otherwise leave
   // the reader looking at whitespace where the form used to be.
   useEffect(() => {
     if (ctrl.submitted && !announced.current) {
       announced.current = true;
-      document.getElementById("sp-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById("sp-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     if (!ctrl.submitted) announced.current = false;
   }, [ctrl.submitted]);
 
   return (
-    <div className="sp-page">
-      <PartnerHero onExplore={() => scrollTo("sp-story-start")} />
-      <div id="sp-story-start">
-        <EventEcosystem />
+    <MotionConfig reducedMotion="user">
+      <div className="sp-page">
+        <SponsorHero />
+        <EventReel />
+        <EventStory />
+        <WhyPartner />
+        <EcosystemNetwork />
+        <EventShowcase />
+        <SubmissionJourney />
+        <EventAmplification />
+        <RoomBreak onStart={startSubmission} />
+        <SponsorFormSection ctrl={ctrl} promotedCities={promotedCities} />
       </div>
-      <EventScrollStory />
-      <EventAudience />
-      {/* Energy and Journey swapped places on request: the full-bleed photograph now breaks the
-          page straight after the audience cards, and the journey leads into the form. */}
-      <EventEnergy />
-      <PartnershipQualities />
-      <EventJourney />
-      <SponsorFormSection ctrl={ctrl} promotedCities={promotedCities} />
-    </div>
+    </MotionConfig>
   );
 }

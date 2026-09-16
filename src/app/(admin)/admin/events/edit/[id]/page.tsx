@@ -238,7 +238,7 @@ export default function EditEventPage() {
         >
           ← Back to Events
         </Link>
-        <h2 style={{
+        <h1 style={{
           fontSize: '2.25rem',
           fontWeight: '700',
           color: '#0f172a',
@@ -246,7 +246,7 @@ export default function EditEventPage() {
           letterSpacing: '-0.02em',
         }}>
           Edit Event
-        </h2>
+        </h1>
       </div>
 
       {error && (

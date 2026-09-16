@@ -19,12 +19,19 @@ interface DashboardStats {
    * buckets, the same number its own headline card shows. This is what the Events card reports
    * now; `events` above is the legacy `events` table, which the public site no longer reads. */
   partnershipEventsActive: number;
+  /** Tickets not yet resolved/closed — powers the IT Support role's dashboard card. */
+  itTicketsOpen: number;
 }
 
 export default function AdminDashboard() {
   const role = getAdminUser()?.role || 'admin';
   const isEventAdmin = role === 'event_admin';
   const isPublisherAdmin = role === 'publisher_admin';
+  const isItSupport = role === 'it_support';
+  // Every standalone-tool panel-admin role (Event Admin, Publisher Admin, IT Support) shares the
+  // same scoped dashboard: its own stat card(s), the HR attendance widgets, and none of the
+  // content-admin-only sections (Footer Settings, Hero Images) below.
+  const isScopedRole = isEventAdmin || isPublisherAdmin || isItSupport;
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +75,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (isEventAdmin || isPublisherAdmin) {
+    if (isScopedRole) {
       setSettingsLoading(false);
       return;
     }
@@ -121,7 +128,7 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (isEventAdmin || isPublisherAdmin) {
+    if (isScopedRole) {
       setHeroLoading(false);
       return;
     }
@@ -256,6 +263,13 @@ export default function AdminDashboard() {
     </svg>
   );
 
+  const TicketIcon = ({ color }: { color: string }) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"></path>
+      <line x1="10" y1="7" x2="10" y2="17" strokeDasharray="2 2"></line>
+    </svg>
+  );
+
   const AuthorsIcon = ({ color }: { color: string }) => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -274,7 +288,17 @@ export default function AdminDashboard() {
   //   </svg>
   // );
 
-  const statCards = isEventAdmin
+  const statCards = isItSupport
+    ? [
+        {
+          title: 'Open IT Tickets',
+          value: stats?.itTicketsOpen || 0,
+          href: '/admin/it-tickets',
+          gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+          icon: TicketIcon,
+        },
+      ]
+    : isEventAdmin
     ? [
         {
           title: 'Events',
@@ -346,7 +370,7 @@ export default function AdminDashboard() {
     <AdminErrorBoundary>
       <div>
         <div style={{ marginBottom: '2.5rem' }}>
-          <h2 style={{
+          <h1 style={{
             fontSize: '2.25rem',
             fontWeight: '700',
             marginTop:'1rem',
@@ -354,7 +378,7 @@ export default function AdminDashboard() {
             letterSpacing: '-0.02em',
           }}>
             Dashboard
-          </h2>
+          </h1>
           <p style={{
             color: '#64748b',
             fontSize: '1rem',
@@ -450,10 +474,10 @@ export default function AdminDashboard() {
           })}
         </div>
 
-        {(isEventAdmin || isPublisherAdmin) && <ProfileProgressStrip />}
-        {(isEventAdmin || isPublisherAdmin) && <AttendanceWidget />}
+        {isScopedRole && <ProfileProgressStrip />}
+        {isScopedRole && <AttendanceWidget />}
 
-        {!isEventAdmin && !isPublisherAdmin && (
+        {!isScopedRole && (
           <div style={{
             background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
             padding: '2rem',
@@ -528,7 +552,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {!isEventAdmin && !isPublisherAdmin && (
+        {!isScopedRole && (
           <div style={{
             background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
             padding: '2rem',

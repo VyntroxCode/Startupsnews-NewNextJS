@@ -14,6 +14,7 @@ import { PartnershipEventsService } from "@/modules/partnership-events/service/p
 import { PartnershipEventsRepository } from "@/modules/partnership-events/repository/partnership-events.repository";
 import { partnershipEntityToStartupEvent } from "@/modules/partnership-events/utils/public-event.utils";
 import { parentCityForSubCity, promotedCitiesByCountry } from "@/modules/partnership-events/domain/country-city-data";
+import { COHORT_PARTNERSHIP_TYPE } from "@/modules/partnership-events/domain/types";
 import { CategoriesService } from "@/modules/categories/service/categories.service";
 import { CategoriesRepository } from "@/modules/categories/repository/categories.repository";
 import { UsersRepository } from "@/modules/users/repository/users.repository";
@@ -45,6 +46,8 @@ export interface Post {
   timeAgo: string;
   /** ISO date string for sorting (latest first) */
   publishedAt?: string;
+  /** ISO date string of the last content edit (never earlier than publishedAt) */
+  updatedAt?: string;
   image: string;
   imageSmall?: string;
   format?: "standard" | "video" | "gallery";
@@ -141,6 +144,67 @@ export async function getCategoryDisplayName(
 ): Promise<string> {
   const cat = await categoriesService.getCategoryBySlug(slug);
   return cat?.name?.trim() || fallback;
+}
+
+const META_DESCRIPTION_MAX = 155;
+/** Admin descriptions shorter than this are too thin for a snippet — use the fallback instead. */
+const MIN_OWN_DESCRIPTION = 70;
+
+/** Rich-text category description → plain single-line text. */
+function htmlToMetaText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Cut to `max` chars on a word boundary, adding an ellipsis when shortened. */
+function clampMetaText(text: string, max = META_DESCRIPTION_MAX): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:.–-]+$/, "")}…`;
+}
+
+/**
+ * Name + meta description for a category listing page. Uses the admin-set
+ * category description (Admin → Categories) when present; otherwise a fallback
+ * that includes the latest headline, so every category gets a distinct snippet.
+ */
+export async function getCategoryMeta(
+  slug: string,
+  fallbackName: string,
+): Promise<{ name: string; description: string }> {
+  const [cat, posts] = await Promise.all([
+    categoriesService.getCategoryBySlug(slug).catch(() => null),
+    getPostsByCategory(slug, 1).catch(() => [] as Post[]),
+  ]);
+  const name = cat?.name?.trim() || fallbackName;
+
+  const own = htmlToMetaText(cat?.description || "");
+  if (own.length >= MIN_OWN_DESCRIPTION) return { name, description: clampMetaText(own) };
+
+  // Short admin text (e.g. "Climate technology and Energy solutions") still makes a good closing line.
+  const tail = own
+    ? `${own.replace(/[\s.,;:!]+$/, "")} on StartupNews.fyi.`
+    : "Funding rounds, launches, deals and analysis on StartupNews.fyi.";
+
+  // Lead with what's unique to this category; only the headline is trimmed, never the closing line.
+  const prefix = `Latest in ${name}: `;
+  const latest = posts[0]?.title?.trim();
+  // -2: the space before the tail and a possible closing "." on the headline.
+  const budget = META_DESCRIPTION_MAX - prefix.length - tail.length - 2;
+  if (!latest || budget < 30) return { name, description: clampMetaText(`${name} startup news and updates. ${tail}`) };
+
+  let headline = clampMetaText(latest, budget);
+  if (!/[.!?…]$/.test(headline)) headline += ".";
+  return { name, description: `${prefix}${headline} ${tail}` };
 }
 
 /** Sort posts latest first (by publishedAt, then id) for section display */
@@ -856,7 +920,10 @@ export async function getEventsByRegion(): Promise<
       // event belongs in the single "Delhi NCR" carousel, not a Gurugram carousel of its own,
       // while its card still reads "Gurugram". Only the grouping key is rewritten here —
       // event.location is left alone, which is what EventByCountryCard renders.
-      const groupName = parentCityForSubCity(loc) ?? loc;
+      // A Cohort event goes in the single "Cohort" section whatever its city/country — only the
+      // grouping key changes, so its card still shows its city.
+      const isCohort = e.partnership_type?.trim() === COHORT_PARTNERSHIP_TYPE;
+      const groupName = isCohort ? COHORT_PARTNERSHIP_TYPE : (parentCityForSubCity(loc) ?? loc);
       // Case-insensitive match against DB region names
       const matched = regionNames.find(
         (n) => n.toLowerCase() === groupName.toLowerCase(),
@@ -896,8 +963,11 @@ export async function getPromotedCityOptions(): Promise<Record<string, string[]>
   if (cached) return cached;
   try {
     const entities = await partnershipEventsService.getUpcomingForPublic();
+    // Cohort events don't count toward their city — /events lists them under "Cohort", not the city.
     const promoted = promotedCitiesByCountry(
-      entities.map((e) => ({ country: e.country, city: e.city }))
+      entities
+        .filter((e) => e.partnership_type?.trim() !== COHORT_PARTNERSHIP_TYPE)
+        .map((e) => ({ country: e.country, city: e.city }))
     );
     await setCache(cacheKey, promoted, 300);
     return promoted;

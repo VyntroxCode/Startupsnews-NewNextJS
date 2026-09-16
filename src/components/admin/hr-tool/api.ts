@@ -1,4 +1,5 @@
 import { getAuthHeaders } from '@/lib/admin-auth';
+import type { BrowserLocation } from '@/lib/browser-geolocation';
 import type {
   HrBootstrap, HrTeam, HrEmployee, HrOnboarding, HrRegularization, HrLeaveRequest, HrExpense,
   HrTicket, HrRules, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPayrollEntry, HrAuditLogEntry,
@@ -41,9 +42,15 @@ export interface PayrollApiResult {
 /** Payroll calls preserve the server's specific error message (e.g. "period hasn't ended
  * yet") instead of the generic apiGet/apiPost "Request failed", since that message is
  * meaningful to show the admin directly. */
-async function apiRaw<T>(path: string, init?: RequestInit): Promise<{ success: boolean; data?: T; error?: string }> {
+async function apiRaw<T>(path: string, init?: RequestInit): Promise<{ success: boolean; data?: T; error?: string; code?: string }> {
   const res = await fetch(API_BASE + path, { ...init, headers: { ...getAuthHeaders(), ...(init?.headers || {}) } });
   return res.json();
+}
+
+export interface PunchApiResult {
+  today: { inTime: string | null; outTime: string | null; inMinutes: number | null; outMinutes: number | null };
+  note?: string;
+  geo?: { distanceM: number; allowedM: number };
 }
 
 export const hrApi = {
@@ -67,6 +74,10 @@ export const hrApi = {
   recordAttendance: (v: HrAttendanceRecord) => apiPost('/attendance', v),
   recordAttendanceOverride: (v: HrAttendanceOverride) => apiPost('/attendance-overrides', v),
   recordPunch: (v: HrPunch) => apiPost('/punch-log', v),
+  /** Self-service punch through the same server rules (once-per-day + geofence) as every other
+   * punch surface. apiRaw, not apiPost — the geofence refusal message must reach the user. */
+  punch: (employeeId: string, type: 'in' | 'out', location?: BrowserLocation) =>
+    apiRaw<PunchApiResult>('/punch', { method: 'POST', body: JSON.stringify({ employeeId, type, location }) }),
   getPayroll: (month: string) => apiRaw<PayrollApiResult>('/payroll?month=' + encodeURIComponent(month)),
   runPayroll: (month: string, tds?: Record<string, number>) =>
     apiRaw<{ entries: HrPayrollEntry[] }>('/payroll-runs', { method: 'POST', body: JSON.stringify({ month, tds }) }),

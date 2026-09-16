@@ -7,7 +7,7 @@ import { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 const repo = new PanelAdminsRepository();
 const panelAdminsService = new PanelAdminsService(repo);
 
-const ALLOWED_ROLES: PanelAdminRole[] = ['event_admin', 'publisher_admin'];
+const ALLOWED_ROLES: PanelAdminRole[] = ['event_admin', 'publisher_admin', 'it_support'];
 
 interface RouteParams {
   params: Promise<{ id: string }>;

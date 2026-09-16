@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireEmployeeAuth } from '@/shared/middleware/employee-auth.middleware';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
+import { NO_DIRECTORY_RECORD_ERROR } from '@/modules/hr-tool/service/hr-tool.service';
 import { hrToolService } from './_lib';
 
 interface LeaveRequestBody { type?: string; from?: string; to?: string; reason?: string; }
@@ -14,10 +15,14 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const [leaveRequests, policy, leaveBalance] = await Promise.all([
-      hrToolService.getLeaveRequestsForEmployee(auth.credential.name),
-      hrToolService.getPolicySummary(),
-      hrToolService.getLeaveBalancesForEmployee(auth.credential.name),
+    const employee = await hrToolService.resolveEmployeeForCredential(auth.credential.id, auth.credential.name);
+    const policy = await hrToolService.getPolicySummary();
+    if (!employee) {
+      return NextResponse.json({ success: true, data: { leaveRequests: [], leaveTypes: policy.leaveTypes, leaveBalance: {} } });
+    }
+    const [leaveRequests, leaveBalance] = await Promise.all([
+      hrToolService.getLeaveRequestsForEmployee(employee.id),
+      hrToolService.getLeaveBalancesForEmployee(employee.id),
     ]);
     return NextResponse.json({ success: true, data: { leaveRequests, leaveTypes: policy.leaveTypes, leaveBalance } });
   } catch (error) {
@@ -40,7 +45,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'type, from, to, and reason are required' }, { status: 400 });
     }
 
-    const result = await hrToolService.submitEmployeeLeaveRequest(auth.credential.name, body.type, body.from, body.to, body.reason);
+    const employee = await hrToolService.resolveEmployeeForCredential(auth.credential.id, auth.credential.name);
+    if (!employee) return NextResponse.json({ success: false, error: NO_DIRECTORY_RECORD_ERROR }, { status: 400 });
+
+    const result = await hrToolService.submitEmployeeLeaveRequest(employee, body.type, body.from, body.to, body.reason);
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: 409 });
     }

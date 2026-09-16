@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireEmployeeAuth } from '@/shared/middleware/employee-auth.middleware';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
+import { NO_DIRECTORY_RECORD_ERROR } from '@/modules/hr-tool/service/hr-tool.service';
 import { hrToolService } from '../_lib';
 
 interface RegularizationBody { date?: string; reason?: string; punchType?: 'in' | 'out'; requestedTime?: string; }
@@ -19,7 +20,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'date, reason, punchType, and requestedTime are required' }, { status: 400 });
     }
 
-    const result = await hrToolService.submitEmployeeRegularization(auth.credential.name, body.date, body.reason, body.punchType, body.requestedTime);
+    const employee = await hrToolService.resolveEmployeeForCredential(auth.credential.id, auth.credential.name);
+    if (!employee) return NextResponse.json({ success: false, error: NO_DIRECTORY_RECORD_ERROR }, { status: 400 });
+
+    const result = await hrToolService.submitEmployeeRegularization(employee, body.date, body.reason, body.punchType, body.requestedTime);
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: 409 });
     }

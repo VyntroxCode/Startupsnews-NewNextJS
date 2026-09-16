@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       if (credential.linkedPanelAdmin) {
         // Linked to a Publisher Admin / Event Admin account — signs into the admin panel, as before.
         const result = await authService.loginWithEmployeeId(employeeId, password);
-        const allowedLoginRoles = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin'];
+        const allowedLoginRoles = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support'];
         if (!allowedLoginRoles.includes(result.user.role)) {
           return NextResponse.json(
             { success: false, error: 'Access denied. Insufficient role permissions.' },
@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
 
     const result = await authService.login(email, password);
 
-    // Allow admin, editor, author, event_admin, and publisher_admin roles to login to admin panel
-    const allowedLoginRoles = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin'];
+    // Allow admin, editor, author, event_admin, publisher_admin, and it_support roles to login to admin panel
+    const allowedLoginRoles = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support'];
     if (!allowedLoginRoles.includes(result.user.role)) {
       return NextResponse.json(
         {

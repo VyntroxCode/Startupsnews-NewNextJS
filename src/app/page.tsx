@@ -31,9 +31,9 @@ import { getPostPath } from "@/lib/post-utils";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
-export const metadata: Metadata = {
-  alternates: { canonical: SITE_URL },
-};
+// Homepage canonical is rendered as a <link> in the JSX below: Next's metadata API always strips
+// the trailing slash from a root URL ("https://startupnews.fyi"), but the served URL is ".../".
+export const metadata: Metadata = {};
 
 // ISR: serve cached HTML for 60s so CDN/edge can serve in ~0.01s when cached
 export const revalidate = 60;
@@ -141,6 +141,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <link rel="canonical" href={`${SITE_URL.replace(/\/+$/, "")}/`} />
       {/* Mobile-only: Featured Article + Latest News Section */}
       <section className="startupnews-mobile-latest-news">
         {/* Latest News Title - Below Navbar */}
@@ -174,7 +175,7 @@ export default async function HomePage() {
                 <span className="startupnews-mobile-featured-category">{main.category}</span>
                 <span className="startupnews-mobile-featured-time">{main.timeAgo}</span>
               </div>
-              <h2 className="startupnews-mobile-featured-title post-heading-max-3-lines">{main.title}</h2>
+              <h1 className="startupnews-mobile-featured-title post-heading-max-3-lines">{main.title}</h1>
             </div>
           </Link>
         </div>

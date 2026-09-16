@@ -95,7 +95,7 @@ function renderGoneHtml(slug: string, kind: 'post' | 'event' = 'post'): string {
   <main class="wrap">
     <section class="card">
       <div class="code">410 Gone</div>
-      <h2>${heading}</h2>
+      <h1>${heading}</h1>
       <p>${body}</p>
       <p class="slug">Slug: ${safeSlug}</p>
     </section>
@@ -273,6 +273,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     '/post/:path*',
-    '/((?!admin|api|_next/static|_next/image|images|favicon\.ico|robots\.txt|sitemap\.xml).*)',
+    '/((?!admin|api|_next/static|_next/image|images|favicon\.ico|robots\.txt|sitemap).*)',
   ],
 };

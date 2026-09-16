@@ -11,7 +11,7 @@ import { PanelAdmin, PanelAdminRole } from '@/modules/panel-admins/domain/types'
 /** Either a real `users` table account or a `panel_admins` table account. */
 export type AuthUser = User | PanelAdmin;
 
-const PANEL_ADMIN_ROLES: readonly PanelAdminRole[] = ['event_admin', 'publisher_admin'];
+const PANEL_ADMIN_ROLES: readonly PanelAdminRole[] = ['event_admin', 'publisher_admin', 'it_support'];
 
 // Initialize services
 const usersRepository = new UsersRepository();

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { PostImage } from "@/components/PostImage";
-import { getPostsByCategory, getStartupEvents, hasThumbnail } from "@/lib/data-adapter";
+import { getCategoryMeta, getPostsByCategory, getStartupEvents, hasThumbnail } from "@/lib/data-adapter";
 import { getPostPath } from "@/lib/post-utils";
 import { CategoryMorePosts } from "@/components/CategoryMorePosts";
 // import { Sidebar } from "@/components/Sidebar"; // Unused
@@ -24,8 +24,8 @@ export const dynamicParams = true;
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
   const displayName = slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-  const title = `${displayName} News & Updates`;
-  const description = `Latest ${displayName} startup news, funding rounds, and industry analysis on StartupNews.fyi.`;
+  const { name, description } = await getCategoryMeta(slug, displayName);
+  const title = `${name} News & Updates`;
   // This route is only reached through a rewrite (/funding-tracker → /category/funding-tracker);
   // /category/:slug itself 308s to /:slug, so the public URL — and canonical — is /:slug.
   const canonical = `${SITE_BASE}/${slug}`;
@@ -82,9 +82,9 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               Funding Tracker
             </span>
           </nav>
-          <h2 className="mvp-feat1-pop-head sector-page-theme-title">
+          <h1 className="mvp-feat1-pop-head sector-page-theme-title">
             <span className="mvp-feat1-pop-head">{title}</span>
-          </h2>
+          </h1>
 
           {heroPost && (
             <div className="sector-hero-wrap left relative">

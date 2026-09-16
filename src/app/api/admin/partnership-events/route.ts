@@ -5,7 +5,7 @@ import { PartnershipEventsService } from '@/modules/partnership-events/service/p
 import { PartnershipEventsRepository } from '@/modules/partnership-events/repository/partnership-events.repository';
 import { entityToPartnershipEvent } from '@/modules/partnership-events/utils/partnership-events.utils';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
-import { PartnershipEventInput } from '@/modules/partnership-events/domain/types';
+import { PartnershipEventInput, SOCIAL_LINK_FIELDS } from '@/modules/partnership-events/domain/types';
 import { EventsService } from '@/modules/events/service/events.service';
 import { EventsRepository } from '@/modules/events/repository/events.repository';
 
@@ -71,7 +71,11 @@ export async function POST(request: NextRequest) {
     if (errorResponse) return errorResponse;
     if (!body) return NextResponse.json({ success: false, error: 'Request body is required' }, { status: 400 });
 
-    const { entity, warning } = await partnershipEventsService.createEvent({ ...body, source: body.source || 'Manually added' }, auth.user.email);
+    // Social links are the organiser's own answers from /list-your-event and read-only in the
+    // tracker — an admin-created row never sets them, whatever the body carries.
+    const input: PartnershipEventInput = { ...body, source: body.source || 'Manually added' };
+    for (const { key } of SOCIAL_LINK_FIELDS) delete input[key];
+    const { entity, warning } = await partnershipEventsService.createEvent(input, auth.user.email);
     const linkedMap = await partnershipEventsService.getLinkedEventSummaries([entity]);
     const linkedEvent = entity.event_id ? linkedMap.get(entity.event_id) || null : null;
 

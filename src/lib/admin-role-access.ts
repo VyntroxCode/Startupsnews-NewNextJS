@@ -10,8 +10,10 @@ export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   editor: 'all',
   author: 'all',
   // Event Admin's post access is scoped server-side to the Press Release category only (see posts API routes).
-  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/partnership-tracker', '/admin/banners', '/admin/tools', '/admin/posts', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents'],
-  publisher_admin: ['/admin', '/admin/posts', '/admin/tools', '/admin/reports', '/admin/brand-stories', '/admin/inner-pages', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents'],
+  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/partnership-tracker', '/admin/banners', '/admin/tools', '/admin/posts', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets'],
+  publisher_admin: ['/admin', '/admin/posts', '/admin/tools', '/admin/reports', '/admin/brand-stories', '/admin/inner-pages', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets'],
+  // IT Support is a standalone tool role, like Event Admin/Publisher Admin — scoped to the IT Tickets queue only.
+  it_support: ['/admin', '/admin/it-tickets'],
 };
 
 function matchesPrefix(prefixes: string[], pathname: string): boolean {

@@ -6,13 +6,9 @@ import { SponsorFormCard } from "./SponsorFormCard";
 import { useReducedMotion } from "./hooks";
 import type { SponsorEventFormController } from "./useSponsorEventForm";
 
-/** 14 — the submission, and the last thing on the page. Everything above it exists so that by the
- * time someone reaches this section they already know what they're applying for.
- *
- * This is a frame around the existing wizard, not a replacement for it: SponsorFormCard still
- * renders the same four steps against the same controller, still uploads the poster to S3, still
- * gates submission on Turnstile, and still POSTs to /api/events/sponsor-event. Nothing about the
- * fields, validation or submission path changed with the redesign. */
+/** The submission — the last thing on the page, and the natural end of the story above it. A frame
+ * around the existing wizard, never a replacement for it: fields, validation and the submit path
+ * all live in useSponsorEventForm / validation.ts / steps, unchanged by the redesign. */
 export function SponsorFormSection({
   ctrl,
   promotedCities,
@@ -23,20 +19,30 @@ export function SponsorFormSection({
   const reducedMotion = useReducedMotion();
   return (
     <section className="sp-form-section" id="sp-form" aria-labelledby="sp-form-title">
+      <span className="sp-form-glow" aria-hidden="true" />
       <div className="sp-wrap">
-        {!ctrl.submitted && (
+        {ctrl.submitted ? (
+          <h2 id="sp-form-title" className="sp-sr-only">
+            Event submission
+          </h2>
+        ) : (
           <SectionHead
-            kicker="Submit"
-            title={<span id="sp-form-title">Tell Us About Your Event.</span>}
-            lede="Four short steps: the event itself, when it happens, how it looks and who to talk to. Our team reads every submission."
+            kicker="Submit your event"
+            id="sp-form-title"
+            title={
+              <>
+                Let&apos;s put your event <em>on the map.</em>
+              </>
+            }
+            lede="Tell us what you're building, where it's happening and who it's for. Our team will review the details and help bring it to the StartupNews.fyi community."
           />
         )}
 
         <motion.div
-          initial={reducedMotion ? false : { opacity: 0, y: 30 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 36 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.1 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         >
           <SponsorFormCard ctrl={ctrl} promotedCities={promotedCities} />
         </motion.div>

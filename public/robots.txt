@@ -3,4 +3,5 @@ Disallow: /search
 Disallow: /api/
 Disallow: /admin
 
-Sitemap: https://startupnews.fyi/sitemap.xml
+Sitemap: https://startupnews.fyi/sitemap_index.xml
+Sitemap: https://startupnews.fyi/sitemap-news.xml

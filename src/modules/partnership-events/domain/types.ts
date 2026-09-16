@@ -75,6 +75,11 @@ export interface PartnershipEventEntity {
   banner_active: number | boolean | null;
   social_media_posts: string | null;
   social_creatives: JsonArrayColumn;
+  /** Organiser's own social profile links — see SOCIAL_LINK_FIELDS. Set once from /list-your-event. */
+  social_instagram: string | null;
+  social_linkedin: string | null;
+  social_x: string | null;
+  social_facebook: string | null;
   partnership_status: string | null;
   partnership_type: string | null;
   last_updated_date: string | null;
@@ -123,6 +128,10 @@ export interface PartnershipEvent {
   bannerActive: boolean;
   socialMediaPosts: string;
   socialCreatives: SocialCreative[];
+  socialInstagram: string;
+  socialLinkedin: string;
+  socialX: string;
+  socialFacebook: string;
   partnershipStatus: string;
   partnershipType: string;
   lastUpdatedDate: string;
@@ -167,6 +176,11 @@ export interface PartnershipEventInput {
   bannerActive?: boolean;
   socialMediaPosts?: string;
   socialCreatives?: SocialCreative[];
+  /** CREATE-ONLY: written on insert, never on update — see CREATE_ONLY_COLUMNS in the repository. */
+  socialInstagram?: string;
+  socialLinkedin?: string;
+  socialX?: string;
+  socialFacebook?: string;
   partnershipStatus?: string;
   partnershipType?: string;
   lastUpdatedDate?: string | null;
@@ -214,6 +228,13 @@ export const PARTNERSHIP_TYPE_OPTIONS = ['In-person', 'Cohort', 'Online (virtual
  */
 export const ONLINE_PARTNERSHIP_TYPE: string = 'Online (virtual)';
 /**
+ * Unlike Online, a Cohort event keeps its real country and city (they're stored and shown on its
+ * card) — but /events lists every Cohort event under ONE "Cohort" heading, never under its
+ * country or a city sub-heading. The same string is the section name (and the seeded
+ * `event_regions` row), so getEventsByRegion keys these events by it directly.
+ */
+export const COHORT_PARTNERSHIP_TYPE: string = 'Cohort';
+/**
  * Display label for an online event's location. DERIVED AT RENDER TIME, never stored: an online
  * event has no country and no city, so both columns stay genuinely blank and
  * partnershipEntityToStartupEvent falls back to this label off `partnership_type`.
@@ -244,6 +265,52 @@ export const SOCIAL_CREATIVE_PLATFORMS = ['instagram', 'facebook', 'linkedin', '
 export const SOCIAL_CREATIVE_PLATFORM_LABELS: Record<string, string> = {
   instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', whatsapp: 'WhatsApp', other: 'Other (from before)',
 };
+
+/**
+ * The organiser's own social profile links, asked for (all optional) on /list-your-event step 4.
+ * `key` is the field name on PartnershipEvent / PartnershipEventInput / the submit payload, so the
+ * form, the API and the admin tracker all iterate this one list. `hosts` is what a link must point
+ * at — a subdomain of one of them also passes (www., m., in.linkedin.com …).
+ *
+ * Read-only in the admin tracker: these are the organiser's own answers, stored once on create and
+ * never overwritten by an admin save (the repository's update path does not know these columns).
+ */
+export const SOCIAL_LINK_FIELDS = [
+  { key: 'socialInstagram', label: 'Instagram', placeholder: 'https://instagram.com/yourpage', hosts: ['instagram.com'] },
+  { key: 'socialLinkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/company/yourpage', hosts: ['linkedin.com'] },
+  { key: 'socialX', label: 'X (Twitter)', placeholder: 'https://x.com/yourhandle', hosts: ['x.com', 'twitter.com'] },
+  { key: 'socialFacebook', label: 'Facebook', placeholder: 'https://facebook.com/yourpage', hosts: ['facebook.com', 'fb.com', 'fb.me'] },
+] as const;
+export type SocialLinkKey = (typeof SOCIAL_LINK_FIELDS)[number]['key'];
+export const SOCIAL_LINK_MAX_LENGTH = 500;
+
+/** Adds https:// to a link typed without a scheme ("instagram.com/acme"), so what is validated and
+ * stored is a clickable URL. Blank stays blank. */
+export function normalizeSocialLink(value: string | null | undefined): string {
+  const v = (value || '').trim();
+  if (!v) return '';
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(v) ? v : `https://${v}`;
+}
+
+/** '' when the link is blank (every field is optional) or valid; otherwise the message to show.
+ * Shared by the form and EventSubmissionService so the two can never disagree. */
+export function socialLinkError(key: SocialLinkKey, value: string | null | undefined): string {
+  const field = SOCIAL_LINK_FIELDS.find((f) => f.key === key)!;
+  const link = normalizeSocialLink(value);
+  if (!link) return '';
+  const invalid = `Enter a valid ${field.label} link (e.g. ${field.placeholder}).`;
+  if (link.length > SOCIAL_LINK_MAX_LENGTH) return `${field.label} link is too long.`;
+  let url: URL;
+  try {
+    url = new URL(link);
+  } catch {
+    return invalid;
+  }
+  if (!/^https?:$/.test(url.protocol)) return invalid;
+  const host = url.hostname.toLowerCase();
+  const hostMatches = (field.hosts as readonly string[]).some((h) => host === h || host.endsWith(`.${h}`));
+  return hostMatches ? '' : invalid;
+}
 
 /** Guidance shown next to each upload/text field in the Add/Edit modal. */
 export const EVENT_DESCRIPTION_MIN_LENGTH = 150;

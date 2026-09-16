@@ -4,6 +4,9 @@ services:
     image: mariadb:10.11
     container_name: zox-mariadb
     restart: unless-stopped
+    # Pin the packet limit: on 2026-09-14 a runtime SET GLOBAL had dropped it to 2 KB and every
+    # hr_rules save failed with ER_NET_PACKET_TOO_LARGE. 64M covers large article bodies too.
+    command: ["mariadbd", "--max-allowed-packet=64M"]
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: zox_db

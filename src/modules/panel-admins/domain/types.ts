@@ -4,7 +4,7 @@
  * and synthetic byline-author records).
  */
 
-export type PanelAdminRole = 'event_admin' | 'publisher_admin';
+export type PanelAdminRole = 'event_admin' | 'publisher_admin' | 'it_support';
 
 export interface PanelAdminEntity {
   id: number;

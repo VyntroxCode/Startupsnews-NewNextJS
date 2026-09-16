@@ -8,6 +8,8 @@ export function entityToLead(e: SalesLeadEntity): SalesLead {
     company: e.company || '',
     contact: e.contact || '',
     email: e.email || '',
+    country: e.country || '',
+    city: e.city || '',
     source: e.source || '',
     type: e.type || '',
     otherType: e.other_type || '',

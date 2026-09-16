@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
+import { NO_DIRECTORY_RECORD_ERROR } from '@/modules/hr-tool/service/hr-tool.service';
 import { hrCredentialsService, hrToolService, LEAVE_ROLES } from './_lib';
 
 interface LeaveRequestBody { type?: string; from?: string; to?: string; reason?: string; }
@@ -19,10 +20,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: { linked: false, leaveRequests: [], leaveTypes: {}, leaveBalance: {} } } as const);
     }
 
+    const employee = await hrToolService.resolveEmployeeForCredential(credential.id, credential.name);
+    if (!employee) {
+      return NextResponse.json({ success: true, data: { linked: false, leaveRequests: [], leaveTypes: {}, leaveBalance: {} } } as const);
+    }
     const [leaveRequests, policy, leaveBalance] = await Promise.all([
-      hrToolService.getLeaveRequestsForEmployee(credential.name),
+      hrToolService.getLeaveRequestsForEmployee(employee.id),
       hrToolService.getPolicySummary(),
-      hrToolService.getLeaveBalancesForEmployee(credential.name),
+      hrToolService.getLeaveBalancesForEmployee(employee.id),
     ]);
     return NextResponse.json({ success: true, data: { linked: true, leaveRequests, leaveTypes: policy.leaveTypes, leaveBalance } });
   } catch (error) {
@@ -53,7 +58,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await hrToolService.submitEmployeeLeaveRequest(credential.name, body.type, body.from, body.to, body.reason);
+    const employee = await hrToolService.resolveEmployeeForCredential(credential.id, credential.name);
+    if (!employee) return NextResponse.json({ success: false, error: NO_DIRECTORY_RECORD_ERROR }, { status: 400 });
+
+    const result = await hrToolService.submitEmployeeLeaveRequest(employee, body.type, body.from, body.to, body.reason);
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: 409 });
     }

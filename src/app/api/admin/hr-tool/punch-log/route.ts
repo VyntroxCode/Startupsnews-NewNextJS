@@ -12,9 +12,11 @@ export async function POST(request: NextRequest) {
   try {
     const [body, errorResponse] = await parseJsonBody<HrPunch>(request);
     if (errorResponse) return errorResponse;
-    if (!body?.emp || !body?.date) return NextResponse.json({ success: false, error: 'emp and date are required' }, { status: 400 });
+    if (!body?.employeeId || !body?.date) return NextResponse.json({ success: false, error: 'employeeId and date are required' }, { status: 400 });
+    const employee = await hrToolService.findEmployeeRef(body.employeeId);
+    if (!employee) return NextResponse.json({ success: false, error: 'employeeId must be an existing Directory employee' }, { status: 400 });
 
-    await hrToolService.recordPunch(body);
+    await hrToolService.recordPunch({ ...body, employeeId: employee.id, emp: employee.name });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error recording HR punch log:', error);

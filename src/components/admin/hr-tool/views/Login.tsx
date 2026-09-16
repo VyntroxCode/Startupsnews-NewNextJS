@@ -34,7 +34,7 @@ export default function Login() {
     if (!o) return;
     const today = todayStr();
     const newId = nextEmployeeId(state.employees);
-    const teamManager = state.teams.find((t) => t.name === o.team)?.manager || null;
+    const teamManager = state.teams.find((t) => t.name === o.team);
     const offerTemplate = state.templates['Offer Letter']?.content || '';
     const offerMerged = mergeTemplate(offerTemplate, { employee_name: o.name, designation: o.designation, team: o.team, ctc: '₹' + o.ctc.toLocaleString('en-IN') });
     const uploadDeadline = addDays(today, 7);
@@ -44,7 +44,7 @@ export default function Login() {
     } : x));
     const newEmployee = {
       id: newId, name: o.name, email: o.name.toLowerCase().replace(/\s+/g, '.') + '@snf.co', phone: null, designation: o.designation,
-      team: o.team, manager: teamManager, status: 'onboarding', doj: today, sysRole: 'Employee', ctc: o.ctc,
+      team: o.team, manager: teamManager?.manager || null, managerId: teamManager?.managerId || null, status: 'onboarding', doj: today, sysRole: 'Employee', ctc: o.ctc,
       leaveBalance: { Casual: 0, Sick: 0, Earned: 0 }, documents: [],
       kycDocuments: emptyKycDocuments(),
       signedDocs: [{ type: 'Offer Letter', content: offerMerged, signedDate: today }],

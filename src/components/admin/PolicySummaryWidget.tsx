@@ -15,6 +15,8 @@ interface PolicyData {
   halfDayMinWorkedHours: number;
   shortLeaveMinWorkedHours: number;
   fullDayMinWorkedHours: number;
+  geoFencing?: boolean;
+  geoFenceRadiusM?: number;
 }
 
 const cardStyle: CSSProperties = {
@@ -112,6 +114,13 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
       <Row label="Short leave — monthly quota" desc="How many Short Leaves you may take per calendar month." value={`${policy.shortLeaveMonthlyQuota} / month`} />
       <Row label="Half day — punch-in cutoff" desc="Punch in later than the Short Leave cutoff but within this many hours of shift start, and it's a Half Day — half a day's pay. Later than this is Absent." value={`${policy.halfDayThresholdHours} hrs after shift start`} />
       <Row label="Hours worked — secondary rule" desc="Your day's status is the WORSE of arrival time (above) and total hours worked, punch-out minus punch-in. Below the first number is Absent, up to the second is Half Day, up to the third is Short Leave, above it is a full day." value={`${policy.halfDayMinWorkedHours} / ${policy.shortLeaveMinWorkedHours} / ${policy.fullDayMinWorkedHours} hrs`} />
+      {policy.geoFencing && (
+        <Row
+          label="Punch location"
+          desc="Punch In and Punch Out are accepted only from the office. Your browser will ask for your location each time — allow it and keep precise location on. Punching from anywhere else is refused."
+          value={`Within ${policy.geoFenceRadiusM ?? 50} m of office`}
+        />
+      )}
     </div>
   );
 }

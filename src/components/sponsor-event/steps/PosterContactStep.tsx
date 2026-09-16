@@ -25,7 +25,7 @@ export function PosterContactStep({ ctrl }: { ctrl: SponsorEventFormController }
       return;
     }
     if (file.size > MAX_POSTER_BYTES) {
-      ctrl.blurValidate("posterUrl", () => "This image is larger than 10MB — please use a smaller file.");
+      ctrl.blurValidate("posterUrl", () => "This image is larger than 10MB. Please use a smaller file.");
       return;
     }
     setBusy(true);
@@ -36,7 +36,7 @@ export function PosterContactStep({ ctrl }: { ctrl: SponsorEventFormController }
       ctrl.setField("posterFilename", file.name);
       if (errors.posterUrl) ctrl.blurValidate("posterUrl", validatePoster);
     } catch (err) {
-      ctrl.blurValidate("posterUrl", () => (err instanceof Error ? err.message : "Couldn't upload this image — please try again."));
+      ctrl.blurValidate("posterUrl", () => (err instanceof Error ? err.message : "Couldn't upload this image. Please try again."));
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";

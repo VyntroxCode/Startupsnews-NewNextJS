@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
-import { StatusBadge, isAdmin, rmOf } from '../utils';
+import { StatusBadge, employeeName, isAdmin, rmOf } from '../utils';
 
 export default function Helpdesk() {
   const { state, persistTickets } = useHrTool();
@@ -15,11 +15,11 @@ export default function Helpdesk() {
   const rows = admin
     ? state.tickets
     : state.role === 'Reporting Manager'
-      ? state.tickets.filter((t) => t.emp === state.currentUser?.name || rmOf(state.employees, t.emp) === state.currentUser?.name)
-      : state.tickets.filter((t) => t.emp === state.currentUser?.name);
+      ? state.tickets.filter((t) => t.employeeId === state.currentUser?.id || rmOf(state.employees, t.employeeId) === state.currentUser?.id)
+      : state.tickets.filter((t) => t.employeeId === state.currentUser?.id);
 
   async function submit() {
-    await persistTickets([{ id: 'T-' + Date.now(), emp: state.currentUser ? state.currentUser.name : 'You', category, status: 'open', note: note || '—' }, ...state.tickets]);
+    await persistTickets([{ id: 'T-' + Date.now(), employeeId: state.currentUser?.id || '', emp: state.currentUser ? state.currentUser.name : 'You', category, status: 'open', note: note || '—' }, ...state.tickets]);
     setOpen(false);
   }
   async function updateStatus(id: string, status: string) {
@@ -38,7 +38,7 @@ export default function Helpdesk() {
       <div className="card"><table><thead><tr><th>Employee</th><th>Category</th><th>Note</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
         <tbody>
           {rows.map((t) => (
-            <tr key={t.id}><td>{t.emp}</td><td>{t.category}</td><td>{t.note}</td><td><StatusBadge status={t.status} /></td>
+            <tr key={t.id}><td>{employeeName(state.employees, t.employeeId, t.emp)}</td><td>{t.category}</td><td>{t.note}</td><td><StatusBadge status={t.status} /></td>
               <td style={{ textAlign: 'right' }}>
                 {admin ? (
                   <select value={t.status} onChange={(e) => updateStatus(t.id, e.target.value)} style={{ width: 'auto' }}>

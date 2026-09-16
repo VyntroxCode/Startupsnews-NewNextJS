@@ -10,13 +10,18 @@ export async function GET(request: NextRequest) {
 
   try {
     const { credential } = auth;
+    // Records belong to the Directory record behind this login, looked up by id — not the name.
+    const employee = await hrToolService.resolveEmployeeForCredential(credential.id, credential.name);
+    if (!employee) {
+      return NextResponse.json({ success: true, data: { linked: false } } as const);
+    }
     const { month, from, to } = monthRange(request.nextUrl.searchParams.get('month'));
     const [punch, calendar, policy, regularizations, regUsage, allHolidays] = await Promise.all([
-      hrToolService.getPunchByEmp(credential.name),
-      hrToolService.getAttendanceForEmployeeInRange(credential.name, from, to),
+      hrToolService.getPunchByEmployee(employee.id),
+      hrToolService.getAttendanceForEmployeeInRange(employee.id, from, to),
       hrToolService.getPolicySummary(),
-      hrToolService.getRegularizationsForEmployee(credential.name),
-      hrToolService.getRegularizationUsage(credential.name),
+      hrToolService.getRegularizationsForEmployee(employee.id),
+      hrToolService.getRegularizationUsage(employee.id),
       hrToolService.getHolidays(),
     ]);
     // The admin's Holiday calendar (HR Management → Rules & Org Structure) — filtered to this
@@ -32,7 +37,7 @@ export async function GET(request: NextRequest) {
       data: {
         linked: true,
         employeeCode: credential.employeeCode,
-        name: credential.name,
+        name: employee.name,
         today: {
           inTime: isToday ? punch?.inTime || null : null,
           outTime: isToday ? punch?.outTime || null : null,
@@ -50,6 +55,8 @@ export async function GET(request: NextRequest) {
         },
         regularizations,
         regularizationPolicy: { windowDays: policy.regularizationWindowDays, monthlyQuota: regUsage.quota, usedThisMonth: regUsage.used, cycleFrom: regUsage.from, cycleTo: regUsage.to },
+        // Tells the widget whether to ask the browser for location before punching.
+        geofence: { enabled: policy.geoFencing, radiusM: policy.geoFenceRadiusM },
       },
     });
   } catch (error) {

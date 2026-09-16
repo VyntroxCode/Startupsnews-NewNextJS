@@ -1,5 +1,5 @@
 import { query, queryOne, getDbConnection } from '@/shared/database/connection';
-import { PartnershipEventEntity, PartnershipEventFilters, PartnershipEventInput } from '../domain/types';
+import { ONLINE_PARTNERSHIP_TYPE, PartnershipEventEntity, PartnershipEventFilters, PartnershipEventInput } from '../domain/types';
 
 type SqlParam = string | number | null;
 
@@ -43,7 +43,19 @@ const WRITABLE_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
   ['source', 'source'],
 ];
 
-const JSON_COLUMNS = new Set<keyof PartnershipEventInput>(['speakers', 'socialCreatives']);
+/**
+ * Written by create() only — update() never touches them, so nothing an admin sends from the
+ * tracker (or a CSV re-import matching an existing row) can change them. They hold the organiser's
+ * own social links from /list-your-event, which the tracker shows read-only.
+ */
+const CREATE_ONLY_COLUMNS: Array<[keyof PartnershipEventInput, string]> = [
+  ['socialInstagram', 'social_instagram'],
+  ['socialLinkedin', 'social_linkedin'],
+  ['socialX', 'social_x'],
+  ['socialFacebook', 'social_facebook'],
+];
+
+const JSON_COLUMNS =new Set<keyof PartnershipEventInput>(['speakers', 'socialCreatives']);
 const DATE_COLUMNS = new Set<keyof PartnershipEventInput>(['initiatedDate', 'eventStartDate', 'eventEndDate', 'lastUpdatedDate', 'bannerStartDate']);
 // TINYINT(1) columns: a JS boolean has to reach MySQL as 1/0, not as `true`/`false`.
 const BOOL_COLUMNS = new Set<keyof PartnershipEventInput>(['bannerActive']);
@@ -53,6 +65,17 @@ function toParam(key: keyof PartnershipEventInput, value: unknown): SqlParam {
   if (BOOL_COLUMNS.has(key)) return value ? 1 : 0;
   if (DATE_COLUMNS.has(key) && value === '') return null;
   return (value as string | null | undefined) ?? null;
+}
+
+/**
+ * An Online (virtual) event has no country and no city — /events lists it under "Online" only
+ * while both are blank (partnershipEntityToStartupEvent falls back to the label off the type).
+ * Enforced here, the one write path shared by the tracker modal, /list-your-event and CSV
+ * import, so a stray value can't put an online event under a country section.
+ */
+function clearOnlineLocation<T extends Partial<PartnershipEventInput>>(input: T): T {
+  if (input.partnershipType?.trim() !== ONLINE_PARTNERSHIP_TYPE) return input;
+  return { ...input, city: '', country: '' };
 }
 
 function buildWhere(filters?: PartnershipEventFilters): { sql: string; params: SqlParam[] } {
@@ -161,11 +184,12 @@ export class PartnershipEventsRepository {
   }
 
   async create(input: PartnershipEventInput, actor?: string): Promise<PartnershipEventEntity> {
+    input = clearOnlineLocation(input);
     const columns = ['event_name', 'created_by', 'updated_by'];
     const placeholders = ['?', '?', '?'];
     const params: SqlParam[] = [input.eventName, actor || null, actor || null];
 
-    for (const [key, column] of WRITABLE_COLUMNS) {
+    for (const [key, column] of [...WRITABLE_COLUMNS, ...CREATE_ONLY_COLUMNS]) {
       if (key === 'eventName') continue;
       columns.push(column);
       placeholders.push('?');
@@ -189,6 +213,7 @@ export class PartnershipEventsRepository {
   }
 
   async update(id: number, input: Partial<PartnershipEventInput>, actor?: string): Promise<PartnershipEventEntity | null> {
+    input = clearOnlineLocation(input);
     const fields: string[] = [];
     const params: SqlParam[] = [];
 

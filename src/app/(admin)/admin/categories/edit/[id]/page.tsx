@@ -231,9 +231,9 @@ export default function EditCategoryPage() {
                 >
                     ← Back to Industry
                 </Link>
-                <h2 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+                <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
                     Edit Industry
-                </h2>
+                </h1>
             </div>
 
             {error && (

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getEventBySlug, getEventImage } from "@/lib/data-adapter";
 import { sanitizeContent, isValidContent } from "@/lib/content-utils";
 import { ArrowRightIcon } from "@/components/icons";
+import { buildEventJsonLd, serializeJsonLd } from "@/modules/events/utils/event-json-ld";
 
 const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -56,9 +57,14 @@ export default async function StartupEventPage({
   if (!event) notFound();
 
   const imageUrl = getEventImage(event);
+  const eventJsonLd = buildEventJsonLd({ ...event, image: imageUrl }, `${SITE_BASE}/startup-events/${slug}`);
 
   return (
     <div className="mvp-main-blog-wrap left relative mvp-main-blog-marg event-detail-page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(eventJsonLd) }}
+      />
       <div className="mvp-main-box event-detail-container">
         <div className="mvp-main-blog-cont left relative">
           <nav className="event-detail-breadcrumb" aria-label="Breadcrumb">
@@ -92,7 +98,7 @@ export default async function StartupEventPage({
                   style={{ objectFit: "contain" }}
                 />
               </div>
-              <h2 className="event-detail-title">{event.title}</h2>
+              <h1 className="event-detail-title">{event.title}</h1>
               <div className="event-detail-meta">
                 <span className="event-detail-date">{event.dateRange}</span>
                 {/* Pre-built in the mapper (buildTimeRange) — already 12-hour, already handles a

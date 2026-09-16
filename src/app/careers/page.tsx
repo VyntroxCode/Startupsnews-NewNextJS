@@ -203,11 +203,11 @@ export default function CareersPage() {
           </Reveal>
           <Reveal direction="right" delay={120} className="relative flex flex-col gap-5 min-w-0">
             <span className="text-xs font-bold tracking-[0.16em] uppercase text-cr-pink">We&apos;re hiring</span>
-            <h1 className="text-[clamp(34px,6.2vw,64px)] font-black tracking-[-0.03em] leading-[1.05] text-cr-ink">
+            <h2 className="text-[clamp(34px,6.2vw,64px)] font-black tracking-[-0.03em] leading-[1.05] text-cr-ink">
               Help Build What
               <br />
               Founders <span className="text-cr-pink">Read Every Day.</span>
-            </h1>
+            </h2>
             <p className="text-lg leading-[1.65] text-cr-muted max-w-[52ch]">
               StartupNews.fyi is a small, fast-moving team building the go-to source for startup and
               technology news. If you want your work to ship fast and reach real readers, we&apos;d love

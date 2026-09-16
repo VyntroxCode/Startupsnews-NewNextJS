@@ -1,0 +1,67 @@
+/* Scoped Tailwind utilities for the IT Tickets admin feature only — mirrors the
+   src/app/isolated-tailwind.css pattern already used by the handful of public marketing
+   routes that opt into Tailwind in this otherwise non-Tailwind project (see that file's
+   comment for the full rationale). Imports only the theme + utilities layers (skipping
+   Preflight, Tailwind's base element reset) so it can never affect the shared
+   AdminHeader/AdminSidebar chrome rendered alongside this page. Deliberately NOT wrapped
+   in layer(...): globals.css's legacy reset (`div, span, p, ... { margin:0; padding:0;
+   border:0 }`) is unlayered, and per the CSS Cascade Layers spec unlayered rules always
+   beat layered ones regardless of specificity — keeping this output unlayered lets our
+   single-class utility selectors (0,1,0) win over the reset's bare element selectors
+   (0,0,1) instead of silently losing to it.
+
+   `source(none)` + the explicit @source lines below scope Tailwind's automatic
+   class-detection to just this feature's own files, not the whole repo. Add a new
+   @source line here (not a new CSS file) if another IT Tickets component starts using
+   Tailwind classes. utils.ts / constants.ts are listed because they hold class literals
+   (avatar colours, status lozenges, priority/type tints). */
+@import "tailwindcss/theme.css" source(none);
+@import "tailwindcss/utilities.css" source(none);
+@source "./ui.ts";
+@source "./utils.ts";
+@source "./constants.ts";
+@source "./ItTicketsPage.tsx";
+@source "./FilterBar.tsx";
+@source "./KanbanBoard.tsx";
+@source "./TicketCard.tsx";
+@source "./TicketListTable.tsx";
+@source "./TicketFormModal.tsx";
+@source "./TicketDetailPanel.tsx";
+@source "./TicketIcons.tsx";
+@source "./Avatar.tsx";
+@source "./StatusLozenge.tsx";
+@source "./FieldSelects.tsx";
+@source "./Modal.tsx";
+@source "./Toast.tsx";
+@source "./TicketReports.tsx";
+
+/* ---------- Feature scope: the minimum of Preflight this feature needs ----------
+   `.it-tickets-scope` is on the page root (ItTicketsPage) and on the DragOverlay ghost, which is
+   portaled to <body>. Without Preflight:
+   - box-sizing stays content-box, so `w-full` + padding + border rendered every input/textarea
+     wider than its column — the Summary/Description boxes ran off the Create dialog and the
+     Due date box ran into Assignee.
+   - text inherited the legacy theme fonts (Garnett on headings, the UA font on form controls),
+     so the page didn't match the other admin sections, which all use the Inter stack below
+     (same stack as .sales-tracker-page).
+   Selectors here are (0,1,0); they come after the utilities in source order, so they win ties
+   against utilities and always beat the legacy reset's bare element selectors. */
+.it-tickets-scope,
+.it-tickets-scope *,
+.it-tickets-scope *::before,
+.it-tickets-scope *::after {
+  box-sizing: border-box;
+}
+.it-tickets-scope {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+.it-tickets-scope * {
+  font-family: inherit;
+}
+.it-tickets-scope input::placeholder,
+.it-tickets-scope textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}

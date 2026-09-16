@@ -29,7 +29,8 @@ const reducedStepVariants = {
 /** Section 10 — the submission itself, and the last chapter of the page.
  *
  * Three visual steps over the six fields the shared `useLeadForm` controller has always had: The
- * Story (canonical validation step 1), The Source (canonical step 2), then a Review read-back that
+ * Story (canonical validation steps 1 + 4: company, name, phone, email), The Source (canonical
+ * step 5: website, plus the optional location), then a Review read-back that
  * adds no fields at all. No new fields are invented here, and there is no file input of any kind —
  * the page asks for no PDF anywhere, by design.
  *

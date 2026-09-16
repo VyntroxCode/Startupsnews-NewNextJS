@@ -374,6 +374,8 @@ export interface Post {
   timeAgo: string;
   /** ISO date string for sorting (latest first) */
   publishedAt?: string;
+  /** ISO date string of the last content edit (never earlier than publishedAt) */
+  updatedAt?: string;
   image: string;
   imageSmall?: string;
   format?: "standard" | "video" | "gallery";
@@ -496,6 +498,16 @@ async function loadBulkPostMeta(entities: PostEntity[]): Promise<BulkPostMeta> {
   return { categories, tagsByPostId, rssByPostId, staffByAuthorId };
 }
 
+/** Last-modified time as ISO, never earlier than the publish date (scheduled/backdated posts). */
+function toUpdatedAt(entity: PostEntity, publishedDateObj: Date): string {
+  const raw = entity.updated_at;
+  const updated = raw ? (raw instanceof Date ? raw : new Date(raw)) : null;
+  if (!updated || Number.isNaN(updated.getTime()) || updated < publishedDateObj) {
+    return publishedDateObj.toISOString();
+  }
+  return updated.toISOString();
+}
+
 /**
  * Convert PostEntity (database) to Post (domain/API)
  * This maintains backward compatibility with existing Post interface
@@ -514,6 +526,7 @@ export async function entityToPost(entity: PostEntity): Promise<Post> {
     : null;
   const dateObj = publishedDateObj || createdDateObj;
   const publishedAt = dateObj.toISOString();
+  const updatedAt = toUpdatedAt(entity, dateObj);
 
   const resolvedImage = resolvePostImageUrl(getEntityImageUrl(entity as PostEntity & Record<string, unknown>));
   const resolvedSmall = resolvePostImageUrl(getEntityImageSmallUrl(entity as PostEntity & Record<string, unknown>));
@@ -593,6 +606,7 @@ export async function entityToPost(entity: PostEntity): Promise<Post> {
     date: formatDate(dateObj),
     timeAgo: formatTimeAgo(dateObj),
     publishedAt,
+    updatedAt,
     image: finalImage,
     imageSmall: finalImageSmall || finalImage,
     format: entity.format,

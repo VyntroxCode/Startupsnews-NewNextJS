@@ -6,11 +6,11 @@ import { HrPayrollRun } from '@/modules/hr-tool/domain/types';
 import { hrToolService, getPayrollRoster } from '../_lib';
 
 interface RunPayrollBody extends Pick<HrPayrollRun, 'month'> {
-  /** Admin-entered TDS per employee name for this run — missing employees default to 0. */
+  /** Admin-entered TDS per employee id (hr_employees.id) for this run — missing employees default to 0. */
   tds?: Record<string, number>;
 }
 
-/** POST /api/admin/hr-tool/payroll-runs — { month: 'YYYY-MM', tds?: Record<name, number> }.
+/** POST /api/admin/hr-tool/payroll-runs — { month: 'YYYY-MM', tds?: Record<employeeId, number> }.
  * Computes and freezes real Net Pay for every active employee that month (see
  * HrToolService.runPayroll); refuses if the payroll period hasn't fully elapsed yet. Calling it
  * again for an already-run month recomputes and overwrites — that's the "recompute" mechanism,

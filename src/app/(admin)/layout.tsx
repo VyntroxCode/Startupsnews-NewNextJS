@@ -171,11 +171,16 @@ export default function AdminLayout({
       // its state to initialState() and was reported as "saving kicks me back to the Dashboard"
       // — the sessionStorage-remembered `view` (see HrToolContext's VIEW_STORAGE_KEY) papers
       // over the worst of it, but the full state wipe + reloading flash still happened every time.
+      // it-tickets is excluded for the same reason as hr-tool: the board/list/issue dialog own
+      // their state in useItTicketsData (optimistic updates, server-returned rows), so the blanket
+      // remount only closed the open ticket dialog and flashed the board on every status change,
+      // drag, comment or attachment write.
       const isSpecialPath = requestUrl.includes('/api/admin/upload') ||
                             requestUrl.includes('/api/admin/presign') ||
                             requestUrl.includes('/api/admin/auth/') ||
                             requestUrl.includes('/api/admin/media/ingest') ||
-                            requestUrl.includes('/api/admin/hr-tool');
+                            requestUrl.includes('/api/admin/hr-tool') ||
+                            requestUrl.includes('/api/admin/it-tickets');
 
       if (response.ok && method !== 'GET' && requestUrl.includes('/api/admin/') && !isSpecialPath) {
         // Clear the cache directly here, not just via the event below — the event only reaches a

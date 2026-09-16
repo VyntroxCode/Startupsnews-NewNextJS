@@ -4,6 +4,7 @@ import { getEventsByRegion } from "@/lib/data-adapter";
 import { EventsCarousel } from "@/components/EventsCarousel";
 import { ArrowRightIcon } from "@/components/icons";
 import { NON_GEOGRAPHIC_REGIONS, resolveCountry } from "@/modules/events/utils/region-country.utils";
+import { COHORT_PARTNERSHIP_TYPE } from "@/modules/partnership-events/domain/types";
 
 // Helper to convert region name to slug (e.g. "Delhi NCR" -> "delhi-ncr")
 function slugify(text: string) {
@@ -58,7 +59,8 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
     }
 
     const upcomingEvents = eventsByRegion[region] || [];
-    const country = resolveCountry(region, upcomingEvents);
+    // Same rule as /events: the Cohort page is headed "Cohort", not its events' country.
+    const country = region === COHORT_PARTNERSHIP_TYPE ? region : resolveCountry(region, upcomingEvents);
     const showCityHeading = region !== country && !NON_GEOGRAPHIC_REGIONS.has(region);
 
     return (
@@ -86,7 +88,7 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
                         <div className="mvp-main-blog-in event-by-country-in">
                             <div className="mvp-main-blog-body left relative event-by-country-body">
                                 <section className="event-by-country-section" style={{ paddingTop: "20px" }}>
-                                    <h2 className="event-by-country-region">{country}</h2>
+                                    <h1 className="event-by-country-region">{country}</h1>
                                     {upcomingEvents.length > 0 ? (
                                         <div className="event-by-country-city-group">
                                             <EventsCarousel

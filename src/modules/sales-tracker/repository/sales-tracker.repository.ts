@@ -20,6 +20,8 @@ export class SalesTrackerRepository {
       lead.company || null,
       lead.contact || null,
       lead.email || null,
+      lead.country || null,
+      lead.city || null,
       lead.source || null,
       lead.type || null,
       lead.otherType || null,
@@ -32,11 +34,12 @@ export class SalesTrackerRepository {
     ];
     await query(
       `INSERT INTO sales_leads
-        (id, lead_date, name, company, contact, email, source, type, other_type, query_text, assigned_to, status, next_follow_up_date, last_connect_date, last_call_discussion)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, lead_date, name, company, contact, email, country, city, source, type, other_type, query_text, assigned_to, status, next_follow_up_date, last_connect_date, last_call_discussion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
         lead_date = VALUES(lead_date), name = VALUES(name), company = VALUES(company), contact = VALUES(contact),
-        email = VALUES(email), source = VALUES(source), type = VALUES(type), other_type = VALUES(other_type),
+        email = VALUES(email), country = VALUES(country), city = VALUES(city), source = VALUES(source),
+        type = VALUES(type), other_type = VALUES(other_type),
         query_text = VALUES(query_text), assigned_to = VALUES(assigned_to), status = VALUES(status),
         next_follow_up_date = VALUES(next_follow_up_date), last_connect_date = VALUES(last_connect_date),
         last_call_discussion = VALUES(last_call_discussion)`,

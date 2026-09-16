@@ -97,7 +97,7 @@ export default function CreateBannerPage() {
         >
           ← Back to Banners
         </Link>
-        <h2 style={{
+        <h1 style={{
           fontSize: '2.25rem',
           fontWeight: '700',
           color: '#0f172a',
@@ -105,7 +105,7 @@ export default function CreateBannerPage() {
           letterSpacing: '-0.02em',
         }}>
           Create New Banner
-        </h2>
+        </h1>
       </div>
 
       {error && (

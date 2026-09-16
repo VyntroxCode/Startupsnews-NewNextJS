@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import AttendanceCalendar from './AttendanceCalendar';
-import { StatusBadge, exportCSV, exportExcel, salaryPeriodLabel, monthKeyToLabel, computeCtcBreakdown } from '../utils';
+import { StatusBadge, employeeName, exportCSV, exportExcel, salaryPeriodLabel, monthKeyToLabel, computeCtcBreakdown } from '../utils';
 import { payrollCycleToRunKey, currentPayrollMonthKey, payrollPeriodRange } from '@/modules/hr-tool/utils/time';
 import { hrApi, type PayrollApiResult } from '../api';
 import type { HrPayrollEntry, HrPayrollRun } from '../types';
@@ -35,7 +35,7 @@ export default function Payroll() {
   const [runError, setRunError] = useState('');
   // TDS is admin-entered per employee, not computed — seeded from whatever the server returns
   // (0 for a live/unrun preview, the frozen amount once a month has been run) and editable
-  // locally before "Run Payroll" actually persists it. Keyed by employee name.
+  // locally before "Run Payroll" actually persists it. Keyed by employee id.
   const [tdsInputs, setTdsInputs] = useState<Record<string, string>>({});
 
   // Two cycles are reachable from this page. `runnableMonth` is the most recently ENDED one —
@@ -64,7 +64,7 @@ export default function Payroll() {
     if (signal?.cancelled) return;
     if (res.success && res.data) {
       setPayroll(res.data);
-      setTdsInputs(Object.fromEntries(res.data.entries.map((e) => [e.emp, String(e.tds || 0)])));
+      setTdsInputs(Object.fromEntries(res.data.entries.map((e) => [e.employeeId, String(e.tds || 0)])));
     } else {
       setLoadError(res.error || 'Failed to load payroll');
     }
@@ -83,16 +83,17 @@ export default function Payroll() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month]);
 
-  const employeeByName = useMemo(() => new Map(state.employees.map((e) => [e.name, e])), [state.employees]);
+  // Payroll entries are keyed by employee id — two employees may share a name.
+  const employeeById = useMemo(() => new Map(state.employees.map((e) => [e.id, e])), [state.employees]);
 
   /** Net Pay reflecting whatever TDS is currently typed in (not yet saved) — Gross is already
    * attendance-adjusted (see computePayrollForMonth), so Net Pay here is just Gross − TDS. */
-  function liveTds(emp: string, fallback: number): number {
-    const raw = tdsInputs[emp];
+  function liveTds(employeeId: string, fallback: number): number {
+    const raw = tdsInputs[employeeId];
     return raw === undefined ? fallback : Number(raw) || 0;
   }
   function liveNetPay(e: PayrollApiResult['entries'][number]): number {
-    return Math.round(e.monthlyGross - liveTds(e.emp, e.tds));
+    return Math.round(e.monthlyGross - liveTds(e.employeeId, e.tds));
   }
 
   /** Builds the payslip's Basic/HRA/Conveyance/Special Allowance + totals from the same CTC
@@ -103,7 +104,7 @@ export default function Payroll() {
    * always 0 for now — there's no PF configuration anywhere in the HR module yet to derive one from.
    */
   function buildPayslipData(e: HrPayrollEntry, tds: number, netPay: number, monthKey: string, periodTo: string): PayslipData | null {
-    const employee = employeeByName.get(e.emp);
+    const employee = employeeById.get(e.employeeId);
     if (!employee) return null;
     const cred = employee.credentialId
       ? state.employeeCredentials.find((c) => c.id === employee.credentialId)
@@ -139,7 +140,7 @@ export default function Payroll() {
   const [pdfBusy, setPdfBusy] = useState(false);
   async function handleDownloadMyPayslip() {
     const me = state.currentUser;
-    const entry = me ? payroll?.entries.find((e) => e.emp === me.name) : undefined;
+    const entry = me ? payroll?.entries.find((e) => e.employeeId === me.id) : undefined;
     if (!entry) return;
     setPdfBusy(true);
     try {
@@ -156,7 +157,7 @@ export default function Payroll() {
     setPdfBusy(true);
     try {
       const list = entries
-        .map((e) => buildPayslipData(e, liveTds(e.emp, e.tds), liveNetPay(e), month, payroll?.periodTo || ''))
+        .map((e) => buildPayslipData(e, liveTds(e.employeeId, e.tds), liveNetPay(e), month, payroll?.periodTo || ''))
         .filter((d): d is PayslipData => d !== null);
       if (!list.length) return;
       const bytes = await generateBulkPayslipPdf(list);
@@ -166,13 +167,12 @@ export default function Payroll() {
     }
   }
 
-  /** Employee ID for the history table — falls back to a name match like Directory does,
-   * since not every employee row necessarily has credentialId set. */
-  function employeeCodeFor(name: string): string {
-    const employee = employeeByName.get(name);
-    const cred = employee?.credentialId
+  /** Employee ID (login code) for the history table, through the employee's own credential link. */
+  function employeeCodeFor(employeeId: string): string {
+    const employee = employeeById.get(employeeId);
+    const cred = employee?.credentialId != null
       ? state.employeeCredentials.find((c) => c.id === employee.credentialId)
-      : state.employeeCredentials.find((c) => c.name === name);
+      : undefined;
     return cred?.employeeCode || '—';
   }
 
@@ -213,7 +213,7 @@ export default function Payroll() {
   async function handleDownloadHistoryOne(run: HrPayrollRun, e: HrPayrollEntry) {
     const data = historyCache[run.month];
     if (!data) return;
-    const key = run.month + ':' + e.emp;
+    const key = run.month + ':' + e.employeeId;
     setHistoryBusyKey(key);
     try {
       const slip = buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo);
@@ -229,7 +229,7 @@ export default function Payroll() {
     setRunning(true);
     setRunError('');
     const tds: Record<string, number> = {};
-    entries.forEach((e) => { tds[e.emp] = liveTds(e.emp, e.tds); });
+    entries.forEach((e) => { tds[e.employeeId] = liveTds(e.employeeId, e.tds); });
     const res = await runPayrollForMonth(month, tds);
     if (res.success) {
       await loadPayroll();
@@ -243,9 +243,9 @@ export default function Payroll() {
     if (!payroll) return;
     const rows: (string | number)[][] = [['Employee', 'CTC (Monthly)', 'Total Days', 'Present Days', 'Absent Days', 'Week Off', 'Leaves', 'LOP Days', 'Gross', 'TDS', 'Net Pay']];
     payroll.entries.forEach((e) => {
-      const tds = liveTds(e.emp, e.tds);
+      const tds = liveTds(e.employeeId, e.tds);
       rows.push([
-        e.emp, Math.round((employeeByName.get(e.emp)?.ctc ?? 0) / 12), e.totalDays, e.presentDays, e.absentDays,
+        employeeName(state.employees, e.employeeId, e.emp), Math.round((employeeById.get(e.employeeId)?.ctc ?? 0) / 12), e.totalDays, e.presentDays, e.absentDays,
         e.weekOffDays, e.leaveDays, e.lopDays, e.monthlyGross, tds, liveNetPay(e),
       ]);
     });
@@ -255,7 +255,7 @@ export default function Payroll() {
 
   if (state.role === 'Employee') {
     const me = state.currentUser!;
-    const myEntry = payroll?.entries.find((e) => e.emp === me.name);
+    const myEntry = payroll?.entries.find((e) => e.employeeId === me.id);
     return (
       <>
         <div className="topbar">
@@ -283,7 +283,7 @@ export default function Payroll() {
         </table></div></div>
         <section className="block" style={{ marginTop: 22 }}>
           <div className="block-head"><h2>Attendance calendar — {monthKeyToLabel(month)}</h2></div>
-          <div className="card pad"><AttendanceCalendar empName={me.name} /></div>
+          <div className="card pad"><AttendanceCalendar employeeId={me.id} /></div>
         </section>
         <div className="footnote">Net Pay reflects attendance and approved leave for the cycle — no deductions are applied yet. Salary period: {salaryPeriodLabel(state.rules)}.</div>
       </>
@@ -331,10 +331,10 @@ export default function Payroll() {
             <div className="table-scroll"><table><thead><tr><th>Employee</th><th>CTC (Monthly)</th><th>Total Days</th><th>Present Days</th><th>Absent Days</th><th>Week Off</th><th>Leaves</th><th>LOP Days</th><th>Gross</th><th>TDS</th><th>Net Pay</th></tr></thead>
               <tbody>
                 {entries.map((e) => {
-                  const ctc = employeeByName.get(e.emp)?.ctc ?? 0;
+                  const ctc = employeeById.get(e.employeeId)?.ctc ?? 0;
                   return (
-                    <tr key={e.emp}>
-                      <td>{e.emp}</td>
+                    <tr key={e.employeeId || e.emp}>
+                      <td>{employeeName(state.employees, e.employeeId, e.emp)}</td>
                       <td>
                         {ctc > 0 ? '₹' + Math.round(ctc / 12).toLocaleString('en-IN') : <span className="meta">Not set — set from Directory</span>}
                       </td>
@@ -347,8 +347,8 @@ export default function Payroll() {
                           <input
                             type="number"
                             min={0}
-                            value={tdsInputs[e.emp] ?? String(e.tds)}
-                            onChange={(ev) => setTdsInputs((prev) => ({ ...prev, [e.emp]: ev.target.value }))}
+                            value={tdsInputs[e.employeeId] ?? String(e.tds)}
+                            onChange={(ev) => setTdsInputs((prev) => ({ ...prev, [e.employeeId]: ev.target.value }))}
                             style={{ width: 90 }}
                           />
                         </div>
@@ -448,11 +448,11 @@ export default function Payroll() {
                                   <th>Employee</th><th>Employee ID</th><th>Gross</th><th>TDS</th><th>Net Pay</th><th style={{ textAlign: 'right' }}>Action</th>
                                 </tr></thead>
                                   <tbody>{data.entries.map((e) => {
-                                    const busyKey = run.month + ':' + e.emp;
+                                    const busyKey = run.month + ':' + e.employeeId;
                                     return (
-                                      <tr key={e.emp}>
-                                        <td>{e.emp}</td>
-                                        <td>{employeeCodeFor(e.emp)}</td>
+                                      <tr key={e.employeeId || e.emp}>
+                                        <td>{employeeName(state.employees, e.employeeId, e.emp)}</td>
+                                        <td>{employeeCodeFor(e.employeeId)}</td>
                                         <td>₹{e.monthlyGross.toLocaleString('en-IN')}</td>
                                         <td>₹{e.tds.toLocaleString('en-IN')}</td>
                                         <td>₹{e.netPay.toLocaleString('en-IN')}</td>

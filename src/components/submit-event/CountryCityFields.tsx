@@ -139,7 +139,7 @@ export function CountryCityFields({
           ariaLabel="City"
         />
         {!locked && noCuratedCities && city === OTHER_CITY_VALUE ? (
-          <div className="hint">No listed cities for {country === OTHER_COUNTRY_VALUE ? "this country" : country} — type the city name below.</div>
+          <div className="hint">No listed cities for {country === OTHER_COUNTRY_VALUE ? "this country" : country}. Type the city name below.</div>
         ) : null}
         {!locked && city === OTHER_CITY_VALUE && (
           <input

@@ -5,6 +5,7 @@ import { SalesTrackerService } from '@/modules/sales-tracker/service/sales-track
 import { SalesTrackerRepository } from '@/modules/sales-tracker/repository/sales-tracker.repository';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { SalesLead } from '@/modules/sales-tracker/domain/types';
+import { getPromotedCityOptions } from '@/lib/data-adapter';
 
 const repository = new SalesTrackerRepository();
 const service = new SalesTrackerService(repository);
@@ -14,8 +15,10 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const leads = await service.getAllLeads();
-    return NextResponse.json({ success: true, data: leads });
+    // `promotedCities` rides along so the Add/Edit lead form's City dropdown offers exactly what
+    // the public forms offer (curated + earned cities) without a second round trip.
+    const [leads, promotedCities] = await Promise.all([service.getAllLeads(), getPromotedCityOptions()]);
+    return NextResponse.json({ success: true, data: leads, promotedCities });
   } catch (error) {
     console.error('Error fetching sales leads:', error);
     return NextResponse.json(

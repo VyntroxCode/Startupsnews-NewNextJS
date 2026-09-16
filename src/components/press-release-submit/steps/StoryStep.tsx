@@ -6,16 +6,18 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import type { LeadFormController } from "@/components/lead-forms/shared/useLeadForm";
 import {
   validateCompanyName,
+  validateEmail,
   validateName,
   validatePhone,
 } from "@/components/lead-forms/shared/validation";
 import { staggerVariants, staggerItemVariants } from "../motion";
 
-/** Step 01 — "The Story". Holds exactly the fields of canonical validation step 1 (companyName,
- * name, phone), which is what lets `goNext` gate this page without ever showing an error against a
- * field the reader cannot see. Do not move a field between this step and The Source without
- * moving it in `lead-forms/shared/validation.ts`'s STEP_VALIDATOR_MAP too — and note that map is
- * shared with Feature Your Startup. */
+/** Step 01 — "The Story". Holds exactly the fields of canonical validation steps 1 + 4
+ * (companyName, name, phone, then email), which is what lets `goNext` gate this page without ever
+ * showing an error against a field the reader cannot see. Do not move a field between this step
+ * and The Source without changing PressReleasePage's `stepGroups` (and, if needed,
+ * `lead-forms/shared/validation.ts`'s STEP_VALIDATOR_MAP) too — that map is shared with Feature
+ * Your Startup and Funding Round. */
 export function StoryStep({ ctrl }: { ctrl: LeadFormController }) {
   const { data, errors } = ctrl;
 
@@ -68,6 +70,19 @@ export function StoryStep({ ctrl }: { ctrl: LeadFormController }) {
           }
           onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
           onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
+        />
+      </motion.div>
+      <motion.div variants={staggerItemVariants}>
+        <FormField
+          id="pr-email"
+          label="Official Email"
+          required
+          type="email"
+          hint="Use a company address where possible — it helps us confirm the announcement is official."
+          value={data.email}
+          error={errors.email}
+          onChange={(v) => ctrl.updateAndMaybeValidate("email", v, "email", validateEmail)}
+          onBlur={() => ctrl.blurValidate("email", validateEmail)}
         />
       </motion.div>
 

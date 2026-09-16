@@ -12,7 +12,7 @@ import { generateJoiningLetterPdf, generatePlainLetterPdf, triggerPdfDownload } 
 const DOCUMENTS_WINDOW_DAYS = 5;
 import { copyToClipboard, CredentialFields, EmployeeIdField, nextEmployeeCode, validateCredentialFields, type CredentialFormState } from './CredentialFields';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
-import { emptyKycDocuments } from '../types';
+import { emptyKycDocuments, type HrEmployee } from '../types';
 
 function DesignationSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { state, persistDesignations, logRuleChange } = useHrTool();
@@ -45,7 +45,8 @@ interface FormState extends CredentialFormState {
   contact: string;
   designation: string;
   team: string;
-  /** Optional override of the Department's configured manager — blank falls back to that. */
+  /** Optional — the chosen Reporting Manager's employee id (hr_employees.id); blank means none is
+   * recorded (HR approves directly). An id, not a name, since two employees may share a name. */
   reportingManager: string;
   ctc: string;
   doj: string;
@@ -57,15 +58,19 @@ function fullNameOf(p: { firstName: string; lastName: string }): string {
   return `${p.firstName.trim()} ${p.lastName.trim()}`.trim();
 }
 
-/** The Reporting Manager field is an explicit optional override — blank means "use whoever is
- * configured as this Department's manager", same as before this field existed. */
-function managerOf(p: { reportingManager: string; team: string }, state: ReturnType<typeof useHrTool>['state']): string | null {
-  return p.reportingManager.trim() || state.teams.find((t) => t.name === p.team)?.manager || null;
+/** The Reporting Manager is exactly what the admin picked — no silent fallback to the Department's
+ * configured manager (that fallback used to save a manager nobody chose). Blank is safe: HR can
+ * act on a request at any approval stage (see ApprovalCell's canActHR). */
+function managerOf(p: { reportingManager: string }, employees: HrEmployee[]): { managerId: string | null; manager: string | null } {
+  const chosen = employees.find((e) => e.id === p.reportingManager);
+  return chosen ? { managerId: chosen.id, manager: chosen.name } : { managerId: null, manager: null };
 }
 
 function emptyForm(state: ReturnType<typeof useHrTool>['state']): FormState {
+  // Department and Reporting Manager start blank on purpose — pre-selecting state.teams[0] made
+  // it easy to hire someone into the wrong Department without ever touching the dropdown.
   return {
-    firstName: '', lastName: '', email: '', contact: '', designation: '', team: state.teams[0]?.name || '', reportingManager: '',
+    firstName: '', lastName: '', email: '', contact: '', designation: '', team: '', reportingManager: '',
     ctc: '', doj: todayStr(),
     employeeCode: nextEmployeeCode(state.employeeCredentials), avatarUrl: '',
     password: '', confirmPassword: '', panelRole: '', linkedPanelAdminId: '',
@@ -98,7 +103,7 @@ export default function HireEmployeeButton({ label, className }: { label: string
    * download, so all three always agree. */
   function letterDataFor(p: FormState): OfferLetterData {
     const ctc = Number(p.ctc) || 0;
-    const manager = managerOf(p, state);
+    const { manager } = managerOf(p, state.employees);
     const requiredDocuments = state.orgStructure.requiredDocuments;
     const documentsDeadline = requiredDocuments.length ? addDays(p.doj, DOCUMENTS_WINDOW_DAYS) : null;
     return {
@@ -163,8 +168,8 @@ export default function HireEmployeeButton({ label, className }: { label: string
     if (!form.team) { setError('Please choose a department.'); return; }
     if (!form.ctc.trim() || Number(form.ctc) <= 0) { setError('Please enter the Annual CTC.'); return; }
     if (!form.doj) { setError('Please enter their date of joining.'); return; }
-    // Reporting Manager is deliberately the one optional field here — blank just falls back to
-    // the Department's configured manager (see managerOf), so there's nothing to validate.
+    // Reporting Manager is deliberately the one optional field here — blank saves no manager
+    // (see managerOf), so there's nothing to validate.
     const credError = validateCredentialFields(form, false);
     if (credError) { setError(credError); return; }
     // Catch a duplicate Employee ID right here — before the admin fills out the rest of the
@@ -197,14 +202,14 @@ export default function HireEmployeeButton({ label, className }: { label: string
 
       const ctc = Number(preview.ctc) || 0;
       const today = todayStr();
-      const manager = managerOf(preview, state);
+      const { manager, managerId } = managerOf(preview, state.employees);
       const offerMerged = offerLetterFor(preview);
       const documents = state.orgStructure.requiredDocuments.map((name) => ({
         name, status: 'not_uploaded', url: null, uploadedAt: null, remarks: null,
       }));
       const newEmployee = {
         id: nextEmployeeId(state.employees), credentialId: credential.id, name: fullNameOf(preview),
-        email: preview.email.trim() || '—', phone: preview.contact.trim() || null, designation: preview.designation, team: preview.team, manager,
+        email: preview.email.trim() || '—', phone: preview.contact.trim() || null, designation: preview.designation, team: preview.team, manager, managerId,
         status: 'active', doj: preview.doj, sysRole: 'Employee', ctc,
         leaveBalance: initialLeaveBalance(state.rules), documents,
         documentsDeadline: documents.length ? addDays(preview.doj, DOCUMENTS_WINDOW_DAYS) : null,
@@ -303,16 +308,26 @@ export default function HireEmployeeButton({ label, className }: { label: string
             </div>
             <div className="field">
               <label className="field-label">Department *</label>
-              <select value={form.team} onChange={(e) => patch({ team: e.target.value })}>{state.teams.map((t) => <option key={t.name}>{t.name}</option>)}</select>
+              <select value={form.team} onChange={(e) => patch({ team: e.target.value })}>
+                <option value="">— Select —</option>
+                {state.teams.map((t) => <option key={t.name} value={t.name}>{t.name}</option>)}
+              </select>
             </div>
             <div className="field">
               <label className="field-label">Reporting Manager</label>
-              <select value={form.reportingManager} onChange={(e) => patch({ reportingManager: e.target.value })}>
-                <option value="">
-                  {state.teams.find((t) => t.name === form.team)?.manager ? `— Use Department default (${state.teams.find((t) => t.name === form.team)?.manager}) —` : '— None —'}
-                </option>
-                {state.employees.filter((e) => e.status !== 'exited').map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
-              </select>
+              {(() => {
+                // The chosen Department's manager is only *labelled* as a hint, never pre-selected.
+                const deptManagerId = state.teams.find((t) => t.name === form.team)?.managerId || '';
+                const candidates = state.employees.filter((e) => e.status !== 'exited');
+                return (
+                  <select value={form.reportingManager} onChange={(e) => patch({ reportingManager: e.target.value })}>
+                    <option value="">— Select —</option>
+                    {candidates.map((e) => (
+                      <option key={e.id} value={e.id}>{e.name} · {e.designation}{e.id === deptManagerId ? ' (Department manager)' : ''}</option>
+                    ))}
+                  </select>
+                );
+              })()}
             </div>
           </div>
 

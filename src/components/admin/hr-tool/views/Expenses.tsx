@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
-import { ApprovalBadge, applyApprovalDecision, scopedApprovals } from '../utils';
+import { ApprovalBadge, applyApprovalDecision, employeeName, scopedApprovals } from '../utils';
 
 export default function Expenses() {
   const { state, persistExpenses } = useHrTool();
@@ -12,7 +12,7 @@ export default function Expenses() {
   const [category, setCategory] = useState(state.orgStructure.expenseCategories[0] || '');
   const [amount, setAmount] = useState('');
 
-  const rows = scopedApprovals(state.expenses, state.role, state.currentUser?.name, state.employees);
+  const rows = scopedApprovals(state.expenses, state.role, state.currentUser?.id, state.employees);
 
   function openSubmit() {
     setCategory(state.orgStructure.expenseCategories[0] || '');
@@ -26,7 +26,7 @@ export default function Expenses() {
     // expense requests exactly the way attendance regularizations were stranded.
     const stage = 'hr';
     await persistExpenses([{
-      id: 'X-' + Date.now(), emp: state.currentUser.name, category, amount: Number(amount) || 0,
+      id: 'X-' + Date.now(), employeeId: state.currentUser.id, emp: state.currentUser.name, category, amount: Number(amount) || 0,
       stage, status: 'pending', rmRemarks: '', hrRemarks: '',
     }, ...state.expenses]);
     setOpen(false);
@@ -45,7 +45,7 @@ export default function Expenses() {
       <div className="card"><table><thead><tr><th>Employee</th><th>Category</th><th>Amount</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
         <tbody>
           {rows.map((x) => (
-            <tr key={x.id}><td>{x.emp}</td><td>{x.category}</td><td>₹{x.amount.toLocaleString('en-IN')}</td><td><ApprovalBadge req={x} /></td>
+            <tr key={x.id}><td>{employeeName(state.employees, x.employeeId, x.emp)}</td><td>{x.category}</td><td>₹{x.amount.toLocaleString('en-IN')}</td><td><ApprovalBadge req={x} /></td>
               <td style={{ textAlign: 'right' }}><ApprovalCell req={x} onDecide={(level, decision, remarks) => decide(x.id, level, decision, remarks)} /></td>
             </tr>
           ))}

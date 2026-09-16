@@ -4,6 +4,9 @@ import { ImageUploadField } from "../ImageUploadField";
 import { SocialImagesSection } from "../SocialImagesSection";
 import { IMAGE_SPECS } from "../constants";
 import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { SOCIAL_LINK_VALIDATORS } from "../validation";
+import { SOCIAL_LINK_FIELDS, SOCIAL_LINK_MAX_LENGTH } from "@/modules/partnership-events/domain/types";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
 
 export function ImagesStep({ ctrl }: { ctrl: SubmitEventFormController }) {
@@ -58,6 +61,29 @@ export function ImagesStep({ ctrl }: { ctrl: SubmitEventFormController }) {
         socialImages={data.socialImages}
         onChange={(socialImages) => ctrl.setField("socialImages", socialImages)}
       />
+      <div className="field">
+        <label>
+          Social Media Links<span className="opt"> (optional)</span>
+        </label>
+        <div className="hint">Add links to the accounts you have — leave the rest blank.</div>
+      </div>
+      <div className="field-row">
+        {SOCIAL_LINK_FIELDS.map(({ key, label, placeholder }) => (
+          <FormField
+            key={key}
+            id={key}
+            label={label}
+            type="url"
+            inputMode="url"
+            placeholder={placeholder}
+            maxLength={SOCIAL_LINK_MAX_LENGTH}
+            value={data[key]}
+            error={errors[key]}
+            onChange={(v) => ctrl.updateAndMaybeValidate(key, v, key, SOCIAL_LINK_VALIDATORS[key])}
+            onBlur={() => ctrl.blurValidate(key, SOCIAL_LINK_VALIDATORS[key])}
+          />
+        ))}
+      </div>
       <div className="wizard-nav">
         <Button variant="ghost" onClick={ctrl.goBack}>
           Back

@@ -6,6 +6,7 @@ import type { StartupEvent } from "@/modules/events/domain/types";
 import { OTHER_CITIES_SECTION, citySectionQualifies } from "@/modules/partnership-events/domain/country-city-data";
 import { eventDateSortKey } from "@/modules/partnership-events/utils/public-event.utils";
 import { NON_GEOGRAPHIC_REGIONS, resolveCountry } from "@/modules/events/utils/region-country.utils";
+import { COHORT_PARTNERSHIP_TYPE } from "@/modules/partnership-events/domain/types";
 
 import type { Metadata } from "next";
 
@@ -27,7 +28,10 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
     // only recognizes a small hardcoded list of cities: any city not on that list (e.g.
     // "Mathura") used to silently become its own top-level section instead of nesting under
     // India. Falls back to the old guess only for events created before `country` existed.
-    const country = resolveCountry(region, events);
+    // "Cohort" is its own top-level heading: its events carry real countries (e.g. India), which
+    // resolveCountry would otherwise use to file the whole section under that country.
+    const isCohort = region === COHORT_PARTNERSHIP_TYPE;
+    const country = isCohort ? region : resolveCountry(region, events);
     // A city earns its own carousel by having AUTO_SECTION_MIN_EVENTS listed events, and nothing
     // else (citySectionQualifies). Below that it shares one "Other Cities" carousel per country
     // rather than rendering a heading over a one- or two-card row, which is the whole point of
@@ -50,7 +54,8 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
     const overrides = new Set(events.map((e) => e.citySectionOverride).filter(Boolean));
     const forcedOther = overrides.has('other');
     const forcedOwn = !forcedOther && overrides.has('own');
-    const section =
+    // Cohort ignores the city-section overrides — it is always one carousel under its heading.
+    const section = isCohort ? region :
       !forcedOther &&
       (forcedOwn ||
         region === country ||

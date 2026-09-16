@@ -24,7 +24,7 @@ const FIELDS: Array<{
   { field: "companyName", label: "Company", step: 1, validate: validateCompanyName, fallback: "Not entered yet" },
   { field: "name", label: "Contact", step: 1, validate: validateName, fallback: "Not entered yet" },
   { field: "phone", label: "Phone / WhatsApp", step: 1, validate: validatePhone, fallback: "Not entered yet" },
-  { field: "email", label: "Official email", step: 2, validate: validateEmail, fallback: "Not entered yet" },
+  { field: "email", label: "Official email", step: 1, validate: validateEmail, fallback: "Not entered yet" },
   { field: "website", label: "Website", step: 2, validate: validateWebsite, fallback: "Not provided" },
   { field: "countryCity", label: "Country / City", step: 2, fallback: "Not provided" },
 ];
@@ -38,7 +38,7 @@ const FIELDS: Array<{
  * step wiring is ever changed. A failure sends the reader back to the step holding the first bad
  * field, with that field's error already showing. */
 export function ReviewStep({ ctrl }: { ctrl: LeadFormController }) {
-  const { data, submitting } = ctrl;
+  const { data, submitting, submitError } = ctrl;
 
   function handleSubmit() {
     let firstInvalidStep: number | null = null;
@@ -105,6 +105,12 @@ export function ReviewStep({ ctrl }: { ctrl: LeadFormController }) {
           )}
         </button>
       </motion.div>
+
+      {submitError ? (
+        <p className="pr-submit-error" role="alert">
+          {submitError}
+        </p>
+      ) : null}
     </motion.div>
   );
 }

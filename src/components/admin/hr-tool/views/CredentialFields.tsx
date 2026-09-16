@@ -6,20 +6,29 @@ import { getAuthHeaders } from '@/lib/admin-auth';
 import type { HrEmployeeCredential, LinkedPanelAdminSummary } from '@/modules/hr-credentials/domain/types';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 
-export const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin' };
+export const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support' };
 
 export const EMPLOYEE_CODE_PREFIX = 'SNFYI-';
 
-/** Suggests the next Employee ID as SNFYI-<last number + 1> (starting at 101), editable by the admin.
+/** Digits used when no existing code tells us the width (live IDs are SNFYI-0022…SNFYI-0027). */
+const EMPLOYEE_CODE_MIN_DIGITS = 4;
+
+/** Suggests the next Employee ID as SNFYI-<highest existing number + 1>, editable by the admin.
  * Looks at the trailing number of every existing code (not just SNFYI-prefixed ones) so it keeps
- * counting up from IDs assigned before this prefix convention (e.g. "A-405" -> next is SNFYI-406). */
+ * counting up from IDs assigned before this prefix convention (e.g. "A-405" -> next is SNFYI-0406).
+ * Keeps the zero-padding ("SNFYI-0027" -> "SNFYI-0028"). There is deliberately no floor: an old
+ * `Math.max(...nums, 100)` floor made every org with < 100 IDs get "SNFYI-101" suggested. */
 export function nextEmployeeCode(credentials: HrEmployeeCredential[]): string {
-  const nums = credentials
-    .map((c) => c.employeeCode.match(/(\d+)$/)?.[1])
-    .filter((n): n is string => !!n)
-    .map((n) => parseInt(n, 10));
-  const max = nums.length ? Math.max(...nums, 100) : 100;
-  return `${EMPLOYEE_CODE_PREFIX}${max + 1}`;
+  let max = 0;
+  let width = EMPLOYEE_CODE_MIN_DIGITS;
+  for (const c of credentials) {
+    const digits = c.employeeCode.match(/(\d+)$/)?.[1];
+    if (!digits) continue;
+    const n = parseInt(digits, 10);
+    if (n > max) max = n;
+    if (digits.length > width) width = digits.length;
+  }
+  return `${EMPLOYEE_CODE_PREFIX}${String(max + 1).padStart(width, '0')}`;
 }
 
 export function generatePassword(): string {
@@ -84,7 +93,7 @@ export function EmployeeIdField({ form, onChange, isEdit }: {
               const digits = e.target.value.replace(/[^0-9]/g, '');
               onChange({ employeeCode: EMPLOYEE_CODE_PREFIX + digits });
             }}
-            placeholder="101"
+            placeholder="0001"
             style={{ borderRadius: '0 7px 7px 0', borderLeft: 'none' }}
           />
         </div>

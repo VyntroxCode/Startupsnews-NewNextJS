@@ -22,6 +22,11 @@ export interface SubmitEventPayload {
   image1?: string;
   image3?: string;
   socialImages?: SocialCreative[];
+  /** Optional organiser profile links — see SOCIAL_LINK_FIELDS. */
+  socialInstagram?: string;
+  socialLinkedin?: string;
+  socialX?: string;
+  socialFacebook?: string;
 }
 
 /**

@@ -149,12 +149,12 @@ export function useSponsorEventForm() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.success) {
-        setSubmitError(json?.error || "Something went wrong submitting your request — please try again.");
+        setSubmitError(json?.error || "Something went wrong submitting your request. Please try again.");
         return;
       }
       setSubmitted(true);
     } catch {
-      setSubmitError("Could not submit right now — please try again in a moment.");
+      setSubmitError("Could not submit right now. Please try again in a moment.");
     } finally {
       setSubmitting(false);
     }

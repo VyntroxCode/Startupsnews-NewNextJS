@@ -46,9 +46,9 @@ export default async function PressReleasePage() {
             <span className="event-by-country-breadcrumb-separator" aria-hidden="true">/</span>
             <span className="event-by-country-breadcrumb-current" aria-current="page">Press Release</span>
           </nav>
-          <h2 className="mvp-feat1-pop-head sector-page-theme-title">
+          <h1 className="mvp-feat1-pop-head sector-page-theme-title">
             <span className="mvp-feat1-pop-head">Press Release</span>
-          </h2>
+          </h1>
 
           {heroPost && (
             <div className="sector-hero-wrap left relative">

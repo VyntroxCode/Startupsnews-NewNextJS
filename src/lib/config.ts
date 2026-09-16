@@ -85,7 +85,7 @@ export const siteConfig = {
       ],
     },
     { label: "LIST YOUR EVENT", href: "/list-your-event" },
-    { label: "PARTNER WITH US" },
+    { label: "PARTNER WITH US", href: "/our-partners" },
     { label: "REPORTS", href: "/dashboard/reports", requiresAuth: true },
     {
       id: "press",

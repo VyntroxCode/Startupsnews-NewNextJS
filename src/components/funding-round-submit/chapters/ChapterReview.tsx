@@ -28,7 +28,7 @@ export function ChapterReview({
   onEdit: (chapterId: string) => void;
   onSubmit: () => void;
 }) {
-  const { data, submitting } = ctrl;
+  const { data, submitting, submitError } = ctrl;
 
   const rows: ReviewRow[] = [
     { label: "Company", value: data.companyName, fieldId: "fr-company", required: true, hint: "The company raising the round" },
@@ -110,6 +110,11 @@ export function ChapterReview({
               Submit Funding Round
               <ArrowRightIcon width={15} height={15} />
             </Button>
+            {submitError ? (
+              <p className="fr-submit-error" role="alert">
+                {submitError}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

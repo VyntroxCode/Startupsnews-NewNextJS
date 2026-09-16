@@ -1,5 +1,11 @@
 import { PartnershipEventsService } from '@/modules/partnership-events/service/partnership-events.service';
-import { ONLINE_PARTNERSHIP_TYPE, PartnershipEventInput } from '@/modules/partnership-events/domain/types';
+import {
+  normalizeSocialLink,
+  ONLINE_PARTNERSHIP_TYPE,
+  PartnershipEventInput,
+  SOCIAL_LINK_FIELDS,
+  socialLinkError,
+} from '@/modules/partnership-events/domain/types';
 import { resolveDefaultEndTime, SubmitEventPayload, SubmitEventValidationError } from '../domain/types';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -82,6 +88,11 @@ export class EventSubmissionService {
     if (`${endDate}T${endTime}` < `${startDate}T${normalizeTime(startTime)}`) {
       throw new SubmitEventValidationError('The event end date/time cannot be before the start date/time.');
     }
+    // All optional; a link that IS sent must be a real URL on that platform's own domain.
+    for (const { key } of SOCIAL_LINK_FIELDS) {
+      const message = socialLinkError(key, payload[key]);
+      if (message) throw new SubmitEventValidationError(message);
+    }
 
     return {
       organizerName: organizerName!,
@@ -151,6 +162,11 @@ export class EventSubmissionService {
       posterUrl: required.image1,
       bannerUrl: payload.image3?.trim() || undefined,
       socialCreatives,
+      // undefined (stored NULL) when left blank; otherwise stored with its https:// scheme.
+      socialInstagram: normalizeSocialLink(payload.socialInstagram) || undefined,
+      socialLinkedin: normalizeSocialLink(payload.socialLinkedin) || undefined,
+      socialX: normalizeSocialLink(payload.socialX) || undefined,
+      socialFacebook: normalizeSocialLink(payload.socialFacebook) || undefined,
       partnershipType: payload.eventType?.trim() || undefined,
       partnershipStatus: 'Draft',
       listing: 'Pending',

@@ -8,7 +8,7 @@ import { HrRegularization } from '@/modules/hr-tool/domain/types';
 
 const hrToolService = new HrToolService(new HrToolRepository());
 
-interface Body { emp?: string; date?: string; reason?: string; punchType?: 'in' | 'out'; requestedTime?: string }
+interface Body { employeeId?: string; date?: string; reason?: string; punchType?: 'in' | 'out'; requestedTime?: string }
 
 /** PUT /api/admin/hr-tool/regularizations — replaces the full list; used by the HR tool's
  * approve/reject UI (ApprovalCell) to persist status changes. */
@@ -49,12 +49,14 @@ export async function POST(request: NextRequest) {
   try {
     const [body, errorResponse] = await parseJsonBody<Body>(request);
     if (errorResponse) return errorResponse;
-    if (!body?.emp || !body?.date || !body?.reason || !body?.requestedTime || (body.punchType !== 'in' && body.punchType !== 'out')) {
-      return NextResponse.json({ success: false, error: 'emp, date, reason, punchType and requestedTime are required' }, { status: 400 });
+    if (!body?.employeeId || !body?.date || !body?.reason || !body?.requestedTime || (body.punchType !== 'in' && body.punchType !== 'out')) {
+      return NextResponse.json({ success: false, error: 'employeeId, date, reason, punchType and requestedTime are required' }, { status: 400 });
     }
+    const employee = await hrToolService.findEmployeeRef(body.employeeId);
+    if (!employee) return NextResponse.json({ success: false, error: 'employeeId must be an existing Directory employee' }, { status: 400 });
 
     const result = await hrToolService.submitEmployeeRegularization(
-      body.emp, body.date, body.reason, body.punchType, body.requestedTime
+      employee, body.date, body.reason, body.punchType, body.requestedTime
     );
     if (!result.ok) return NextResponse.json({ success: false, error: result.error }, { status: 409 });
     return NextResponse.json({ success: true, data: result.created });

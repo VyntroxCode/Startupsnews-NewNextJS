@@ -147,6 +147,11 @@ export function DetailsContactStep({
             Submit Your Startup
           </Button>
         </div>
+        {ctrl.submitError ? (
+          <p className="fys-submit-error" role="alert">
+            {ctrl.submitError}
+          </p>
+        ) : null}
       </FieldReveal>
     </div>
   );

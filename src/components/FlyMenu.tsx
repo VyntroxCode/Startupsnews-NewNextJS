@@ -159,14 +159,17 @@ export function FlyMenu() {
                     >
                       {item.label}
                     </Link>
-                  ) : (
+                  ) : item.href ? (
                     <Link
-                      href={item.href ?? "#"}
+                      href={item.href}
                       onClick={toggle}
                       className="startupnews-fly-label"
                     >
                       {item.label}
                     </Link>
+                  ) : (
+                    // No href: plain label, never an empty href="#" link.
+                    <span className="startupnews-fly-label">{item.label}</span>
                   )}
                 </li>
               );

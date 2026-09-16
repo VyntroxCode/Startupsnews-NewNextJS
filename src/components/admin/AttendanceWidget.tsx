@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { getAuthHeaders } from '@/lib/admin-auth';
+import { getCurrentBrowserLocation, geofenceHintFor, type BrowserLocation } from '@/lib/browser-geolocation';
 import { latenessBucket, combinedAttendanceBucket, type ShiftSettings, type LatenessBucket } from '@/modules/hr-tool/utils/lateness';
 
 interface AttendanceDayRecord { date: string; status: string; inTime: string; outTime: string; inMinutes: number | null; outMinutes: number | null; }
@@ -20,6 +21,8 @@ interface AttendanceMeData {
   shiftRules?: ShiftSettings & { shiftEndTime: string };
   regularizations?: RegularizationRecord[];
   regularizationPolicy?: { windowDays: number; monthlyQuota: number; usedThisMonth: number };
+  /** When enabled, punch() asks the browser for a GPS fix first; the server does the actual check. */
+  geofence?: { enabled: boolean; radiusM: number };
 }
 
 const cardStyle: CSSProperties = {
@@ -141,6 +144,9 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [punching, setPunching] = useState<'in' | 'out' | null>(null);
+  /** Sub-phase of `punching`: true while waiting on the browser's GPS fix (can take 5–15 s indoors). */
+  const [locating, setLocating] = useState(false);
+  const [errorHint, setErrorHint] = useState('');
   const [regFormOpen, setRegFormOpen] = useState<'in' | 'out' | null>(null);
   const [regReason, setRegReason] = useState('');
   const [regTime, setRegTime] = useState('');
@@ -167,16 +173,37 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   async function punch(type: 'in' | 'out') {
     setPunching(type);
     setError('');
+    setErrorHint('');
     setNote('');
     try {
+      // Geofencing on → get a fresh GPS fix first. The server re-checks it against the office
+      // fence; this just supplies the coordinates and turns browser failures into plain words.
+      let location: BrowserLocation | undefined;
+      if (data?.geofence?.enabled) {
+        setLocating(true);
+        try {
+          location = await getCurrentBrowserLocation();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Could not get your location.');
+          return;
+        } finally {
+          setLocating(false);
+        }
+      }
+
       const res = await fetch(`${apiBase}/punch`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ type, location }),
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'Failed to record punch');
+      if (!res.ok || !json.success) {
+        setError(json.error || 'Failed to record punch');
+        setErrorHint(geofenceHintFor(json.code) || '');
+        return;
+      }
       if (json.data?.note) setNote(json.data.note);
+      else if (json.data?.geo && typeof json.data.geo.distanceM === 'number') setNote(`Recorded ${Math.round(json.data.geo.distanceM)} m from the office.`);
       await load(calendarMonth);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to record punch');
@@ -311,10 +338,16 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             Shift: {shiftRules.shiftStartTime}–{shiftRules.shiftEndTime} — set by HR
           </p>
         )}
+        {data.geofence?.enabled && (
+          <p style={{ color: '#94a3b8', fontSize: '0.8125rem', margin: '0.25rem 0 0' }}>
+            📍 Punch In / Punch Out only within {data.geofence.radiusM} m of the office — your browser will ask for your location.
+          </p>
+        )}
       </div>
 
       {note && <p style={{ color: '#b45309', fontSize: '0.85rem', margin: '1rem 0 0' }}>{note}</p>}
       {error && <p style={{ color: '#b91c1c', fontSize: '0.85rem', margin: '1rem 0 0' }}>{error}</p>}
+      {error && errorHint && <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.25rem 0 0' }}>{errorHint}</p>}
 
       {/* Selected-date detail table */}
       <div style={{ marginTop: '1.5rem' }}>
@@ -338,14 +371,14 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                 <td style={tdStyle}>
                   {hasIn ? selectedRecord?.inTime : isSelectedToday ? (
                     <button type="button" onClick={() => punch('in')} disabled={punching !== null} style={punchButtonStyle('#48bb78', '#38a169', punching !== null)}>
-                      {punching === 'in' ? 'Punching in…' : '⏱ Punch In'}
+                      {punching === 'in' ? (locating ? 'Getting your location…' : 'Punching in…') : '⏱ Punch In'}
                     </button>
                   ) : <span style={{ color: '#94a3b8' }}>—</span>}
                 </td>
                 <td style={tdStyle}>
                   {hasOut ? selectedRecord?.outTime : isSelectedToday ? (
                     <button type="button" onClick={() => punch('out')} disabled={punching !== null} style={punchButtonStyle('#f56565', '#e53e3e', punching !== null)}>
-                      {punching === 'out' ? 'Punching out…' : '⏱ Punch Out'}
+                      {punching === 'out' ? (locating ? 'Getting your location…' : 'Punching out…') : '⏱ Punch Out'}
                     </button>
                   ) : <span style={{ color: '#94a3b8' }}>—</span>}
                 </td>

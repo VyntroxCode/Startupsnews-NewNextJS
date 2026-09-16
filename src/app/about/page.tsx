@@ -15,7 +15,7 @@ export default function AboutPage() {
 
                 {/* HEADER */}
                 <header style={{ textAlign: "center", marginBottom: "40px" }}>
-                    <h2 style={{
+                    <h1 style={{
                         fontSize: "28px",
                         fontWeight: 800,
                         color: "#000",
@@ -25,7 +25,7 @@ export default function AboutPage() {
                         letterSpacing: "1px"
                     }}>
                         ABOUT US
-                    </h2>
+                    </h1>
                 </header>
 
                 {/* INTRODUCTION */}

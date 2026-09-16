@@ -3,11 +3,11 @@ import type { SalesLead } from './types';
 
 const API_BASE = '/api/admin/sales-tracker';
 
-async function apiGetLeads(): Promise<SalesLead[]> {
+async function apiGetLeads(): Promise<{ leads: SalesLead[]; promotedCities: Record<string, string[]> }> {
   const res = await fetch(`${API_BASE}/leads`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to load leads');
   const json = await res.json();
-  return json.data || [];
+  return { leads: json.data || [], promotedCities: json.promotedCities || {} };
 }
 async function apiSaveLead(lead: SalesLead): Promise<SalesLead> {
   const res = await fetch(`${API_BASE}/leads`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(lead) });

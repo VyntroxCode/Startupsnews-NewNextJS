@@ -9,11 +9,16 @@ import type { SalesLead } from './types';
 export function useSalesTrackerData() {
   const [leads, setLeads] = useState<SalesLead[]>([]);
   const [team, setTeam] = useState<string[]>([]);
+  const [promotedCities, setPromotedCities] = useState<Record<string, string[]>>({});
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
-      try { setLeads(await salesTrackerApi.getLeads()); } catch { setLeads([]); }
+      try {
+        const res = await salesTrackerApi.getLeads();
+        setLeads(res.leads);
+        setPromotedCities(res.promotedCities);
+      } catch { setLeads([]); }
       try { setTeam(await salesTrackerApi.getTeam()); } catch { setTeam([]); }
       setLoaded(true);
     })();
@@ -44,5 +49,5 @@ export function useSalesTrackerData() {
     try { await salesTrackerApi.saveLead(updated); } catch { alert('Could not save that change. Try again.'); }
   }
 
-  return { leads, team, loaded, saveLead, deleteLead, deleteAllLeads, updateLeadField, setTeam };
+  return { leads, team, promotedCities, loaded, saveLead, deleteLead, deleteAllLeads, updateLeadField, setTeam };
 }

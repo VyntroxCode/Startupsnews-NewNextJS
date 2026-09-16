@@ -2,9 +2,8 @@ import type { SVGProps } from "react";
 
 /** Icon set for /sponsor-event.
  *
- * Brand marks are the official glyph paths this site's footer already ships, so the discovery
- * section shows real recognisable icons rather than text stand-ins. UI icons are stroked line
- * icons drawn on the same 24px grid at the same weight. */
+ * Brand marks are the official glyph paths this site's footer already ships. UI icons are stroked
+ * line icons drawn on the same 24px grid at the same weight. */
 type Icon = (props: SVGProps<SVGSVGElement>) => React.ReactElement;
 
 const stroke = {
@@ -32,12 +31,6 @@ export const LinkedInIcon: Icon = (props) => (
 export const XIcon: Icon = (props) => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-  </svg>
-);
-
-export const FacebookIcon: Icon = (props) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
   </svg>
 );
 
@@ -90,14 +83,6 @@ export const BuilderIcon: Icon = (props) => (
   </svg>
 );
 
-export const TeamIcon: Icon = (props) => (
-  <svg viewBox="0 0 24 24" {...stroke} aria-hidden="true" {...props}>
-    <circle cx="8.4" cy="8.6" r="2.8" />
-    <circle cx="16.4" cy="9.6" r="2.2" />
-    <path d="M3.4 18.6c.9-2.9 2.7-4.4 5-4.4s4.1 1.5 5 4.4M15 14.6c1.9.2 3.2 1.5 3.9 3.6" />
-  </svg>
-);
-
 export const CommunityIcon: Icon = (props) => (
   <svg viewBox="0 0 24 24" {...stroke} aria-hidden="true" {...props}>
     <circle cx="12" cy="12" r="2.5" />
@@ -122,13 +107,6 @@ export const SparkIcon: Icon = (props) => (
   </svg>
 );
 
-export const MicIcon: Icon = (props) => (
-  <svg viewBox="0 0 24 24" {...stroke} aria-hidden="true" {...props}>
-    <rect x="9.2" y="2.8" width="5.6" height="10.8" rx="2.8" />
-    <path d="M5.6 11.4a6.4 6.4 0 0 0 12.8 0M12 17.8v3.4" />
-  </svg>
-);
-
 export const HandshakeIcon: Icon = (props) => (
   <svg viewBox="0 0 24 24" {...stroke} aria-hidden="true" {...props}>
     <path d="m2.8 12.4 3.6-3.6 3 .9 2.6-1.6 2.6 1.6 3-.9 3.6 3.6" />
@@ -137,10 +115,17 @@ export const HandshakeIcon: Icon = (props) => (
   </svg>
 );
 
-export const PenIcon: Icon = (props) => (
+export const PinIcon: Icon = (props) => (
   <svg viewBox="0 0 24 24" {...stroke} aria-hidden="true" {...props}>
-    <path d="M4 20h4L19.4 8.6a2.1 2.1 0 0 0-3-3L5 17z" />
-    <path d="m14.8 4.2 3 3" />
+    <path d="M12 21s-6.6-5.6-6.6-11.1a6.6 6.6 0 0 1 13.2 0C18.6 15.4 12 21 12 21z" />
+    <circle cx="12" cy="9.8" r="2.4" />
+  </svg>
+);
+
+export const CalendarIcon: Icon = (props) => (
+  <svg viewBox="0 0 24 24" {...stroke} aria-hidden="true" {...props}>
+    <rect x="3.4" y="4.8" width="17.2" height="15.8" rx="2.4" />
+    <path d="M3.4 9.6h17.2M8 3v3.4M16 3v3.4" />
   </svg>
 );
 

@@ -5,6 +5,8 @@ export interface SalesLead {
   company: string;
   contact: string;
   email: string;
+  country: string;
+  city: string;
   source: string;
   type: string;
   otherType: string;
@@ -25,6 +27,8 @@ export interface SalesLeadEntity {
   company: string | null;
   contact: string | null;
   email: string | null;
+  country: string | null;
+  city: string | null;
   source: string | null;
   type: string | null;
   other_type: string | null;

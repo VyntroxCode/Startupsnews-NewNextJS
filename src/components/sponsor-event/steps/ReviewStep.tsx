@@ -7,14 +7,14 @@ import { Button } from "@/components/ui/Button";
 import type { SponsorEventFormController } from "../useSponsorEventForm";
 
 function formatDate(value: string): string {
-  if (!value) return "—";
+  if (!value) return "Not provided";
   const d = new Date(`${value}T00:00:00`);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 }
 
 function formatTime(value: string): string {
-  if (!value) return "—";
+  if (!value) return "Not provided";
   const [h, m] = value.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return value;
   const period = h >= 12 ? "PM" : "AM";
@@ -38,15 +38,15 @@ export function ReviewStep({ ctrl }: { ctrl: SponsorEventFormController }) {
         )}
         <div className="sp-review-body">
           <p className="sp-review-brand">STARTUPNEWS.FYI · EVENT PARTNER</p>
-          <p className="sp-review-event-title">{data.title || "—"}</p>
+          <p className="sp-review-event-title">{data.title || "Not provided"}</p>
           <div className="sp-review-grid">
             <div className="sp-review-item">
               <span className="sp-review-label">Slug</span>
-              <span className="sp-review-value">{data.slug || "—"}</span>
+              <span className="sp-review-value">{data.slug || "Not provided"}</span>
             </div>
             <div className="sp-review-item">
               <span className="sp-review-label">Location</span>
-              <span className="sp-review-value">{data.location || "—"}</span>
+              <span className="sp-review-value">{data.location || "Not provided"}</span>
             </div>
             <div className="sp-review-item">
               <span className="sp-review-label">Date &amp; Time</span>
@@ -62,15 +62,15 @@ export function ReviewStep({ ctrl }: { ctrl: SponsorEventFormController }) {
             )}
             <div className="sp-review-item sp-review-item-wide">
               <span className="sp-review-label">Description</span>
-              <span className="sp-review-value sp-review-value-multiline">{data.description || "—"}</span>
+              <span className="sp-review-value sp-review-value-multiline">{data.description || "Not provided"}</span>
             </div>
             <div className="sp-review-item">
               <span className="sp-review-label">Contact</span>
-              <span className="sp-review-value">{data.contactName || "—"}</span>
+              <span className="sp-review-value">{data.contactName || "Not provided"}</span>
             </div>
             <div className="sp-review-item">
               <span className="sp-review-label">Email</span>
-              <span className="sp-review-value">{data.contactEmail || "—"}</span>
+              <span className="sp-review-value">{data.contactEmail || "Not provided"}</span>
             </div>
           </div>
         </div>
@@ -81,7 +81,7 @@ export function ReviewStep({ ctrl }: { ctrl: SponsorEventFormController }) {
         <Turnstile
           ref={turnstileRef}
           siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-          options={{ theme: "dark", size: "flexible" }}
+          options={{ theme: "light", size: "flexible" }}
           onSuccess={(token) => ctrl.setTurnstileToken(token)}
           onExpire={() => ctrl.setTurnstileToken(null)}
           onError={() => ctrl.setTurnstileToken(null)}

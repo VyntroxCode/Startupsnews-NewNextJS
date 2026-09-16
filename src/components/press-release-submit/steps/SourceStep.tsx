@@ -4,12 +4,13 @@ import { motion } from "motion/react";
 import { FormField } from "@/components/ui/FormField";
 import { CountryCityFields } from "@/components/submit-event/CountryCityFields";
 import type { LeadFormController } from "@/components/lead-forms/shared/useLeadForm";
-import { validateEmail, validateWebsite } from "@/components/lead-forms/shared/validation";
+import { validateWebsite } from "@/components/lead-forms/shared/validation";
 import { staggerVariants, staggerItemVariants } from "../motion";
 
-/** Step 02 — "The Source". Canonical validation step 2 (email, website) plus the location, which
- * has no validator of its own because it is optional. See StoryStep for why the split falls
- * exactly here.
+/** Step 02 — "The Source". Canonical validation step 5 (website) plus the location, which has no
+ * validator of its own because it is optional. Email used to open this step; it moved to The Story,
+ * straight after the phone number, on request. See StoryStep for how the split is kept in step with
+ * validation.
  *
  * Location is collected by the shared `CountryCityFields` — the searchable Country dropdown and
  * the City list that reads the admin Partnership Tracker's curated cities, the same control
@@ -27,22 +28,9 @@ export function SourceStep({ ctrl, promotedCities }: {
     <motion.div className="pr-step" variants={staggerVariants} initial="hidden" animate="show">
       <motion.div className="pr-step-head" variants={staggerItemVariants}>
         <p className="pr-step-kicker">The Source</p>
-        <p className="pr-step-hint">Where our desk can write back, and where the story can be verified.</p>
+        <p className="pr-step-hint">Where the story can be verified, and where it is based.</p>
       </motion.div>
 
-      <motion.div variants={staggerItemVariants}>
-        <FormField
-          id="pr-email"
-          label="Official Email"
-          required
-          type="email"
-          hint="Use a company address where possible — it helps us confirm the announcement is official."
-          value={data.email}
-          error={errors.email}
-          onChange={(v) => ctrl.updateAndMaybeValidate("email", v, "email", validateEmail)}
-          onBlur={() => ctrl.blurValidate("email", validateEmail)}
-        />
-      </motion.div>
       <motion.div variants={staggerItemVariants}>
         <FormField
           id="pr-website"

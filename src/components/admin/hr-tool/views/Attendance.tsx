@@ -5,20 +5,20 @@ import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
 import AttendanceCalendar from './AttendanceCalendar';
-import { ApprovalBadge, StatusBadge, arrivalBucket, isAdmin, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
+import { ApprovalBadge, StatusBadge, arrivalBucket, employeeName, isAdmin, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
+import { hrApi } from '../api';
 import { realDayHoursBucket } from '@/modules/hr-tool/utils/lateness';
 import { getAuthHeaders } from '@/lib/admin-auth';
+import { getCurrentBrowserLocation, geofenceHintFor, type BrowserLocation } from '@/lib/browser-geolocation';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 
 const REG_REASONS = ['Forgot to punch out', 'Forgot to punch in', 'System/network issue', 'Worked from a client site'];
-const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin' };
-
-function nowTimeStr(): string { return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }); }
-function nowMinutesSinceMidnight(): number { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support' };
 
 export default function Attendance() {
-  const { state, persistAttendance, persistPunch, decideRegularization, addRegularizationToState } = useHrTool();
+  const { state, applyServerPunch, decideRegularization, addRegularizationToState } = useHrTool();
+  const [punching, setPunching] = useState<'in' | 'out' | null>(null);
   const [regOpen, setRegOpen] = useState(false);
   const [regDate, setRegDate] = useState(todayStr());
   const [regPunchType, setRegPunchType] = useState<'in' | 'out'>('in');
@@ -31,59 +31,62 @@ export default function Attendance() {
   const scopeFilter = isAdmin(state.role)
     ? () => true
     : state.role === 'Reporting Manager'
-      ? (empName: string) => rmOf(state.employees, empName) === state.currentUser?.name || empName === state.currentUser?.name
-      : (empName: string) => empName === state.currentUser?.name;
-  const attRows = state.attendance.filter((a) => a.date === todayStr() && scopeFilter(a.emp));
-  const regRows = scopedApprovals(state.regularizations, state.role, state.currentUser?.name, state.employees);
-  const employeeCredentials = state.employeeCredentials;
-  const credentialByName = useMemo(() => {
-    const map = new Map<string, HrEmployeeCredential>();
-    employeeCredentials.forEach((c) => map.set(c.name, c));
-    return map;
-  }, [employeeCredentials]);
+      ? (employeeId: string) => rmOf(state.employees, employeeId) === state.currentUser?.id || employeeId === state.currentUser?.id
+      : (employeeId: string) => employeeId === state.currentUser?.id;
+  const attRows = state.attendance.filter((a) => a.date === todayStr() && scopeFilter(a.employeeId));
+  const regRows = scopedApprovals(state.regularizations, state.role, state.currentUser?.id, state.employees);
+  // Employee ID / role for a row comes through that employee's own credential link, never a name match.
+  const credentialById = useMemo(() => new Map(state.employeeCredentials.map((c) => [c.id, c])), [state.employeeCredentials]);
+  const employeeById = useMemo(() => new Map(state.employees.map((e) => [e.id, e])), [state.employees]);
+  const credentialFor = (employeeId: string): HrEmployeeCredential | undefined => {
+    const credentialId = employeeById.get(employeeId)?.credentialId;
+    return credentialId != null ? credentialById.get(credentialId) : undefined;
+  };
 
-  const myPunch = isEmployeeOnly && state.currentUser ? state.punchLog[state.currentUser.name] : null;
+  const myPunch = isEmployeeOnly && state.currentUser ? state.punchLog[state.currentUser.id] : null;
   const punchedInToday = !!(myPunch && myPunch.date === new Date().toISOString().slice(0, 10) && myPunch.inTime);
   const punchedOutToday = !!(myPunch && myPunch.date === new Date().toISOString().slice(0, 10) && myPunch.outTime);
   const myLateness = punchedInToday && myPunch ? latenessInfo(myPunch.inMinutes, state.rules) : null;
 
-  async function syncAttendanceRecord(empName: string) {
-    const punch = state.punchLog[empName];
-    if (!punch) return;
-    const rec = {
-      emp: empName, date: todayStr(), status: 'Present', inTime: punch.inTime || '—', outTime: punch.outTime || '—',
-      inMinutes: punch.inMinutes ?? null, outMinutes: punch.outMinutes ?? null,
-    };
-    await persistAttendance(rec);
-  }
-
-  async function punchIn() {
+  /** Self-service punch. Goes through POST /api/admin/hr-tool/punch so the once-per-day rule and
+   * the Geo-fencing rule are enforced server-side exactly as for every other punch surface —
+   * the old version wrote straight to the raw punch-log upsert and claimed "Geolocation captured"
+   * without capturing anything. */
+  async function punch(type: 'in' | 'out') {
     const me = state.currentUser;
-    if (!me) return;
-    const existing = state.punchLog[me.name];
-    if (existing && existing.date === new Date().toISOString().slice(0, 10) && existing.inTime) return;
-    const time = nowTimeStr();
-    const minutes = nowMinutesSinceMidnight();
-    await persistPunch({
-      emp: me.name, date: new Date().toISOString().slice(0, 10), inTime: time, inMinutes: minutes,
-      outTime: existing?.outTime || null, outMinutes: existing?.outMinutes ?? null,
-    });
-    await syncAttendanceRecord(me.name);
-    const lateness = latenessInfo(minutes, state.rules);
-    alert(`Punched in at ${time} — ${lateness?.text}. Geolocation captured.`);
-  }
-  async function punchOut() {
-    const me = state.currentUser;
-    if (!me) return;
-    const existing = state.punchLog[me.name];
-    if (existing && existing.date === new Date().toISOString().slice(0, 10) && existing.outTime) return;
-    const time = nowTimeStr();
-    await persistPunch({
-      emp: me.name, date: new Date().toISOString().slice(0, 10), inTime: existing?.inTime || null, inMinutes: existing?.inMinutes ?? null,
-      outTime: time, outMinutes: nowMinutesSinceMidnight(),
-    });
-    await syncAttendanceRecord(me.name);
-    alert(`Punched out at ${time}${existing?.inTime ? '.' : ' — no punch-in recorded today.'}`);
+    if (!me || punching) return;
+    setPunching(type);
+    try {
+      let location: BrowserLocation | undefined;
+      if (state.rules.geoFencing) {
+        try {
+          location = await getCurrentBrowserLocation();
+        } catch (err) {
+          alert(err instanceof Error ? err.message : 'Could not get your location.');
+          return;
+        }
+      }
+      const res = await hrApi.punch(me.id, type, location);
+      if (!res.success || !res.data) {
+        alert([res.error || 'Could not record the punch.', geofenceHintFor(res.code)].filter(Boolean).join('\n\n'));
+        return;
+      }
+      const { today, note, geo } = res.data;
+      applyServerPunch({
+        employeeId: me.id, emp: me.name, date: todayStr(), inTime: today.inTime, inMinutes: today.inMinutes, outTime: today.outTime, outMinutes: today.outMinutes,
+      });
+      const where = geo ? ` Recorded ${Math.round(geo.distanceM)} m from the office.` : '';
+      if (type === 'in') {
+        const lateness = latenessInfo(today.inMinutes, state.rules);
+        alert(`Punched in at ${today.inTime}${lateness ? ` — ${lateness.text}` : ''}.${where}`);
+      } else {
+        alert(`Punched out at ${today.outTime}${note ? ` — ${note.replace(/\.$/, '').toLowerCase()}` : ''}.${where}`);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not record the punch.');
+    } finally {
+      setPunching(null);
+    }
   }
 
   async function submitRegularization() {
@@ -97,7 +100,7 @@ export default function Attendance() {
     // to build the row itself and save it straight to state, which applied none of them.
     const res = await fetch('/api/admin/hr-tool/regularizations', {
       method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emp: state.currentUser.name, date: regDate, reason, punchType: regPunchType, requestedTime: time }),
+      body: JSON.stringify({ employeeId: state.currentUser.id, date: regDate, reason, punchType: regPunchType, requestedTime: time }),
     });
     const json = await res.json().catch(() => null);
     if (!res.ok || !json?.success) { alert(json?.error || 'Could not submit the regularization request.'); return; }
@@ -118,10 +121,15 @@ export default function Attendance() {
         <div className="toolbar" style={{ justifyContent: 'flex-end', alignItems: 'center', marginBottom: 14, gap: 8 }}>
           <div style={{ color: 'var(--muted)', fontSize: 12.5, marginRight: 'auto' }}>
             Shift: {state.rules.shiftStartTime} – {state.rules.shiftEndTime} ({state.rules.shiftGraceMinutes} min grace) — set by HR
+            {state.rules.geoFencing && <><br />📍 Punch In / Out only within {state.rules.geoFenceRadiusM} m of the office — your browser will ask for your location.</>}
             {myLateness && <><br /><span style={{ fontWeight: 700, color: myLateness.late ? 'var(--red)' : 'var(--green)' }}>{myLateness.late ? '⚠ ' : '✓ '}{myLateness.text}</span></>}
           </div>
-          <button className="btn primary" disabled={punchedInToday} onClick={punchIn}>⏱ Punch In{punchedInToday && myPunch ? ` — ${myPunch.inTime}` : ''}</button>
-          <button className="btn primary" disabled={punchedOutToday} onClick={punchOut}>⏱ Punch Out{punchedOutToday && myPunch ? ` — ${myPunch.outTime}` : ''}</button>
+          <button className="btn primary" disabled={punchedInToday || punching !== null} onClick={() => punch('in')}>
+            {punching === 'in' ? 'Getting location…' : <>⏱ Punch In{punchedInToday && myPunch ? ` — ${myPunch.inTime}` : ''}</>}
+          </button>
+          <button className="btn primary" disabled={punchedOutToday || punching !== null} onClick={() => punch('out')}>
+            {punching === 'out' ? 'Getting location…' : <>⏱ Punch Out{punchedOutToday && myPunch ? ` — ${myPunch.outTime}` : ''}</>}
+          </button>
         </div>
       )}
       <section className="block">
@@ -129,8 +137,8 @@ export default function Attendance() {
         <div className="card"><div className="table-scroll"><table><thead><tr><th>Employee</th><th>Employee ID</th><th>Role</th><th>Status</th><th>In</th><th>Out</th><th>Lateness</th></tr></thead>
           <tbody>
             {attRows.map((a) => {
-              const cred = credentialByName.get(a.emp);
-              const rowInMinutes = state.punchLog[a.emp]?.inMinutes ?? null;
+              const cred = credentialFor(a.employeeId);
+              const rowInMinutes = state.punchLog[a.employeeId]?.inMinutes ?? null;
               const rowBucket = arrivalBucket(rowInMinutes, state.rules);
               const rowLateness = latenessInfo(rowInMinutes, state.rules);
               // Real hours worked, not the raw stored status (always 'Present' from the moment
@@ -138,8 +146,8 @@ export default function Attendance() {
               // punch-out is actually clicked. See realDayHoursBucket.
               const dayBucket = realDayHoursBucket(a.inMinutes ?? null, a.outMinutes ?? null, state.rules);
               return (
-                <tr key={a.emp} onClick={() => setCalendarEmp(a.emp)} style={{ cursor: 'pointer' }}>
-                  <td>{a.emp}</td>
+                <tr key={a.employeeId || a.emp} onClick={() => setCalendarEmp(a.employeeId)} style={{ cursor: 'pointer' }}>
+                  <td>{employeeName(state.employees, a.employeeId, a.emp)}</td>
                   <td>{cred ? <code>{cred.employeeCode}</code> : <span className="meta">—</span>}</td>
                   <td>{cred?.panelRole ? PANEL_ROLE_LABEL[cred.panelRole] : <span className="meta">—</span>}</td>
                   <td>
@@ -183,7 +191,7 @@ export default function Attendance() {
           <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Requested Time</th><th>Reason</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
           <tbody>
             {regRows.map((r) => (
-              <tr key={r.id}><td>{r.emp}</td><td>{r.date}</td><td>{r.punchType === 'out' ? 'Punch Out' : 'Punch In'}</td><td>{r.requestedTime || '—'}</td><td>{r.reason}</td><td><ApprovalBadge req={r} /></td>
+              <tr key={r.id}><td>{employeeName(state.employees, r.employeeId, r.emp)}</td><td>{r.date}</td><td>{r.punchType === 'out' ? 'Punch Out' : 'Punch In'}</td><td>{r.requestedTime || '—'}</td><td>{r.reason}</td><td><ApprovalBadge req={r} /></td>
                 <td style={{ textAlign: 'right' }}><ApprovalCell req={r} onDecide={(level, decision, remarks) => decideReg(r.id, level, decision, remarks)} /></td>
               </tr>
             ))}
@@ -211,8 +219,8 @@ export default function Attendance() {
       )}
 
       {calendarEmp && (
-        <ModalShell title={`${calendarEmp} — Attendance calendar`} onClose={() => setCalendarEmp(null)} actions={[{ label: 'Close', cls: 'btn', onClick: () => setCalendarEmp(null) }]} maxWidth="80vw">
-          <AttendanceCalendar empName={calendarEmp} />
+        <ModalShell title={`${employeeName(state.employees, calendarEmp)} — Attendance calendar`} onClose={() => setCalendarEmp(null)} actions={[{ label: 'Close', cls: 'btn', onClick: () => setCalendarEmp(null) }]} maxWidth="80vw">
+          <AttendanceCalendar employeeId={calendarEmp} />
         </ModalShell>
       )}
     </>

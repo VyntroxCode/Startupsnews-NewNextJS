@@ -50,7 +50,7 @@ const DEFAULT_RULES: HrRules = {
   salaryPeriodFrom: 26, salaryPeriodTo: '25', ctcSplit: { basicPct: 50, hraPctOfBasic: 50, convenienceType: 'amount', convenienceValue: 0 },
   leaveTypes: { Casual: { enabled: true, perMonth: 1 }, Sick: { enabled: false, perMonth: 0 }, Earned: { enabled: false, perMonth: 0 }, Maternity: { enabled: false, perMonth: 0 }, Paternity: { enabled: false, perMonth: 0 }, 'Comp-off': { enabled: false, perMonth: 0 } },
   twoLevelApproval: { leave: true, attendance: true, expense: true },
-  lateMarkPenalty: false, geoFencing: false, selfieCheckin: false, pfEsi: false,
+  lateMarkPenalty: false, geoFencing: false, geoFenceLat: 28.644533, geoFenceLng: 77.2003635, geoFenceRadiusM: 50, selfieCheckin: false, pfEsi: false,
   optionalHolidayChoice: true, assetChecklist: true,
 };
 
@@ -140,6 +140,10 @@ interface HrToolContextValue {
   persistRequiredDocuments: (v: string[]) => Promise<void>;
   persistHolidays: (v: { date: string; name: string }[]) => Promise<void>;
   persistEmployees: (v: HrEmployee[]) => Promise<void>;
+  /** Local-state-only mirror of the server's rename cascade. Records are linked by employee id, so
+   * nothing re-links — this only refreshes the name snapshots (record `emp`, manager display names,
+   * the Employee ID login's name) so screens show the new name without a reload. */
+  applyEmployeeRenameInState: (employeeId: string, name: string) => void;
   deleteEmployee: (employee: HrEmployee) => Promise<void>;
   persistOnboarding: (v: HrOnboarding[]) => Promise<void>;
   persistRegularizations: (v: HrRegularization[]) => Promise<void>;
@@ -148,11 +152,14 @@ interface HrToolContextValue {
   persistLeaveRequests: (v: HrLeaveRequest[]) => Promise<void>;
   persistExpenses: (v: HrExpense[]) => Promise<void>;
   persistTickets: (v: HrTicket[]) => Promise<void>;
-  persistRules: (v: HrRules) => Promise<void>;
+  persistRules: (v: HrRules) => Promise<boolean>;
   persistCompanyProfile: (v: HrCompanyProfile) => Promise<void>;
   persistAttendance: (rec: HrAttendanceRecord) => Promise<void>;
   persistAttendanceOverride: (o: HrAttendanceOverride) => Promise<void>;
   persistPunch: (p: HrPunch) => Promise<void>;
+  /** Local-state-only: mirrors a punch the server has ALREADY recorded (via hrApi.punch) into
+   * punchLog and today's attendance row, so the Today table updates without a bootstrap reload. */
+  applyServerPunch: (p: HrPunch) => void;
   runPayrollForMonth: (month: string, tds?: Record<string, number>) => Promise<{ success: boolean; data?: { entries: HrPayrollEntry[] }; error?: string }>;
   persistTemplate: (name: string, content: string) => Promise<void>;
   resetSampleData: () => Promise<boolean>;
@@ -177,9 +184,10 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
       try {
         const data = await hrApi.bootstrap();
         const attendanceOverrides: Record<string, string> = {};
-        (data.attendanceOverrides || []).forEach((o) => { attendanceOverrides[o.emp + '|' + o.date] = o.status; });
+        // Both keyed by employee id — never the name, which two employees may share.
+        (data.attendanceOverrides || []).forEach((o) => { attendanceOverrides[o.employeeId + '|' + o.date] = o.status; });
         const punchLog: Record<string, HrPunch> = {};
-        (data.punchLog || []).forEach((p) => { punchLog[p.emp] = p; });
+        (data.punchLog || []).forEach((p) => { punchLog[p.employeeId] = p; });
         const templates: Record<string, { content: string }> = {};
         (data.templates || []).forEach((t) => { templates[t.name] = { content: t.content }; });
 
@@ -232,6 +240,28 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, employees: v, currentUser: s.currentUser ? v.find((e) => e.id === s.currentUser!.id) || s.currentUser : null }));
     try { await hrApi.saveEmployees(v); } catch { warnSaveFailed(); }
   }, []);
+  const applyEmployeeRenameInState = useCallback((employeeId: string, name: string) => {
+    if (!employeeId || !name) return;
+    const rename = <T extends { employeeId: string; emp: string }>(x: T): T => (x.employeeId === employeeId ? { ...x, emp: name } : x);
+    setState((s) => {
+      const renamed = s.employees.find((e) => e.id === employeeId);
+      const punchLog: Record<string, HrPunch> = {};
+      Object.entries(s.punchLog).forEach(([k, p]) => { punchLog[k] = rename(p); });
+      return {
+        ...s,
+        employees: s.employees.map((e) => (e.managerId === employeeId ? { ...e, manager: name } : e)),
+        teams: s.teams.map((t) => (t.managerId === employeeId ? { ...t, manager: name } : t)),
+        employeeCredentials: s.employeeCredentials.map((c) =>
+          (renamed?.credentialId != null && c.id === renamed.credentialId ? { ...c, name } : c)),
+        attendance: s.attendance.map(rename),
+        punchLog,
+        regularizations: s.regularizations.map(rename),
+        leaveRequests: s.leaveRequests.map(rename),
+        expenses: s.expenses.map(rename),
+        tickets: s.tickets.map(rename),
+      };
+    });
+  }, []);
   /** Permanent removal of one employee. Goes through the dedicated DELETE endpoint rather than
    * a persistEmployees save of the shortened list: that only rewrites hr_employees, leaving the
    * Employee ID credential behind for Directory's orphan auto-heal to resurrect the row from.
@@ -240,28 +270,31 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
    * Throws (rather than the usual silent warnSaveFailed) so the caller can report the failure. */
   const deleteEmployee = useCallback(async (employee: HrEmployee) => {
     await hrApi.deleteEmployee(employee.id);
-    const name = employee.name;
+    const id = employee.id;
     setState((s) => {
       const punchLog = { ...s.punchLog };
-      delete punchLog[name];
+      delete punchLog[id];
       const attendanceOverrides: Record<string, string> = {};
-      Object.entries(s.attendanceOverrides).forEach(([k, v]) => { if (!k.startsWith(name + '|')) attendanceOverrides[k] = v; });
+      Object.entries(s.attendanceOverrides).forEach(([k, v]) => { if (!k.startsWith(id + '|')) attendanceOverrides[k] = v; });
       return {
         ...s,
         employees: s.employees
-          .filter((e) => e.id !== employee.id)
-          .map((e) => (e.manager === name ? { ...e, manager: null } : e)),
+          .filter((e) => e.id !== id)
+          .map((e) => (e.managerId === id ? { ...e, manager: null, managerId: null } : e)),
+        // Mirrors the server: the linked login goes; an unlinked one only when its name is unique.
         employeeCredentials: s.employeeCredentials.filter((c) =>
-          employee.credentialId != null ? c.id !== employee.credentialId : c.name !== name),
-        teams: s.teams.map((t) => (t.manager === name ? { ...t, manager: null } : t)),
-        onboarding: s.onboarding.filter((o) => o.employeeId !== employee.id),
-        attendance: s.attendance.filter((a) => a.emp !== name),
+          employee.credentialId != null
+            ? c.id !== employee.credentialId
+            : !(c.name === employee.name && s.employees.filter((e) => e.name === employee.name).length === 1)),
+        teams: s.teams.map((t) => (t.managerId === id ? { ...t, manager: null, managerId: null } : t)),
+        onboarding: s.onboarding.filter((o) => o.employeeId !== id),
+        attendance: s.attendance.filter((a) => a.employeeId !== id),
         attendanceOverrides,
         punchLog,
-        regularizations: s.regularizations.filter((r) => r.emp !== name),
-        leaveRequests: s.leaveRequests.filter((l) => l.emp !== name),
-        expenses: s.expenses.filter((x) => x.emp !== name),
-        tickets: s.tickets.filter((t) => t.emp !== name),
+        regularizations: s.regularizations.filter((r) => r.employeeId !== id),
+        leaveRequests: s.leaveRequests.filter((l) => l.employeeId !== id),
+        expenses: s.expenses.filter((x) => x.employeeId !== id),
+        tickets: s.tickets.filter((t) => t.employeeId !== id),
       };
     });
   }, []);
@@ -293,10 +326,10 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
         }
         const minutes = hhmmToMinutes(updated.requestedTime);
         const timeLabel = formatTime12h(minutes);
-        const idx = s.attendance.findIndex((a) => a.emp === updated.emp && a.date === updated.date);
+        const idx = s.attendance.findIndex((a) => a.employeeId === updated.employeeId && a.date === updated.date);
         const existing = idx >= 0 ? s.attendance[idx] : null;
         const rec: HrAttendanceRecord = {
-          emp: updated.emp, date: updated.date, status: 'Present',
+          employeeId: updated.employeeId, emp: updated.emp, date: updated.date, status: 'Present',
           inTime: updated.punchType === 'in' ? timeLabel : (existing?.inTime || '—'),
           inMinutes: updated.punchType === 'in' ? minutes : (existing?.inMinutes ?? null),
           outTime: updated.punchType === 'out' ? timeLabel : (existing?.outTime || '—'),
@@ -311,23 +344,36 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const persistLeaveRequests = useCallback(async (v: HrLeaveRequest[]) => { setState((s) => ({ ...s, leaveRequests: v })); try { await hrApi.saveLeaveRequests(v); } catch { warnSaveFailed(); } }, []);
   const persistExpenses = useCallback(async (v: HrExpense[]) => { setState((s) => ({ ...s, expenses: v })); try { await hrApi.saveExpenses(v); } catch { warnSaveFailed(); } }, []);
   const persistTickets = useCallback(async (v: HrTicket[]) => { setState((s) => ({ ...s, tickets: v })); try { await hrApi.saveTickets(v); } catch { warnSaveFailed(); } }, []);
-  const persistRules = useCallback(async (v: HrRules) => { setState((s) => ({ ...s, rules: v })); try { await hrApi.saveRules(v); } catch { warnSaveFailed(); } }, []);
+  // Resolves true only when the server stored the rules, so the Rules page can skip writing an
+  // audit entry for a save that failed.
+  const persistRules = useCallback(async (v: HrRules) => { setState((s) => ({ ...s, rules: v })); try { await hrApi.saveRules(v); return true; } catch { warnSaveFailed(); return false; } }, []);
   const persistCompanyProfile = useCallback(async (v: HrCompanyProfile) => { setState((s) => ({ ...s, companyProfile: v })); try { await hrApi.saveCompanyProfile(v); } catch { warnSaveFailed(); } }, []);
   const persistAttendance = useCallback(async (rec: HrAttendanceRecord) => {
     setState((s) => {
-      const idx = s.attendance.findIndex((a) => a.emp === rec.emp && a.date === rec.date);
+      const idx = s.attendance.findIndex((a) => a.employeeId === rec.employeeId && a.date === rec.date);
       const attendance = idx >= 0 ? s.attendance.map((a, i) => (i === idx ? rec : a)) : [...s.attendance, rec];
       return { ...s, attendance };
     });
     try { await hrApi.recordAttendance(rec); } catch { warnSaveFailed(); }
   }, []);
   const persistAttendanceOverride = useCallback(async (o: HrAttendanceOverride) => {
-    setState((s) => ({ ...s, attendanceOverrides: { ...s.attendanceOverrides, [o.emp + '|' + o.date]: o.status } }));
+    setState((s) => ({ ...s, attendanceOverrides: { ...s.attendanceOverrides, [o.employeeId + '|' + o.date]: o.status } }));
     try { await hrApi.recordAttendanceOverride(o); } catch { warnSaveFailed(); }
   }, []);
   const persistPunch = useCallback(async (p: HrPunch) => {
-    setState((s) => ({ ...s, punchLog: { ...s.punchLog, [p.emp]: p } }));
+    setState((s) => ({ ...s, punchLog: { ...s.punchLog, [p.employeeId]: p } }));
     try { await hrApi.recordPunch(p); } catch { warnSaveFailed(); }
+  }, []);
+  const applyServerPunch = useCallback((p: HrPunch) => {
+    setState((s) => {
+      const rec: HrAttendanceRecord = {
+        employeeId: p.employeeId, emp: p.emp, date: p.date, status: 'Present', inTime: p.inTime || '—', outTime: p.outTime || '—',
+        inMinutes: p.inMinutes ?? null, outMinutes: p.outMinutes ?? null,
+      };
+      const idx = s.attendance.findIndex((a) => a.employeeId === p.employeeId && a.date === p.date);
+      const attendance = idx >= 0 ? s.attendance.map((a, i) => (i === idx ? rec : a)) : [...s.attendance, rec];
+      return { ...s, punchLog: { ...s.punchLog, [p.employeeId]: p }, attendance };
+    });
   }, []);
   /** Computes and freezes real Net Pay for a payroll month (see HrToolService.runPayroll) —
    * refuses if the period hasn't ended yet. Updates state.payrollRun optimistically on
@@ -366,10 +412,10 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     const me = state.currentUser;
     if (!me) return false;
     try { await hrApi.resetSampleData(me.id); } catch { warnSaveFailed(); return false; }
-    const clearedTeams = state.teams.map((t) => (t.manager && t.manager !== me.name ? { ...t, manager: null } : t));
+    const clearedTeams = state.teams.map((t) => ((t.managerId || t.manager) && t.managerId !== me.id ? { ...t, manager: null, managerId: null } : t));
     setState((s) => ({
       ...s,
-      employees: [{ ...me, manager: null, ctcSplitOverride: null }],
+      employees: [{ ...me, manager: null, managerId: null, ctcSplitOverride: null }],
       teams: clearedTeams,
       onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
       regularizations: [], leaveRequests: [], expenses: [], tickets: [],
@@ -383,14 +429,14 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const value = useMemo<HrToolContextValue>(() => ({
     state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
-    persistEmployees, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
-    persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,
+    persistEmployees, applyEmployeeRenameInState, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
+    persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch, applyServerPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
     state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
-    persistEmployees, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
-    persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch,
+    persistEmployees, applyEmployeeRenameInState, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
+    persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch, applyServerPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   ]);
 

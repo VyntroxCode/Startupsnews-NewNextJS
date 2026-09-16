@@ -17,6 +17,7 @@ const RULE_LABELS: Partial<Record<keyof HrRules, string>> = {
   fullDayMinWorkedHours: 'Hours worked — full day at', salaryPeriodFrom: 'Salary period from',
   salaryPeriodTo: 'Salary period to', twoLevelApproval: 'Approval chain', leaveTypes: 'Leave types',
   lateMarkPenalty: 'Late-mark penalty', geoFencing: 'Geo-fencing', selfieCheckin: 'Selfie check-in',
+  geoFenceLat: 'Geo-fence — office latitude', geoFenceLng: 'Geo-fence — office longitude', geoFenceRadiusM: 'Geo-fence — radius (m)',
   pfEsi: 'PF / ESI statutory modules', optionalHolidayChoice: 'Optional holiday self-selection',
   assetChecklist: 'Asset issuance/return checklist',
 };
@@ -95,6 +96,22 @@ function clampWholeNumber(raw: string, max: number): number {
   const n = Math.round(Number(raw));
   if (!Number.isFinite(n)) return 0;
   return Math.min(max, Math.max(0, n));
+}
+
+/** Geo-fence radius bounds, metres. The floor exists so the fence can never be made so tight
+ * that GPS jitter alone locks everyone out; the ceiling keeps "geo-fencing" meaning the office,
+ * not the neighbourhood. */
+const GEO_FENCE_RADIUS_MIN = 10;
+const GEO_FENCE_RADIUS_MAX = 500;
+function clampGeoRadius(raw: string): number {
+  return Math.max(GEO_FENCE_RADIUS_MIN, clampWholeNumber(raw, GEO_FENCE_RADIUS_MAX));
+}
+/** Lat/lng inputs keep the PREVIOUS value on unparseable input instead of falling to 0 — a
+ * silent 0,0 fence (Gulf of Guinea) would block every punch. Also clamps to the valid range. */
+function parseCoordinate(raw: string, previous: number, limit: 90 | 180): number {
+  const n = Number(raw);
+  if (raw.trim() === '' || !Number.isFinite(n)) return previous;
+  return Math.min(limit, Math.max(-limit, n));
 }
 
 /** Keys that would put a decimal point or an exponent into a number field. Blocked so the value
@@ -196,7 +213,7 @@ function teamsDiff(before: HrTeam[], after: HrTeam[]): string[] {
   if (removed.length) lines.push(`Removed team(s): ${removed.join(', ')}`);
   for (const t of after) {
     const prev = before.find((b) => b.name === t.name);
-    if (prev && prev.manager !== t.manager) lines.push(`${t.name}: Reporting Manager ${prev.manager || 'none'} → ${t.manager || 'none'}`);
+    if (prev && (prev.managerId || null) !== (t.managerId || null)) lines.push(`${t.name}: Reporting Manager ${prev.manager || 'none'} → ${t.manager || 'none'}`);
   }
   return lines;
 }
@@ -311,7 +328,14 @@ export default function Rules() {
   const ATTENDANCE_KEYS: (keyof HrRules)[] = ['shiftStartTime', 'shiftEndTime', 'regularizationMonthlyQuota', 'shortLeaveMonthlyQuota', 'halfDayMinWorkedHours', 'shortLeaveMinWorkedHours', 'fullDayMinWorkedHours'];
   const APPROVAL_KEYS: (keyof HrRules)[] = ['twoLevelApproval'];
   const LEAVE_TYPES_KEYS: (keyof HrRules)[] = ['leaveTypes'];
-  const OTHER_RULES_KEYS: (keyof HrRules)[] = ['lateMarkPenalty', 'geoFencing', 'selfieCheckin', 'pfEsi', 'optionalHolidayChoice', 'assetChecklist'];
+  const OTHER_RULES_KEYS: (keyof HrRules)[] = ['lateMarkPenalty', 'geoFencing', 'geoFenceLat', 'geoFenceLng', 'geoFenceRadiusM', 'selfieCheckin', 'pfEsi', 'optionalHolidayChoice', 'assetChecklist'];
+  function validateGeoFence(): string | null {
+    if (!ruleDraft.geoFencing) return null;
+    if (!Number.isFinite(ruleDraft.geoFenceLat) || !Number.isFinite(ruleDraft.geoFenceLng)) return 'Geo-fencing is on but the office latitude/longitude is not a valid coordinate.';
+    if (ruleDraft.geoFenceLat === 0 && ruleDraft.geoFenceLng === 0) return 'Geo-fencing is on but the office location is 0, 0 — enter the real coordinates first.';
+    if (!Number.isFinite(ruleDraft.geoFenceRadiusM) || ruleDraft.geoFenceRadiusM < GEO_FENCE_RADIUS_MIN) return `Geo-fence radius must be at least ${GEO_FENCE_RADIUS_MIN} m.`;
+    return null;
+  }
   function sectionDirty(keys: (keyof HrRules)[]): boolean {
     return keys.some((k) => JSON.stringify(ruleDraft[k]) !== JSON.stringify(r[k]));
   }
@@ -327,8 +351,9 @@ export default function Rules() {
   }
   async function commitRuleEdits() {
     setSavingRules(true);
-    await persistRules({ ...ruleDraft, shiftGraceMinutes: FIXED_GRACE_MINUTES });
-    logRuleChange('Updated attendance, approval, leave-type and other rules');
+    if (await persistRules({ ...ruleDraft, shiftGraceMinutes: FIXED_GRACE_MINUTES })) {
+      logRuleChange('Updated attendance, approval, leave-type and other rules');
+    }
     setSavingRules(false);
   }
 
@@ -359,8 +384,9 @@ export default function Rules() {
   async function saveCtcSplit() {
     setCtcSaving(true);
     const basicPct = Number(ctcBasicPct) || 0, hraPct = Number(ctcHraPct) || 0, convValue = Number(ctcConvValue) || 0;
-    await persistRules({ ...r, ctcSplit: { basicPct, hraPctOfBasic: hraPct, convenienceType: ctcConvType, convenienceValue: convValue } });
-    logRuleChange(`Updated CTC structure: Basic ${basicPct}% of salary / HRA ${hraPct}% of Basic / Convenience ${ctcConvType === 'amount' ? '₹' + convValue : convValue + '%'} — Special Allowance auto-computed as the remainder`);
+    if (await persistRules({ ...r, ctcSplit: { basicPct, hraPctOfBasic: hraPct, convenienceType: ctcConvType, convenienceValue: convValue } })) {
+      logRuleChange(`Updated CTC structure: Basic ${basicPct}% of salary / HRA ${hraPct}% of Basic / Convenience ${ctcConvType === 'amount' ? '₹' + convValue : convValue + '%'} — Special Allowance auto-computed as the remainder`);
+    }
     setCtcSaving(false);
   }
   function discardCtc() {
@@ -374,7 +400,7 @@ export default function Rules() {
     const name = newTeam.trim();
     if (!name) return;
     if (teamsDraft.some((t) => t.name === name)) { alert('That team already exists.'); return; }
-    setTeamsDraft((d) => [...d, { name, manager: null }]);
+    setTeamsDraft((d) => [...d, { name, manager: null, managerId: null }]);
     setNewTeam('');
   }
   function removeTeam(name: string) {
@@ -384,8 +410,10 @@ export default function Rules() {
     }
     setTeamsDraft((d) => d.filter((t) => t.name !== name));
   }
-  function setTeamManagerDraft(name: string, manager: string) {
-    setTeamsDraft((d) => d.map((t) => (t.name === name ? { ...t, manager: manager || null } : t)));
+  /** Stored by employee id (two employees may share a name); the name rides along for display. */
+  function setTeamManagerDraft(name: string, managerId: string) {
+    const manager = state.employees.find((e) => e.id === managerId)?.name || null;
+    setTeamsDraft((d) => d.map((t) => (t.name === name ? { ...t, managerId: managerId || null, manager } : t)));
   }
   async function saveTeams() {
     setTeamsSaving(true);
@@ -494,9 +522,9 @@ export default function Rules() {
             <tbody>
               {teamsDraft.map((t) => (
                 <tr key={t.name}><td>{t.name}</td>
-                  <td><select value={t.manager || ''} onChange={(e) => setTeamManagerDraft(t.name, e.target.value)} style={{ width: 220 }}>
+                  <td><select value={t.managerId || ''} onChange={(e) => setTeamManagerDraft(t.name, e.target.value)} style={{ width: 220 }}>
                     <option value="">— None —</option>
-                    {state.employees.filter((e) => e.status !== 'exited').map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+                    {state.employees.filter((e) => e.status !== 'exited').map((e) => <option key={e.id} value={e.id}>{e.name} · {e.designation}</option>)}
                   </select></td>
                   <td style={{ textAlign: 'right' }}>{t.name !== 'Leadership' && <button className="btn ghost sm" onClick={() => removeTeam(t.name)}>Remove</button>}</td>
                 </tr>
@@ -822,7 +850,55 @@ export default function Rules() {
         <div className="block-head"><h2>Other configurable rules</h2></div>
         <div className="card pad">
           <div className="rule-row"><div><div className="rule-name">Late-mark penalty</div><div className="rule-desc">Deduct leave for repeated late marks.</div></div><Toggle checked={ruleDraft.lateMarkPenalty} onChange={(v) => setDraftRule('lateMarkPenalty', v)} /></div>
-          <div className="rule-row"><div><div className="rule-name">Geo-fencing</div><div className="rule-desc">Restrict punch-in to within a radius of office location(s).</div></div><Toggle checked={ruleDraft.geoFencing} onChange={(v) => setDraftRule('geoFencing', v)} /></div>
+          <div className="rule-row">
+            <div>
+              <div className="rule-name">Geo-fencing</div>
+              <div className="rule-desc">Punch In and Punch Out are accepted only when the employee&apos;s phone/browser location is within the radius below. Enforced on the server. GPS accuracy up to 50 m is credited as slack on top of the radius; readings worse than 100 m accuracy are rejected as too imprecise.</div>
+            </div>
+            <Toggle checked={ruleDraft.geoFencing} onChange={(v) => setDraftRule('geoFencing', v)} />
+          </div>
+          {ruleDraft.geoFencing && (
+            <>
+              <div className="rule-row">
+                <div>
+                  <div className="rule-name">Office location</div>
+                  <div className="rule-desc">
+                    Decimal degrees (Google Maps → right-click the office → copy the coordinates). StartupNews.fyi, Jhandewalan: 28.644533, 77.2003635.{' '}
+                    <a href={`https://maps.google.com/?q=${ruleDraft.geoFenceLat},${ruleDraft.geoFenceLng}`} target="_blank" rel="noreferrer">Check on map ↗</a>
+                  </div>
+                </div>
+                <div className="rule-inputs">
+                  <span>Lat</span>
+                  <input
+                    className="mini-input" type="number" step="0.000001" min={-90} max={90} style={{ width: 118 }}
+                    value={ruleDraft.geoFenceLat}
+                    onChange={(e) => setDraftRule('geoFenceLat', parseCoordinate(e.target.value, ruleDraft.geoFenceLat, 90))}
+                  />
+                  <span>Lng</span>
+                  <input
+                    className="mini-input" type="number" step="0.000001" min={-180} max={180} style={{ width: 118 }}
+                    value={ruleDraft.geoFenceLng}
+                    onChange={(e) => setDraftRule('geoFenceLng', parseCoordinate(e.target.value, ruleDraft.geoFenceLng, 180))}
+                  />
+                </div>
+              </div>
+              <div className="rule-row">
+                <div>
+                  <div className="rule-name">Radius</div>
+                  <div className="rule-desc">Metres from the office point above. Whole numbers, {GEO_FENCE_RADIUS_MIN}–{GEO_FENCE_RADIUS_MAX}. Shown to employees on their Rules &amp; Policy page.</div>
+                </div>
+                <div className="rule-inputs">
+                  <input
+                    className="mini-input" type="number" min={GEO_FENCE_RADIUS_MIN} max={GEO_FENCE_RADIUS_MAX} step={1}
+                    value={ruleDraft.geoFenceRadiusM}
+                    onKeyDown={blockNonInteger}
+                    onChange={(e) => setDraftRule('geoFenceRadiusM', clampGeoRadius(e.target.value))}
+                  />
+                  <span>m</span>
+                </div>
+              </div>
+            </>
+          )}
           <div className="rule-row"><div><div className="rule-name">Selfie check-in</div><div className="rule-desc">Require a photo capture at punch in/out.</div></div><Toggle checked={ruleDraft.selfieCheckin} onChange={(v) => setDraftRule('selfieCheckin', v)} /></div>
           <div className="rule-row"><div><div className="rule-name">PF / ESI statutory modules</div><div className="rule-desc">Keep off until headcount/wage crosses the statutory threshold.</div></div><Toggle checked={ruleDraft.pfEsi} onChange={(v) => setDraftRule('pfEsi', v)} /></div>
           <div className="rule-row"><div><div className="rule-name">Optional holiday self-selection</div><div className="rule-desc">Let employees pick their own festival holidays from a pool.</div></div><Toggle checked={ruleDraft.optionalHolidayChoice} onChange={(v) => setDraftRule('optionalHolidayChoice', v)} /></div>
@@ -835,6 +911,7 @@ export default function Rules() {
             title="Apply rule changes?"
             notice="Takes effect immediately for every employee."
             changeLines={changedRuleLabels}
+            validate={validateGeoFence}
           />
         </div>
       </section>

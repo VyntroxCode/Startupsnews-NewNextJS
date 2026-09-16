@@ -1,30 +1,52 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import StatusSelect from './StatusSelect';
-import { STATUSES, TYPES } from './constants';
+import { PAGE_LEAD_TYPES, STATUSES, TYPES } from './constants';
 import { exportLeadsCsv, exportLeadsExcel, exportLeadsPdf } from './exports';
 import type { SalesLead } from './types';
 
-export default function LeadsTable({ leads, team, onEdit, onDelete, onDeleteAll, onUpdateField }: {
+/** Same "never touched since it arrived" rule SummaryCard's Pending leads tile counts by. */
+function isPending(l: SalesLead): boolean {
+  return !!l.createdAt && l.createdAt === l.updatedAt;
+}
+
+export default function LeadsTable({ leads, team, onEdit, onDelete, onDeleteAll, onUpdateField, pendingOnly, onClearPendingOnly }: {
   leads: SalesLead[];
   team: string[];
   onEdit: (lead: SalesLead) => void;
   onDelete: (id: string) => void;
   onDeleteAll: () => void;
   onUpdateField: (id: string, patch: Partial<SalesLead>) => void;
+  /** Set by the Summary card's "Pending leads" tile. Owned by the page rather than this component
+   * so that tile can turn it on from outside; this component turns it back off once the reader is
+   * done, via `onClearPendingOnly`. */
+  pendingOnly: boolean;
+  onClearPendingOnly: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [filterType, setFilterType] = useState('');
+  const [filterPageType, setFilterPageType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterAssigned, setFilterAssigned] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [exportBusy, setExportBusy] = useState<'excel' | 'pdf' | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Jumping in from the Pending leads tile should open the (possibly collapsed) card and bring it
+  // into view — the tile can be clicked from well above this section on a long page.
+  useEffect(() => {
+    if (!pendingOnly) return;
+    setOpen(true);
+    cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [pendingOnly]);
 
   const filteredLeads = useMemo(() => {
     const q = filterSearch.toLowerCase();
     return leads.filter((l) => {
+      if (pendingOnly && !isPending(l)) return false;
       if (filterType && l.type !== filterType) return false;
+      if (filterPageType && l.type !== filterPageType) return false;
       if (filterStatus && l.status !== filterStatus) return false;
       if (filterAssigned && l.assignedTo !== filterAssigned) return false;
       if (q) {
@@ -33,7 +55,7 @@ export default function LeadsTable({ leads, team, onEdit, onDelete, onDeleteAll,
       }
       return true;
     }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [leads, filterType, filterStatus, filterAssigned, filterSearch]);
+  }, [leads, pendingOnly, filterType, filterPageType, filterStatus, filterAssigned, filterSearch]);
 
   async function handleExportExcel() {
     setExportBusy('excel');
@@ -45,12 +67,18 @@ export default function LeadsTable({ leads, team, onEdit, onDelete, onDeleteAll,
   }
 
   return (
-    <div className="card">
+    <div className="card" ref={cardRef}>
       <div className="card-head" onClick={() => setOpen((o) => !o)}>
         <h2>All leads</h2>
         <span className={`chev${open ? ' open' : ''}`}>&#8250;</span>
       </div>
       <div className={`card-body${open ? '' : ' collapsed'}`}>
+        {pendingOnly && (
+          <div className="pending-banner">
+            Showing pending leads only — arrived, not yet touched.
+            <button type="button" className="small" onClick={(e) => { e.stopPropagation(); onClearPendingOnly(); }}>Show all leads</button>
+          </div>
+        )}
         <div style={{ marginBottom: 12 }}>
           <button type="button" className="danger" onClick={onDeleteAll}>🗑 Delete all leads</button>
         </div>
@@ -58,6 +86,11 @@ export default function LeadsTable({ leads, team, onEdit, onDelete, onDeleteAll,
           <div className="field" style={{ maxWidth: 180 }}><label>Filter: type</label>
             <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
               <option value="">All types</option>{TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="field" style={{ maxWidth: 180 }}><label>Filter: page leads</label>
+            <select value={filterPageType} onChange={(e) => setFilterPageType(e.target.value)}>
+              <option value="">All page leads</option>{PAGE_LEAD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div className="field" style={{ maxWidth: 180 }}><label>Filter: status</label>
@@ -80,11 +113,12 @@ export default function LeadsTable({ leads, team, onEdit, onDelete, onDeleteAll,
           </div>
         </div>
         <div className="hint" style={{ margin: '-6px 0 10px' }}>Exports use the leads currently matching your filters/search above.</div>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-wrap">
           <table id="leadsTable">
             <thead>
               <tr>
                 <th>Date</th><th>Name</th><th>Company</th><th>Contact</th><th>Email</th>
+                <th>Country</th><th>City</th>
                 <th>Source</th><th>Type</th><th>Query</th><th>Assigned</th><th>Current Status</th>
                 <th>Next Follow-up</th><th>Last Connect Date</th><th>Last Call Discussion</th><th></th>
               </tr>
@@ -99,6 +133,8 @@ export default function LeadsTable({ leads, team, onEdit, onDelete, onDeleteAll,
                     <td>{l.company}</td>
                     <td>{l.contact}</td>
                     <td>{l.email}</td>
+                    <td>{l.country || <span className="hint">—</span>}</td>
+                    <td>{l.city || <span className="hint">—</span>}</td>
                     <td>{l.source}</td>
                     <td><span className="badge">{typeLabel}</span></td>
                     <td className="cell-query">{(l.query || '').slice(0, 120)}</td>

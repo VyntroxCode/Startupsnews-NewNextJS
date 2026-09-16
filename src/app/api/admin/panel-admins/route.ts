@@ -8,7 +8,7 @@ import { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 const repo = new PanelAdminsRepository();
 const panelAdminsService = new PanelAdminsService(repo);
 
-const ALLOWED_ROLES: PanelAdminRole[] = ['event_admin', 'publisher_admin'];
+const ALLOWED_ROLES: PanelAdminRole[] = ['event_admin', 'publisher_admin', 'it_support'];
 
 /** GET /api/admin/panel-admins?full=1 — paginated list for the admin Users management page. */
 export async function GET(request: NextRequest) {

@@ -1,7 +1,13 @@
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 import type { HrKycDocuments } from './kyc';
 
-export interface HrTeam { name: string; manager: string | null; }
+/** `managerId` (hr_employees.id) is what approvals route on; `manager` is that employee's name,
+ * kept for display. Legacy rows may have a name with no id until the backfill links them. */
+export interface HrTeam { name: string; manager: string | null; managerId?: string | null; }
+
+/** The minimum needed to write an employee-owned record: the id it is keyed by, and the name
+ * stored alongside it as a display snapshot. */
+export interface HrEmployeeRef { id: string; name: string; }
 
 export interface HrHoliday { date: string; name: string; }
 
@@ -47,7 +53,10 @@ export interface HrEmployee {
   phone: string | null;
   designation: string;
   team: string;
+  /** Display name of the Reporting Manager — always the current name of `managerId`. */
   manager: string | null;
+  /** hr_employees.id of the Reporting Manager. Approvals and scoping compare this, never the name. */
+  managerId?: string | null;
   status: string;
   doj: string;
   sysRole: string;
@@ -84,12 +93,35 @@ export interface HrOnboarding {
   assets?: HrOnboardingAssets | null;
 }
 
-export interface HrAttendanceRecord { emp: string; date: string; status: string; inTime: string; outTime: string; inMinutes?: number | null; outMinutes?: number | null; }
-export interface HrAttendanceOverride { emp: string; date: string; status: string; }
-export interface HrPunch { emp: string; date: string; inTime: string | null; inMinutes: number | null; outTime: string | null; outMinutes: number | null; }
+/** GPS fix captured at punch time (only when the Geo-fencing rule is on). Every field is nullable
+ * and both `inGeo`/`outGeo` are optional so rows written before geofencing existed — and
+ * regularization-written rows, which have no GPS — keep working and simply stay NULL. */
+export interface HrPunchGeo {
+  lat: number | null;
+  lng: number | null;
+  /** Browser-reported horizontal accuracy in metres. */
+  accuracyM: number | null;
+  /** Haversine distance from the configured office point at the time of the punch, metres. */
+  distanceM: number | null;
+}
+
+/* Every employee-owned record below carries `employeeId` (hr_employees.id), the key all matching,
+   filtering and payroll use, and `emp`, a snapshot of the employee's name kept only for display.
+   Two employees may share a name; they never share an employeeId. */
+export interface HrAttendanceRecord {
+  employeeId: string; emp: string; date: string; status: string; inTime: string; outTime: string;
+  inMinutes?: number | null; outMinutes?: number | null;
+  inGeo?: HrPunchGeo | null; outGeo?: HrPunchGeo | null;
+}
+export interface HrAttendanceOverride { employeeId: string; emp: string; date: string; status: string; }
+export interface HrPunch {
+  employeeId: string; emp: string; date: string; inTime: string | null; inMinutes: number | null; outTime: string | null; outMinutes: number | null;
+  inGeo?: HrPunchGeo | null; outGeo?: HrPunchGeo | null;
+}
 
 export interface HrApprovalBase {
   id: string;
+  employeeId: string;
   emp: string;
   stage: string;
   status: string;
@@ -101,7 +133,7 @@ export interface HrRegularization extends HrApprovalBase { date: string; reason:
 export interface HrLeaveRequest extends HrApprovalBase { type: string; from: string; to: string; remarks: string; }
 export interface HrExpense extends HrApprovalBase { category: string; amount: number; }
 
-export interface HrTicket { id: string; emp: string; category: string; status: string; note: string; }
+export interface HrTicket { id: string; employeeId: string; emp: string; category: string; status: string; note: string; }
 
 export interface HrComplianceTask { task: string; due: string; status: string; }
 
@@ -110,6 +142,9 @@ export interface HrPayrollRun { month: string; status: string; runAt?: string | 
 /** One employee's computed payroll for one month — either a live preview (not yet run) or the
  * frozen record from the last "Run Payroll" (see HrToolService.computePayrollForMonth/runPayroll). */
 export interface HrPayrollEntry {
+  /** hr_employees.id — entries, TDS and short-leave carry-over are all keyed by this. */
+  employeeId: string;
+  /** Employee name at the time of the run, for display. */
   emp: string;
   /** All calendar days in the cycle — workingDays + weekOffDays. The display column "Total Days". */
   totalDays: number;
@@ -190,7 +225,12 @@ export interface HrRules {
   leaveTypes: Record<string, HrLeaveTypeConfig>;
   twoLevelApproval: { leave: boolean; attendance: boolean; expense: boolean };
   lateMarkPenalty: boolean;
+  /** When on, Punch In AND Punch Out are accepted only from within `geoFenceRadiusM` metres of
+   * the office point below (server-enforced — see utils/geofence.ts for the exact rule). */
   geoFencing: boolean;
+  geoFenceLat: number;
+  geoFenceLng: number;
+  geoFenceRadiusM: number;
   selfieCheckin: boolean;
   pfEsi: boolean;
   optionalHolidayChoice: boolean;
@@ -253,6 +293,7 @@ export function normalizeLeaveTypes(raw: unknown): Record<string, HrLeaveTypeCon
  * pushes hr_employees.documents_deadline forward; see HrToolService.decideDocumentUploadRequest. */
 export interface HrDocumentUploadRequest {
   id: number;
+  employeeId: string;
   emp: string;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';

@@ -377,7 +377,7 @@ export default function CreatePostPage() {
         >
           ← Back to Posts
         </Link>
-        <h2 style={{
+        <h1 style={{
           fontSize: '2.25rem',
           fontWeight: '700',
           color: '#0f172a',
@@ -385,7 +385,7 @@ export default function CreatePostPage() {
           letterSpacing: '-0.02em',
         }}>
           Create New Post
-        </h2>
+        </h1>
       </div>
 
       {restorableDraft && (

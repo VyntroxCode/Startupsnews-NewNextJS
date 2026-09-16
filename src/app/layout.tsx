@@ -39,6 +39,12 @@ async function getActiveBanners(): Promise<Banner[]> {
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
+// AdSense is production-only. Set NEXT_PUBLIC_ADSENSE_ENABLED=true in the prod
+// .env; leave it unset on dev/staging (dev.startupgpt.fyi) so those hosts never
+// emit the AdSense meta tag or loader script and don't get linked to the account.
+const ADSENSE_ENABLED = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === "true";
+const ADSENSE_CLIENT = "ca-pub-2201007872031999";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -92,7 +98,7 @@ export const metadata: Metadata = {
   verification: {
     other: {
       "msvalidate.01": ["7AA71D3ABAB34C6C1C8E9654A46C1EE7"],
-      "google-adsense-account": ["ca-pub-2201007872031999"],
+      ...(ADSENSE_ENABLED ? { "google-adsense-account": [ADSENSE_CLIENT] } : {}),
     },
   },
 };
@@ -112,28 +118,28 @@ const graphJsonLd = {
   "@graph": [
     {
       "@type": ["Organization", "NewsMediaOrganization"],
-      "@id": "https://www.startupnews.fyi/#organization",
+      "@id": "https://startupnews.fyi/#organization",
       name: "StartupNews.fyi",
       alternateName: ["StartupNews", "SNFYI"],
-      url: "https://www.startupnews.fyi/",
+      url: "https://startupnews.fyi/",
       logo: {
         "@type": "ImageObject",
-        "@id": "https://www.startupnews.fyi/#logo",
-        url: "https://www.startupnews.fyi/wp-content/uploads/2024/01/logo.png",
-        contentUrl: "https://www.startupnews.fyi/wp-content/uploads/2024/01/logo.png",
+        "@id": "https://startupnews.fyi/#logo",
+        url: "https://startupnews.fyi/logo.png",
+        contentUrl: "https://startupnews.fyi/logo.png",
         caption: "StartupNews.fyi",
         inLanguage: "en",
-        width: 512,
-        height: 512,
+        width: 9886,
+        height: 2062,
       },
-      image: { "@id": "https://www.startupnews.fyi/#logo" },
+      image: { "@id": "https://startupnews.fyi/#logo" },
       description:
         "StartupNews.fyi is one of India's leading startup media and news platforms covering startup news, funding updates, founder stories, venture capital, technology, entrepreneurship, startup ecosystem trends, and global innovation.",
       email: "office@startupnews.fyi",
       foundingDate: "2019",
       founders: [
-        { "@id": "https://www.startupnews.fyi/#kapil-suri" },
-        { "@id": "https://www.startupnews.fyi/#madhur-mohan-malik" },
+        { "@id": "https://startupnews.fyi/#kapil-suri" },
+        { "@id": "https://startupnews.fyi/#madhur-mohan-malik" },
       ],
       knowsAbout: [
         "Startup News", "Indian Startups", "Startup Funding", "Venture Capital",
@@ -148,9 +154,9 @@ const graphJsonLd = {
         "https://play.google.com/store/apps/details?id=com.startupnews.fyi",
         "https://apps.apple.com/in/app/startupnews-fyi/id6473291055",
       ],
-      publishingPrinciples: "https://www.startupnews.fyi/editorial-policy",
-      masthead: "https://www.startupnews.fyi/about-us",
-      ownershipFundingInfo: "https://www.startupnews.fyi/about-us",
+      publishingPrinciples: "https://startupnews.fyi/editorial-policy",
+      masthead: "https://startupnews.fyi/about-us",
+      ownershipFundingInfo: "https://startupnews.fyi/about-us",
       contactPoint: [
         {
           "@type": "ContactPoint",
@@ -169,53 +175,53 @@ const graphJsonLd = {
     },
     {
       "@type": "Person",
-      "@id": "https://www.startupnews.fyi/#kapil-suri",
+      "@id": "https://startupnews.fyi/#kapil-suri",
       name: "Kapil Suri",
       jobTitle: "Co-Founder",
-      worksFor: { "@id": "https://www.startupnews.fyi/#organization" },
+      worksFor: { "@id": "https://startupnews.fyi/#organization" },
     },
     {
       "@type": "Person",
-      "@id": "https://www.startupnews.fyi/#madhur-mohan-malik",
+      "@id": "https://startupnews.fyi/#madhur-mohan-malik",
       name: "Madhur Mohan Malik",
       jobTitle: "Co-Founder",
-      worksFor: { "@id": "https://www.startupnews.fyi/#organization" },
+      worksFor: { "@id": "https://startupnews.fyi/#organization" },
     },
     {
       "@type": "WebSite",
-      "@id": "https://www.startupnews.fyi/#website",
-      url: "https://www.startupnews.fyi/",
+      "@id": "https://startupnews.fyi/#website",
+      url: "https://startupnews.fyi/",
       name: "StartupNews.fyi",
       description:
         "Latest startup news, funding updates, founder stories, venture capital news, and startup ecosystem insights.",
-      publisher: { "@id": "https://www.startupnews.fyi/#organization" },
+      publisher: { "@id": "https://startupnews.fyi/#organization" },
       inLanguage: "en",
       potentialAction: {
         "@type": "SearchAction",
-        target: "https://www.startupnews.fyi/search?q={search_term_string}",
+        target: "https://startupnews.fyi/search?q={search_term_string}",
         "query-input": "required name=search_term_string",
       },
     },
     {
       "@type": "WebPage",
-      "@id": "https://www.startupnews.fyi/#webpage",
-      url: "https://www.startupnews.fyi/",
+      "@id": "https://startupnews.fyi/#webpage",
+      url: "https://startupnews.fyi/",
       name: "StartupNews.fyi - Startup News, Funding News & Founder Stories",
-      isPartOf: { "@id": "https://www.startupnews.fyi/#website" },
-      about: { "@id": "https://www.startupnews.fyi/#organization" },
-      primaryImageOfPage: { "@id": "https://www.startupnews.fyi/#logo" },
+      isPartOf: { "@id": "https://startupnews.fyi/#website" },
+      about: { "@id": "https://startupnews.fyi/#organization" },
+      primaryImageOfPage: { "@id": "https://startupnews.fyi/#logo" },
       datePublished: "2019-01-01",
       dateModified: "2026-05-25",
       description:
         "Read the latest startup news, funding announcements, founder journeys, venture capital updates, and startup ecosystem insights from India and around the world.",
-      breadcrumb: { "@id": "https://www.startupnews.fyi/#breadcrumb" },
+      breadcrumb: { "@id": "https://startupnews.fyi/#breadcrumb" },
       inLanguage: "en",
     },
     {
       "@type": "BreadcrumbList",
-      "@id": "https://www.startupnews.fyi/#breadcrumb",
+      "@id": "https://startupnews.fyi/#breadcrumb",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: "https://www.startupnews.fyi/" },
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://startupnews.fyi/" },
       ],
     },
   ],
@@ -235,13 +241,15 @@ export default async function RootLayout({
           AdSense's site-verification crawler reads the raw HTML, so next/script's
           "afterInteractive" strategy (which only emits a <link rel="preload"> and
           injects the tag after hydration) fails detection. Kept verbatim as Google
-          supplies it.
+          supplies it. Rendered only when NEXT_PUBLIC_ADSENSE_ENABLED=true (prod).
         */}
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2201007872031999"
-          crossOrigin="anonymous"
-        />
+        {ADSENSE_ENABLED && (
+          <script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+            crossOrigin="anonymous"
+          />
+        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(graphJsonLd) }}

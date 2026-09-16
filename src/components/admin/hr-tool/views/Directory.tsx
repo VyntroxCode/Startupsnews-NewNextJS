@@ -6,7 +6,7 @@ import ModalShell from '../ModalShell';
 import HireEmployeeButton from './HireEmployeeButton';
 import EditCredentialModal from './EditCredentialModal';
 import { PANEL_ROLE_LABEL } from './CredentialFields';
-import { StatusBadge, addDays, initialLeaveBalance, computeCtcBreakdown, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
+import { StatusBadge, addDays, initialLeaveBalance, computeCtcBreakdown, employeeName, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
 import { computeLeaveBalances } from '@/modules/hr-tool/utils/leave-balance';
 
 /** How many days a new hire has to submit their required-documents checklist, counted from doj. */
@@ -86,7 +86,7 @@ function PageHead({ title, sub }: { title: string; sub: string }) {
 }
 
 export default function Directory() {
-  const { state, persistEmployees, deleteEmployee, persistDesignations, logRuleChange, upsertEmployeeCredentialInState } = useHrTool();
+  const { state, persistEmployees, deleteEmployee, persistDesignations, logRuleChange, upsertEmployeeCredentialInState, applyEmployeeRenameInState } = useHrTool();
   const [search, setSearch] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
   // The Directory's one status control: Active (anyone not exited — onboarding/probation/active
@@ -120,8 +120,15 @@ export default function Directory() {
   // an employee's Employee ID — reused here so the table can sort and display by it.
   const credentialByEmployee = useMemo(() => {
     const byId = new Map(state.employeeCredentials.map((c) => [c.id, c]));
-    const byName = new Map(state.employeeCredentials.map((c) => [c.name, c]));
-    return (e: HrEmployee) => (e.credentialId != null ? byId.get(e.credentialId) : undefined) || byName.get(e.name);
+    const byName = new Map<string, HrEmployeeCredential[]>();
+    state.employeeCredentials.forEach((c) => byName.set(c.name, [...(byName.get(c.name) || []), c]));
+    // A linked record uses its link. Only an older, unlinked record falls back to the name, and
+    // only when exactly one login has it — names can be shared.
+    return (e: HrEmployee) => {
+      if (e.credentialId != null) return byId.get(e.credentialId);
+      const same = byName.get(e.name) || [];
+      return same.length === 1 ? same[0] : undefined;
+    };
   }, [state.employeeCredentials]);
 
   function employeeCodeNum(code?: string | null): number {
@@ -148,7 +155,7 @@ export default function Directory() {
   // credentialId first, name second.
   const orphanCredentials = useMemo(() => admin
     ? state.employeeCredentials.filter((c) => c.isActive &&
-        !state.employees.some((e) => e.credentialId === c.id || e.name === c.name))
+        !state.employees.some((e) => e.credentialId === c.id || (e.credentialId == null && e.name === c.name)))
     : [], [state.employeeCredentials, state.employees, admin]);
 
   // Defence in depth behind the ordering fix in HireEmployeeButton: a credential is attempted
@@ -165,7 +172,7 @@ export default function Directory() {
     const documents = state.orgStructure.requiredDocuments.map((name) => ({ name, status: 'not_uploaded', url: null, uploadedAt: null, remarks: null }));
     const newEmployee: HrEmployee = {
       id: nextEmployeeId(state.employees), credentialId: c.id, name: c.name, email: c.email || '—', phone: null,
-      designation: c.designation, team: state.teams[0]?.name || '', manager: null, status: 'active',
+      designation: c.designation, team: state.teams[0]?.name || '', manager: null, managerId: null, status: 'active',
       doj, sysRole: 'Employee', ctc: 0,
       leaveBalance: initialLeaveBalance(state.rules),
       documents,
@@ -191,8 +198,20 @@ export default function Directory() {
   }, [orphanCredentials, addingOrphanId]);
 
   async function saveEmployeeEdits(e: HrEmployee, updates: Partial<HrEmployee>) {
-    await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, ...updates } : x)));
-    logRuleChange(`Updated ${e.name}'s details`);
+    const renamedTo = updates.name && updates.name !== e.name ? updates.name : null;
+    await persistEmployees(state.employees.map((x) => {
+      if (x.id === e.id) return { ...x, ...updates };
+      // Everyone reporting to them shows the manager's current name (linked by managerId).
+      return renamedTo && x.managerId === e.id ? { ...x, manager: renamedTo } : x;
+    }));
+    if (renamedTo) {
+      // Records are linked by id, so nothing re-links; the server refreshes the name snapshots
+      // (HrToolRepository.cascadeEmployeeRename) and this mirrors that locally without a reload.
+      applyEmployeeRenameInState(e.id, renamedTo);
+      logRuleChange(`Renamed ${e.name} to ${renamedTo} and updated their details`);
+    } else {
+      logRuleChange(`Updated ${e.name}'s details`);
+    }
   }
 
   function exportDirectory(fmt: 'csv' | 'excel') {
@@ -269,9 +288,12 @@ export default function Directory() {
       const newId = nextEmployeeId(employees);
       const resolvedDoj = doj || todayStr();
       const newDocuments = state.orgStructure.requiredDocuments.map((docName) => ({ name: docName, status: 'not_uploaded', url: null, uploadedAt: null, remarks: null }));
+      // The CSV names the manager; link it only when exactly one employee has that name.
+      const managerMatches = manager ? employees.filter((x) => x.name === manager) : [];
+      const managerMatch = managerMatches.length === 1 ? managerMatches[0] : null;
       employees = [...employees, {
         id: newId, name, email: email || '—', phone: null, designation: designation || '—', team: team || state.teams[0]?.name || '',
-        manager: manager || null, status: 'active', doj: resolvedDoj, sysRole: 'Employee', ctc: Number(ctc) || 0,
+        manager: managerMatch ? managerMatch.name : (manager || null), managerId: managerMatch ? managerMatch.id : null, status: 'active', doj: resolvedDoj, sysRole: 'Employee', ctc: Number(ctc) || 0,
         leaveBalance: initialLeaveBalance(state.rules),
         documents: newDocuments,
         documentsDeadline: newDocuments.length ? addDays(resolvedDoj, DOCUMENTS_WINDOW_DAYS) : null,
@@ -444,6 +466,9 @@ function Section({ title, summary, defaultOpen = false, children }: {
   );
 }
 
+/** Select value for a Reporting Manager held only as free text (no Directory employee behind it). */
+const LEGACY_MANAGER = '__legacy_manager__';
+
 function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSplit, onRemove, onConfirmProbation, onExtendProbation, onMarkExited, onEditCredential, onIssueCredential, onApproveKyc, onRejectKyc, onSaveEdits }: {
   employee: HrEmployee; admin: boolean; founder: boolean; onClose: () => void; onEditCtcSplit: () => void;
   onRemove: () => void; onConfirmProbation: () => void; onExtendProbation: () => void; onMarkExited: () => void;
@@ -453,9 +478,10 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
 }) {
   const { state } = useHrTool();
   const canSeeCTC = admin || state.currentUser?.id === employee.id;
+  const sameNameLogins = state.employeeCredentials.filter((c) => c.name === employee.name);
   const credential = employee.credentialId
     ? state.employeeCredentials.find((c) => c.id === employee.credentialId)
-    : state.employeeCredentials.find((c) => c.name === employee.name);
+    : (sameNameLogins.length === 1 ? sameNameLogins[0] : undefined);
   const cs = employee.ctcSplitOverride || state.rules.ctcSplit;
 
   // Admins land straight in the editable form (clicking a row and clicking "View / Edit →"
@@ -466,22 +492,43 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
   const [editing, setEditing] = useState(admin);
   const [viewerDoc, setViewerDoc] = useState<{ name: string; url: string } | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    designation: employee.designation, team: employee.team, manager: employee.manager || '',
+  const [formError, setFormError] = useState('');
+  const formFromEmployee = () => ({
+    name: employee.name, phone: employee.phone || '',
+    // A manager recorded only as text (not a Directory employee) is kept as-is unless changed.
+    managerId: employee.managerId || (employee.manager ? LEGACY_MANAGER : ''),
+    designation: employee.designation, team: employee.team,
     doj: employee.doj, email: employee.email === '—' ? '' : employee.email, ctc: String(employee.ctc),
   });
+  const [form, setForm] = useState(formFromEmployee);
 
   function startEdit() {
-    setForm({
-      designation: employee.designation, team: employee.team, manager: employee.manager || '',
-      doj: employee.doj, email: employee.email === '—' ? '' : employee.email, ctc: String(employee.ctc),
-    });
+    setForm(formFromEmployee());
+    setFormError('');
     setEditing(true);
   }
   async function saveEdit() {
+    // Same normalisation the server applies (HrToolRepository.replaceEmployees), done here too so
+    // local state never holds a name the database would store differently.
+    const name = form.name.trim().replace(/\s+/g, ' ');
+    if (!name) { setFormError('Full name is required.'); return; }
+    // No uniqueness check: records are linked by employee id, so two employees may share a name.
+    const phone = form.phone.trim();
+    if (phone) {
+      const digits = phone.replace(/\D/g, '');
+      if (!/^[+\d\s()-]+$/.test(phone) || digits.length < 7 || digits.length > 15 || phone.length > 20) {
+        setFormError('Enter a valid contact number: 7 to 15 digits, optionally starting with + (e.g. +91 98765 43210).');
+        return;
+      }
+    }
+    setFormError('');
     setSaving(true);
     await onSaveEdits({
-      designation: form.designation, team: form.team, manager: form.manager.trim() || null,
+      name, phone: phone || null,
+      ...(form.managerId === LEGACY_MANAGER
+        ? { manager: employee.manager, managerId: null }
+        : { managerId: form.managerId || null, manager: state.employees.find((x) => x.id === form.managerId)?.name || null }),
+      designation: form.designation, team: form.team,
       doj: form.doj, email: form.email.trim() || '—', ctc: Number(form.ctc) || 0,
     });
     setSaving(false);
@@ -529,6 +576,19 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
       <Section title="Employee details" summary={`${employee.designation} · ${employee.team}${employee.manager ? ` · reports to ${employee.manager}` : ''}`} defaultOpen>
       {editing ? (
         <>
+          {formError && (
+            <div className="notice" style={{ background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)', marginBottom: 12 }}>{formError}</div>
+          )}
+          <div className="field-grid-2">
+            <div className="field">
+              <label className="field-label">Full name *</label>
+              <input type="text" value={form.name} maxLength={255} onChange={(ev) => setForm((f) => ({ ...f, name: ev.target.value }))} placeholder="e.g. Kunal Verma" />
+            </div>
+            <div className="field">
+              <label className="field-label">Contact number</label>
+              <input type="tel" inputMode="tel" value={form.phone} maxLength={20} onChange={(ev) => setForm((f) => ({ ...f, phone: ev.target.value }))} placeholder="e.g. +91 98765 43210" />
+            </div>
+          </div>
           <div className="field-grid-2">
             <div className="field">
               <label className="field-label">Designation</label>
@@ -546,7 +606,18 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
           <div className="field-grid-2">
             <div className="field">
               <label className="field-label">Reporting manager</label>
-              <input type="text" value={form.manager} onChange={(ev) => setForm((f) => ({ ...f, manager: ev.target.value }))} placeholder="e.g. Kunal Verma" />
+              {/* Picked from the Directory and stored by id, so approvals reach the right person even
+                  when two employees share a name — the Employee ID shown beside each tells them apart. */}
+              <select value={form.managerId} onChange={(ev) => setForm((f) => ({ ...f, managerId: ev.target.value }))}>
+                <option value="">— None —</option>
+                {form.managerId === LEGACY_MANAGER && <option value={LEGACY_MANAGER}>{employee.manager} (not in Directory)</option>}
+                {state.employees
+                  .filter((x) => x.id !== employee.id && (x.status !== 'exited' || x.id === employee.managerId))
+                  .map((x) => {
+                    const code = x.credentialId != null ? state.employeeCredentials.find((c) => c.id === x.credentialId)?.employeeCode : undefined;
+                    return <option key={x.id} value={x.id}>{x.name}{code ? ` · ${code}` : ''}</option>;
+                  })}
+              </select>
             </div>
             <div className="field">
               <label className="field-label">Date of joining</label>
@@ -571,6 +642,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
           <div className="field"><label className="field-label">Designation</label>{employee.designation}</div>
           <div className="field"><label className="field-label">Team</label>{employee.team}{employee.manager ? ` · reports to ${employee.manager}` : ''}</div>
           <div className="field"><label className="field-label">Email</label>{employee.email}</div>
+          <div className="field"><label className="field-label">Contact number</label>{employee.phone || <span className="meta">Not added</span>}</div>
           <div className="field"><label className="field-label">Date of Joining</label>{employee.doj}</div>
           <div className="field"><label className="field-label">Status</label><StatusBadge status={employee.status} />{employee.probationExtendedBy ? <span className="meta"> (extended by {employee.probationExtendedBy} days)</span> : null}</div>
           <div className="field"><label className="field-label">Annual CTC</label>{canSeeCTC ? '₹' + employee.ctc.toLocaleString('en-IN') : <span className="meta">Restricted — not visible to Reporting Managers.</span>}</div>
@@ -594,7 +666,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
           // Live-computed (join date + this year's accrual + approved usage), not the stored
           // employee.leaveBalance snapshot — that field is only ever written once at hire/
           // probation-confirm and never accrues or resets, so it goes stale immediately.
-          const myLeave = state.leaveRequests.filter((l) => l.emp === employee.name);
+          const myLeave = state.leaveRequests.filter((l) => l.employeeId === employee.id);
           const balances = computeLeaveBalances(employee.doj, state.rules.leaveTypes, myLeave, todayStr());
           return Object.entries(balances).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>);
         })()}
@@ -802,9 +874,10 @@ function CtcSplitModal({ employeeId, onClose }: { employeeId: string; onClose: (
  * Approving pushes that employee's documents_deadline forward server-side. */
 function DocumentUploadRequests({ currentUser }: { currentUser: string }) {
   interface DocReq {
-    id: number; emp: string; reason: string; status: 'pending' | 'approved' | 'rejected';
+    id: number; employeeId: string; emp: string; reason: string; status: 'pending' | 'approved' | 'rejected';
     requestedAt: string; decidedBy: string | null; remarks: string | null; grantedUntil: string | null;
   }
+  const { state } = useHrTool();
   const [rows, setRows] = useState<DocReq[]>([]);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [err, setErr] = useState('');
@@ -850,7 +923,7 @@ function DocumentUploadRequests({ currentUser }: { currentUser: string }) {
           <thead><tr><th>Employee</th><th>Reason</th><th>Requested</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.id}>
-              <td>{r.emp}</td>
+              <td>{employeeName(state.employees, r.employeeId, r.emp)}</td>
               <td>{r.reason}</td>
               <td className="meta">{r.requestedAt.slice(0, 10)}</td>
               <td>

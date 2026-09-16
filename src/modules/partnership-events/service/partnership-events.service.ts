@@ -1,5 +1,5 @@
 import { PartnershipEventsRepository } from '../repository/partnership-events.repository';
-import { PartnershipEventEntity, PartnershipEventFilters, PartnershipEventInput, LinkedEventSummary } from '../domain/types';
+import { ONLINE_LOCATION_LABEL, ONLINE_PARTNERSHIP_TYPE, SOCIAL_LINK_FIELDS, PartnershipEventEntity, PartnershipEventFilters, PartnershipEventInput, LinkedEventSummary } from '../domain/types';
 import { dedupKey, autoExcerpt, parseSpeakers } from '../utils/partnership-events.utils';
 import { EventsService, EventNotFoundError } from '@/modules/events/service/events.service';
 import { BannersService } from '@/modules/banners/service/banners.service';
@@ -32,6 +32,10 @@ const FIELD_LIMITS: Partial<Record<keyof PartnershipEventInput, number>> = {
   ticketPrice: 50,
   posterUrl: 500,
   bannerUrl: 500,
+  socialInstagram: 500,
+  socialLinkedin: 500,
+  socialX: 500,
+  socialFacebook: 500,
   partnershipStatus: 100,
   partnershipType: 50,
   listing: 50,
@@ -219,7 +223,11 @@ export class PartnershipEventsService {
     actor?: string
   ): Promise<SyncResult> {
     if (input.region === undefined && input.siteStatus === undefined) return { entity };
-    const region = input.region?.trim();
+    // Online (virtual) events store no country/city (see clearOnlineLocation in the repository),
+    // so the linked Event gets the same "Online" label the public mappers derive — a blank region
+    // would otherwise skip this sync and leave the linked Event on whatever country it had before.
+    const isOnline = entity.partnership_type?.trim() === ONLINE_PARTNERSHIP_TYPE;
+    const region = isOnline ? ONLINE_LOCATION_LABEL : input.region?.trim();
     if (!region) return { entity };
     // The public site groups events by city (e.g. "Mumbai"), not by the broader Region/Country
     // dropdown value (e.g. "India") — prefer the specific City field when one's set, falling
@@ -419,11 +427,14 @@ export class PartnershipEventsService {
       if (key !== null) keyToId.set(key, e.id);
     }
 
-    for (const row of rows) {
+    for (let row of rows) {
       if (!row.eventName || !row.eventName.trim()) {
         dropped++;
         continue;
       }
+      // Social links only ever come from the organiser's own /list-your-event submission.
+      row = { ...row };
+      for (const { key: socialKey } of SOCIAL_LINK_FIELDS) delete row[socialKey];
       const key = dedupKey(row);
       const matchId = key !== null ? keyToId.get(key) : undefined;
 

@@ -4,9 +4,7 @@ import { useEffect, useRef } from "react";
 import { SpotlightHero } from "./SpotlightHero";
 import { ReachStrip } from "./ReachStrip";
 import { SpotlightStory } from "./SpotlightStory";
-import { PlatformEcosystem } from "./PlatformEcosystem";
 import { ProcessTimeline } from "./ProcessTimeline";
-import { FeatureShowcase } from "./FeatureShowcase";
 import { WhyStartupNews } from "./WhyStartupNews";
 import { FormSection } from "./FormSection";
 import { useFeatureStartupForm } from "./useFeatureStartupForm";
@@ -17,12 +15,11 @@ import { useFeatureStartupForm } from "./useFeatureStartupForm";
  * Running order (each section owns its own motion language on purpose, so the page never settles
  * into one repeated fade-up):
  *
- *   hero              dark stage, staggered entrance + slow orbit float
+ *   hero              dark stage, staggered entrance, then the SVG connector graph over the
+ *                     dotted-globe video (folded in from the old "ecosystem" section, see below)
  *   reach strip       real published audience figures, count-up on the hero/light seam
  *   discover          word-by-word masked headline reveal
- *   ecosystem         dark again — SVG connectors drawing out to the real channels
  *   process           scroll-linked timeline rail
- *   feature           clip-path cover reveal + pointer tilt on a mock feature page
  *   credibility       alternating lateral rows against a sticky statement
  *   submit            the existing two-step wizard, unchanged, then the success state
  *
@@ -32,7 +29,13 @@ import { useFeatureStartupForm } from "./useFeatureStartupForm";
  * nothing here has to be renumbered when a section moves. With the hero buttons gone the page has
  * no in-page jump left at all: every section is reached by scrolling, which is why this component
  * no longer owns a `scrollTo` helper. The one remaining programmatic scroll is the success state
- * below, which is a response to submitting rather than a shortcut.)
+ * below, which is a response to submitting rather than a shortcut. The "feature" section — a mock
+ * "Imagine your startup, featured" preview card — was removed on request too; its component,
+ * FeatureShowcase.tsx, was deleted along with its .fys-showcase-* CSS since nothing else used it.
+ * Then the standalone "ecosystem" section — its connector graph and dotted-globe background video —
+ * was moved up into the hero on request, replacing the hero's own background clip; its component,
+ * PlatformEcosystem.tsx, was deleted since the graph now appears only once, in the hero. See
+ * SpotlightHero.tsx's doc comment for that move.)
  *
  * The form controller is owned here (not inside FormSection) so the page can scroll to the form
  * and so the wizard's state survives everything above it re-rendering. It is the same
@@ -57,9 +60,7 @@ export function FeatureStartupPage({ promotedCities }: { promotedCities?: Record
       <SpotlightHero />
       <ReachStrip />
       <SpotlightStory />
-      <PlatformEcosystem />
       <ProcessTimeline />
-      <FeatureShowcase />
       <WhyStartupNews />
       <FormSection ctrl={ctrl} promotedCities={promotedCities} />
     </div>

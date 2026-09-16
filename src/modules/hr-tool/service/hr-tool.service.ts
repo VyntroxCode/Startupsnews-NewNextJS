@@ -1,11 +1,12 @@
 import { HrToolRepository } from '../repository/hr-tool.repository';
 import {
-  HrBootstrap, HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
+  HrBootstrap, HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPunchGeo,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrPayrollEntry, HrRules, HrAuditLogEntry, HrCompanyProfile,
-  HrLeaveTypeConfig,
+  HrLeaveTypeConfig, HrEmployeeRef,
 } from '../domain/types';
 import { todayStr, nowTimeStr, nowMinutesSinceMidnight, nowMysqlDatetime, payrollPeriodRange, eachDateInRange, isSunday, addDaysUTC, daysUntil } from '../utils/time';
 import { latenessBucket, realDayHoursBucket, hhmmToMinutes, formatTime12h } from '../utils/lateness';
+import { evaluateGeofence, GeofenceCode, PunchLocationInput } from '../utils/geofence';
 import { computeLeaveBalances } from '../utils/leave-balance';
 import { HrKycDocuments, getKycSlotDef, mergeKycDocuments, validateKycField, computeKycProgress } from '../domain/kyc';
 
@@ -23,17 +24,27 @@ export interface PayrollPreview {
 }
 
 /** The real employee roster for payroll purposes — every active Employee ID issued via
- * Assigning IDs (hr_employee_credentials), which is what attendance is actually recorded
- * against. HrToolService stays decoupled from the hr-credentials module (see getBootstrap's
- * comment), so the caller (API route) builds this list and passes it in, rather than
- * HrToolService reaching into hr_employee_credentials itself. */
-export interface PayrollRosterEntry { name: string; doj: string; }
+ * Assigning IDs (hr_employee_credentials). Each one is matched to its Directory record by
+ * `credentialId` (never by name — two people may share one). HrToolService stays decoupled from
+ * the hr-credentials module (see getBootstrap's comment), so the caller (API route) builds this
+ * list and passes it in, rather than HrToolService reaching into hr_employee_credentials itself. */
+export interface PayrollRosterEntry { credentialId: number; name: string; doj: string; }
+
+/** Shown when an Employee ID login has no Directory record to attach records to. */
+export const NO_DIRECTORY_RECORD_ERROR =
+  'No Directory record is linked to this Employee ID yet. Ask HR to open HR Management → Directory, which links it automatically.';
+
+export type PunchErrorCode = 'ALREADY_PUNCHED' | GeofenceCode;
 
 export interface PunchResult {
   ok: boolean;
   error?: string;
+  /** Machine-readable reason on failure — GEOFENCE_* codes map to HTTP 403 in the routes, ALREADY_PUNCHED to 409. */
+  code?: PunchErrorCode;
   today?: { inTime: string | null; outTime: string | null; inMinutes: number | null; outMinutes: number | null };
   note?: string;
+  /** Present on success only when the geofence was actually enforced for this punch. */
+  geo?: { distanceM: number; allowedM: number };
 }
 
 const DEFAULT_RULES: HrRules = {
@@ -57,6 +68,10 @@ const DEFAULT_RULES: HrRules = {
   twoLevelApproval: { leave: true, attendance: true, expense: true },
   lateMarkPenalty: false,
   geoFencing: false,
+  // StartupNews.fyi office, Jhandewalan, New Delhi — same seed as add-hr-geofence.sql.
+  geoFenceLat: 28.644533,
+  geoFenceLng: 77.2003635,
+  geoFenceRadiusM: 50,
   selfieCheckin: false,
   pfEsi: false,
   optionalHolidayChoice: true,
@@ -78,6 +93,7 @@ export class HrToolService {
   // employeeCredentials (hr_employee_credentials) lives in a separate module and is merged
   // in by the bootstrap route, not fetched here — keeps this service decoupled from hr-credentials.
   async getBootstrap(): Promise<Omit<HrBootstrap, 'employeeCredentials'>> {
+    await this.repository.backfillMissingEmployeeIds();
     const [
       teams, designations, expenseCategories, requiredDocuments, holidays,
       employees, onboarding, attendance, attendanceOverrides, punchLog,
@@ -141,6 +157,9 @@ export class HrToolService {
     shortLeaveMaxHours: number; shortLeaveMonthlyQuota: number; halfDayThresholdHours: number;
     halfDayMinWorkedHours: number; shortLeaveMinWorkedHours: number; fullDayMinWorkedHours: number;
     leaveTypes: Record<string, HrLeaveTypeConfig>;
+    /** Geofence on/off + radius only — the office coordinates themselves aren't needed by any
+     * employee-facing surface (the browser sends its own position; the server does the math). */
+    geoFencing: boolean; geoFenceRadiusM: number;
   }> {
     const rules = await this.repository.findRules();
     const source = rules || DEFAULT_RULES;
@@ -152,24 +171,25 @@ export class HrToolService {
       halfDayMinWorkedHours: source.halfDayMinWorkedHours, shortLeaveMinWorkedHours: source.shortLeaveMinWorkedHours,
       fullDayMinWorkedHours: source.fullDayMinWorkedHours,
       leaveTypes: source.leaveTypes,
+      geoFencing: source.geoFencing, geoFenceRadiusM: source.geoFenceRadiusM,
     };
   }
   /** Live-computed remaining balance per enabled leave type for one employee — see
    * computeLeaveBalances for the accrual rule. Nothing is stored/cached; this is recomputed
    * from doj + this year's approved leave requests on every call, so it's always correct
    * without needing a cron job to keep a counter in sync. */
-  async getLeaveBalancesForEmployee(empName: string): Promise<Record<string, number>> {
+  async getLeaveBalancesForEmployee(employeeId: string): Promise<Record<string, number>> {
     const [employee, rules, requests] = await Promise.all([
-      this.repository.findEmployeeByName(empName),
+      this.repository.findEmployeeById(employeeId),
       this.repository.findRules(),
-      this.repository.findLeaveRequestsForEmployee(empName),
+      this.repository.findLeaveRequestsForEmployee(employeeId),
     ]);
     const source = rules || DEFAULT_RULES;
     return computeLeaveBalances(employee?.doj || '', source.leaveTypes, requests, todayStr());
   }
-  getRegularizationsForEmployee(emp: string) { return this.repository.findRegularizationsForEmployee(emp); }
-  countRegularizationsForEmployeeInRange(emp: string, fromDate: string, toDate: string) {
-    return this.repository.countRegularizationsForEmployeeInRange(emp, fromDate, toDate);
+  getRegularizationsForEmployee(employeeId: string) { return this.repository.findRegularizationsForEmployee(employeeId); }
+  countRegularizationsForEmployeeInRange(employeeId: string, fromDate: string, toDate: string) {
+    return this.repository.countRegularizationsForEmployeeInRange(employeeId, fromDate, toDate);
   }
 
   /** Start and end of the payroll cycle containing `today` (26 → 25 by default). The quota and
@@ -187,10 +207,10 @@ export class HrToolService {
    * cycle, with the quota alongside it. Single source of truth: the enforcement below and the
    * figure shown on the employee's attendance page both come from here, so the number they see
    * can't disagree with the number that blocks them. */
-  async getRegularizationUsage(emp: string): Promise<{ used: number; quota: number; from: string; to: string }> {
+  async getRegularizationUsage(employeeId: string): Promise<{ used: number; quota: number; from: string; to: string }> {
     const rules = (await this.repository.findRules()) || DEFAULT_RULES;
     const { from, to } = this.payrollCycleRangeFor(rules.salaryPeriodFrom, new Date());
-    const used = await this.repository.countRegularizationsForEmployeeInRange(emp, from, to);
+    const used = await this.repository.countRegularizationsForEmployeeInRange(employeeId, from, to);
     return { used, quota: rules.regularizationMonthlyQuota, from, to };
   }
 
@@ -214,14 +234,14 @@ export class HrToolService {
   }
 
   async submitEmployeeRegularization(
-    emp: string, date: string, reason: string, punchType: HrRegularization['punchType'], requestedTime: string
+    employee: HrEmployeeRef, date: string, reason: string, punchType: HrRegularization['punchType'], requestedTime: string
   ): Promise<{ ok: boolean; error?: string; created?: HrRegularization }> {
     const trimmedReason = (reason || '').trim();
     if (!trimmedReason) return { ok: false, error: 'A reason is required.' };
     const trimmedTime = (requestedTime || '').trim();
     if (!trimmedTime) return { ok: false, error: 'The time you are requesting is required.' };
 
-    const existing = await this.repository.findRegularizationByEmpDateAndType(emp, date, punchType);
+    const existing = await this.repository.findRegularizationByEmployeeDateAndType(employee.id, date, punchType);
     if (existing) return { ok: false, error: `A ${punchType === 'in' ? 'punch-in' : 'punch-out'} regularization request already exists for this date.` };
 
     const rules = (await this.repository.findRules()) || DEFAULT_RULES;
@@ -230,7 +250,7 @@ export class HrToolService {
       return { ok: false, error: 'You can only regularize a date that has already arrived.' };
     }
 
-    const [dayRecord] = await this.repository.findAttendanceForEmployeeInRange(emp, date, date);
+    const [dayRecord] = await this.repository.findAttendanceForEmployeeInRange(employee.id, date, date);
     if (punchType === 'in') {
       // A missing punch-in (bucket === null) is precisely the case this exists for — someone
       // forgot to punch in and only punched out, so there is no arrival time to bucket. Only an
@@ -259,7 +279,7 @@ export class HrToolService {
     // months, so counting per month gave an employee a fresh allowance on the 1st while still
     // inside the same cycle — a quota of 5 actually permitted 10 per cycle.
     const { from, to } = this.payrollCycleRangeFor(rules.salaryPeriodFrom, new Date());
-    const used = await this.repository.countRegularizationsForEmployeeInRange(emp, from, to);
+    const used = await this.repository.countRegularizationsForEmployeeInRange(employee.id, from, to);
     if (used >= rules.regularizationMonthlyQuota) {
       return { ok: false, error: `Regularization limit reached (${rules.regularizationMonthlyQuota} for the ${from} → ${to} payroll cycle).` };
     }
@@ -271,14 +291,14 @@ export class HrToolService {
     // Returned so callers that keep their own copy of the list (the HR tool's client state) can
     // insert exactly the row that was written, instead of rebuilding an approximation of it.
     const created: HrRegularization = {
-      id: 'R-' + Date.now() + '-' + punchType, emp, date, punchType, reason: trimmedReason, requestedTime: trimmedTime,
+      id: 'R-' + Date.now() + '-' + punchType, employeeId: employee.id, emp: employee.name, date, punchType, reason: trimmedReason, requestedTime: trimmedTime,
       stage, status: 'pending', rmRemarks: '', hrRemarks: '',
     };
     await this.repository.insertRegularization(created);
     return { ok: true, created };
   }
 
-  getLeaveRequestsForEmployee(emp: string) { return this.repository.findLeaveRequestsForEmployee(emp); }
+  getLeaveRequestsForEmployee(employeeId: string) { return this.repository.findLeaveRequestsForEmployee(employeeId); }
 
   /**
    * Employee-submitted leave request, used by the isolated Publisher/Event Admin and
@@ -292,7 +312,7 @@ export class HrToolService {
    * no separate wiring needed, it's the same hr_leave_requests table.
    */
   async submitEmployeeLeaveRequest(
-    emp: string, type: string, from: string, to: string, reason: string
+    employee: HrEmployeeRef, type: string, from: string, to: string, reason: string
   ): Promise<{ ok: boolean; error?: string }> {
     const trimmedType = (type || '').trim();
     if (!trimmedType) return { ok: false, error: 'A leave type is required.' };
@@ -304,7 +324,7 @@ export class HrToolService {
     const tomorrow = addDaysUTC(todayStr(), 1);
     if (from < tomorrow) return { ok: false, error: 'Leave can only be applied for future dates, starting tomorrow.' };
 
-    const overlapping = await this.repository.findOverlappingLeaveRequestForEmployee(emp, from, to);
+    const overlapping = await this.repository.findOverlappingLeaveRequestForEmployee(employee.id, from, to);
     if (overlapping) return { ok: false, error: 'You already have a leave request covering part of this date range.' };
 
     // Single approval step for every module now (see Rules → Approval chain): HR Head when the
@@ -312,7 +332,7 @@ export class HrToolService {
     // exactly the way attendance regularizations were stranded. No rules lookup needed for it.
     const stage = 'hr';
     await this.repository.insertLeaveRequest({
-      id: 'L-' + Date.now(), emp, type: trimmedType, from, to, remarks: trimmedReason,
+      id: 'L-' + Date.now(), employeeId: employee.id, emp: employee.name, type: trimmedType, from, to, remarks: trimmedReason,
       stage, status: 'pending', rmRemarks: '', hrRemarks: '',
     });
     return { ok: true };
@@ -383,7 +403,7 @@ export class HrToolService {
     const employee = await this.repository.findEmployeeByCredential(credentialId, name);
     if (!employee) return { linked: false };
     const closed = !!employee.documentsDeadline && todayStr() > employee.documentsDeadline;
-    const pending = closed ? await this.repository.findPendingDocumentUploadRequest(employee.name) : null;
+    const pending = closed ? await this.repository.findPendingDocumentUploadRequest(employee.id) : null;
     return { linked: true, deadline: employee.documentsDeadline || null, closed, pendingRequest: !!pending };
   }
 
@@ -395,9 +415,9 @@ export class HrToolService {
     if (!employee.documentsDeadline || todayStr() <= employee.documentsDeadline) {
       return { ok: false, error: 'Your upload window is still open — you can upload directly.' };
     }
-    const existing = await this.repository.findPendingDocumentUploadRequest(employee.name);
+    const existing = await this.repository.findPendingDocumentUploadRequest(employee.id);
     if (existing) return { ok: false, error: 'You already have a request awaiting HR review.' };
-    await this.repository.insertDocumentUploadRequest(employee.name, trimmed);
+    await this.repository.insertDocumentUploadRequest({ id: employee.id, name: employee.name }, trimmed);
     return { ok: true };
   }
 
@@ -415,7 +435,12 @@ export class HrToolService {
     let grantedUntil: string | null = null;
     if (decision === 'approved') {
       const employees = await this.repository.findEmployees();
-      const employee = employees.find((e) => e.name === req.emp);
+      // Linked by id. A request filed before employee_id existed resolves only through a name
+      // nobody else shares.
+      const sameName = employees.filter((e) => e.name === req.emp);
+      const employee = req.employeeId
+        ? employees.find((e) => e.id === req.employeeId)
+        : (sameName.length === 1 ? sameName[0] : undefined);
       if (!employee) return { ok: false, error: 'That employee no longer has a Directory record.' };
       const d = new Date();
       d.setDate(d.getDate() + HrToolService.DOCUMENT_REOPEN_DAYS);
@@ -500,56 +525,93 @@ export class HrToolService {
   recordAttendance(rec: HrAttendanceRecord) { return this.repository.upsertAttendance(rec); }
   recordAttendanceOverride(o: HrAttendanceOverride) { return this.repository.upsertAttendanceOverride(o); }
   recordPunch(p: HrPunch) { return this.repository.upsertPunch(p); }
-  getPunchByEmp(emp: string) { return this.repository.findPunchByEmp(emp); }
-  getAttendanceForEmployeeInRange(emp: string, fromDate: string, toDate: string) { return this.repository.findAttendanceForEmployeeInRange(emp, fromDate, toDate); }
+  getPunchByEmployee(employeeId: string) { return this.repository.findPunchByEmployeeId(employeeId); }
+  getAttendanceForEmployeeInRange(employeeId: string, fromDate: string, toDate: string) { return this.repository.findAttendanceForEmployeeInRange(employeeId, fromDate, toDate); }
+
+  /** Id + current name of one Directory record — for HR-tool routes that receive an employee id
+   * and must write a record carrying both. Null when the id doesn't exist. */
+  async findEmployeeRef(employeeId: string): Promise<HrEmployeeRef | null> {
+    const employee = employeeId ? await this.repository.findEmployeeById(employeeId) : null;
+    return employee ? { id: employee.id, name: employee.name } : null;
+  }
+
+  /** The Directory record behind an Employee ID login — what every self-service route (employee
+   * portal, Publisher/Event Admin) must key records on, instead of the login's name. Null when the
+   * login has no Directory record yet (see NO_DIRECTORY_RECORD_ERROR). */
+  async resolveEmployeeForCredential(credentialId: number, name: string): Promise<HrEmployeeRef | null> {
+    await this.repository.backfillMissingEmployeeIds();
+    const employee = await this.repository.findEmployeeByCredential(credentialId, name);
+    return employee ? { id: employee.id, name: employee.name } : null;
+  }
 
   /**
    * Once-per-calendar-day punch in/out, shared by every punch-capable role (Publisher/Event
    * Admin, plain employees). The single place that enforces "can't punch twice today" so
    * every caller gets identical, real server-side enforcement instead of separate copies.
    */
-  async punchEmployee(emp: string, type: 'in' | 'out'): Promise<PunchResult> {
+  async punchEmployee(employee: HrEmployeeRef, type: 'in' | 'out', location?: PunchLocationInput | null): Promise<PunchResult> {
     const today = todayStr();
-    const existing = await this.getPunchByEmp(emp);
+    const existing = await this.getPunchByEmployee(employee.id);
     const todaysPunch = existing?.date === today ? existing : null;
+
+    // Duplicate-punch check comes BEFORE the geofence so someone who already punched in today
+    // gets "Already punched in" rather than a confusing location error.
+    if (type === 'in' && todaysPunch?.inTime) {
+      return { ok: false, error: 'Already punched in today.', code: 'ALREADY_PUNCHED' };
+    }
+    if (type === 'out' && todaysPunch?.outTime) {
+      return { ok: false, error: 'Already punched out today.', code: 'ALREADY_PUNCHED' };
+    }
+
+    // Geofence (server-enforced; the client only supplies coordinates). When the rule is off the
+    // supplied location is ignored entirely and nothing is stored — no GPS collection without a
+    // policy that needs it.
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    let geo: HrPunchGeo | null = null;
+    let geoResult: PunchResult['geo'];
+    if (rules.geoFencing) {
+      const reading = location ? { lat: location.lat, lng: location.lng, accuracyM: location.accuracy } : null;
+      const verdict = evaluateGeofence(reading, { lat: rules.geoFenceLat, lng: rules.geoFenceLng, radiusM: rules.geoFenceRadiusM }, type);
+      if (!verdict.ok) return { ok: false, error: verdict.message, code: verdict.code };
+      geo = { lat: location!.lat, lng: location!.lng, accuracyM: location!.accuracy, distanceM: Math.round(verdict.distanceM * 10) / 10 };
+      geoResult = { distanceM: verdict.distanceM, allowedM: verdict.allowedM };
+    }
 
     let note: string | undefined;
     const time = nowTimeStr();
 
     if (type === 'in') {
-      if (todaysPunch?.inTime) {
-        return { ok: false, error: 'Already punched in today.' };
-      }
       await this.recordPunch({
-        emp, date: today, inTime: time, inMinutes: nowMinutesSinceMidnight(),
+        employeeId: employee.id, emp: employee.name, date: today, inTime: time, inMinutes: nowMinutesSinceMidnight(),
         outTime: todaysPunch?.outTime || null, outMinutes: todaysPunch?.outMinutes ?? null,
+        inGeo: geo, outGeo: todaysPunch?.outGeo ?? null,
       });
     } else {
-      if (todaysPunch?.outTime) {
-        return { ok: false, error: 'Already punched out today.' };
-      }
       // Punch-out is always clickable, any time of day — no cutoff at shift end. Credited hours
       // still clamp to the shift window regardless of when it's actually clicked (see
       // creditedMinutes), so punching out at 22:00 is recorded as 22:00 but only ever pays out
       // up to shift end — the clock time isn't blocked, only what it's worth.
       if (!todaysPunch?.inTime) note = 'No punch-in recorded today.';
       await this.recordPunch({
-        emp, date: today, inTime: todaysPunch?.inTime || null,
+        employeeId: employee.id, emp: employee.name, date: today, inTime: todaysPunch?.inTime || null,
         inMinutes: todaysPunch?.inMinutes ?? null, outTime: time, outMinutes: nowMinutesSinceMidnight(),
+        inGeo: todaysPunch?.inGeo ?? null, outGeo: geo,
       });
     }
 
-    const updated = await this.getPunchByEmp(emp);
+    const updated = await this.getPunchByEmployee(employee.id);
     await this.recordAttendance({
-      emp, date: today, status: 'Present',
+      employeeId: employee.id, emp: employee.name, date: today, status: 'Present',
       inTime: updated?.inTime || '—', outTime: updated?.outTime || '—',
       inMinutes: updated?.inMinutes ?? null, outMinutes: updated?.outMinutes ?? null,
+      inGeo: updated?.inGeo ?? null, outGeo: updated?.outGeo ?? null,
     });
 
     return {
       ok: true,
       today: { inTime: updated?.inTime || null, outTime: updated?.outTime || null, inMinutes: updated?.inMinutes ?? null, outMinutes: updated?.outMinutes ?? null },
       note,
+      geo: geoResult,
     };
   }
   saveRegularizations(items: HrRegularization[]) { return this.repository.replaceRegularizations(items); }
@@ -586,15 +648,18 @@ export class HrToolService {
     await this.repository.updateRegularization(updated);
 
     if (updated.status === 'approved' && updated.stage === 'done' && updated.requestedTime) {
-      const [dayRecord] = await this.repository.findAttendanceForEmployeeInRange(updated.emp, updated.date, updated.date);
+      const [dayRecord] = await this.repository.findAttendanceForEmployeeInRange(updated.employeeId, updated.date, updated.date);
       const minutes = hhmmToMinutes(updated.requestedTime);
       const timeLabel = formatTime12h(minutes);
       await this.repository.upsertAttendance({
-        emp: updated.emp, date: updated.date, status: 'Present',
+        employeeId: updated.employeeId, emp: updated.emp, date: updated.date, status: 'Present',
         inTime: updated.punchType === 'in' ? timeLabel : (dayRecord?.inTime || '—'),
         inMinutes: updated.punchType === 'in' ? minutes : (dayRecord?.inMinutes ?? null),
         outTime: updated.punchType === 'out' ? timeLabel : (dayRecord?.outTime || '—'),
         outMinutes: updated.punchType === 'out' ? minutes : (dayRecord?.outMinutes ?? null),
+        // upsertAttendance overwrites every column — carry the day's GPS audit through so an
+        // approval doesn't silently NULL it. A regularized punch itself has no fix to record.
+        inGeo: dayRecord?.inGeo ?? null, outGeo: dayRecord?.outGeo ?? null,
       });
     }
 
@@ -635,11 +700,12 @@ export class HrToolService {
    * happened yet" handling (evalTo/futureDays below) only matters for the rare direct call with
    * a still-in-progress month (e.g. an ad-hoc mid-cycle check), not for the normal Run Payroll path.
    *
-   * `roster` (see PayrollRosterEntry) is the real Employee-ID roster, not the hr_employees
-   * table — attendance is recorded against Employee-ID names, so anyone with an Employee ID
-   * but no CTC set yet still needs to show up here (with monthlyGross 0, prompting the admin
-   * to set their salary) rather than being silently invisible, which was the original bug.
-   * hr_employees is used only to enrich a matching name with its real ctc/doj/status when set.
+   * `roster` (see PayrollRosterEntry) is the real Employee-ID roster. Each login is matched to its
+   * Directory record by credential id, and from there EVERYTHING — CTC, joining date, attendance,
+   * approved leave, short-leave carry-over and TDS — is looked up by that record's employee id,
+   * never by name, so two employees with the same name are paid independently. A login with no
+   * Directory record, or a record with no CTC, is listed in missingCtcEmployees (which blocks Run
+   * Payroll) rather than being silently invisible.
    */
   async computePayrollForMonth(monthKey: string, roster: PayrollRosterEntry[], tdsByEmp?: Record<string, number>): Promise<PayrollPreview> {
     const rules = (await this.repository.findRules()) || DEFAULT_RULES;
@@ -650,6 +716,7 @@ export class HrToolService {
     // Don't judge days that haven't happened yet when this runs early.
     const evalTo = to < today ? to : today;
 
+    await this.repository.backfillMissingEmployeeIds();
     const [employees, holidays] = await Promise.all([
       this.repository.findEmployees(),
       this.repository.findHolidays(),
@@ -662,13 +729,34 @@ export class HrToolService {
     const [py, pm] = monthKey.split('-').map(Number);
     const prevKey = pm === 1 ? `${py - 1}-12` : `${py}-${String(pm - 1).padStart(2, '0')}`;
     const prevEntries = await this.repository.findPayrollEntriesForMonth(prevKey);
-    const carryInByEmp = new Map(prevEntries.map((e) => [e.emp, Number(e.shortLeaveCarryOut) || 0]));
-    const employeeByName = new Map(employees.map((e) => [e.name, e]));
+    const carryInByEmp = new Map(prevEntries.map((e) => [e.employeeId, Number(e.shortLeaveCarryOut) || 0]));
+    const employeeByCredential = new Map(
+      employees.filter((e) => e.credentialId != null).map((e) => [Number(e.credentialId), e])
+    );
+    const employeesByName = new Map<string, HrEmployee[]>();
+    for (const e of employees) employeesByName.set(e.name, [...(employeesByName.get(e.name) || []), e]);
+    // Linked record first. An older record with no credential link is used only when its name
+    // belongs to nobody else — a shared name is never guessed at.
+    const employeeForRoster = (r: PayrollRosterEntry): HrEmployee | undefined => {
+      const linked = employeeByCredential.get(r.credentialId);
+      if (linked) return linked;
+      const sameName = employeesByName.get(r.name) || [];
+      return sameName.length === 1 && sameName[0].credentialId == null ? sameName[0] : undefined;
+    };
 
     const entries: HrPayrollEntry[] = [];
     const missingCtcEmployees: string[] = [];
+    const paidEmployeeIds = new Set<string>();
     for (const r of roster) {
-      const emp = employeeByName.get(r.name);
+      const emp = employeeForRoster(r);
+      if (!emp) {
+        // A login with no Directory record has nothing to pay against; flag it (blocks Run Payroll)
+        // unless it only starts after this cycle.
+        if (!(r.doj && r.doj > to)) missingCtcEmployees.push(r.name);
+        continue;
+      }
+      if (paidEmployeeIds.has(emp.id)) continue;
+      paidEmployeeIds.add(emp.id);
       // Exited employees were skipped outright, so anyone who worked part of a cycle and then
       // left got NO payslip at all — the mirror of the mid-cycle joiner bug. They are now
       // skipped only if they have no attendance in this cycle, i.e. someone who left long ago
@@ -683,11 +771,11 @@ export class HrToolService {
       const clippedFrom = doj && doj > from ? doj : from;
       if (clippedFrom > to) continue;
 
-      if (ctc <= 0) missingCtcEmployees.push(r.name);
+      if (ctc <= 0) missingCtcEmployees.push(emp.name);
 
       const [attendance, leaves] = await Promise.all([
-        this.repository.findAttendanceForEmployeeInRange(r.name, clippedFrom, to),
-        this.repository.findLeaveRequestsForEmployeeInRange(r.name, clippedFrom, to),
+        this.repository.findAttendanceForEmployeeInRange(emp.id, clippedFrom, to),
+        this.repository.findLeaveRequestsForEmployeeInRange(emp.id, clippedFrom, to),
       ]);
       if (isExited && attendance.length === 0) continue;
       const attendanceByDate = new Map(attendance.map((a) => [a.date, a]));
@@ -769,7 +857,7 @@ export class HrToolService {
       // three in total is simply forgiven and resets to zero, so 2 one cycle and 2 the next cost
       // nothing, while 4 costs half a day and carries 1 forward. 6 → a full day (two halves),
       // 7 → a full day plus 1 carried.
-      const carryInShortLeave = carryInByEmp.get(r.name) || 0;
+      const carryInShortLeave = carryInByEmp.get(emp.id) || 0;
       const totalShortLeave = carryInShortLeave + shortLeaveDays;
       const shortLeaveHalfDays = totalShortLeave >= 3 ? Math.floor(totalShortLeave / 3) : 0;
       const shortLeaveCarryOut = totalShortLeave >= 3 ? totalShortLeave % 3 : 0;
@@ -810,14 +898,14 @@ export class HrToolService {
       const monthlyGross = Math.round(payingDays * monthlySalary);
       // TDS is entered by the admin per employee per run (see runPayroll's tdsByEmp) — not a
       // formula. Defaults to 0 (or whatever was frozen last time this month was run).
-      const tds = tdsByEmp?.[r.name] ?? 0;
+      const tds = tdsByEmp?.[emp.id] ?? 0;
       // Floored at zero: TDS is typed in by hand, and a mistyped figure larger than the gross
       // would otherwise produce a negative payslip.
       const netPay = Math.max(0, Math.round(monthlyGross - tds));
       entries.push({
         // leaveDays reports PAID leave, so the columns still reconcile:
         // employed = present + weekOff + paidLeave + LOP. Unpaid leave is inside lopDays.
-        emp: r.name, totalDays: totalDaysInCycle, weekOffDays, workingDays, presentDays, leaveDays: paidLeaveDays, absentDays,
+        employeeId: emp.id, emp: emp.name, totalDays: totalDaysInCycle, weekOffDays, workingDays, presentDays, leaveDays: paidLeaveDays, absentDays,
         shortLeaveDays, shortLeaveCarryOut, halfDayDays, lopDays, monthlyGross, tds, netPay,
       });
     }
@@ -850,6 +938,7 @@ export class HrToolService {
   /** The frozen entries if this month has already been run, otherwise a live preview —
    * same response shape either way so the frontend doesn't need two code paths. */
   async getPayrollForMonth(monthKey: string, roster: PayrollRosterEntry[]): Promise<PayrollPreview & { alreadyRun: boolean }> {
+    await this.repository.backfillMissingEmployeeIds();
     const runs = await this.repository.findPayrollRuns();
     const run = runs.find((r) => r.month === monthKey);
     if (run?.status === 'run') {

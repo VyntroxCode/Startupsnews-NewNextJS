@@ -90,7 +90,7 @@ export default function AdminLoginPage() {
                 className="admin-login-logo"
               />
           </div>
-            <h2 className="admin-login-title">Admin Portal</h2>
+            <h1 className="admin-login-title">Admin Portal</h1>
             <p className="admin-login-subtitle">
               Sign in to access the admin dashboard
           </p>

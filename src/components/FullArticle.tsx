@@ -14,14 +14,22 @@ interface FullArticleProps {
     next?: Post | null;
 }
 
-/** Format YYYY-MM-DD to "Month DD, YYYY" like the demo */
-function formatDate(dateStr: string): string {
-    try {
-        const d = new Date(dateStr + "T12:00:00");
-        return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-    } catch {
-        return dateStr;
-    }
+const DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+});
+
+/** Format an ISO timestamp as "Sep 10 2026 - 4:01 pm" in IST (fixed zone so server and client render the same) */
+function formatDateTime(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const p = Object.fromEntries(DATE_TIME_FORMAT.formatToParts(d).map((part) => [part.type, part.value]));
+    return `${p.month} ${p.day} ${p.year} - ${p.hour}:${p.minute} ${(p.dayPeriod || "").toLowerCase()}`;
 }
 
 function toAuthorSlug(name: string): string {
@@ -122,18 +130,20 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
         processedContent = addNoFollowToLinks(rawContent);
     }
     const postPath = `/${post.slug}`;
+    const publishedIso = post.publishedAt || (post.date + 'T00:00:00+05:30');
+    const updatedIso = post.updatedAt || publishedIso;
 
     return (
         <article className="mvp-article-wrap" itemScope itemType="http://schema.org/NewsArticle">
             <meta itemProp="mainEntityOfPage" itemType="https://schema.org/WebPage" itemID={postPath} />
             <meta itemProp="description" content={(post.metaDescription || post.excerpt || '').slice(0, 300)} />
-            <meta itemProp="dateModified" content={post.publishedAt || (post.date + 'T00:00:00+05:30')} />
+            <meta itemProp="dateModified" content={updatedIso} />
             <meta itemProp="inLanguage" content="en" />
             <meta itemProp="isAccessibleForFree" content="true" />
             <span itemProp="articleSection" style={{ display: 'none' }}>{post.category}</span>
             <span itemProp="publisher" itemScope itemType="https://schema.org/NewsMediaOrganization" style={{ display: 'none' }}>
                 <meta itemProp="name" content="StartupNews.fyi" />
-                <link itemProp="url" href="https://www.startupnews.fyi/" />
+                <link itemProp="url" href="https://startupnews.fyi/" />
             </span>
             <div id="mvp-article-cont" className="left relative">
                 <div className="mvp-main-box">
@@ -165,9 +175,9 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                 <span className="mvp-post-cat left">{post.category}</span>
                                             </Link>
                                         </h3>
-                                        <h2 className="mvp-post-title left entry-title post-heading-max-3-lines" itemProp="headline">
+                                        <h1 className="mvp-post-title left entry-title post-heading-max-3-lines" itemProp="headline">
                                             {post.title}
-                                        </h2>
+                                        </h1>
                                         <div className="mvp-author-info-wrap left relative" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
                                             {(post.sourceName || post.sourceAuthor || post.sourceLogoUrl) ? (
@@ -193,11 +203,10 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                     <div className="mvp-author-info-text left relative">
                                                         <div className="mvp-author-info-date left relative">
                                                             <p>Published on</p>{" "}
-                                                            <time className="mvp-post-date updated" itemProp="datePublished" dateTime={post.publishedAt || (post.date + 'T00:00:00+05:30')}>
-                                                                {formatDate(post.date)}
+                                                            <time className="mvp-post-date published" itemProp="datePublished" dateTime={publishedIso}>
+                                                                {formatDateTime(publishedIso)}
                                                             </time>
-                                                        </div>
-                                                        <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
+                                                        </div>                                                        <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
                                                             {post.sourceName && (
                                                                 <span className="mvp-source-prefix" style={{ display: "block", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#666", marginBottom: "2px" }}>
                                                                     Via {post.sourceName}
@@ -235,11 +244,10 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                     <div className="mvp-author-info-text left relative">
                                                         <div className="mvp-author-info-date left relative">
                                                             <p>Published on</p>{" "}
-                                                            <time className="mvp-post-date updated" itemProp="datePublished" dateTime={post.publishedAt || (post.date + 'T00:00:00+05:30')}>
-                                                                {formatDate(post.date)}
+                                                            <time className="mvp-post-date published" itemProp="datePublished" dateTime={publishedIso}>
+                                                                {formatDateTime(publishedIso)}
                                                             </time>
-                                                        </div>
-                                                        <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
+                                                        </div>                                                        <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
                                                             <p>By</p>{" "}
                                                             {isLinkedAuthor(post.authorName) ? (
                                                                 <a href={getAuthorHref(post)} className="author-name vcard fn author" itemProp="url">

@@ -80,6 +80,13 @@ export function partnershipEntityToStartupEvent(entity: PartnershipEventEntity):
     venueAddress: entity.venue_address || null,
     googleLocationLink: entity.google_location_link || null,
     speakers,
+    startDateRaw: startDate.slice(0, 10),
+    endDateRaw: entity.event_end_date ? entity.event_end_date.slice(0, 10) : null,
+    city: entity.city?.trim() || undefined,
+    organiser: entity.organiser?.trim() || undefined,
+    ticketPrice: entity.ticket_price?.trim() || undefined,
+    ticketCurrency: entity.ticket_currency?.trim() || undefined,
+    isOnline,
   };
 }
 

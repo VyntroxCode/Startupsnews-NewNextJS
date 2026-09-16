@@ -1,39 +1,63 @@
-/** The clip that sits behind the hero. It is a BACKGROUND, not content: muted, looping, dimmed
- * and washed with a scrim so the white type over it keeps its contrast, and marked `aria-hidden`
- * because the hero says everything the footage does.
+/** ============================================================================
+ *  VIDEO — SINGLE SOURCE OF TRUTH
+ *  ============================================================================
  *
- * This replaced the Unsplash still that was here first, on request — the same move
- * /feature-your-startup made (see `feature-startup/backgrounds.ts`), and it reuses that page's
- * `BackgroundVideo` component so both behave identically: playback is tied to visibility, and
- * under reduced motion the clip never starts and holds on its poster frame.
+ *  Every clip on /sponsor-event is declared here and nowhere else. They are
+ *  BACKGROUNDS, not content: muted, looping, `aria-hidden`, and always sitting
+ *  under a scrim so the type over them keeps its contrast.
  *
- * TO REPLACE THE FOOTAGE: drop an .mp4 at `public/images/gif/` and point `src` below at it.
- * Nothing else on the page needs editing. Local files are served straight from the origin —
- * no next/image, which does not process video.
+ *  Source: Mixkit (mixkit.co), free licence — usable in commercial projects
+ *  without attribution. The 720p files were downloaded into
+ *  `public/images/sponsor-event/video/` so the page never depends on a third-party
+ *  host at runtime. Each `poster` is Mixkit's own thumbnail frame of that same
+ *  clip, saved to `public/images/sponsor-event/`; it shows before the first
+ *  frame decodes and STAYS UP if the clip fails to load (see SponsorVideo.tsx),
+ *  so no section is ever a black rectangle.
  *
- * `poster` is what shows before the first frame decodes, and what stays on screen if the file at
- * `src` is missing — so the hero is never a black rectangle while the clip is being swapped. It
- * comes from eventImages.ts like every other still on the page, rather than being a second URL
- * to keep in sync. */
-import { eventImages } from "./eventImages";
+ *  Every clip was LOOKED AT (a thumbnail contact sheet, 2026-09-15) before being
+ *  wired in — the `subject` lines describe what is actually in the footage. It
+ *  is stock footage: nothing on the page captions it as a StartupNews.fyi event.
+ *
+ *  TO REPLACE A CLIP: drop the new .mp4 + a poster .jpg under the two folders
+ *  above using the same file names, or point `src` / `poster` at new paths.
+ *  Nothing else on the page needs editing. Note that `next start` only serves
+ *  files that were in `public/` at build time.
+ */
 
-export interface SponsorBackgroundVideo {
+export interface SponsorVideoSpec {
   src: string;
+  poster: string;
   /** What is in the footage — for the next person choosing a replacement, not for the DOM. */
   subject: string;
-  /** How much of the clip's own brightness survives the scrim over it. */
-  opacity: number;
-  poster?: string;
 }
 
-export const sponsorEventBackgrounds = {
-  /** 01 — Hero. Awaiting the event clip that will be uploaded to the path below; until that file
-   * exists the poster still carries the section, which is the point of having one. Keep it wide
-   * and dark enough in its own right that white type sits comfortably on top. */
+/** Clips live under `/images/` on purpose, not `/videos/`: src/proxy.ts's matcher skips `images`
+ * but not `videos`, so a `/videos/...` file would run the post-robots lookup (an internal API call)
+ * on every byte-range request the browser makes while streaming. */
+const clip = (name: string) => ({
+  src: `/images/sponsor-event/video/${name}.mp4`,
+  poster: `/images/sponsor-event/${name}-poster.jpg`,
+});
+
+export const sponsorVideos = {
+  /** Hero background. */
   hero: {
-    src: "/images/gif/sponsor-event-hero.mp4",
-    subject: "Event footage — a crowd at a startup or technology event",
-    opacity: 0.9,
-    poster: eventImages.hero.src,
+    ...clip("hero-crowd"),
+    subject: "A packed arena crowd with hands raised in front of large stage screens (Mixkit 25366)",
   },
-} as const satisfies Record<string, SponsorBackgroundVideo>;
+  /** The rounded "inside the room" video card under the hero. */
+  reel: {
+    ...clip("reel-stage"),
+    subject: "A speaker holding notes on a dark stage under bright stage lights (Mixkit 13222)",
+  },
+  /** Background of the Community panel in "Why partner". */
+  community: {
+    ...clip("community-toast"),
+    subject: "A group raising glasses together at an evening gathering (Mixkit 48636)",
+  },
+  /** Background of the big "Bring the right people into the room" break. */
+  room: {
+    ...clip("break-speaker"),
+    subject: "A speaker on stage, arms open to the audience, through stage haze (Mixkit 36901)",
+  },
+} satisfies Record<string, SponsorVideoSpec>;

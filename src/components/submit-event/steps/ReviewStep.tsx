@@ -3,6 +3,7 @@
 import { SOCIAL_PLATFORMS } from "../constants";
 import { formatConfirmDate } from "../format";
 import { Button } from "@/components/ui/Button";
+import { normalizeSocialLink, SOCIAL_LINK_FIELDS } from "@/modules/partnership-events/domain/types";
 import type { SubmitEventFormController } from "../useSubmitEventForm";
 import { isOnlineEvent, resolveEndDateTime, resolvedCity, resolvedCountry, resolvedPhoneCode, countWords } from "../validation";
 
@@ -74,7 +75,7 @@ export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
 
       <div className="review-group">
         <div className="review-group-head">
-          <span className="review-group-title">Images</span>
+          <span className="review-group-title">Images &amp; Social Links</span>
           <button type="button" className="review-edit-btn" onClick={() => ctrl.goToStep(4)}>
             Edit
           </button>
@@ -87,6 +88,12 @@ export function ReviewStep({ ctrl }: { ctrl: SubmitEventFormController }) {
               {socialCount === 1 ? "" : "s"} added
             </span>
           </div>
+          {SOCIAL_LINK_FIELDS.map(({ key, label }) => (
+            <div className="row" key={key}>
+              <span className="k">{label}</span>
+              <span className="v">{normalizeSocialLink(data[key]) || "—"}</span>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -834,7 +834,8 @@ export class PostsRepository {
    * Increment view count
    */
   async incrementViewCount(id: number): Promise<void> {
-    await query('UPDATE posts SET view_count = view_count + 1 WHERE id = ?', [id]);
+    // updated_at = updated_at stops ON UPDATE CURRENT_TIMESTAMP, so a view doesn't count as an edit (dateModified)
+    await query('UPDATE posts SET view_count = view_count + 1, updated_at = updated_at WHERE id = ?', [id]);
   }
 }
 

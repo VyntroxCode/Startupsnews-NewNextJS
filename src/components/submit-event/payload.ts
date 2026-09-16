@@ -1,6 +1,7 @@
 import { SOCIAL_PLATFORMS } from "./constants";
 import { resolveEndDateTime, resolvedCity, resolvedCountry, resolvedPhoneCode } from "./validation";
 import type { SubmitEventFormData } from "./types";
+import { normalizeSocialLink } from "@/modules/partnership-events/domain/types";
 
 export function buildSubmitPayload(data: SubmitEventFormData) {
   const { endDate, endTime } = resolveEndDateTime(data);
@@ -32,5 +33,9 @@ export function buildSubmitPayload(data: SubmitEventFormData) {
     image1: data.image1,
     image3: data.image3,
     socialImages,
+    socialInstagram: normalizeSocialLink(data.socialInstagram),
+    socialLinkedin: normalizeSocialLink(data.socialLinkedin),
+    socialX: normalizeSocialLink(data.socialX),
+    socialFacebook: normalizeSocialLink(data.socialFacebook),
   };
 }

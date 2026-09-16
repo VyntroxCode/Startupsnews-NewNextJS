@@ -9,6 +9,7 @@ import { UsersRepository } from '@/modules/users/repository/users.repository';
 import { PanelAdminsRepository } from '@/modules/panel-admins/repository/panel-admins.repository';
 import { PartnershipEventsRepository } from '@/modules/partnership-events/repository/partnership-events.repository';
 import { entityToPartnershipEvent, countActivePartnershipEvents } from '@/modules/partnership-events/utils/partnership-events.utils';
+import { ItTicketsRepository } from '@/modules/it-tickets/repository/it-tickets.repository';
 
 export const maxDuration = 30;
 
@@ -20,6 +21,7 @@ const eventRegionsRepository = new EventRegionsRepository();
 const usersRepository = new UsersRepository();
 const panelAdminsRepository = new PanelAdminsRepository();
 const partnershipEventsRepository = new PartnershipEventsRepository();
+const itTicketsRepository = new ItTicketsRepository();
 
 // Byline-author records created via /admin/authors use synthetic emails on this
 // domain and aren't real admin-panel logins — exclude them from the "Users" count.
@@ -42,6 +44,7 @@ export async function GET(request: NextRequest) {
       allUsers,
       panelAdmins,
       partnershipEventEntities,
+      itTicketsOpen,
     ] = await Promise.all([
       postsRepository.count({}),
       eventsRepository.count({}),
@@ -50,6 +53,7 @@ export async function GET(request: NextRequest) {
       usersRepository.findAll(),
       panelAdminsRepository.findAll(),
       partnershipEventsRepository.findAll(),
+      itTicketsRepository.countOpen(),
     ]);
 
     const realUsers = allUsers.filter((u) => !u.email.toLowerCase().endsWith(SYNTHETIC_AUTHOR_EMAIL_SUFFIX));
@@ -78,6 +82,7 @@ export async function GET(request: NextRequest) {
         users: realUsers.length + panelAdmins.length,
         eventRegions: eventRegions.length,
         authors: authorsCount,
+        itTicketsOpen,
       },
     });
   } catch (error) {

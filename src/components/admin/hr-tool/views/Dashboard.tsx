@@ -1,7 +1,7 @@
 'use client';
 
 import { useHrTool } from '../HrToolContext';
-import { StatusBadge, ApprovalBadge, initials, rmOf, todayStr, monthKeyToLabel } from '../utils';
+import { StatusBadge, ApprovalBadge, employeeName, initials, rmOf, todayStr, monthKeyToLabel } from '../utils';
 import { computeLeaveBalances } from '@/modules/hr-tool/utils/leave-balance';
 import type { HrView } from '../types';
 
@@ -79,7 +79,7 @@ export default function Dashboard() {
         <div className="card pad">
           {state.tickets.map((t) => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-              <div><div>{t.emp}</div><div className="meta">{t.category}</div></div><StatusBadge status={t.status} />
+              <div><div>{employeeName(state.employees, t.employeeId, t.emp)}</div><div className="meta">{t.category}</div></div><StatusBadge status={t.status} />
             </div>
           ))}
           {state.tickets.length === 0 && <div className="empty">No tickets.</div>}
@@ -93,9 +93,9 @@ function ManagerDashboard() {
   const { state, setView } = useHrTool();
   const me = state.currentUser!;
   const team = state.employees.filter((e) => e.team === me.team && e.status !== 'exited');
-  const myPendingLeave = state.leaveRequests.filter((l) => l.stage === 'rm' && l.status === 'pending' && rmOf(state.employees, l.emp) === me.name);
-  const myPendingReg = state.regularizations.filter((r) => r.stage === 'rm' && r.status === 'pending' && rmOf(state.employees, r.emp) === me.name);
-  const myPendingExp = state.expenses.filter((x) => x.stage === 'rm' && x.status === 'pending' && rmOf(state.employees, x.emp) === me.name);
+  const myPendingLeave = state.leaveRequests.filter((l) => l.stage === 'rm' && l.status === 'pending' && rmOf(state.employees, l.employeeId) === me.id);
+  const myPendingReg = state.regularizations.filter((r) => r.stage === 'rm' && r.status === 'pending' && rmOf(state.employees, r.employeeId) === me.id);
+  const myPendingExp = state.expenses.filter((x) => x.stage === 'rm' && x.status === 'pending' && rmOf(state.employees, x.employeeId) === me.id);
   return (
     <>
       <PageHead title={`Team Dashboard — ${me.team}`} sub="Your team, and the chain above you. Sibling departments aren't visible from here." />
@@ -121,9 +121,9 @@ function ManagerDashboard() {
 function EmployeeDashboard() {
   const { state, setView } = useHrTool();
   const me = state.currentUser!;
-  const myLeave = state.leaveRequests.filter((l) => l.emp === me.name);
-  const myTix = state.tickets.filter((t) => t.emp === me.name);
-  const myAtt = state.attendance.find((a) => a.emp === me.name && a.date === todayStr());
+  const myLeave = state.leaveRequests.filter((l) => l.employeeId === me.id);
+  const myTix = state.tickets.filter((t) => t.employeeId === me.id);
+  const myAtt = state.attendance.find((a) => a.employeeId === me.id && a.date === todayStr());
   // Live-computed, same accrual rule as Directory.tsx's profile modal — not the stored,
   // never-accruing me.leaveBalance snapshot.
   const myLeaveBalance = computeLeaveBalances(me.doj, state.rules.leaveTypes, myLeave, todayStr());

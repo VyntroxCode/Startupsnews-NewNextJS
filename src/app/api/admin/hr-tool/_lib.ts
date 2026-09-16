@@ -18,5 +18,5 @@ export async function getPayrollRoster(): Promise<PayrollRosterEntry[]> {
   const credentials = await hrCredentialsService.getAll();
   return credentials
     .filter((c) => c.isActive)
-    .map((c) => ({ name: c.name, doj: new Date(c.createdAt).toISOString().slice(0, 10) }));
+    .map((c) => ({ credentialId: c.id, name: c.name, doj: new Date(c.createdAt).toISOString().slice(0, 10) }));
 }

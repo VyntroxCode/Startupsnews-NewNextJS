@@ -5,49 +5,48 @@ import { useReducedMotion } from "./hooks";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-/** The kicker + heading + optional lede that opens most sections.
+/** Kicker + heading + optional lede that opens most sections.
  *
- * It carried a running-order number ("01 … 12") and a short rule beside it; both were removed on
- * request along with the `index` prop, so nothing has to be renumbered when a section is added or
- * dropped — and four sections were dropped in the same pass. One component rather than repeated
- * markup so the heading rhythm stays consistent across the page; `tone` swaps the palette for the
- * sections that sit on a different ground. */
+ * No running-order numbers ("01 / 02 / 03") anywhere — the kicker word opens each section on its
+ * own, so nothing has to be renumbered when a section moves. The three lines arrive one after
+ * another, each lifting out of a light blur. `ground` swaps the palette for dark sections. */
 export function SectionHead({
   kicker,
   title,
   lede,
+  id,
   align = "center",
-  tone = "dark",
+  ground = "light",
 }: {
   kicker: string;
   title: React.ReactNode;
   lede?: React.ReactNode;
+  /** Put on the <h2> so the section's `aria-labelledby` can point at it. */
+  id?: string;
   align?: "center" | "left";
-  tone?: "dark" | "light";
+  ground?: "light" | "dark";
 }) {
   const reducedMotion = useReducedMotion();
   const rise = (delay: number) =>
     reducedMotion
       ? { initial: false as const }
       : {
-          initial: { opacity: 0, y: 26 },
-          whileInView: { opacity: 1, y: 0 },
+          initial: { opacity: 0, y: 26, filter: "blur(6px)" },
+          whileInView: { opacity: 1, y: 0, filter: "blur(0px)" },
           viewport: { once: true, amount: 0.5 },
-          // Slowed from 0.6s and spaced further apart on request — the kicker, heading and lede
-          // should arrive one after another slowly enough to be watched, not land together.
-          transition: { duration: 0.95, delay, ease: EASE },
+          transition: { duration: 0.85, delay, ease: EASE },
         };
 
   return (
-    <header className={`sp-head sp-head-${align} sp-head-${tone}`}>
+    <header className={`sp-head sp-head-${align} sp-head-${ground}`}>
       <motion.p className="sp-head-kicker" {...rise(0)}>
         {kicker}
       </motion.p>
-      <motion.h2 className="sp-head-title" {...rise(0.18)}>
+      <motion.h2 id={id} className="sp-head-title" {...rise(0.12)}>
         {title}
       </motion.h2>
       {lede ? (
-        <motion.p className="sp-head-lede" {...rise(0.36)}>
+        <motion.p className="sp-head-lede" {...rise(0.24)}>
           {lede}
         </motion.p>
       ) : null}
