@@ -19,6 +19,7 @@ import {
 } from "@/lib/data-adapter";
 import { getPostPath, normalizePostSlugForCategory } from "@/lib/post-utils";
 import { CategoryMorePosts } from "@/components/CategoryMorePosts";
+import { seoTitle } from "@/lib/seo-title";
 
 type CatchAllParams = {
   slug: string[];
@@ -299,7 +300,7 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     const title = `${name} News & Updates`;
 
     return {
-      title,
+      title: seoTitle(title),
       description,
       // Category listing pages are kept out of search — only the articles are indexed.
       robots: NOT_FOUND_META.robots,
@@ -326,7 +327,7 @@ export async function generateMetadata({ params }: { params: Promise<CatchAllPar
     const image = post.image && !post.image.includes("unsplash.com/photo-1504711434969") ? post.image : undefined;
     const postUrl = `${SITE_BASE}/${post.categorySlug}/${normalizePostSlugForCategory(post.categorySlug, post.slug)}`;
     return {
-      title,
+      title: seoTitle(title),
       description: description || undefined,
       robots: parseRobots(post.robots),
       alternates: { canonical: postUrl },

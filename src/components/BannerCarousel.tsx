@@ -65,7 +65,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
               />
               <div className="banner-carousel-overlay">
                 <div className="banner-carousel-content">
-                  <h2 className="banner-carousel-title">{currentBanner.title}</h2>
+                  <div className="banner-carousel-title">{currentBanner.title}</div>
                   {currentBanner.description && (
                     <p className="banner-carousel-description">{currentBanner.description}</p>
                   )}
@@ -87,7 +87,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
               />
               <div className="banner-carousel-overlay">
                 <div className="banner-carousel-content">
-                  <h2 className="banner-carousel-title">{currentBanner.title}</h2>
+                  <div className="banner-carousel-title">{currentBanner.title}</div>
                   {currentBanner.description && (
                     <p className="banner-carousel-description">{currentBanner.description}</p>
                   )}

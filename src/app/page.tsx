@@ -145,7 +145,7 @@ export default async function HomePage() {
       {/* Mobile-only: Featured Article + Latest News Section */}
       <section className="startupnews-mobile-latest-news">
         {/* Latest News Title - Below Navbar */}
-        <h2 className="startupnews-mobile-section-title">Latest News</h2>
+        <div className="startupnews-mobile-section-title">Latest News</div>
 
         {/* Featured Article at Top */}
         <div className="startupnews-mobile-featured">
@@ -274,9 +274,9 @@ export default async function HomePage() {
               <div className="mvp-feat1-main left relative">
                 {/* Left column: 1 big featured + 2 sub */}
                 <div className="mvp-feat1-left-wrap relative">
-                  <h3 className="mvp-feat1-pop-head">
+                  <div className="mvp-feat1-pop-head">
                     <span className="mvp-feat1-pop-head">Latest News</span>
-                  </h3>
+                  </div>
                   <Link href={getPostPath(main)} rel="bookmark">
                     <div className="mvp-feat1-feat-wrap left relative">
                       <div className="mvp-feat1-feat-img left relative" style={{ position: "relative" }}>

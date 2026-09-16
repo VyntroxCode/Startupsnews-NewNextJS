@@ -170,11 +170,11 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                 <div id="mvp-post-content" className="left relative">
                                     
                                     <header id="mvp-post-head" className="left relative">
-                                        <h3 className="mvp-post-cat left relative">
+                                        <div className="mvp-post-cat left relative">
                                             <Link className="mvp-post-cat-link" href={`/${post.categorySlug}`}>
                                                 <span className="mvp-post-cat left">{post.category}</span>
                                             </Link>
-                                        </h3>
+                                        </div>
                                         <h1 className="mvp-post-title left entry-title post-heading-max-3-lines" itemProp="headline">
                                             {post.title}
                                         </h1>

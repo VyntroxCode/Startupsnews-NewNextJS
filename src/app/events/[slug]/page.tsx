@@ -1,3 +1,4 @@
+import { seoTitle } from "@/lib/seo-title";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getEventsByRegion } from "@/lib/data-adapter";
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     }
 
     return {
-        title: `${region} Startup Events`,
+        title: seoTitle(`${region} Startup Events`),
         description: `Discover upcoming startup and technology events in ${region}. Stay updated with StartupNews.fyi.`,
         alternates: { canonical: `${SITE_URL}/events/${slug}` },
         openGraph: {

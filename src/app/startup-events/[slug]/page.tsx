@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getEventBySlug, getEventImage } from "@/lib/data-adapter";
 import { sanitizeContent, isValidContent } from "@/lib/content-utils";
 import { ArrowRightIcon } from "@/components/icons";
+import { seoTitle } from "@/lib/seo-title";
 import { buildEventJsonLd, serializeJsonLd } from "@/modules/events/utils/event-json-ld";
 
 const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
@@ -28,7 +29,7 @@ export async function generateMetadata({
   const image = getEventImage(event);
   const canonicalUrl = `${SITE_BASE}/startup-events/${slug}`;
   return {
-    title,
+    title: seoTitle(event.title, "Startup Events"),
     description: description || undefined,
     alternates: { canonical: canonicalUrl },
     openGraph: {

@@ -100,6 +100,12 @@ export const metadata: Metadata = {
   title: "Startup Events by Region",
   description: "Discover upcoming startup and technology events across Dubai, Delhi NCR, Bengaluru, Hyderabad, Mumbai, and more.",
   alternates: { canonical: `${SITE_URL}/events` },
+  // Always indexable, even when the site-wide ROBOTS_NOINDEX env gate (root layout) is on.
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 },
+  },
   openGraph: {
     title: "Startup Events by Region – StartupNews.fyi",
     description: "Discover upcoming startup and technology events across global regions.",

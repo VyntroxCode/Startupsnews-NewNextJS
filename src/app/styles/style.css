@@ -1860,7 +1860,8 @@ ul.mvp-fly-soc-list li a:hover {
 }
 
 h3.mvp-feat1-pop-head,
-h1.mvp-feat1-pop-head {
+h1.mvp-feat1-pop-head,
+div.mvp-feat1-pop-head {
 	float: left;
 	margin-bottom: 15px;
 	position: relative;
@@ -1869,7 +1870,8 @@ h1.mvp-feat1-pop-head {
 }
 
 h3.mvp-feat1-pop-head:before,
-h1.mvp-feat1-pop-head:before {
+h1.mvp-feat1-pop-head:before,
+div.mvp-feat1-pop-head:before {
 	content: '';
 	background: #555;
 	display: inline-block;
@@ -4068,7 +4070,8 @@ ul.mvp-alp-soc-list li.mvp-alp-soc-pin {
 	margin-top: 10px;
 }
 
-h3.mvp-post-cat {
+h3.mvp-post-cat,
+div.mvp-post-cat {
 	margin-bottom: 10px;
 	width: 100%;
 }
