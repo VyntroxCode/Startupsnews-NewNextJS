@@ -92,6 +92,8 @@ function MarqueeRow({ logos, direction }: { logos: PartnerLogo[]; direction: "le
     };
     frame = requestAnimationFrame(tick);
 
+    let capturedPointerId: number | null = null;
+
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       dragging = true;
@@ -99,8 +101,12 @@ function MarqueeRow({ logos, direction }: { logos: PartnerLogo[]; direction: "le
       velocity = 0; // grabbing mid-glide should stop it dead, like catching a spinning wheel
       lastX = e.clientX;
       lastMoveMs = e.timeStamp;
-      row.setPointerCapture(e.pointerId);
-      row.classList.add("is-dragging");
+      // Pointer capture is NOT taken here. Capturing on every press — even a motionless
+      // click — retargets the pointerup and the resulting click event to `row` itself
+      // instead of whatever was actually under the cursor, so a click on a linked logo's
+      // `<a>` never bubbles as a link click and the browser never navigates. Capture is
+      // deferred to onPointerMove, once movement past DRAG_SLOP_PX proves this is a real
+      // drag rather than a click.
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -108,6 +114,11 @@ function MarqueeRow({ logos, direction }: { logos: PartnerLogo[]; direction: "le
       const dx = e.clientX - lastX;
       if (dx === 0) return;
       pressMovement += Math.abs(dx);
+      if (pressMovement > DRAG_SLOP_PX && capturedPointerId === null) {
+        capturedPointerId = e.pointerId;
+        row.setPointerCapture(e.pointerId);
+        row.classList.add("is-dragging");
+      }
       offset = normalize(offset - dx); // content follows the cursor 1:1
       apply();
       const dt = Math.max((e.timeStamp - lastMoveMs) / 1000, 0.001);
@@ -121,7 +132,10 @@ function MarqueeRow({ logos, direction }: { logos: PartnerLogo[]; direction: "le
       if (!dragging) return;
       dragging = false;
       row.classList.remove("is-dragging");
-      if (row.hasPointerCapture(e.pointerId)) row.releasePointerCapture(e.pointerId);
+      if (capturedPointerId !== null && row.hasPointerCapture(capturedPointerId)) {
+        row.releasePointerCapture(capturedPointerId);
+      }
+      capturedPointerId = null;
       if (e.timeStamp - lastMoveMs > STALE_FLICK_MS) velocity = 0;
       velocity = Math.max(-MAX_FLING_PX_PER_SEC, Math.min(MAX_FLING_PX_PER_SEC, velocity));
     };

@@ -116,7 +116,7 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v34</span>
+    <span class="badge v">Version v35</span>
     <span class="badge">Released 2026-09-19</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
@@ -729,6 +729,7 @@ sequenceDiagram
       <tr><td><strong>v32</strong></td><td>2026-09-19</td><td>Medium</td><td>Expand North Star form: two new questions, "Referred By" (a list of eleven partner organisations) and "How Did You Find Us" (social platforms, or Others with a box to type in); both are saved, emailed to the office, and shown, filtered and editable in the Sales Tracker</td></tr>
       <tr><td><strong>v33</strong></td><td>2026-09-19</td><td>Medium</td><td>Every country field is now pick-from-list only: the "Other (add manually)" / "Others…" choice is gone from List Your Event, the Sales Tracker's lead form and the Partnership Tracker's Add/Edit Event form, so a country can no longer be typed in by hand</td></tr>
       <tr><td><strong>v34</strong></td><td>2026-09-19</td><td>Medium</td><td>Expand North Star page: the "Our partners" logo strip now shows the nine referral-partner logos supplied for this event, in place of the site's general partner-logo feed</td></tr>
+      <tr><td><strong>v35</strong></td><td>2026-09-19</td><td>Medium</td><td>Expand North Star page: corrected the wrong Angel Bay logo, added an Indicorn Angels logo, both now clickable through to the partners' own websites, and added Indicornangels to the "Referred By" form list</td></tr>
     </tbody>
   </table>
 
@@ -2410,6 +2411,31 @@ sequenceDiagram
         <tr><td>Why only nine, not eleven?</td><td>No logo image was supplied for TSFP Ventures or Startupreport.in. They are simply left out of the strip for now rather than shown with a placeholder; add their artwork and they can be included the same way.</td></tr>
         <tr><td>Does this change the Our Partners page?</td><td>No. That page is untouched and still shows the site's admin-managed partner list, exactly as before.</td></tr>
         <tr><td>Does the strip still scroll and respond to touch?</td><td>Yes &mdash; it is the same auto-scrolling, drag-to-slide row used everywhere else on the site; only which logos it shows has changed.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v35</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-19</span>
+    </div>
+    <p><strong>What changed.</strong> Two fixes to the "Our partners" logo strip on the
+    <strong>Expand North Star</strong> page, plus one addition to the closing form. The Angel Bay
+    logo shown until now was, by mistake, the logo of an unrelated company that also happens to be
+    called Angel Bay (a meat brand, "Angel Bay by ANZCO Foods") &mdash; it has been replaced with the
+    correct Angel Bay logo. A new Indicorn Angels logo has been added alongside it. Both of these two
+    logos now open the partner's own website in a new tab when clicked; every other logo in the strip
+    is unchanged and still does not link anywhere. "Indicornangels" has also been added as a choice in
+    the form's "Referred By" dropdown.</p>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What was wrong with the old Angel Bay logo?</td><td>It was the wrong company's logo &mdash; a food brand that happens to share the "Angel Bay" name, not the angel-investment partner this page refers to.</td></tr>
+        <tr><td>Where do the two logos link to now?</td><td>The Angel Bay logo opens angelbay.com; the Indicorn Angels logo opens indicornangels.com. Both open in a new browser tab.</td></tr>
+        <tr><td>Do the other logos in the strip link anywhere?</td><td>No, only these two do. The rest stay as plain, non-clickable logos unless asked for.</td></tr>
+        <tr><td>What changed on the form?</td><td>The "Referred By" dropdown on the closing enquiry form now includes "Indicornangels" as a selectable option, the same way every other partner is listed.</td></tr>
       </tbody>
     </table>
   </div>

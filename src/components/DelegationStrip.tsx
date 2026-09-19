@@ -23,7 +23,7 @@ function Group() {
           {/* One span around the whole line, so the item's flex gap sits only between the line and
               the sparkle — bare text, <sup> and text would each become a flex item instead. */}
           <span className="sn-ds-text">
-            12<sup>th</sup>&nbsp;Indian Startup Delegation to Dubai
+            12<sup>th</sup>&nbsp;Startup Delegation to Dubai
             <span className="sn-ds-dot">•</span>
             <span className="sn-ds-date">
               6<sup>th</sup>&nbsp;–&nbsp;11<sup>th</sup>&nbsp;Dec 2026
@@ -52,7 +52,7 @@ export function DelegationStrip() {
   return (
     <div className="sn-ds" role="region" aria-label="Delegation announcement">
       <p className="sn-ds-sr">
-        12th Indian Startup Delegation to Dubai, 6th – 11th December 2026.
+        12th Startup Delegation to Dubai, 6th – 11th December 2026.
       </p>
       <div className="sn-ds-viewport">
         <div className="sn-ds-track" aria-hidden="true">

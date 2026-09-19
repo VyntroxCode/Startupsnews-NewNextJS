@@ -11,8 +11,10 @@ import { useEffect, useState } from "react";
  * and follows its height.
  *
  * A heading element is not used on purpose — the hero owns the page's h1 and the delegation
- * programme section already has an h2 with these same words — so it is a paragraph, read once. On a
- * phone it breaks after "Startup" so each line can still run the full width at a readable size. */
+ * programme section already has an h2 with these same words — so it is a paragraph, read once. The
+ * line stays whole at every width, including phones (on request, 2026-09-19) — `.ens-delegation-line`
+ * is a bare span now, kept only so the CSS class exists if a future change needs to target the two
+ * halves separately. */
 export function EnsDelegationTitle() {
   const [scrolled, setScrolled] = useState(false);
 

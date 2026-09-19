@@ -17,15 +17,20 @@ import { ENS_REFERRAL_LOGOS } from "./media";
  * — the marquee only cares about `imageUrl`/`linkUrl`, and a colored-background logo sits fine
  * inside the shared tile's white card + `object-fit: contain`.
  *
- * Only 9 of the 11 REFERRED_BY_OPTIONS have a supplied logo — TSFP Ventures and Startupreport.in
+ * Only 10 of the 12 REFERRED_BY_OPTIONS have a supplied logo — TSFP Ventures and Startupreport.in
  * do not, and are left out of the strip rather than shown with a placeholder. Add their file to
- * `media.ts`'s `ENS_REFERRAL_LOGOS` and a row here once artwork exists. */
+ * `media.ts`'s `ENS_REFERRAL_LOGOS` and a row here once artwork exists.
+ *
+ * `angel-bay` and `indicorn-angels` link out to the partners' own sites (`linkUrl`, opened in a
+ * new tab by `PartnerLogoTile`) on request 2026-09-19; every other logo here still links nowhere,
+ * same as the plain-logo entries on /our-partners, until asked for. */
 interface ReferralPartnerLogo {
   /** Matches `ReferredByValue` in sources.ts and a key in `ENS_REFERRAL_LOGOS`, kept as a plain
    * string here so this file has no import-time dependency on that module — only a naming
    * convention, checked by eye. */
   slug: string;
   name: string;
+  linkUrl?: string;
 }
 
 const REFERRAL_PARTNER_LOGOS: ReferralPartnerLogo[] = [
@@ -35,20 +40,20 @@ const REFERRAL_PARTNER_LOGOS: ReferralPartnerLogo[] = [
   { slug: "xcel-ventures", name: "Xccel Ventures" },
   { slug: "confederation-of-indian-startups", name: "Confederation of Indian Startups" },
   { slug: "usp-house", name: "USP House" },
-  { slug: "angel-bay", name: "Angel Bay" },
+  { slug: "angel-bay", name: "Angel Bay", linkUrl: "https://angelbay.com/" },
   { slug: "meet-day-ai", name: "meetday.ai" },
   { slug: "hbf-direct", name: "HBF Direct" },
+  { slug: "indicorn-angels", name: "Indicorn Angels", linkUrl: "https://indicornangels.com/" },
 ];
 
 /** `PartnerLogosMarquee`-shaped list — `id`/`section`/`sortOrder` are only there to satisfy the
- * shared `PartnerLogo` type; the marquee itself only reads `imageUrl` and `linkUrl`. None of
- * these link anywhere yet (`linkUrl: null`), same as the plain-logo entries on /our-partners.
- * A slug with no matching `ENS_REFERRAL_LOGOS` entry is dropped rather than rendered with a
- * broken image, the same "no artwork, no tile" rule TSFP Ventures and Startupreport.in follow. */
+ * shared `PartnerLogo` type; the marquee itself only reads `imageUrl` and `linkUrl`. A slug with
+ * no matching `ENS_REFERRAL_LOGOS` entry is dropped rather than rendered with a broken image, the
+ * same "no artwork, no tile" rule TSFP Ventures and Startupreport.in follow. */
 export const REFERRAL_PARTNER_LOGOS_FOR_MARQUEE: PartnerLogo[] = REFERRAL_PARTNER_LOGOS.map((logo, index) => ({
   id: index + 1,
   section: "referral",
   imageUrl: ENS_REFERRAL_LOGOS[logo.slug] ?? "",
-  linkUrl: null,
+  linkUrl: logo.linkUrl ?? null,
   sortOrder: index + 1,
 })).filter((logo) => logo.imageUrl);

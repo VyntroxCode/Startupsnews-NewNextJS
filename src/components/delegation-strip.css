@@ -131,7 +131,7 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
 .sn-ds .sn-ds-text {
   display: inline-block;
   color: #fff;
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 800;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -147,7 +147,7 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
 .sn-ds-dot {
   margin: 0 7px;
   color: #C9F31D;
-  font-size: 13px;
+  font-size: 14.5px;
   line-height: 1;
 }
 
@@ -209,8 +209,8 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
     mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
   }
 
-  .sn-ds .sn-ds-text { font-size: 10.5px; letter-spacing: 0.04em; }
-  .sn-ds-dot { font-size: 10.5px; }
+  .sn-ds .sn-ds-text { font-size: 11.5px; letter-spacing: 0.04em; }
+  .sn-ds-dot { font-size: 11.5px; }
   .sn-ds-item { gap: 12px; padding-right: 12px; }
   .sn-ds-star { width: 9px; height: 9px; }
 
@@ -220,6 +220,17 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
     padding: 0 11px;
     font-size: 9.5px;
     letter-spacing: 0.05em;
+  }
+
+  /* The clearance rule above (line 65) loses the cascade to globals.css's
+     `#mvp-site-main .banner-carousel-container { margin-top: 72px }`, which carries the site ID
+     (1,1,0) this rule's (0,2,1) can't beat. So the banner never gets the strip's extra height added
+     back and sits tucked partly behind the fixed nav — on mobile the nav's own margins are too thin
+     to hide the overlap, so the banner reads as flush against the nav with no gap at all. Re-declare
+     with the ID, mobile-only: desktop's overlap is small enough to be visually absorbed by the
+     banner's own top padding and hasn't been reported as an issue. */
+  #mvp-site-main .sn-ds ~ .banner-carousel-container {
+    margin-top: calc(72px + var(--sn-ds-h)) !important;
   }
 }
 

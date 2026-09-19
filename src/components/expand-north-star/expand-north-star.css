@@ -450,7 +450,8 @@
    line is. Measured in Montserrat 900 with this letter-spacing, "Startup Delegation to Dubai" is
    17.62 font-sizes wide (re-measured 2026-09-18 after "Indian" was dropped; it was 21.79 before);
    18.0 leaves ~2% so it can never touch the gutters or wrap. Every other dimension here is in em, so
-   the ratio holds at any width. */
+   the ratio holds at any width — including phones (on request, 2026-09-19: a two-line phone layout,
+   breaking after "Startup", was tried first but the ask is a single line everywhere). */
 .ens-page .ens-delegation-title {
   margin: 0;
   font-family: var(--ens-strip-font, var(--ens-sans));
@@ -470,15 +471,6 @@
 .ens-delegation-band.is-scrolled .ens-delegation-title { font-size: calc(100cqi / 36); }
 
 .ens-delegation-accent { color: var(--ens-pink); }
-
-/* On a phone one line would be ~15px tall, so it breaks after "Startup" and each line fills the
-   width instead: "Delegation to Dubai", the longer line, measures 12.43 font-sizes (12.7 with the
-   same margin). */
-@media (max-width: 559px) {
-  .ens-delegation-line { display: block; }
-  .ens-page .ens-delegation-title { font-size: calc(100cqi / 12.7); }
-  .ens-delegation-band.is-scrolled .ens-delegation-title { font-size: calc(100cqi / 25.4); }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .ens-delegation-band,
@@ -1488,7 +1480,14 @@
 }
 
 .ens-fee-title { font-size: clamp(28px, 4.4vw, 56px); }
-@media (min-width: 760px) { .ens-fee-title.is-oneline { font-size: min(56px, calc(var(--ens-line-width) / var(--ratio) / 1.04)); } }
+/* Single line at every width, phones included (on request, 2026-09-19): unlike the other
+   `is-oneline` headings above, which fall back to wrapping under 760px because the ratio-based size
+   would be too small there, this line's ratio (16.4) keeps it comfortably readable (~17-20px) even at
+   a 320px viewport, so the nowrap sizing applies unconditionally instead of only above 760px. */
+.ens-fee-title.is-oneline {
+  white-space: nowrap;
+  font-size: min(56px, calc(var(--ens-line-width) / var(--ratio) / 1.04));
+}
 .ens-fee-accent { color: var(--ens-pink); }
 
 /* "onwards": lower-case (the heading is uppercase), 40% of the size, lighter weight, and sitting on

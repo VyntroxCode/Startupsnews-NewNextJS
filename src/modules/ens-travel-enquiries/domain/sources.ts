@@ -27,6 +27,7 @@ export const REFERRED_BY_OPTIONS = [
   { value: 'angel-bay', label: 'Angel Bay' },
   { value: 'meet-day-ai', label: 'meetday.ai' },
   { value: 'hbf-direct', label: 'HBF Direct' },
+  { value: 'indicorn-angels', label: 'Indicornangels' },
 ] as const satisfies readonly { value: string; label: string }[];
 
 export type ReferredByValue = (typeof REFERRED_BY_OPTIONS)[number]['value'];

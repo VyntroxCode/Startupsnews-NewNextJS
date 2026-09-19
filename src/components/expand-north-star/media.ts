@@ -93,7 +93,15 @@ export const DUBAI_KONNECT_LOGO = {
  * public/images/expand-north-star/logo_slider/ (2026-09-19), uploaded here the same way every
  * other image on this page is (S3 + CDN, one-year cache; see s3Image above), and the local folder
  * deleted once these keys were confirmed live. Keyed by the same slug as
- * `modules/ens-travel-enquiries/domain/sources.ts`'s `REFERRED_BY_OPTIONS`. */
+ * `modules/ens-travel-enquiries/domain/sources.ts`'s `REFERRED_BY_OPTIONS`.
+ *
+ * `angel-bay` was originally uploaded as `referral-angel-bay.jpg`, which turned out to be the
+ * "Angel Bay by ANZCO Foods" meat-brand logo — a different company entirely, not the angel
+ * investment network this page refers to. Corrected 2026-09-19 with a new key
+ * (`referral-angel-bay-v2.jpg`, not a re-upload to the old key, since the CDN caches each key for
+ * a year) built from the logo supplied directly into `public/images/expand-north-star/` that day;
+ * the old key is orphaned. `indicorn-angels` was added the same day from a second logo supplied
+ * into the same folder; both local files were deleted once their S3 copies were confirmed live. */
 export const ENS_REFERRAL_LOGOS: Record<string, string> = {
   "easy-knowledge-club": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-easy-knowledge-club.png"),
   "venture-wolf": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-venture-wolf.jpg"),
@@ -101,9 +109,10 @@ export const ENS_REFERRAL_LOGOS: Record<string, string> = {
   "xcel-ventures": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-xcel-ventures.jpg"),
   "confederation-of-indian-startups": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-confederation-of-indian-startups.webp"),
   "usp-house": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-usp-house.jpg"),
-  "angel-bay": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-angel-bay.jpg"),
+  "angel-bay": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-angel-bay-v2.jpg"),
   "meet-day-ai": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-meet-day-ai.jpg"),
   "hbf-direct": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-hbf-direct.jpg"),
+  "indicorn-angels": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-indicorn-angels.jpg"),
 };
 
 export const ensImages = {

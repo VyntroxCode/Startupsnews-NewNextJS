@@ -84,7 +84,15 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
       ]);
     }
   }
+  // "Cohort" and "Online" aren't countries — they're non-geographic top-level headings (see
+  // NON_GEOGRAPHIC_REGIONS) that end up as country keys of their own. They read last, after every
+  // real country, rather than falling wherever they'd alphabetize to.
+  const TRAILING_COUNTRIES = new Set([COHORT_PARTNERSHIP_TYPE, "Online"]);
   const orderedEntries = Object.entries(grouped).sort(([a], [b]) => {
+    const aTrailing = TRAILING_COUNTRIES.has(a);
+    const bTrailing = TRAILING_COUNTRIES.has(b);
+    if (aTrailing !== bTrailing) return aTrailing ? 1 : -1;
+    if (aTrailing && bTrailing) return a.localeCompare(b);
     if (a === "India") return -1;
     if (b === "India") return 1;
     return a.localeCompare(b);
