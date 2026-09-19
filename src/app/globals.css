@@ -13245,3 +13245,40 @@ body .banner-carousel-container,
    list reads "IN +91  India". Global on purpose: every page scope styles `.custom-select-list li`
    but none needs its own colour for this. */
 .custom-select-list li .cs-detail { margin-left: 8px; opacity: 0.62; font-weight: 400; font-size: 0.92em; }
+
+/* iOS Safari only: the header bar scrolled away with the page on iPhone. `#mvp-main-nav-bot` is
+   `position: fixed` with no `top`, nested inside the sticky (0px-tall) `#mvp-main-head-wrap`, under
+   `backface-visibility: hidden` layers, with `-webkit-overflow-scrolling: touch` on <html>. iOS
+   WebKit's async scrolling tree resolves that fixed bar against the sticky ancestor and moves it
+   with the content. Pin the bar explicitly to the viewport, drop the sticky wrapper (it contributes
+   no height anyway) and the legacy iOS scrolling/backface hints. `-webkit-touch-callout` is only
+   supported by iOS WebKit, so desktop and Android keep their current behaviour. */
+@supports (-webkit-touch-callout: none) {
+  html {
+    -webkit-overflow-scrolling: auto !important;
+  }
+
+  body #mvp-site-main {
+    -webkit-backface-visibility: visible !important;
+    backface-visibility: visible !important;
+  }
+
+  html body #mvp-main-head-wrap.startupnews-nav,
+  html body #mvp-main-head-wrap.startupnews-nav.left.relative {
+    position: relative !important;
+    top: auto !important;
+  }
+
+  html body #mvp-main-head-wrap.startupnews-nav #mvp-main-nav-bot {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 9999 !important;
+    -webkit-backface-visibility: visible !important;
+    backface-visibility: visible !important;
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+  }
+}

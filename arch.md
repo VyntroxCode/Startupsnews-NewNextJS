@@ -1009,10 +1009,32 @@ compose project in `/root/MorningPulse`, so `docker compose up -d` here will not
 > the `hr_rules` upsert, `updateEmployeeKyc` and long templates exceed 2 KB; attendance, punch,
 > regularization, leave, expense, ticket and payroll-entry rows don't. Reads were unaffected at 2 KB.
 
-**Migrations** are raw SQL in `scripts/migrations/` applied manually against the live DB **only
-after explicit user confirmation**. There is no `mysql` client binary on the app box — migrations
+**Migrations** are raw SQL in `scripts/migrations/` applied manually against the dev DB **only
+after explicit user confirmation**. There is no `mysql` client binary on the dev box — migrations
 are applied through a throwaway `tsx` script that loads `.env` via `@next/env` and uses the app's
 own `getDbConnection()` pool.
+
+### Production host (`/home/ubuntu/zox-nextjs`)
+
+| | Production |
+|---|---|
+| Topology | Cloudflare → ALB → single EC2 (`ip-172-31-39-243`) |
+| Web / cron | PM2 `zox-web` (**port 3000**) and `zox-cron`, from `ecosystem.config.js` |
+| DB creds | `.env.local` (`DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`); a `mysql` client **is** installed here |
+| Deploy | `bash scripts/deploy.sh` (gitignored, server-local) — 8 steps: pull → migrations → `rm -rf node_modules` → `npm install` → build into `.next-build` and atomic `mv` over `.next` → `pm2 reload` → chunk-reachability check → orphan cleanup |
+
+`deploy.sh` step 2 **does** apply migrations on production. Pending = every `scripts/migrations/*.sql`
+whose basename is not in the server-local manifest `scripts/migrations/.applied_migrations`. Each
+applied file is appended to the manifest immediately; after a successful build the `.sql` is deleted
+from disk and marked `git update-index --skip-worktree` so the deletion never reaches origin.
+
+Files in a batch are tried in **name order, with retry**: a file that fails is deferred and retried
+after the rest of the batch, looping until a full pass applies nothing new — only then does the
+deploy abort (before install/build/reload). This is because one commit can ship several files that
+depend on each other but don't sort that way: on 2026-09-19, `add-ens-lead-status.sql` (an `ALTER`)
+sorted before `add-ens-travel-enquiries-table.sql` (the `CREATE`) and the deploy aborted with 1146.
+Migrations must still be individually idempotent (`IF NOT EXISTS`, data deletes that are no-ops
+on re-run) so a retry is harmless.
 
 ---
 
@@ -1179,3 +1201,4 @@ Every change to this system appends a row here. `Impact` drives what else gets u
 | 97 | 2026-09-19 | minor | Category-page hero (`/category/[slug]`, incl. `/funding-tracker`) — headline truncates instead of overflowing | User (screenshot of `/funding-tracker`): long headlines should stop after ~3-4 lines and end in `…`. `globals.css`'s `.sector-hero-title` — the single shared style for every category-page hero's `<h2>` (`src/app/category/[slug]/page.tsx`) — gained `display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden`, with the existing ≤600px media-query override adding `-webkit-line-clamp: 3` (matches that breakpoint's smaller font/tighter layout). No component or markup change — `heroPost.title` was already rendered as plain text with no clamp. tsc + eslint clean. Not built. | — |
 | 98 | 2026-09-19 | minor | `/expand-north-star` — contact-number dial-code list was clipped to an unreadable sliver by `overflow: hidden` on `.phone-row` | User (screenshot): the code list showed as a squashed "BS +1242 Bahamas" row. Root cause: `.ens-journey .phone-row { overflow: hidden; }`, pre-existing, meant to hide the trigger's/number input's square corners inside the pill's rounded ones — but the code select's own dropdown list is a descendant of that row and must extend below its ~56px height to be seen, so the clip cut it to a sliver instead. Removed `overflow: hidden`; the trigger (`.custom-select-btn`, always first) and the number input (`input[type="tel"]`, always last) now carry their own matching `border-radius` corners in its place. Checked the other 7 phone-row scopes (5 public forms + 2 admin/internal) — all lay code-select and number out as separate boxes with a gap, not a clipped seamless pill; none share this risk. tsc clean. Not built. | — |
 | 99 | 2026-09-19 | minor | `/expand-north-star` Day 2-5 card photos → user-supplied GITEX/Expand North Star editorial URLs (rights unresolved) | User pasted 4 external URLs in order for Day 2-5, superseding row 95/96's photos on `dayEnsOne`/`dayEnsTwo`/`dayEnsThree`/`dayEnsFour` (Day 1 `dayLaunchpad` and Day 6 `dayDeparture` untouched). Downloaded, verified content by viewing, re-encoded (max 2000px width, JPEG q85, `sharp`) and uploaded through the same S3 + CDN pipeline as every other page image (new keys `delegation-day-{2..5}-*.jpg`, one-year cache, each confirmed 200) instead of hotlinking the source domains (which also aren't in `next.config.ts` `remotePatterns`). **Unresolved:** sources are third-party editorial/press photos with their own copyright (one filename indicates licensed Shutterstock stock via offshore-technology.com; Wired.com and newsonair.gov.in photos are outlet/photographer-owned) — re-hosting through our S3/CDN doesn't confer usage rights. `media.ts`'s delegation-day comment block records the sourcing and this open flag for whoever finalises the page. tsc clean. Not built. | — |
+| 100 | 2026-09-19 | minor | Production deploy — `scripts/deploy.sh` migration step retries deferred files; ENS migrations applied on prod; iOS navbar fix un-stashed | First production deploy of 25ec45d aborted in step 2: pending migrations ran in name order, so `add-ens-lead-status.sql` (`ALTER TABLE ens_travel_enquiries`) ran before `add-ens-travel-enquiries-table.sql` (`CREATE TABLE`) → MySQL 1146, deploy stopped before install/build (nothing applied or recorded). Fix: (1) applied the four ENS files by hand in dependency order — create table → referral-source → lead-status → remove-mirrored-sales-leads — recorded each in `.applied_migrations`, verified `ens_travel_enquiries` has all 16 columns, 0 mirrored `sales_leads` rows to delete; removed the `.sql` files locally + skip-worktree as the script would have. (2) `deploy.sh` step 2 now defers a failed migration and retries it after the rest of the batch, looping until a pass makes no progress; only then aborts listing what still fails (server-local file, not in origin). Re-ran `deploy.sh`: build OK, PM2 `zox-web`/`zox-cron` reloaded, 14/14 chunks reachable; `/expand-north-star` 200, `/api/expand-north-star/travel-enquiry` 405 on GET, `/api/admin/sales-tracker/ens-enquiries` 401 unauthenticated. Then `git stash pop` of the pre-pull local work conflicted in `globals.css` (upstream `.cs-detail` rule vs stashed iOS-Safari `@supports (-webkit-touch-callout: none)` navbar-pinning block — both kept, additive) and `agent.md` (stashed rows 758/759 vs upstream's — upstream kept, stashed rows re-appended as 905/906). §8 gained a "Production host" subsection documenting the deploy pipeline and manifest mechanics (the earlier "no mysql client / deploy.sh doesn't run migrations" statements were dev-host-only). **The iOS navbar CSS is now in the working tree but not yet built/deployed** — needs a commit + `deploy.sh`. | — |
