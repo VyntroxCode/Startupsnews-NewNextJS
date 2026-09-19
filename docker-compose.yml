@@ -8,12 +8,18 @@ services:
     # hr_rules save failed with ER_NET_PACKET_TOO_LARGE. 64M covers large article bodies too.
     command: ["mariadbd", "--max-allowed-packet=64M"]
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      # Read from .env (gitignored). Hardcoded defaults used to live here: the root account kept the
+      # literal password "rootpassword" while 3306 was published on 0.0.0.0, and on 2026-09-17 an
+      # attacker logged in as root over the internet and dropped every table in zox_db (see agent.md
+      # #848/#849). Root was rotated on 2026-09-18; these must never go back to guessable literals.
+      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set MARIADB_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: zox_db
       MYSQL_USER: zox_user
-      MYSQL_PASSWORD: zox_password
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     ports:
-      - "3306:3306"
+      # Bound to loopback: nothing here should ever be reachable from the internet. Reach it from
+      # another machine with an SSH tunnel (ssh -L 3306:127.0.0.1:3306 user@host), not by republishing.
+      - "127.0.0.1:3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
@@ -31,7 +37,7 @@ services:
     container_name: zox-redis
     restart: unless-stopped
     ports:
-      - "6382:6379"  # Changed to 6382 to avoid conflict with other Redis instances
+      - "127.0.0.1:6382:6379"  # 6382 avoids a clash with other Redis instances; loopback only (no auth is set)
     volumes:
       - redis_data:/data
     networks:
@@ -49,7 +55,9 @@ services:
     container_name: zox-adminer
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      # Loopback only: a public Adminer is a second route into the database, firewalling 3306 alone
+      # would not close it.
+      - "127.0.0.1:8080:8080"
     networks:
       - zox-network
     depends_on:
@@ -63,7 +71,7 @@ services:
     environment:
       REDIS_HOSTS: local:redis:6379
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     networks:
       - zox-network
     depends_on:
