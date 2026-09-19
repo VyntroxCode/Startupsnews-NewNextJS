@@ -13252,7 +13252,10 @@ body .banner-carousel-container,
    WebKit's async scrolling tree resolves that fixed bar against the sticky ancestor and moves it
    with the content. Pin the bar explicitly to the viewport, drop the sticky wrapper (it contributes
    no height anyway) and the legacy iOS scrolling/backface hints. `-webkit-touch-callout` is only
-   supported by iOS WebKit, so desktop and Android keep their current behaviour. */
+   supported by iOS WebKit, so desktop and Android keep their current behaviour.
+   On the home page the fixed DelegationStrip sits above this bar; delegation-strip.css overrides
+   the `top: 0` below with a (2,2,2) selector — keep this one at (2,1,2) or the nav slides under
+   the strip on iPhone. */
 @supports (-webkit-touch-callout: none) {
   html {
     -webkit-overflow-scrolling: auto !important;

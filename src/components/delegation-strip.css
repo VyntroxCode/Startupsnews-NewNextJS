@@ -46,12 +46,16 @@
 
 /* The header sits directly under the strip: its sticky wrapper pins at the strip's height (the
    selector out-specifies globals.css's `#mvp-main-head-wrap.startupnews-nav.left.relative`), and the
-   fixed nav inside it, which has no `top` of its own, gets the same offset. */
+   fixed nav inside it, which has no `top` of its own, gets the same offset.
+   The nav selector carries `html body` and `.startupnews-nav` only for specificity: globals.css's
+   iOS-Safari block (`@supports (-webkit-touch-callout: none)`) pins the same nav at `top: 0
+   !important` with `html body #mvp-main-head-wrap.startupnews-nav #mvp-main-nav-bot` (2,1,2), and
+   this must beat it — (2,2,2) — or on iPhone the nav slides up under the strip. */
 .sn-ds + #mvp-main-head-wrap.startupnews-nav,
 .sn-ds + #mvp-main-head-wrap.startupnews-nav.left.relative {
   top: var(--sn-ds-h) !important;
 }
-.sn-ds + #mvp-main-head-wrap #mvp-main-nav-bot {
+html body .sn-ds + #mvp-main-head-wrap.startupnews-nav #mvp-main-nav-bot {
   top: var(--sn-ds-h) !important;
 }
 
