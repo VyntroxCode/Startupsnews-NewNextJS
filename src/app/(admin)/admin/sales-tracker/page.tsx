@@ -6,6 +6,7 @@ import LeadFormModal from '@/components/admin/sales-tracker/LeadFormModal';
 import LeadsTable from '@/components/admin/sales-tracker/LeadsTable';
 import SalesTrackerStyles from '@/components/admin/sales-tracker/SalesTrackerStyles';
 import SponsorEventSubmissionsCard from '@/components/admin/sales-tracker/SponsorEventSubmissionsCard';
+import EnsEnquiriesCard from '@/components/admin/sales-tracker/EnsEnquiriesCard';
 import SummaryCard from '@/components/admin/sales-tracker/SummaryCard';
 import TeamCard from '@/components/admin/sales-tracker/TeamCard';
 import { useSalesTrackerData } from '@/components/admin/sales-tracker/useSalesTrackerData';
@@ -41,6 +42,10 @@ export default function SalesTrackerPage() {
         {/* /sponsor-event submissions have their own fields (event, schedule, poster), so they get
             their own KPI tiles + table + detail view here, not just a row in All leads. */}
         <SponsorEventSubmissionsCard />
+
+        {/* /expand-north-star "Plan your visit" enquiries: their own KPI tiles + table + detail view
+            with editing (received / last-updated dates), separate from the other pages' tables. */}
+        <EnsEnquiriesCard />
 
         {activeLead && (
           <LeadFormModal lead={activeLead} team={team} promotedCities={promotedCities} onClose={() => setActiveLead(null)} onSave={handleSave} />

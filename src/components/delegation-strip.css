@@ -1,0 +1,225 @@
+/* ========================================
+   HOME ANNOUNCEMENT STRIP (DelegationStrip.tsx)
+
+   A single slim band at the top of the home page for the 12th Indian Startup Delegation to Dubai.
+   Palette is the Expand North Star one (see expand-north-star.css) — magenta ground, lime CTA,
+   heavy uppercase — so the strip and the page it links to look like one campaign.
+
+   Two structural facts drive the layout rules here:
+   - Since 2026-09-19 the strip is FIXED at the very top of the screen, above the site header, and
+     stays there while the page scrolls (it used to sit in the flow between the header and the
+     banner). The header itself is fixed (`#mvp-main-nav-bot`) inside a sticky wrapper
+     (`#mvp-main-head-wrap`, `top: 0 !important`), and the first in-flow element clears it with
+     72px (the banner's `margin-top`, or the body wrap's `padding-top`). So with the strip present,
+     three things move down by the strip's height `--sn-ds-h`: the sticky wrapper's `top`, the
+     fixed nav's `top`, and that 72px clearance. All three are done with sibling selectors from
+     `.sn-ds`, which ConditionalLayout renders immediately before the header, so no other page is
+     affected and nothing changes if the strip is ever removed.
+   - `#mvp-site-main`'s children are floated by the theme's `.left`, hence the explicit
+     `float: none; clear: both` — the same guard the banner container uses.
+   ======================================== */
+
+:root { --sn-ds-h: 44px; }
+@media (max-width: 767px) { :root { --sn-ds-h: 38px; } }
+
+.sn-ds {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000; /* above the header wrapper's 9999 */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: var(--sn-ds-h);
+  padding-right: 12px;
+  margin: 0;
+  float: none;
+  clear: both;
+  overflow: hidden;
+  background: linear-gradient(90deg, #BD0C63 0%, #E4157C 48%, #E4157C 58%, #BD0C63 100%);
+  font-family: "Garnett", Helvetica, Arial, sans-serif;
+}
+
+/* The header sits directly under the strip: its sticky wrapper pins at the strip's height (the
+   selector out-specifies globals.css's `#mvp-main-head-wrap.startupnews-nav.left.relative`), and the
+   fixed nav inside it, which has no `top` of its own, gets the same offset. */
+.sn-ds + #mvp-main-head-wrap.startupnews-nav,
+.sn-ds + #mvp-main-head-wrap.startupnews-nav.left.relative {
+  top: var(--sn-ds-h) !important;
+}
+.sn-ds + #mvp-main-head-wrap #mvp-main-nav-bot {
+  top: var(--sn-ds-h) !important;
+}
+
+/* The 72px header clearance grows by the strip's height. The banner rule beats globals.css's
+   `body .banner-carousel-container` (0,1,1) with (0,1,2); the body-wrap pair mirrors globals.css's
+   own "full clearance / minimal gap after a banner" pair at higher specificity. */
+body .sn-ds ~ .banner-carousel-container {
+  margin-top: calc(72px + var(--sn-ds-h)) !important;
+}
+body .sn-ds ~ #mvp-main-body-wrap {
+  padding-top: calc(72px + var(--sn-ds-h)) !important;
+}
+body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
+  padding-top: 6px !important;
+}
+
+/* Read once by a screen reader; the running copies are aria-hidden. */
+.sn-ds .sn-ds-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The moving text is clipped to this box and faded at both ends, so lines enter and leave instead
+   of being chopped off mid-letter. */
+.sn-ds-viewport {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 36px, #000 calc(100% - 36px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 36px, #000 calc(100% - 36px), transparent 100%);
+}
+
+/* Two identical groups; sliding the track from -50% to 0 moves the text left to right by exactly
+   one group per cycle, which is why the loop has no visible seam. */
+.sn-ds-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: sn-ds-slide 48s linear infinite;
+}
+
+.sn-ds:hover .sn-ds-track {
+  animation-play-state: paused;
+}
+
+@keyframes sn-ds-slide {
+  from { transform: translate3d(-50%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+.sn-ds-group {
+  display: flex;
+  align-items: center;
+}
+
+.sn-ds-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding-right: 16px;
+  white-space: nowrap;
+}
+
+/* Deliberately inline-block, not a flex box: in a flex container every run of text becomes its own
+   anonymous item, which would pull "12" away from its "th" and split the line at every space. */
+.sn-ds .sn-ds-text {
+  display: inline-block;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.sn-ds .sn-ds-text sup {
+  font-size: 0.62em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+.sn-ds-dot {
+  margin: 0 7px;
+  color: #C9F31D;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.sn-ds .sn-ds-date {
+  color: #FFE6F2;
+  font-weight: 700;
+}
+
+.sn-ds-star {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  color: #C9F31D;
+}
+
+/* Outside the track, so it never slides away from under the pointer. */
+#mvp-site-main .sn-ds .sn-ds-cta,
+.sn-ds .sn-ds-cta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #C9F31D !important;
+  color: #0A0A0B !important;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none !important;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px -4px rgba(10, 10, 11, 0.6);
+  transition: background 0.2s ease, translate 0.2s ease;
+}
+
+#mvp-site-main .sn-ds .sn-ds-cta:hover,
+.sn-ds .sn-ds-cta:hover {
+  background: #D8FF3F !important;
+  color: #0A0A0B !important;
+  translate: 0 -1px;
+}
+
+.sn-ds .sn-ds-cta:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .sn-ds {
+    gap: 8px;
+    padding-right: 8px;
+  }
+
+  .sn-ds-viewport {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  .sn-ds .sn-ds-text { font-size: 10.5px; letter-spacing: 0.04em; }
+  .sn-ds-dot { font-size: 10.5px; }
+  .sn-ds-item { gap: 12px; padding-right: 12px; }
+  .sn-ds-star { width: 9px; height: 9px; }
+
+  #mvp-site-main .sn-ds .sn-ds-cta,
+  .sn-ds .sn-ds-cta {
+    height: 24px;
+    padding: 0 11px;
+    font-size: 9.5px;
+    letter-spacing: 0.05em;
+  }
+}
+
+/* Motion the reader did not ask for: hold the line still, but keep it legible. */
+@media (prefers-reduced-motion: reduce) {
+  .sn-ds-track { animation: none; transform: translate3d(0, 0, 0); }
+}

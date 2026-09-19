@@ -125,33 +125,36 @@ export function PosterContactStep({ ctrl }: { ctrl: SponsorEventFormController }
         onChange={(v) => ctrl.updateAndMaybeValidate("contactName", v, "contactName", validateContactName)}
         onBlur={() => ctrl.blurValidate("contactName", validateContactName)}
       />
-      <FormField
-        id="sp-contact-email"
-        label="Your Email"
-        required
-        type="email"
-        hint="Someone from our team may reach out to confirm the details."
-        value={data.contactEmail}
-        error={errors.contactEmail}
-        onChange={(v) => ctrl.updateAndMaybeValidate("contactEmail", v, "contactEmail", validateContactEmail)}
-        onBlur={() => ctrl.blurValidate("contactEmail", validateContactEmail)}
-      />
-      {/* New on this form — the API had no phone field at all, so the route was extended to carry
-          it into the notification email rather than letting it be collected and dropped. */}
-      <PhoneField
-        id="sp-phone"
-        label="Phone / WhatsApp"
-        phoneCode={data.phoneCode}
-        phoneCodeCustom={data.phoneCodeCustom}
-        phoneNumber={data.phoneNumber}
-        error={errors.phone}
-        onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
-        onChangeCustomCode={(v) =>
-          ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
-        }
-        onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
-        onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
-      />
+      {/* Email and phone share a row, as on every lead page on the site. The phone field is new on
+          this form — the API had no phone at all, so the route was extended to carry it into the
+          notification email rather than letting it be collected and dropped. */}
+      <div className="sp-field-row">
+        <FormField
+          id="sp-contact-email"
+          label="Your Email"
+          required
+          type="email"
+          hint="Someone from our team may reach out to confirm the details."
+          value={data.contactEmail}
+          error={errors.contactEmail}
+          onChange={(v) => ctrl.updateAndMaybeValidate("contactEmail", v, "contactEmail", validateContactEmail)}
+          onBlur={() => ctrl.blurValidate("contactEmail", validateContactEmail)}
+        />
+        <PhoneField
+          id="sp-phone"
+          label="Phone / WhatsApp"
+          phoneCode={data.phoneCode}
+          phoneCodeCustom={data.phoneCodeCustom}
+          phoneNumber={data.phoneNumber}
+          error={errors.phone}
+          onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
+          onChangeCustomCode={(v) =>
+            ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
+          }
+          onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
+          onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
+        />
+      </div>
 
       <div className="wizard-nav">
         <Button variant="ghost" onClick={ctrl.goBack}>

@@ -90,9 +90,7 @@ export function validateExternalUrl(data: SubmitEventFormData): string {
 
 export function validateCountry(data: SubmitEventFormData): string {
   if (isOnlineEvent(data)) return '';
-  if (data.country === OTHER_COUNTRY_VALUE) {
-    return data.countryOther.trim() ? '' : 'Please enter a country name.';
-  }
+  // No "Other" row any more: the country has to be one of the listed names.
   return data.country && data.country !== OTHER_COUNTRY_VALUE ? '' : 'Please select a country.';
 }
 

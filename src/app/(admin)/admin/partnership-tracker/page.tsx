@@ -732,8 +732,8 @@ export default function PartnershipTrackerPage() {
   const [modalError, setModalError] = useState('');
   // Which social-creative platform panels are expanded in the Add/Edit modal — reset per open.
   const [openCreativePlatforms, setOpenCreativePlatforms] = useState<Set<string>>(new Set());
-  // "Others" manual-entry mode for the Region/Country and City fields — reset per open.
-  const [regionOther, setRegionOther] = useState(false);
+  // "Others" manual-entry mode for the City field — reset per open. Region/Country has no such
+  // mode: it is list-only (every UN member state, plus whatever the record already holds).
   const [cityOther, setCityOther] = useState(false);
   // Slug auto-follows Event Name (like the public /submit-event form's title->slug behavior)
   // until the admin edits it directly, or until editing a record that already has a live
@@ -1172,7 +1172,6 @@ export default function PartnershipTrackerPage() {
     setCloseWarning(false);
     setModalError('');
     setOpenCreativePlatforms(new Set());
-    setRegionOther(false);
     setCityOther(false);
     setSlugManuallyEdited(false);
     setPhoneCode('+91');
@@ -1261,9 +1260,8 @@ export default function PartnershipTrackerPage() {
     // (buildRegionOptions / cityOptions append it), so opening an event never has to drop into
     // free-text mode. It used to: a city like "Guangzhou" — real, but not in China's curated
     // three — forced the field to a plain input whose only escape link *cleared the city*, so
-    // the dropdown was unusable on exactly the records that needed it. Free-text is now
-    // entered only by deliberately choosing "Others…".
-    setRegionOther(false);
+    // the dropdown was unusable on exactly the records that needed it. Region/Country has no
+    // free-text mode at all any more; City's is entered only by choosing "Others…".
     // A record with an already-live slug keeps it fixed (renaming the event shouldn't silently
     // break its existing URL); a not-yet-listed record still auto-follows Event Name edits.
     setSlugManuallyEdited(!!(e.slug || linkedEvent?.slug));
@@ -1542,12 +1540,9 @@ export default function PartnershipTrackerPage() {
   const activityUpdatedFiltered = todayActivity.updated.filter((x) => activityPersonFilter === 'all' || x.event.updatedBy === activityPersonFilter);
 
   // Memoised: this rebuilds a ~200-entry list, and the modal re-renders on every keystroke in
-  // any of its other fields. The pinned "Others…" entry stays visible however the list is
-  // filtered — it's exactly what an admin reaches for when their search comes back empty.
-  const regionOptions: SearchableSelectOption[] = useMemo(() => [
-    ...buildRegionOptions(draft.region),
-    { value: '__other__', label: 'Others…', alwaysShow: true },
-  ], [draft.region]);
+  // any of its other fields. No "Others…" row: an admin can only pick a listed country, so no
+  // record can be saved under a spelling of our own invention.
+  const regionOptions: SearchableSelectOption[] = useMemo(() => buildRegionOptions(draft.region), [draft.region]);
   const citiesForSelectedCountry = cityOptionsForCountry(draft.region, promotedCities);
   // draft.city holds ONE value, but the form edits it as two fields: a sub-city is stored there
   // directly ("Gurugram") and split back out for display into City "Delhi NCR" + Sub City
@@ -2038,7 +2033,6 @@ export default function PartnershipTrackerPage() {
                       // Online (virtual) has no country or city — clear and lock both (same as
                       // /list-your-event), so /events lists it under "Online", not a country.
                       if (partnershipType === ONLINE_PARTNERSHIP_TYPE) {
-                        setRegionOther(false);
                         setCityOther(false);
                         setDraft({ ...draft, partnershipType, region: '', city: '' });
                         return;
@@ -2086,17 +2080,6 @@ export default function PartnershipTrackerPage() {
                       <input aria-label="Region/Country" placeholder="Online — no country" value="" disabled />
                       <div className="pt-hint">Online (virtual) events have no country or city — listed under “Online” on the events page.</div>
                     </>
-                  ) : regionOther ? (
-                    <>
-                      <input
-                        placeholder="Enter region/country"
-                        value={draft.region}
-                        onChange={(e) => setDraft({ ...draft, region: e.target.value })}
-                      />
-                      {/* Returning to the dropdown keeps the value — it shows up as an option
-                          (buildRegionOptions adds it) instead of being thrown away. */}
-                      <div className="pt-hint"><span className="pt-add-line" onClick={() => { setRegionOther(false); setCityOther(false); }}>← Choose from list</span></div>
-                    </>
                   ) : (
                     <>
                       <SearchableSelect
@@ -2105,17 +2088,11 @@ export default function PartnershipTrackerPage() {
                         value={draft.region}
                         options={regionOptions}
                         onChange={(value) => {
-                          if (value === '__other__') {
-                            setRegionOther(true);
-                            setCityOther(false);
-                            setDraft({ ...draft, region: '', city: '' });
-                            return;
-                          }
                           setCityOther(false);
                           setDraft({ ...draft, region: value, city: '' });
                         }}
                       />
-                      <div className="pt-hint">Start typing to search. Not listed? Pick &quot;Others…&quot; and type it in.</div>
+                      <div className="pt-hint">Start typing to search and pick a country from the list.</div>
                     </>
                   )}
                 </div>

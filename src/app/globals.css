@@ -2865,6 +2865,10 @@ img.mvp-big-img {
   line-height: 1.05;
   font-weight: 800;
   letter-spacing: -0.02em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
 }
 
 .sector-hero-excerpt {
@@ -2965,6 +2969,7 @@ img.mvp-big-img {
     margin-bottom: 10px;
     font-size: clamp(1.4rem, 8.2vw, 2.3rem);
     line-height: 1.08;
+    -webkit-line-clamp: 3;
   }
 
   .sector-hero-excerpt {
@@ -8237,13 +8242,15 @@ body .banner-carousel-container,
 
 .snf-page .phone-row { display: flex; gap: 10px; }
 .snf-page .phone-row .custom-select-wrap { width: 110px; flex: 0 0 110px; }
-.snf-page .phone-row input[type=text] { width: 80px; flex: 0 0 80px; }
+.snf-page .phone-row > input[type=text] { width: 80px; flex: 0 0 80px; }
 .snf-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
+/* The dial-code list names each country after its code, so it opens wider than its trigger. */
+.snf-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
 
 @media (max-width:560px) {
   .snf-page .phone-row { flex-direction: column; }
   .snf-page .phone-row .custom-select-wrap,
-  .snf-page .phone-row input[type=text] { width: 100%; flex: 0 0 auto; }
+  .snf-page .phone-row > input[type=text] { width: 100%; flex: 0 0 auto; }
 }
 
 .snf-page .custom-select-wrap { position: relative; width: 100%; }
@@ -10331,15 +10338,19 @@ body .banner-carousel-container,
    what stop a 3-digit dial code from taking a third of the field away from the number itself. */
 .fys-page .phone-row { display: flex; gap: 10px; }
 .fys-page .phone-row .custom-select-wrap { width: 116px; flex: 0 0 116px; }
-.fys-page .phone-row input[type=text] { width: 84px; flex: 0 0 84px; }
+.fys-page .phone-row > input[type=text] { width: 84px; flex: 0 0 84px; }
 .fys-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
+/* The dial-code list names each country after its code, so it opens wider than its trigger. */
+.fys-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
+/* Beside Email in a half-row the code select gives up 16px so the number keeps a usable width. */
+.fys-field-row .phone-row .custom-select-wrap { width: 100px; flex: 0 0 100px; }
 
 /* Phone owns a full row, so it only has to stack on a genuinely narrow screen — and then only
    because picking "Other" puts a third control (the typed dial code) on the same line. */
 @media (max-width: 480px) {
   .fys-page .phone-row { flex-direction: column; }
   .fys-page .phone-row .custom-select-wrap,
-  .fys-page .phone-row input[type=text] { width: 100%; flex: 0 0 auto; }
+  .fys-page .phone-row > input[type=text] { width: 100%; flex: 0 0 auto; }
 }
 
 /* Used by CountryCityFields for its "no listed cities for X" note. */
@@ -11545,15 +11556,19 @@ body .banner-carousel-container,
    3-digit dial code from taking a third of the field away from the number. */
 .pr-page .phone-row { display: flex; align-items: flex-end; gap: 14px; }
 .pr-page .phone-row .custom-select-wrap { width: 118px; flex: 0 0 118px; }
-.pr-page .phone-row input[type=text] { width: 86px; flex: 0 0 86px; }
+.pr-page .phone-row > input[type=text] { width: 86px; flex: 0 0 86px; }
 .pr-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
+/* The dial-code list names each country after its code, so it opens wider than its trigger. */
+.pr-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
+/* Beside Email in a half-row the code select gives up 14px so the number keeps a usable width. */
+.pr-field-row .phone-row .custom-select-wrap { width: 104px; flex: 0 0 104px; }
 
 /* Only on a genuinely narrow screen, and then only because picking "Other" puts a third control on
    the line — Phone already owns a full row, so it has the width everywhere else. */
 @media (max-width: 480px) {
   .pr-page .phone-row { flex-direction: column; align-items: stretch; gap: 6px; }
   .pr-page .phone-row .custom-select-wrap,
-  .pr-page .phone-row input[type=text] { width: 100%; flex: 0 0 auto; }
+  .pr-page .phone-row > input[type=text] { width: 100%; flex: 0 0 auto; }
 }
 
 .pr-page .field .hint {
@@ -12889,15 +12904,19 @@ body .banner-carousel-container,
    3-digit dial code from taking a third of the field away from the number. */
 .fr-page .phone-row { display: flex; align-items: flex-end; gap: 14px; }
 .fr-page .phone-row .custom-select-wrap { width: 118px; flex: 0 0 118px; }
-.fr-page .phone-row input[type=text] { width: 86px; flex: 0 0 86px; }
+.fr-page .phone-row > input[type=text] { width: 86px; flex: 0 0 86px; }
 .fr-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
+/* The dial-code list names each country after its code, so it opens wider than its trigger. */
+.fr-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
+/* Beside Email in a half-row the code select gives up 14px so the number keeps a usable width. */
+.fr-field-row .phone-row .custom-select-wrap { width: 104px; flex: 0 0 104px; }
 
 /* Only on a genuinely narrow screen, and then only because picking "Other" puts a third control on
    the line. Phone already owns a full row, so it has the width everywhere else. */
 @media (max-width: 480px) {
   .fr-page .phone-row { flex-direction: column; align-items: stretch; gap: 6px; }
   .fr-page .phone-row .custom-select-wrap,
-  .fr-page .phone-row input[type=text] { width: 100%; flex: 0 0 auto; }
+  .fr-page .phone-row > input[type=text] { width: 100%; flex: 0 0 auto; }
 }
 
 .fr-page .field-error::before {
@@ -13219,3 +13238,10 @@ body .banner-carousel-container,
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---- Shared dropdown: the muted country name after a dial code in the open list ---- */
+/* CustomSelect renders an option's `detail` (PhoneField passes the country a code belongs to)
+   only in the list, never on the closed trigger, so a 100px code select stays readable while the
+   list reads "IN +91  India". Global on purpose: every page scope styles `.custom-select-list li`
+   but none needs its own colour for this. */
+.custom-select-list li .cs-detail { margin-left: 8px; opacity: 0.62; font-weight: 400; font-size: 0.92em; }

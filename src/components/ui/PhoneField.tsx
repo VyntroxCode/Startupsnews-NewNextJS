@@ -8,10 +8,18 @@ import { COUNTRY_CODE_OPTIONS, PHONE_RULES } from "./constants/phone";
 // text ("ES", "SA", "NZ"...), which reads as a rendering bug rather than a country code. Showing
 // the ISO code as deliberate, uniformly-formatted text ("ES +34") instead is deterministic on
 // every platform and reads as intentional rather than a broken glyph.
+//
+// The list now covers every UN member state (191 codes — USA/Canada and Russia/Kazakhstan share
+// one each), so the select is searchable: the trigger shows "IN +91", the open list adds the
+// country name after it, and typing the START of a country name, an ISO code or the dial code
+// itself ("ind", "in", "+91", "91") narrows the list.
 const PHONE_CODE_OPTIONS = COUNTRY_CODE_OPTIONS.map((c) => ({
   value: c.code,
   label: c.code === "other" ? "Other" : `${c.iso.toUpperCase()} ${c.code}`,
+  detail: c.code === "other" ? undefined : c.name,
+  keywords: c.keywords,
 }));
+const PUBLIC_PHONE_CODE_OPTIONS = PHONE_CODE_OPTIONS.filter((o) => o.value !== "other");
 
 interface PhoneFieldProps {
   /** Distinguishes this field's DOM ids when more than one PhoneField could ever appear on a
@@ -23,6 +31,10 @@ interface PhoneFieldProps {
   phoneCodeCustom: string;
   phoneNumber: string;
   error?: string;
+  /** Offers the "Other" row with its free-text "+xxx" box. Off by default: every country's code
+   * is listed, so on a public form a hand-typed code could only be a mistake. The admin lead form
+   * turns it on so a legacy record stored under an unlisted code still opens on what it holds. */
+  allowOtherCode?: boolean;
   onChangeCode: (value: string) => void;
   onChangeCustomCode: (value: string) => void;
   onChangeNumber: (value: string) => void;
@@ -37,6 +49,7 @@ export function PhoneField({
   phoneCodeCustom,
   phoneNumber,
   error,
+  allowOtherCode = false,
   onChangeCode,
   onChangeCustomCode,
   onChangeNumber,
@@ -52,12 +65,13 @@ export function PhoneField({
       <label htmlFor={numberId}>{label}{required ? " *" : ""}</label>
       <div className="phone-row">
         <CustomSelect
-          options={PHONE_CODE_OPTIONS}
+          options={allowOtherCode ? PHONE_CODE_OPTIONS : PUBLIC_PHONE_CODE_OPTIONS}
           value={phoneCode}
           onChange={(v) => {
             onChangeCode(v);
             onBlurValidate();
           }}
+          searchable
           ariaLabel="Country code"
         />
         {phoneCode === "other" && (

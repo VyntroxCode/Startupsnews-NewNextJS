@@ -51,39 +51,39 @@ export function StoryStep({ ctrl }: { ctrl: LeadFormController }) {
         />
       </motion.div>
       <motion.div variants={staggerItemVariants}>
-        {/* The site's shared country-code control, as on /list-your-event — it brings the
-            per-country length rules with it (see validatePhone). It replaced a free-text box whose
-            "+1 555 000 0000" placeholder was the only hint a dial code was wanted. */}
-        <PhoneField
-          id="pr-phone"
-          label="Phone / WhatsApp"
-          phoneCode={data.phoneCode}
-          phoneCodeCustom={data.phoneCodeCustom}
-          phoneNumber={data.phoneNumber}
-          error={errors.phone}
-          /* updateAndMaybeValidate, not setField: PhoneField fires onBlurValidate straight after a
-             code change, which validates the state as it was BEFORE the change landed. An error
-             already on screen would be re-asserted from stale values and stick. */
-          onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
-          onChangeCustomCode={(v) =>
-            ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
-          }
-          onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
-          onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
-        />
-      </motion.div>
-      <motion.div variants={staggerItemVariants}>
-        <FormField
-          id="pr-email"
-          label="Official Email"
-          required
-          type="email"
-          hint="Use a company address where possible — it helps us confirm the announcement is official."
-          value={data.email}
-          error={errors.email}
-          onChange={(v) => ctrl.updateAndMaybeValidate("email", v, "email", validateEmail)}
-          onBlur={() => ctrl.blurValidate("email", validateEmail)}
-        />
+        {/* Email and phone share a row, as on every lead page on the site. The phone control is
+            the shared country-code select and number, which brings the per-country length rules
+            with it (see validatePhone). */}
+        <div className="pr-field-row">
+          <FormField
+            id="pr-email"
+            label="Official Email"
+            required
+            type="email"
+            hint="Use a company address where possible — it helps us confirm the announcement is official."
+            value={data.email}
+            error={errors.email}
+            onChange={(v) => ctrl.updateAndMaybeValidate("email", v, "email", validateEmail)}
+            onBlur={() => ctrl.blurValidate("email", validateEmail)}
+          />
+          <PhoneField
+            id="pr-phone"
+            label="Phone / WhatsApp"
+            phoneCode={data.phoneCode}
+            phoneCodeCustom={data.phoneCodeCustom}
+            phoneNumber={data.phoneNumber}
+            error={errors.phone}
+            /* updateAndMaybeValidate, not setField: PhoneField fires onBlurValidate straight after
+               a code change, which validates the state as it was BEFORE the change landed. An
+               error already on screen would be re-asserted from stale values and stick. */
+            onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
+            onChangeCustomCode={(v) =>
+              ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
+            }
+            onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
+            onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
+          />
+        </div>
       </motion.div>
 
       <motion.div className="pr-step-nav pr-step-nav-solo" variants={staggerItemVariants}>

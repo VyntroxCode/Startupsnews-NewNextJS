@@ -7,31 +7,32 @@ import { RevealWords } from "./RevealWords";
 import { ensImages, type EnsImage } from "./media";
 import { EASE, useReducedMotion, useRise, useWideScreen } from "./hooks";
 
+/** Card order was shuffled on request (2026-09-18): lime, grey, dark, pink. */
 const THEMES: { key: string; title: string; body: string; tone: "dark" | "lime" | "grey" | "pink"; image: EnsImage }[] = [
   {
-    key: "founder-restructure",
-    title: "Founder restructure",
-    body: "From MVP to multi-market scale and Series A–C playbooks",
-    tone: "dark",
-    image: ensImages.themeFounder,
-  },
-  {
     key: "capital-stack",
-    title: "The new capital stack",
+    title: "The New Capital Stack",
     body: "Sovereign funds, family offices, venture debt & secondaries",
     tone: "lime",
     image: ensImages.themeCapital,
   },
   {
     key: "deeptech",
-    title: "Commercial deeptech",
+    title: "Commercial Deeptech",
     body: "From labs to market-ready AI, climate, defence & frontier tech",
     tone: "grey",
     image: ensImages.themeDeeptech,
   },
   {
+    key: "founder-restructure",
+    title: "Founder Restructure",
+    body: "From MVP to multi-market scale and Series A–C playbooks",
+    tone: "dark",
+    image: ensImages.themeFounder,
+  },
+  {
     key: "scaleup",
-    title: "Scaleup advantage & emerging markets",
+    title: "Scaleup Advantage & Emerging Markets",
     body: "GCC, Africa, India, LATAM growth corridors",
     tone: "pink",
     image: ensImages.themeScaleup,
@@ -110,11 +111,11 @@ export function CoreThemes() {
       <div className="ens-wrap">
         <RevealWords
           id="ens-themes-title"
-          className="ens-title"
+          className="ens-title is-oneline ens-themes-title"
           lines={[{ text: "How Expand North Star creates real outcomes?" }]}
         />
         <motion.p className="ens-subtitle ens-themes-sub" {...rise(0.15)}>
-          2026 core themes
+          2026 Core Themes
         </motion.p>
 
         <ul className="ens-themes-grid">

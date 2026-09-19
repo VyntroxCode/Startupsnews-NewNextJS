@@ -175,12 +175,16 @@ export default function AdminLayout({
       // their state in useItTicketsData (optimistic updates, server-returned rows), so the blanket
       // remount only closed the open ticket dialog and flashed the board on every status change,
       // drag, comment or attachment write.
+      // sales-tracker/ens-enquiries is excluded for the same reason: its detail dialog saves an edit
+      // and then shows the saved record with its new "Last updated" date; the blanket remount would
+      // close the dialog ~150ms after the save and throw that away. The card updates its own row.
       const isSpecialPath = requestUrl.includes('/api/admin/upload') ||
                             requestUrl.includes('/api/admin/presign') ||
                             requestUrl.includes('/api/admin/auth/') ||
                             requestUrl.includes('/api/admin/media/ingest') ||
                             requestUrl.includes('/api/admin/hr-tool') ||
-                            requestUrl.includes('/api/admin/it-tickets');
+                            requestUrl.includes('/api/admin/it-tickets') ||
+                            requestUrl.includes('/api/admin/sales-tracker/ens-enquiries');
 
       if (response.ok && method !== 'GET' && requestUrl.includes('/api/admin/') && !isSpecialPath) {
         // Clear the cache directly here, not just via the event below — the event only reaches a

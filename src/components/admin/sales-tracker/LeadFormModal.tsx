@@ -5,8 +5,8 @@ import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { PhoneField } from '@/components/ui/PhoneField';
 import { COUNTRY_CODE_OPTIONS } from '@/components/ui/constants/phone';
 import { CountryCityFields } from '@/components/submit-event/CountryCityFields';
-import { COUNTRIES, OTHER_CITY_VALUE, OTHER_COUNTRY_VALUE } from '@/components/submit-event/constants';
-import { cityOptionsForCountry } from '@/modules/partnership-events/domain/country-city-data';
+import { COUNTRIES, OTHER_CITY_VALUE } from '@/components/submit-event/constants';
+import { canonicalCountryName, cityOptionsForCountry } from '@/modules/partnership-events/domain/country-city-data';
 import { composeCountryCity, composePhone, resolveCity, resolveCountry } from '@/components/lead-forms/shared/compose';
 import { createInitialLeadFormData, type LeadFormData } from '@/components/lead-forms/shared/types';
 import { validatePhone } from '@/components/lead-forms/shared/validation';
@@ -34,18 +34,21 @@ function splitPhone(phone: string): Pick<LeadFormData, 'phoneCode' | 'phoneCodeC
     : { phoneCode: 'other', phoneCodeCustom: m[1], phoneNumber: digits };
 }
 
-/** Stored country/city back into the dropdown state CountryCityFields expects: a value on the
- * list is selected, anything else reopens under "Other (add manually)" with the text filled in. */
+/** Stored country/city back into the dropdown state CountryCityFields expects. The country
+ * dropdown has no "Other" row, so a stored value is matched to the list (aliases like
+ * "United States" → "USA" via canonicalCountryName); a value that still isn't on the list is kept
+ * on the draft untouched — the select shows its placeholder, and saving without re-picking leaves
+ * the stored country exactly as it was. City keeps its "Other (add manually)" escape. */
 function splitLocation(
   country: string,
   city: string,
   promotedCities: Record<string, string[]>
 ): Pick<LeadFormData, 'country' | 'countryOther' | 'city' | 'cityOther'> {
   let countryValue = '';
-  let countryOther = '';
   if (country) {
-    if (COUNTRIES.includes(country)) countryValue = country;
-    else { countryValue = OTHER_COUNTRY_VALUE; countryOther = country; }
+    const canon = canonicalCountryName(country);
+    const listed = COUNTRIES.find((c) => c === country || c.toLowerCase() === canon.toLowerCase());
+    countryValue = listed ?? country;
   }
   const cities = countryValue ? cityOptionsForCountry(countryValue, promotedCities) ?? [] : [];
   let cityValue = '';
@@ -56,7 +59,7 @@ function splitLocation(
   } else if (countryValue && cities.length === 0) {
     cityValue = OTHER_CITY_VALUE;
   }
-  return { country: countryValue, countryOther, city: cityValue, cityOther };
+  return { country: countryValue, countryOther: '', city: cityValue, cityOther };
 }
 
 function toLocationFormData(lead: SalesLead, promotedCities: Record<string, string[]>): LeadFormData {
@@ -163,6 +166,7 @@ export default function LeadFormModal({ lead, team, promotedCities, onClose, onS
                 number room to lay out without wrapping oddly. */}
             <div style={{ flex: '0 1 360px', minWidth: 300 }}>
               <PhoneField
+                allowOtherCode
                 id="lead-contact"
                 label="Contact no."
                 phoneCode={loc.phoneCode}

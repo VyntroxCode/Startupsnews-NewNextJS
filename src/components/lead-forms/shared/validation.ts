@@ -1,5 +1,5 @@
 import { PHONE_RULES } from "@/components/ui/constants/phone";
-import { hasValidCustomCode, resolvePhoneCode } from "./compose";
+import { hasValidCustomCode, resolvePhoneCode, type PhoneParts } from "./compose";
 import type { LeadFormData } from "./types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -24,7 +24,7 @@ export function validateCompanyName(data: LeadFormData): string {
  * A page that still takes one typed string keeps the original loose digit count. The branch is on
  * `phoneCode` being set at all, which only a page using the structured control ever does, so the
  * other two forms are unaffected by this living here. */
-export function validatePhone(data: LeadFormData): string {
+export function validatePhone(data: PhoneParts): string {
   if (!data.phoneCode) {
     const digits = data.phone.replace(/\D/g, "");
     if (!digits) return "Please enter a phone number.";
@@ -82,6 +82,11 @@ const STEP_VALIDATOR_MAP: Record<number, StepValidatorEntry[]> = {
     { field: "website", fn: validateWebsite },
   ],
   3: [{ field: "pdfFile", fn: validatePdfFile }],
+  // Steps 4 and 5 split step 2 into its two fields, so a page can put email on a different visual
+  // page from website without changing 1-3, which Feature Your Startup and Funding Round rely on.
+  // Submit Your Press Release uses them: [[1, 4], [5], []] puts email on its first page.
+  4: [{ field: "email", fn: validateEmail }],
+  5: [{ field: "website", fn: validateWebsite }],
 };
 
 export function validateStep(step: number, data: LeadFormData): Record<string, string> {

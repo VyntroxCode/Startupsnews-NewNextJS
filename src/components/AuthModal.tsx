@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { isBareRoute } from "@/components/ConditionalLayout";
 
 declare global {
 	interface Window {
@@ -62,6 +63,12 @@ export default function AuthModal() {
 	const router = useRouter();
 	const isAdmin =
 		pathname?.startsWith("/admin") || pathname?.startsWith("/dashboard");
+	// Bare event-landing pages (currently /expand-north-star) bring their own header, CTAs and
+	// closing form; a site-wide login popup sliding up mid-scroll is off-brand there and competes
+	// with the page's own registration form for attention. Shares ConditionalLayout's route list
+	// (the same pages that already render without the site header/banner/footer) rather than
+	// keeping a second list that could drift out of step.
+	const suppressed = isAdmin || isBareRoute(pathname);
 
 	const [mounted, setMounted] = useState(false);
 	const [open, setOpen] = useState(false);
@@ -147,7 +154,7 @@ export default function AuthModal() {
 							setWelcomeUser(d.data.user);
 							setShowWelcome(true);
 							window.dispatchEvent(new Event("pub-auth-changed"));
-							if (!isAdmin) {
+							if (!suppressed) {
 								trackEvent(d.data.isNew ? "sign_up" : "login", { method: "google" });
 							}
 						} else {
@@ -163,7 +170,7 @@ export default function AuthModal() {
 			console.error("Error creating Google Token Client:", err);
 			setError("Google Sign-In initialization failed: " + (err.message || err));
 		}
-	}, [isAdmin]);
+	}, [suppressed]);
 
 	/* ── Mount & session check ──────────────────────────────── */
 	useEffect(() => {
@@ -222,7 +229,7 @@ export default function AuthModal() {
 	}, [loggedIn]);
 
 	useEffect(() => {
-		if (!mounted || isAdmin) return;
+		if (!mounted || suppressed) return;
 
 		const searchParams = new URLSearchParams(window.location.search);
 		if (searchParams.get("auth") === "login") return;
@@ -273,7 +280,7 @@ export default function AuthModal() {
 			window.removeEventListener("scroll", onScroll);
 			if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
 		};
-	}, [mounted, isAdmin]);
+	}, [mounted, suppressed]);
 
 	const handleLogout = () => {
 		localStorage.removeItem("pub_auth_token");
@@ -298,7 +305,7 @@ export default function AuthModal() {
 	/* ── Broadcast auth-flow visibility so other UI (e.g. the PWA install
 	   card) can stay sequenced behind it. `false` only fires after a `true`
 	   was sent, so unrelated listeners never see a spurious close. ──────── */
-	const authFlowVisible = (open || scrollVisible || showWelcome) && !isAdmin;
+	const authFlowVisible = (open || scrollVisible || showWelcome) && !suppressed;
 	const wasAuthFlowVisibleRef = useRef(false);
 	const everAuthFlowVisibleRef = useRef(false);
 	useEffect(() => {
@@ -313,7 +320,7 @@ export default function AuthModal() {
 		}
 	}, [mounted, authFlowVisible]);
 
-	if (!mounted || isAdmin) return null;
+	if (!mounted || suppressed) return null;
 
 	/* ─────────────── SINGLE RETURN ─────────────── */
 	return (

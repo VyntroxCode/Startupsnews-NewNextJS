@@ -3,17 +3,17 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import { EnsVideo } from "./EnsVideo";
-import { EnsButton } from "./EnsButton";
 import { RevealWords } from "./RevealWords";
-import { ENS_LINKS, ensVideos } from "./media";
+import { ensVideos } from "./media";
 import { EASE, useReducedMotion } from "./hooks";
 
-/** First viewport: pink two-weight headline, then the big rounded video card, and the two outlined
- * pills straddling the card's bottom edge.
+/** First viewport: pink two-weight headline, then the big rounded video card.
  *
  *   ~0.25s  headline words slide up out of their masks
  *   ~0.55s  the card rises and sharpens out of a blur
- *   ~1.1s   the two pills lift in
+ *
+ * The "Exhibit with us" and "Join investor programme" pills that straddled the card's bottom edge
+ * were removed on request (2026-09-16).
  *
  * On scroll the footage drifts inside the card and the card eases back a touch. The pink washes
  * behind drift on their own slow loop. The clip loops on its own; the pause/play button was removed
@@ -38,7 +38,7 @@ export function EnsHero() {
           className="ens-hero-title"
           immediate
           delay={0.25}
-          lines={[{ text: "The world’s largest", className: "is-strong" }, { text: "startup and investor connector event" }]}
+          lines={[{ text: "The World’s Largest", className: "is-strong" }, { text: "Gathering of Startups and Investors" }]}
         />
 
         <div className="ens-hero-stage">
@@ -55,19 +55,6 @@ export function EnsHero() {
             <span className="ens-hero-shade" aria-hidden="true" />
           </motion.div>
 
-          <motion.div
-            className="ens-hero-ctas"
-            initial={reducedMotion ? false : { opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 1.1, ease: EASE }}
-          >
-            <EnsButton href={ENS_LINKS.exhibit} variant="pink">
-              Exhibit with us
-            </EnsButton>
-            <EnsButton href={ENS_LINKS.investors} variant="lime">
-              Join investor programme
-            </EnsButton>
-          </motion.div>
         </div>
       </div>
     </section>

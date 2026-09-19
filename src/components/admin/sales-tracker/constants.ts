@@ -1,10 +1,15 @@
 export const TYPES = ['Social Media', 'Events', 'PR-National', 'PR-International', 'Others'] as const;
 
-/** Leads mirrored in automatically from a public site form (see the to-sales-lead.ts services in
- * modules/feature-startup-submissions, funding-round-submissions, press-release-submissions and
- * sponsor-event-submissions), filtered separately from TYPES above via their own "Filter: page
- * leads" dropdown in LeadsTable — they aren't a channel a team member picks when adding a lead by
- * hand, so they don't belong in the general Filter: type list or the manual "Type of lead" selector. */
+/** Leads mirrored in automatically from a public site form (see
+ * modules/feature-startup-submissions/service/to-sales-lead.ts,
+ * modules/funding-round-submissions/service/to-sales-lead.ts and
+ * modules/press-release-submissions/service/to-sales-lead.ts and
+ * modules/sponsor-event-submissions/service/to-sales-lead.ts), filtered separately from TYPES
+ * above via their own "Filter: page leads" dropdown in LeadsTable — they aren't a channel a team
+ * member picks when adding a lead by hand, so they don't belong in the general Filter: type list
+ * or the manual "Type of lead" selector. More get appended here as more public forms get wired up
+ * the same way. Expand North Star enquiries are deliberately NOT here: they live only in their own
+ * card (EnsEnquiriesCard) and never in sales_leads. */
 export const PAGE_LEAD_TYPES = ['Feature Page Leads', 'Funding Round Page Leads', 'Press Release Page Leads', 'Sponsor Event Page Leads'] as const;
 export const STATUSES = [
   'Query received', 'Initiated', 'Under discussion', 'On hold', 'Dropped',
@@ -22,43 +27,3 @@ export const STATUS_TO_SUMMARY: Record<string, string> = {
   'On hold': 'In progress', Dropped: 'Dropped', 'No response': 'In progress',
   'Will reach when needed': 'In progress', 'Successfully closed': 'Successfully closed',
 };
-
-export const COUNTRY_CODE_META: Record<string, string> = {
-  '+91': 'in', '+1': 'us', '+44': 'gb', '+971': 'ae', '+65': 'sg', '+61': 'au', '+49': 'de',
-  '+33': 'fr', '+81': 'jp', '+86': 'cn', '+7': 'ru', '+55': 'br', '+27': 'za', '+92': 'pk',
-  '+880': 'bd', '+94': 'lk', '+977': 'np', '+60': 'my', '+62': 'id', '+63': 'ph', '+66': 'th',
-  '+82': 'kr', '+39': 'it', '+34': 'es', '+31': 'nl', '+52': 'mx', '+966': 'sa', '+64': 'nz',
-};
-export const COUNTRY_CODES = Object.keys(COUNTRY_CODE_META).concat(['other']);
-export const PHONE_RULES: Record<string, { pattern: RegExp; message: string }> = {
-  '+91': { pattern: /^[6-9]\d{9}$/, message: 'Enter a valid 10-digit Indian mobile number starting with 6-9.' },
-  '+1': { pattern: /^\d{10}$/, message: 'Enter a valid 10-digit US/Canada phone number.' },
-  '+44': { pattern: /^\d{10,11}$/, message: 'Enter a valid 10-11 digit UK phone number.' },
-  '+971': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit UAE phone number.' },
-  '+65': { pattern: /^\d{8}$/, message: 'Enter a valid 8-digit Singapore phone number.' },
-  '+61': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit Australian phone number.' },
-  '+49': { pattern: /^\d{10,11}$/, message: 'Enter a valid 10-11 digit German phone number.' },
-  '+33': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit French phone number.' },
-  '+81': { pattern: /^\d{10}$/, message: 'Enter a valid 10-digit Japanese phone number.' },
-  '+86': { pattern: /^\d{11}$/, message: 'Enter a valid 11-digit Chinese phone number.' },
-  '+7': { pattern: /^\d{10}$/, message: 'Enter a valid 10-digit Russian phone number.' },
-  '+55': { pattern: /^\d{10,11}$/, message: 'Enter a valid 10-11 digit Brazilian phone number.' },
-  '+27': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit South African phone number.' },
-  '+92': { pattern: /^\d{10}$/, message: 'Enter a valid 10-digit Pakistani phone number.' },
-  '+880': { pattern: /^\d{10}$/, message: 'Enter a valid 10-digit Bangladeshi phone number.' },
-  '+94': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit Sri Lankan phone number.' },
-  '+977': { pattern: /^\d{10}$/, message: 'Enter a valid 10-digit Nepali phone number.' },
-  '+60': { pattern: /^\d{9,10}$/, message: 'Enter a valid 9-10 digit Malaysian phone number.' },
-  '+62': { pattern: /^\d{9,12}$/, message: 'Enter a valid 9-12 digit Indonesian phone number.' },
-  '+63': { pattern: /^\d{10}$/, message: 'Enter a valid 10-digit Philippine phone number.' },
-  '+66': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit Thai phone number.' },
-  '+82': { pattern: /^\d{9,10}$/, message: 'Enter a valid 9-10 digit South Korean phone number.' },
-  '+39': { pattern: /^\d{9,10}$/, message: 'Enter a valid 9-10 digit Italian phone number.' },
-  '+34': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit Spanish phone number.' },
-  '+31': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit Dutch phone number.' },
-  '+52': { pattern: /^\d{10}$/, message: 'Enter a valid 10-digit Mexican phone number.' },
-  '+966': { pattern: /^\d{9}$/, message: 'Enter a valid 9-digit Saudi Arabian phone number.' },
-  '+64': { pattern: /^\d{8,9}$/, message: 'Enter a valid 8-9 digit New Zealand phone number.' },
-  other: { pattern: /^\d{6,15}$/, message: 'Enter a valid phone number (6-15 digits).' },
-};
-export const CUSTOM_CODE_RE = /^\+\d{1,4}$/;

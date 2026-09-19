@@ -2,18 +2,16 @@
 
 import { useEffect, useRef } from "react";
 import { animate, motion, useInView } from "motion/react";
-import { EnsVideo } from "./EnsVideo";
 import { RevealWords } from "./RevealWords";
-import { ensVideos } from "./media";
-import { useReducedMotion, useRise } from "./hooks";
+import { scrollToParticipate, useReducedMotion, useRise } from "./hooks";
 
 /** 2025 edition figures, as published by the event. */
 const STATS = [
   { value: 2050, suffix: "", label: "Exhibiting Startups from 96 Countries" },
   { value: 1300, suffix: "+", label: "Investors" },
-  { value: 5340, suffix: "", label: "Pre-arranged Onsite Meetings" },
+  { value: 5340, suffix: "+", label: "Pre-arranged Onsite Meetings" },
   { value: 400, suffix: "", label: "Speakers" },
-  { value: 6500, suffix: "", label: "Founders" },
+  { value: 6500, suffix: "+", label: "Founders" },
 ] as const;
 
 const format = (n: number) => n.toLocaleString("en-US");
@@ -69,32 +67,36 @@ function Stat({ stat, index }: { stat: (typeof STATS)[number]; index: number }) 
   );
 }
 
-/** "The world connects. The future scales" — the event in one paragraph, then last year's numbers
- * counting up, with a small spinning-earth clip beside the subheading and a warm orange flare
- * drifting at the right edge. */
+/** "Where The World Connects and The Future Scales" — the event in one paragraph, then last year's
+ * numbers counting up and a "Participate Now" button into the enquiry form, on a plain white ground. (The spinning-earth clip before "2025 Show numbers" and the
+ * orange flare with its sparkles at the right edge were both removed on request, 2026-09-16.) */
 export function ShowNumbers() {
   const rise = useRise();
+  const reducedMotion = useReducedMotion();
 
   return (
     <section className="ens-numbers" aria-labelledby="ens-numbers-title">
-      <span className="ens-blob ens-numbers-blob" aria-hidden="true" />
-      <span className="ens-numbers-stars" aria-hidden="true" />
 
       <div className="ens-wrap">
-        <RevealWords id="ens-numbers-title" className="ens-title" lines={[{ text: "The world connects. The future scales" }]} />
+        {/* Two lines, the second stepped in to start at the middle of the first (see .ens-numbers-title). */}
+        <RevealWords
+          id="ens-numbers-title"
+          className="ens-title ens-numbers-title"
+          lines={[{ text: "Where The World Connects" }, { text: "and The Future Scales", className: "is-step" }]}
+        />
 
         <motion.p className="ens-lede" {...rise(0.2)}>
-          North Star brings together founders, investors, and visionaries from every corner of the world. It
-          bridges fragmented markets, accelerates access to global capital, and unlocks collaboration between
-          startups, governments, and corporates to fuel real-world impact and economic growth.
+          North Star brings together Founders, Investors, and Visionaries from every corner of the world. It
+          bridges fragmented markets, accelerates access to Global Capital, and unlocks collaboration between
+          Startups, Governments, and Corporates to fuel{" "}
+          {/* Non-breaking hyphen (U+2011) so "Real-World" never splits across lines; the span keeps the
+              whole closing phrase together on wide screens so it sits as the paragraph's last line. */}
+          <span className="ens-lede-keep">Real‑World Impact and Economic Growth.</span>
         </motion.p>
 
         <motion.h3 className="ens-subtitle ens-numbers-sub" {...rise(0.1)}>
-          <span className="ens-globe" aria-hidden="true">
-            <EnsVideo video={ensVideos.globe} />
-          </span>
           <strong>2025</strong>
-          <span>Show numbers</span>
+          <span>Show Numbers</span>
         </motion.h3>
 
         <ul className="ens-stats">
@@ -102,6 +104,13 @@ export function ShowNumbers() {
             <Stat key={stat.label} stat={stat} index={i} />
           ))}
         </ul>
+
+        {/* Under the figures: the same action as the event bar's button, into the enquiry form. */}
+        <motion.div className="ens-numbers-cta-wrap" {...rise(0.25)}>
+          <a href="#ens-participate" className="ens-numbers-cta" onClick={(e) => scrollToParticipate(e, reducedMotion)}>
+            Participate Now
+          </a>
+        </motion.div>
       </div>
     </section>
   );

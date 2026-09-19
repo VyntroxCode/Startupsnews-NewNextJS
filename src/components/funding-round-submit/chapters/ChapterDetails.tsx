@@ -52,16 +52,19 @@ export function ChapterDetails({
           lede="Your company, the founder we should be in touch with, and where the world can already find you."
         />
         <div className="fr-chapter-fields">
-          <FormField
-            id="fr-company"
-            label="Company Name"
-            required
-            value={data.companyName}
-            error={errors.companyName}
-            onChange={(v) => ctrl.updateAndMaybeValidate("companyName", v, "companyName", validateCompanyName)}
-            onBlur={() => ctrl.blurValidate("companyName", validateCompanyName)}
-          />
+          {/* Three pairs and a website line: [Company | Name], [Email | Phone], Website,
+              [Country | City] — the same email/phone and country/city pairing every lead page
+              on the site now uses. */}
           <div className="fr-field-row">
+            <FormField
+              id="fr-company"
+              label="Company Name"
+              required
+              value={data.companyName}
+              error={errors.companyName}
+              onChange={(v) => ctrl.updateAndMaybeValidate("companyName", v, "companyName", validateCompanyName)}
+              onBlur={() => ctrl.blurValidate("companyName", validateCompanyName)}
+            />
             <FormField
               id="fr-name"
               label="Your Name"
@@ -71,6 +74,8 @@ export function ChapterDetails({
               onChange={(v) => ctrl.updateAndMaybeValidate("name", v, "name", validateName)}
               onBlur={() => ctrl.blurValidate("name", validateName)}
             />
+          </div>
+          <div className="fr-field-row">
             <FormField
               id="fr-email"
               label="Official Email"
@@ -81,26 +86,25 @@ export function ChapterDetails({
               onChange={(v) => ctrl.updateAndMaybeValidate("email", v, "email", validateEmail)}
               onBlur={() => ctrl.blurValidate("email", validateEmail)}
             />
+            <PhoneField
+              id="fr-phone"
+              label="Phone / WhatsApp"
+              phoneCode={data.phoneCode}
+              phoneCodeCustom={data.phoneCodeCustom}
+              phoneNumber={data.phoneNumber}
+              error={errors.phone}
+              /* updateAndMaybeValidate, not setField: PhoneField fires onBlurValidate straight
+                 after a code change, which validates the state as it was BEFORE the change
+                 landed. An error already on screen would be re-asserted from stale values and
+                 stick. */
+              onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
+              onChangeCustomCode={(v) =>
+                ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
+              }
+              onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
+              onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
+            />
           </div>
-          {/* Phone takes a full row rather than half of one: with the code select beside it, half a
-              row leaves the number itself only a few characters wide. */}
-          <PhoneField
-            id="fr-phone"
-            label="Phone / WhatsApp"
-            phoneCode={data.phoneCode}
-            phoneCodeCustom={data.phoneCodeCustom}
-            phoneNumber={data.phoneNumber}
-            error={errors.phone}
-            /* updateAndMaybeValidate, not setField: PhoneField fires onBlurValidate straight after
-               a code change, which validates the state as it was BEFORE the change landed. An
-               error already on screen would be re-asserted from stale values and stick. */
-            onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
-            onChangeCustomCode={(v) =>
-              ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
-            }
-            onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
-            onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
-          />
           <FormField
             id="fr-website"
             label="Website"

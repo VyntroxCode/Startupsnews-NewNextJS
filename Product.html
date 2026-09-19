@@ -1,0 +1,2484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StartupNews.fyi — Product & Architecture Book</title>
+<style>
+  :root{
+    --ink:#111418; --muted:#5c6773; --line:#e3e7ec; --bg:#ffffff; --panel:#f7f9fb;
+    --brand:#E8232A; --brand-soft:#fdecec; --ok:#0f7b4f; --ok-soft:#e6f4ee;
+    --warn:#8a5a00; --warn-soft:#fdf3e0; --info:#1b4f9c; --info-soft:#e8f0fd;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{display:grid;grid-template-columns:250px minmax(0,1fr);gap:0;max-width:1400px;margin:0 auto}
+  nav{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav h4{margin:18px 0 8px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+  nav a{display:block;padding:4px 0;color:var(--ink);text-decoration:none;font-size:13.5px;border-left:2px solid transparent;padding-left:10px;margin-left:-10px}
+  nav a:hover{color:var(--brand);border-left-color:var(--brand)}
+  main{padding:36px 44px 120px;min-width:0}
+  header.masthead{border-bottom:3px solid var(--ink);padding-bottom:22px;margin-bottom:34px}
+  header.masthead h1{margin:0 0 6px;font-size:34px;line-height:1.15;letter-spacing:-.02em}
+  header.masthead p{margin:0;color:var(--muted);max-width:70ch}
+  .badges{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+  .badge{font:600 11.5px/1 var(--sans);letter-spacing:.04em;text-transform:uppercase;padding:6px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+  .badge.v{background:var(--brand-soft);border-color:#f6c9cb;color:var(--brand)}
+  .badge.live{background:var(--ok-soft);border-color:#bfe2d2;color:var(--ok)}
+  section{margin:0 0 52px;scroll-margin-top:20px}
+  h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);margin:0 0 4px}
+  h2 + .h2sub{margin:0 0 20px;font-size:25px;font-weight:650;letter-spacing:-.015em}
+  h3{font-size:17px;margin:30px 0 10px;letter-spacing:-.01em}
+  h4{font-size:14px;margin:20px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  p{max-width:78ch}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel);font-weight:650;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--line)}
+  tbody tr:hover{background:#fafcfe}
+  code{font:13px var(--mono);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .callout{border-left:3px solid var(--info);background:var(--info-soft);padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0;font-size:14px}
+  .callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+  .callout.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+  .callout strong{display:block;margin-bottom:3px}
+  .diagram{border:1px solid var(--line);border-radius:10px;padding:20px;margin:16px 0;background:#fff;overflow-x:auto}
+  .diagram figcaption{font-size:12.5px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+  .mermaid{min-height:40px}
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:16px 0}
+  .card{border:1px solid var(--line);border-radius:10px;padding:16px 18px;background:#fff}
+  .card h5{margin:0 0 6px;font-size:14.5px}
+  .card p{margin:0;font-size:13.5px;color:var(--muted)}
+  /* wireframes */
+  .wf{font-family:var(--mono);border:2px solid var(--ink);border-radius:8px;overflow:hidden;margin:14px 0;background:#fff;font-size:12px}
+  .wf-bar{background:var(--ink);color:#fff;padding:7px 12px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .wf-body{padding:14px}
+  .wf-row{display:flex;gap:10px;flex-wrap:wrap}
+  .wf-box{border:1.5px dashed #9aa4b0;border-radius:6px;padding:12px;flex:1;min-width:120px;color:#4a5561;background:#fcfdfe}
+  .wf-box.solid{border-style:solid;border-color:var(--ink);background:var(--panel);color:var(--ink)}
+  .wf-box.brand{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+  .wf-box .t{font-weight:700;display:block;margin-bottom:5px;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+  .wf-stack{display:flex;flex-direction:column;gap:8px}
+  .wf-note{font-family:var(--sans);font-size:12.5px;color:var(--muted);margin-top:8px}
+  /* version log */
+  .ver{border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:0 10px 10px 0;padding:18px 22px;margin:18px 0;background:#fff}
+  .ver-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .ver-head .n{font-size:22px;font-weight:700;letter-spacing:-.02em}
+  .ver-head .d{color:var(--muted);font-size:13px}
+  .pill{font:600 11px/1 var(--sans);text-transform:uppercase;letter-spacing:.06em;padding:5px 9px;border-radius:999px}
+  .pill.major{background:var(--brand-soft);color:var(--brand)}
+  .pill.medium{background:var(--warn-soft);color:var(--warn)}
+  .pill.minor{background:var(--panel);color:var(--muted);border:1px solid var(--line)}
+  ul{max-width:78ch;padding-left:20px}
+  li{margin:5px 0}
+  .kv{display:grid;grid-template-columns:170px 1fr;gap:6px 18px;font-size:13.5px;margin:12px 0}
+  .kv dt{color:var(--muted)}
+  .kv dd{margin:0}
+  hr{border:0;border-top:1px solid var(--line);margin:36px 0}
+  @media (max-width:900px){
+    .wrap{grid-template-columns:1fr}
+    nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    main{padding:24px 18px 80px}
+    header.masthead h1{font-size:26px}
+  }
+  @media print{
+    nav{display:none} .wrap{grid-template-columns:1fr} main{padding:0}
+    section{break-inside:avoid} .diagram{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav>
+  <h4>Overview</h4>
+  <a href="#what">1. What this is</a>
+  <a href="#users">2. Who uses it</a>
+  <a href="#features">3. Feature inventory</a>
+  <h4>Product</h4>
+  <a href="#screens">4. Screens &amp; wireframes</a>
+  <a href="#journeys">5. User journeys</a>
+  <h4>Architecture</h4>
+  <a href="#howbuilt">6. How it is built</a>
+  <a href="#dfd">7. Data flow diagrams</a>
+  <a href="#data">8. Data at a glance</a>
+  <a href="#ops">9. Environments &amp; ops</a>
+  <h4>Record</h4>
+  <a href="#versions">10. Version history</a>
+  <a href="#maintenance">11. How this doc is kept</a>
+</nav>
+
+<main>
+
+<header class="masthead">
+  <h1>StartupNews.fyi — Product &amp; Architecture Book</h1>
+  <p>One document that explains, in plain language, what this platform does, who it serves, what every
+  screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
+  a stakeholder can read it end-to-end without opening the code.</p>
+  <div class="badges">
+    <span class="badge v">Version v34</span>
+    <span class="badge">Released 2026-09-19</span>
+    <span class="badge live">Dev: dev.startupgpt.fyi</span>
+    <span class="badge">Repo: zox-nextjs</span>
+    <span class="badge">Next.js 16 · React 19 · MariaDB</span>
+  </div>
+</header>
+
+<!-- ───────────────────────── 1 ───────────────────────── -->
+<section id="what">
+  <h2>Section 1</h2>
+  <div class="h2sub">What this is, in one page</div>
+
+  <p>StartupNews.fyi looks like a news website from the outside. Inside, it is <strong>four products
+  sharing one codebase and one database</strong>. That is the single most important thing to understand
+  about it — almost every architectural decision follows from it.</p>
+
+  <div class="grid">
+    <div class="card"><h5>1. The public news site</h5><p>Articles, categories, authors, search, startup events, reports, brand stories and press releases. This is what readers and Google see.</p></div>
+    <div class="card"><h5>2. The newsroom CMS</h5><p>Where staff write, schedule and publish everything above — plus banners, partner logos and editable page content.</p></div>
+    <div class="card"><h5>3. Internal business tools</h5><p>HR tool, Sales Tracker, Network Manager (CRM), Partnership Tracker, IT helpdesk and the newsletter engine. Staff-only, role-gated.</p></div>
+    <div class="card"><h5>4. Employee self-service</h5><p>Staff punch in and out, request leave, and upload KYC and onboarding documents from their own portal.</p></div>
+  </div>
+
+  <p>A fifth piece runs with no screen at all: a <strong>background worker</strong> that pulls in RSS
+  feeds from other publications, publishes scheduled content the moment it is due, and sends the daily
+  morning email.</p>
+
+  <div class="callout">
+    <strong>Why it matters</strong>
+    Because all four live in one app, a change to something shared — login, roles, the database pool, the
+    CSS reset — can affect a completely unrelated part of the product. That is why every change is recorded
+    in <code>arch.md</code>, and why anything medium or larger gets its own version entry in this document.
+  </div>
+
+  <h3>The numbers, as of v1</h3>
+  <dl class="kv">
+    <dt>Public + admin pages</dt><dd>78</dd>
+    <dt>API endpoints</dt><dd>172 (119 admin · 11 employee · 8 reader auth · 34 public/other)</dd>
+    <dt>UI component files</dt><dd>266</dd>
+    <dt>Feature modules</dt><dd>22</dd>
+    <dt>Database tables</dt><dd>≈ 60</dd>
+    <dt>Background jobs</dt><dd>5 (RSS, post scheduler, report scheduler, brand-story scheduler, morning signal)</dd>
+  </dl>
+</section>
+
+<!-- ───────────────────────── 2 ───────────────────────── -->
+<section id="users">
+  <h2>Section 2</h2>
+  <div class="h2sub">Who uses it, and what each of them can touch</div>
+
+  <p>There are <strong>three completely separate login systems</strong>. They do not share accounts,
+  tokens or tables. Mixing them up is the most common source of confusion when working on auth.</p>
+
+  <table>
+    <thead><tr><th>Person</th><th>Logs in where</th><th>Account lives in</th><th>What they can do</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Reader</strong></td><td>Site header / <code>/dashboard</code></td><td><code>public_registrations</code></td><td>Read, search, save preferences, subscribe to the newsletter. Can sign in with email, Google or LinkedIn.</td></tr>
+      <tr><td><strong>Super Admin</strong> <code>admin</code></td><td><code>/admin/login</code></td><td><code>users</code></td><td>Everything. Only role allowed into HR Tool, Sales Tracker and Network Manager.</td></tr>
+      <tr><td><strong>Editor</strong> <code>editor</code></td><td><code>/admin/login</code></td><td><code>users</code></td><td>Full content control: publish, delete, manage categories and authors, reports, brand stories, events, banners.</td></tr>
+      <tr><td><strong>Author</strong> <code>author</code></td><td><code>/admin/login</code></td><td><code>users</code></td><td>Write and edit content. Cannot delete or bulk-mutate, cannot manage categories or authors.</td></tr>
+      <tr><td><strong>Event Admin</strong> <code>event_admin</code></td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Events, event regions and home-page banners. Content access is scoped to the Press Release category only.</td></tr>
+      <tr><td><strong>Publisher Admin</strong> <code>publisher_admin</code></td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Content management, reports, brand stories and inner pages. Does not manage categories or authors directly.</td></tr>
+      <tr><td><strong>IT Support</strong> <code>it_support</code></td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Triages the whole IT ticket queue — status, priority, assignee, removing comments and attachments.</td></tr>
+      <tr><td><strong>Employee</strong></td><td><code>/employee</code></td><td><code>hr_employee_credentials</code></td><td>Own attendance, leave requests, documents and KYC. No admin panel access at all.</td></tr>
+      <tr><td><strong>Submitter</strong> (no account)</td><td>Public forms</td><td>—</td><td>Submit a startup, funding round, press release or event; these land in the admin panel for review.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>Rule that keeps this honest</strong>
+    Every role list lives in one file — <code>src/shared/middleware/roles.ts</code>. No endpoint is allowed to
+    write its own inline list of roles. If a permission question ever needs answering, that one file is the
+    complete answer.
+  </div>
+</section>
+
+<!-- ───────────────────────── 3 ───────────────────────── -->
+<section id="features">
+  <h2>Section 3</h2>
+  <div class="h2sub">Feature inventory</div>
+
+  <h3>Reader-facing</h3>
+  <table>
+    <thead><tr><th>Feature</th><th>In simple terms</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Articles</td><td>News stories with categories, authors, tags, images and SEO metadata. Can be drafted, scheduled for later, or published now.</td><td><code>/[...slug]</code>, <code>/news</code></td></tr>
+      <tr><td>Categories &amp; authors</td><td>Browsing by topic or by writer.</td><td><code>/category/*</code>, <code>/author/*</code></td></tr>
+      <tr><td>Search</td><td>Site-wide article search.</td><td><code>/search</code></td></tr>
+      <tr><td>Startup events</td><td>Event listings, filterable by country/region, with a horizontally scrolling carousel on the home page.</td><td><code>/events</code>, <code>/startup-events</code></td></tr>
+      <tr><td>Reports</td><td>Long-form research pieces built from ordered sections, with page counts.</td><td>Report pages</td></tr>
+      <tr><td>Brand stories</td><td>Sponsored long-form content, also section-based, also schedulable.</td><td>Brand story pages</td></tr>
+      <tr><td>Press releases</td><td>A dedicated content stream, deliberately excluded from the Google News sitemap.</td><td><code>/press-release</code></td></tr>
+      <tr><td>Reader accounts</td><td>Sign up with email, Google or LinkedIn; manage newsletter preferences; delete your account.</td><td><code>/dashboard</code></td></tr>
+      <tr><td>Lead-gen forms</td><td>Six public forms: feature your startup, submit a funding round, submit a press release, submit/list an event, sponsor an event, advertise, contact.</td><td>See wireframe 4.3</td></tr>
+      <tr><td>Newsletter</td><td>Opt-in, scheduled sends, one-click unsubscribe.</td><td><code>/unsubscribe</code></td></tr>
+      <tr><td>SEO surface</td><td>Split sitemaps (index, news, posts in 1000-URL files, events, static), <code>llms.txt</code>, per-article robots directives, 410s for removed legacy URLs.</td><td><code>/sitemap_index.xml</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Staff-facing</h3>
+  <table>
+    <thead><tr><th>Tool</th><th>In simple terms</th><th>Who gets in</th></tr></thead>
+    <tbody>
+      <tr><td>Post editor</td><td>Rich-text editor (TipTap) with images, tables, embeds, links, character count. Schedule or publish.</td><td>admin, editor, author, publisher_admin, event_admin*</td></tr>
+      <tr><td>RSS feeds</td><td>Register other publications' feeds; the background worker imports their articles as drafts every 30 minutes.</td><td>admin, editor</td></tr>
+      <tr><td>Newsletter manager</td><td>Categories, items and send schedules.</td><td>admin, editor</td></tr>
+      <tr><td>HR Tool</td><td>The largest internal tool — 30 endpoints. Employee directory, attendance, leave, regularisations, payroll runs, onboarding, company profile, policy rules, KYC documents.</td><td>admin only</td></tr>
+      <tr><td>Attendance &amp; leave</td><td>The admin-side view of what employees submit from their portal.</td><td>admin</td></tr>
+      <tr><td>Sales Tracker</td><td>Sales leads with country/city, and the sales team roster.</td><td>admin only</td></tr>
+      <tr><td>Network Manager</td><td>Contacts CRM.</td><td>admin only</td></tr>
+      <tr><td>Partnership Tracker</td><td>Event partnerships through their lifecycle, including whether each is live-listed on the public site and auto-expiry of past partnerships.</td><td>admin</td></tr>
+      <tr><td>IT Tickets</td><td>Internal helpdesk. Anyone on the panel can raise a ticket and see their own; IT Support and admin triage the whole queue.</td><td>all panel roles (raise) / admin + it_support (triage)</td></tr>
+      <tr><td>HTML Tools</td><td>Standalone tools that can be shared with specific panel roles.</td><td>admin, editor + explicitly shared</td></tr>
+      <tr><td>Site settings</td><td>Key-value settings edited from the dashboard — footer copyright, Feature-Your-Startup hero images — changed without a deploy.</td><td>editor+</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:13px;color:var(--muted)">* Event Admin's content access is limited to the Press Release category, enforced in the posts API.</p>
+</section>
+
+<!-- ───────────────────────── 4 ───────────────────────── -->
+<section id="screens">
+  <h2>Section 4</h2>
+  <div class="h2sub">Screens &amp; wireframes</div>
+  <p>Structural sketches — box placement and hierarchy, not visual design. They exist so a
+  conversation about a screen can start from a shared picture.</p>
+
+  <h3>4.1 Public article page</h3>
+  <div class="wf">
+    <div class="wf-bar">/ [category] / [article-slug] &nbsp;·&nbsp; server-rendered, cached 60s</div>
+    <div class="wf-body wf-stack">
+      <div class="wf-box solid"><span class="t">Header</span>Logo · primary nav · search · Sign in</div>
+      <div class="wf-row">
+        <div class="wf-stack" style="flex:3;min-width:260px">
+          <div class="wf-box brand"><span class="t">Article hero</span>Category chip · H1 headline · author + date · hero image (next/image, quality 90 — this is the LCP element)</div>
+          <div class="wf-box" style="min-height:150px"><span class="t">Article body</span>Rich text rendered from stored HTML: paragraphs, inline images, tables, embeds, links</div>
+          <div class="wf-box"><span class="t">Tags + share</span></div>
+          <div class="wf-box"><span class="t">Related articles</span>3–6 cards from the same category</div>
+        </div>
+        <div class="wf-stack" style="flex:1;min-width:150px">
+          <div class="wf-box"><span class="t">Banner slot</span>from <code>banners</code></div>
+          <div class="wf-box"><span class="t">Latest</span>recent posts list</div>
+          <div class="wf-box"><span class="t">Newsletter</span>email capture</div>
+        </div>
+      </div>
+      <div class="wf-box solid"><span class="t">Footer</span>Section links · policies · copyright (text pulled live from site settings)</div>
+    </div>
+  </div>
+  <p class="wf-note">Images are served by CloudFront at <code>images.startupnews.fyi</code>, never directly from the app server. A site-wide "Sign-In for Free" banner can overlay the bottom of the page.</p>
+
+  <h3>4.2 Admin panel shell</h3>
+  <div class="wf">
+    <div class="wf-bar">/admin/* &nbsp;·&nbsp; JWT-gated, sidebar filtered by role</div>
+    <div class="wf-body">
+      <div class="wf-row">
+        <div class="wf-stack" style="flex:0 0 180px">
+          <div class="wf-box solid"><span class="t">Sidebar</span>Dashboard<br>Posts · Categories · Authors<br>Events · Banners<br>Reports · Brand Stories<br>RSS · Newsletter<br>Users · Panel Admins<br>HR Tool · Attendance · Leave<br>Sales · Contacts · Partnerships<br>IT Tickets · Tools</div>
+        </div>
+        <div class="wf-stack" style="flex:1">
+          <div class="wf-box solid"><span class="t">Top bar</span>Breadcrumb · search · logged-in user + role · logout</div>
+          <div class="wf-box brand"><span class="t">Stat row</span>4–6 count tiles (posts, events, submissions, tickets)</div>
+          <div class="wf-box" style="min-height:120px"><span class="t">Work area</span>Filterable, paginated data table — bulk actions, row actions, CSV export</div>
+          <div class="wf-box"><span class="t">Settings cards</span>Footer settings · Feature-Your-Startup hero images</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="wf-note">The sidebar renders only what the signed-in role is allowed to open — a Publisher Admin never sees HR Tool or Sales Tracker at all.</p>
+
+  <h3>4.3 Public multi-step submission form</h3>
+  <div class="wf">
+    <div class="wf-bar">/feature-your-startup · /submit-funding-round · /submit-press-release</div>
+    <div class="wf-body">
+      <div class="wf-row">
+        <div class="wf-box brand" style="flex:1;min-height:190px"><span class="t">Image panel</span>Full-height photo + caption that changes per step. Source: CDN URL from site settings, falling back to a bundled local image so it can never break.</div>
+        <div class="wf-stack" style="flex:1.2">
+          <div class="wf-box"><span class="t">Progress</span>"Step 1 of 2"</div>
+          <div class="wf-box solid" style="min-height:110px"><span class="t">Step 1 — details &amp; contact</span>Name* · Company* · Phone* · Email* · Website · Country/City</div>
+          <div class="wf-box"><span class="t">Step 2 — pitch deck</span>Drag-or-click PDF dropzone, 10&nbsp;MB max</div>
+          <div class="wf-box"><span class="t">Turnstile</span>CAPTCHA — the endpoint rejects the request without it</div>
+          <div class="wf-row"><div class="wf-box">← Back</div><div class="wf-box brand">Submit →</div></div>
+        </div>
+      </div>
+      <div class="wf-note">Below the fold: "Why get featured" (4 cards) · "How it works" (3 steps) · closing CTA that scrolls back to the form. These animate in <em>and out</em> as you scroll — deliberately different from the rest of the site, which reveals once.</div>
+    </div>
+  </div>
+
+  <h3>4.4 Employee portal — punch screen</h3>
+  <div class="wf">
+    <div class="wf-bar">/employee &nbsp;·&nbsp; separate login from the admin panel</div>
+    <div class="wf-body wf-stack">
+      <div class="wf-box solid"><span class="t">Header</span>Employee name · code (E-1xx) · today's date</div>
+      <div class="wf-row">
+        <div class="wf-box brand" style="flex:1.4"><span class="t">Attendance widget</span>Big Punch In / Punch Out button · today's in/out times · worked hours · status (present / late / half-day).<br>Asks the browser for location when geo-fencing is on.</div>
+        <div class="wf-stack" style="flex:1">
+          <div class="wf-box"><span class="t">Policy summary</span>Shift timing · grace period · geo-fence radius if enabled</div>
+          <div class="wf-box"><span class="t">Leave balance</span>Remaining by type</div>
+        </div>
+      </div>
+      <div class="wf-row">
+        <div class="wf-box"><span class="t">Documents</span>Upload window + progress (n of m)</div>
+        <div class="wf-box"><span class="t">KYC</span>12 slots — 5 required, 7 optional</div>
+        <div class="wf-box"><span class="t">Leave requests</span>Apply · history · status</div>
+      </div>
+    </div>
+  </div>
+  <div class="callout warn">
+    <strong>Geo-fencing is built but switched off</strong>
+    The database columns and the full check are live as of 2026-09-13, but <code>hr_rules.geo_fencing</code> is
+    <code>0</code>. Nothing changes for any employee until a Founder turns it on. Configured centre:
+    28.6445330, 77.2003635 · radius 50&nbsp;m.
+  </div>
+
+  <h3>4.5 IT tickets board (Jira-style, since v5)</h3>
+  <div class="wf">
+    <div class="wf-bar">/admin/it-tickets</div>
+    <div class="wf-body wf-stack">
+      <div class="wf-box solid"><span class="t">Toolbar</span>Search · assignee avatar chips · Only my tickets · status / priority / type · Clear filters · <b>Board | List</b> · "3 tickets" · <b>+ Create</b></div>
+      <div class="wf-row">
+        <div class="wf-box" style="flex:1;min-height:110px"><span class="t">TO DO · 1</span>Card: summary, overdue pill, type icon · IT-3 · priority arrow · avatar<br>+ Create</div>
+        <div class="wf-box brand" style="flex:1;min-height:110px"><span class="t">IN PROGRESS · 1</span>Card: IT-1 · 💬 1<br>+ Create</div>
+        <div class="wf-box" style="flex:1;min-height:110px"><span class="t">BLOCKED · 1</span>Card: IT-2<br>+ Create</div>
+        <div class="wf-box" style="flex:1;min-height:110px"><span class="t">RESOLVED · 0</span>Drop tickets here</div>
+        <div class="wf-box" style="flex:1;min-height:110px"><span class="t">CLOSED · 0</span>Drop tickets here</div>
+      </div>
+      <div class="wf-note">Cards are dragged between columns to change status. Clicking a card opens the issue view (below); the address bar gains <code>?ticket=IT-1</code> so the link can be shared.</div>
+      <div class="wf-row">
+        <div class="wf-stack" style="flex:2">
+          <div class="wf-box solid"><span class="t">IT Support / IT-1</span>Summary (click to edit) · Description (click to edit)</div>
+          <div class="wf-box"><span class="t">Attachments</span>file · size · who · when · Remove — <b>Attach</b> uploads straight to S3 with a progress %</div>
+          <div class="wf-box"><span class="t">Activity</span>Comment box (Ctrl/⌘+Enter) · comments with avatar, name, "3m ago"</div>
+        </div>
+        <div class="wf-stack" style="flex:1">
+          <div class="wf-box brand"><span class="t">Status</span>IN PROGRESS ▾ (coloured lozenge; a dropdown for admin / IT Support)</div>
+          <div class="wf-box"><span class="t">Details</span>Assignee (Assign to me) · Reporter · Priority · Type · Due date · Created / Updated / Resolved</div>
+        </div>
+      </div>
+      <div class="wf-note">Helpdesk model: everyone on the panel can raise a ticket and sees their own. Only admin and IT Support see and triage the full queue; only admin can delete a ticket.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 5 ───────────────────────── -->
+<section id="journeys">
+  <h2>Section 5</h2>
+  <div class="h2sub">User journeys</div>
+
+  <h3>5.1 An article goes live</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    A["Author writes<br/>in the CMS"] --> B{"Publish now<br/>or schedule?"}
+    B -->|now| C["Status: published"]
+    B -->|later| D["Status: scheduled<br/>+ publish_at"]
+    D --> E["Cron tick picks it up<br/>at the due time"] --> C
+    C --> F["Appears on the site<br/>page cache refreshes"]
+    C --> G["Enters the sitemaps<br/>news sitemap if &lt; 48h old"]
+    F --> H(("Reader"))
+    G --> I(("Google"))
+    </pre>
+    <figcaption>The same scheduling mechanism drives reports and brand stories — three separate cron jobs, one identical pattern.</figcaption>
+  </figure>
+
+  <h3>5.2 An outside article is imported</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    A["Editor registers<br/>an RSS feed"] --> B["Every 30 minutes<br/>the worker checks it"]
+    B --> C{"New items?"}
+    C -->|no| B
+    C -->|yes| D["Fetch + parse<br/>the article"]
+    D --> E["Download the image<br/>to our own S3"]
+    E --> F["Create a draft post"]
+    F --> G(("Editor reviews,<br/>edits, publishes"))
+    </pre>
+    <figcaption>Imports always arrive as drafts. Nothing an external feed produces reaches readers without a human publishing it.</figcaption>
+  </figure>
+
+  <h3>5.3 A startup submits itself</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    A(("Founder")) --> B["Fills the 2-step form"]
+    B --> C["Uploads a pitch deck<br/>straight to S3"]
+    B --> D{"CAPTCHA +<br/>rate limit +<br/>validation"}
+    D -->|fails| E["Friendly error,<br/>stays on the form"]
+    D -->|passes| F["Saved to the<br/>submissions table"]
+    F --> G["Email to the<br/>editorial inbox"]
+    F --> H(("Admin reviews<br/>in the panel"))
+    </pre>
+    <figcaption>Every public form follows this shape: CAPTCHA → rate limit → schema validation → store → notify.</figcaption>
+  </figure>
+
+  <h3>5.4 An employee marks attendance</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    A(("Employee")) --> B["Opens the portal<br/>and taps Punch In"]
+    B --> C{"Geo-fencing on?"}
+    C -->|no| E["Record the punch"]
+    C -->|yes| D{"Inside the<br/>allowed radius?"}
+    D -->|no| F["Blocked, with a<br/>clear reason"]
+    D -->|yes| E
+    E --> G["Apply lateness rules<br/>grace, half-day"]
+    G --> H["Attendance updated"]
+    H --> I(("HR sees it in<br/>the admin panel"))
+    </pre>
+    <figcaption>Location, accuracy and distance are stored on every punch — so the decision can always be audited after the fact.</figcaption>
+  </figure>
+</section>
+
+<!-- ───────────────────────── 6 ───────────────────────── -->
+<section id="howbuilt">
+  <h2>Section 6</h2>
+  <div class="h2sub">How it is built</div>
+
+  <p>Full technical depth lives in <code>arch.md</code>. This section is the version you can read
+  without a codebase open.</p>
+
+  <h3>The pieces</h3>
+  <table>
+    <thead><tr><th>Piece</th><th>What it is</th><th>Plain-language role</th></tr></thead>
+    <tbody>
+      <tr><td>Next.js 16 + React 19</td><td>The application framework</td><td>Renders every page and hosts every API endpoint. One process serves the public site, the admin panel and the employee portal.</td></tr>
+      <tr><td>MariaDB (<code>zox_db</code>)</td><td>The database</td><td>The only place real data lives — roughly 60 tables. If it is not in here, it is not saved.</td></tr>
+      <tr><td>Redis</td><td>Cache + lock</td><td>Makes repeated reads fast and stops two background runs colliding. <strong>Optional</strong> — if Redis is down the site still works, just slower.</td></tr>
+      <tr><td>AWS S3 + CloudFront</td><td>File storage + image CDN</td><td>Every image, PDF and attachment. Browsers fetch them from <code>images.startupnews.fyi</code>, never from the app server.</td></tr>
+      <tr><td>PM2</td><td>Process manager</td><td>Keeps two processes alive: the website and the background worker.</td></tr>
+      <tr><td>SMTP / Resend</td><td>Email</td><td>Form notifications, transactional mail and the newsletter.</td></tr>
+      <tr><td>Cloudflare Turnstile</td><td>CAPTCHA</td><td>Keeps bots out of the public forms.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>The shape of the code</h3>
+  <p>Every feature is a folder with the same four parts. Following this pattern is what keeps a
+  codebase this wide navigable.</p>
+  <table>
+    <thead><tr><th>Part</th><th>Holds</th><th>The rule</th></tr></thead>
+    <tbody>
+      <tr><td><code>domain/</code></td><td>Types and constants</td><td>Describes the shape of things. No logic, no SQL.</td></tr>
+      <tr><td><code>repository/</code></td><td>All the SQL</td><td><strong>The only place SQL is allowed.</strong> Nothing else in the app writes a query.</td></tr>
+      <tr><td><code>service/</code></td><td>The business rules</td><td>Decides what is allowed and what happens. Calls repositories; never writes SQL itself.</td></tr>
+      <tr><td><code>utils/</code></td><td>Small pure helpers</td><td>Distance maths, date maths, lateness rules — things easy to test on their own.</td></tr>
+    </tbody>
+  </table>
+
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    A["Page or API route<br/>handles the request"] --> B["Service<br/>applies the rules"]
+    B --> C["Repository<br/>talks to the database"]
+    C --> D[("MariaDB")]
+    A -.-> E["Shared: login, roles,<br/>cache, logging, S3"]
+    B -.-> E
+    </pre>
+    <figcaption>Requests always travel left to right. A route reaching straight past the service into the database is a bug, not a shortcut.</figcaption>
+  </figure>
+
+  <h3>Where things run</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+graph TB
+    U(("Everyone")) --> N["nginx"]
+    N --> W["Website process<br/>PM2 · port 3010"]
+    C["Background process<br/>PM2 · cron"]
+    W --> DB[("MariaDB")]
+    W --> R[("Redis")]
+    W --> S[("S3")]
+    C --> DB
+    C --> R
+    C --> EXT["Other publications'<br/>RSS feeds"]
+    S --> CDN["CloudFront<br/>images.startupnews.fyi"]
+    CDN --> U
+    </pre>
+    <figcaption>Two processes, one codebase, one database. The background process has no web address — it simply wakes on a timer.</figcaption>
+  </figure>
+</section>
+
+<!-- ───────────────────────── 7 ───────────────────────── -->
+<section id="dfd">
+  <h2>Section 7</h2>
+  <div class="h2sub">Data flow diagrams</div>
+  <p>Standard DFD levels: Level&nbsp;0 shows the system as one box and who talks to it; Level&nbsp;1 opens
+  that box into its main processes and data stores.</p>
+
+  <h3>Level 0 — context diagram</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    R(("Reader"))
+    ST(("Staff"))
+    EMP(("Employee"))
+    SUB(("Submitter"))
+    FEED(("RSS publishers"))
+    SYS["StartupNews.fyi<br/>platform"]
+
+    R -->|"page views, search,<br/>sign-in, subscribe"| SYS
+    SYS -->|"articles, events,<br/>reports, emails"| R
+    ST -->|"content, settings,<br/>CRM and HR data"| SYS
+    SYS -->|"dashboards, lists,<br/>CSV exports"| ST
+    EMP -->|"punch, leave,<br/>documents, KYC"| SYS
+    SYS -->|"attendance status,<br/>approvals"| EMP
+    SUB -->|"form entries,<br/>pitch decks"| SYS
+    SYS -->|"confirmation email"| SUB
+    FEED -->|"RSS feeds"| SYS
+    SYS -->|"imported drafts"| ST
+    </pre>
+    <figcaption>Level 0 · five external actors, one system.</figcaption>
+  </figure>
+
+  <h3>Level 1 — processes and data stores</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart TB
+    R(("Reader"))
+    ST(("Staff"))
+    EMP(("Employee"))
+    FEED(("RSS sources"))
+
+    P1["1.0 Public delivery"]
+    P2["2.0 Content management"]
+    P3["3.0 RSS ingestion"]
+    P4["4.0 Scheduled publishing"]
+    P5["5.0 Submission intake"]
+    P6["6.0 HR and employee ops"]
+    P7["7.0 Internal ops<br/>CRM, sales, tickets"]
+    P8["8.0 Email and newsletter"]
+    P9["9.0 Media pipeline"]
+
+    D1[("D1 content")]
+    D2[("D2 events")]
+    D3[("D3 accounts")]
+    D4[("D4 HR records")]
+    D5[("D5 submissions and leads")]
+    D6[("D6 feeds")]
+    D7[("D7 cache")]
+    D8[("D8 media files")]
+
+    R --> P1
+    P1 --> D1
+    P1 --> D2
+    P1 --> D7
+    P1 --> R
+    ST --> P2 --> D1
+    P2 --> D2
+    P2 --> P9
+    ST --> P7 --> D5
+    FEED --> P3 --> D6
+    P3 --> D1
+    P3 --> P9
+    P4 --> D1
+    P4 --> D2
+    R --> P5 --> D5
+    P5 --> P8
+    P5 --> P9
+    EMP --> P6 --> D4
+    P6 --> P9
+    P9 --> D8
+    D8 --> P1
+    P8 --> R
+    P8 --> ST
+    P1 --> D3
+    </pre>
+    <figcaption>Level 1 · nine processes, eight stores. Numbering matches <code>arch.md</code> §6.2 so the two documents can be read side by side.</figcaption>
+  </figure>
+
+  <h3>Login and permissions</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart TB
+    L["Staff signs in<br/>email + password"] --> B{"Password correct?"}
+    B -->|no| X["Rejected"]
+    B -->|yes| T["Issue a signed token<br/>carrying the person's role"]
+    T --> Q["Every later request<br/>carries that token"]
+    Q --> V{"Token valid<br/>and account active?"}
+    V -->|no| X
+    V -->|yes| RL{"Does that role have<br/>access to this feature?"}
+    RL -->|no| F["403 — not allowed"]
+    RL -->|yes| OK["Request proceeds"]
+    </pre>
+    <figcaption>The role written into the token also decides which table the account is looked up in — panel roles live in a separate table from core staff.</figcaption>
+  </figure>
+
+  <h3>Media upload</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+sequenceDiagram
+    participant U as Admin or employee
+    participant A as The app
+    participant S as S3
+    participant C as Image CDN
+    U->>A: I want to upload this file
+    A->>A: Check role and file type
+    A->>S: Ask S3 for a one-time upload link
+    A-->>U: Here is the link and the final URL
+    U->>S: Upload the file directly
+    U->>A: Save the final URL on the record
+    Note over C,S: Readers later fetch it through the CDN
+    </pre>
+    <figcaption>Files never pass through the application server — it only hands out permission to upload. This keeps large uploads off the web process entirely.</figcaption>
+  </figure>
+</section>
+
+<!-- ───────────────────────── 8 ───────────────────────── -->
+<section id="data">
+  <h2>Section 8</h2>
+  <div class="h2sub">Data at a glance</div>
+  <p>Around 60 tables, grouped by what they are for.</p>
+
+  <table>
+    <thead><tr><th>Group</th><th>Tables</th><th>Holds</th></tr></thead>
+    <tbody>
+      <tr><td>Content</td><td><code>posts</code>, <code>post_tags</code>, <code>categories</code></td><td>Articles and how they are organised</td></tr>
+      <tr><td>Long-form</td><td><code>reports</code>, <code>report_sections</code>, <code>brand_stories</code>, <code>brand_story_sections</code></td><td>Section-built research and sponsored pieces</td></tr>
+      <tr><td>Events</td><td><code>events</code>, <code>event_regions</code>, <code>partnership_events</code></td><td>Listings, regions, and the partnership pipeline</td></tr>
+      <tr><td>Accounts</td><td><code>users</code>, <code>panel_admins</code>, <code>public_registrations</code>, <code>public_registration_founders</code>, <code>public_registration_funding_rounds</code></td><td>The three separate login worlds</td></tr>
+      <tr><td>HR</td><td>16 <code>hr_*</code> tables — employees, attendance, punch log, leave, regularisations, payroll runs and entries, rules, teams, onboarding, expenses, templates, audit log, company profile, credentials, overrides, document requests</td><td>Everything the HR tool and employee portal touch</td></tr>
+      <tr><td>IT helpdesk</td><td><code>it_tickets</code>, <code>it_ticket_comments</code>, <code>it_ticket_attachments</code>, <code>it_ticket_key_seq</code></td><td>Tickets and their human-readable keys</td></tr>
+      <tr><td>Submissions</td><td><code>feature_startup_submissions</code>, <code>funding_round_submissions</code>, <code>incubatx_dossiers</code></td><td>What the public forms create</td></tr>
+      <tr><td>Sales &amp; CRM</td><td><code>sales_leads</code>, <code>sales_team_members</code>, <code>contacts</code></td><td>Pipeline and contact book</td></tr>
+      <tr><td>Ingestion</td><td><code>rss_feeds</code>, <code>rss_feed_items</code></td><td>Feed registry and what has already been imported</td></tr>
+      <tr><td>Newsletter</td><td><code>newsletter_categories</code>, <code>newsletter_items</code>, <code>newsletter_schedules</code></td><td>What goes out, and when</td></tr>
+      <tr><td>Site chrome</td><td><code>banners</code>, <code>partner_logos</code>, <code>inner_page_content</code>, <code>site_settings</code>, <code>settings</code>, <code>admin_tools</code></td><td>Editable bits of the site that need no deploy to change</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>How the schema changes</strong>
+    Every change is a numbered SQL file in <code>scripts/migrations/</code>, applied by hand to the live
+    database only after the owner explicitly confirms. There is no automatic migration on deploy — deliberately,
+    because this database is shared and live.
+  </div>
+</section>
+
+<!-- ───────────────────────── 9 ───────────────────────── -->
+<section id="ops">
+  <h2>Section 9</h2>
+  <div class="h2sub">Environments &amp; operations</div>
+
+  <table>
+    <thead><tr><th>Thing</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Dev site</td><td><code>dev.startupgpt.fyi</code> — search-engine indexing is switched off here</td></tr>
+      <tr><td>Website process</td><td>PM2 <code>startupgpt-dev</code>, port 3010, logs to <code>logs/nextjs.log</code></td></tr>
+      <tr><td>Background process</td><td>PM2 <code>startupgpt-dev-cron</code>, logs to <code>logs/cron.log</code></td></tr>
+      <tr><td>Database</td><td>MariaDB <code>zox_db</code> on <code>127.0.0.1:3306</code></td></tr>
+      <tr><td>Cache</td><td>Redis on <code>127.0.0.1:6382</code></td></tr>
+      <tr><td>Media</td><td>S3 bucket <code>startupnews-media-2026</code> (us-east-1), served via <code>images.startupnews.fyi</code></td></tr>
+      <tr><td>Deploy</td><td><code>./deploy.sh</code> — cancels any deploy already running, installs, rebuilds, then restarts both processes</td></tr>
+      <tr><td>Timezone</td><td>Asia/Kolkata, set in code and on the database connection</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>The one operational rule that came from a real outage</strong>
+    A rebuild must always be followed by a process restart, in the same run. On 2026-08-02 the site was rebuilt
+    while the old process kept running; it carried on pointing browsers at JavaScript files that no longer
+    existed, and the admin panel broke in a way no amount of refreshing could fix. <code>deploy.sh</code> exists
+    precisely so that pair can never come apart again.
+  </div>
+
+  <div class="callout ok">
+    <strong>Standing rule for Jarvis</strong>
+    Never build, never restart PM2, and never apply a migration unless explicitly asked. Code changes are
+    written and type-checked; going live is always the owner's call.
+  </div>
+</section>
+
+<!-- ───────────────────────── 10 ───────────────────────── -->
+<section id="versions">
+  <h2>Section 10</h2>
+  <div class="h2sub">Version history</div>
+  <p>A new version is cut for <strong>major</strong> and <strong>medium</strong> changes.
+  Minor changes are recorded in <code>arch.md</code> and <code>agent.md</code> only, and appear here
+  rolled into the next version.</p>
+
+  <table>
+    <thead><tr><th>Version</th><th>Date</th><th>Size</th><th>Headline</th></tr></thead>
+    <tbody>
+      <tr><td><strong>v1</strong></td><td>2026-09-13</td><td>Major</td><td>Baseline — the platform as it stands today, documented end to end</td></tr>
+      <tr><td><strong>v2</strong></td><td>2026-09-14</td><td>Medium</td><td>Press release submissions now reach the Sales Tracker</td></tr>
+      <tr><td><strong>v3</strong></td><td>2026-09-14</td><td>Medium</td><td>Sponsor-event requests saved, with their own section in the Sales Tracker</td></tr>
+      <tr><td><strong>v4</strong></td><td>2026-09-14</td><td>Medium</td><td>List Your Event asks for the organiser's social media links; the team sees them read-only</td></tr>
+      <tr><td><strong>v5</strong></td><td>2026-09-14</td><td>Medium</td><td>IT Tickets rebuilt as a Jira-style board and issue view; the "dialog closes on every save" bug fixed</td></tr>
+      <tr><td><strong>v6</strong></td><td>2026-09-14</td><td>Medium</td><td>Employees can raise and track IT tickets from their own portal; only Admin can block or unblock a ticket</td></tr>
+      <tr><td><strong>v7</strong></td><td>2026-09-14</td><td>Medium</td><td>IT Tickets gets a Reports panel with pie charts and an Excel export with real Excel pie charts</td></tr>
+      <tr><td><strong>v8</strong></td><td>2026-09-15</td><td>Medium</td><td>Partner / Sponsor an Event redesigned as a cinematic, video-led partnership story ending in the same form</td></tr>
+      <tr><td><strong>v9</strong></td><td>2026-09-15</td><td>Major</td><td>HR Management links every record to the Employee ID, not the name: two people can share a name, pay maths unchanged; Directory edit form gains name and contact number</td></tr>
+      <tr><td><strong>v10</strong></td><td>2026-09-15</td><td>Medium</td><td>New Expand North Star 2026 event page: event logo bar, video hero, 2025 numbers, what's new, Founder's Pass and core themes</td></tr>
+      <tr><td><strong>v11</strong></td><td>2026-09-15</td><td>Medium</td><td>Expand North Star page: green "12th Indian Startup Delegation to Dubai" strip and six delegation day cards that turn into programme details on hover or tap</td></tr>
+      <tr><td><strong>v12</strong></td><td>2026-09-16</td><td>Medium</td><td>Expand North Star page: a registration form at the end, so visitors can ask us to help plan their trip — and those requests now land in the Sales Tracker</td></tr>
+      <tr><td><strong>v13</strong></td><td>2026-09-16</td><td>Medium</td><td>That registration form now uses the same fields, dropdowns and phone control as the rest of the site's forms — and no longer turns pale when the browser fills it in</td></tr>
+      <tr><td><strong>v14</strong></td><td>2026-09-16</td><td>Medium</td><td>The registration form is now light instead of black — a white card on an off-white page — and it no longer asks for a city before anyone has had a chance to choose one</td></tr>
+      <tr><td><strong>v15</strong></td><td>2026-09-16</td><td>Medium</td><td>Expand North Star page: a participation-fee section — from 1.65 lakh — with what the delegation and the pod / booth packages each include</td></tr>
+      <tr><td><strong>v16</strong></td><td>2026-09-16</td><td>Medium</td><td>Expand North Star page stands on its own: no site menu bar or banner above it, and it fills the whole screen width</td></tr>
+      <tr><td><strong>v17</strong></td><td>2026-09-16</td><td>Medium</td><td>Registration form asks how you're taking part instead of how many are travelling — and shows what your chosen package includes</td></tr>
+      <tr><td><strong>v18</strong></td><td>2026-09-16</td><td>Medium</td><td>Search-engine clean-up: page titles kept to 70 characters, tidier sitemaps, the events page opened to Google, and each article's headline is its first heading</td></tr>
+      <tr><td><strong>v19</strong></td><td>2026-09-17</td><td>Medium</td><td>Expand North Star page shows our partners' moving logos, the same ones as the Our Partners page</td></tr>
+      <tr><td><strong>v20</strong></td><td>2026-09-17</td><td>Medium</td><td>Sales Tracker gets its own Expand North Star section: every registration in a table, full details on click, editable, with received and last-updated dates</td></tr>
+      <tr><td><strong>v21</strong></td><td>2026-09-17</td><td>Medium</td><td>Expand North Star page tidy-up: one-line headings, fixed-size top bar, one logo row, Title Case, price line reworded</td></tr>
+      <tr><td><strong>v22</strong></td><td>2026-09-17</td><td>Medium</td><td>Sales Tracker: Expand North Star enquiries get a Lead status (Confirmed / Followed Up / Cancelled), a conversation note under Followed Up, and a "Followed Up Leads" tile</td></tr>
+      <tr><td><strong>v23</strong></td><td>2026-09-17</td><td>Medium</td><td>Expand North Star enquiries no longer appear in All leads — the Expand North Star section is their only home</td></tr>
+      <tr><td><strong>v24</strong></td><td>2026-09-17</td><td>Medium</td><td>Expand North Star page: the six delegation day cards now carry the full itinerary, 6 – 11 December 2026</td></tr>
+      <tr><td><strong>v25</strong></td><td>2026-09-18</td><td>Major</td><td>Database deleted in a ransomware attack on 17 September and restored from backup; the database is no longer reachable from the internet and its master password has been replaced</td></tr>
+      <tr><td><strong>v26</strong></td><td>2026-09-18</td><td>Major</td><td>The temporary lock from v25 made permanent: the database now refuses outside connections at its own level, and the protection re-applies automatically after every restart</td></tr>
+      <tr><td><strong>v27</strong></td><td>2026-09-18</td><td>Medium</td><td>A moving announcement strip at the top of the home page for the 12th Indian Startup Delegation to Dubai, with a "Participate Now" button that opens the Expand North Star page</td></tr>
+      <tr><td><strong>v28</strong></td><td>2026-09-18</td><td>Medium</td><td>Expand North Star page: a "Participate Now" button on the top bar, beside the Dubai Konnect logo, that jumps straight to the enquiry form</td></tr>
+      <tr><td><strong>v29</strong></td><td>2026-09-18</td><td>Medium</td><td>Expand North Star page: seven wording and layout changes &mdash; "Indian" dropped from the delegation heading, new headlines, a second "Participate Now" button under the show numbers, two rows of partner logos, and the day cards re-dated with the host moved under the title</td></tr>
+      <tr><td><strong>v30</strong></td><td>2026-09-19</td><td>Medium</td><td>Home page: the delegation strip now sits above the menu bar and stays pinned at the top; the Expand North Star page no longer shows the site footer</td></tr>
+      <tr><td><strong>v31</strong></td><td>2026-09-19</td><td>Medium</td><td>All five enquiry forms: email beside phone and country beside city; the country list is the full set of 193 countries in A&ndash;Z order with no "Other"; searching matches the start of a name only; the phone field lists every country's dialling code and checks the number's length for that country</td></tr>
+      <tr><td><strong>v32</strong></td><td>2026-09-19</td><td>Medium</td><td>Expand North Star form: two new questions, "Referred By" (a list of eleven partner organisations) and "How Did You Find Us" (social platforms, or Others with a box to type in); both are saved, emailed to the office, and shown, filtered and editable in the Sales Tracker</td></tr>
+      <tr><td><strong>v33</strong></td><td>2026-09-19</td><td>Medium</td><td>Every country field is now pick-from-list only: the "Other (add manually)" / "Others…" choice is gone from List Your Event, the Sales Tracker's lead form and the Partnership Tracker's Add/Edit Event form, so a country can no longer be typed in by hand</td></tr>
+      <tr><td><strong>v34</strong></td><td>2026-09-19</td><td>Medium</td><td>Expand North Star page: the "Our partners" logo strip now shows the nine referral-partner logos supplied for this event, in place of the site's general partner-logo feed</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v1</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-13 · baseline</span>
+    </div>
+    <p><strong>What this version is.</strong> The first complete written record of the platform: what it
+    does, who uses it, what every screen looks like, and how it is assembled. Nothing about the running
+    product changed — this version captures a system that was already live.</p>
+
+    <h4>What it covers</h4>
+    <ul>
+      <li>Four products in one codebase: public news site, newsroom CMS, internal business tools, employee portal — plus the background worker.</li>
+      <li>Three separate login systems and a nine-role permission matrix, all sourced from one file.</li>
+      <li>78 pages, 172 endpoints, 22 feature modules, ~60 tables, 5 scheduled jobs.</li>
+      <li>Five wireframes and nine data flow diagrams.</li>
+      <li>Operating environment, deploy procedure and the standing rules that protect the live site.</li>
+    </ul>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Geo-fencing is built but off.</strong> The columns are live in the database as of today; the toggle stays off until a Founder enables it.</li>
+      <li><strong>Two overlapping HR document systems.</strong> The older name-list system and the newer KYC system ask for five of the same documents. This is a known regression, investigated and documented (<code>agent.md</code> #592) — the fix needs both the shared list cleared <em>and</em> the copies on eight employee records cleared; it is awaiting the owner's decision, not blocked technically.</li>
+      <li><strong>Placeholder photography.</strong> <code>/advertise-with-us</code> still uses stock images; the upload mechanism to replace them with real brand assets is built and needs no deploy to use.</li>
+      <li><strong>Uncommitted work in the tree.</strong> The IT Tickets feature and several migrations are written but not yet committed.</li>
+    </ul>
+
+    <h4>Companion documents at this version</h4>
+    <dl class="kv">
+      <dt><code>arch.md</code></dt><dd>Technical architecture — layering, module registry, invariants, and the Architecture Change Log. Updated on <em>every</em> change.</dd>
+      <dt><code>agent.md</code></dt><dd>The running narrative log of every interaction, at entry #780 and counting.</dd>
+      <dt><code>CLAUDE.md</code></dt><dd>The instructions that keep all three in sync.</dd>
+    </dl>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v2</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-14</span>
+    </div>
+    <p><strong>What changed.</strong> The <em>Submit Your Press Release</em> page now actually saves what
+    people send. Before this, pressing Submit showed a thank-you message but stored nothing. Every
+    submission now lands in the sales team's <strong>Sales Tracker</strong>, exactly like the
+    <em>Submit Your Funding Round</em> and <em>Feature Your Startup</em> pages already do.</p>
+
+    <h4>How it works, in plain terms</h4>
+    <table>
+      <thead><tr><th>Step</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>1. Visitor fills the form</td><td>Company, name, phone/WhatsApp, email, website (optional), country and city (optional) — same fields as before.</td></tr>
+        <tr><td>2. Visitor presses Submit</td><td>The details are checked again on the server and saved in a new list just for press release submissions.</td></tr>
+        <tr><td>3. Copy goes to Sales Tracker</td><td>A lead is created automatically with status <strong>Query received</strong> and source <strong>Submit Your Press Release</strong>.</td></tr>
+        <tr><td>4. Sales team finds it</td><td>Sales Tracker → All leads → <strong>Filter: page leads</strong> → <strong>Press Release Page Leads</strong>.</td></tr>
+        <tr><td>If something goes wrong</td><td>The form stays open and shows a short red message under the Submit button, so nothing typed is lost.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Other changes rolled into this version</h4>
+    <ul>
+      <li>The "The Desk" illustration section was removed from the Submit Your Press Release page (minor change, 2026-09-14).</li>
+      <li>Create Employee form fixes in the HR tool: next Employee ID is correct again, and Department/Reporting Manager no longer pre-fill (minor change, 2026-09-13).</li>
+    </ul>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Needs one database step before it works.</strong> The new storage list has to be created once (a ready-made script is included). Until then, the page will show an error when someone submits.</li>
+      <li><strong>Not on the live site yet.</strong> The dev site also needs a rebuild before the change is visible.</li>
+      <li>To stop spam, one network can send at most 5 submissions every 10 minutes.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v3</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-14</span>
+    </div>
+    <p><strong>What changed.</strong> Requests from the <em>Partner / Sponsor an Event</em> page are now
+    saved and shown in the <strong>Sales Tracker</strong>. Before this they only arrived as an email to the
+    office inbox — if that email was missed, the request was lost, and nothing appeared in the admin panel.
+    Because these requests describe an <em>event</em> (title, date, poster, description) rather than a
+    company, they get their own section instead of being squeezed into the general leads list.</p>
+
+    <h4>How it works, in plain terms</h4>
+    <table>
+      <thead><tr><th>Step</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>1. Organiser fills the form</td><td>Event title, event page link, country and city, event website (optional), date, time, description, poster, their name, email and phone (optional) — the form itself did not change.</td></tr>
+        <tr><td>2. Organiser presses Submit</td><td>After the security check, everything is saved in a new list just for sponsor-event requests.</td></tr>
+        <tr><td>3. A lead is created too</td><td>A copy goes into Sales Tracker → All leads, type <strong>Sponsor Event Page Leads</strong>, status <strong>Query received</strong>, so the team can assign it and track follow-ups.</td></tr>
+        <tr><td>4. The office email still goes out</td><td>Same email as before, now with a note saying where it is saved. If email ever fails, the request is still saved.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>The new Sales Tracker section</h4>
+    <table>
+      <thead><tr><th>Part</th><th>What the team sees</th></tr></thead>
+      <tbody>
+        <tr><td>Four count tiles</td><td><strong>Sponsor Event submissions</strong> (all), <strong>Last 30 days</strong>, <strong>Upcoming events</strong>, <strong>Past events</strong>. Click a tile to open its list; click again to hide it.</td></tr>
+        <tr><td>The list</td><td>One row per request: when it arrived, a small poster, event name, event date (tagged Upcoming or Past), time, location, contact name, email, phone, event website. Searchable.</td></tr>
+        <tr><td>Full details</td><td>Click any row to open everything in one view: the large poster, all event details, the full description, and the contact — with one-click email, call and WhatsApp, plus a "Reply by email" button.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — Sales Tracker, Sponsor Event section</div>
+      <div style="border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff">
+        <div style="font-weight:700;margin-bottom:10px">Sponsor Event submissions</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px">
+          <div style="border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:8px;padding:8px"><b>12</b><br><small>All submissions</small></div>
+          <div style="border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:8px;padding:8px"><b>4</b><br><small>Last 30 days</small></div>
+          <div style="border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:8px;padding:8px"><b>7</b><br><small>Upcoming events</small></div>
+          <div style="border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:8px;padding:8px"><b>5</b><br><small>Past events</small></div>
+        </div>
+        <div style="overflow-x:auto"><table style="margin:0"><thead><tr><th>Submitted</th><th>Poster</th><th>Event</th><th>Date</th><th>Location</th><th>Contact</th><th></th></tr></thead>
+        <tbody><tr><td>14 Sep</td><td>▣</td><td>Example Summit</td><td>01 Oct · Upcoming</td><td>Bengaluru, India</td><td>Name · email</td><td>View</td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Live site needs one database step before deploy</strong> — a ready-made script creates the new list. It has already been run on the dev site.</li>
+      <li>Details are view-only in this section; status, owner and follow-up dates are managed on the matching lead in All leads.</li>
+      <li>To stop spam, one network can send at most 5 requests every 10 minutes (the security check is unchanged).</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v4</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-14</span>
+    </div>
+    <p><strong>What changed.</strong> The <em>List Your Event</em> form now asks organisers for links to
+    their social media accounts — <strong>Instagram, LinkedIn, X (Twitter) and Facebook</strong>. All four
+    are optional: an organiser fills in only the accounts they have. The team sees these links on the
+    event in the <strong>Partnership Tracker</strong>, where they can open them but cannot change them.</p>
+
+    <h4>How it works, in plain terms</h4>
+    <table>
+      <thead><tr><th>Step</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>1. Organiser reaches step 4 (Images)</td><td>Below the cover, banner and social images there is a new <strong>Social Media Links</strong> heading with four boxes: Instagram, LinkedIn, X (Twitter), Facebook.</td></tr>
+        <tr><td>2. Organiser types links (or leaves them blank)</td><td>Blank is fine. A link can be typed with or without "https://". If a link doesn't belong to that platform — for example a Facebook link in the Instagram box — the form says so and won't move on until it's fixed or cleared.</td></tr>
+        <tr><td>3. Review step</td><td>The last step lists each link (or "—") under <strong>Images &amp; Social Links</strong>, with an Edit button back to step 4.</td></tr>
+        <tr><td>4. Submit</td><td>The links are checked again on the server and saved with the event.</td></tr>
+        <tr><td>5. Team opens the event</td><td>Partnership Tracker → click the event → section <strong>11. Social media links</strong> shows each link, clickable, opening in a new tab. There is no box to edit them, and saving the event never changes them.</td></tr>
+        <tr><td>6. Export</td><td>The Excel download gains four columns: Instagram Link, LinkedIn Link, X (Twitter) Link, Facebook Link.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Accepted links</h4>
+    <table>
+      <thead><tr><th>Box</th><th>Link must be on</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>Instagram</td><td>instagram.com</td><td>https://instagram.com/yourpage</td></tr>
+        <tr><td>LinkedIn</td><td>linkedin.com</td><td>https://linkedin.com/company/yourpage</td></tr>
+        <tr><td>X (Twitter)</td><td>x.com or twitter.com</td><td>https://x.com/yourhandle</td></tr>
+        <tr><td>Facebook</td><td>facebook.com, fb.com or fb.me</td><td>https://facebook.com/yourpage</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — List Your Event, step 4 (new part)</div>
+      <div style="border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff">
+        <div style="font-weight:700">Social Media Links <small style="font-weight:400;color:var(--muted)">(optional)</small></div>
+        <div style="color:var(--muted);font-size:12px;margin-bottom:10px">Add links to the accounts you have — leave the rest blank.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+          <div><b style="font-size:12px">Instagram</b><div style="border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--muted);font-size:12px">https://instagram.com/yourpage</div></div>
+          <div><b style="font-size:12px">LinkedIn</b><div style="border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--muted);font-size:12px">https://linkedin.com/company/yourpage</div></div>
+          <div><b style="font-size:12px">X (Twitter)</b><div style="border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--muted);font-size:12px">https://x.com/yourhandle</div></div>
+          <div><b style="font-size:12px">Facebook</b><div style="border:1px solid var(--line);border-radius:6px;padding:7px;color:var(--muted);font-size:12px">https://facebook.com/yourpage</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — Partnership Tracker, event details (read-only)</div>
+      <div style="border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff">
+        <div style="font-weight:700;font-size:12px;text-transform:uppercase">11. Social media links</div>
+        <div style="color:var(--muted);font-size:11px;margin-bottom:8px">From the organiser's /list-your-event submission — read-only, not editable here.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;font-size:12px">
+          <div><b>Instagram</b><div style="background:#f3f4f6;border-radius:6px;padding:7px"><u>https://instagram.com/acme</u></div></div>
+          <div><b>LinkedIn</b><div style="background:#f3f4f6;border-radius:6px;padding:7px">—</div></div>
+          <div><b>X (Twitter)</b><div style="background:#f3f4f6;border-radius:6px;padding:7px"><u>https://x.com/acme</u></div></div>
+          <div><b>Facebook</b><div style="background:#f3f4f6;border-radius:6px;padding:7px">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>One database step is needed before this goes live, on dev and on the live site</strong> — a ready-made script adds the four link fields. It has <em>not</em> been run yet. Until it is, new events can't be saved once the new code is running, so run it before the next build.</li>
+      <li>Events added by the team by hand, or brought in from a spreadsheet, have no social links. Only organisers can provide them, through the form.</li>
+      <li>Older events submitted before this change show "—" for all four.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v5</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-14</span>
+    </div>
+    <p><strong>What changed.</strong> The <em>IT Tickets</em> tool in the admin panel was rebuilt to work and
+    look like a Jira board. Before this version, every save inside a ticket (changing its status, adding a
+    comment, dragging a card) made the whole page reload a moment later and closed what you were looking at.
+    That is fixed, and the screens were redesigned around the way Jira lays things out: a board of columns,
+    a card per ticket, a "Create ticket" dialog, and an issue view with the details down the right-hand side.</p>
+
+    <h4>How it works, in plain terms</h4>
+    <table>
+      <thead><tr><th>Screen</th><th>What you see and do</th></tr></thead>
+      <tbody>
+        <tr><td>Board</td><td>Five columns — <strong>To Do, In Progress, Blocked, Resolved, Closed</strong> — each with a count. A card shows the summary, an overdue pill if it's past its due date, the issue-type icon, the key (IT-12), a priority arrow, comment/attachment counts and the assignee's initials. Admin and IT Support drag cards between columns to change status; each column has its own <strong>+ Create</strong>.</td></tr>
+        <tr><td>Toolbar</td><td>Search (waits until you stop typing), assignee chips (click one to filter), <strong>Only my tickets</strong>, status / priority / type filters, <strong>Clear filters</strong>, a Board / List switch and the ticket count.</td></tr>
+        <tr><td>Create ticket</td><td>Issue type and priority pickers with icons, a Summary with a 255-character counter, description, due date, assignee with an <strong>Assign to me</strong> shortcut (admin / IT Support only), files to attach, and a <strong>Create another</strong> tick-box that keeps the dialog open for the next one. Files are uploaded right after the ticket is created, with a percentage per file.</td></tr>
+        <tr><td>Issue view</td><td>Breadcrumb "IT Support / IT-12", copy-link button, delete (admin only) and close. Left: the summary and description (click to edit), attachments, and the activity feed with a comment box (Ctrl/⌘+Enter saves). Right: the status as a coloured lozenge (a dropdown for admin / IT Support), then Assignee, Reporter, Priority, Type, Due date, and when it was created, updated and resolved. Escape closes it.</td></tr>
+        <tr><td>Sharing a ticket</td><td>Opening a ticket adds <code>?ticket=IT-12</code> to the address. Paste that link to a colleague and it opens straight onto that ticket — if they're allowed to see it.</td></tr>
+        <tr><td>List view</td><td>A table with type, key, summary, assignee, reporter, priority, status (changeable in place by admin / IT Support), created and due. Click a column heading to sort.</td></tr>
+        <tr><td>Notifications</td><td>Small pop-ups bottom-right confirm each action: "IT-12 created", "IT-12 moved to In Progress", "Link copied".</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Who can do what</h4>
+    <table>
+      <thead><tr><th>Person</th><th>Can</th><th>Cannot</th></tr></thead>
+      <tbody>
+        <tr><td>Anyone on the admin panel</td><td>Raise tickets, see and comment on their own, attach files, edit their own ticket's summary/description while it is still To Do</td><td>See other people's tickets, change status/priority/assignee</td></tr>
+        <tr><td>IT Support</td><td>Everything above plus see the whole queue, drag cards, change status/priority/type/assignee/due date, remove anyone's comments and files</td><td>Delete a ticket</td></tr>
+        <tr><td>Admin</td><td>Everything, including deleting a ticket (its comments and files go with it)</td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Bugs fixed along the way</h4>
+    <ul>
+      <li><strong>The page reloaded after every save.</strong> A panel-wide "refresh after any change" rule was firing for tickets too. Tickets are now excluded from it.</li>
+      <li><strong>Two different people could be treated as the same person.</strong> Staff accounts live in two separate tables whose ID numbers overlap; the tool compared only the number. It now checks the number <em>and</em> the account type everywhere (who reported it, who is assigned, who wrote a comment, who uploaded a file). A deep link to someone else's ticket is refused with a clear message.</li>
+      <li><strong>Cards were hard to open and got cut off while dragging.</strong> A click now opens; only a real drag (about 6 px) picks a card up, and the dragged card floats above everything instead of being clipped by its column.</li>
+      <li><strong>IT Support saw a Delete button that always failed.</strong> Deleting stays admin-only and the button is hidden for IT Support.</li>
+      <li>Better error messages (a server fault no longer shows as "not found"), a length limit on summaries, valid-date checks on due dates, and attachments can only point at our own file storage.</li>
+    </ul>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — a board card</div>
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;background:#fff;max-width:280px;box-shadow:0 1px 2px rgba(0,0,0,.06)">
+        <div style="font-weight:600;font-size:13px">Laptop battery drains in under an hour</div>
+        <div style="margin:8px 0"><span style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:3px;padding:2px 6px;font-size:11px;font-weight:600">Overdue Sep 13, 2026</span> <span style="font-size:11px;color:var(--muted)">💬 1</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="background:#475569;color:#fff;border-radius:4px;padding:0 4px">▭</span><b style="color:var(--muted)">IT-1</b><span style="color:#ea580c">⌃</span><span style="margin-left:auto;background:#e0e7ff;color:#4338ca;border-radius:999px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">AU</span></div>
+      </div>
+    </div>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li>Three sample tickets (IT-1, IT-2, IT-3) were created by the end-to-end test and left in place on dev so the new screens are not empty.</li>
+      <li>Deleting a ticket is admin-only by decision; if IT Support should be able to delete, it is a one-line change on each side (<code>IT_TICKETS_DELETE_ROLES</code>).</li>
+      <li>Attachments are stored in the same S3 bucket as images; removing an attachment removes the record, not the file.</li>
+      <li>The dev site (dev.startupgpt.fyi) was found down (502) during this work: its PM2 process had been stopped earlier in the day. It was rebuilt and restarted as part of this version.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v6</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-14</span>
+    </div>
+    <p><strong>What changed.</strong> Employees who sign in with their <strong>Employee ID</strong> (the employee
+    portal, not the admin panel) now have an <strong>IT Support</strong> section. They can raise an IT request,
+    add details and files, follow the conversation with the IT team, and see where their request stands.
+    Each employee sees <strong>only their own tickets</strong>. On the IT side, Admin and IT Support still see
+    every ticket — employee requests arrive in the same board, marked with an <em>Employee</em> tag. One rule
+    also changed: <strong>only an Admin can put a ticket on Blocked or take it off Blocked.</strong></p>
+
+    <h4>How an employee uses it</h4>
+    <table>
+      <thead><tr><th>Step</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>1. Open IT Support</td><td>A new <strong>IT Support</strong> item sits at the bottom of the employee sidebar, under Rules &amp; Policy.</td></tr>
+        <tr><td>2. Create ticket</td><td>The same "Create ticket" form the IT team uses, minus the Assignee box: issue type, priority, a short summary, a description, an optional due date and files.</td></tr>
+        <tr><td>3. Track it</td><td>Their tickets appear in a list (a board view is one click away) with the key (e.g. IT-12), priority and current status.</td></tr>
+        <tr><td>4. Talk to IT</td><td>Opening a ticket shows the full conversation. They can reply and attach screenshots, PDFs, logs, spreadsheets or ZIP files.</td></tr>
+        <tr><td>5. Edit</td><td>They can fix the summary or description while the ticket is still To Do. Once IT starts on it, only IT can change it.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Who can do what</h4>
+    <table>
+      <thead><tr><th></th><th>Employee</th><th>IT Support</th><th>Admin</th></tr></thead>
+      <tbody>
+        <tr><td>See tickets</td><td>Only their own</td><td>All</td><td>All</td></tr>
+        <tr><td>Raise a ticket, comment, attach files</td><td>Yes (own tickets)</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td>Move between To Do / In Progress / Resolved / Closed</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td>Put a ticket on Blocked, or take it off</td><td>No</td><td><strong>No</strong></td><td>Yes</td></tr>
+        <tr><td>Assign, set priority and due date</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td>Delete a ticket</td><td>No</td><td>No</td><td>Yes</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — employee portal, IT Support</div>
+      <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;font-size:12px">
+        <div style="width:150px;border-right:1px solid var(--line);padding:10px;background:#f8fafc">
+          <div style="font-weight:700;margin-bottom:8px">Employee name</div>
+          <div style="color:var(--muted)">Attendance</div><div style="color:var(--muted)">Leave</div><div style="color:var(--muted)">Documents</div><div style="color:var(--muted)">Rules &amp; Policy</div>
+          <div style="color:#4f46e5;font-weight:700;border-left:3px solid #6366f1;padding-left:5px;margin-top:2px">IT Support</div>
+        </div>
+        <div style="flex:1;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:15px">IT Support</b><span style="background:#6366f1;color:#fff;border-radius:6px;padding:4px 8px">+ Create ticket</span></div>
+          <div style="color:var(--muted);margin:2px 0 10px">Raise an IT request and track it here. Only you and the IT team can see your tickets.</div>
+          <div style="border:1px solid var(--line);border-radius:8px">
+            <div style="display:flex;gap:10px;padding:6px 8px;background:#f8fafc;font-weight:700;color:var(--muted)"><span style="width:40px">Key</span><span style="flex:1">Summary</span><span style="width:70px">Priority</span><span style="width:90px">Status</span></div>
+            <div style="display:flex;gap:10px;padding:6px 8px;border-top:1px solid var(--line)"><span style="width:40px">IT-12</span><span style="flex:1">Printer on 3rd floor shows offline</span><span style="width:70px">High</span><span style="width:90px"><span style="background:#e2e8f0;border-radius:3px;padding:1px 5px;font-weight:700">TO DO</span></span></div>
+            <div style="display:flex;gap:10px;padding:6px 8px;border-top:1px solid var(--line)"><span style="width:40px">IT-9</span><span style="flex:1">Laptop cannot reach office VPN</span><span style="width:70px">Urgent</span><span style="width:90px"><span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:1px 5px;font-weight:700">IN PROGRESS</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h4>What IT Support notices</h4>
+    <ul>
+      <li>The <strong>Blocked</strong> column is labelled <em>Admin only</em>. Dragging a card onto it (or off it) is refused with a short message, and the card stays where it was.</li>
+      <li>In a ticket's status menu, <em>Blocked (Admin only)</em> is greyed out. On a ticket that is already Blocked, the status shows a small lock — only an Admin can move it on.</li>
+      <li>Everything else on a blocked ticket (priority, assignee, due date, comments) can still be changed.</li>
+    </ul>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Not live yet.</strong> The dev site shows this after the next rebuild.</li>
+      <li>Only employees <em>without</em> a linked Event Admin / Publisher Admin account use the employee portal. Those with a linked account keep using IT Tickets inside the admin panel, as before.</li>
+      <li>Any ticket that is already on Blocked can now only be moved on by an Admin — including tickets blocked before this change.</li>
+      <li>There is no email or notification to IT when an employee raises a ticket — IT sees it on the board.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v7</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-14</span>
+    </div>
+    <p><strong>What changed.</strong> The IT Tickets page now has a <strong>Reports</strong> panel with pie charts,
+    and an <strong>Export Excel</strong> button that downloads a full report. Both follow whatever filters are
+    set on the page — search, status, priority, type, assignee, "Only my tickets" — so the team can report on
+    the whole queue or just a slice of it (for example only Urgent tickets, or only one person's work).</p>
+
+    <h4>The Reports panel (on the page)</h4>
+    <table>
+      <thead><tr><th>Part</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>Headline numbers</td><td>Total tickets · still open · blocked · overdue · unassigned &amp; open · resolved/closed · raised by employees · average age of open tickets · average time to resolve</td></tr>
+        <tr><td>Pie: By status</td><td>To Do, In Progress, Blocked, Resolved, Closed</td></tr>
+        <tr><td>Pie: By priority</td><td>Urgent, High, Medium, Low</td></tr>
+        <tr><td>Pie: By issue type</td><td>Hardware, Software, Access Request, Network, Other</td></tr>
+        <tr><td>Pie: By assignee</td><td>Each person's share of the tickets, plus Unassigned</td></tr>
+        <tr><td>Pie: Where it was raised</td><td>Admin panel staff vs the employee portal</td></tr>
+        <tr><td>Pie: Due-date health</td><td>Overdue · due within 7 days · due later · no due date · resolved/closed</td></tr>
+      </tbody>
+    </table>
+    <p>Each chart lists every slice with its count and percentage. <em>Hide reports</em> folds the panel away, and the
+    page remembers that choice until the browser tab is closed.</p>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — Reports panel</div>
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;font-size:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>Reports</b><span style="color:var(--muted)">Based on 6 tickets · Filters: None — all tickets</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;margin-bottom:10px">
+          <div style="border:1px solid var(--line);border-left:3px solid #6366f1;border-radius:6px;padding:6px"><b style="font-size:16px">6</b><br>Total</div>
+          <div style="border:1px solid var(--line);border-left:3px solid #6366f1;border-radius:6px;padding:6px"><b style="font-size:16px">4</b><br>Still open</div>
+          <div style="border:1px solid var(--line);border-left:3px solid #6366f1;border-radius:6px;padding:6px"><b style="font-size:16px">1</b><br>Overdue</div>
+          <div style="border:1px solid var(--line);border-left:3px solid #6366f1;border-radius:6px;padding:6px"><b style="font-size:16px">1</b><br>From employees</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+          <div style="border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;gap:8px;align-items:center"><div style="width:44px;height:44px;border-radius:50%;background:conic-gradient(#64748b 0 33%,#2563eb 0 50%,#dc2626 0 67%,#16a34a 0 83%,#0f172a 0)"></div><div><b>By status</b><br>To Do 2 · In Progress 1 …</div></div>
+          <div style="border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;gap:8px;align-items:center"><div style="width:44px;height:44px;border-radius:50%;background:conic-gradient(#dc2626 0 17%,#ea580c 0 50%,#d97706 0 83%,#16a34a 0)"></div><div><b>By priority</b><br>Urgent 1 · High 2 …</div></div>
+          <div style="border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;gap:8px;align-items:center"><div style="width:44px;height:44px;border-radius:50%;background:conic-gradient(#dc2626 0 17%,#f59e0b 0 33%,#2563eb 0 50%,#94a3b8 0 67%,#16a34a 0)"></div><div><b>Due-date health</b><br>Overdue 1 · Due soon 1 …</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h4>The Excel file</h4>
+    <table>
+      <thead><tr><th>Sheet</th><th>What's in it</th></tr></thead>
+      <tbody>
+        <tr><td>Summary</td><td>When it was made, by whom and with which filters; the headline numbers; one table per breakdown with counts and percentages — and a <strong>real Excel pie chart</strong> next to each table. The charts are proper Excel charts: they can be clicked, resized and recoloured, and they are tied to the numbers in the table.</td></tr>
+        <tr><td>Tickets</td><td>One row per ticket with every detail: key, summary, description, type, priority, status, reporter, where it was raised, assignee, due date and due-date health, created/updated/resolved dates, age, days to resolve, comment and attachment counts, and a link that opens the ticket. Colour-coded status and priority, frozen header and filters.</td></tr>
+        <tr><td>Workload</td><td>For each person: how many tickets they have in each status, their total and how many are overdue.</td></tr>
+        <tr><td>Comments</td><td>Every comment on the exported tickets — who wrote it, whether they are staff or an employee, when, and the text.</td></tr>
+        <tr><td>Attachments</td><td>Every file attached to the exported tickets, with a clickable link, size, who uploaded it and when.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Who can use it</h4>
+    <ul>
+      <li><strong>Admin and IT Support</strong> see the Reports panel and the Export Excel button.</li>
+      <li>Other admin-panel users who only raise their own tickets, and employees in the employee portal, don't see either.</li>
+    </ul>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Not live yet.</strong> The dev site shows this after the next rebuild.</li>
+      <li>The file was checked automatically — its structure, its six charts and every number behind them — but it has not been opened in Microsoft Excel itself on this server. Opening one export in Excel once is worth doing.</li>
+      <li>Two small spreadsheet libraries were added to the project for this (exceljs and jszip). They load only when someone clicks Export Excel.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v8</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-15</span>
+    </div>
+    <p><strong>What changed.</strong> The <em>Partner / Sponsor an Event</em> page (<code>/sponsor-event</code>) was
+    redesigned from a short form page into a cinematic, scrolling story. It is written for event organisers and
+    brands who want StartupNews.fyi on board as a sponsor or media partner, and it ends in the same submission
+    form. <strong>What the form collects and where submissions go did not change</strong> — they are still saved
+    to the Sales Tracker and emailed to the team, exactly as in v3.</p>
+
+    <h4>The page, top to bottom</h4>
+    <table>
+      <thead><tr><th>Section</th><th>What the visitor sees</th><th>Background</th></tr></thead>
+      <tbody>
+        <tr><td>Opening</td><td>A short cinematic intro: "Partner with StartupNews.fyi", then <em>Sponsor events that move the startup ecosystem.</em> arriving word by word, "Reach the right founders.", two buttons (start the submission / see the benefits) and four floating cards with our published reach figures.</td><td>Video — a packed event crowd</td></tr>
+        <tr><td>Inside the room</td><td>"Sponsors don't buy a venue. They buy the room." A large rounded video card with a play/pause button, then a slow ribbon of event formats.</td><td>Light, with a video card</td></tr>
+        <tr><td>Why partnerships work</td><td>Three beats — Discover, Connect, Amplify — each with its own small animation (a photo revealing, people connecting, a poster turning into social posts).</td><td>White</td></tr>
+        <tr><td>Why partner with us</td><td>Four panels (Visibility, Audience, Credibility, Community); the one under the mouse opens up. Community plays its own video.</td><td>Light</td></tr>
+        <tr><td>The network</td><td>"One event. An entire ecosystem." — <em>Your Event</em> in the centre, seven audiences appearing around it as you scroll, lines drawing out and small dots travelling along them.</td><td>Dark</td></tr>
+        <tr><td>Formats we partner on</td><td>A sideways gallery (conferences, pitch nights, expos, mixers, summits, meetups) that moves as you scroll down. On phones it is a swipeable row.</td><td>White</td></tr>
+        <tr><td>How you can partner</td><td>Media partnership, event sponsorship, ticketing partnership, community partnership — with a "Discuss a partnership" button.</td><td>Video — two speakers shaking hands</td></tr>
+        <tr><td>How it works</td><td>"From submission to spotlight" — four steps on a timeline, with an example event card beside it that fills in step by step.</td><td>White</td></tr>
+        <tr><td>Amplification</td><td>"Your event doesn't stop at the venue." — an event listing in the middle, with example Instagram, LinkedIn, newsletter and community posts spreading out around it.</td><td>Light</td></tr>
+        <tr><td>Big statement</td><td>"BRING THE RIGHT PEOPLE INTO THE ROOM." sliding sideways, then "Let's make your next event matter." and the submission button.</td><td>Video — a speaker on stage</td></tr>
+        <tr><td>Submit your event</td><td>"Let's put your event on the map." — the form (below).</td><td>Light</td></tr>
+      </tbody>
+    </table>
+    <p>No section heading or form step carries a number (no "01 / 02 / 03") — they are named instead.</p>
+
+    <h4>The form</h4>
+    <table>
+      <thead><tr><th>What</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Steps</td><td>Event details → Poster &amp; contact → Review</td><td>Same three steps, same fields, same checks</td></tr>
+        <tr><td>Progress</td><td>Small numbered list beside the form</td><td>A bar across the top with named steps; finished steps turn pink and tick themselves off</td></tr>
+        <tr><td>Moving between steps</td><td>Slide</td><td>Slide with a soft blur; if the top of the form has scrolled away, the page brings it back into view</td></tr>
+        <tr><td>Live preview</td><td>Appeared only after typing</td><td>Always shown beside the form (desktop), filling in as you type</td></tr>
+        <tr><td>After submitting</td><td>"Your event is now in review."</td><td>"You're on the map." — a tick springs into place, a few slow sparkles, and a card of the submitted event</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — opening screen and form header</div>
+      <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:12px">
+        <div style="background:#0b0c10;color:#fff;padding:14px;display:grid;grid-template-columns:1.5fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:10px;letter-spacing:.2em;opacity:.8">● PARTNER WITH STARTUPNEWS.FYI</div>
+            <div style="font-size:22px;font-weight:800;line-height:1.05;margin:6px 0">Sponsor events that move the startup <i style="color:#ff5e8f">ecosystem.</i></div>
+            <div>Reach the right <i style="color:#ff5e8f">founders.</i></div>
+            <div style="margin-top:8px;display:flex;gap:6px"><span style="background:#e62e69;border-radius:99px;padding:4px 10px">Start your submission →</span><span style="border:1px solid #fff6;border-radius:99px;padding:4px 10px">Explore partnership benefits →</span></div>
+          </div>
+          <div style="display:grid;gap:6px;align-content:center">
+            <span style="border:1px solid #fff3;border-radius:8px;padding:6px"><b>10M+</b> monthly impressions</span>
+            <span style="border:1px solid #ff5e8f88;border-radius:8px;padding:6px;margin-left:30px"><b style="color:#ff5e8f">22K+</b> community members</span>
+            <span style="border:1px solid #fff3;border-radius:8px;padding:6px"><b>250+</b> media partners</span>
+          </div>
+        </div>
+        <div style="background:#fff;padding:12px">
+          <div style="display:flex;justify-content:space-around;border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px">
+            <span><b style="color:#e62e69">✓</b> Event details</span><span><b style="color:#e62e69">◉</b> Poster &amp; contact</span><span style="color:var(--muted)">○ Review</span>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+            <div style="border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--muted)">Step card — poster upload, name, email, phone · Back / Next →</div>
+            <div style="border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--muted)">● Live preview — poster, title, city, date</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Numbers and claims on the page</h4>
+    <ul>
+      <li>Every figure (10M+ monthly impressions, 22K+ community members, 250+ media partners, 24 countries, 445K+ Instagram followers, 15M+ organic reach, 90.3M search impressions, "since 2019") is one the site already publishes on <em>Advertise with us</em> or in its company details. Nothing was invented for this page.</li>
+      <li>The four partnership options match what the business already runs: media and ticketing partnerships (tracked in the Partnership Tracker) and event sponsorship and community amplification (sold on <em>Advertise with us</em>).</li>
+      <li>The process is described honestly: the team reviews each submission and gets in touch; nothing is published automatically.</li>
+    </ul>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Not live yet.</strong> The dev site shows this after the next rebuild (the new video files are only served after a build).</li>
+      <li><strong>Stock footage and photos.</strong> The five videos come from Mixkit (free for commercial use, no credit needed) and are stored with the site (about 22 MB in total). Each loads only when a visitor scrolls near it and pauses once they scroll past. Photos are stock too. Both can be swapped for real StartupNews.fyi event footage by replacing files. Nothing on the page calls them StartupNews.fyi events.</li>
+      <li><strong>Checked in a browser, not submitted.</strong> Desktop, phone and reduced-motion views were checked: no sideways scrolling, all videos load, form errors appear, Next and Back work, and the progress bar and preview update. A real submission was not sent, because it would create a real Sales Tracker lead and email the team.</li>
+      <li>Visitors who turn off animations on their device get a still version of the page: no sliding, no floating cards and no autoplaying video.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v9</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-15</span>
+    </div>
+    <p><strong>What changed.</strong> In HR Management, everything about a person (attendance, punches,
+    corrections, leave, expenses, helpdesk tickets, payroll and document requests) used to be tied to their
+    <em>name</em>. If two employees had the same name, their records would have mixed together, so the system
+    simply refused a second person with the same name. Now every record is tied to the person's
+    <strong>Employee ID</strong>. The name is only what the screen shows, looked up from that ID.
+    <strong>Two employees can now share a name</strong>, and renaming someone never loses or mixes up
+    their records.</p>
+
+    <h4>Problems found and what was done</h4>
+    <table>
+      <thead><tr><th>Problem</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Directory: the edit form had no contact number field</td><td>Added a <em>Contact number</em> field (checked for 7–15 digits). It also shows on the profile.</td></tr>
+        <tr><td>Directory: the name couldn't be edited</td><td>Added an editable <em>Full name</em> field (required). A new name shows everywhere straight away: attendance, leave, payroll, the login.</td></tr>
+        <tr><td>Payroll worked out pay by matching names</td><td>Payroll now matches each person by Employee ID: salary, joining date, attendance, leave, carried-over short leave and TDS. The pay formula itself did not change.</td></tr>
+        <tr><td>Attendance, corrections, leave, expenses, tickets and document requests were stored by name</td><td>Each record now also stores the Employee ID, and every screen and calculation uses that.</td></tr>
+        <tr><td>Reporting manager was typed in as free text</td><td>It is now picked from the list of employees, so approvals go to the right person even if two share a name.</td></tr>
+        <tr><td>Directory saves were failing ("socket has unexpectedly been closed")</td><td>The database's size limit for a single save had dropped to 2 KB again. It was raised back to 64 MB.</td></tr>
+        <tr><td>A failed save could still rename the person's login</td><td>The name is now updated everywhere only after the employee record itself saves.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — Directory → Edit employee</div>
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="border:1px solid var(--line);border-radius:8px;padding:6px">Full name<br><b>Bhavika Arora</b></div>
+        <div style="border:1px solid var(--line);border-radius:8px;padding:6px">Contact number<br><b>98xxxxxx11</b></div>
+        <div style="border:1px solid var(--line);border-radius:8px;padding:6px">Designation / Department</div>
+        <div style="border:1px solid var(--line);border-radius:8px;padding:6px">Reporting manager ▾<br><b>Madhur Mohan Malik · SNFYI-00xx</b></div>
+      </div>
+    </div>
+
+    <h4>What did not change</h4>
+    <ul>
+      <li><strong>Pay figures.</strong> Payroll for July, August, September and October 2026 was worked out before and after the change, and every number for every employee matched.</li>
+      <li>Employees' own attendance calendars and leave balances in their portal show the same data as before.</li>
+      <li>Nobody's existing records were lost. All of them were linked to the right Employee ID automatically.</li>
+    </ul>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Not live yet.</strong> The dev site shows this after the next rebuild.</li>
+      <li><strong>One database step is left for the rebuild.</strong> The old "no two names alike" locks on attendance, punches and payroll are removed right after the rebuild. Until then, adding two people with the exact same name would still clash on those screens. The full same-name test runs at that point.</li>
+      <li><strong>Database size limit.</strong> It has dropped back to 2 KB twice now. The permanent fix is to recreate the database container, which needs a go-ahead. Until the live app restarts, some of its older database connections may still hit the small limit.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v10</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-15</span>
+    </div>
+    <p><strong>What changed.</strong> StartupNews.fyi has a new page for the <strong>Expand North Star 2026</strong>
+    event, at <code>/expand-north-star</code>. It was built from screenshots of the event's own website and uses only
+    the content shown in them. Under the StartupNews header sits a bar with the event's logo and dates, with no
+    buttons. The page below has the same moving, video-led feel as the Feature Your Startup and Sponsor an Event
+    pages. More sections will be added as more screenshots arrive.</p>
+
+    <h4>What a visitor sees, top to bottom</h4>
+    <table>
+      <thead><tr><th>Section</th><th>What is on it</th><th>How it moves</th></tr></thead>
+      <tbody>
+        <tr><td>Event bar</td><td>Expand North Star logo, Dubai Chamber Digital, GITEX Global, Summit 7 Dec 2026 and Expo 8–10 Dec 2026</td><td>Slides in, stays pinned under the site header, shrinks once pinned; a pink line shows how far down the page you are</td></tr>
+        <tr><td>Hero</td><td>"The world's largest startup and investor connector event", a large video of people meeting, a pause button, <em>Exhibit with us</em> and <em>Join investor programme</em></td><td>Words slide up one by one, the video card rises into focus, buttons follow the pointer slightly</td></tr>
+        <tr><td>Show numbers</td><td>What North Star is, then 2025 figures: 2,050 exhibiting startups from 96 countries, 1,300+ investors, 5,340 pre-arranged meetings, 400 speakers, 6,500 founders</td><td>Numbers count up when reached; a small spinning-earth clip sits beside the heading</td></tr>
+        <tr><td>What's new in 2026</td><td>Four cards: ENS26 Backers Pitch, ENS Founders Academy, NS Play, DigiHealth–Biotech</td><td>Cards rise in turn; on hover they lift and the photo zooms</td></tr>
+        <tr><td>The Founder's Pass</td><td>A one-day startup pod on the show floor, with <em>Apply for Founder's Pass</em></td><td>A pink bar draws down, the photo wipes open from the right</td></tr>
+        <tr><td>2026 core themes</td><td>Founder restructure · The new capital stack · Commercial deeptech · Scaleup advantage &amp; emerging markets</td><td>Colour cards rise and straighten, their lines draw across, photos drift as you scroll</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — top of /expand-north-star</div>
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;display:grid;gap:8px">
+        <div style="border:1px solid var(--line);border-radius:8px;padding:6px">StartupNews header</div>
+        <div style="border:1px solid var(--line);border-radius:8px;padding:6px;background:#fbe9f3">EXPAND NORTH STAR | Dubai Chamber | GITEX | Summit / Expo dates <em>(no buttons)</em></div>
+        <div style="padding:2px 6px;color:#E4157C"><b>THE WORLD'S LARGEST</b><br>STARTUP AND INVESTOR CONNECTOR EVENT</div>
+        <div style="border:1px solid var(--line);border-radius:18px;padding:30px 8px;text-align:center;background:#111;color:#fff">( ❚❚ ) video card</div>
+        <div style="text-align:center"><span style="border:2px solid #111;border-radius:99px;padding:3px 10px;background:#E4157C;color:#fff">EXHIBIT WITH US</span> <span style="border:2px solid #111;border-radius:99px;padding:3px 10px;background:#C9F31D">JOIN INVESTOR PROGRAMME</span></div>
+      </div>
+    </div>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild, and nothing links to it yet (menu, footer, sitemap).</li>
+      <li><strong>Buttons go to the event's home page.</strong> All three buttons open expandnorthstar.com in a new tab until the exact destinations are decided.</li>
+      <li><strong>Photos are stand-ins.</strong> The card and Founder's Pass photos are stock event photos until real Expand North Star photos are supplied. The two videos and the logo are the ones the team provided.</li>
+      <li>Visitors who turn off animations get a still page: the video waits for a press of play, and numbers show their final values.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v11</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-15</span>
+    </div>
+    <p><strong>What changed.</strong> Two additions to the Expand North Star page. At the very top, a bright green strip now
+    scrolls the line <strong>"12th Indian Startup Delegation to Dubai"</strong>. Near the bottom, a new dark section shows the
+    <strong>delegation programme as six cards</strong>, three per row. Each card shows a photo; when you hover over it (or tap
+    it on a phone) the photo shrinks into a small circle in the corner and that day's details appear, laid out like the
+    programme PDF.</p>
+
+    <h4>The day cards</h4>
+    <table>
+      <thead><tr><th>Card</th><th>Shown on the photo</th><th>Shown on hover / tap</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Day 2 · STEP Dubai - Day 1</td><td>11th February 2026: exhibitor space (POD), delegate participation, networking, 400+ startups and 8,000+ attendees, top tech fest</td></tr>
+        <tr><td>2</td><td>Day 3 · STEP Dubai - Day 2</td><td>12th February 2026: day-long networking, evening side events, more ways to collaborate</td></tr>
+        <tr><td>3 – 6</td><td>Coming soon · To be announced</td><td>"Details for this part of the programme will be shared soon."</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe — a day card, before and after hover</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+        <div style="border-radius:16px;background:#333;color:#fff;padding:70px 10px 10px">
+          <div style="color:#C9F31D;font-weight:700">DAY 2</div>
+          <div style="font-weight:800">STEP DUBAI - DAY 1 <span style="float:right;background:#E4157C;border-radius:99px;padding:0 7px">+</span></div>
+        </div>
+        <div style="border-radius:16px;background:#f6f6f7;border:1px solid var(--line);padding:10px">
+          <div><span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:#333;box-shadow:0 0 0 2px #E4157C;vertical-align:middle"></span> Day 2, 11<sup>th</sup> February 2026</div>
+          <div style="color:#E4157C;font-weight:800;margin:6px 0">STEP DUBAI - DAY 1</div>
+          <div>• <b>Exhibitor Space (POD):</b> …<br>• <b>Delegate Participation:</b> …</div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Four cards are waiting for content.</strong> Only Day 2 and Day 3 were supplied, so the other four say "Coming soon" instead of guessing the programme.</li>
+      <li><strong>Photos are stand-ins.</strong> The card photos are stock event photos until the delegation's own photos are supplied.</li>
+      <li><strong>Not live yet.</strong> Visible on the preview link now; on the dev site after the next rebuild.</li>
+      <li>Keyboard users can open a card with Tab, Enter or Space; visitors who turn off animations see it open instantly.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v12</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-16</span>
+    </div>
+    <p><strong>What changed.</strong> The Expand North Star page now <strong>ends with a form</strong>. Until now the page told
+    the story of the event and then simply stopped; a visitor who wanted to go had nowhere to say so. The new closing section,
+    headed <strong>"Ready to experience Expand North Star?"</strong>, asks for six things and passes the request straight to the
+    sales team.</p>
+
+    <h4>What we ask for</h4>
+    <table>
+      <thead><tr><th>Field</th><th>What the visitor sees</th><th>What we check</th></tr></thead>
+      <tbody>
+        <tr><td>Full Name</td><td>"Enter your full name"</td><td>Must be filled in</td></tr>
+        <tr><td>Email Address</td><td>"Enter your email address"</td><td>Must look like a real email address</td></tr>
+        <tr><td>Contact Number</td><td>A country code picker next to the number</td><td>Checked against the rules of the country picked, so an Indian number is judged by India's format and a German one by Germany's</td></tr>
+        <tr><td>City</td><td>"Enter your city"</td><td>Must be filled in</td></tr>
+        <tr><td>Country</td><td>A searchable list of every country</td><td>Must be chosen. Typing "united arab" finds UAE, "america" finds USA</td></tr>
+        <tr><td>Number of People Travelling</td><td>"e.g. 2", with &minus; and + buttons beside it</td><td>A whole number from 1 to 100</td></tr>
+      </tbody>
+    </table>
+
+    <p>All six are required. Nothing is sent until they are all valid, and a visitor who presses the button too early does not
+    get a browser pop-up &mdash; the fields that need attention turn pink, a short line appears under each one saying what is
+    missing, and the cursor jumps to the first of them.</p>
+
+    <h4>The wireframe</h4>
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe &mdash; the closing section on a laptop</div>
+      <div style="background:#0b0b0d;color:#fff;border-radius:16px;padding:18px;font-size:12px">
+        <div style="text-align:center;color:#C9F31D;letter-spacing:.24em;font-weight:700;font-size:10px">&mdash; JOIN THE EXPERIENCE &mdash;</div>
+        <div style="text-align:center;font-weight:800;font-size:17px;margin:8px 0 2px">READY TO EXPERIENCE</div>
+        <div style="text-align:center;font-weight:800;font-size:17px;color:#E4157C">EXPAND NORTH STAR?</div>
+        <div style="text-align:center;color:#bbb;margin:6px 0 14px">Tell us a little about your journey&hellip;</div>
+        <div style="border:1px solid #333;border-radius:12px;padding:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="border:1px solid #444;border-radius:7px;padding:8px;color:#888">Full Name</div>
+            <div style="border:1px solid #444;border-radius:7px;padding:8px;color:#888">Email Address</div>
+            <div style="border:1px solid #444;border-radius:7px;padding:8px;color:#888">+91 &nbsp;|&nbsp; Contact Number</div>
+            <div style="border:1px solid #444;border-radius:7px;padding:8px;color:#888">City</div>
+            <div style="border:1px solid #444;border-radius:7px;padding:8px;color:#888">Country &#9662;</div>
+            <div style="border:1px solid #444;border-radius:7px;padding:8px;color:#888">Travellers &nbsp;&minus;&nbsp;+</div>
+          </div>
+          <div style="text-align:center;margin-top:12px"><span style="display:inline-block;background:#E4157C;border-radius:99px;padding:8px 26px;font-weight:800">REGISTER YOUR INTEREST &rarr;</span></div>
+        </div>
+      </div>
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin:12px 0 8px">On a phone the six fields stack into one column and the button goes full width.</div>
+    </div>
+
+    <h4>What happens after someone presses the button</h4>
+    <table>
+      <thead><tr><th>Step</th><th>What the visitor sees</th><th>What happens behind it</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>The button reads "Submitting&hellip;" with a small spinner and cannot be pressed again</td><td>The request is on its way. Pressing repeatedly cannot send it twice</td></tr>
+        <tr><td>2</td><td>The form fades out and a green tick draws itself: <strong>"You're all set, &lt;first name&gt;!"</strong></td><td>The request has been saved</td></tr>
+        <tr><td>3</td><td>&mdash;</td><td>It appears in <strong>Sales Tracker &rarr; All leads</strong>, under the filter <em>Expand North Star Page Leads</em>, with the status "Query received" &mdash; workable like any other lead, with an owner, a status and follow-up dates</td></tr>
+        <tr><td>4</td><td>&mdash;</td><td>A notification email also goes to the office inbox. If email is not configured the request is still saved &mdash; the saving is what must not fail</td></tr>
+      </tbody>
+    </table>
+
+    <p>The page does not reload at any point, so nobody loses their place. If something goes wrong on our side, the form stays on
+    screen with everything still typed in and a short message under the button.</p>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>No new database table.</strong> Unlike the other forms on the site, this one needed nothing new &mdash; every answer fits a column the leads table already has. There is nothing for anyone to run before it works.</li>
+      <li><strong>The party size shares a column.</strong> "Travelling as a party of 3" is written into the lead's query line rather than a field of its own, so it reads as a sentence in the tracker.</li>
+      <li><strong>Groups of more than 100</strong> are asked to contact us directly instead of being accepted silently.</li>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild.</li>
+      <li>Visitors who turn off animations get the whole section immediately, with no movement anywhere &mdash; the form works exactly the same. It can be filled in and sent with a keyboard alone.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v13</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-16</span>
+    </div>
+    <p><strong>What changed.</strong> The Expand North Star form was built with controls of its own. It now uses
+    <strong>exactly the same ones as Feature Your Startup, Submit Your Funding Round and Submit Your Press Release</strong> &mdash;
+    not copies that look similar, the same components. Two things follow from that: the fields behave identically wherever
+    someone meets them, and a change made to them in future reaches every page at once. A display fault was fixed at the same
+    time.</p>
+
+    <h4>What is different for the visitor</h4>
+    <table>
+      <thead><tr><th>Field</th><th>Before</th><th>Now &mdash; as on the other forms</th></tr></thead>
+      <tbody>
+        <tr><td>Country code</td><td>A list of every country in the world, with the code worked out automatically</td><td>The site's own short list of the countries we actually hear from, with <strong>"Other"</strong> at the end for anyone to type their own code</td></tr>
+        <tr><td>Contact number</td><td>Checked loosely</td><td>Checked against that country's real format &mdash; an Indian mobile must be 10 digits starting 6&ndash;9 &mdash; and the box stops accepting keystrokes once that many digits are in</td></tr>
+        <tr><td>Country</td><td>Every country, searchable</td><td>The site's country list, searchable, with <strong>"Other (add manually)"</strong> for anything not on it</td></tr>
+        <tr><td>City</td><td>Typed by hand, so "Bengaluru", "bangalore" and "Blr" all arrived as different places</td><td>A dropdown of the cities we actually run events in, taken from the Partnership Tracker, plus "Other (add manually)". Picking a country fills the list</td></tr>
+      </tbody>
+    </table>
+
+    <p>Country is now asked <em>before</em> City, because the city list is built from whichever country is chosen. The order on
+    screen is: Full Name &amp; Email, then Contact Number &amp; Number of People Travelling, then Country &amp; City.</p>
+
+    <h4>The display fault, fixed</h4>
+    <p>When a browser filled the form in automatically &mdash; name, email and city remembered from a previous form &mdash; Chrome
+    painted those boxes with its own pale background and dark text. On this page's near-black panel they showed as bright white
+    squares with text that was hard to read, while the boxes the visitor typed into by hand stayed dark. The filled boxes now
+    keep the panel's own dark styling, so a half-remembered form looks the same as a freshly typed one.</p>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Before and after &mdash; a field the browser filled in</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+        <div style="background:#0b0b0d;border-radius:12px;padding:12px">
+          <div style="color:#888;font-size:10px;letter-spacing:.15em;margin-bottom:6px">FULL NAME *</div>
+          <div style="background:#e8f0fe;color:#202124;border-radius:7px;padding:9px">Yash Goswami</div>
+          <div style="color:#666;margin-top:6px">Before &mdash; a white box on a black panel</div>
+        </div>
+        <div style="background:#0b0b0d;border-radius:12px;padding:12px">
+          <div style="color:#888;font-size:10px;letter-spacing:.15em;margin-bottom:6px">FULL NAME *</div>
+          <div style="background:#16161a;color:#fff;border:1px solid #333;border-radius:7px;padding:9px">Yash Goswami</div>
+          <div style="color:#666;margin-top:6px">Now &mdash; the same as every other field</div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>A narrower country list.</strong> The country dropdown is now the site's own list rather than every country in the world. Anything missing is still reachable through "Other (add manually)".</li>
+      <li><strong>Cities are the ones we curate.</strong> A visitor from a city we don't list picks "Other (add manually)" and types it &mdash; the same as on the other forms. This is deliberate: it stops one city arriving under three spellings and splitting its count.</li>
+      <li><strong>Nothing else on the page changed</strong>, and nothing on the other three forms changed &mdash; they were re-checked as part of this.</li>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v14</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-16</span>
+    </div>
+    <p><strong>What changed.</strong> The registration form was black &mdash; a dark panel with dark boxes, carried over from
+    the delegation cards above it. It read as heavy and slightly aggressive, which is the wrong note for the one place on the
+    page where someone has to sit and type. It is now <strong>light</strong>: a white card on a warm off-white page, charcoal
+    text, hairline borders, and the event's magenta kept for the things that should catch the eye &mdash; the required marks,
+    the field you are typing in, and the button. Two fields were rebuilt and one irritation was removed.</p>
+
+    <h4>Before and after</h4>
+    <table>
+      <thead><tr><th>Part</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>The section</td><td>Near-black, continuing the dark cards above</td><td>Warm off-white, easing out of the dark section through a soft gradient</td></tr>
+        <tr><td>The card</td><td>A dark glass panel with a magenta offset frame and four lime corner brackets</td><td>A white card with a thin border, a soft shadow and one magenta-to-violet hairline along its top edge</td></tr>
+        <tr><td>The boxes</td><td>Dark, with pale text</td><td>White, with charcoal text and grey placeholders</td></tr>
+        <tr><td>Contact number</td><td>The country code and the number looked like two separate boxes pushed together</td><td>One box, divided by a hairline, that lights up as a single field</td></tr>
+        <tr><td>Number travelling</td><td>Two small buttons crowded into the right edge of a box</td><td>One field with a minus on the left, the number in the middle and a plus on the right</td></tr>
+        <tr><td>An invalid field</td><td>The whole box tinted pink</td><td>Stays white; only the border changes, with a small mark and one line of text beneath</td></tr>
+      </tbody>
+    </table>
+
+    <h4>The city message that appeared too early</h4>
+    <p>The City field could show <em>&ldquo;Please select your city.&rdquo;</em> to someone who had done nothing wrong &mdash; they had
+    merely opened the list, or clicked somewhere else on the page entirely. Being told off before you have had a chance to
+    answer is a bad first impression on a form.</p>
+    <p>Now the rule is explicit. <strong>Country and City say nothing until Register is pressed.</strong> The typed fields &mdash;
+    name, email, phone, number travelling &mdash; still speak when you leave them empty, which is useful, because leaving a box
+    you have entered is an answer. And any message on screen disappears the moment the thing it asked for is provided.</p>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe &mdash; the form as it now looks</div>
+      <div style="background:#FBFAFB;border:1px solid var(--line);border-radius:14px;padding:18px;font-size:12px">
+        <div style="text-align:center;color:#E4157C;letter-spacing:.24em;font-weight:800;font-size:10px">&mdash; PLAN YOUR VISIT &mdash;</div>
+        <div style="text-align:center;font-weight:800;font-size:17px;color:#1A1A1F;margin:8px 0 2px">READY TO EXPERIENCE</div>
+        <div style="text-align:center;font-weight:800;font-size:17px;color:#E4157C">EXPAND NORTH STAR?</div>
+        <div style="text-align:center;color:#6E6E7A;margin:6px 0 14px">Share a few details about your journey&hellip;</div>
+        <div style="background:#fff;border:1px solid #E4E2E8;border-radius:12px;padding:14px;box-shadow:0 8px 24px -14px rgba(26,20,40,.3)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="border:1px solid #E4E2E8;border-radius:7px;padding:9px;color:#A3A1AD">Enter your full name</div>
+            <div style="border:1px solid #E4E2E8;border-radius:7px;padding:9px;color:#A3A1AD">Enter your email address</div>
+            <div style="border:1px solid #E4E2E8;border-radius:7px;padding:0;display:flex"><span style="padding:9px 10px;border-right:1px solid #E4E2E8;color:#1A1A1F;font-weight:600">IN +91</span><span style="padding:9px 10px;color:#A3A1AD">Contact number</span></div>
+            <div style="border:1px solid #E4E2E8;border-radius:7px;padding:5px;display:flex;align-items:center;justify-content:space-between"><span style="border:1px solid #E4E2E8;border-radius:5px;padding:2px 8px">&minus;</span><span style="color:#A3A1AD">Number of travellers</span><span style="border:1px solid #E4E2E8;border-radius:5px;padding:2px 8px">+</span></div>
+            <div style="border:1px solid #E4E2E8;border-radius:7px;padding:9px;color:#A3A1AD">Select country &#9662;</div>
+            <div style="border:1px solid #E4E2E8;border-radius:7px;padding:9px;color:#A3A1AD">Select your city &#9662;</div>
+          </div>
+          <div style="text-align:center;margin-top:12px"><span style="display:inline-block;background:#E4157C;color:#fff;border-radius:99px;padding:9px 26px;font-weight:800">REGISTER YOUR INTEREST &rarr;</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Only this section changed.</strong> The delegation cards above it are still dark, the green strip is still green, and every other section is exactly as it was &mdash; all re-checked.</li>
+      <li><strong>The country code shows letters, not a flag</strong> (&ldquo;IN +91&rdquo;). This is a long-standing decision across the site: flag emoji fall back to raw letters on Windows browsers, which reads as a fault, so the letters are shown deliberately instead.</li>
+      <li><strong>Country is still asked before City</strong>, because the city list is built from whichever country is chosen.</li>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v15</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-16</span>
+    </div>
+    <p><strong>What changed.</strong> The Expand North Star page now says what taking part costs and what you get, just before
+    the registration form. A new section headed <strong>"Participation fee, at 1.65 lakh onwards"</strong> shows the two ways to
+    join side by side, so a reader can compare them and then register straight below.</p>
+
+    <h4>The two packages</h4>
+    <table>
+      <thead><tr><th>What's included</th><th>Delegation</th><th>POD / Booth</th></tr></thead>
+      <tbody>
+        <tr><td>One-day pod / booth at North Star</td><td>&mdash;</td><td>&#10003;</td></tr>
+        <tr><td>GITEX &amp; North Star entry, all days</td><td>&#10003;</td><td>&#10003;</td></tr>
+        <tr><td>Evening side events access</td><td>&#10003;</td><td>&#10003;</td></tr>
+        <tr><td>Hotel accommodation, 6 days / 5 nights</td><td>&#10003;</td><td>&#10003;</td></tr>
+        <tr><td>Return air fare</td><td>&#10003;</td><td>&#10003;</td></tr>
+        <tr><td>Visa</td><td>&#10003;</td><td>&#10003;</td></tr>
+      </tbody>
+    </table>
+    <p>The only difference is the pod, so on the page it sits first in the booth card and is picked out in pink.</p>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe &mdash; the section on a laptop</div>
+      <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;font-size:12px">
+        <div style="text-align:center;font-weight:800;font-size:16px">PARTICIPATION FEE,</div>
+        <div style="text-align:center;font-weight:800;font-size:16px;color:#E4157C">AT 1.65 LAKH ONWARDS</div>
+        <div style="width:50px;height:3px;background:#E4157C;margin:6px auto 12px;border-radius:3px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="border:1px solid #E7E4EA;border-radius:10px;overflow:hidden">
+            <div style="background:#111;color:#fff;padding:10px;font-weight:800">DELEGATION DELIVERABLES &nbsp;&#9992;</div>
+            <div style="padding:8px 10px;line-height:1.9">&#10003; GITEX &amp; North Star entry<br>&#10003; Evening side events<br>&#10003; Hotel 6D / 5N<br>&#10003; Return air fare<br>&#10003; Visa</div>
+          </div>
+          <div style="border:1px solid #E7E4EA;border-radius:10px;overflow:hidden">
+            <div style="background:#E4157C;color:#fff;padding:10px;font-weight:800">POD / BOOTH DELIVERABLES</div>
+            <div style="padding:8px 10px;line-height:1.9"><span style="background:#FDEEF6;font-weight:700">&#10003; One-day pod / booth</span><br>&#10003; GITEX &amp; North Star entry<br>&#10003; Evening side events<br>&#10003; Hotel 6D / 5N<br>&#10003; Return air fare<br>&#10003; Visa</div>
+          </div>
+        </div>
+      </div>
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-top:8px">On a phone the two cards stack, delegation first.</div>
+    </div>
+
+    <h4>How it moves</h4>
+    <p>The heading's words rise into place with a short pink line drawing beneath. Each card then slides up &mdash; the second a
+    moment after the first &mdash; a soft light passes across its coloured top, the card's title wipes in from the left, and the
+    items appear one after another with their ticks drawing themselves. Hovering a card lifts it slightly. Visitors who turn off
+    animations see the finished section straight away.</p>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>One price for both.</strong> The heading gives the starting fee only; the page doesn't say whether the booth package costs more.</li>
+      <li><strong>Wording tidied, not changed.</strong> Spelling was corrected (accommodation, Visa, North Star, onwards); nothing was added or reworded.</li>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v16</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-16</span>
+    </div>
+    <p><strong>What changed.</strong> The Expand North Star page now reads as a standalone event page. The StartupNews menu bar
+    and the rotating advertising banner no longer appear above it; the page opens straight onto its green "12th Indian Startup
+    Delegation to Dubai" strip. It also fills the whole width of the screen instead of sitting in a 1200-pixel box with white
+    margins either side.</p>
+
+    <h4>What a visitor sees now</h4>
+    <table>
+      <thead><tr><th>Part</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Top of the page</td><td>StartupNews menu bar, then an advertising banner, then the page</td><td>The green strip, right at the top</td></tr>
+        <tr><td>Event bar (logo + Launchpad)</td><td>Pinned just under the StartupNews menu bar</td><td>Pinned to the very top of the screen</td></tr>
+        <tr><td>Page width</td><td>A 1200-pixel column with white either side on wide screens</td><td>Colours and backgrounds run edge to edge; text, photos and cards stay in a comfortable centred column</td></tr>
+        <tr><td>Bottom of the page</td><td>StartupNews footer</td><td>Unchanged &mdash; the footer stays</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe &mdash; a wide screen, before and after</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:11px">
+        <div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">
+          <div style="background:#fff;padding:5px 8px;border-bottom:1px solid var(--line)">StartupNews menu bar</div>
+          <div style="background:#e8f0fb;padding:8px;text-align:center">Advertising banner</div>
+          <div style="display:flex"><div style="flex:1;background:#fff"></div><div style="flex:3"><div style="background:#00FF00;padding:2px 6px">12th Indian Startup Delegation…</div><div style="background:#FCEFF6;padding:14px 6px">Event page</div></div><div style="flex:1;background:#fff"></div></div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">
+          <div style="background:#00FF00;padding:2px 6px">12th Indian Startup Delegation to Dubai &#10022; 12th Indian Startup Delegation…</div>
+          <div style="background:#FDF1F7;padding:6px 6px;text-align:center">Event logos &nbsp; <span style="background:#151515;color:#FBF6CB;padding:1px 5px;border-radius:3px">LAUNCHPAD</span></div>
+          <div style="background:#FCEFF6;padding:26px 6px;text-align:center">Event page, full width</div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>No way back to the rest of the site from the top.</strong> With the menu bar gone, the only links to StartupNews are in the footer.</li>
+      <li><strong>No advertising on this page.</strong> The banner that runs on every other page is not shown here.</li>
+      <li><strong>Only this page is affected.</strong> Every other page keeps its menu bar and banner &mdash; checked on Feature Your Startup.</li>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v17</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-16</span>
+    </div>
+    <p><strong>What changed.</strong> The registration form no longer asks <em>how many people are travelling</em>. It asks
+    <strong>how you're participating</strong>, choosing between the two packages shown just above the form. Once a package is
+    picked, the form shows exactly what that package includes, so the visitor can confirm what they're signing up for before
+    pressing Register.</p>
+
+    <h4>The new question: "Participating As"</h4>
+    <table>
+      <thead><tr><th>Choice</th><th>What opens underneath</th></tr></thead>
+      <tbody>
+        <tr><td>One Person as Delegate</td><td rowspan="2">The <strong>delegation inclusions</strong>: GITEX &amp; North Star entry (all days), evening side events access, hotel accommodation 6D / 5N, return air fare, visa</td></tr>
+        <tr><td>Two Persons as Delegates</td></tr>
+        <tr><td>One Person with Booth / POD</td><td rowspan="2">The <strong>booth / POD inclusions</strong>: a one-day pod / booth at North Star (highlighted), plus everything in the delegation package</td></tr>
+        <tr><td>Two Persons with Booth / POD</td></tr>
+        <tr><td>Others (Share Your Requirement)</td><td>A text box to describe what they need in their own words (required, up to 1,000 characters)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe &mdash; a booth package chosen</div>
+      <div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:11.5px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><div style="color:#6E6E7A;font-size:9.5px;letter-spacing:.1em">CONTACT NUMBER *</div><div style="border:1px solid #E4E2E8;border-radius:6px;padding:6px">IN +91 | 98765 43210</div></div>
+          <div><div style="color:#6E6E7A;font-size:9.5px;letter-spacing:.1em">PARTICIPATING AS *</div><div style="border:1px solid #E4E2E8;border-radius:6px;padding:6px">One Person with Booth / POD &#9662;</div></div>
+        </div>
+        <div style="margin-top:8px;border:1px solid #E4E2E8;border-left:3px solid #E4157C;border-radius:8px;padding:8px 10px;background:#FBF6FA">
+          <div style="font-size:9.5px;letter-spacing:.1em;color:#6E6E7A">INCLUSIONS <span style="background:#E4157C;color:#fff;border-radius:99px;padding:1px 7px;letter-spacing:0">Booth / POD</span></div>
+          <div style="background:#FDEEF6;border-radius:6px;padding:4px 6px;margin:6px 0;font-weight:700">&#10003; One-day pod / booth (North Star)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">&#10003; GITEX &amp; North Star entry<span>&#10003; Evening side events</span><span>&#10003; Hotel 6D / 5N</span><span>&#10003; Return air fare</span><span>&#10003; Visa</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <div style="border:1px solid #E4E2E8;border-radius:6px;padding:6px;color:#A3A1AD">Select country &#9662;</div>
+          <div style="border:1px solid #E4E2E8;border-radius:6px;padding:6px;color:#A3A1AD">Select city &#9662;</div>
+        </div>
+      </div>
+    </div>
+
+    <h4>What the sales team sees</h4>
+    <p>Leads still arrive in <strong>Sales Tracker &rarr; All leads</strong> under <em>Expand North Star Page Leads</em>. The
+    note on each lead now reads, for example, <em>&ldquo;Participating as: Two Persons with Booth / POD.&rdquo;</em> &mdash; or, for
+    &ldquo;Others&rdquo;, <em>&ldquo;Other requirement: &hellip;&rdquo;</em> with what the visitor wrote. The notification email carries the
+    same.</p>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Group size is only one or two.</strong> Anyone bringing more people chooses &ldquo;Others&rdquo; and says so.</li>
+      <li><strong>One list, three places.</strong> The inclusions on the page's fee cards, in the form's box, and the options the server accepts all come from the same list &mdash; editing it once changes all three.</li>
+      <li><strong>Spelling tidied.</strong> &ldquo;Deligate&rdquo; &rarr; Delegate, &ldquo;-ooth&rdquo; &rarr; Booth, and &ldquo;Two Person&rdquo; &rarr; Two Persons; the &ldquo;&mdash; Inclusions&rdquo; note beside the first option is shown as the inclusions box rather than as part of its name.</li>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v18</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-16</span>
+    </div>
+    <p><strong>What changed.</strong> A set of fixes to how the site presents itself to Google and other search engines.
+    Readers won't see most of it on the page itself. It changes the page names shown in search results and browser tabs, and
+    the lists of pages (sitemaps) we give search engines.</p>
+
+    <h4>Page titles: 70 characters at most</h4>
+    <p>Every page title used to end with &ldquo;| StartupNews.fyi&rdquo;, even on long headlines, so many titles ran to 72&ndash;108
+    characters and got cut off in search results. Titles on articles and event pages now follow one rule:</p>
+    <table>
+      <thead><tr><th>If&hellip;</th><th>The title becomes</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>Headline + brand fits in 70</td><td>Headline | StartupNews.fyi</td><td>US, China Gear Up for Mid-September AI Safety Talks | StartupNews.fyi (69)</td></tr>
+        <tr><td>It doesn't fit</td><td>Headline only, brand left off</td><td>6th Edition MENA CISO Summit | Dubai Edition | Startup Events (61)</td></tr>
+        <tr><td>The headline alone is over 70</td><td>Headline cut at the last whole word, with &ldquo;&hellip;&rdquo;</td><td>OpenAI's rogue agents keep escaping, with oversight lagging behind&hellip; (67)</td></tr>
+      </tbody>
+    </table>
+    <p>Link previews on social media still show the full headline.</p>
+
+    <h4>Sitemaps</h4>
+    <table>
+      <thead><tr><th>Sitemap</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>News sitemap</td><td>Articles from the last 2 days</td><td>Articles from the last 7 days (Google News still only reads the last 2)</td></tr>
+        <tr><td>Posts sitemaps</td><td>1,000 articles per file</td><td>50,000 per file &mdash; the most a file may hold; article 50,001 starts file 2</td></tr>
+        <tr><td>Every sitemap</td><td>Said how often each page changes (hourly, weekly&hellip;)</td><td>No longer says it &mdash; Google ignores it</td></tr>
+        <tr><td>Main pages sitemap</td><td>Included &ldquo;Delete your account&rdquo;</td><td>Left out; the page still works</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Headings on the page</h4>
+    <p>Search engines read a page's headings in order. On an article, the banner at the top and the small category label above
+    the headline counted as headings before the headline itself. They are now plain text, so <strong>the article's headline is
+    the first heading</strong>. The &ldquo;Latest News&rdquo; label on the home page got the same treatment. Nothing looks different.</p>
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe &mdash; what a search engine reads at the top of an article</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:11.5px">
+        <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px">
+          <div style="color:#6E6E7A;font-size:9.5px;letter-spacing:.1em;margin-bottom:6px">BEFORE</div>
+          <div>&lt;H2&gt; Banner: 6th Edition MENA CISO Summit</div>
+          <div>&lt;H3&gt; AI &amp; Deeptech</div>
+          <div style="font-weight:700">&lt;H1&gt; US, China Gear Up for&hellip;</div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px">
+          <div style="color:#6E6E7A;font-size:9.5px;letter-spacing:.1em;margin-bottom:6px">NOW</div>
+          <div style="color:#A3A1AD">Banner (plain text)</div>
+          <div style="color:#A3A1AD">AI &amp; Deeptech (plain text)</div>
+          <div style="font-weight:700">&lt;H1&gt; US, China Gear Up for&hellip;</div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Events page open to Google on the dev site</h4>
+    <p>The dev site hides every page from search engines on purpose. The <strong>Events</strong> page is now the exception and can
+    be indexed.</p>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Some titles still repeat the brand.</strong> Press Release, author pages, the reader dashboard and Delete Your Account
+      spell out &ldquo;| StartupNews.fyi&rdquo; themselves and get it a second time.</li>
+      <li><strong>Old sitemap files disappear.</strong> Posts sitemap files 2 onwards now answer &ldquo;not found&rdquo; until the archive
+      passes 50,000 articles; their articles are all in file 1.</li>
+      <li><strong>News sitemap was showing an error</strong> on the live site before this change; worth checking after deployment.</li>
+      <li><strong>Not live yet.</strong> The code is pushed; it appears after the next deployment.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v19</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-17</span>
+    </div>
+    <p><strong>What changed.</strong> The Expand North Star page now has an <strong>"Our partners"</strong> section, right after
+    the 2025 show numbers. It shows the same moving partner logos as the Our Partners page &mdash; not a copy: both pages read the
+    same logo list, so a logo added or removed in the admin panel changes both.</p>
+
+    <table>
+      <thead><tr><th>What</th><th>How it behaves</th></tr></thead>
+      <tbody>
+        <tr><td>Logo rows</td><td>International partners first, then National &mdash; two rows each, sliding in opposite directions, across the full width of the screen</td></tr>
+        <tr><td>Hover / drag</td><td>Hovering pauses a row; a row can be grabbed and slid by hand, as on the Our Partners page</td></tr>
+        <tr><td>Linked logos</td><td>Open the partner's website in a new tab</td></tr>
+        <tr><td>No logos yet</td><td>The section is hidden rather than shown empty</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>All partners, four rows.</strong> Every partner logo is shown (about 127), which makes a tall section. It can be cut to one category, or to two rows, if preferred.</li>
+      <li><strong>The Our Partners page was touched, not changed.</strong> The logo styling moved out of that page into the logo component so both pages share it; it looks and behaves exactly as before (checked side by side).</li>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v20</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-17</span>
+    </div>
+    <p><strong>What changed.</strong> Registrations from the Expand North Star page now have their own section in the admin
+    <strong>Sales Tracker</strong>, kept apart from every other page's leads. Before, each registration only became a line in the
+    general "All leads" list; now the full registration is stored, shown in its own table, and can be opened, read and corrected.</p>
+
+    <h4>What the admin sees</h4>
+    <table>
+      <thead><tr><th>Part</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>Count tiles</td><td>All enquiries · Last 30 days · Delegation · Booth / POD · Others. Clicking a tile opens the table filtered to it</td></tr>
+        <tr><td>Table</td><td>Received on · Full name · Email · Contact number · City · Country · Participating as · Last updated. Searchable, and filterable by participation option</td></tr>
+        <tr><td>Details (click any row)</td><td>Contact details with call, WhatsApp and email links; where they're travelling from; how they're taking part, with that package's inclusions or the requirement they wrote</td></tr>
+        <tr><td>Dates</td><td><strong>Received on</strong> — when the visitor submitted. <strong>Last updated</strong> — when an admin last edited it, and who ("Never edited" until then)</td></tr>
+        <tr><td>Editing</td><td>"Edit details" opens the same fields the visitor filled; the same checks apply as on the public form. Saving stamps Last updated straight away</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div style="font:600 12px/1.4 var(--sans);color:var(--muted);margin-bottom:8px">Wireframe &mdash; the section and an opened registration</div>
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px;font-size:11.5px;background:#fff">
+        <div style="font-weight:700;color:#4F46E5;margin-bottom:8px">Expand North Star enquiries</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px">
+          <div style="border:1px solid var(--line);border-left:3px solid #4F46E5;border-radius:6px;padding:6px"><b>12</b><br>All</div>
+          <div style="border:1px solid var(--line);border-left:3px solid #4F46E5;border-radius:6px;padding:6px"><b>5</b><br>Last 30 days</div>
+          <div style="border:1px solid var(--line);border-left:3px solid #4F46E5;border-radius:6px;padding:6px"><b>6</b><br>Delegation</div>
+          <div style="border:1px solid var(--line);border-left:3px solid #4F46E5;border-radius:6px;padding:6px"><b>4</b><br>Booth / POD</div>
+          <div style="border:1px solid var(--line);border-left:3px solid #4F46E5;border-radius:6px;padding:6px"><b>2</b><br>Others</div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:6px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:1.2fr 1.2fr 1.4fr 1fr 1.3fr 1fr;background:#F8FAFC;padding:5px;font-weight:700;color:#64748B">
+            <span>Received on</span><span>Name</span><span>Email</span><span>City</span><span>Participating as</span><span>Last updated</span></div>
+          <div style="display:grid;grid-template-columns:1.2fr 1.2fr 1.4fr 1fr 1.3fr 1fr;padding:5px">
+            <span>17 Sep, 12:11</span><span><b>A. Sharma</b></span><span>a@…</span><span>Pune</span><span>Booth / POD</span><span>17 Sep, 12:13</span></div>
+        </div>
+        <div style="margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+            <div style="border:1px solid var(--line);border-radius:6px;padding:6px"><span style="color:#64748B;font-size:10px">RECEIVED ON</span><br><b>17 Sep 2026, 12:11</b></div>
+            <div style="border:1px solid var(--line);border-left:3px solid #4F46E5;border-radius:6px;padding:6px"><span style="color:#64748B;font-size:10px">LAST UPDATED</span><br><b>17 Sep 2026, 12:13</b> by Admin</div>
+          </div>
+          <div style="text-align:right"><span style="border:1px solid var(--line);border-radius:5px;padding:2px 8px">Close</span> <span style="background:#4F46E5;color:#fff;border-radius:5px;padding:2px 8px">Edit details</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h4>How it stays in step with All leads</h4>
+    <p>Each registration still also appears in <strong>All leads</strong> (filter <em>Expand North Star Page Leads</em>), where the
+    team sets its status, owner and follow-ups. When an admin corrects a registration's contact details here, the same change is
+    copied to that lead &mdash; but the team's status, owner, follow-up dates and any notes they wrote are never overwritten.</p>
+
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>Starts empty.</strong> Registrations are only stored from now on; the page wasn't live before, so there was nothing earlier to bring in.</li>
+      <li><strong>The received date can't be changed.</strong> It records when the visitor submitted; only the details are editable.</li>
+      <li><strong>Database change already made on the development database.</strong> The live database needs the same one-line change before this goes live.</li>
+      <li><strong>Not live yet.</strong> It appears on the dev site after the next rebuild.</li>
+    </ul>
+  </div>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v21</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-17</span>
+    </div>
+    <p><strong>What changed.</strong> Seven presentation changes to the Expand North Star page, from a review of the dev site.</p>
+    <table>
+      <thead><tr><th>Change</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Top bar (logos + Launchpad + Dubai Konnect)</td><td>Shrank when the page scrolled</td><td>Stays the same size; only gains a shadow when pinned</td></tr>
+        <tr><td>Section headings</td><td>Wrapped onto two lines</td><td>"The world connects. The future scales", "What's new in 2026: New features. New scale.", "How Expand North Star creates real outcomes?", the price line and "Ready to experience Expand North Star?" each sit on one line, sized to the page width. On phones they still wrap so they stay readable</td></tr>
+        <tr><td>Price line</td><td>"Participation fee, at 1.65 lakh onwards"</td><td>"Participation Fee, INR 1.65 lakh*"</td></tr>
+        <tr><td>Show numbers</td><td>5,340 · 6,500</td><td>5,340+ · 6,500+</td></tr>
+        <tr><td>Partner logos</td><td>Four moving rows</td><td>One moving row with every logo</td></tr>
+        <tr><td>Sub-headings and labels</td><td>ALL CAPITALS</td><td>Title Case ("2025 Show Numbers", "Delegation Deliverables", "Coming Soon"); the big section headings stay in capitals</td></tr>
+        <tr><td>Intro paragraph under "The world connects"</td><td>Narrow column with empty space either side</td><td>Uses the full width of the page column</td></tr>
+      </tbody>
+    </table>
+    <h4>Known state worth flagging</h4>
+    <ul>
+      <li><strong>The asterisk on "INR 1.65 lakh*" has no footnote yet.</strong> Say what it should point to (taxes, per person, terms) and it can be added under the cards.</li>
+      <li><strong>Not live yet.</strong> The dev site is on an older build; a rebuild is needed to see this and the other recent changes.</li>
+    </ul>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v22</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-17</span>
+    </div>
+    <p><strong>What changed.</strong> In the Sales Tracker, the Expand North Star enquiries section now records where the team's conversation with each lead stands, and has a tile that works as the team's to-do list.</p>
+    <table>
+      <thead><tr><th>Where</th><th>What is new</th></tr></thead>
+      <tbody>
+        <tr><td>Edit dialog</td><td>A <strong>Lead status</strong> dropdown: <em>No conversation yet</em> (how every new enquiry starts), <strong>Confirmed</strong>, <strong>Followed Up</strong>, <strong>Cancelled</strong>.</td></tr>
+        <tr><td>Edit dialog, when Followed Up is picked</td><td>A <strong>Conversation result</strong> box appears for what the call or chat led to (up to 2,000 characters). It is saved with the lead. Switching to Confirmed or Cancelled removes the note, since it only describes a follow-up.</td></tr>
+        <tr><td>Detail view</td><td>A new <strong>Conversation</strong> section showing the status and, under Followed Up, the note.</td></tr>
+        <tr><td>Tiles</td><td>A sixth tile, <strong>Followed Up Leads</strong>. Click it to see every lead marked Followed Up <em>together with</em> every lead nobody has spoken to yet — the leads that still need attention.</td></tr>
+        <tr><td>Table</td><td>A <strong>Lead status</strong> column (grey dashed = no conversation yet, green = Confirmed, blue = Followed Up, red = Cancelled; hover a Followed Up pill to read the note), a Lead status filter next to the Participating-as filter, and search that also matches the status and the note.</td></tr>
+      </tbody>
+    </table>
+    <h4>Wireframe — edit dialog with Followed Up picked</h4>
+    <div class="wf">
+      <div class="wf-bar">Edit enquiry — madhur sir</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Full name</div><div class="wf-box">Email</div><div class="wf-box">Contact number</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">City</div><div class="wf-box">Country</div><div class="wf-box">Participating as</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box solid"><span class="t">Conversation</span>Lead status: <strong>Followed Up ▾</strong> &nbsp;·&nbsp; No conversation yet / Confirmed / Followed Up / Cancelled</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box brand"><span class="t">Conversation result (shown only under Followed Up)</span>Called on 17 Sept; wants two delegates, sending a quote. Follow up next week.</div></div>
+        <div class="wf-row" style="margin-top:10px;justify-content:flex-end"><div class="wf-box" style="flex:0 0 auto">Cancel</div><div class="wf-box solid" style="flex:0 0 auto">Save changes</div></div>
+      </div>
+    </div>
+    <h4>Worth knowing</h4>
+    <ul>
+      <li><strong>Lead status here is separate from the status in All leads.</strong> The mirrored row under "Expand North Star Page Leads" keeps its own status, assignee and follow-up dates; this one is the enquiry team's own record.</li>
+      <li><strong>Database change applied on the dev server.</strong> Two new optional columns on the enquiries table; nothing existing was altered. The same migration file needs running on live before deploying.</li>
+      <li><strong>Not live yet.</strong> Needs a rebuild to appear on the dev site.</li>
+    </ul>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v23</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-17</span>
+    </div>
+    <p><strong>What changed.</strong> Expand North Star enquiries are now kept entirely apart from the other pages' leads. They no longer appear in <strong>All leads</strong>; the <strong>Expand North Star enquiries</strong> section of the Sales Tracker is the only place they exist and are worked.</p>
+    <table>
+      <thead><tr><th>Before (v20–v22)</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Every enquiry from the page form was saved twice: once in its own section, and once as a row in All leads under the filter "Expand North Star Page Leads".</td><td>Saved once, in its own section only. Nothing is written to All leads.</td></tr>
+        <tr><td>The All leads "Filter: page leads" dropdown offered "Expand North Star Page Leads".</td><td>That option is gone. The four other page-lead types (Feature, Funding Round, Press Release, Sponsor Event) are unchanged.</td></tr>
+        <tr><td>Editing an enquiry also updated its copy in All leads.</td><td>Nothing to update — there is no copy.</td></tr>
+        <tr><td>The notification email said "see All leads, filter Expand North Star Page Leads".</td><td>Says "see Sales Tracker → Expand North Star enquiries".</td></tr>
+        <tr><td>Status was split: a Lead status in the Expand North Star section and a separate status on the All-leads copy.</td><td>One status — the Lead status (Confirmed / Followed Up / Cancelled) from v22 — on the enquiry itself.</td></tr>
+      </tbody>
+    </table>
+    <h4>Worth knowing</h4>
+    <ul>
+      <li><strong>Old copies removed.</strong> On the dev server the one enquiry that had already been copied into All leads was removed from there (it was never assigned or annotated). The enquiry itself is untouched in its own section. The same clean-up script must be run on live before deploying.</li>
+      <li><strong>Assignee and follow-up dates</strong> were features of the All-leads copy, so they no longer apply to these enquiries. If the team needs them here, they can be added to the Expand North Star section itself.</li>
+      <li><strong>Not live yet.</strong> Needs a rebuild to appear on the dev site.</li>
+    </ul>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v24</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-17</span>
+    </div>
+    <p><strong>What changed.</strong> The "Indian Startup Delegation to Dubai" section of the Expand North Star page now shows the complete six-day itinerary from the team's delegation programme, under a new heading <strong>Itinerary · 6 Dec 2026 – 11 Dec 2026</strong>. The four "Coming soon" placeholder cards are gone.</p>
+    <table>
+      <thead><tr><th>Card</th><th>Date</th><th>What it says</th></tr></thead>
+      <tbody>
+        <tr><td>Day 1 · Launchpad Middle-East (Dubai Konnect)</td><td>6 December 2026</td><td>Partner presentation · investor introduction · startup introduction · one-on-one session · networking followed by dinner. Venue: In5 Tech. "Investment, Business &amp; Networking".</td></tr>
+        <tr><td>Day 2 · Expand North Star - Day 1</td><td>7 December 2026</td><td>Exhibitor space (POD), delegate participation, unmatched networking, massive scale (1700+ startups, 1000's of investors, 73,000+ attendees), top tech fest.</td></tr>
+        <tr><td>Day 3 · Expand North Star - Day 2</td><td>8 December 2026</td><td>Day-long networking, evening side events, additional opportunities.</td></tr>
+        <tr><td>Day 4 · Expand North Star - Day 3</td><td>9 December 2026</td><td>Same programme as Day 2 (exhibitor space, delegate participation, networking, scale, tech fest).</td></tr>
+        <tr><td>Day 5 · Expand North Star - Day 4 and After Party</td><td>10 December 2026</td><td>Day-long networking, the exclusive North Star After Party (exhibitors only), additional opportunities.</td></tr>
+        <tr><td>Day 6 · Checkout, Follow-up, Roam Around Dubai, Fly Back to India</td><td>11 December 2026</td><td>Morning follow-up meetings, a day exploring Dubai, then the late-evening flight home.</td></tr>
+      </tbody>
+    </table>
+    <h4>Worth knowing</h4>
+    <ul>
+      <li><strong>Dates were moved, wording was not.</strong> The programme PDF is dated October 2025 (11th–16th); the cards keep its day order and text but carry the December 2026 dates you gave. If the December programme changes, the cards are a one-file edit.</li>
+      <li><strong>Two photos are placeholders.</strong> Day 5 (an evening-party crowd) and Day 6 (the Dubai skyline) use stock photos until the team supplies its own; the other four are the event's own photos.</li>
+      <li><strong>Not live yet.</strong> Needs a rebuild to appear on the dev site.</li>
+    </ul>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v25</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-18</span>
+    </div>
+    <p><strong>What happened.</strong> On the afternoon of 17 September someone outside the company
+    reached our database over the internet and deleted everything in it — all articles, all staff
+    accounts, all contacts, the HR records, the sales leads. They left behind a note demanding a
+    Bitcoin payment to give the data back. The site stopped working and nobody could sign in to the
+    admin panel.</p>
+    <p><strong>What we did.</strong> We did not pay, and we did not need to. The data was rebuilt
+    from our own nightly backup, which is copied to Amazon's storage service twice a day and was
+    completely untouched by the attack. The site's data is back as of midnight on 18 September.</p>
+    <table>
+      <thead><tr><th>What came back</th><th>How much</th></tr></thead>
+      <tbody>
+        <tr><td>Articles</td><td>13,096</td></tr>
+        <tr><td>Contacts in the CRM</td><td>36,568</td></tr>
+        <tr><td>Staff and author accounts</td><td>190</td></tr>
+        <tr><td>Events</td><td>421</td></tr>
+        <tr><td>Partnership events</td><td>194</td></tr>
+        <tr><td>Employee records</td><td>10</td></tr>
+      </tbody>
+    </table>
+    <h4>Worth knowing</h4>
+    <ul>
+      <li><strong>Roughly a day of work was lost.</strong> The backup we restored from was taken on
+      a different server that was a little behind ours. Anything typed into the admin panel during
+      17 September — new articles, new leads, edits — is not in it. The Expand North Star travel
+      enquiry feature built that day was rebuilt separately and works again, but any enquiries
+      submitted on the 17th are gone.</li>
+      <li><strong>How they got in.</strong> Two mistakes had to line up. The database was reachable
+      from the public internet, and its master password was still the example one that ships with
+      the software. Both are now fixed: the password has been replaced with a long random one, and
+      the database and its admin tools can no longer be reached from outside the server at all.
+      Staff who need direct access now go through a secure tunnel.</li>
+      <li><strong>No evidence the data was copied.</strong> The attackers claim to hold a copy, but
+      that claim is unverified and is a standard pressure tactic. Treat staff passwords as exposed
+      and change them as a precaution.</li>
+      <li><strong>One step still outstanding.</strong> The lock we have put on those doors is
+      temporary and would come undone if the server restarts. Making it permanent needs a short
+      maintenance window, which has not been taken yet.</li>
+    </ul>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v26</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-18</span>
+    </div>
+    <p><strong>What changed.</strong> The temporary lock described in v25 is now permanent. The
+    database was moved so that it can only be reached from the server itself, and the protection is
+    re-applied automatically every time the machine restarts. This was the one outstanding item from
+    the attack, and it is closed.</p>
+    <table>
+      <thead><tr><th>Door</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Main database</td><td>Permanently closed to the outside, at the database itself</td></tr>
+        <tr><td>Database admin tool</td><td>Closed by the automatic lock</td></tr>
+        <tr><td>Cache and its admin tool</td><td>Closed by the automatic lock</td></tr>
+        <tr><td>The other project's database on this server</td><td>Also closed, after checking it would not disturb that project</td></tr>
+      </tbody>
+    </table>
+    <h4>Worth knowing</h4>
+    <ul>
+      <li><strong>Nothing was lost in the move.</strong> A fresh copy of the data was taken first as
+      insurance, and the article, contact and staff counts were identical afterwards.</li>
+      <li><strong>An old recurring fault was fixed along the way.</strong> Saving large records in
+      the HR tool had been failing intermittently since mid-September because a size limit kept
+      resetting itself. The setting only ever applied properly after the kind of restart we have
+      now done, so it should stop coming back.</li>
+      <li><strong>Staff passwords were deliberately not reset.</strong> They are stored scrambled in
+      a form that cannot be read back, and only two accounts have full admin rights. Resetting all
+      of them would have locked out 152 writers with no way to warn them first, so that decision is
+      left to you.</li>
+    </ul>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v27</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-18</span>
+    </div>
+    <p><strong>What changed.</strong> The home page now opens with a slim announcement band above
+    everything else — above the rotating banner, directly under the menu bar. It carries one line,
+    <em>"12th Indian Startup Delegation to Dubai &middot; 6th &ndash; 11th Dec 2026"</em>, drifting
+    slowly from left to right, and a green <strong>Participate Now</strong> button that opens the
+    Expand North Star page. The band is in the event's own colours — magenta with lime green — so a
+    reader who clicks it lands on a page that looks like where they came from.</p>
+
+    <h4>What it looks like</h4>
+    <div class="wf" style="margin:14px 0">
+      <div class="wf-bar">Wireframe &mdash; the top of the home page on a laptop</div>
+      <div class="wf-body">
+        <div class="wf-row" style="align-items:center;border:1.5px dashed #9aa4b0;border-radius:6px;padding:10px 12px;color:#4a5561">
+          <strong style="font-size:12px">StartupNews.fyi</strong>
+          <span style="flex:1;font-size:11px">Home &nbsp; News &nbsp; Events &nbsp; Startups &nbsp; &hellip;</span>
+          <span style="font-size:11px">search &nbsp; menu</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0;padding:0 10px;height:44px;border-radius:4px;background:linear-gradient(90deg,#BD0C63,#E4157C 50%,#BD0C63);color:#fff">
+          <span style="flex:1;font:800 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;overflow:hidden">
+            <span style="color:#C9F31D">&#10022;</span> 12<sup>th</sup> Indian Startup Delegation to Dubai
+            <span style="color:#C9F31D">&bull;</span> 6<sup>th</sup> &ndash; 11<sup>th</sup> Dec 2026
+            <span style="color:#C9F31D">&#10022;</span> 12<sup>th</sup> Indian Startup&hellip;
+          </span>
+          <span style="background:#C9F31D;color:#0A0A0B;border-radius:999px;padding:6px 14px;font:800 10px/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap">Participate Now</span>
+        </div>
+        <div class="wf-box" style="text-align:center">rotating banner &mdash; unchanged</div>
+        <div class="wf-box" style="text-align:center;margin-top:8px">the news, exactly as before</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:-4px">The line of text drifts steadily to
+    the right and repeats; the green button stays where it is.</p>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where does it appear?</td><td>The home page only. No other page on the site changed.</td></tr>
+        <tr><td>How tall is it?</td><td>44 pixels on a computer, 38 on a phone — about the height of one line of text, so it does not push the news down the screen.</td></tr>
+        <tr><td>Does it scroll with the page?</td><td>No. It sits at the top of the page and scrolls away normally with the rest of the content.</td></tr>
+        <tr><td>Where does the button go?</td><td>The Expand North Star page, the same one linked from the menu.</td></tr>
+        <tr><td>Can the moving text be read?</td><td>It pauses the moment the pointer is over the band, and it does not move at all for a visitor whose device is set to reduce motion.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Worth knowing</h4>
+    <ul>
+      <li><strong>The button never moves.</strong> Only the line of text travels; the button stands
+      still at the right-hand end, so it can always be clicked.</li>
+      <li><strong>Nothing below it shifted.</strong> The band takes over the gap that used to sit
+      between the menu bar and the banner, so the home page starts at exactly the same height as
+      before.</li>
+      <li><strong>Screen readers hear the line once</strong>, not once per repeat.</li>
+    </ul>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v28</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-18</span>
+    </div>
+    <p><strong>What changed.</strong> The Expand North Star page's top bar &mdash; the one carrying
+    the event logos, "Launchpad Middle East" and Dubai Konnect &mdash; now ends with a magenta
+    <strong>Participate Now</strong> button, immediately to the right of the Dubai Konnect logo.
+    Clicking it slides the reader straight down to the enquiry form at the foot of the page. Because
+    that bar stays on screen the whole way down, the button is reachable from anywhere on the page,
+    not only from the top.</p>
+
+    <div class="wf" style="margin:14px 0">
+      <div class="wf-bar">Wireframe &mdash; the event bar on a laptop</div>
+      <div class="wf-body">
+        <div class="wf-row" style="align-items:center;gap:14px;padding:12px;border-radius:6px;background:linear-gradient(100deg,#fff,#FDF1F7 45%,#F4CDE4)">
+          <span class="wf-box" style="flex:1;text-align:center;background:#fff">Expand North Star &middot; Dubai Chamber &middot; GITEX &middot; dates</span>
+          <span style="font:900 12px/1 var(--sans);color:#B8860B;text-transform:uppercase;white-space:nowrap">Launchpad<br>Middle East</span>
+          <span class="wf-box" style="flex:0 0 auto;background:#fff">Dubai Konnect</span>
+          <span style="background:#E4157C;color:#fff;border-radius:999px;padding:8px 16px;font:800 10px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">Participate Now</span>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where does it go?</td><td>The "Ready to experience Expand North Star?" enquiry form at the bottom of the same page &mdash; it scrolls there, it does not open anything new.</td></tr>
+        <tr><td>Does it land in the right place?</td><td>Yes. The bar and the delegation band above it stay fixed on screen, so the page stops just far enough down that the form's heading clears both instead of hiding underneath them.</td></tr>
+        <tr><td>Is it there while scrolling?</td><td>Yes &mdash; the bar is pinned to the top of the page, so the button follows the reader all the way down.</td></tr>
+        <tr><td>On a phone?</td><td>The bar already wraps onto two lines there; the button sits at the right-hand end of the second line, beside the Dubai Konnect logo, in a smaller size.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Worth knowing</h4>
+    <ul>
+      <li><strong>Magenta here, green on the home page.</strong> Both buttons say the same thing and
+      belong to the same campaign; each is coloured for the band it sits on &mdash; magenta on the
+      pale pink event bar, green on the magenta home strip.</li>
+      <li><strong>Nothing was taken off the bar.</strong> The logos, the dates and the Launchpad mark
+      are unchanged; when the bar gets narrow it is the logo lockup that shrinks, never the button.</li>
+    </ul>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v29</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-18</span>
+    </div>
+    <p><strong>What changed.</strong> Seven edits to the Expand North Star page, all asked for in one
+    list. Most are wording; two change what is on the page (a new button, a second row of logos) and
+    one changes where a piece of text sits (the Dubai Konnect host line on the first day card).</p>
+
+    <table>
+      <thead><tr><th>#</th><th>Where on the page</th><th>Before</th><th>After</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Sticky band at the very top, and the heading of the programme section</td><td>Indian Startup Delegation to Dubai</td><td><strong>Startup Delegation to Dubai</strong></td></tr>
+        <tr><td>2</td><td>Under the five "2025 Show Numbers" figures</td><td>Nothing &mdash; the section ended on the numbers</td><td>A magenta <strong>Participate Now</strong> button, centred, that slides down to the enquiry form (same behaviour as the top-bar button from v28)</td></tr>
+        <tr><td>3</td><td>Main headline over the video</td><td>The world's largest / startup and investor connector event</td><td><strong>The World's Largest / Gathering of Startups and Investors</strong></td></tr>
+        <tr><td>4</td><td>Heading of the show-numbers section</td><td>The world connects. The future scales</td><td><strong>Where The World Connects and The Future Scales</strong></td></tr>
+        <tr><td>5</td><td>Paragraph under that heading</td><td>All lower-case nouns</td><td>Key terms capitalised: Founders, Investors, Visionaries, Global Capital, Startups, Governments, Corporates, Real-World Impact, Economic Growth</td></tr>
+        <tr><td>6</td><td>"Our partners" logo marquee</td><td>One row of logos</td><td><strong>Two rows</strong>, one travelling right and the other left, exactly as on the Our Partners page</td></tr>
+        <tr><td>7</td><td>The six day cards (when opened)</td><td>"Day 1, 6th December 2026 &middot; Dubai Konnect"</td><td>"Day 1, 6th <strong>Dec</strong> 2026" on every card, and on the first card "<strong>Dubai Konnect</strong>" on its own line directly under "Launchpad Middle-East"</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf" style="margin:14px 0">
+      <div class="wf-bar">Wireframe &mdash; the first day card, opened</div>
+      <div class="wf-body">
+        <div class="wf-col" style="gap:6px;max-width:320px;padding:14px;border-radius:8px;background:#fff;border:1px solid #ddd">
+          <div class="wf-row" style="align-items:center;gap:10px"><span class="wf-box" style="width:44px;height:44px;border-radius:50%;padding:0">photo</span><span style="font:700 13px/1.3 var(--sans)">Day 1, 6<sup>th</sup> Dec 2026</span></div>
+          <div style="font:900 18px/1.1 var(--sans);color:#E4157C;margin-top:8px">LAUNCHPAD MIDDLE-EAST</div>
+          <div style="font:700 11px/1 var(--sans);color:#E4157C;letter-spacing:.02em">DUBAI KONNECT</div>
+          <ul style="margin:8px 0 0;padding-left:18px;font:400 12px/1.6 var(--sans)"><li>Partner Presentation</li><li>Investor Introduction</li><li>Startup Introduction</li><li>One-On-One Session</li><li>Networking Followed By Dinner</li></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf" style="margin:14px 0">
+      <div class="wf-bar">Wireframe &mdash; the end of the show-numbers section</div>
+      <div class="wf-body">
+        <div class="wf-col" style="align-items:center;gap:12px">
+          <div class="wf-row" style="gap:18px;justify-content:center;font:800 16px/1 var(--sans);color:#E4157C"><span>2,050</span><span>1,300+</span><span>5,340+</span><span>400</span><span>6,500+</span></div>
+          <span style="background:#E4157C;color:#fff;border-radius:999px;padding:12px 26px;font:800 12px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase">Participate Now</span>
+        </div>
+      </div>
+    </div>
+
+    <h4>Worth knowing</h4>
+    <ul>
+      <li><strong>The top band still fills the width.</strong> With "Indian" gone the line is shorter,
+      so its lettering was re-measured and now sizes itself to the new length; on a phone it still
+      breaks into "Startup" over "Delegation to Dubai".</li>
+      <li><strong>The show-numbers heading stays on one line</strong> on laptops. It is longer than
+      before, so it is set a little smaller to fit; under 760px wide it may wrap, as it always could.</li>
+      <li><strong>Both Participate Now buttons land in the same place</strong> &mdash; the enquiry form,
+      with its heading clear of the pinned band and bar.</li>
+      <li><strong>The itinerary line was already short-form</strong> ("6 Dec 2026 &ndash; 11 Dec 2026"),
+      so only the cards changed.</li>
+    </ul>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v30</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-19</span>
+    </div>
+    <p><strong>What changed.</strong> Two layout changes. On the <strong>home page</strong>, the magenta
+    "12th Indian Startup Delegation to Dubai" strip has moved from under the menu bar to the very top
+    of the screen, above the menu bar, and it now stays there as the reader scrolls. On the
+    <strong>Expand North Star page</strong>, the site footer is no longer shown; the page ends on its
+    enquiry form.</p>
+
+    <div class="wf" style="margin:14px 0">
+      <div class="wf-bar">Wireframe &mdash; the top of the home page</div>
+      <div class="wf-body">
+        <div class="wf-col" style="gap:0">
+          <div class="wf-row" style="align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(90deg,#BD0C63,#E4157C,#BD0C63);color:#fff;font:800 10px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase"><span>12th Indian Startup Delegation to Dubai &middot; 6th &ndash; 11th Dec 2026 &#10022;</span><span style="background:#C9F31D;color:#0A0A0B;border-radius:999px;padding:6px 12px">Participate Now</span></div>
+          <div class="wf-row" style="align-items:center;gap:14px;padding:14px 12px;background:#fff;border-bottom:1px solid #eee"><span class="wf-box">&#9776;</span><span class="wf-box" style="flex:1">StartupNews.fyi logo &middot; menu</span><span class="wf-box">Search</span></div>
+          <div class="wf-box" style="height:60px;margin-top:6px">Banner carousel</div>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Does the strip scroll away?</td><td>No. It is pinned to the top of the screen, with the menu bar pinned directly beneath it, so both stay visible all the way down the home page.</td></tr>
+        <tr><td>Did anything below move?</td><td>Everything under the menu bar moved down by exactly the strip's height (44px on a laptop, 38px on a phone), so nothing is hidden behind it.</td></tr>
+        <tr><td>Other pages?</td><td>Unchanged. The strip only appears on the home page, and its effect on the menu bar's position goes with it.</td></tr>
+        <tr><td>Why no footer on Expand North Star?</td><td>The page is a self-contained campaign page that already runs without the site header and banner; on request it now runs without the footer too, so it ends on the enquiry form.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Other changes rolled into this version</h4>
+    <ul>
+      <li><strong>Expand North Star page, 18&ndash;19 September:</strong> a second Participate Now button
+      under the show numbers; "Where The World Connects / and The Future Scales" set as two stepped lines;
+      What's New card text aligned across the row; wide-screen headings no longer clipped; partner logos
+      given a light, smooth animation; the itinerary cards re-worded and re-cased, with "Day N" on its own
+      line, the host under the title, the "Itinerary" label removed and short cards filled to the bottom;
+      the participation cards renamed "Participate as Delegate" / "Participate as Exhibitor" with new
+      point wording and the heading "Participation Charges Rs. 1.65L onwards"; the "Plan Your Visit" line
+      removed above the enquiry form.</li>
+    </ul>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v31</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-19</span>
+    </div>
+    <p><strong>What changed.</strong> The five public enquiry forms &mdash; <strong>Feature Your Startup</strong>,
+    <strong>Submit Your Funding Round</strong>, <strong>Submit Your Press Release</strong>,
+    <strong>Sponsor an Event</strong> and the <strong>Expand North Star</strong> registration &mdash; now lay
+    out their contact details the same way: the email address and the phone number sit side by side on
+    one row, and the country and city sit side by side on the next. Behind those fields, the country
+    list, its search and the phone field's country-code picker were all reworked.</p>
+
+    <div class="wf" style="margin:14px 0">
+      <div class="wf-bar">Wireframe &mdash; the contact rows every form now shares (laptop width)</div>
+      <div class="wf-body">
+        <div class="wf-col">
+          <div class="wf-row"><span class="wf-box" style="flex:1">Official Email *</span><span class="wf-box" style="flex:1"><span style="opacity:.7">IN +91 &#9662;</span> &nbsp; Phone / WhatsApp *</span></div>
+          <div class="wf-row"><span class="wf-box" style="flex:1">Country &#9662; &nbsp; <span style="opacity:.6">Type a country name&hellip;</span></span><span class="wf-box" style="flex:1">City &#9662;</span></div>
+          <div class="wf-row" style="font-size:10px;color:#666;padding:0 4px">On a phone the two boxes in each row stack one under the other.</div>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Which countries can I pick?</td><td>All 193 member states of the United Nations, in alphabetical order. India is no longer pinned to the top of the list; it sits under "I" like any other country, and typing "in" brings it straight up.</td></tr>
+        <tr><td>Can I type a country that is not listed?</td><td>No. The "Other (add manually)" entry has been removed from the country list on these five forms, so every submission arrives under one of the 193 standard names. (The city list still has its "Other" entry, because the city lists are deliberately short.)</td></tr>
+        <tr><td>How does the country search work now?</td><td>It matches the <em>start</em> of a country's name. Typing "c" shows Cabo Verde, Cambodia, Cameroon &hellip; and nothing else; before, it also listed every country with a "c" anywhere in its name. Accents are ignored, so "co" finds C&ocirc;te d&rsquo;Ivoire.</td></tr>
+        <tr><td>What does the phone field check?</td><td>The code picker now lists every country's dialling code (191 codes; the USA and Canada share +1, Russia and Kazakhstan share +7, and Caribbean islands show their own code such as +1 876). You can search it by country name, two-letter code or the dial code itself. The number you type is checked against that country's length &mdash; ten digits starting 6&ndash;9 for India, eight for Singapore, and so on &mdash; and the box will not accept more digits than the country allows.</td></tr>
+        <tr><td>Is there still an "Other" dialling code?</td><td>Not on the public forms; every country is listed, so a hand-typed code could only be a mistake. The admin Sales Tracker keeps it, for the rare older record saved under a code that is not in the list.</td></tr>
+        <tr><td>Does anything change in what gets saved?</td><td>No. Each form still stores one phone string ("+91 9876543210") and one location string ("India, Mumbai"), exactly as before, so the admin trackers and emails read the same values.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Field order on each form after this change</h4>
+    <ul>
+      <li><strong>Feature Your Startup:</strong> Your Name &middot; Company Name &middot; Official Email | Phone &middot; Website &middot; Country | City.</li>
+      <li><strong>Submit Your Funding Round:</strong> Company Name | Your Name &middot; Official Email | Phone &middot; Website &middot; Country | City.</li>
+      <li><strong>Submit Your Press Release:</strong> step 1 &mdash; Company Name &middot; Your Name &middot; Official Email | Phone; step 2 &mdash; Website &middot; Country | City.</li>
+      <li><strong>Sponsor an Event:</strong> step 1 keeps Country | City under the event title; step 2 &mdash; poster &middot; Your Name &middot; Your Email | Phone.</li>
+      <li><strong>Expand North Star registration:</strong> Full Name &middot; Email Address | Contact Number &middot; Country | City &middot; Participating As, with the package inclusions opening beneath it.</li>
+    </ul>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v32</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-19</span>
+    </div>
+    <p><strong>What changed.</strong> The registration form at the foot of the <strong>Expand North Star</strong>
+    page asks two more questions, and the answers travel all the way through to the office email and the
+    admin Sales Tracker, where the team can filter and edit them.</p>
+
+    <div class="wf" style="margin:14px 0">
+      <div class="wf-bar">Wireframe &mdash; the Expand North Star registration form (laptop width)</div>
+      <div class="wf-body">
+        <div class="wf-col">
+          <div class="wf-row"><span class="wf-box" style="flex:1">Full Name *</span><span class="wf-box" style="flex:1">Participating As * &#9662;</span></div>
+          <div class="wf-box" style="opacity:.75">Inclusions of the chosen package, or "Your Requirement" under Others</div>
+          <div class="wf-row"><span class="wf-box" style="flex:1">Email Address *</span><span class="wf-box" style="flex:1"><span style="opacity:.7">IN +91 &#9662;</span> &nbsp; Contact Number *</span></div>
+          <div class="wf-row"><span class="wf-box" style="flex:1">Country * &#9662;</span><span class="wf-box" style="flex:1">City * &#9662;</span></div>
+          <div class="wf-row"><span class="wf-box" style="flex:1">Referred By (optional) &#9662;</span><span class="wf-box" style="flex:1">How Did You Find Us * &#9662;</span></div>
+          <div class="wf-box" style="opacity:.75">Where Did You Find Us? &mdash; appears only when "Others" is chosen</div>
+          <div class="wf-box" style="background:#E4157C;color:#fff;text-align:center">Register Your Interest &rarr;</div>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What does "Referred By" offer?</td><td>A list of eleven partner organisations: Easy Knowledge Club, Venture Wolf, Billennium Divas, Xcel Ventures, Confederation of Indian Startups, USP House, Startup Report.in, TSFP Ventures, Angel Bay, Meet Day.ai and HBF DIRECT. It is optional, because most visitors were not sent by a partner; leaving it blank is recorded as "Not referred".</td></tr>
+        <tr><td>What does "How Did You Find Us" offer?</td><td>Instagram, LinkedIn, Facebook, X (Twitter), YouTube, WhatsApp, Telegram, Google Search, the StartupNews.fyi website or newsletter, and "Others (please specify)". Choosing Others opens a short box for the visitor's own words, which must be filled in. This question is required.</td></tr>
+        <tr><td>Where do the answers go?</td><td>Into the enquiry record itself, alongside the visitor's name, contact, city, country and package. The office notification email shows both under the participation details.</td></tr>
+        <tr><td>What does the Sales Tracker show?</td><td>The Expand North Star enquiries table gains two columns, "Referred by" and "How they found us", a "Referred by" filter (Any, Not referred, or one partner) so the team can see what each partner sent, and the search box also matches these fields. Opening an enquiry shows a new <strong>Source</strong> panel, and "Edit details" lets an admin correct both answers, with the free-text box appearing under Others.</td></tr>
+        <tr><td>What about enquiries received before this change?</td><td>They have no answer for either question and show "Not referred" and "Others" with nothing typed; an admin can fill them in from the edit dialog.</td></tr>
+        <tr><td>Is anything else on the form different?</td><td>Full Name and Participating As now share the first row, with the package inclusions opening directly beneath them, and the country dropdown no longer shows a "search" prompt when opened: the reader simply types into it.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v33</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-19</span>
+    </div>
+    <p><strong>What changed.</strong> Every <strong>Country</strong> field across the site &mdash; on the public
+    enquiry forms and inside the admin tools &mdash; now only lets a person pick from the list of 193
+    countries. The "Other (add manually)" choice, and the "Others&hellip;" choice in the Partnership
+    Tracker, have been removed, so nobody can type a country name of their own.</p>
+
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Feature Your Startup, Submit Funding Round, Submit Press Release, Sponsor an Event, Expand North Star</td><td>Already list-only since v31</td><td>Unchanged &mdash; list-only</td></tr>
+        <tr><td>List Your Event</td><td>Country list ended with "Other (add manually)" and a box to type a name</td><td>List-only; the box is gone</td></tr>
+        <tr><td>Admin Sales Tracker &mdash; Add / Edit Lead</td><td>Same "Other (add manually)" choice and box</td><td>List-only. A lead saved earlier under a spelling that is not on the list keeps that value untouched until an admin picks a listed country</td></tr>
+        <tr><td>Admin Partnership Tracker &mdash; Add / Edit Event</td><td>Region/Country list ended with "Others&hellip;", which swapped the field for a free-text box</td><td>List-only; an older event's existing region still appears as a choice so it can be reopened and saved as before</td></tr>
+        <tr><td>HR Management</td><td>&mdash;</td><td>Checked: it has no country field, so nothing to change</td></tr>
+        <tr><td>City fields (all of the above)</td><td>"Other (add manually)" / "Others&hellip;" available</td><td>Unchanged &mdash; cities can still be typed, because the curated city lists are short on purpose</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Why remove it?</td><td>A typed country arrives under whatever spelling the person used ("U.S.", "United States", "USA"), which splits the same country across several names in reports and on the events page. With the full list of 193 countries available, there is no country left that needs typing.</td></tr>
+        <tr><td>What if the country is not there?</td><td>The list is every member state of the United Nations. Territories that are not on it (for example Hong Kong) are entered under their country, with the city typed in the City field.</td></tr>
+        <tr><td>Does the phone dial-code list change?</td><td>No. Public forms already hide its "Other" code; the admin lead form keeps it for unusual numbers.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v34</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-19</span>
+    </div>
+    <p><strong>What changed.</strong> The "Our partners" logo strip near the bottom of the
+    <strong>Expand North Star</strong> page now shows the specific organisations that refer visitors
+    to the event, instead of the site's general partner-logo wall (the same one shown on the
+    <strong>Our Partners</strong> page). The two pages now intentionally show different logos.</p>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Which logos are shown now?</td><td>Nine of the eleven organisations in the form's "Referred By" list: Easy Knowledge Club, Wolf Group, Billennium Divas, Xccel Ventures, Confederation of Indian Startups, USP House, Angel Bay, meetday.ai and HBF Direct.</td></tr>
+        <tr><td>Why only nine, not eleven?</td><td>No logo image was supplied for TSFP Ventures or Startupreport.in. They are simply left out of the strip for now rather than shown with a placeholder; add their artwork and they can be included the same way.</td></tr>
+        <tr><td>Does this change the Our Partners page?</td><td>No. That page is untouched and still shows the site's admin-managed partner list, exactly as before.</td></tr>
+        <tr><td>Does the strip still scroll and respond to touch?</td><td>Yes &mdash; it is the same auto-scrolling, drag-to-slide row used everywhere else on the site; only which logos it shows has changed.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────────────────────── 11 ───────────────────────── -->
+<section id="maintenance">
+  <h2>Section 11</h2>
+  <div class="h2sub">How this document is kept current</div>
+
+  <p>Three documents, three jobs. Each change updates a different combination of them, decided by
+  how big the change is.</p>
+
+  <table>
+    <thead><tr><th>Document</th><th>Answers</th><th>Updated</th></tr></thead>
+    <tbody>
+      <tr><td><code>agent.md</code></td><td>"What happened, and when?"</td><td>Every single interaction — one new row, always</td></tr>
+      <tr><td><code>arch.md</code></td><td>"How is the system built <em>right now</em>?"</td><td>Every change — the affected section is rewritten, and a row is added to its change log</td></tr>
+      <tr><td><code>Product.html</code></td><td>"What does the product do, in plain language?"</td><td>Medium and major changes — a new version block</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What counts as what</h3>
+  <table>
+    <thead><tr><th>Size</th><th>Looks like</th><th>Updates</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill major">Major</span></td><td>A new product area, a new user type, a change to login or permissions, a new external service, a schema change that reshapes a core table</td><td><code>agent.md</code> + <code>arch.md</code> + <strong>new version</strong> here</td></tr>
+      <tr><td><span class="pill medium">Medium</span></td><td>A new screen or endpoint group, a new table, a redesigned flow, a new background job, a visible behaviour change</td><td><code>agent.md</code> + <code>arch.md</code> + <strong>new version</strong> here</td></tr>
+      <tr><td><span class="pill minor">Minor</span></td><td>Bug fixes, copy and styling tweaks, refactors, config edits, single-column additions</td><td><code>agent.md</code> + <code>arch.md</code> only</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>In short</strong>
+    Everything is written down somewhere. The bigger it is, the further it travels —
+    from the log, to the architecture, to this book.
+  </div>
+
+  <hr>
+  <p style="color:var(--muted);font-size:12.5px">
+    StartupNews.fyi · Product &amp; Architecture Book · v26 · 2026-09-18 · maintained by Jarvis alongside
+    <code>arch.md</code> and <code>agent.md</code>. Diagrams render with Mermaid; open this file in any browser.
+  </p>
+</section>
+
+</main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      securityLevel: 'loose',
+      themeVariables: {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        fontSize: '13px',
+        primaryColor: '#f7f9fb',
+        primaryTextColor: '#111418',
+        primaryBorderColor: '#5c6773',
+        lineColor: '#5c6773',
+        secondaryColor: '#fdecec',
+        tertiaryColor: '#ffffff'
+      },
+      flowchart: { curve: 'basis', useMaxWidth: true },
+      sequence: { useMaxWidth: true }
+    });
+  }
+</script>
+</body>
+</html>

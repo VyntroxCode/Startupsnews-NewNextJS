@@ -2035,14 +2035,18 @@
 
 .sp-page .phone-row { display: flex; gap: 12px; }
 .sp-page .phone-row .custom-select-wrap { flex: 0 0 122px; width: 122px; }
-.sp-page .phone-row input[type=text] { flex: 0 0 88px; width: 88px; }
+.sp-page .phone-row > input[type=text] { flex: 0 0 88px; width: 88px; }
 .sp-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
+/* The dial-code list names each country after its code, so it opens wider than its trigger. */
+.sp-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
+/* Beside Email in a half-row the code select gives up 18px so the number keeps a usable width. */
+.sp-field-row .phone-row .custom-select-wrap { flex: 0 0 104px; width: 104px; }
 
 @media (max-width: 560px) {
   .sp-page .field-row { grid-template-columns: minmax(0, 1fr); }
   .sp-page .phone-row { flex-direction: column; }
   .sp-page .phone-row .custom-select-wrap,
-  .sp-page .phone-row input[type=text] { flex: 0 0 auto; width: 100%; }
+  .sp-page .phone-row > input[type=text] { flex: 0 0 auto; width: 100%; }
 }
 
 .sp-location-echo { display: inline-flex; margin: -8px 0 20px; font-size: 13.5px; }

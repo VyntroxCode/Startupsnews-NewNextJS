@@ -1,5 +1,6 @@
 "use client";
 
+import "./partner-logos-marquee.css";
 import { useEffect, useRef } from "react";
 import { PartnerLogoTile } from "@/components/PartnerLogoTile";
 import type { PartnerLogo } from "@/modules/inner-pages/domain/types";
@@ -185,8 +186,20 @@ function MarqueeRow({ logos, direction }: { logos: PartnerLogo[]; direction: "le
  * flows rightward, row two leftward, for the "one row comes from the left, the other from the
  * right" effect.
  */
-export function PartnerLogosMarquee({ logos }: { logos: PartnerLogo[] }) {
+export function PartnerLogosMarquee({ logos, rows = 2 }: {
+  logos: PartnerLogo[];
+  /** 1 puts every logo in a single rightward row (the Expand North Star page); 2 is the
+   * /our-partners default described above. */
+  rows?: 1 | 2;
+}) {
   if (logos.length === 0) return null;
+  if (rows === 1) {
+    return (
+      <div className="partners-marquee-group">
+        <MarqueeRow logos={logos} direction="right" />
+      </div>
+    );
+  }
   const rowA = logos.filter((_, i) => i % 2 === 0);
   const rowB = logos.filter((_, i) => i % 2 === 1);
 

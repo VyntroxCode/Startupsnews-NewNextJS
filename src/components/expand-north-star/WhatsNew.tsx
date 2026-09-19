@@ -47,8 +47,9 @@ export function WhatsNew() {
       <div className="ens-wrap">
         <RevealWords
           id="ens-new-title"
-          className="ens-title"
-          lines={[{ text: "What’s new in 2026" }, { text: "New features. New scale." }]}
+          className="ens-title is-oneline ens-new-heading"
+          inline
+          lines={[{ text: "What’s new in 2026:" }, { text: "New features. New scale." }]}
         />
 
         <ul className="ens-new-grid">

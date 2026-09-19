@@ -75,62 +75,9 @@ export default async function OurPartnersPage() {
           font-style: italic;
         }
 
-        /* Logo marquees — see PartnerLogosMarquee.tsx. The rows auto-scroll and can be
-           grabbed and slid by hand; both are driven from one rAF loop in that component, so
-           the only thing owed here is layout, the edge fade and the grab cursor. No overflow-
-           scroll element anywhere, so there is nothing that could ever show a scrollbar. */
-        .partners-marquee-group {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          margin-bottom: 40px;
-        }
-        .partners-marquee-row {
-          overflow: hidden;
-          width: 100%;
-          cursor: grab;
-          /* Horizontal is ours (pointer events); vertical stays with the page, so a touch drag
-             that starts on a logo row can still scroll the article. */
-          touch-action: pan-y;
-          -webkit-user-select: none;
-          user-select: none;
-          -webkit-mask-image: linear-gradient(to right, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
-          mask-image: linear-gradient(to right, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
-        }
-        .partners-marquee-row.is-dragging { cursor: grabbing; }
-        .partners-marquee-track {
-          display: flex;
-          gap: 16px;
-          width: max-content;
-          will-change: transform;
-        }
-        /* Hover-pause and prefers-reduced-motion both live in PartnerLogosMarquee.tsx now —
-           a CSS animation-play-state can't be reconciled with a hand-dragged offset. */
-
-        .partners-logo-tile {
-          flex: 0 0 auto;
-          width: 150px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 16px;
-          background: #fff;
-          border: 1px solid #f0f0f0;
-          border-radius: 8px;
-          min-height: 130px;
-        }
-        .partners-logo-tile a {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          height: 100%;
-        }
-        .partners-logo-img {
-          width: 100%;
-          height: 110px;
-          object-fit: contain;
-        }
+        /* Logo marquee and tile styles live with the component in
+           src/components/partner-logos-marquee.css, so any page that renders PartnerLogosMarquee
+           gets them (the Expand North Star page reuses it). */
 
         @media (max-width: 768px) {
           .partners-inner {
@@ -151,14 +98,6 @@ export default async function OurPartnersPage() {
           .partners-section-title {
             font-size: 18px;
             letter-spacing: 0.5px;
-          }
-          .partners-logo-tile {
-            width: 100px;
-            padding: 10px;
-            min-height: 90px;
-          }
-          .partners-logo-img {
-            height: 70px;
           }
         }
       `}</style>

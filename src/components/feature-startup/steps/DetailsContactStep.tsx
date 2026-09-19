@@ -71,30 +71,10 @@ export function DetailsContactStep({
       <FieldReveal index={3}>
         <p className="fys-step-group-label">How we reach you</p>
       </FieldReveal>
-      {/* Phone takes a full row rather than half of one. The form column is 470px, so a half is
-          ~228px — with the code select taking 116px of that, the number itself was left with about
-          eight characters of visible width. Email moves down to pair with Website instead. */}
+      {/* Email and phone share a row, country and city the next — the same two pairs every lead
+          page on the site now lays out. Inside a half-row the code select is trimmed to 100px
+          (`.fys-field-row .phone-row`, globals.css) so the number keeps a usable width. */}
       <FieldReveal index={4}>
-        <PhoneField
-          id="fys-phone"
-          label="Phone / WhatsApp"
-          phoneCode={data.phoneCode}
-          phoneCodeCustom={data.phoneCodeCustom}
-          phoneNumber={data.phoneNumber}
-          error={errors.phone}
-          /* updateAndMaybeValidate, not setField: PhoneField fires onBlurValidate straight after
-             a code change, and that validates the state as it was BEFORE the change landed. If
-             an error was already on screen it would be re-asserted from stale values and stick.
-             Queuing a revalidation against the committed data clears it on the next commit. */
-          onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
-          onChangeCustomCode={(v) =>
-            ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
-          }
-          onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
-          onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
-        />
-      </FieldReveal>
-      <FieldReveal index={5}>
         <div className="fys-field-row">
           <FormField
             id="fys-email"
@@ -106,18 +86,38 @@ export function DetailsContactStep({
             onChange={(v) => ctrl.updateAndMaybeValidate("email", v, "email", validateEmail)}
             onBlur={() => ctrl.blurValidate("email", validateEmail)}
           />
-          <FormField
-            id="fys-website"
-            label="Website"
-            optionalHint="(optional)"
-            type="url"
-            placeholder="https://yourstartup.com"
-            value={data.website}
-            error={errors.website}
-            onChange={(v) => ctrl.updateAndMaybeValidate("website", v, "website", validateWebsite)}
-            onBlur={() => ctrl.blurValidate("website", validateWebsite)}
+          <PhoneField
+            id="fys-phone"
+            label="Phone / WhatsApp"
+            phoneCode={data.phoneCode}
+            phoneCodeCustom={data.phoneCodeCustom}
+            phoneNumber={data.phoneNumber}
+            error={errors.phone}
+            /* updateAndMaybeValidate, not setField: PhoneField fires onBlurValidate straight after
+               a code change, and that validates the state as it was BEFORE the change landed. If
+               an error was already on screen it would be re-asserted from stale values and stick.
+               Queuing a revalidation against the committed data clears it on the next commit. */
+            onChangeCode={(v) => ctrl.updateAndMaybeValidate("phoneCode", v, "phone", validatePhone)}
+            onChangeCustomCode={(v) =>
+              ctrl.updateAndMaybeValidate("phoneCodeCustom", v, "phone", validatePhone)
+            }
+            onChangeNumber={(v) => ctrl.updateAndMaybeValidate("phoneNumber", v, "phone", validatePhone)}
+            onBlurValidate={() => ctrl.blurValidate("phone", validatePhone)}
           />
         </div>
+      </FieldReveal>
+      <FieldReveal index={5}>
+        <FormField
+          id="fys-website"
+          label="Website"
+          optionalHint="(optional)"
+          type="url"
+          placeholder="https://yourstartup.com"
+          value={data.website}
+          error={errors.website}
+          onChange={(v) => ctrl.updateAndMaybeValidate("website", v, "website", validateWebsite)}
+          onBlur={() => ctrl.blurValidate("website", validateWebsite)}
+        />
       </FieldReveal>
       <FieldReveal index={6}>
         <CountryCityFields

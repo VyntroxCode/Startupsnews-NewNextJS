@@ -2,6 +2,13 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+/** Lower-case, accents stripped — so "co" finds "Côte d’Ivoire" and "sao" finds "São Tomé". Same
+ * normalisation the public forms' CustomSelect uses (ui/CustomSelect.tsx), so a country search
+ * behaves identically for an admin and a visitor. */
+function normalize(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
 export interface SearchableSelectOption {
   value: string;
   label: string;
@@ -64,20 +71,20 @@ export function SearchableSelect({
   }, [open]);
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const term = normalize(query.trim());
     if (!term) return options;
-    // Prefix matches first — typing "ind" should offer India before Finland.
-    const starts: SearchableSelectOption[] = [];
-    const contains: SearchableSelectOption[] = [];
+    // Prefix matches ONLY, in the list's own order — typing "i" must offer Iraq/Ireland/Israel/
+    // Italy and nothing else, not every country with an "i" anywhere in its name. A pinned
+    // "Others…" row, if the list has one, stays reachable at the bottom whatever was typed.
+    const matches: SearchableSelectOption[] = [];
     const pinned: SearchableSelectOption[] = [];
     for (const o of options) {
-      const label = o.label.toLowerCase();
-      const aliases = o.keywords?.map((k) => k.toLowerCase()) || [];
-      if (label.startsWith(term) || aliases.some((a) => a.startsWith(term))) starts.push(o);
-      else if (label.includes(term) || aliases.some((a) => a.includes(term))) contains.push(o);
+      const label = normalize(o.label);
+      const aliases = o.keywords?.map(normalize) || [];
+      if (label.startsWith(term) || aliases.some((a) => a.startsWith(term))) matches.push(o);
       else if (o.alwaysShow) pinned.push(o);
     }
-    return [...starts, ...contains, ...pinned];
+    return [...matches, ...pinned];
   }, [options, query]);
 
   // The highlight is reset on every keystroke, but the options list can also shrink underneath

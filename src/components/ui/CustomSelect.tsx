@@ -9,6 +9,25 @@ export interface CustomSelectOption {
   /** Stays visible in a searchable list no matter what's typed — for a pinned "Other (add
    * manually)" entry, which the user needs to reach precisely when their search finds nothing. */
   alwaysShow?: boolean;
+  /** Extra strings the search matches against, besides the label — a dial code's country names
+   * ("India"), the code itself ("+91", "91"). Prefix-matched like the label. */
+  keywords?: string[];
+  /** Muted text after the label in the list only — the country a dial code belongs to. The
+   * closed trigger shows the label alone, so a narrow control stays readable. */
+  detail?: string;
+}
+
+/** Lower-case, accents stripped — so "co" finds "Côte d’Ivoire" and "Sao" finds "São Tomé". */
+function normalize(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** Whether `option` answers to `term` — by the START of its label or of any keyword, never by a
+ * substring in the middle. Typing "c" lists the countries that begin with C, not every country
+ * with a "c" somewhere in its name (which for one letter is most of them). */
+function matchesPrefix(option: CustomSelectOption, term: string): boolean {
+  if (normalize(option.label).startsWith(term)) return true;
+  return !!option.keywords?.some((k) => normalize(k).startsWith(term));
 }
 
 interface CustomSelectProps {
@@ -17,9 +36,9 @@ interface CustomSelectProps {
   onChange: (value: string) => void;
   onBlurValidate?: () => void;
   /** Turns the trigger into a combobox: the field itself is a text input, and the list below
-   * narrows as you type. Long lists (countries) are unusable as a plain scroll. */
+   * narrows as you type. Long lists (countries) are unusable as a plain scroll. There is no
+   * separate search box and no "Search…" wording — the reader types straight into the field. */
   searchable?: boolean;
-  searchPlaceholder?: string;
   /** Shown on the trigger while nothing is selected — without it an unset select
    * renders as a blank box that reads as broken rather than as "nothing picked yet". */
   placeholder?: string;
@@ -35,7 +54,6 @@ export function CustomSelect({
   onChange,
   onBlurValidate,
   searchable = false,
-  searchPlaceholder = "Search…",
   placeholder = "Select…",
   disabled = false,
   ariaLabel,
@@ -80,19 +98,17 @@ export function CustomSelect({
   }, [open, searchable]);
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const term = normalize(query.trim());
     if (!term) return options;
-    // Prefix matches first — typing "ind" should offer India before Finland.
-    const starts: CustomSelectOption[] = [];
-    const contains: CustomSelectOption[] = [];
+    // Prefix matches only, in the list's own (alphabetical) order; a pinned "Other" row, if the
+    // list has one, stays reachable at the bottom whatever was typed.
+    const matches: CustomSelectOption[] = [];
     const pinned: CustomSelectOption[] = [];
     for (const o of options) {
-      const label = o.label.toLowerCase();
-      if (label.startsWith(term)) starts.push(o);
-      else if (label.includes(term)) contains.push(o);
+      if (matchesPrefix(o, term)) matches.push(o);
       else if (o.alwaysShow) pinned.push(o);
     }
-    return [...starts, ...contains, ...pinned];
+    return [...matches, ...pinned];
   }, [options, query]);
 
   // Keep the highlight on a row that still exists as the list narrows.
@@ -169,6 +185,7 @@ export function CustomSelect({
         >
           {o.emoji ? `${o.emoji} ` : ""}
           {o.label}
+          {o.detail ? <span className="cs-detail">{o.detail}</span> : null}
         </li>
       ))}
       {filtered.length === 0 && <li className="cs-empty">No matches for &ldquo;{query.trim()}&rdquo;</li>}
@@ -197,10 +214,11 @@ export function CustomSelect({
             aria-label={ariaLabel}
             autoComplete="off"
             disabled={disabled}
-            // Closed, the field reads as the current selection; open, it's a blank search box
-            // whose placeholder still shows what's selected so nothing feels lost while typing.
+            // Closed, the field reads as the current selection. Open, it is the same field with
+            // the caret in it: its placeholder is still the current selection (or the field's own
+            // "Select country"), never a "Search…" prompt, and typing narrows the list.
             value={open ? query : label}
-            placeholder={open ? label || searchPlaceholder : placeholder}
+            placeholder={label || placeholder}
             onChange={(e) => {
               if (!open) setOpen(true);
               setQuery(e.target.value);

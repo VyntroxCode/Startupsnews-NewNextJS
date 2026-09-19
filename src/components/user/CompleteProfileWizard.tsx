@@ -302,7 +302,6 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
                   <CustomSelect
                     ariaLabel="Country"
                     searchable
-                    searchPlaceholder="Search countries…"
                     placeholder="Select…"
                     options={COUNTRY_OPTIONS}
                     value={country}

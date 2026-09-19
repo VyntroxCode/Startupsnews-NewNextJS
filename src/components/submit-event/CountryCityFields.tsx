@@ -2,12 +2,13 @@
 
 import { useMemo } from "react";
 import { CustomSelect } from "@/components/ui/CustomSelect";
-import { COUNTRIES, OTHER_CITY_VALUE, OTHER_COUNTRY_VALUE } from "./constants";
+import { COUNTRIES, OTHER_CITY_VALUE } from "./constants";
 import { cityOptionsForCountry } from "@/modules/partnership-events/domain/country-city-data";
 
 interface CountryCityFieldsProps {
   country: string;
-  countryOther: string;
+  /** Legacy free-text country from before the "Other" row was removed — accepted, never rendered. */
+  countryOther?: string;
   city: string;
   cityOther: string;
   countryError?: string;
@@ -48,12 +49,14 @@ interface CountryCityFieldsProps {
  * Earned cities are appended after them, alphabetically among themselves.
  */
 
-const OTHER_COUNTRY_OPTION = { value: OTHER_COUNTRY_VALUE, label: "Other (add manually)", alwaysShow: true };
-const COUNTRY_OPTIONS = [...COUNTRIES.map((c) => ({ value: c, label: c })), OTHER_COUNTRY_OPTION];
+/** The Country list is every UN member state and nothing else — there is no "Other (add manually)"
+ * row anywhere (public forms, /list-your-event, the admin Sales Tracker lead modal), so a country
+ * can only ever arrive under a listed spelling. `countryOther` is kept in the form state for
+ * older records but is never shown or editable here. */
+const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({ value: c, label: c }));
 
 export function CountryCityFields({
   country,
-  countryOther,
   city,
   cityOther,
   countryError,
@@ -105,20 +108,9 @@ export function CountryCityFields({
           onBlurValidate={onBlurCountry}
           disabled={locked}
           searchable
-          searchPlaceholder="Search countries…"
           placeholder={locked ? "Not applicable" : "Select country"}
           ariaLabel="Country"
         />
-        {!locked && country === OTHER_COUNTRY_VALUE && (
-          <input
-            type="text"
-            placeholder="Enter country name"
-            style={{ marginTop: 8 }}
-            value={countryOther}
-            onChange={(e) => onChangeCountryOther(e.target.value)}
-            onBlur={onBlurCountry}
-          />
-        )}
         {locked && lockedHint ? <div className="hint">{lockedHint}</div> : null}
         <div className={"field-error" + (countryError ? " visible" : "")} id="err-country">
           {countryError}
@@ -139,7 +131,7 @@ export function CountryCityFields({
           ariaLabel="City"
         />
         {!locked && noCuratedCities && city === OTHER_CITY_VALUE ? (
-          <div className="hint">No listed cities for {country === OTHER_COUNTRY_VALUE ? "this country" : country}. Type the city name below.</div>
+          <div className="hint">No listed cities for {country}. Type the city name below.</div>
         ) : null}
         {!locked && city === OTHER_CITY_VALUE && (
           <input

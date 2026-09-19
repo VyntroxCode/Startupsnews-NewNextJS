@@ -145,7 +145,7 @@ export default function SalesTrackerStyles() {
       /* Phone: code picker + optional custom code + number on one line. */
       .sales-tracker-page .phone-row { display: flex; gap: 8px; }
       .sales-tracker-page .phone-row .custom-select-wrap { width: 120px; flex: 0 0 120px; }
-      .sales-tracker-page .phone-row input[type=text] { flex: 0 0 80px; max-width: 80px; }
+      .sales-tracker-page .phone-row > input[type=text] { flex: 0 0 80px; max-width: 80px; }
       /* min-width:0 (the flex default) let this shrink to illegibility whenever the Contact field's
          own column got narrow — e.g. squeezed as 1-of-4 in the old, narrower modal. A real floor
          keeps the number readable; the field wraps onto its own line instead if it doesn't fit. */
@@ -252,6 +252,63 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .se-kv a { color: var(--pink-dark); text-decoration: none; }
       .sales-tracker-page .se-kv a:hover { text-decoration: underline; }
       .sales-tracker-page .se-desc { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.6; background: var(--pink-bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+      /* ---------- Expand North Star enquiries card (EnsEnquiriesCard / EnsEnquiryDetailModal) ---------- */
+      .sales-tracker-page .msg.ok { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+      .sales-tracker-page .se-toolbar .field.ee-filter { flex: 0 1 240px; }
+      .sales-tracker-page .ee-table tbody tr:focus-visible { outline: 2px solid var(--pink); outline-offset: -2px; }
+      .sales-tracker-page .badge.ee-badge { white-space: nowrap; }
+      .sales-tracker-page .badge.ee-badge.is-delegate { background: #E2E8F0; color: #1E293B; }
+      .sales-tracker-page .badge.ee-badge.is-booth { background: var(--pink-bg); color: var(--pink-dark); }
+      .sales-tracker-page .badge.ee-badge.is-others { background: #FEF3C7; color: #92400E; }
+      .sales-tracker-page .badge.ee-status { white-space: nowrap; }
+      .sales-tracker-page .badge.ee-status.is-none { background: #F1F5F9; color: #64748B; border: 1px dashed #CBD5E1; }
+      .sales-tracker-page .badge.ee-status.is-confirmed { background: #D1FAE5; color: #065F46; }
+      .sales-tracker-page .badge.ee-status.is-followed-up { background: #DBEAFE; color: #1E40AF; }
+      .sales-tracker-page .badge.ee-status.is-cancelled { background: #FEE2E2; color: #991B1B; }
+      .sales-tracker-page .ee-form-divider { margin: 4px 0 12px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); }
+      .sales-tracker-page .ee-modal { max-width: 1040px; }
+      .sales-tracker-page .ee-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+      .sales-tracker-page .ee-date { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 10px; background: #fff; }
+      .sales-tracker-page .ee-date.is-edited { border-left-color: var(--pink); }
+      .sales-tracker-page .ee-date-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); }
+      .sales-tracker-page .ee-date-val { font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+      /* Detail view: four titled panels in a 2×2 grid — Contact, Travelling from, Participating as, Conversation. */
+      .sales-tracker-page .ee-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+      .sales-tracker-page .ee-panel { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-top: 3px solid var(--border-strong); border-radius: 12px; background: #fff; padding: 0 18px 18px; }
+      .sales-tracker-page .ee-panel-head { display: flex; flex-direction: column; gap: 2px; margin: 0 -18px 16px; padding: 12px 18px; background: var(--pink-bg2); border-bottom: 1px solid var(--border); }
+      .sales-tracker-page .ee-panel-head h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: 0; text-transform: none; }
+      .sales-tracker-page .ee-panel-head span { font-size: 12px; color: var(--text2); }
+      .sales-tracker-page .ee-panel-kv { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 0 16px; margin: 0; font-size: 13.5px; }
+      .sales-tracker-page .ee-panel-kv dt { padding: 9px 0; color: var(--text2); font-weight: 600; border-bottom: 1px solid var(--border); }
+      .sales-tracker-page .ee-panel-kv dd { margin: 0; padding: 9px 0; color: var(--text); font-weight: 500; overflow-wrap: anywhere; border-bottom: 1px solid var(--border); }
+      .sales-tracker-page .ee-panel-kv dt:nth-last-of-type(1), .sales-tracker-page .ee-panel-kv dd:last-of-type { border-bottom: 0; }
+      .sales-tracker-page .ee-panel-kv a { color: var(--pink-dark); text-decoration: none; }
+      .sales-tracker-page .ee-panel-kv a:hover { text-decoration: underline; }
+      .sales-tracker-page .ee-panel.is-delegate { border-top-color: #334155; }
+      .sales-tracker-page .ee-panel.is-booth { border-top-color: var(--pink); }
+      .sales-tracker-page .ee-panel.is-others { border-top-color: #D97706; }
+      .sales-tracker-page .ee-panel.is-status-none { border-top-color: #94A3B8; }
+      .sales-tracker-page .ee-panel.is-status-confirmed { border-top-color: #059669; }
+      .sales-tracker-page .ee-panel.is-status-followed-up { border-top-color: #2563EB; }
+      .sales-tracker-page .ee-panel.is-status-cancelled { border-top-color: #DC2626; }
+      .sales-tracker-page .ee-status-row { display: flex; align-items: center; gap: 12px; }
+      .sales-tracker-page .ee-status-lbl { font-size: 13.5px; font-weight: 600; color: var(--text2); }
+      .sales-tracker-page .ee-status-row .badge.ee-status { font-size: 13px; padding: 5px 14px; }
+      .sales-tracker-page .ee-panel-note { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--text2); background: var(--pink-bg2); border: 1px dashed var(--border-strong); border-radius: 10px; padding: 12px 14px; }
+      .sales-tracker-page .ee-package-name { margin: 0; font-size: 16px; font-weight: 700; color: var(--text); }
+      .sales-tracker-page .ee-package-sub { margin: 14px 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); }
+      .sales-tracker-page .ee-inclusions { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13.5px; }
+      .sales-tracker-page .ee-inclusions li { position: relative; padding-left: 22px; color: var(--text); }
+      .sales-tracker-page .ee-inclusions li::before { content: '✓'; position: absolute; left: 0; top: 0; font-weight: 700; color: #059669; }
+      .sales-tracker-page .ee-inclusions li.is-highlight { font-weight: 700; }
+      .sales-tracker-page .ee-inclusions li.is-highlight::before { color: var(--pink); }
+      .sales-tracker-page a.se-btn-link.ee-btn-ghost { background: #fff; color: var(--pink-dark); }
+      .sales-tracker-page a.se-btn-link.ee-btn-ghost:hover { background: var(--pink-bg2); }
+      @media (max-width: 760px) {
+        .sales-tracker-page .ee-dates, .sales-tracker-page .ee-panels { grid-template-columns: minmax(0, 1fr); }
+        .sales-tracker-page .ee-panel-kv { grid-template-columns: minmax(0, 1fr); gap: 0; }
+        .sales-tracker-page .ee-panel-kv dt { padding-bottom: 2px; border-bottom: 0; }
+      }
       .sales-tracker-page a.se-btn-link { display: inline-flex; align-items: center; justify-content: center; height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--pink); background: var(--pink); color: #fff; font-size: 13.5px; font-weight: 600; text-decoration: none; white-space: nowrap; }
       .sales-tracker-page a.se-btn-link:hover { background: var(--pink-dark); border-color: var(--pink-dark); }
       @media (max-width: 700px) {

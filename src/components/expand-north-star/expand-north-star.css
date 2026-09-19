@@ -1,0 +1,2495 @@
+/* ========================================
+   EXPAND NORTH STAR 2026 (public page, /expand-north-star)
+
+   The visual system behind ExpandNorthStarPage.tsx — running order and each section's motion are
+   documented there. Imported by that component (not globals.css) and scoped under .ens-page so it
+   can never leak into another page.
+
+   Built from the event's reference screenshots: Cairo (loaded in the route, exposed as
+   --ens-font; Montserrat as --ens-strip-font for the delegation pieces), magenta as the accent, lime as the second CTA colour, heavy uppercase headlines, big
+   rounded cards and slow-drifting colour washes. Grounds run full width with a 1200px content
+   column; motion habits as /sponsor-event and /feature-your-startup.
+
+   Hover lifts use the `translate` property, never `transform`, because Motion owns the inline
+   `transform` of every animated element.
+   ======================================== */
+
+.ens-page {
+  --ens-pink: #E4157C;
+  --ens-pink-dark: #BD0C63;
+  --ens-lime: #C9F31D;
+  --ens-lime-lift: #D8FF3F;
+  --ens-ink: #0A0A0B;
+  --ens-body: #1C1C21;
+  --ens-graphite: #505054;
+  --ens-soft: #F4F4F5;
+
+  --ens-sans: var(--ens-font, "Cairo"), "Garnett", Helvetica, Arial, sans-serif;
+  --ens-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ens-gutter: clamp(18px, 4vw, 48px);
+  /* Content column width; every one-line heading sizes itself to this, not the viewport. */
+  --ens-column: 1200px;
+  /* The width a one-line heading may fill: the column, or the viewport between the gutters when
+     that is narrower. Using 100vw alone let the 64px cap win on wide screens and the line grew past
+     the 1200px column, which clipped its right end (fixed 2026-09-18). */
+  --ens-line-width: min(100vw - 2 * var(--ens-gutter), var(--ens-column));
+  /* Vertical padding at the top and bottom of every section, so the gap between two sections is
+     twice this. Tightened on request (2026-09-17) from clamp(72px, 9vw, 128px), which left 160–256px
+     of empty space between sections on a wide screen. */
+  --ens-section-y: clamp(26px, 2.4vw, 44px);
+
+  /* Full width: every section's ground runs edge to edge. The content column is capped in
+     `.ens-wrap` (and `.ens-nav-inner`) instead, so lines don't stretch across a wide screen.
+     `overflow-x: clip` (not hidden) keeps the drifting washes from adding a horizontal scrollbar
+     while leaving `position: sticky` on the nav working. */
+  width: 100%;
+  position: relative;
+  background: #fff;
+  color: var(--ens-ink);
+  font-family: var(--ens-sans);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ens-page *,
+.ens-page *::before,
+.ens-page *::after { box-sizing: border-box; }
+
+.ens-page section { position: relative; }
+.ens-page h1,
+.ens-page h2,
+.ens-page h3,
+.ens-page p { font-family: inherit; }
+.ens-page ::selection { background: var(--ens-pink); color: #fff; }
+
+/* The content column: 1200px of content plus the gutters, centred inside the full-width grounds. */
+.ens-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: calc(var(--ens-column) + var(--ens-gutter) * 2);
+  margin-inline: auto;
+  padding: 0 var(--ens-gutter);
+}
+
+/* This route renders without the site header or banner (BARE_ROUTES in ConditionalLayout), so the
+   72px that globals.css adds to clear the fixed header would only push the green strip down. The
+   class is set on this route alone. */
+#mvp-main-body-wrap.is-bare-route { padding-top: 0 !important; }
+
+.ens-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ens-page a:focus-visible,
+.ens-page button:focus-visible {
+  outline: 3px solid var(--ens-ink);
+  outline-offset: 4px;
+}
+
+/* ---- Shared: drifting colour washes ------------------------------------- */
+
+.ens-blob {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(36px);
+  animation: ens-drift 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes ens-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(-4%, 3%, 0) scale(1.07); }
+  66% { transform: translate3d(3%, -4%, 0) scale(0.95); }
+}
+
+/* ---- Shared: background video ------------------------------------------- */
+
+.ens-video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: #000;
+  background-size: cover;
+  background-position: center;
+}
+
+.ens-video-el {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.2s var(--ens-ease);
+}
+
+.ens-video-el.is-ready { opacity: 1; }
+
+/* ---- Shared: headings ---------------------------------------------------- */
+
+.ens-title {
+  margin: 0 auto;
+  text-align: center;
+  font-size: clamp(30px, 5.2vw, 64px);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--ens-ink);
+}
+
+.ens-subtitle {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(28px, 4.2vw, 54px);
+  font-weight: 300;
+  line-height: 1.1;
+  color: var(--ens-ink);
+}
+
+.ens-subtitle strong { font-weight: 700; }
+
+.ens-lede {
+  margin: clamp(20px, 2.4vw, 30px) auto 0;
+  /* Full column width on request (was 62ch, which left most of a wide screen empty either side). */
+  max-width: none;
+  text-align: center;
+  font-size: clamp(16px, 1.75vw, 22px);
+  line-height: 1.6;
+  color: var(--ens-body);
+}
+
+/* RevealWords: each word slides up out of its own mask. The padding/negative margin gives
+   descenders room inside the mask without changing the line height. */
+.ens-line { display: block; }
+.ens-line.is-inline { display: inline; }
+
+/* Headings that must stay on ONE line (on request): the type is sized from the content column
+   (`--ens-line-width`, the column or the viewport between the gutters, whichever is narrower) so the
+   line exactly fills it, never wrapping and never overrunning it. `--ratio` is how many font-sizes wide the
+   text is in Cairo 800 uppercase at this letter-spacing — measured in the browser and baked in for
+   each heading below (re-measure if the wording changes). Under 760px the lines are allowed to wrap
+   again, since a single line would be too small to read. */
+@media (min-width: 760px) {
+  .ens-title.is-oneline {
+    white-space: nowrap;
+    font-size: min(64px, calc(var(--ens-line-width) / var(--ratio) / 1.04));
+  }
+}
+
+/* Measured 2026-09-17 (see the note above). (`.ens-numbers-title` is no longer one line — see its
+   own stepped rule further down.) */
+.ens-new-heading { --ratio: 22.56; }
+.ens-themes-title { --ratio: 24.13; }
+/* Re-estimated 2026-09-19 for "Participation Charges, ₹1.65L onwards" ("onwards" at 0.4em): "Rs. "
+   went, a comma and the rupee sign came, so the line is ~1em narrower than the 17.32 measured before. */
+.ens-fee-title { --ratio: 16.4; }
+.ens-journey-title { --ratio: 20.17; }
+
+.ens-word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+
+.ens-word {
+  display: inline-block;
+  transform-origin: 0 100%;
+  will-change: transform;
+}
+
+/* ---- Shared: button sheen ------------------------------------------------ */
+
+/* A light band that sweeps across a button on hover. The page's outbound pill and block buttons
+   (EnsButton) were removed on request on 2026-09-16; the sheen stays because the closing form's
+   submit button (.ens-jf-submit) still uses it. */
+.ens-btn-shine {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.9s var(--ens-ease);
+}
+
+.ens-jf-submit:hover .ens-btn-shine { transform: translateX(120%); }
+
+/* ---- Nav ------------------------------------------------------------------ */
+
+.ens-nav-sentinel { display: block; height: 1px; margin-bottom: -1px; }
+
+/* Pins directly under the site's sticky header; EnsNav measures that header into --ens-nav-top. */
+.ens-nav {
+  position: sticky;
+  top: var(--ens-nav-top, 0px);
+  z-index: 40;
+  padding: clamp(12px, 1.6vw, 20px) var(--ens-gutter);
+  background: linear-gradient(100deg, #FFFFFF 0%, #FDF1F7 45%, #F4CDE4 100%);
+  transition: padding 0.5s var(--ens-ease), box-shadow 0.5s ease;
+}
+
+/* Pinned, the bar keeps its full size (shrinking it on scroll was removed on request); only a shadow
+   marks that it is now floating over the page. */
+.ens-nav.is-stuck { box-shadow: 0 18px 40px -26px rgba(120, 10, 70, 0.5); }
+
+.ens-nav-logo {
+  display: block;
+  width: 100%;
+  max-width: 680px;
+  height: auto;
+}
+
+
+/* Logo lockup, a rule, the Launchpad mark and the Konnect logo packed together on the left, on one
+   line, with "Participate Now" pushed to the bar's right edge (`margin-left: auto` on the button) so
+   clear space separates the logos from the action (on request, 2026-09-18 — before this the row was
+   a centred 1200px group with the button hard against the Konnect logo). The row spans the bar's
+   full width between its gutters, so the logos share the delegation band's left edge. The lockup
+   gives way first when the bar narrows; the mark and the button keep their size.
+
+   2026-09-19: the row is capped at 1440px and centred again — uncapped, on a 1900px+ screen the
+   button drifted to the far edge and the logos looked small; capped, the logos are back at full size
+   and the button sits a moderate distance after the Konnect logo (its right margin is the floor). */
+.ens-nav-inner {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.4vw, 22px);
+  max-width: 1440px;
+  margin-inline: auto;
+}
+
+/* 700 → 560px on 2026-09-18 for space before the button; 680px on 2026-09-19 (too small on wide
+   screens) now that the row itself is capped instead. */
+.ens-nav-inner .ens-nav-logo { flex: 0 1 680px; min-width: 0; }
+
+/* Matches the thin vertical rules inside the lockup itself. */
+.ens-nav-divider {
+  flex: none;
+  align-self: stretch;
+  width: 1px;
+  margin-block: clamp(6px, 1vw, 14px);
+  background: rgba(40, 36, 70, 0.45);
+}
+
+/* "LAUNCHPAD / MIDDLE EAST" — shiny gold lettering with a light sweep, straight on the bar's pink
+   wash (the dark tile was removed on 2026-09-16; the cream-and-glow letters that replaced it were
+   too faint on pink, so on 2026-09-17 they became gold on request).
+
+   The gold is a gradient clipped to the letters — deep bronze at both ends, bright gold, and a
+   near-white band in the middle — sized wider than the text and slid across it, so a highlight
+   travels through the letters every few seconds. Two drop-shadows (a hard 1px bronze edge and a
+   soft warm shadow) give the letters an edge against the light pink; `text-shadow` can't be used,
+   because it paints through transparent-filled text and would muddy the gold.
+
+   Montserrat is the page's strip face (--ens-strip-font, 900 loaded). Qualified with `.ens-nav`
+   because the element is a <p>, and `.ens-page p { font-family: inherit }` near the top of this
+   file would otherwise outrank a single class and hand it back to Cairo. */
+.ens-nav .ens-nav-launchpad {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-size: clamp(13px, 1.7vw, 25px);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #B8860B;
+  background-image: linear-gradient(
+    105deg,
+    #7A5410 0%,
+    #B8860B 18%,
+    #E8C047 34%,
+    #FFF6C8 48%,
+    #F3D56A 58%,
+    #C4921A 76%,
+    #7A5410 100%
+  );
+  background-size: 260% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 1px 0 rgba(92, 60, 4, 0.55)) drop-shadow(0 3px 6px rgba(140, 90, 10, 0.28));
+  animation: ens-gold-shine 3.8s ease-in-out infinite;
+  transition: font-size 0.6s var(--ens-ease);
+}
+
+.ens-nav-launchpad span + span { margin-top: 0.08em; }
+
+
+/* The bright band crosses the letters, then rests off to the side before the next pass. */
+@keyframes ens-gold-shine {
+  0% { background-position: 100% 0; }
+  60%, 100% { background-position: 0% 0; }
+}
+
+/* Dubai Konnect logo, after Launchpad. Sized by height so it sits level with the lockup and the
+   Launchpad lines, and shrinks with them when the bar pins. */
+/* The right margin is the floor of the gap before the button: `margin-left: auto` on the button
+   takes whatever free width the bar has, and this keeps a clear space even when there is none. */
+.ens-nav-konnect { flex: none; display: flex; align-items: center; margin-right: clamp(28px, 4vw, 80px); }
+
+.ens-nav-konnect-img {
+  display: block;
+  width: auto;
+  height: clamp(34px, 3.8vw, 62px);
+  transition: height 0.6s var(--ens-ease);
+}
+
+
+/* "Participate Now" — the bar's one action, immediately right of the Konnect logo. Magenta on the
+   bar's pale pink wash (the reverse of the home page's strip, where a lime pill sits on magenta),
+   so the two pieces of the same campaign each keep their contrast. `flex: none` so it never gives
+   up width — the logo lockup is the element that shrinks when the bar narrows.
+
+   `translate`, not `transform`, for the hover lift: Motion owns this element's inline transform
+   (it fades and scales in), and writing `transform` here would be overwritten on every frame. */
+.ens-page .ens-nav-cta {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.68em 1.35em;
+  border-radius: 999px;
+  background: var(--ens-pink);
+  color: #fff;
+  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-size: clamp(11px, 1.05vw, 14px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 10px 22px -12px rgba(228, 21, 124, 0.85);
+  transition: background 0.3s var(--ens-ease), box-shadow 0.3s var(--ens-ease), translate 0.3s var(--ens-ease);
+}
+
+.ens-page .ens-nav-cta:hover {
+  background: var(--ens-pink-dark);
+  color: #fff;
+  box-shadow: 0 14px 26px -12px rgba(189, 12, 99, 0.95);
+  translate: 0 -2px;
+}
+
+.ens-page .ens-nav-cta:focus-visible {
+  outline: 2px solid var(--ens-ink);
+  outline-offset: 3px;
+}
+
+/* On a phone the lockup needs the full width, so the mark and the Konnect logo drop beneath it. */
+@media (max-width: 760px) {
+  .ens-nav-inner { flex-wrap: wrap; row-gap: 8px; }
+  .ens-nav-inner .ens-nav-logo { flex-basis: 100%; }
+  .ens-nav-divider { display: none; }
+  .ens-nav .ens-nav-launchpad { font-size: clamp(12px, 3.4vw, 16px); flex-direction: row; gap: 0.35em; }
+  .ens-nav .ens-nav-launchpad span + span { margin-top: 0; }
+  /* Beside Launchpad on the wrapped second line; small beside it once pinned. */
+  .ens-nav-divider-konnect { display: block; align-self: center; height: 22px; margin-block: 0; }
+  .ens-nav-konnect-img { height: 30px; }
+  .ens-nav-konnect { margin-right: 12px; }
+  /* Last on the wrapped second line, beside the Konnect logo; `margin-left: auto` puts it against
+     the right edge so the row doesn't read as one crowded clump. */
+  .ens-page .ens-nav-cta { margin-left: auto; padding: 0.6em 1em; font-size: 10.5px; letter-spacing: 0.04em; }
+}
+
+.ens-nav-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ens-pink), #9B4DFF);
+  transform-origin: 0 50%;
+}
+
+/* ---- Delegation band (above the nav) -------------------------------------- */
+
+/* One still line at the very top, as wide as the band, and sticky (2026-09-17). EnsNav measures
+   this band and pins the event bar directly beneath it. Once the page scrolls the band tightens its
+   padding (`is-scrolled`, from EnsDelegationTitle) so the pinned stack takes less of the screen.
+   Montserrat 900 is the face the old green strip used, from the delegation artwork. */
+.ens-delegation-band {
+  position: sticky;
+  top: 0;
+  z-index: 41;
+  /* The title sizes itself to this box's width (cqi) — see below. */
+  container-type: inline-size;
+  padding: clamp(12px, 1.8vw, 24px) var(--ens-gutter);
+  background: #FFFFFF;
+  border-bottom: 1px solid #F0E4EC;
+  text-align: center;
+  transition: padding 0.4s var(--ens-ease), box-shadow 0.4s var(--ens-ease);
+}
+
+.ens-delegation-band.is-scrolled {
+  padding-block: clamp(6px, 0.8vw, 12px);
+  box-shadow: 0 10px 24px -20px rgba(10, 10, 11, 0.35);
+}
+
+/* Full width: the font size is the band's content width divided by how many font-sizes wide the
+   line is. Measured in Montserrat 900 with this letter-spacing, "Startup Delegation to Dubai" is
+   17.62 font-sizes wide (re-measured 2026-09-18 after "Indian" was dropped; it was 21.79 before);
+   18.0 leaves ~2% so it can never touch the gutters or wrap. Every other dimension here is in em, so
+   the ratio holds at any width. */
+.ens-page .ens-delegation-title {
+  margin: 0;
+  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-size: calc(100cqi / 18);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ens-ink);
+  transition: font-size 0.4s var(--ens-ease);
+}
+
+/* Once the page has scrolled the title drops to half its size (2026-09-19, on request): full
+   width at the top of the page, 50% while reading, so the pinned stack takes half the room. EnsNav
+   watches the band's border-box, so the bar follows the shrink. */
+.ens-delegation-band.is-scrolled .ens-delegation-title { font-size: calc(100cqi / 36); }
+
+.ens-delegation-accent { color: var(--ens-pink); }
+
+/* On a phone one line would be ~15px tall, so it breaks after "Startup" and each line fills the
+   width instead: "Delegation to Dubai", the longer line, measures 12.43 font-sizes (12.7 with the
+   same margin). */
+@media (max-width: 559px) {
+  .ens-delegation-line { display: block; }
+  .ens-page .ens-delegation-title { font-size: calc(100cqi / 12.7); }
+  .ens-delegation-band.is-scrolled .ens-delegation-title { font-size: calc(100cqi / 25.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ens-delegation-band,
+  .ens-page .ens-delegation-title { transition: none; }
+}
+
+/* ---- Hero ----------------------------------------------------------------- */
+
+.ens-hero {
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(26px, 3.4vw, 42px) 0 var(--ens-section-y);
+  background: linear-gradient(180deg, #FCEFF6 0%, #F9E2EF 55%, #F5CDE3 100%);
+}
+
+.ens-hero-blob-a {
+  width: 64%;
+  aspect-ratio: 1.3;
+  right: -20%;
+  top: 14%;
+  background: radial-gradient(closest-side, rgba(228, 21, 124, 0.55), rgba(228, 21, 124, 0));
+}
+
+.ens-hero-blob-b {
+  width: 56%;
+  aspect-ratio: 1;
+  left: -22%;
+  bottom: -28%;
+  background: radial-gradient(closest-side, rgba(255, 62, 154, 0.45), rgba(255, 62, 154, 0));
+  animation-duration: 23s;
+  animation-direction: alternate-reverse;
+}
+
+.ens-hero-title {
+  margin: 0;
+  font-size: clamp(28px, 4.4vw, 52px);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  color: var(--ens-pink);
+}
+
+.ens-hero-title .is-strong { font-weight: 700; }
+
+.ens-hero-stage { position: relative; margin-top: clamp(18px, 2.4vw, 30px); }
+
+.ens-hero-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  aspect-ratio: 16 / 8.6;
+  border-radius: clamp(26px, 4.4vw, 56px);
+  background: #000;
+  box-shadow: 0 50px 100px -44px rgba(110, 8, 60, 0.6);
+  /* Keeps the rounded clip in Safari while the card is scaled. */
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
+.ens-hero-media { position: absolute; inset: -7% 0; }
+
+.ens-hero-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+@media (max-width: 719px) {
+  .ens-hero-card { aspect-ratio: 4 / 3.3; }
+}
+
+/* ---- Show numbers --------------------------------------------------------- */
+
+.ens-numbers {
+  isolation: isolate;
+  overflow: hidden;
+  padding: var(--ens-section-y) 0;
+  background: #fff;
+}
+
+/* Plain white: the orange flare and its sparkles at the right edge were removed on request. */
+
+.ens-numbers-sub {
+  margin-top: clamp(48px, 6vw, 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.3em;
+}
+
+.ens-stats {
+  list-style: none;
+  margin: clamp(40px, 5vw, 64px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 32px 16px;
+  text-align: center;
+}
+
+.ens-stat-value {
+  display: block;
+  font-size: clamp(36px, 4.4vw, 56px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ens-pink);
+}
+
+.ens-stat-label {
+  display: block;
+  max-width: 16ch;
+  margin: 12px auto 0;
+  font-size: clamp(15px, 1.55vw, 20px);
+  line-height: 1.45;
+  color: var(--ens-pink);
+}
+
+@media (max-width: 959px) {
+  .ens-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 559px) {
+  .ens-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ens-stat:last-child { grid-column: 1 / -1; }
+}
+
+/* "Where The World Connects / and The Future Scales" — two lines, the second stepped in to start
+   at the horizontal middle of the first (on request, 2026-09-18). Measured in Cairo 800 at this
+   letter-spacing: line 1 is 13.59 font-sizes wide, line 2 is 11.04. The block is `max-content` wide,
+   which is line 1 (a child's percentage margin counts as 0 for intrinsic sizing), so line 2's
+   `margin-left: 50%` resolves to half of line 1 exactly; it then overhangs the content box by
+   11.04 − 6.795 = 4.245em, which the `padding-right` reserves so `margin: auto` centres the whole
+   shape. From 760px the type is sized so the shape (17.84 font-sizes) fills the column and never
+   wraps; below that the two lines just stack centred, since the stepped shape would not fit a phone. */
+/* 2026-09-19 (on request): the two lines now sit at the column's opposite edges — "Where The World
+   Connects" flush left, "and The Future Scales" flush right — instead of the half-line step above.
+   The title spans the full column; the font-size formula is kept so the type stays the same size. */
+/* 2026-09-19, twice more the same day (on request, each time from a screenshot): "and" first landed
+   under "World" (line 2 was right-aligned in the FULL column, which was wider than the two lines
+   placed edge-to-edge), then — after retuning the column width from a second hand measurement of
+   both lines — landed past "Connects" with a visible gap, because that measurement was still off.
+   Two attempts at guessing the right divisor by eye was one too many: this version does not measure
+   either line at all, and cannot drift out of step again regardless of wording, font or
+   letter-spacing changes, because "and"'s position is no longer computed from any number — it is
+   read directly off where line 1 actually ends.
+   `.ens-numbers-title` goes back to `width: max-content`, which — as in the very first version above
+   — sizes the box to its widest child, line 1, because a child's percentage margin resolves to 0
+   while that width is being worked out. `.ens-line.is-step` then gets `margin-left: 100%` (not
+   `50%`): that 100% resolves against the box's now-fixed width, i.e. exactly line 1's own rendered
+   width, so line 2 starts precisely at the pixel line 1 ends on, whatever that pixel turns out to
+   be. No `padding-right`/`margin: auto` centring this time either — the box sits flush against the
+   column's left edge (unchanged from the two edge-to-edge versions above), so line 1 keeps starting
+   exactly where it already did; only line 2's start point changes. The font-size formula (dividing
+   the column width by a fixed number of "font-sizes") is kept ONLY to pick a text size that reads
+   well and comfortably clears the column — the 24.63 figure now only ever affects how big the
+   heading is, never where "and" sits. */
+.ens-page .ens-numbers-title {
+  width: max-content;
+  max-width: 100%;
+  margin-inline: 0;
+  text-align: left;
+}
+
+@media (min-width: 760px) {
+  .ens-page .ens-numbers-title {
+    white-space: nowrap;
+    font-size: min(64px, calc(var(--ens-line-width) / 24.63 / 1.04));
+  }
+  .ens-numbers-title .ens-line.is-step { margin-left: 100%; }
+}
+
+@media (max-width: 759px) {
+  .ens-page .ens-numbers-title { width: auto; text-align: center; }
+}
+
+/* The numbers paragraph's closing phrase ("Real-World Impact and Economic Growth.") stays on one
+   line on wide screens so it reads as the last line on its own; below 760px it may wrap, since one
+   line would not fit a phone. (2026-09-18) */
+@media (min-width: 760px) { .ens-lede-keep { white-space: nowrap; } }
+
+/* "Participate Now" under the figures (2026-09-18): the event bar's magenta pill again, only larger
+   and centred, so the section ends on the same action the bar offers. `translate` for the hover
+   lift for the same reason as the bar's button (Motion owns the wrapper's transform, not this
+   anchor's, but keeping one rule for both avoids a second convention). */
+.ens-numbers-cta-wrap {
+  margin-top: clamp(36px, 4.4vw, 56px);
+  text-align: center;
+}
+
+.ens-page .ens-numbers-cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 1em 2.2em;
+  border-radius: 999px;
+  background: var(--ens-pink);
+  color: #fff;
+  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-size: clamp(13px, 1.2vw, 16px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 14px 30px -14px rgba(228, 21, 124, 0.85);
+  transition: background 0.3s var(--ens-ease), box-shadow 0.3s var(--ens-ease), translate 0.3s var(--ens-ease);
+}
+
+.ens-page .ens-numbers-cta:hover {
+  background: var(--ens-pink-dark);
+  color: #fff;
+  box-shadow: 0 18px 34px -14px rgba(189, 12, 99, 0.95);
+  translate: 0 -2px;
+}
+
+.ens-page .ens-numbers-cta:focus-visible {
+  outline: 2px solid var(--ens-ink);
+  outline-offset: 3px;
+}
+
+/* ---- Partners (reused /our-partners marquee) -------------------------------- */
+
+/* The rows and tiles are styled by the marquee's own stylesheet
+   (src/components/partner-logos-marquee.css); this only places them. The rows run the full width
+   of the screen, outside the content column, and the edge fade comes with them.
+
+   Sits between the participation fee and the registration form (moved there 2026-09-17). Its ground
+   is the single tint #F3F0F4 that the fee section fades down to and the form section's top gradient
+   starts from, so the three read as one closing passage with no seam at either edge; the white logo
+   tiles stand out against it. */
+.ens-partners {
+  padding: var(--ens-section-y) 0;
+  background: #F3F0F4;
+}
+
+.ens-partners-title { font-size: clamp(28px, 4.4vw, 56px); }
+.ens-partners-lede { margin-top: clamp(12px, 1.4vw, 18px); }
+
+.ens-partners-rows { margin-top: clamp(32px, 4vw, 52px); }
+.ens-partners .partners-marquee-group:last-child { margin-bottom: 0; }
+
+/* Logo effects, this page only (2026-09-19) — /our-partners keeps the plain marquee.
+
+   Rebuilt the same day for smoothness: the first version tilted the two masked rows in 3D and ran a
+   float and a sheen animation on every one of the 100+ tiles, and the strip stuttered — each frame
+   re-rasterised the rotated, masked rows and composited a hundred animated overlays on top of the
+   marquee's own transform. Now the only continuous animations are TWO per row: a gentle bob of the
+   whole row (opposite phase to the other row) and one band of light that sweeps the row's width.
+   Both are `translate` on a single compositor layer per row, so they cost nothing per tile. The tiles
+   themselves are static — a soft gradient rim and a shadow, painted once into the moving track — and
+   only do work on hover (the marquee is paused then anyway): the hovered tile lifts, scales and
+   glows while its neighbours fall back slightly. Nothing here touches `.partners-marquee-track`,
+   whose transform the marquee's rAF loop owns. All motion stops under reduced motion. */
+.ens-partners .partners-marquee-group { gap: 8px; }
+
+.ens-partners .partners-marquee-row {
+  position: relative;
+  padding-block: 16px;
+  animation: ens-row-bob 7s ease-in-out infinite;
+}
+.ens-partners .partners-marquee-row:last-child { animation-delay: -3.5s; }
+
+/* One band of light per row, sweeping left to right over the logos (it sits above the track). */
+.ens-partners .partners-marquee-row::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 28%;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
+  translate: -120% 0;
+  pointer-events: none;
+  will-change: translate;
+  animation: ens-row-sheen 9s ease-in-out infinite;
+}
+.ens-partners .partners-marquee-row:last-child::after { animation-delay: 4.5s; }
+
+.ens-partners .partners-logo-tile {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 28px -18px rgba(10, 10, 11, 0.35);
+  transition: translate 0.4s var(--ens-ease), scale 0.4s var(--ens-ease), box-shadow 0.4s var(--ens-ease), opacity 0.4s var(--ens-ease);
+}
+
+/* Gradient rim: a padding-box/border-box mask leaves only the 1.5px border of the gradient. Static,
+   so it is painted once with the track and never repainted as the strip moves. */
+.ens-partners .partners-logo-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, rgba(228, 21, 124, 0.55), rgba(155, 77, 255, 0.35), rgba(201, 243, 29, 0.55));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.4s var(--ens-ease);
+}
+
+/* Hover: the pointed-at logo comes forward, the rest of its row eases back. */
+.ens-partners .partners-marquee-track:hover .partners-logo-tile { opacity: 0.55; }
+.ens-partners .partners-marquee-track:hover .partners-logo-tile:hover {
+  opacity: 1;
+  translate: 0 -8px;
+  scale: 1.06;
+  box-shadow: 0 24px 44px -22px rgba(228, 21, 124, 0.55);
+}
+.ens-partners .partners-logo-tile:hover::before { opacity: 1; }
+
+@keyframes ens-row-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+
+/* The band crosses in the first third of the cycle and waits out the rest. */
+@keyframes ens-row-sheen {
+  0% { translate: -120% 0; }
+  35%, 100% { translate: 460% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ens-partners .partners-marquee-row { animation: none; }
+  .ens-partners .partners-marquee-row::after { display: none; }
+  .ens-partners .partners-marquee-track:hover .partners-logo-tile { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+/* ---- What's new ------------------------------------------------------------ */
+
+.ens-new { padding: var(--ens-section-y) 0; background: var(--ens-soft); }
+
+.ens-new-grid {
+  list-style: none;
+  margin: clamp(44px, 5.5vw, 72px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(12px, 1.4vw, 18px);
+}
+
+/* Each card is a subgrid spanning four of the grid's rows — photo, title, kicker, body — so those
+   four rows share one height across every card in the row. A one-line title next to a two-line one
+   used to push its kicker and body up by a line (fixed on request, 2026-09-18). `.ens-new-text` is
+   `display: contents` so the three text blocks are the card's own grid items; its side padding moves
+   onto them. `row-gap: 0` because a subgrid would otherwise inherit the outer grid's gap between its
+   own rows. Browsers without subgrid fall back to the old flex column with two-line minimums. */
+.ens-new-card {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 4;
+  row-gap: 0;
+  align-content: start;
+  padding: 14px 14px clamp(24px, 2.6vw, 34px);
+  border-radius: clamp(28px, 3vw, 40px);
+  background: #fff;
+  transition: translate 0.5s var(--ens-ease), box-shadow 0.5s var(--ens-ease);
+}
+
+.ens-new-card:hover {
+  translate: 0 -8px;
+  box-shadow: 0 34px 60px -30px rgba(10, 10, 11, 0.3);
+}
+
+.ens-new-media {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 3.9;
+  border-radius: clamp(22px, 2.6vw, 32px) clamp(22px, 2.6vw, 32px) clamp(34px, 4vw, 54px) clamp(34px, 4vw, 54px);
+  background: #E3E3E6;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
+.ens-new-media-inner { position: absolute; inset: 0; }
+.ens-new-img { object-fit: cover; transition: transform 1.1s var(--ens-ease); }
+.ens-new-card:hover .ens-new-img { transform: scale(1.07); }
+
+.ens-new-text { display: contents; }
+.ens-new-title,
+.ens-new-kicker,
+.ens-new-body { padding-inline: clamp(4px, 0.8vw, 10px); }
+
+@supports not (grid-template-rows: subgrid) {
+  .ens-new-card { display: flex; flex-direction: column; }
+  .ens-new-text { display: block; padding: 0 clamp(4px, 0.8vw, 10px); }
+  .ens-new-title,
+  .ens-new-kicker,
+  .ens-new-body { padding-inline: 0; }
+  .ens-new-title { min-height: 2.24em; }
+  .ens-new-kicker { min-height: 2.6em; }
+}
+
+.ens-new-title {
+  margin: clamp(22px, 2.4vw, 30px) 0 clamp(12px, 1.4vw, 16px);
+  font-size: clamp(22px, 2.2vw, 27px);
+  font-weight: 800;
+  line-height: 1.12;
+  color: var(--ens-pink);
+}
+
+.ens-new-kicker {
+  margin: 0 0 12px;
+  font-size: clamp(15px, 1.45vw, 18px);
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--ens-ink);
+}
+
+.ens-new-body {
+  margin: 0;
+  font-size: clamp(15px, 1.4vw, 17.5px);
+  line-height: 1.6;
+  color: var(--ens-body);
+}
+
+@media (max-width: 959px) {
+  .ens-new-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 559px) {
+  .ens-new-grid { grid-template-columns: minmax(0, 1fr); }
+  .ens-new-media { aspect-ratio: 4 / 3.4; }
+}
+
+/* ---- Founder's pass -------------------------------------------------------- */
+
+.ens-pass {
+  isolation: isolate;
+  overflow: hidden;
+  padding: var(--ens-section-y) 0;
+  background: #fff;
+}
+
+.ens-pass-blob-a {
+  width: 72%;
+  aspect-ratio: 1;
+  left: -38%;
+  top: 22%;
+  background: radial-gradient(closest-side, rgba(228, 21, 124, 0.5), rgba(160, 70, 255, 0.18) 62%, rgba(255, 255, 255, 0));
+}
+
+.ens-pass-blob-b {
+  width: 56%;
+  aspect-ratio: 1;
+  right: -26%;
+  top: -24%;
+  background: radial-gradient(closest-side, rgba(228, 21, 124, 0.34), rgba(255, 255, 255, 0));
+  animation-duration: 24s;
+  animation-direction: alternate-reverse;
+}
+
+.ens-pass-grid {
+  margin-top: clamp(44px, 5.5vw, 72px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(28px, 3.4vw, 44px);
+  align-items: center;
+}
+
+.ens-pass-copy { --ens-indent: clamp(26px, 2.8vw, 40px); }
+
+.ens-pass-title {
+  position: relative;
+  margin: 0 0 clamp(18px, 2vw, 26px);
+  padding-left: var(--ens-indent);
+  font-size: clamp(30px, 4.2vw, 52px);
+  font-weight: 800;
+  line-height: 1.02;
+  color: var(--ens-ink);
+}
+
+.ens-pass-title-text { display: inline-block; }
+
+.ens-pass-bar {
+  position: absolute;
+  left: 0;
+  top: 0.06em;
+  bottom: 0.06em;
+  width: clamp(7px, 0.8vw, 10px);
+  background: var(--ens-pink);
+  transform-origin: 50% 0;
+}
+
+.ens-pass-copy p {
+  margin: 0 0 16px;
+  padding-left: var(--ens-indent);
+  font-size: clamp(15.5px, 1.5vw, 19px);
+  line-height: 1.75;
+  color: var(--ens-body);
+}
+
+/* With the button gone the copy ends on a paragraph; its gap would only pad the column. */
+.ens-pass-copy p:last-child { margin-bottom: 0; }
+
+/* Outer box: size only, never clipped, so the in-view check can see it. */
+.ens-pass-media {
+  position: relative;
+  aspect-ratio: 16 / 9.4;
+}
+
+/* The layer that wipes open. Its end clip-path reaches past the edges so the shadow survives. */
+.ens-pass-media-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: clamp(18px, 2.2vw, 28px);
+  background: #222;
+  box-shadow: 0 40px 80px -40px rgba(10, 10, 11, 0.45);
+}
+
+.ens-pass-media-inner { position: absolute; inset: -8% 0; }
+.ens-pass-img { object-fit: cover; transition: transform 1.2s var(--ens-ease); }
+.ens-pass-media:hover .ens-pass-img { transform: scale(1.05); }
+
+@media (max-width: 959px) {
+  .ens-pass-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- Core themes ----------------------------------------------------------- */
+
+.ens-themes {
+  isolation: isolate;
+  overflow: hidden;
+  padding: var(--ens-section-y) 0;
+  background: #fff;
+}
+
+.ens-themes-blob-a {
+  width: 62%;
+  aspect-ratio: 1;
+  left: -30%;
+  top: -12%;
+  background: radial-gradient(closest-side, rgba(255, 40, 90, 0.55), rgba(255, 120, 150, 0.2) 60%, rgba(255, 255, 255, 0));
+}
+
+.ens-themes-blob-b {
+  width: 40%;
+  aspect-ratio: 1;
+  left: -18%;
+  bottom: -16%;
+  background: radial-gradient(closest-side, rgba(0, 184, 222, 0.45), rgba(255, 255, 255, 0));
+  animation-duration: 21s;
+}
+
+.ens-themes-blob-c {
+  width: 46%;
+  aspect-ratio: 1;
+  right: -24%;
+  top: 4%;
+  background: radial-gradient(closest-side, rgba(255, 40, 90, 0.4), rgba(255, 255, 255, 0));
+  animation-duration: 26s;
+  animation-direction: alternate-reverse;
+}
+
+.ens-themes-sub { margin-top: clamp(22px, 3vw, 38px); }
+
+.ens-themes-grid {
+  list-style: none;
+  margin: clamp(44px, 5.5vw, 72px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(14px, 1.8vw, 24px);
+}
+
+.ens-theme-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* A thick colour frame: the photo sits inset by the same width on the sides and bottom, as on
+     expandnorthstar.com. */
+  padding: clamp(30px, 3.4vw, 44px) clamp(14px, 1.5vw, 20px) clamp(14px, 1.5vw, 20px);
+  border-radius: clamp(32px, 4vw, 50px);
+  transition: translate 0.5s var(--ens-ease), box-shadow 0.5s var(--ens-ease);
+}
+
+.ens-theme-card:hover {
+  translate: 0 -10px;
+  box-shadow: 0 40px 70px -34px rgba(10, 10, 11, 0.5);
+}
+
+.ens-theme-dark .ens-theme-card { background: var(--ens-ink); color: #fff; }
+.ens-theme-lime .ens-theme-card { background: var(--ens-lime); color: var(--ens-ink); }
+.ens-theme-grey .ens-theme-card { background: var(--ens-graphite); color: #fff; }
+.ens-theme-pink .ens-theme-card { background: var(--ens-pink); color: #fff; }
+
+.ens-theme-title {
+  margin: 0;
+  min-height: 2.6em;
+  font-size: clamp(15px, 1.55vw, 20px);
+  font-weight: 800;
+  line-height: 1.3;
+  /* Cairo opens gaps inside words ("RESTRUCT URE") at wider tracking. */
+  letter-spacing: 0.025em;
+  color: inherit;
+}
+
+.ens-theme-rule {
+  display: block;
+  height: 3px;
+  margin: clamp(20px, 2.4vw, 28px) 0;
+  background: currentColor;
+  transform-origin: 0 50%;
+}
+
+.ens-theme-body {
+  flex: 1;
+  margin: 0;
+  font-size: clamp(15px, 1.5vw, 19px);
+  line-height: 1.45;
+  color: inherit;
+}
+
+.ens-theme-media {
+  position: relative;
+  overflow: hidden;
+  margin-top: clamp(22px, 2.6vw, 30px);
+  aspect-ratio: 4 / 3;
+  border-radius: clamp(22px, 3vw, 34px);
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
+/* Taller than the frame so the photo can drift with scroll without showing an edge. */
+.ens-theme-media-inner { position: absolute; inset: -11% 0; }
+.ens-theme-img { object-fit: cover; transition: transform 1.1s var(--ens-ease); }
+.ens-theme-card:hover .ens-theme-img { transform: scale(1.08); }
+
+@media (max-width: 959px) {
+  .ens-themes-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 559px) {
+  .ens-themes-grid { grid-template-columns: minmax(0, 1fr); }
+  .ens-theme-title { min-height: 0; }
+}
+
+/* ---- Delegation days (six hover cards) ------------------------------------- */
+
+.ens-days {
+  isolation: isolate;
+  overflow: hidden;
+  padding: var(--ens-section-y) 0;
+  background: #0A0A0B;
+  color: #fff;
+}
+
+.ens-days .ens-title { color: #fff; }
+
+.ens-days-blob {
+  width: 62%;
+  aspect-ratio: 1;
+  right: -26%;
+  top: -22%;
+  background: radial-gradient(closest-side, rgba(228, 21, 124, 0.38), rgba(228, 21, 124, 0));
+}
+
+/* "Itinerary · 6 Dec 2026 – 11 Dec 2026" under the title: a small pink label and the dates in the
+   same weight as the section's other sub-headings. */
+.ens-days-itinerary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 16px;
+  margin: clamp(18px, 2.2vw, 28px) 0 0;
+}
+
+
+.ens-days-itinerary-dates {
+  font-size: clamp(20px, 2.6vw, 32px);
+  font-weight: 300;
+  line-height: 1.15;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.ens-days-grid {
+  list-style: none;
+  margin: clamp(36px, 4.5vw, 60px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 28px);
+}
+
+.ens-days-item { display: flex; }
+
+/* The card's height comes from its (always laid out, invisible until open) text, never less than
+   min-height, so the photo covers the same box the text will fill and rows stay level. */
+.ens-day {
+  --ens-day-inset: 20px;
+  --ens-day-dot: 92px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 470px;
+  border-radius: clamp(26px, 3vw, 36px);
+  background: #F6F6F7;
+  color: var(--ens-ink);
+  font-family: var(--ens-strip-font, var(--ens-sans));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: translate 0.5s var(--ens-ease), box-shadow 0.5s var(--ens-ease);
+}
+
+.ens-day:focus-visible { outline: 3px solid var(--ens-pink); outline-offset: 4px; }
+
+.ens-day.is-open {
+  translate: 0 -6px;
+  box-shadow: 0 34px 70px -34px rgba(228, 21, 124, 0.6);
+}
+
+/* Photo: full card when closed, a ringed circle in the corner when open. */
+.ens-day-media {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: clamp(26px, 3vw, 36px);
+  background: #222;
+  box-shadow: 0 0 0 0 #F6F6F7, 0 0 0 0 var(--ens-pink);
+  transition: top 0.75s var(--ens-ease), left 0.75s var(--ens-ease), width 0.75s var(--ens-ease),
+    height 0.75s var(--ens-ease), border-radius 0.75s var(--ens-ease), box-shadow 0.5s ease;
+}
+
+.ens-day.is-open .ens-day-media {
+  top: var(--ens-day-inset);
+  left: var(--ens-day-inset);
+  width: var(--ens-day-dot);
+  height: var(--ens-day-dot);
+  border-radius: calc(var(--ens-day-dot) / 2);
+  box-shadow: 0 0 0 4px #F6F6F7, 0 0 0 7px var(--ens-pink);
+  transition-delay: 0s, 0s, 0s, 0s, 0s, 0.35s;
+}
+
+.ens-day-img { object-fit: cover; transition: transform 1s var(--ens-ease); }
+.ens-day.is-open .ens-day-img { transform: scale(1.12); }
+
+/* A slowly turning dashed ring just outside the circle. */
+.ens-day-ring {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--ens-day-inset) - 13px);
+  left: calc(var(--ens-day-inset) - 13px);
+  width: calc(var(--ens-day-dot) + 26px);
+  height: calc(var(--ens-day-dot) + 26px);
+  border: 2px dashed rgba(228, 21, 124, 0.55);
+  border-radius: 50%;
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+  transition: opacity 0.4s ease, scale 0.6s var(--ens-ease);
+  animation: ens-spin 14s linear infinite;
+}
+
+.ens-day.is-open .ens-day-ring { opacity: 1; scale: 1; transition-delay: 0.45s; }
+
+@keyframes ens-spin { to { transform: rotate(360deg); } }
+
+/* Closed-state label over the photo. */
+.ens-day-label {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 90px 22px 22px;
+  background: linear-gradient(180deg, rgba(10, 10, 11, 0) 0%, rgba(10, 10, 11, 0.88) 100%);
+  color: #fff;
+  pointer-events: none;
+  transition: opacity 0.35s ease, translate 0.5s var(--ens-ease);
+}
+
+.ens-day.is-open .ens-day-label { opacity: 0; translate: 0 18px; }
+
+.ens-day-label-day {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--ens-lime);
+}
+
+.ens-day-label-title {
+  display: block;
+  white-space: pre-line;
+  margin-top: 6px;
+  font-size: clamp(19px, 1.9vw, 24px);
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.ens-day-plus {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--ens-pink);
+  box-shadow: 0 10px 24px -8px rgba(228, 21, 124, 0.85);
+  transition: rotate 0.5s var(--ens-ease);
+}
+
+.ens-day-plus svg { width: 18px; height: 18px; }
+.ens-day:hover .ens-day-plus { rotate: 90deg; }
+
+/* Open-state text, laid out the same as the programme PDF. The body fills the card's height (the
+   row's cards are all as tall as the fullest one) and the points list takes the spare height,
+   spreading its items evenly, so a card with five short points no longer ends in a blank band
+   (2026-09-18). A card with no spare height keeps the plain 9px gap. */
+.ens-day-body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--ens-day-inset) var(--ens-day-inset) 28px;
+}
+
+.ens-day-head {
+  display: flex;
+  align-items: center;
+  min-height: var(--ens-day-dot);
+  padding-left: calc(var(--ens-day-dot) + 22px);
+}
+
+.ens-day-date {
+  margin: 0;
+  font-size: clamp(17px, 1.6vw, 20px);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ens-ink);
+}
+
+/* "Day 1" on its own line, the date beneath it (one line before 2026-09-18). */
+.ens-day-date-day {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.78em;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ens-pink);
+}
+
+.ens-day-date-when { display: block; }
+
+.ens-day-date sup {
+  position: relative;
+  top: -0.55em;
+  font-size: 0.6em;
+  line-height: 0;
+  vertical-align: baseline;
+}
+
+.ens-day-title {
+  margin: 20px 0 14px;
+  white-space: pre-line;
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--ens-pink);
+}
+
+/* `list-style` is set explicitly: site-wide list resets otherwise remove the bullets. */
+.ens-day-points {
+  flex: 1;
+  display: grid;
+  align-content: space-evenly;
+  gap: 9px;
+  margin: 0;
+  padding: 0 0 0 1.15em;
+  list-style: disc outside;
+  font-size: clamp(14.5px, 1.3vw, 16px);
+  font-weight: 400;
+  line-height: 1.5;
+  color: #25252B;
+}
+
+.ens-day-points li { display: list-item; list-style: inherit; }
+
+/* Keeps "Day 1" together instead of stranding the number on its own line. */
+.ens-day-label-title { text-wrap: balance; }
+
+.ens-day-points li::marker { color: var(--ens-ink); }
+.ens-day-points strong { font-weight: 700; color: var(--ens-ink); }
+
+/* Who hosts the day (Day 1 · Dubai Konnect), on its own line directly under the pink title — moved
+   here from the end of the date line on request (2026-09-18). */
+.ens-day-host {
+  margin: -6px 0 14px;
+  font-size: clamp(14px, 1.3vw, 16px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ens-pink);
+}
+
+.ens-day-foot { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-top: 16px; }
+
+.ens-day-tagline {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ens-pink);
+}
+
+.ens-day-venue {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1.5px solid var(--ens-ink);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ens-ink);
+}
+
+/* Closing: everything drops away together. Opening: each line rises after the photo has shrunk. */
+.ens-day-reveal {
+  opacity: 0;
+  translate: 0 16px;
+  transition: opacity 0.25s ease, translate 0.4s var(--ens-ease);
+}
+
+.ens-day.is-open .ens-day-reveal {
+  opacity: 1;
+  translate: 0 0;
+  transition-duration: 0.5s, 0.65s;
+  transition-delay: calc(0.28s + var(--i, 0) * 0.06s);
+}
+
+@media (max-width: 1023px) {
+  .ens-days-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 599px) {
+  .ens-days-grid { grid-template-columns: minmax(0, 1fr); }
+  .ens-day { min-height: 430px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ens-day,
+  .ens-day * { transition-duration: 0s !important; transition-delay: 0s !important; }
+  .ens-day-ring { animation: none; }
+}
+
+/* ---- Participation fee (two package cards) ---------------------------------
+
+   Sits between the dark delegation cards and the registration form. White ground that fades, at
+   its foot, to #F3F0F4 — the tint of the partners section below and the start of the registration
+   section's top gradient — so
+   the fee and the form read as one closing passage with no seam between them.
+
+   Cards: white body, coloured header (ink for the delegation package, pink for the booth package,
+   as in the Core themes cards), a large faint line icon in the header, ticks tinted to match. Hover
+   lifts use `translate`, since Motion owns each card's `transform` for its entrance.
+   -------------------------------------------------------------------------- */
+
+.ens-fee {
+  isolation: isolate;
+  overflow-x: clip;
+  padding: var(--ens-section-y) 0;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 58%, #F3F0F4 100%);
+}
+
+.ens-fee-blob-a {
+  width: 52%;
+  aspect-ratio: 1;
+  right: -20%;
+  top: -6%;
+  filter: blur(50px);
+  background: radial-gradient(closest-side, rgba(228, 21, 124, 0.2), rgba(228, 21, 124, 0));
+}
+
+.ens-fee-blob-b {
+  width: 40%;
+  aspect-ratio: 1;
+  left: -16%;
+  bottom: 4%;
+  filter: blur(50px);
+  background: radial-gradient(closest-side, rgba(201, 243, 29, 0.22), rgba(201, 243, 29, 0));
+  animation-duration: 22s;
+  animation-direction: alternate-reverse;
+}
+
+.ens-fee-title { font-size: clamp(28px, 4.4vw, 56px); }
+@media (min-width: 760px) { .ens-fee-title.is-oneline { font-size: min(56px, calc(var(--ens-line-width) / var(--ratio) / 1.04)); } }
+.ens-fee-accent { color: var(--ens-pink); }
+
+/* "onwards": lower-case (the heading is uppercase), 40% of the size, lighter weight, and sitting on
+   the heading's baseline — the shared word mask is `vertical-align: top`, which floated the small word
+   to the top of the line (fixed 2026-09-19 on request). */
+.ens-fee-title .ens-fee-onwards { font-size: 0.4em; font-weight: 600; text-transform: none; }
+.ens-fee-title .ens-fee-onwards .ens-word-mask { vertical-align: baseline; }
+
+.ens-fee-rule {
+  display: block;
+  width: 92px;
+  height: 4px;
+  margin: clamp(16px, 2vw, 24px) auto 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--ens-pink), #9B4DFF);
+  transform-origin: 50% 50%;
+}
+
+.ens-fee-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(18px, 2.4vw, 32px);
+  max-width: 1040px;
+  margin: clamp(36px, 4.6vw, 60px) auto 0;
+  align-items: stretch;
+}
+
+.ens-fee-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #E7E4EA;
+  border-radius: 24px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 2px rgba(26, 20, 40, 0.04), 0 26px 60px -36px rgba(26, 20, 40, 0.28);
+  transition: translate 0.5s var(--ens-ease), box-shadow 0.5s var(--ens-ease), border-color 0.5s var(--ens-ease);
+}
+
+.ens-fee-card:hover {
+  translate: 0 -8px;
+  border-color: #DCD8E0;
+  box-shadow: 0 1px 2px rgba(26, 20, 40, 0.04), 0 40px 70px -34px rgba(26, 20, 40, 0.36);
+}
+
+/* ---- Card header ---- */
+
+.ens-fee-head {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(24px, 2.8vw, 34px) clamp(22px, 2.6vw, 34px);
+  color: #FFFFFF;
+}
+
+.ens-fee-card.is-ink .ens-fee-head { background: linear-gradient(135deg, #0A0A0B 0%, #26232C 100%); }
+.ens-fee-card.is-pink .ens-fee-head { background: linear-gradient(135deg, var(--ens-pink) 0%, #B30F63 100%); }
+
+.ens-fee-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.28) 50%, transparent 70%);
+}
+
+.ens-fee-icon {
+  position: absolute;
+  z-index: -1;
+  right: clamp(14px, 2vw, 26px);
+  top: 50%;
+  width: clamp(64px, 7vw, 92px);
+  translate: 0 -50%;
+  opacity: 0.16;
+  transition: opacity 0.5s var(--ens-ease), rotate 0.6s var(--ens-ease), scale 0.6s var(--ens-ease);
+}
+
+.ens-fee-icon svg { display: block; width: 100%; height: auto; }
+.ens-fee-card:hover .ens-fee-icon { opacity: 0.3; rotate: -6deg; scale: 1.08; }
+
+/* Colour set here rather than inherited from the header: the theme sheet
+   (src/app/styles/style.css) sets `h1…h6 { color: #000 }`, which beats inheritance and left the
+   title black on the dark and pink headers. */
+.ens-fee .ens-fee-card-title {
+  margin: 0;
+  color: #FFFFFF;
+  padding-right: clamp(64px, 7vw, 96px);
+  font-size: clamp(20px, 2.2vw, 28px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.005em;
+}
+
+.ens-fee-card-rule {
+  display: block;
+  width: 56px;
+  height: 3px;
+  margin-top: 14px;
+  border-radius: 3px;
+  transform-origin: 0 50%;
+}
+
+.ens-fee-card.is-ink .ens-fee-card-rule { background: var(--ens-lime); }
+.ens-fee-card.is-pink .ens-fee-card-rule { background: #FFFFFF; }
+
+/* ---- Card list ---- */
+
+.ens-fee-list {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: clamp(14px, 1.8vw, 22px) clamp(14px, 1.8vw, 22px) clamp(18px, 2.2vw, 26px);
+}
+
+.ens-fee-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 12px;
+  border-radius: 12px;
+  font-size: clamp(15px, 1.35vw, 17px);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ens-body);
+  transition: background-color 0.3s var(--ens-ease), translate 0.3s var(--ens-ease);
+}
+
+.ens-fee-item + .ens-fee-item { box-shadow: 0 -1px 0 #F0EEF2; }
+.ens-fee-item:hover { background: #FAF8FB; translate: 4px 0; }
+.ens-fee-item:hover + .ens-fee-item { box-shadow: none; }
+
+/* The booth package's extra — the one line that differs from the delegation package. */
+.ens-fee-item.is-highlight {
+  margin-bottom: 4px;
+  background: #FDEEF6;
+  font-weight: 700;
+  color: var(--ens-ink);
+}
+
+.ens-fee-item.is-highlight + .ens-fee-item { box-shadow: none; }
+
+.ens-fee-tick {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+.ens-fee-tick svg { width: 16px; height: 16px; }
+.ens-fee-card.is-ink .ens-fee-tick { background: #EEF9C8; color: #3E4A00; }
+.ens-fee-card.is-pink .ens-fee-tick { background: #FCE3F0; color: var(--ens-pink); }
+.ens-fee-item.is-highlight .ens-fee-tick { background: var(--ens-pink); color: #FFFFFF; }
+
+@media (max-width: 859px) {
+  .ens-fee-grid { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ens-fee-card,
+  .ens-fee-item,
+  .ens-fee-icon { transition-duration: 0s; }
+  .ens-fee-sheen { display: none; }
+}
+
+/* ---- Plan your journey (closing registration form) --------------------------
+
+   The page's last section, and the only one that asks the reader for anything.
+
+   It is deliberately the LIGHTEST thing on the page, and deliberately not a continuation of the
+   near-black delegation cards directly above it: a form is the one place here a reader has to do
+   work, and work reads better on paper than on a console. Warm off-white ground, a white card,
+   charcoal type, hairline borders, and the event's magenta kept for accents only — the asterisks,
+   the focus ring, the button, a single hairline on the card. Violet appears once, at very low
+   opacity, in the background wash.
+
+   Everything that moves does so on transform/opacity only: the washes, the ring and the dots run
+   as CSS loops (stopped wholesale by the reduced-motion block at the foot of this file); the
+   reveal and the scroll parallax are Motion's.
+
+   The controls themselves are shared site components — `ui/FormField`, `ui/PhoneField` and
+   `submit-event/CountryCityFields`, the same three /feature-your-startup uses — so the markup
+   below is THEIRS: `.field`, `.field-row`, `.field-error`, `.hint`, `.phone-row`,
+   `.custom-select-*`. globals.css styles those only under `.snf-page`, so they arrive here with no
+   styling at all; what follows is that same class set dressed for this section. Nothing in
+   globals.css is touched.
+   -------------------------------------------------------------------------- */
+
+.ens-journey {
+  /* One place to change the palette of this section. */
+  --jf-ink: #1A1A1F;
+  --jf-text: #3C3C45;
+  --jf-muted: #6E6E7A;
+  --jf-placeholder: #A3A1AD;
+  --jf-line: #E4E2E8;
+  --jf-line-strong: #C8C5D0;
+  --jf-surface: #FFFFFF;
+  --jf-surface-soft: #FAFAFB;
+  --jf-violet: #8B5CF6;
+  --jf-radius: 12px;
+
+  isolation: isolate;
+  /* Not `overflow: hidden`: the country and city lists open out of the card and must not be
+     clipped. The page's own `overflow-x: clip` already stops the washes widening the document. */
+  overflow-x: clip;
+  padding: var(--ens-section-y) 0 calc(var(--ens-section-y) * 1.5);
+  background: #FBFAFB;
+  color: var(--jf-text);
+  /* Fallback for the plain `#ens-participate` jump from the bar's "Participate Now" button before
+     its JS handler runs: clears the sticky delegation band plus the bar. The handler measures both
+     for real and is what normally does the scrolling — see EnsNav. */
+  scroll-margin-top: 180px;
+}
+
+@media (max-width: 760px) {
+  .ens-journey { scroll-margin-top: 130px; }
+}
+
+/* Continues the tint of the partners section above (#F3F0F4), so there is no
+   seam between the two, then opens out to the section's own off-white. */
+.ens-journey::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: clamp(120px, 16vw, 220px);
+  pointer-events: none;
+  background: linear-gradient(180deg, #F3F0F4 0%, rgba(251, 250, 251, 0) 100%);
+}
+
+/* ---- Background wash and decoration ---- */
+
+.ens-journey-blob-a {
+  width: 54%;
+  aspect-ratio: 1;
+  left: -16%;
+  top: 2%;
+  filter: blur(60px);
+  background: radial-gradient(closest-side, rgba(228, 21, 124, 0.13), rgba(228, 21, 124, 0));
+}
+
+.ens-journey-blob-b {
+  width: 44%;
+  aspect-ratio: 1;
+  right: -12%;
+  bottom: -4%;
+  filter: blur(60px);
+  background: radial-gradient(closest-side, rgba(139, 92, 246, 0.11), rgba(139, 92, 246, 0));
+  animation-duration: 24s;
+  animation-direction: reverse;
+}
+
+.ens-journey-ring {
+  position: absolute;
+  z-index: 0;
+  top: 10%;
+  right: -6%;
+  width: clamp(200px, 24vw, 340px);
+  aspect-ratio: 1;
+  border: 1px dashed rgba(228, 21, 124, 0.16);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: ens-spin 64s linear infinite;
+  will-change: transform;
+}
+
+.ens-journey-curve {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 34%;
+  width: min(1100px, 104%);
+  height: auto;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.ens-journey-dot {
+  position: absolute;
+  z-index: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: rgba(228, 21, 124, 0.5);
+  animation: ens-journey-float 13s ease-in-out infinite;
+  will-change: transform;
+}
+
+.ens-journey-dot.is-a { top: 24%; left: 7%; }
+.ens-journey-dot.is-b { top: 60%; right: 8%; background: rgba(139, 92, 246, 0.45); animation-duration: 17s; animation-delay: -4s; }
+.ens-journey-dot.is-c { bottom: 14%; left: 15%; width: 4px; height: 4px; animation-duration: 20s; animation-delay: -9s; }
+
+@keyframes ens-journey-float {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.8; }
+  50% { transform: translate3d(5px, -20px, 0); opacity: 0.3; }
+}
+
+/* ---- Section head ---- */
+
+/* Smaller than the page's other headings on purpose: this one introduces a form, it should not
+   out-shout it. Charcoal, not the page's near-black. */
+.ens-journey-title {
+  font-size: clamp(27px, 3.7vw, 46px);
+  color: var(--jf-ink);
+}
+@media (min-width: 760px) { .ens-journey-title.is-oneline { font-size: min(46px, calc(var(--ens-line-width) / var(--ratio) / 1.04)); } }
+
+.ens-journey-accent { color: var(--ens-pink); }
+
+.ens-journey-lede {
+  max-width: 52ch;
+  margin-top: clamp(14px, 1.6vw, 20px);
+  font-size: clamp(15px, 1.4vw, 18px);
+  color: var(--jf-muted);
+}
+
+/* ---- The card ---- */
+
+.ens-journey-stage {
+  position: relative;
+  z-index: 1;
+  max-width: 1040px;
+  margin: clamp(30px, 3.6vw, 48px) auto 0;
+}
+
+.ens-journey-panel {
+  position: relative;
+  overflow: visible;
+  padding: clamp(24px, 3.2vw, 48px);
+  border: 1px solid var(--jf-line);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 2px rgba(26, 20, 40, 0.04), 0 24px 60px -34px rgba(26, 20, 40, 0.22);
+}
+
+/* The card's only ornament: a magenta-to-violet hairline along its top edge, clipped to the
+   corner radius. It replaces the offset frame and corner brackets the dark version carried. */
+.ens-journey-panel::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  border-radius: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(228, 21, 124, 0), var(--ens-pink) 28%, var(--jf-violet) 72%, rgba(139, 92, 246, 0));
+  opacity: 0.85;
+}
+
+/* ---- Fields ---- */
+
+.ens-jf-grid {
+  --jf-row-gap: clamp(16px, 1.9vw, 24px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--jf-row-gap) clamp(18px, 2.2vw, 30px);
+}
+
+.ens-jf-cell { min-width: 0; }
+/* Country + City arrive as one two-field row, so their cell spans the grid and lets that
+   component's own `.field-row` do the splitting. */
+.ens-jf-cell.is-wide { grid-column: 1 / -1; }
+
+.ens-journey .field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 1.9vw, 24px) clamp(18px, 2.2vw, 30px);
+}
+
+/* The grid owns the spacing between rows; the shared `.field` brings a 16px bottom margin for the
+   stacked layout it was written for. */
+.ens-journey .field { position: relative; margin-bottom: 0; min-width: 0; }
+
+/* Labels read as proper field names, not tracked-out captions: 14px, near-black, normal
+   letter-spacing (2026-09-19 — the 11.5px / 0.1em grey version was hard to read on the page). */
+.ens-journey .field label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: var(--jf-ink);
+  transition: color 0.24s var(--ens-ease);
+}
+
+.ens-journey .field:focus-within label { color: var(--ens-pink); }
+
+/* The required asterisk, which the shared components render as bare text in the label. */
+.ens-journey .field label { --jf-star: var(--ens-pink); }
+
+.ens-journey .opt {
+  font-weight: 400 !important;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none !important;
+  color: var(--jf-muted) !important;
+}
+
+.ens-journey .hint {
+  margin-top: 7px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--jf-muted);
+}
+
+/* ---- Text inputs and select triggers ---- */
+
+.ens-journey .field input[type="text"],
+.ens-journey .field input[type="email"],
+.ens-journey .field input[type="tel"],
+.ens-journey .field input[type="url"],
+.ens-journey .field input[type="number"],
+.ens-journey .custom-select-btn,
+.ens-journey .phone-row,
+.ens-journey .field textarea {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 1px solid var(--jf-line);
+  border-radius: var(--jf-radius);
+  background: var(--jf-surface);
+  color: var(--jf-ink);
+  font-family: var(--ens-sans);
+  font-size: 15.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  transition: border-color 0.22s var(--ens-ease), box-shadow 0.22s var(--ens-ease),
+    background-color 0.22s var(--ens-ease);
+}
+
+.ens-journey .field input::placeholder { color: var(--jf-placeholder); font-weight: 400; }
+
+.ens-journey .field input:hover,
+.ens-journey .custom-select-btn:hover,
+.ens-journey .phone-row:hover,
+.ens-journey .field textarea:hover {
+  border-color: var(--jf-line-strong);
+  background: var(--jf-surface-soft);
+}
+
+.ens-journey .field input:focus,
+.ens-journey .custom-select-btn:focus,
+.ens-journey .custom-select-btn:focus-within,
+.ens-journey .custom-select-btn.open,
+.ens-journey .phone-row:focus-within,
+.ens-journey .field textarea:focus {
+  outline: none;
+  background: var(--jf-surface);
+  border-color: var(--ens-pink);
+  box-shadow: 0 0 0 4px rgba(228, 21, 124, 0.1);
+}
+
+/* Chrome paints its own pale-blue background and near-black text on any field it has autofilled,
+   which does not match this card's white. The background cannot be set directly, so it is covered
+   by an inset shadow the height of the field. The absurd transition delay is the long-standing way
+   to stop Chrome re-applying it a frame later. */
+.ens-journey .field input:-webkit-autofill,
+.ens-journey .field input:-webkit-autofill:hover,
+.ens-journey .field input:-webkit-autofill:focus,
+.ens-journey .field input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--jf-ink);
+  caret-color: var(--jf-ink);
+  -webkit-box-shadow: inset 0 0 0 100px var(--jf-surface);
+  box-shadow: inset 0 0 0 100px var(--jf-surface);
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+
+.ens-journey .field input:-webkit-autofill:focus {
+  -webkit-box-shadow: inset 0 0 0 100px var(--jf-surface), 0 0 0 4px rgba(228, 21, 124, 0.1);
+  box-shadow: inset 0 0 0 100px var(--jf-surface), 0 0 0 4px rgba(228, 21, 124, 0.1);
+}
+
+/* An invalid field is marked on its border, never by flooding it with colour. */
+.ens-journey .field.has-error input,
+.ens-journey .field.has-error .custom-select-btn,
+.ens-journey .field.has-error .phone-row,
+.ens-journey .field.has-error textarea {
+  border-color: #E0567F;
+  background: var(--jf-surface);
+}
+
+.ens-journey .field.has-error label { color: #C22B58; }
+
+.ens-journey .field input:focus-visible,
+.ens-journey .custom-select-btn:focus-visible,
+.ens-journey button:focus-visible {
+  outline: 2px solid var(--ens-pink);
+  outline-offset: 2px;
+}
+
+/* ---- Error row ---- */
+
+/* The shared rule toggles `display`, which would shove every row below it down the card the moment
+   a message appeared. Here the row is always laid out and always takes its height, and only its
+   opacity moves — so nothing shifts, and the `aria-live` region exists before the text does.
+   Whether a message is allowed to exist at all is decided in useJourneyForm (`showError`): no
+   field speaks before it has been left once or Register has been pressed. */
+.ens-journey .field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 19px;
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #C22B58;
+  opacity: 0;
+  translate: 0 -3px;
+  transition: opacity 0.24s var(--ens-ease), translate 0.24s var(--ens-ease);
+}
+
+.ens-journey .field-error.visible { opacity: 1; translate: 0 0; }
+
+.ens-journey .field-error::before {
+  content: "!";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #E0567F;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+
+/* ---- Phone: one control, not three ---- */
+
+/* `.phone-row` itself carries the border, radius and focus ring (set with the inputs above); the
+   code select and the number inside it are stripped bare and separated by a hairline, so the pair
+   reads as a single field rather than two boxes pushed together. */
+/* No `overflow: hidden` here (removed 2026-09-19): it was there only to keep the code trigger's
+   and number input's own square corners from poking out past this pill's rounded ones, but with
+   both children painting a transparent background (below) there was nothing square to hide in the
+   first place — and the clipping had a real cost: the code select's dropdown list is a descendant
+   of this row, opens BELOW it, and needs to extend past the row's own ~56px height to be seen at
+   all. `overflow: hidden` clipped it to a sliver of its first row instead of showing the list —
+   read as "the country code box is broken, only shows one country" (reported with a screenshot of
+   exactly that: a squashed "BS +1242  Bahamas" row with a cut-off scrollbar). The two children that
+   sit at this row's visual ends now carry their own matching corner radius instead, further down. */
+.ens-journey .phone-row {
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+}
+
+.ens-journey .phone-row .custom-select-wrap { flex: 0 0 116px; width: 116px; }
+
+.ens-journey .phone-row .custom-select-btn,
+.ens-journey .phone-row .custom-select-btn:hover,
+.ens-journey .phone-row .custom-select-btn:focus,
+.ens-journey .phone-row .custom-select-btn.open {
+  height: 100%;
+  min-height: 0;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid var(--jf-line);
+  /* Matches the row's own radius on the left edge only — this is the row's first child, and
+     nothing clips it into shape any more (see the note above). */
+  border-radius: var(--jf-radius) 0 0 var(--jf-radius);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.ens-journey .field .phone-row input[type="tel"],
+.ens-journey .field .phone-row input[type="tel"]:hover,
+.ens-journey .field .phone-row input[type="tel"]:focus,
+.ens-journey .field .phone-row > input[type="text"],
+.ens-journey .field .phone-row > input[type="text"]:hover,
+.ens-journey .field .phone-row > input[type="text"]:focus {
+  min-height: 54px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The number input is always the row's last child (the code select, then an optional "+xxx" box,
+   then this) — matches the row's own radius on the right edge only, same reasoning as the trigger
+   above. */
+.ens-journey .field .phone-row input[type="tel"] {
+  border-top-right-radius: var(--jf-radius);
+  border-bottom-right-radius: var(--jf-radius);
+}
+
+.ens-journey .field .phone-row input[type="tel"] { flex: 1 1 auto; min-width: 0; }
+.ens-journey .field .phone-row > input[type="text"] { flex: 0 0 96px; border-right: 1px solid var(--jf-line); }
+
+/* The trigger is only 116px wide; its list — code and country name — needs more than that to read. */
+.ens-journey .phone-row .custom-select-list { right: auto; min-width: 260px; }
+
+/* ---- Country / City dropdowns ---- */
+
+.ens-journey .custom-select-wrap { position: relative; width: 100%; }
+
+.ens-journey .custom-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ens-journey .custom-select-btn.is-combobox { cursor: text; }
+.ens-journey .custom-select-btn.is-disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ens-journey .custom-select-btn .cs-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ens-journey .custom-select-btn .cs-label.cs-placeholder { color: var(--jf-placeholder); font-weight: 400; }
+
+/* Specificity note, the same one globals.css makes for `.snf-page`: the field-input rule above
+   also matches this inner input and would draw a second box inside the trigger. `input.cs-input`
+   with `.field` in the chain outranks it; :hover/:focus are listed too, or those rules re-add a
+   ring around an input that has no visible border of its own. */
+.ens-journey .field .custom-select-btn input.cs-input,
+.ens-journey .field .custom-select-btn input.cs-input:hover,
+.ens-journey .field .custom-select-btn input.cs-input:focus {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--jf-ink);
+  outline: none;
+  box-shadow: none;
+}
+
+.ens-journey .field .custom-select-btn input.cs-input::placeholder { color: var(--jf-placeholder); }
+
+.ens-journey .custom-select-btn .caret {
+  flex: none;
+  font-size: 11px;
+  color: var(--jf-placeholder);
+  transition: transform 0.24s var(--ens-ease), color 0.24s var(--ens-ease);
+}
+
+.ens-journey .custom-select-btn.open .caret { transform: rotate(180deg); color: var(--ens-pink); }
+
+.ens-journey .custom-select-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: 272px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border: 1px solid var(--jf-line);
+  border-radius: 14px;
+  background: var(--jf-surface);
+  box-shadow: 0 18px 44px -18px rgba(26, 20, 40, 0.28);
+  display: none;
+}
+
+.ens-journey .custom-select-list.open { display: block; }
+
+.ens-journey .custom-select-list li {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14.5px;
+  line-height: 1.3;
+  color: var(--jf-text);
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.ens-journey .custom-select-list li:hover,
+.ens-journey .custom-select-list li.active { background: #FCF2F7; color: var(--jf-ink); }
+.ens-journey .custom-select-list li.selected { color: var(--ens-pink); font-weight: 700; }
+.ens-journey .custom-select-list li.filtered-out { display: none; }
+
+.ens-journey .custom-select-list li.cs-empty {
+  color: var(--jf-muted);
+  font-style: italic;
+  cursor: default;
+}
+
+.ens-journey .custom-select-list li.cs-empty:hover { background: transparent; }
+
+/* ---- Participating As → "Others" requirement ---- */
+
+/* The free-text box shares the field look above; these are only the parts a textarea adds. */
+.ens-journey .field textarea {
+  display: block;
+  padding: 14px 16px;
+  line-height: 1.55;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.ens-journey .field textarea::placeholder { color: var(--jf-placeholder); font-weight: 400; }
+
+/* The character count under the box, set against the right edge. */
+.ens-journey .ens-jf-requirement .hint {
+  margin-top: 6px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--jf-placeholder);
+}
+
+/* The detail row (inclusions or the requirement box) is added and removed while the grid is on
+   screen. A grid gap appears the instant an item exists, which would make the rows below jump by a
+   full gap before the height animation even starts. So the row pulls itself up by one gap and puts
+   it back as inner padding: at height 0 it takes no room at all, and the gap grows in with it. */
+.ens-jf-detail {
+  --jf-ring-room: 6px;
+  margin: calc(-1 * var(--jf-row-gap)) calc(-1 * var(--jf-ring-room)) calc(-1 * var(--jf-ring-room));
+}
+
+/* The row clips its content while it unfolds, which would also clip the textarea's 4px focus ring
+   at the sides. The same few pixels are taken back outside (margin above) and given back inside
+   here, so the clip edge sits just beyond the ring and the content still lines up with the grid. */
+.ens-jf-detail-inner {
+  padding: var(--jf-row-gap) var(--jf-ring-room) var(--jf-ring-room);
+}
+
+/* ---- Inclusions box (a delegate or booth option is picked) ---- */
+
+.ens-jf-inclusions {
+  padding: clamp(16px, 1.8vw, 22px) clamp(16px, 2vw, 24px);
+  border: 1px solid var(--jf-line);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FBF6FA 100%);
+}
+
+.ens-jf-inclusions.is-delegate { border-left: 3px solid var(--ens-ink); }
+.ens-jf-inclusions.is-booth { border-left: 3px solid var(--ens-pink); }
+
+.ens-jf-inclusions-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.ens-jf-inclusions-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--jf-muted);
+}
+
+.ens-jf-inclusions-tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.ens-jf-inclusions.is-delegate .ens-jf-inclusions-tag { background: var(--ens-ink); }
+.ens-jf-inclusions.is-booth .ens-jf-inclusions-tag { background: var(--ens-pink); }
+
+.ens-jf-inclusions-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px clamp(16px, 2.2vw, 28px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ens-jf-inclusions-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--jf-text);
+}
+
+.ens-jf-inclusions-tick {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+.ens-jf-inclusions-tick svg { width: 12px; height: 12px; }
+.ens-jf-inclusions.is-delegate .ens-jf-inclusions-tick { background: #EEF9C8; color: #3E4A00; }
+.ens-jf-inclusions.is-booth .ens-jf-inclusions-tick { background: #FCE3F0; color: var(--ens-pink); }
+
+/* The booth package's extra — the one line that differs from the delegation package. */
+.ens-jf-inclusions-list li.is-highlight {
+  grid-column: 1 / -1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #FDEEF6;
+  font-weight: 700;
+  color: var(--jf-ink);
+}
+
+.ens-jf-inclusions-list li.is-highlight .ens-jf-inclusions-tick { background: var(--ens-pink); color: #FFFFFF; }
+
+@media (max-width: 559px) {
+  .ens-jf-inclusions-list { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- Call to action ---- */
+
+.ens-jf-actions { margin-top: clamp(22px, 2.6vw, 34px); text-align: center; }
+
+.ens-jf-submit {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: min(380px, 100%);
+  min-height: clamp(54px, 4.6vw, 60px);
+  padding: 0 clamp(24px, 3vw, 40px);
+  border: 0;
+  border-radius: 999px;
+  background: var(--ens-pink);
+  color: #fff;
+  font-family: var(--ens-sans);
+  font-size: clamp(14px, 1.4vw, 16.5px);
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -12px rgba(228, 21, 124, 0.62);
+  transition: background-color 0.24s ease, translate 0.24s var(--ens-ease), box-shadow 0.24s var(--ens-ease);
+}
+
+.ens-jf-submit:hover:not(:disabled) {
+  background: var(--ens-pink-dark);
+  translate: 0 -2px;
+  box-shadow: 0 16px 32px -12px rgba(228, 21, 124, 0.68);
+}
+
+.ens-jf-submit:active:not(:disabled) { translate: 0 1px; box-shadow: 0 6px 16px -10px rgba(228, 21, 124, 0.6); transition-duration: 0.12s; }
+.ens-jf-submit:disabled { cursor: progress; background: var(--ens-pink-dark); box-shadow: none; }
+
+.ens-jf-submit-icon { display: inline-flex; }
+.ens-jf-submit-icon svg { width: 19px; height: 19px; transition: translate 0.28s var(--ens-ease); }
+.ens-jf-submit:hover:not(:disabled) .ens-jf-submit-icon svg { translate: 4px 0; }
+
+.ens-jf-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ens-spin 0.8s linear infinite;
+}
+
+.ens-jf-submit-error {
+  min-height: 19px;
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #C22B58;
+  opacity: 0;
+  transition: opacity 0.24s var(--ens-ease);
+}
+
+.ens-jf-submit-error.is-visible { opacity: 1; }
+
+.ens-jf-note {
+  margin: 13px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--jf-placeholder);
+}
+
+/* ---- Success ---- */
+
+.ens-jf-success { padding: clamp(12px, 2.2vw, 28px) 0; text-align: center; }
+
+.ens-jf-check { position: relative; display: inline-flex; margin-bottom: clamp(14px, 1.8vw, 22px); }
+.ens-jf-check svg { width: clamp(66px, 7vw, 84px); height: auto; }
+
+.ens-jf-check-glow {
+  position: absolute;
+  inset: -32%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(228, 21, 124, 0.14), rgba(228, 21, 124, 0));
+  animation: ens-journey-pulse 3.4s ease-in-out infinite;
+}
+
+@keyframes ens-journey-pulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.6; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+.ens-jf-success-title {
+  margin: 0;
+  font-size: clamp(24px, 3.1vw, 38px);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--jf-ink);
+}
+
+.ens-jf-success-body {
+  max-width: 52ch;
+  margin: clamp(11px, 1.4vw, 16px) auto 0;
+  font-size: clamp(14.5px, 1.4vw, 17px);
+  line-height: 1.6;
+  color: var(--jf-muted);
+}
+
+.ens-jf-success-note {
+  margin: clamp(12px, 1.5vw, 18px) 0 0;
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  font-weight: 700;
+  color: var(--ens-pink);
+}
+
+/* ---- Narrower screens ---- */
+
+@media (max-width: 899px) {
+  .ens-journey-ring,
+  .ens-journey-curve { display: none; }
+}
+
+@media (max-width: 719px) {
+  .ens-jf-grid,
+  .ens-journey .field-row { grid-template-columns: minmax(0, 1fr); }
+  /* Comfortable touch targets, and a field the on-screen keyboard cannot zoom into: iOS Safari
+     zooms the page for any font-size below 16px. */
+  .ens-journey .field input[type="text"],
+  .ens-journey .field input[type="email"],
+  .ens-journey .field input[type="tel"],
+  .ens-journey .field input[type="url"],
+  .ens-journey .field input[type="number"],
+  .ens-journey .custom-select-btn,
+  .ens-journey .phone-row { min-height: 54px; font-size: 16px; }
+  /* The requirement box keeps its own taller minimum; it only needs the no-zoom font size. */
+  .ens-journey .field textarea { font-size: 16px; }
+  .ens-jf-submit { width: 100%; }
+}
+
+@media (max-width: 559px) {
+  /* globals.css stacks `.snf-page .phone-row` outright at this width, but that form's column is
+     narrower than this card: here the code and the number still sit side by side at 375px, and
+     only the third control — the "+xxx" box that appears under the "Other" code — has nowhere to
+     go. So the row stacks only once that box is actually on screen. A browser without `:has()`
+     keeps all three on one line, which is tight but usable, rather than breaking the common case
+     for everyone. */
+  .ens-journey .phone-row .custom-select-wrap { flex-basis: 104px; width: 104px; }
+
+  .ens-journey .phone-row:has(> input[type="text"]) { flex-direction: column; align-items: stretch; }
+  .ens-journey .phone-row:has(> input[type="text"]) .custom-select-btn,
+  .ens-journey .phone-row:has(> input[type="text"]) > input[type="text"] {
+    border-right: 0;
+    border-bottom: 1px solid var(--jf-line);
+  }
+  .ens-journey .phone-row:has(> input[type="text"]) .custom-select-wrap,
+  .ens-journey .phone-row:has(> input[type="text"]) > input[type="text"] { flex: 0 0 auto; width: 100%; }
+}
+
+@media (max-width: 479px) {
+  .ens-journey-dot { display: none; }
+  .ens-journey-panel { border-radius: 20px; }
+  .ens-journey-panel::before { left: 18px; right: 18px; }
+}
+
+/* ---- Reduced motion: stop every CSS loop (Motion handles its own) ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ens-blob,
+  .ens-journey-ring,
+  .ens-journey-dot,
+  .ens-jf-check-glow,
+  .ens-nav .ens-nav-launchpad { animation: none; }
+  .ens-btn-shine { display: none; }
+  /* The submit spinner is the one loop that stays: it is the only sign the form is working, and
+     it is a 17px element. */
+  .ens-journey .field input,
+  .ens-journey .custom-select-btn,
+  .ens-journey .phone-row,
+  .ens-journey .field textarea,
+  .ens-journey .field-error { transition-duration: 0s; }
+}

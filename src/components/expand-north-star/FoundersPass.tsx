@@ -3,9 +3,8 @@
 import Image from "next/image";
 import { useRef } from "react";
 import { motion, useScroll, useTransform, type Variants } from "motion/react";
-import { EnsButton } from "./EnsButton";
 import { RevealWords } from "./RevealWords";
-import { ENS_LINKS, ensImages } from "./media";
+import { ensImages } from "./media";
 import { EASE, useReducedMotion, useRise, useWideScreen } from "./hooks";
 
 /** The photo wipes open from the right edge. The open state reaches 12% past every edge so the
@@ -17,8 +16,9 @@ const PASS_WIPE: Variants = {
 
 /** "One day. One pod. Global exposure." — the Founder's Pass offer.
  *
- * The pink bar beside the title draws downwards, the copy and button follow, and the photo wipes
- * open from the right edge then drifts with scroll (desktop). Pink and violet washes drift behind. */
+ * The pink bar beside the title draws downwards, the copy follows, and the photo wipes open from
+ * the right edge then drifts with scroll (desktop). Pink and violet washes drift behind. The
+ * "Apply for Founder's Pass" button was removed on request (2026-09-16). */
 export function FoundersPass() {
   const reducedMotion = useReducedMotion();
   const wide = useWideScreen();
@@ -61,12 +61,6 @@ export function FoundersPass() {
               of founders shaping the future. It’s the easiest way to step onto a global stage, fast, focused and
               founder-friendly.
             </motion.p>
-
-            <motion.div className="ens-pass-cta" {...rise(0.4)}>
-              <EnsButton href={ENS_LINKS.foundersPass} variant="block">
-                Apply for Founder’s Pass
-              </EnsButton>
-            </motion.div>
           </div>
 
           {/* The wipe is watched on this unclipped box and played on the layer inside it: Chrome's
@@ -85,7 +79,11 @@ export function FoundersPass() {
                   src={ensImages.foundersPass.src}
                   alt={ensImages.foundersPass.alt}
                   fill
-                  sizes="(max-width: 959px) 92vw, 540px"
+                  // Wider than the frame on purpose: the photo is 2.17:1 in a ~1.7:1 frame that also
+                  // bleeds 8% above and below for the scroll drift, so `cover` fills it by height and
+                  // the image drawn is ~1.5x the frame's width. Asking for only the frame's width
+                  // made the browser upscale a 540px source and the photo went soft.
+                  sizes="(max-width: 959px) 140vw, 860px"
                   className="ens-pass-img"
                 />
               </motion.div>

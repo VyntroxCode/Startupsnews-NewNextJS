@@ -68,3 +68,26 @@ export function useRise() {
     [reducedMotion]
   );
 }
+
+/** The closing enquiry form (PlanYourJourney) — where every "Participate Now" button lands. */
+export const PARTICIPATE_TARGET = "ens-participate";
+
+/** Scrolls to the enquiry form, clearing whatever is pinned above it — the sticky delegation band
+ * and the event bar — which `scrollIntoView` would park the form's opening line underneath. Their
+ * heights are read at click time, so the tightened (scrolled) sizes are what get subtracted. Bails
+ * out without `preventDefault` if the target is missing, so the plain anchor still works, and
+ * `.ens-journey`'s `scroll-margin-top` covers that fallback. EnsNav keeps its own copy because it
+ * already measures the pinned stack for `--ens-nav-top`. */
+export function scrollToParticipate(event: React.MouseEvent<HTMLAnchorElement>, reducedMotion: boolean) {
+  const target = document.getElementById(PARTICIPATE_TARGET);
+  if (!target) return;
+  event.preventDefault();
+  const pinned = [".ens-delegation-band", ".ens-nav"].reduce((sum, selector) => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (!el) return sum;
+    const position = getComputedStyle(el).position;
+    return position === "sticky" || position === "fixed" ? sum + el.getBoundingClientRect().height : sum;
+  }, 0);
+  const top = target.getBoundingClientRect().top + window.scrollY - pinned - 12;
+  window.scrollTo({ top: Math.max(top, 0), behavior: reducedMotion ? "auto" : "smooth" });
+}

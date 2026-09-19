@@ -188,7 +188,7 @@ export function IncubatxDossierForm() {
         /* Phone field */
         .incubatx-page .phone-row { display: flex; gap: 8px; }
         .incubatx-page .phone-row .custom-select-wrap { flex-shrink: 0; width: 112px; }
-        .incubatx-page .phone-row input { flex: 1; min-width: 0; }
+        .incubatx-page .phone-row > input { flex: 1; min-width: 0; }
 
         /* Repeatable lists (founders / linkedin use the generic default classes; speakers on
            /submit-event overrides these to speakers-box/speaker-row, unaffected by this block). */
