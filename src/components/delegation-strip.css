@@ -59,11 +59,26 @@ html body .sn-ds + #mvp-main-head-wrap.startupnews-nav #mvp-main-nav-bot {
   top: var(--sn-ds-h) !important;
 }
 
-/* The 72px header clearance grows by the strip's height. The banner rule beats globals.css's
-   `body .banner-carousel-container` (0,1,1) with (0,1,2); the body-wrap pair mirrors globals.css's
-   own "full clearance / minimal gap after a banner" pair at higher specificity. */
-body .sn-ds ~ .banner-carousel-container {
+/* The 72px header clearance grows by the strip's height. Needs the `#mvp-site-main` ID (not just
+   `body`, dropped 2026-09-20): globals.css also has `#mvp-site-main .banner-carousel-container {
+   margin-top: 72px !important }` at (1,1,0), which beats a classes-only `body .sn-ds ~
+   .banner-carousel-container` (0,2,1) regardless of viewport width — an ID always outranks any
+   number of classes. Without it the banner stayed pinned to a flat 72px on every width and the
+   fixed strip+nav (116px) hid its top ~44px; this was patched mobile-only at first on the wrong
+   assumption that desktop's own padding absorbed the overlap, until a screenshot showed the same
+   cut-off banner top on desktop too. The body-wrap pair below mirrors globals.css's own "full
+   clearance / minimal gap after a banner" pair at higher specificity, and didn't need the same ID
+   fix — its ID-bearing globals.css counterparts already resolve to the same 6px value when a
+   banner is present, so there was nothing visibly wrong there to begin with. */
+#mvp-site-main .sn-ds ~ .banner-carousel-container {
   margin-top: calc(72px + var(--sn-ds-h)) !important;
+}
+/* Extra 20px gap below the strip+nav on desktop, ties the specificity above (1,2,0) and wins
+   by source order. Mirrors globals.css's own desktop-only clearance bump for strip-less pages. */
+@media screen and (min-width: 1024px) {
+  #mvp-site-main .sn-ds ~ .banner-carousel-container {
+    margin-top: calc(72px + var(--sn-ds-h) + 20px) !important;
+  }
 }
 body .sn-ds ~ #mvp-main-body-wrap {
   padding-top: calc(72px + var(--sn-ds-h)) !important;
@@ -220,17 +235,6 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
     padding: 0 11px;
     font-size: 9.5px;
     letter-spacing: 0.05em;
-  }
-
-  /* The clearance rule above (line 65) loses the cascade to globals.css's
-     `#mvp-site-main .banner-carousel-container { margin-top: 72px }`, which carries the site ID
-     (1,1,0) this rule's (0,2,1) can't beat. So the banner never gets the strip's extra height added
-     back and sits tucked partly behind the fixed nav — on mobile the nav's own margins are too thin
-     to hide the overlap, so the banner reads as flush against the nav with no gap at all. Re-declare
-     with the ID, mobile-only: desktop's overlap is small enough to be visually absorbed by the
-     banner's own top padding and hasn't been reported as an issue. */
-  #mvp-site-main .sn-ds ~ .banner-carousel-container {
-    margin-top: calc(72px + var(--sn-ds-h)) !important;
   }
 }
 

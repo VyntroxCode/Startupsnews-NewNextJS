@@ -7097,6 +7097,15 @@ body .banner-carousel-container,
 
 /* Desktop styles */
 @media screen and (min-width: 1024px) {
+  /* Needs the #mvp-site-main ID to tie the base rule's specificity (1,1,0) above and win by
+     source order — a bare `.banner-carousel-container` here (0,1,0) would silently lose the
+     cascade to it regardless of !important, the same landmine documented in delegation-strip.css. */
+  #mvp-site-main .banner-carousel-container {
+    margin-top: 92px !important;
+    /* Extra gap between fixed navbar and carousel on desktop (strip-less pages only; the
+       home page's own clearance lives in delegation-strip.css) */
+  }
+
   .banner-carousel-slide {
     height: auto !important;
     max-height: 170px;

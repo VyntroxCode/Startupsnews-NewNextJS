@@ -398,18 +398,29 @@
 
 /* On a phone the lockup needs the full width, so the mark and the Konnect logo drop beneath it. */
 @media (max-width: 760px) {
-  .ens-nav-inner { flex-wrap: wrap; row-gap: 8px; }
+  /* row-gap/column-gap split, not the shared clamp's 10-22px column-gap (2026-09-20): at a
+     320-390px phone width, Launchpad + the Konnect logo + the button need every spare px to
+     share the wrapped second line without the button spilling onto a third line of its own. */
+  .ens-nav-inner { flex-wrap: wrap; row-gap: 8px; column-gap: 6px; }
   .ens-nav-inner .ens-nav-logo { flex-basis: 100%; }
   .ens-nav-divider { display: none; }
-  .ens-nav .ens-nav-launchpad { font-size: clamp(12px, 3.4vw, 16px); flex-direction: row; gap: 0.35em; }
-  .ens-nav .ens-nav-launchpad span + span { margin-top: 0; }
+  /* Stacked, like desktop — not side by side (`flex-direction: row`, dropped 2026-09-20): row
+     direction alone ran ~205px wide at this width, leaving too little of the line for the Konnect
+     logo and the button, which is why the button used to wrap onto a third line of its own.
+     `clamp` floor also dropped 12px → 10.5px for the same reason, at the very narrowest phones. */
+  .ens-nav .ens-nav-launchpad { font-size: clamp(10.5px, 3vw, 16px); }
   /* Beside Launchpad on the wrapped second line; small beside it once pinned. */
   .ens-nav-divider-konnect { display: block; align-self: center; height: 22px; margin-block: 0; }
-  .ens-nav-konnect-img { height: 30px; }
-  .ens-nav-konnect { margin-right: 12px; }
+  .ens-nav-konnect-img { height: 24px; }
+  /* `margin-left` widens the gap after Launchpad specifically (2026-09-20, it read as touching) —
+     8px is as far as this goes: the button's `margin-left: auto` absorbs whatever space is left
+     over on the line, and at the narrowest phone (320px) there's only ~21px of that to spare
+     before the button itself wraps onto a third line again (row 108's fix). */
+  .ens-nav-konnect { margin-right: 6px; margin-left: 8px; }
   /* Last on the wrapped second line, beside the Konnect logo; `margin-left: auto` puts it against
-     the right edge so the row doesn't read as one crowded clump. */
-  .ens-page .ens-nav-cta { margin-left: auto; padding: 0.6em 1em; font-size: 10.5px; letter-spacing: 0.04em; }
+     the right edge so the row doesn't read as one crowded clump. Sized down further than before
+     (2026-09-20) so it stays on that same line instead of wrapping onto a third one of its own. */
+  .ens-page .ens-nav-cta { margin-left: auto; padding: 0.55em 0.85em; font-size: 9px; letter-spacing: 0.03em; }
 }
 
 .ens-nav-progress {
@@ -418,7 +429,9 @@
   right: 0;
   bottom: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--ens-pink), #9B4DFF);
+  /* Solid pink, not the pink-to-purple gradient this used to fade into (2026-09-20) — purple
+     isn't part of this page's palette (`--ens-pink`/`--ens-pink-dark` only). */
+  background: var(--ens-pink);
   transform-origin: 0 50%;
 }
 
