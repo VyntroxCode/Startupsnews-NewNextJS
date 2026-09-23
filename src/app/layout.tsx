@@ -13,6 +13,7 @@ import ConditionalLayout from "@/components/ConditionalLayout";
 import AuthModal from "@/components/AuthModal";
 import InstallPWA from "@/components/InstallPWA";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import { ScrollButtons } from "@/components/ScrollButtons";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { BannersService } from "@/modules/banners/service/banners.service";
 import { BannersRepository } from "@/modules/banners/repository/banners.repository";
@@ -260,6 +261,12 @@ export default async function RootLayout({
         <ConditionalLayout banners={banners}>
           {children}
         </ConditionalLayout>
+        {/* Scroll up/down controls. Mounted here rather than inside ConditionalLayout so they
+            also reach the admin, dashboard and employee routes, which ConditionalLayout returns
+            early for. Order matters: it must sit after ConditionalLayout to clear
+            #mvp-site-main's z-index:9999 stacking context, and before AuthModal so the login
+            popup still covers it. */}
+        <ScrollButtons />
         <InstallPWA />
         <AuthModal />
         <ServiceWorkerRegister />

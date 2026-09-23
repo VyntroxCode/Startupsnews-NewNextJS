@@ -47,6 +47,14 @@ export function AngleUpIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function AngleDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <OutlineIcon {...props}>
+      <polyline points="6 9 12 15 18 9" />
+    </OutlineIcon>
+  );
+}
+
 export function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <OutlineIcon {...props}> 

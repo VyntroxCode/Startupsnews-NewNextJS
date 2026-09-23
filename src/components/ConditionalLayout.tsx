@@ -8,7 +8,6 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BannerCarouselClient } from "@/components/BannerCarouselClient";
 import { DelegationStrip } from "@/components/DelegationStrip";
-import { AngleUpIcon } from "@/components/icons";
 import type { Banner } from "@/modules/banners/domain/types";
 
 /** Event landing pages that bring their own top bar. They render without the site header, the
@@ -70,9 +69,11 @@ export default function ConditionalLayout({
           </div>
         </div>
       </div>
-      <div className="mvp-fly-top back-to-top">
-        <AngleUpIcon />
-      </div>
+      {/* The theme's `.mvp-fly-top` back-to-top button used to render here. It never worked in
+          the Next.js port — the jQuery that toggled `.mvp-to-top` to slide it into view was
+          never carried over, so it stayed translated 100px off-screen, and media-queries.css
+          hides it entirely below 1004px. Replaced by <ScrollButtons /> in the root layout,
+          which covers every route and offers scroll-down as well. */}
       <FlyMenuFade />
     </FlyMenuProvider>
   );

@@ -1,0 +1,118 @@
+/* Floating scroll-to-top / scroll-to-bottom controls (ScrollButtons.tsx).
+   Rendered once from the root layout, so these rules apply on every page of the site —
+   public pages, admin, dashboard and employee alike.
+
+   z-index landmine: #mvp-site-main (globals.css) sets z-index:9999 together with
+   backface-visibility, so the whole page-content subtree stacks as a single unit at 9999 no
+   matter how deep the covering element sits. Anything below 9999 here would lose to it. The
+   stack matches 9999 exactly and wins on document order, because ScrollButtons mounts after
+   ConditionalLayout in the body — the same trick InstallPWA.tsx documents. AuthModal mounts
+   later still, so a login popup continues to sit above these buttons. */
+
+.snf-scroll-btns {
+  position: fixed;
+  right: 16px;
+  /* Clear of the iOS home indicator / Android gesture bar. */
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* The container itself is only a positioning frame — clicks must fall through to the page
+     wherever a button is hidden, otherwise it would swallow taps on content underneath. */
+  pointer-events: none;
+}
+
+.snf-scroll-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #16181c;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+  /* Hidden state: faded out and nudged toward its own edge, but kept in the layout so the two
+     buttons never jump position when one of them appears or disappears. */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease,
+    background-color 0.2s ease, color 0.2s ease;
+}
+
+.snf-scroll-btn--up {
+  transform: translateY(6px);
+}
+
+.snf-scroll-btn--down {
+  transform: translateY(-6px);
+}
+
+.snf-scroll-btn.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.snf-scroll-btn:hover,
+.snf-scroll-btn:focus-visible {
+  /* Logo pink, matching the theme accent used across the site chrome. */
+  background: #e62e69;
+  border-color: #e62e69;
+  color: #fff;
+}
+
+.snf-scroll-btn:focus-visible {
+  outline: 2px solid #e62e69;
+  outline-offset: 2px;
+}
+
+.snf-scroll-btn:active {
+  transform: translateY(0) scale(0.94);
+}
+
+.snf-scroll-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+/* Small phones: slightly tighter so the stack doesn't crowd the content. */
+@media screen and (max-width: 479px) {
+  .snf-scroll-btns {
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    gap: 6px;
+  }
+
+  .snf-scroll-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .snf-scroll-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snf-scroll-btn {
+    transition: opacity 0.01ms linear, visibility 0.01ms linear;
+    transform: none;
+  }
+
+  .snf-scroll-btn:active {
+    transform: none;
+  }
+}
