@@ -1,0 +1,11 @@
+/* Scoped Tailwind utilities for the read-only "Admin Rules" page (/admin/rules-policy and
+   /employee/rules-policy) — same pattern and rationale as
+   src/components/admin/it-tickets/it-tickets-tailwind.css: theme + utilities only (no
+   Preflight, so the shared admin/employee chrome is untouched), deliberately unlayered so the
+   utilities beat globals.css's bare-element reset, and `source(none)` + explicit @source lines
+   so class detection stays limited to these files. */
+@import "tailwindcss/theme.css" source(none);
+@import "tailwindcss/utilities.css" source(none);
+@source "./PolicySummaryWidget.tsx";
+@source "../../app/employee/rules-policy/page.tsx";
+@source "../../app/(admin)/admin/rules-policy/page.tsx";

@@ -69,17 +69,15 @@ export function useRise() {
   );
 }
 
-/** The closing enquiry form (PlanYourJourney) — where every "Participate Now" button lands. */
-export const PARTICIPATE_TARGET = "ens-participate";
-
-/** Scrolls to the enquiry form, clearing whatever is pinned above it — the sticky delegation band
- * and the event bar — which `scrollIntoView` would park the form's opening line underneath. Their
- * heights are read at click time, so the tightened (scrolled) sizes are what get subtracted. Bails
- * out without `preventDefault` if the target is missing, so the plain anchor still works, and
- * `.ens-journey`'s `scroll-margin-top` covers that fallback. EnsNav keeps its own copy because it
- * already measures the pinned stack for `--ens-nav-top`. */
-export function scrollToParticipate(event: React.MouseEvent<HTMLAnchorElement>, reducedMotion: boolean) {
-  const target = document.getElementById(PARTICIPATE_TARGET);
+/** Scrolls to a section by id, clearing whatever is pinned above it — the sticky delegation band
+ * and the event bar — which `scrollIntoView` would park the section's opening line underneath.
+ * Their heights are read at click time, so the tightened (scrolled) sizes are what get subtracted.
+ * Bails out without `preventDefault` if the target is missing, so the plain `#id` anchor still
+ * works — give the target its own `scroll-margin-top` for that fallback. EnsNav keeps its own copy
+ * of this for its one link (to the enquiry form) because it already measures the pinned stack for
+ * `--ens-nav-top`. */
+export function scrollToSection(event: React.MouseEvent<HTMLAnchorElement>, targetId: string, reducedMotion: boolean) {
+  const target = document.getElementById(targetId);
   if (!target) return;
   event.preventDefault();
   const pinned = [".ens-delegation-band", ".ens-nav"].reduce((sum, selector) => {

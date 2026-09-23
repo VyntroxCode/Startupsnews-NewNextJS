@@ -14,6 +14,8 @@ interface EventsCarouselProps {
   /** Extra class on the outer container, for page-specific card-width overrides (see
    * .event-country-carousel in globals.css, used by /events for a wider "peek the next card" look). */
   className?: string;
+  /** Passed through to each EventByCountryCard — see its prop doc. */
+  showCountry?: boolean;
 }
 
 /**
@@ -24,7 +26,7 @@ interface EventsCarouselProps {
  * same native scroll position by one card at a time — no prev/next arrow buttons, autoplay
  * alone is the intended way to move through the row.
  */
-export function EventsCarousel({ events, maxEvents = 10, title, className = "" }: EventsCarouselProps) {
+export function EventsCarousel({ events, maxEvents = 10, title, className = "", showCountry = false }: EventsCarouselProps) {
   const heading = title === undefined ? "Startup Events" : title;
   const displayEvents = events.slice(0, maxEvents);
   const totalEvents = displayEvents.length;
@@ -200,6 +202,7 @@ export function EventsCarousel({ events, maxEvents = 10, title, className = "" }
             key={String(event.id ?? event.slug ?? `${event.url}-${index}`)}
             event={event}
             imageUrl={getEventImage(event)}
+            showCountry={showCountry}
           />
         ))}
       </ul>

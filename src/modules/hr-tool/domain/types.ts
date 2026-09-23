@@ -130,6 +130,10 @@ export interface HrApprovalBase {
 }
 export type HrRegularizationPunchType = 'in' | 'out';
 export interface HrRegularization extends HrApprovalBase { date: string; reason: string; punchType: HrRegularizationPunchType; requestedTime: string | null; }
+/** Reserved HrLeaveRequest.type for a Work From Home day. Once approved, every working day in the
+ * range is written to hr_attendance as a full shift (status 'WFH') — see HrToolService.syncWfhAttendance. */
+export const WFH_LEAVE_TYPE = 'WFH';
+
 export interface HrLeaveRequest extends HrApprovalBase { type: string; from: string; to: string; remarks: string; }
 export interface HrExpense extends HrApprovalBase { category: string; amount: number; }
 

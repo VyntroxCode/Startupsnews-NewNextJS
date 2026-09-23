@@ -16,6 +16,17 @@ export interface SalesLead {
   nextFollowUpDate: string;
   lastConnectDate: string;
   lastCallDiscussion: string;
+  /** Event-specific fields, populated only for a "Sponsor Event Page Leads" row (mirrored in full
+   * from sponsor_event_submissions, see modules/sponsor-event-submissions/service/to-sales-lead.ts)
+   * — empty string for every other lead. Editable here like the rest of the row; the original
+   * sponsor_event_submissions row is left untouched, same as the other page-lead mirrors. */
+  eventTitle: string;
+  eventSlug: string;
+  eventDate: string;
+  eventTime: string;
+  externalUrl: string;
+  posterUrl: string;
+  description: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -33,6 +44,13 @@ export interface SalesLeadEntity {
   type: string | null;
   other_type: string | null;
   query_text: string | null;
+  event_title: string | null;
+  event_slug: string | null;
+  event_date: string | null;
+  event_time: string | null;
+  external_url: string | null;
+  poster_url: string | null;
+  description: string | null;
   assigned_to: string | null;
   status: string | null;
   next_follow_up_date: string | null;

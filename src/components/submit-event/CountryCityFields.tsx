@@ -76,7 +76,7 @@ export function CountryCityFields({
   const cityOptions = useMemo(
     () => [
       ...cities.map((c) => ({ value: c, label: c })),
-      { value: OTHER_CITY_VALUE, label: "Other (add manually)", alwaysShow: true },
+      { value: OTHER_CITY_VALUE, label: "Others (Manually Fill)", alwaysShow: true },
     ],
     [cities]
   );

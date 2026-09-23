@@ -95,6 +95,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
   const [error, setError] = useState('');
 
   // Step 1 — basic
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
@@ -133,6 +134,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
 
         if (statusData?.success) {
           const u = statusData.data.user;
+          setName(u.name || '');
           setPhone(u.phone || '');
           setCountry(u.country || '');
           setCity(u.city || '');
@@ -177,8 +179,8 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
   const isLast = stepIdx === steps.length - 1;
   const isFirst = stepIdx === 0;
 
-  // Only phone + country are mandatory; every other field in the wizard is optional.
-  const basicValid = Boolean(phone.trim() && country.trim());
+  // Name, phone + country are mandatory; every other field in the wizard is optional.
+  const basicValid = Boolean(name.trim() && phone.trim() && country.trim());
   const stepValid = step === 1 ? basicValid : true;
 
   const next = () => setStepIdx((i) => Math.min(i + 1, steps.length - 1));
@@ -221,6 +223,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
+          name: name.trim() || undefined,
           phone: phone || null,
           country: country || null,
           city: city || null,
@@ -243,7 +246,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
       const raw = localStorage.getItem('pub_auth_user');
       if (raw) {
         const u = JSON.parse(raw);
-        const updated = { ...u, phone, country, city, linkedin_url: linkedin };
+        const updated = { ...u, ...(name.trim() ? { name: name.trim() } : {}), phone, country, city, linkedin_url: linkedin };
         localStorage.setItem('pub_auth_user', JSON.stringify(updated));
         window.dispatchEvent(new Event('pub-auth-changed'));
       }
@@ -294,6 +297,9 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
 
           {step === 1 && (
             <>
+              <Field label="Your name" required>
+                <input className="cpw-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Priya Sharma" />
+              </Field>
               <Field label="Phone / WhatsApp" required>
                 <input className="cpw-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
               </Field>
@@ -402,6 +408,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
               </p>
 
               <ReviewSection title="Basic details">
+                <ReviewRow label="Name" value={name} />
                 <ReviewRow label="Phone" value={phone} />
                 <ReviewRow label="City" value={city} />
                 <ReviewRow label="Country" value={country} />
@@ -474,7 +481,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
         {isLast && !basicValid && (
           <div className="cpw-warning-wrap">
             <div className="cpw-alert cpw-alert-warn">
-              Phone / WhatsApp and Country are still missing — go back to Basic info and fill them in before saving.
+              Name, Phone / WhatsApp and Country are still missing. Go back to Basic info and fill them in before saving.
             </div>
           </div>
         )}

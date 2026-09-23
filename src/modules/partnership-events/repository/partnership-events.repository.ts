@@ -155,7 +155,7 @@ export class PartnershipEventsRepository {
   async findForPublicUpcoming(): Promise<PartnershipEventEntity[]> {
     return query<PartnershipEventEntity>(
       `SELECT * FROM partnership_events
-       WHERE site_status = 'upcoming' AND event_start_date >= CURDATE()
+       WHERE site_status = 'upcoming' AND COALESCE(event_end_date, event_start_date) >= CURDATE()
        ORDER BY event_start_date ASC`
     );
   }

@@ -67,7 +67,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof AttendanceIcon }[] 
   { href: '/employee/attendance', label: 'Attendance', icon: AttendanceIcon },
   { href: '/employee/leave', label: 'Leave', icon: LeaveIcon },
   { href: '/employee/documents', label: 'Documents', icon: DocumentsIcon },
-  { href: '/employee/rules-policy', label: 'Rules & Policy', icon: RulesPolicyIcon },
+  { href: '/employee/rules-policy', label: 'Admin Rules', icon: RulesPolicyIcon },
   { href: '/employee/it-tickets', label: 'IT Support', icon: TicketIcon },
 ];
 

@@ -667,7 +667,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
           // employee.leaveBalance snapshot — that field is only ever written once at hire/
           // probation-confirm and never accrues or resets, so it goes stale immediately.
           const myLeave = state.leaveRequests.filter((l) => l.employeeId === employee.id);
-          const balances = computeLeaveBalances(employee.doj, state.rules.leaveTypes, myLeave, todayStr());
+          const balances = computeLeaveBalances(employee.doj, state.rules.leaveTypes, myLeave, todayStr(), state.orgStructure.holidays.map((h) => h.date));
           return Object.entries(balances).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>);
         })()}
       </div>

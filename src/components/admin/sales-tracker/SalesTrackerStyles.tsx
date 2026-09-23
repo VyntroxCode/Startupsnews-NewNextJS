@@ -42,6 +42,11 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page button.metric-btn { display: block; width: 100%; height: auto; text-align: left; font: inherit; padding: 14px 16px; background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--pink); border-radius: 10px; cursor: pointer; transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s; }
       .sales-tracker-page button.metric-btn:hover { background: var(--pink-bg2); border-color: var(--pink); }
       .sales-tracker-page button.metric-btn.active { background: var(--pink-bg); border-color: var(--pink); box-shadow: var(--ring); }
+      .sales-tracker-page button.metric-btn.alert { background: var(--danger-bg); border-color: var(--danger-border); border-left-color: var(--danger); }
+      .sales-tracker-page button.metric-btn.alert:hover { border-color: var(--danger); }
+      .sales-tracker-page button.metric-btn.alert.active { border-color: var(--danger); box-shadow: 0 0 0 3px #FEE2E2; }
+      .sales-tracker-page button.metric-btn.alert .num, .sales-tracker-page button.metric-btn.alert .metric-cta { color: #B91C1C; }
+      .sales-tracker-page .metric-btn .metric-open { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--danger); }
       .sales-tracker-page .metric-btn .metric-cta { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--pink-dark); display: flex; align-items: center; gap: 6px; }
       .sales-tracker-page .metric-btn .chev { transition: transform 0.15s; display: inline-block; }
       .sales-tracker-page .metric-btn .chev.open { transform: rotate(90deg); }
@@ -252,7 +257,8 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .se-kv a { color: var(--pink-dark); text-decoration: none; }
       .sales-tracker-page .se-kv a:hover { text-decoration: underline; }
       .sales-tracker-page .se-desc { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.6; background: var(--pink-bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
-      /* ---------- Expand North Star enquiries card (EnsEnquiriesCard / EnsEnquiryDetailModal) ---------- */
+      /* ---------- Expand North Star enquiries (EnsEnquiryDetailModal; some rules here are unused
+         leftovers from the removed EnsEnquiriesCard table/toolbar) ---------- */
       .sales-tracker-page .msg.ok { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
       .sales-tracker-page .se-toolbar .field.ee-filter { flex: 0 1 240px; }
       .sales-tracker-page .ee-table tbody tr:focus-visible { outline: 2px solid var(--pink); outline-offset: -2px; }

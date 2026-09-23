@@ -264,7 +264,7 @@ function DayCard({ day, index }: { day: DelegationDay; index: number }) {
 export function DelegationDays() {
   const reducedMotion = useReducedMotion();
   return (
-    <section className="ens-days" aria-labelledby="ens-days-title">
+    <section id="ens-days" className="ens-days" aria-labelledby="ens-days-title">
       <span className="ens-blob ens-days-blob" aria-hidden="true" />
       <div className="ens-wrap">
         <RevealWords id="ens-days-title" className="ens-title" lines={[{ text: "Startup Delegation to Dubai" }]} />

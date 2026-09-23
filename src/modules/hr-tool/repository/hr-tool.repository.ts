@@ -408,6 +408,15 @@ export class HrToolRepository {
     );
   }
 
+  /** Every auto-written Work From Home day (status 'WFH') — see HrToolService.syncWfhAttendance. */
+  async findWfhAttendanceDays(): Promise<{ employeeId: string; date: string }[]> {
+    const rows = await query<AttendanceRow>("SELECT * FROM hr_attendance WHERE status = 'WFH'");
+    return rows.map((r) => this.mapAttendanceRow(r)).map((a) => ({ employeeId: a.employeeId, date: a.date }));
+  }
+  async deleteAttendanceDay(employeeId: string, date: string): Promise<void> {
+    await query('DELETE FROM hr_attendance WHERE employee_id = ? AND attendance_date = ?', [employeeId, date]);
+  }
+
   async findAttendanceOverrides(): Promise<HrAttendanceOverride[]> {
     const rows = await findAllRows<OverrideRow>('hr_attendance_overrides');
     return rows.map((r) => ({ employeeId: employeeIdOf(r), emp: r.emp, date: r.override_date, status: r.status }));

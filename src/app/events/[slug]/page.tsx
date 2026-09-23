@@ -63,6 +63,7 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
     // Same rule as /events: the Cohort page is headed "Cohort", not its events' country.
     const country = region === COHORT_PARTNERSHIP_TYPE ? region : resolveCountry(region, upcomingEvents);
     const showCityHeading = region !== country && !NON_GEOGRAPHIC_REGIONS.has(region);
+    const isCohort = region === COHORT_PARTNERSHIP_TYPE;
 
     return (
         <div className="mvp-main-blog-wrap left relative mvp-main-blog-marg event-by-country-page">
@@ -97,6 +98,7 @@ export default async function RegionEventsPage({ params }: { params: Promise<{ s
                                                 maxEvents={upcomingEvents.length}
                                                 title={showCityHeading ? region : null}
                                                 className="event-country-carousel"
+                                                showCountry={isCohort}
                                             />
                                         </div>
                                     ) : (

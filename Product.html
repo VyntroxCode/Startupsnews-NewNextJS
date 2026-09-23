@@ -116,8 +116,8 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v35</span>
-    <span class="badge">Released 2026-09-19</span>
+    <span class="badge v">Version v54</span>
+    <span class="badge">Released 2026-09-23</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
     <span class="badge">Next.js 16 · React 19 · MariaDB</span>
@@ -730,6 +730,25 @@ sequenceDiagram
       <tr><td><strong>v33</strong></td><td>2026-09-19</td><td>Medium</td><td>Every country field is now pick-from-list only: the "Other (add manually)" / "Others…" choice is gone from List Your Event, the Sales Tracker's lead form and the Partnership Tracker's Add/Edit Event form, so a country can no longer be typed in by hand</td></tr>
       <tr><td><strong>v34</strong></td><td>2026-09-19</td><td>Medium</td><td>Expand North Star page: the "Our partners" logo strip now shows the nine referral-partner logos supplied for this event, in place of the site's general partner-logo feed</td></tr>
       <tr><td><strong>v35</strong></td><td>2026-09-19</td><td>Medium</td><td>Expand North Star page: corrected the wrong Angel Bay logo, added an Indicorn Angels logo, both now clickable through to the partners' own websites, and added Indicornangels to the "Referred By" form list</td></tr>
+      <tr><td><strong>v36</strong></td><td>2026-09-21</td><td>Medium</td><td>Expand North Star page: added a pink "back to home" circle button in the opening section, since this page has no site header of its own to carry one</td></tr>
+      <tr><td><strong>v37</strong></td><td>2026-09-21</td><td>Medium</td><td>Events page: the Cohort section's event cards now show the country alongside the city (e.g. "India, Jaipur"), since Cohort mixes events from many countries in one row unlike every other section</td></tr>
+      <tr><td><strong>v38</strong></td><td>2026-09-21</td><td>Medium</td><td>Member dashboard home: redesigned with a greeting bar, a profile-completion hero, four activity tiles, a "Your Morning Brief" story row, a scrollable "Recommended for you" strip, the two latest reports with View/Download, and an "Explore Pro" teaser &mdash; animated, with loading placeholders, and fully responsive</td></tr>
+      <tr><td><strong>v39</strong></td><td>2026-09-21</td><td>Medium</td><td>Member dashboard home: the same sections re-arranged into a single mosaic of differently-sized tiles &mdash; a large profile tile, one featured activity tile and three small ones, a big picture-led lead story with three compact stories, a Recommended list, the latest reports and an Explore Pro accent &mdash; with a choreographed entrance and a gentle focus effect on hover</td></tr>
+      <tr><td><strong>v40</strong></td><td>2026-09-22</td><td>Medium</td><td>Member dashboard home redesigned again, this time as a premium editorial page (a "Today's Startup Brief" strip, a compact profile card, three activity tiles, one Recommended reading feed, a real Saved Stories list, Latest Reports, and an Explore Pro close) with a lighter warm-lavender background; the left-hand navigation menu was restyled to match, and two accessibility/usability bugs were found and fixed along the way</td></tr>
+      <tr><td><strong>v41</strong></td><td>2026-09-22</td><td>Medium</td><td>Member dashboard home rebuilt again, this time to match a specific reference design: one "Welcome back" summary card with a live, real-data summary line and profile-completion ring, followed by four stat tiles &mdash; Reports Unlocked, Saved Events, a WhatsApp community follow/joined tile, and Member Since; every other section of the previous design was removed</td></tr>
+      <tr><td><strong>v42</strong></td><td>2026-09-22</td><td>Medium</td><td>Member dashboard home gained a "Founder events near you" section below the stat tiles &mdash; three real, live event cards matched to the member's own city, falling back to three events from three different cities when the member's city has none yet</td></tr>
+      <tr><td><strong>v43</strong></td><td>2026-09-22</td><td>Medium</td><td>Brand Stories locked in the left-hand menu (lock icon, no navigation) and on direct visits (a clean locked-state message replaces what used to be a crash caused by an unrelated PDF-preview bug) &mdash; no content is published there yet</td></tr>
+      <tr><td><strong>v44</strong></td><td>2026-09-22</td><td>Medium</td><td>Member dashboard home: the "Founder events near you" cards now show the event's real poster photo and a short description, exactly like the cards on the public Events page, in place of the earlier plain coloured-header cards</td></tr>
+      <tr><td><strong>v45</strong></td><td>2026-09-22</td><td>Medium</td><td>Sales Tracker's "All leads" table now shows every page's submissions in one place &mdash; including Expand North Star enquiries &mdash; with fields a page doesn't collect shown as a dash, and Sponsor an Event's event details editable right there</td></tr>
+      <tr><td><strong>v46</strong></td><td>2026-09-22</td><td>Medium</td><td>Member dashboard home gained a "Join The Morning Pulse" newsletter card, showing a subscribe form or an already-subscribed confirmation depending on the member's real subscription status</td></tr>
+      <tr><td><strong>v47</strong></td><td>2026-09-23</td><td>Medium</td><td>The City dropdown for India, everywhere it appears on the site, now offers only Mumbai, Delhi NCR, Bengaluru, Hyderabad and Pune, plus an "Others (Manually Fill)" option for anywhere else</td></tr>
+      <tr><td><strong>v48</strong></td><td>2026-09-23</td><td>Medium</td><td>The "Complete your profile" pop-up now asks for the member's name; the "Profile complete" percentage in the sidebar now correctly counts Website and Bio for every member, not just some</td></tr>
+      <tr><td><strong>v49</strong></td><td>2026-09-23</td><td>Medium</td><td>The StartupNews logo moved out of the member dashboard's left-hand menu into its own bar across the top, so it stays full-size instead of shrinking when the menu collapses; the "Finish it" button on the dashboard's profile-completion prompt now reads "Complete Your Profile"</td></tr>
+      <tr><td><strong>v50</strong></td><td>2026-09-23</td><td>Medium</td><td>Sales Tracker: the separate "Sponsor Event submissions" and "Expand North Star enquiries" sections are gone &mdash; both now live only in the unified "All leads" table introduced in v45</td></tr>
+      <tr><td><strong>v51</strong></td><td>2026-09-23</td><td>Medium</td><td>"Rules &amp; Policy" renamed to "Admin Rules" and redesigned: four headline rules as cards, plus a clear "How your day is counted" chart and table that shows which hours worked give a Full day, Short Leave, Half day or Absent</td></tr>
+      <tr><td><strong>v52</strong></td><td>2026-09-23</td><td>Medium</td><td>Work From Home: employees can request WFH days (up to a monthly limit HR sets); on an approved WFH day they can punch in and out from anywhere, and their hours count as normal</td></tr>
+      <tr><td><strong>v53</strong></td><td>2026-09-23</td><td>Medium</td><td>Work From Home made simple: no monthly limit and nothing for HR to set. Once a WFH request is approved, each of those days is marked as a full day automatically, with punch-in and punch-out filled in</td></tr>
+      <tr><td><strong>v54</strong></td><td>2026-09-23</td><td>Medium</td><td>Sales Tracker: new "Leads by page" cards showing how many leads came from each page. Clicking one shows only that page's leads in "All leads"</td></tr>
     </tbody>
   </table>
 
@@ -2439,7 +2458,620 @@ sequenceDiagram
       </tbody>
     </table>
   </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v36</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-21</span>
+    </div>
+    <p><strong>What changed.</strong> The <strong>Expand North Star</strong> page opens without the
+    site's usual header, so once a visitor lands there was no button anywhere on the page to get
+    back to the main StartupNews.fyi site short of editing the address bar. A small pink circle with
+    a white home icon has been added just above the opening headline; clicking it goes straight back
+    to the homepage.</p>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where exactly does the button sit?</td><td>At the very top of the page, just above "The World's Largest Gathering of Startups and Investors," on its own line so it never crowds the heading.</td></tr>
+        <tr><td>Where does it go?</td><td>The StartupNews.fyi homepage, in the same browser tab.</td></tr>
+        <tr><td>Does it show on a phone too?</td><td>Yes, a little smaller, in the same spot.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v37</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-21</span>
+    </div>
+    <p><strong>What changed.</strong> The Events page groups events under their own country — India,
+    UAE, Singapore, and so on — except for one section, <strong>Cohort</strong>, which deliberately
+    mixes events from many different countries into a single row. Its cards were only showing the
+    city, with no way to tell which country an event was in at a glance. Cards in the Cohort section
+    now show the country too, written as "Country, City" &mdash; for example "India, Jaipur" or
+    "Singapore, Singapore". Every other section, where the country is already shown as the section's
+    own heading, is unchanged.</p>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where does this show up?</td><td>Only the Cohort section's cards, on the main Events page and its own <code>/events/cohort</code> page.</td></tr>
+        <tr><td>What does a card look like now?</td><td>The line that used to read just "Jaipur" now reads "India, Jaipur".</td></tr>
+        <tr><td>Do the country-specific sections (India, UAE, Singapore…) change too?</td><td>No &mdash; those cards still show just the city, since the section heading above them already names the country.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v38</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-21</span>
+    </div>
+    <p><strong>What changed.</strong> The first screen a signed-in member sees at
+    <code>/dashboard</code> has been redesigned from four plain promo boxes into a proper home page.
+    It now greets the member by name according to the time of day, shows how complete their profile
+    is as a filling ring with a "Complete Profile" button, sums up their activity in four tiles,
+    presents the day's latest stories as picture cards under <strong>Your Morning Brief</strong>,
+    offers more stories in a side-scrolling <strong>Recommended for you</strong> strip, lists the
+    two newest research reports with a working View or Download button, and closes with a small
+    <strong>Explore Pro</strong> teaser. Everything fades and slides into place when the page opens,
+    cards gently lift when hovered, and grey shimmering placeholders hold each card's exact shape
+    while the real data loads so nothing jumps.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What the member sees</th></tr></thead>
+      <tbody>
+        <tr><td>Top bar</td><td>Their initial in a coloured circle, "Good morning / afternoon / evening, &lt;name&gt; 👋" with a one-line subtitle, a round search box that searches the site, a bell showing how many stories were published in the last day, and today's date and time.</td></tr>
+        <tr><td>Profile card</td><td>A soft pink-to-purple card with slowly drifting colour blobs, a ring that fills up to the member's real completion percentage, and a "Complete Profile" button that opens the Profile page. Once complete, the wording switches to "Your profile is all set" and the button reads "View Profile".</td></tr>
+        <tr><td>Four tiles</td><td>Saved Stories, Reports Read, Newsletter Topics, Profile Completion. Each has an icon, a number that counts up from zero, and a small green "+N this week" style note. They are for reading only &mdash; not buttons.</td></tr>
+        <tr><td>Your Morning Brief</td><td>The four newest stories as picture cards: category tag, a bookmark button (tap to save, tap again to unsave), reading time, title, a short excerpt and the date. The picture zooms slightly and the card lifts when hovered. "View all" goes to the homepage feed.</td></tr>
+        <tr><td>Recommended for you</td><td>Eight more stories in a strip that scrolls sideways. Hovering the strip reveals round left/right arrows; each one is greyed out when there is nothing further in that direction.</td></tr>
+        <tr><td>Latest Reports</td><td>The two most recently published reports with a thumbnail or document icon, page count and file size, and a black pill button &mdash; "View" opens a PDF in a new tab, "Download" saves other file types. "All reports" opens the Reports section.</td></tr>
+        <tr><td>Explore Pro</td><td>A dark purple card with a crown and a "Coming soon" tag. Purely a teaser for now &mdash; there is nothing to click.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where do the numbers come from?</td><td>Profile completion and newsletter topics come from the member's real account. Saved Stories and Reports Read count what the member has bookmarked or opened <em>on this device</em>, because the site does not yet keep those records centrally; they will start at zero on a new browser.</td></tr>
+        <tr><td>Are the story and stat cards clickable?</td><td>No. Only the bookmark button on each story and the View / Download button on each report do anything. The cards are designed to look interesting, not to act as links, until a full story-reading flow exists inside the dashboard.</td></tr>
+        <tr><td>What about people who turn off animations?</td><td>If a device is set to "reduce motion", every animation is skipped: content simply appears, the blobs stay still, and nothing pulses or lifts.</td></tr>
+        <tr><td>Does it work on a phone?</td><td>Yes. The tiles stack, the Morning Brief becomes a swipeable row, and the bottom section stacks with Recommended first, then Latest Reports.</td></tr>
+        <tr><td>Did the sidebar or sign-in change?</td><td>No. The left navigation, its links and the sign-in check are exactly as before.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v39</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-21</span>
+    </div>
+    <p><strong>What changed.</strong> The member home at <code>/dashboard</code> keeps every section
+    from v38 but no longer lays them out as a stack of equal rows. Below the greeting bar the page is
+    now one <strong>mosaic</strong> of tiles in different sizes that fit together like a tray of
+    dishes: a large profile tile in the top-left, activity tiles of two sizes around it, a tall
+    picture-led lead story, three compact story tiles, a Recommended list, the latest reports and a
+    small Explore Pro accent. Tiles slide in from the side they sit on when the page opens, and when
+    the member hovers one tile the others fade back very slightly so the eye lands on it.</p>
+
+    <table>
+      <thead><tr><th>Tile</th><th>What it looks like now</th></tr></thead>
+      <tbody>
+        <tr><td>Profile</td><td>The biggest tile, two columns wide and two rows tall, still with the filling ring, the drifting colour blobs and the Complete Profile button. Hovering it brightens it softly instead of lifting it.</td></tr>
+        <tr><td>Saved Stories</td><td>Now the featured activity tile: wide, softly tinted, with a bigger number and a one-line note.</td></tr>
+        <tr><td>Reports Read, Newsletter Topics, Profile Completion</td><td>Three compact white tiles stacked in the middle column. Each still counts up, shows its trend, lifts on hover, and opens its section when clicked.</td></tr>
+        <tr><td>Lead story</td><td>The newest story as a tall, full-picture tile with the headline over a dark gradient, a "Lead story" tag, reading time, date and the bookmark button.</td></tr>
+        <tr><td>Three more stories</td><td>Compact tiles beside the lead story: a small square picture, category tag, two-line headline, reading time and a bookmark button.</td></tr>
+        <tr><td>Recommended for you</td><td>A tall tinted list of four more stories. The previous side-scrolling strip with arrows is gone in favour of this stacked list, which suits the tile's shape.</td></tr>
+        <tr><td>Latest Reports</td><td>The two newest reports, each with icon, title, page count and size, and a working View or Download button. An "All reports" button sits at the foot of the tile.</td></tr>
+        <tr><td>Explore Pro</td><td>Small dark accent tile beside the activity tiles, still marked "Coming soon" with nothing to click.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What did I lose to make room for the big tiles?</td><td>Recommended shows four stories instead of eight, and the story tiles beside the lead are compact rather than full picture cards. Nothing was removed; some things are smaller.</td></tr>
+        <tr><td>How does it look on a tablet or phone?</td><td>On a tablet the mosaic becomes two columns: profile full width, activity tiles in pairs, the lead story full width, then stories, Explore Pro, Recommended and Reports side by side. On a phone everything stacks in reading order: profile, activity, lead story, stories, Recommended, reports, Explore Pro.</td></tr>
+        <tr><td>Is the "fade back on hover" distracting?</td><td>It is set to a barely-visible level (other tiles drop to 94% strength) and is switched off entirely for members who have asked their device to reduce motion, along with every other animation on the page.</td></tr>
+        <tr><td>Did the data or the sidebar change?</td><td>No. Same numbers, same sources, same left-hand navigation and sign-in.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v40</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-22</span>
+    </div>
+    <p><strong>What changed.</strong> The member home at <code>/dashboard</code> has been redesigned
+    a second time, this time toward a calmer, more premium "digital newsroom" feel &mdash; closer to
+    a business publication than a software dashboard. The left-hand menu was refreshed to match.
+    Nothing a member could already do was removed; every number, story and report shown is still
+    the member's real data.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What the member sees now</th></tr></thead>
+      <tbody>
+        <tr><td>Background &amp; colour</td><td>A lighter, warmer off-white/lavender page background in place of the previous mosaic's tint, with the same StartupNews pink as the one accent colour used with intent, not on every tile.</td></tr>
+        <tr><td>Today's Startup Brief</td><td>A new short strip just under the greeting: a real count of "X stories worth knowing today" (based on what actually published in the last day) and a link into the full story feed. Not a chart, not a made-up number.</td></tr>
+        <tr><td>Profile card</td><td>Shrunk from a tall banner into one calm band: the filling ring on the right, and on the left a short, concrete list of what finishing the profile unlocks (tailored reports, personalised stories, newsletter picks). The moving background shapes from v38/v39 are gone.</td></tr>
+        <tr><td>Three activity tiles</td><td>Reports Read, Newsletter, and Profile &mdash; back to three equal tiles (the fourth "Saved Stories" tile is retired; saved stories now get their own proper section, see below). Each shows a two-digit count, its label, and an honest note ("+1 this week", "Choose your interests", "3 fields remaining").</td></tr>
+        <tr><td>Recommended for you</td><td>One clean reading list in a single card &mdash; picture, category, headline and reading time per story, separated by thin lines rather than separate boxes. Bookmarking a story here is what adds it to Your Reading List.</td></tr>
+        <tr><td>Your Reading List</td><td><strong>New:</strong> saved stories are now actually shown here as a real list (title, picture, category, reading time) instead of only being counted. With nothing saved yet, a proper designed panel explains how bookmarking works instead of an empty box.</td></tr>
+        <tr><td>Latest Reports</td><td>Two report cards side by side with the same working View/Download buttons as before, restyled to match the newsroom feel.</td></tr>
+        <tr><td>Explore Pro</td><td>Moved to its own quiet strip at the very bottom of the page, dark and understated, still marked "Coming Soon" with nothing to click.</td></tr>
+        <tr><td>Left-hand menu</td><td>Slightly narrower, cleaner type, and the current page now shows a small pink marker that slides smoothly to whichever item is selected, instead of a solid pink block.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What bugs were found and fixed while building this?</td><td>Two. On a phone, once the menu was opened it couldn't always be closed by tapping the same menu button &mdash; only by tapping outside it. And someone navigating the menu with a keyboard instead of a mouse couldn't see which item was currently selected. Both are now fixed.</td></tr>
+        <tr><td>Did the previous mosaic layout (v39) do something wrong?</td><td>No &mdash; this is a further design direction the team asked for, not a correction of v39.</td></tr>
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v41</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-22</span>
+    </div>
+    <p><strong>What changed.</strong> The member home at <code>/dashboard</code> was rebuilt once
+    more, this time to match a specific layout the team supplied: a single welcome-back summary
+    card, and four small stat tiles underneath it. Every other section built in the two previous
+    passes &mdash; Today's Brief, the story feed, Saved Stories, Latest Reports, Explore Pro, and
+    the search/notification bar at the top &mdash; was removed, on direct instruction to keep only
+    this one view.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What the member sees now</th></tr></thead>
+      <tbody>
+        <tr><td>Welcome card</td><td>A small "Home" tag, "Welcome back, &lt;name&gt;", and one real sentence: how many new funding reports and founder events (in the member's own city, once they've set one) appeared this week, plus the live totals of reports and events on the whole site.</td></tr>
+        <tr><td>Profile row</td><td>The same real completion ring as before, now inside this card, with a line naming the specific fields still missing for that member's account type (a startup, an investor, a lawyer, and so on each see their own relevant fields) and a "Finish it" link to the Profile page.</td></tr>
+        <tr><td>Reports Unlocked</td><td>How many of the site's reports are free to read, out of the total published.</td></tr>
+        <tr><td>Saved Events</td><td>How many events the member has saved. There is no way to save an event anywhere on the site yet, so this is genuinely real and will read 0 until that feature exists &mdash; flagged, not faked.</td></tr>
+        <tr><td>WhatsApp Community</td><td>Shows a "Follow the channel" link to the StartupNews.fyi (MENA) WhatsApp channel until the member clicks it, then remembers "Joined" on that device from then on. Nothing on the server currently confirms real WhatsApp membership, so this is the member's own word, not a verified check.</td></tr>
+        <tr><td>Member Since</td><td>The month and year the member's account was created.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Is the weekly summary sentence real, or written once and left static?</td><td>Real. It is recalculated from the actual reports and events in the system every time the page loads, including the member's own city once their profile has one.</td></tr>
+        <tr><td>What if a member hasn't set their city yet?</td><td>The sentence quietly drops the city-specific event count and invites them to add one, rather than showing a wrong or empty answer.</td></tr>
+        <tr><td>Where did search, notifications and the date/time go?</td><td>Removed along with everything else outside this one card and tile row, per this round's instruction. They can come back on a future request.</td></tr>
+        <tr><td>Did the sidebar, sign-in, or any other dashboard page change?</td><td>No. Only this one home screen.</td></tr>
+      </tbody>
+    </table>
+  </div>
 </section>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v42</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-22</span>
+    </div>
+    <p><strong>What changed.</strong> A new "Founder events near you" section was added below the
+    stat tiles on the member home at <code>/dashboard</code>: three real, live event cards, chosen
+    based on the member's own city.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What the member sees now</th></tr></thead>
+      <tbody>
+        <tr><td>When the member's city has events</td><td>The real, soonest upcoming events in that city &mdash; however many there actually are, up to three. A city with only one upcoming event shows one card, not three.</td></tr>
+        <tr><td>When the member's city has no events yet, or no city is set</td><td>Three real events from three different cities around the world, so the section is never empty, with a line explaining why ("no events in &lt;city&gt; yet" or "add your city to see local events").</td></tr>
+        <tr><td>Each card</td><td>A coloured header with the event's name, its city and country, its date, and a "View Event" button that opens the real event page.</td></tr>
+        <tr><td>"See all events"</td><td>Opens the site's full public Events page.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Are these real events, or examples?</td><td>Real, live events from the same events system that powers the public Events page &mdash; nothing invented.</td></tr>
+        <tr><td>The design shows event categories (like "Networking") and ticket prices &mdash; are those shown?</td><td>No. Neither is tracked anywhere in the system yet, so rather than guess, both were left out and each card instead gets one clear "View Event" button.</td></tr>
+        <tr><td>Is there a way to filter by country, city or date on this card?</td><td>No, by request &mdash; this is a simple, live list, not a filterable search tool.</td></tr>
+        <tr><td>Did anything else on the dashboard change?</td><td>No. Only this one new section was added.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v43</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-22</span>
+    </div>
+    <p><strong>What changed.</strong> Brand Stories is locked, since no brand stories have been
+    published yet. It now shows a lock icon in the left-hand menu and cannot be opened, from the
+    menu or by visiting its address directly.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What the member sees now</th></tr></thead>
+      <tbody>
+        <tr><td>Left-hand menu</td><td>"Brand Stories" appears greyed out with a small lock icon next to it. Clicking or tapping it does nothing.</td></tr>
+        <tr><td>Visiting the page directly</td><td>A clean "Brand Stories is locked" message explaining there's nothing to browse yet, with a button back to the dashboard &mdash; instead of a blank or broken page.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Is this the same page as before, just hidden?</td><td>Yes &mdash; nothing was deleted. The full Brand Stories page is kept as-is and can be switched back on with one setting the moment there's real content to show.</td></tr>
+        <tr><td>Was there a problem with the old page?</td><td>Yes, found while building this: visiting Brand Stories directly used to crash with an error page, caused by an unrelated technical issue in how it displays PDF files. Locking the section the right way &mdash; so the page's own code never runs while locked &mdash; means members will never hit that crash while it's off. The underlying PDF issue itself is still there and noted separately for whenever the page is switched back on.</td></tr>
+        <tr><td>Did any other dashboard section change?</td><td>No. Only Brand Stories.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v44">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v44</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-22</span>
+    </div>
+    <p><strong>What changed.</strong> The "Founder events near you" cards on the member dashboard
+    now look exactly like the event cards on the public Events page &mdash; a real poster photo of
+    the event, its date, its city and country, and a short description &mdash; instead of the
+    earlier plain card with just a coloured header and the event name.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What the member sees now</th></tr></thead>
+      <tbody>
+        <tr><td>Each event card</td><td>The event's own poster photo, its date, its city and country, its name, and a short description &mdash; the same card style used on the public Events page, not a separate look-alike.</td></tr>
+        <tr><td>Which events show, and the fallback to other cities</td><td>Unchanged from before &mdash; up to three real upcoming events in the member's own city, or three events from three different cities when their city has none yet.</td></tr>
+        <tr><td>Clicking a card</td><td>Opens that event's real page, the same page the public Events listing links to.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Why didn't the cards show a real photo before?</td><td>The dashboard was built with its own simplified card design (a coloured header, no photo) before the events system's photo was wired up to it. This change connects it to the exact same event data and the exact same card design the public Events page already uses.</td></tr>
+        <tr><td>Did the events shown, or how they're chosen, change?</td><td>No. Only how each card looks.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v45">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v45</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-22</span>
+    </div>
+    <p><strong>What changed.</strong> The Sales Tracker's "All leads" table used to hold only leads
+    from Feature Your Startup, Submit Your Funding Round, Submit Your Press Release and Sponsor an
+    Event &mdash; plus whatever the sales team typed in by hand. Expand North Star enquiries lived
+    only in their own separate section further down the page. Now every one of those five forms'
+    submissions shows up as a row in the same "All leads" table, so the team has one place to scan
+    everything instead of scrolling between sections. A field that a particular page never asked
+    for &mdash; say, an Expand North Star enquiry has no "Company" &mdash; simply shows a dash in
+    that column rather than being left blank or confusing.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>All leads table</td><td>Now includes Expand North Star enquiries as rows too, alongside the other four page types and hand-entered leads. Fields a row's page doesn't collect show as "&mdash;".</td></tr>
+        <tr><td>Sponsor an Event rows</td><td>Now carry their full event details &mdash; title, date, time, poster, description, external link &mdash; as columns in the same table, and those details can now be edited directly there. Before this change only the general fields (status, who it's assigned to, follow-up notes) were editable from this table; the event details themselves could only be viewed, in a separate section.</td></tr>
+        <tr><td>Clicking a row</td><td>A row from Feature Your Startup, Funding Round, Press Release, Sponsor an Event, or a hand-entered lead opens the same Add/Edit lead window as before. An Expand North Star row opens its own existing detail window &mdash; unchanged, still where the team records who followed up and what was said.</td></tr>
+        <tr><td>Exports (CSV / Excel / PDF)</td><td>Unchanged in what they cover &mdash; the sales-lead rows, now with the added event-detail columns for Sponsor an Event rows. Expand North Star enquiries still aren't included in these exports; they're viewed and actioned in their own section.</td></tr>
+        <tr><td>The Sponsor Event and Expand North Star sections further down the page</td><td>Left exactly as they were &mdash; this is an addition, not a replacement. The team can keep using those sections, or work entirely from the unified table, whichever is easier.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Why weren't Expand North Star enquiries in this table before?</td><td>The team asked for them to be kept fully separate a few days earlier, since they carry a different kind of information (which travel package someone wants, not a company enquiry). That request still stands for where the data is stored and how it's edited &mdash; this change only adds them to the table you look at, so they're easier to see alongside everything else. Editing one still opens its own dedicated window, exactly as before.</td></tr>
+        <tr><td>Does this change what the sales team can edit on an Expand North Star row?</td><td>No. That's still done in the same window as before, with the same fields.</td></tr>
+        <tr><td>Is there anything still pending on this?</td><td>Yes &mdash; one database setup step (adding the new event-detail columns) needs to be run once before Sponsor an Event rows show their event details in the new columns. Until then, those columns will show blank for Sponsor an Event rows created before this update.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v46">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v46</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-22</span>
+    </div>
+    <p><strong>What changed.</strong> The member dashboard home gained a new card inviting members to
+    join "The Morning Pulse", matching a reference design the team supplied, with two of its own
+    numbers/wording adjusted. The card shows a real, live subscription status for the member
+    viewing it, not a fixed state.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What the member sees now</th></tr></thead>
+      <tbody>
+        <tr><td>Not yet subscribed</td><td>A card reading "Join 15,000+ founders getting The Morning Pulse", a short line about what the email covers, an email field pre-filled with the member's own account email, and a "Subscribe free" button.</td></tr>
+        <tr><td>Clicking "Subscribe free"</td><td>Takes the member to the existing Newsletter page, where they pick their topics and save &mdash; the same page and the same save action this app has always used to actually turn a subscription on.</td></tr>
+        <tr><td>Already subscribed</td><td>The next time that member opens the dashboard, this card instead shows a confirmation ("You're subscribed to The Morning Pulse") with a "Manage preferences" link back to the Newsletter page &mdash; no subscribe form shown again.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Why does the button just go to another page instead of subscribing right there?</td><td>Subscribing on this app has always meant picking which topics to receive, on the Newsletter page &mdash; there's no "subscribe with just an email" feature anywhere else in the app. Rather than build a second, different way to subscribe, this card sends the member to the one real place that does it, so both paths always agree on what "subscribed" means.</td></tr>
+        <tr><td>The reference image says "The Morning Pulse" &mdash; is that this app's newsletter?</td><td>This app's newsletter has always been called "Morning Signal" everywhere else it appears (the Newsletter page, its emails). The team was asked which name to use for this card and chose to keep "The Morning Pulse" exactly as shown in the reference image, so that's what's on the card, even though it differs from the name used elsewhere.</td></tr>
+        <tr><td>Did anything about subscribing itself change?</td><td>No. The Newsletter page and how a subscription is saved are unchanged; this card only adds a second doorway to that same, already-existing page.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v47">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v47</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-23</span>
+    </div>
+    <p><strong>What changed.</strong> Wherever the site asks someone to pick a Country and City &mdash;
+    the startup submission form, the List Your Event / Sponsor an Event / Submit Press Release / Submit
+    Funding Round / Expand North Star forms, the admin Sales Tracker's lead form, and the admin
+    Partnership Tracker's Add/Edit Event form &mdash; the City list shown for India is now short and
+    fixed, instead of the longer curated list it showed before.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>India's City dropdown</td><td>Now shows exactly five cities &mdash; Mumbai, Delhi NCR, Bengaluru, Hyderabad, Pune &mdash; followed by an "Others (Manually Fill)" option for typing in anywhere else. Previously showed twelve cities (also included Chennai, Kolkata, Ahmedabad, Jaipur, Chandigarh, Kochi and Goa).</td></tr>
+        <tr><td>The "Others" option's wording</td><td>Standardized to "Others (Manually Fill)" everywhere it appears &mdash; it previously read slightly differently on the public forms versus the admin Partnership Tracker form.</td></tr>
+        <tr><td>Cities that were removed from the list</td><td>Can still appear on their own, automatically, if enough live events are actually happening in that city &mdash; this "earns its place back" behaviour was already how the dropdown worked and was kept as-is, on request.</td></tr>
+        <tr><td>Delhi NCR's own city breakdown (Delhi, Gurugram, Noida, Faridabad, Ghaziabad)</td><td>Unchanged &mdash; still appears in the admin Partnership Tracker's form exactly as before.</td></tr>
+        <tr><td>HR admin panel's "Create New Employee" form</td><td>Checked, as requested &mdash; it does not currently ask for a city or country at all, so there was nothing to change there.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Why did one change fix so many forms at once?</td><td>All of these forms already shared the same underlying list of India cities behind the scenes &mdash; they were built that way specifically so a change like this only has to be made once.</td></tr>
+        <tr><td>Could Chennai, Kolkata, etc. reappear on their own?</td><td>Yes, if a city on the shortened list ever attracts enough currently-listed events on its own, the dropdown will offer it again automatically, the same way it already did before this change. Turning that off entirely was considered and declined for now.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v48">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v48</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-23</span>
+    </div>
+    <p><strong>What changed.</strong> Two fixes to the "Complete your profile" pop-up members see on
+    the dashboard: it now asks for the member's name, and the "Profile complete" percentage shown in
+    the sidebar now properly reflects two fields it was previously ignoring.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>Name field</td><td>The pop-up's first step now asks for "Your name", pre-filled with the member's existing name, right above Phone / WhatsApp. It's required, the same as Phone and Country already were.</td></tr>
+        <tr><td>Why it wasn't there before</td><td>Every account already has a name from when it was created (sign-up, Google, or LinkedIn) &mdash; it was never technically missing. The field was added anyway so a member can see and correct it here, for example if it was auto-filled from their email address during a Google or LinkedIn sign-in.</td></tr>
+        <tr><td>"Profile complete" percentage</td><td>Now correctly counts the Website and Bio fields for every member. Previously, Bio was never counted at all, and Website only counted toward the percentage for members in the "Startup" category &mdash; everyone else could fill in both fields completely and see no credit for it.</td></tr>
+        <tr><td>Does the name field affect the percentage?</td><td>No. A name is guaranteed to already exist on every account, so it wouldn't be a meaningful thing to measure &mdash; it's excluded from the percentage on purpose.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Was the percentage a bug, or just missing two fields?</td><td>The maths itself was correct for whatever it was told to count &mdash; it just wasn't told to count Bio at all, or Website outside the Startup category. Confirmed by checking the corrected calculation against two real member accounts (without changing their data) and hand-verifying the numbers matched.</td></tr>
+        <tr><td>Will a member's existing percentage change because of this?</td><td>Possibly &mdash; a member who already filled in Website or Bio will now see credit for it, so some percentages will go up to more accurately reflect what's actually filled in.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v49">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v49</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-23</span>
+    </div>
+    <p><strong>What changed.</strong> Two changes to the member dashboard's left-hand menu area: the
+    StartupNews logo now lives in its own bar across the very top of the page instead of inside the
+    menu itself, and the profile-completion prompt's button was renamed.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>Logo placement</td><td>On desktop, the menu on the left auto-collapses down to icons only when the mouse isn't over it, to save space &mdash; and until now, the logo collapsed down with it, shrinking to a small icon-only mark. The logo now sits in its own bar running across the full width of the top of the page, at one constant, full size, regardless of whether the menu is collapsed or open.</td></tr>
+        <tr><td>Mobile</td><td>Unaffected &mdash; the phone/tablet slide-out menu doesn't have a collapsed state, so its logo was never affected by this and still appears the same way it always has, inside the menu when it's opened.</td></tr>
+        <tr><td>"Finish it" button</td><td>The button on the dashboard's "Your profile is X% complete" prompt, shown when a member's profile isn't finished, now reads "Complete Your Profile" instead of "Finish it". The button shown once a profile is 100% complete ("View profile") is unchanged.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v50">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v50</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-23</span>
+    </div>
+    <p><strong>What changed.</strong> v45 brought every page's submissions together into the Sales
+    Tracker's "All leads" table. Two older sections further down the same page &mdash; "Sponsor
+    Event submissions" and "Expand North Star enquiries", each with its own row of KPI tiles that
+    only ever showed a view of the same data &mdash; have now been removed, since the unified table
+    already covers everything they showed.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>"Sponsor Event submissions" section</td><td>Removed. Every Sponsor Event lead's full details (event title, date, poster, description, link) are shown and editable in "All leads" as of v45, so this section's read-only view had nothing left to offer.</td></tr>
+        <tr><td>"Expand North Star enquiries" section</td><td>Removed. Its own KPI tiles and filters (Delegation / Booth &amp; POD / Others / Followed Up Leads) are gone; those enquiries are found in "All leads" instead, using that table's own filters and search.</td></tr>
+        <tr><td>Opening and editing an Expand North Star enquiry</td><td>Unchanged &mdash; clicking one in "All leads" opens the exact same detail window as before, with the same view, the same "Edit details" button, and the same fields.</td></tr>
+        <tr><td>The underlying data</td><td>Nothing was deleted. Every Sponsor Event submission and Expand North Star enquiry the team has on file is untouched &mdash; only the extra, now-redundant sections on the page are gone.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can the team still see everything these sections used to show?</td><td>Yes &mdash; all of it is in "All leads" now, in the columns added in v45.</td></tr>
+        <tr><td>Why remove them instead of leaving them as a backup view?</td><td>Team's own request &mdash; once one table shows everything, a second screen repeating the same information just adds a place to look, not a place to act.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v51">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v51</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-23</span>
+    </div>
+    <p><strong>What changed.</strong> The page employees, Publisher Admins and Event Admins use to
+    see the attendance rules HR has set is now called <strong>Admin Rules</strong> (it was "Rules &amp;
+    Policy"). It was a long list of rules, and some of them no longer apply. The page now shows only
+    what HR actually sets, and explains in plain terms how a working day is counted.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>Page name</td><td>"Rules &amp; Policy" becomes "Admin Rules", both in the menu and on the page. The page address stays the same.</td></tr>
+        <tr><td>Headline rules</td><td>Four cards across the top: Shift timings, Grace period (with the exact "punch in by" time), Regularization window and Regularization limit.</td></tr>
+        <tr><td>Removed rows</td><td>"Short leave &mdash; punch-in cutoff" and "Half day &mdash; punch-in cutoff" are gone. HR has no setting for them any more, and arrival time alone no longer decides a day's status.</td></tr>
+        <tr><td>How your day is counted</td><td>Replaces the confusing "4.5 / 7.5 / 8.25 hrs" row with a coloured bar and a table. Each row gives a range of hours worked, the day status it earns, what that means for pay, and a worked example (for instance, "leaving at 6:30 pm, punch in by 10:15 am for a full day").</td></tr>
+        <tr><td>Short Leave quota</td><td>Now shown inside the Short Leave row of that table, next to the pay rule it goes with.</td></tr>
+        <tr><td>Office location rule</td><td>When location checks are on, this is now a short note under the table instead of its own row.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf">
+      <div class="wf-bar">Admin Rules</div>
+      <div class="wf-body">
+        <div class="wf-row">
+          <div class="wf-box solid"><span class="t">Shift timings</span>10:00 am – 6:30 pm · 8h 30m shift</div>
+          <div class="wf-box solid"><span class="t">Grace period</span>15 min · punch in by 10:15 am</div>
+          <div class="wf-box solid"><span class="t">Regularization window</span>5 days</div>
+          <div class="wf-box solid"><span class="t">Regularization limit</span>5 / cycle</div>
+        </div>
+        <div class="wf-box brand" style="margin-top:10px"><span class="t">How your day is counted</span>Coloured bar 0h → 8h 30m: Absent · Half day · Short Leave · Full day, marked at 4h 30m / 7h 30m / 8h 15m</div>
+        <div class="wf-box" style="margin-top:10px"><span class="t">Table</span>8h 15m or more → Full day · full pay · in by 10:15 am<br>7h 30m to under 8h 15m → Short Leave · 2 per month, every 3rd costs half a day · in after 10:15, by 11:00 am<br>4h 30m to under 7h 30m → Half day · half pay · in after 11:00 am, by 2:00 pm<br>Less than 4h 30m → Absent · no pay · in after 2:00 pm</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v52">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v52</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-23</span>
+    </div>
+    <p><strong>What changed.</strong> Until now there was no such thing as Work From Home. When the
+    office-location check was on, someone working from home simply could not punch in. That day was
+    then treated as a day they never came in: it used up a leave day if one was approved, and
+    otherwise a full day's pay was deducted. Employees can now request Work From Home in advance,
+    and on an approved WFH day they can punch in and out from anywhere.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>HR setting</td><td>New "Work from home &mdash; monthly quota" under Rules. It sets how many WFH days each employee may have per month (0 to 10). It starts at 0, which means WFH is off until HR turns it on.</td></tr>
+        <tr><td>Requesting WFH</td><td>On the Leave page, "Work From Home" appears in the type list, with a "X of N left this month" counter. It is approved exactly like leave. Sundays and holidays don't count against the limit.</td></tr>
+        <tr><td>Punching on a WFH day</td><td>The office-location check is skipped, so the browser doesn't ask for location. The attendance card shows "Work From Home approved for today".</td></tr>
+        <tr><td>Pay</td><td>A WFH day is paid like an office day, based on hours worked (Full day / Short Leave / Half day / Absent). It is <em>not</em> paid leave and doesn't use up the Casual leave allowance. A WFH day with no punch counts as Absent.</td></tr>
+        <tr><td>Admin Rules page</td><td>Shows the WFH limit as an extra card when WFH is on, plus a note that WFH days still need punching.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What did a WFH day cost before this?</td><td>A full day's pay (monthly salary &divide; days in the payroll cycle), unless an approved leave covered it.</td></tr>
+        <tr><td>Can someone WFH without asking?</td><td>No. Without an approved WFH request the location check applies as usual.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v53">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v53</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-23</span>
+    </div>
+    <p><strong>What changed.</strong> The Work From Home setup from v52 has been replaced with a much
+    simpler one. There is no monthly limit and nothing for HR to set up. An employee applies for WFH
+    and an admin approves it. Each approved day is then recorded as a full working day
+    automatically, and the employee doesn't punch at all.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>HR setting</td><td>The "Work from home &mdash; monthly quota" setting from v52 has been removed. There is nothing to configure.</td></tr>
+        <tr><td>Applying</td><td>"Work From Home" is always in the type list on the Leave page, for future dates, the same as leave.</td></tr>
+        <tr><td>After approval</td><td>Every working day in the request is filled in with punch-in at shift start and punch-out at shift end (e.g. 10:00 &ndash; 18:30), so it counts as a full day. Sundays and holidays are skipped.</td></tr>
+        <tr><td>On the day</td><td>The attendance card says "Work From Home today &mdash; already marked as a full day". Punching is not needed and not allowed, so a punch can't overwrite the full day.</td></tr>
+        <tr><td>Pay</td><td>Full day's pay. It is not counted as leave and doesn't use up the Casual leave allowance.</td></tr>
+        <tr><td>If approval is withdrawn</td><td>If an approved WFH request is later rejected or deleted, those auto-filled days are removed again.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v54">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v54</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-23</span>
+    </div>
+    <p><strong>What changed.</strong> The Sales Tracker has a new "Leads by page" row of cards,
+    one for each website page that sends in leads. Each card shows how many leads came from that
+    page. Clicking a card shows only that page's leads in the "All leads" table.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>The cards</td><td>Feature Your Startup, Funding Round, Press Release, Sponsor an Event and Expand North Star, each with its lead count.</td></tr>
+        <tr><td>Clicking a card</td><td>Opens "All leads", scrolls to it and filters it to that page. The card is highlighted, and a note above the table says which page is showing, with a "Show all leads" button.</td></tr>
+        <tr><td>Clearing</td><td>Click the highlighted card again, press "Show all leads", or set the "Filter: page leads" dropdown back to "All page leads". All three stay in sync.</td></tr>
+        <tr><td>Counts</td><td>A card's number always matches the number of rows the table shows for that page.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf">
+      <div class="wf-bar">Sales Tracker &mdash; Leads by page</div>
+      <div class="wf-body">
+        <div class="wf-row">
+          <div class="wf-box solid"><span class="t">12</span>Feature Your Startup</div>
+          <div class="wf-box brand"><span class="t">5</span>Funding Round (selected)</div>
+          <div class="wf-box solid"><span class="t">3</span>Press Release</div>
+          <div class="wf-box solid"><span class="t">2</span>Sponsor an Event</div>
+          <div class="wf-box solid"><span class="t">9</span>Expand North Star</div>
+        </div>
+        <div class="wf-box" style="margin-top:10px"><span class="t">All leads</span>"Showing Funding Round leads only &middot; Show all leads" &rarr; table with just those 5 rows</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 11 ───────────────────────── -->
+
+<!-- ───────────────────────── 11 ───────────────────────── -->
 
 <!-- ───────────────────────── 11 ───────────────────────── -->
 <section id="maintenance">

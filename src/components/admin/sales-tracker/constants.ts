@@ -8,9 +8,27 @@ export const TYPES = ['Social Media', 'Events', 'PR-National', 'PR-International
  * above via their own "Filter: page leads" dropdown in LeadsTable — they aren't a channel a team
  * member picks when adding a lead by hand, so they don't belong in the general Filter: type list
  * or the manual "Type of lead" selector. More get appended here as more public forms get wired up
- * the same way. Expand North Star enquiries are deliberately NOT here: they live only in their own
- * card (EnsEnquiriesCard) and never in sales_leads. */
+ * the same way. */
 export const PAGE_LEAD_TYPES = ['Feature Page Leads', 'Funding Round Page Leads', 'Press Release Page Leads', 'Sponsor Event Page Leads'] as const;
+
+/** Expand North Star enquiries still live only in ens_travel_enquiries (never mirrored into
+ * sales_leads — see scripts/migrations/remove-ens-mirrored-sales-leads.sql for why), but the
+ * unified "All leads" table now joins them in at the display layer as read-only rows tagged with
+ * this synthetic type label, alongside PAGE_LEAD_TYPES. Editing one still opens
+ * EnsEnquiryDetailModal and saves through its own endpoint, not the generic lead editor. */
+export const ENS_ENQUIRY_TYPE_LABEL = 'Expand North Star Enquiry';
+/** Every "where did this lead come from" page, in display order — the "Filter: page leads"
+ * dropdown in LeadsTable and the clickable tiles in PageLeadsKpis both read this one list. */
+export const PAGE_LEAD_FILTER_OPTIONS: readonly string[] = [...PAGE_LEAD_TYPES, ENS_ENQUIRY_TYPE_LABEL];
+
+/** Short tile titles for PageLeadsKpis — the public page each lead type comes from. */
+export const PAGE_LEAD_LABELS: Record<string, string> = {
+  'Feature Page Leads': 'Feature Your Startup',
+  'Funding Round Page Leads': 'Funding Round',
+  'Press Release Page Leads': 'Press Release',
+  'Sponsor Event Page Leads': 'Sponsor an Event',
+  [ENS_ENQUIRY_TYPE_LABEL]: 'Expand North Star',
+};
 export const STATUSES = [
   'Query received', 'Initiated', 'Under discussion', 'On hold', 'Dropped',
   'No response', 'Will reach when needed', 'Successfully closed',

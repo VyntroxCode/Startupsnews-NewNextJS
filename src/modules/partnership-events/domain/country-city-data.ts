@@ -111,10 +111,7 @@ export const COUNTRY_NAMES: string[] = Object.keys(COUNTRY_ISO2).sort((a, b) => 
  * why this stays short rather than growing to match COUNTRY_NAMES.
  */
 export const COUNTRY_CITY_DATA: Record<string, string[]> = {
-  India: [
-    'Mumbai', 'Delhi NCR', 'Bengaluru', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata',
-    'Ahmedabad', 'Jaipur', 'Chandigarh', 'Kochi', 'Goa',
-  ],
+  India: ['Mumbai', 'Delhi NCR', 'Bengaluru', 'Hyderabad', 'Pune'],
   USA: ['New York', 'San Francisco', 'Los Angeles', 'Chicago', 'Austin', 'Boston', 'Seattle', 'Washington DC'],
   UK: ['London', 'Manchester', 'Birmingham', 'Edinburgh'],
   UAE: ['Dubai', 'Abu Dhabi', 'Sharjah'],

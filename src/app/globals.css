@@ -10019,7 +10019,6 @@ body .banner-carousel-container,
 
 .fys-shell {
   border-radius: 26px;
-  overflow: hidden;
   background: #fff;
   border: 1px solid var(--fys-line);
   box-shadow: 0 34px 80px rgba(15, 17, 27, 0.13);
@@ -10043,10 +10042,14 @@ body .banner-carousel-container,
   overflow: hidden;
   background: var(--fys-ink-deep);
   min-height: 420px;
+  /* .fys-shell no longer clips its own children (that overflow:hidden was blocking the City/Country
+     dropdown lists from opening past the card's edge) — so this column rounds its own left corners
+     to match the shell's, instead of relying on the parent to clip it square. */
+  border-radius: 26px 0 0 26px;
 }
 
 @media (max-width: 900px) {
-  .fys-image-col { min-height: 240px; }
+  .fys-image-col { min-height: 240px; border-radius: 26px 26px 0 0; }
 }
 
 .fys-image-frame { position: absolute; inset: 0; }

@@ -50,7 +50,7 @@ export async function getUpcomingEvents(limit = 2): Promise<UpcomingEvent[]> {
     return await query<UpcomingEvent>(
       `SELECT event_name AS title, website AS url, COALESCE(NULLIF(city, ''), country) AS location,
               event_start_date AS event_date, event_start_time AS event_time, poster_url AS image_url
-       FROM partnership_events WHERE site_status = 'upcoming' AND event_start_date >= CURDATE()
+       FROM partnership_events WHERE site_status = 'upcoming' AND COALESCE(event_end_date, event_start_date) >= CURDATE()
        ORDER BY event_start_date ASC LIMIT ?`,
       [limit]
     );

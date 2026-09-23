@@ -14,6 +14,10 @@ interface LeaveMeData {
   leaveBalance?: Record<string, number>;
 }
 
+/** Must match WFH_LEAVE_TYPE in src/modules/hr-tool/domain/types.ts. */
+const WFH_TYPE = 'WFH';
+const typeLabel = (t: string) => (t === WFH_TYPE ? 'Work From Home' : t);
+
 const cardStyle: CSSProperties = {
   background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
   padding: '2rem',
@@ -197,7 +201,7 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
           <tbody>
             {requests.map((r) => (
               <tr key={r.id}>
-                <td style={tdStyle}>{r.type}</td>
+                <td style={tdStyle}>{typeLabel(r.type)}</td>
                 <td style={tdStyle}>{r.from}{r.to !== r.from ? ` – ${r.to}` : ''}</td>
                 <td style={tdStyle}>
                   {r.remarks}
@@ -223,6 +227,7 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
               <label style={labelStyle}>Leave type</label>
               <select value={type} onChange={(e) => setType(e.target.value)} style={inputStyle}>
                 {enabledTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                <option value={WFH_TYPE}>Work From Home</option>
                 <option value="__other__">Other (please specify)</option>
               </select>
             </div>
@@ -247,6 +252,11 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Reason for leave…" style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
             </div>
             <div style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: 1.5 }}>Leave can only be applied for future dates, starting tomorrow. For today or a past date, use Regularization instead.</div>
+            {type === WFH_TYPE && (
+              <div style={{ padding: '0.6rem 0.85rem', background: '#ecfdf5', color: '#065f46', fontSize: '0.8rem', borderRadius: 8, border: '1px solid #a7f3d0', lineHeight: 1.5 }}>
+                Once approved, each of these days is marked as a full day automatically — Punch In and Punch Out are filled in with your shift times, so there&apos;s no need to punch. Sundays and holidays are skipped.
+              </div>
+            )}
             {submitError && (
               <div style={{ padding: '0.6rem 0.85rem', background: '#fef2f2', color: '#991b1b', fontSize: '0.8rem', borderRadius: 8, border: '1px solid #fca5a5' }}>{submitError}</div>
             )}

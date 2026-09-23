@@ -631,9 +631,14 @@ const DAILY_REPORT_WHATSAPP_NUMBER = '919625952588';
 
 const ACTIVITY_KEY = 'pt_activity_log';
 const BELL_DISMISSED_KEY = 'pt_bell_dismissed_date';
-const BELL_LAST_RING_KEY = 'pt_bell_last_ring';
-const BELL_SNOOZE_MS = 15 * 60 * 1000;
+// "<IST day>|<comma-separated slot keys already rung today>", e.g. "2026-09-22|18:00,18:15"
+const BELL_RUNG_KEY = 'pt_bell_rung_slots';
 const BELL_RINGTONE_URL = 'https://assets.mixkit.co/active_storage/sfx/1356/1356.wav';
+// Daily report bell — rings once at 6:00 PM IST, plus a single reminder at 6:15 PM IST.
+const BELL_SLOTS: { hour: number; minute: number }[] = [
+  { hour: 18, minute: 0 },
+  { hour: 18, minute: 15 },
+];
 
 // "Live" = not expired. "Partner" events are the subset actually in the partnership
 // pipeline — Cancelled and Only Listing events don't count as a partner event.
@@ -653,9 +658,21 @@ function personCounts<T>(list: T[], getPerson: (item: T) => string): string {
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => `${name} (${count})`).join(', ');
 }
 
+// Day stamp and time-of-day, both computed in IST (Asia/Kolkata) regardless of the
+// admin's browser/OS timezone — the daily report bell is scheduled against IST clock time.
 function dayStamp(d?: Date): string {
-  const x = d || new Date();
-  return `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(d || new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+function istTimeParts(d?: Date): { hours: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(d || new Date());
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value || 0);
+  return { hours: get('hour'), minutes: get('minute') };
 }
 function loadActivityLog(): ActivityEntry[] {
   try {
@@ -857,24 +874,36 @@ export default function PartnershipTrackerPage() {
   }
   function dismissBellForToday() {
     localStorage.setItem(BELL_DISMISSED_KEY, dayStamp());
-    localStorage.removeItem(BELL_LAST_RING_KEY);
+    localStorage.removeItem(BELL_RUNG_KEY);
     setBellDue(false);
   }
-  // Once the report is due (past 5pm and not dismissed today), keep re-ringing every 15
-  // minutes — a snooze reminder — instead of ringing once and going quiet, so it nags
-  // until the report actually gets sent.
+  // Rings once at 6:00 PM IST (report due) and once more at 6:15 PM IST (reminder), then
+  // stays quiet — each slot is recorded in BELL_RUNG_KEY so it can only fire once per day,
+  // even across polls, page reloads, or the tab being opened late (a missed slot still
+  // fires once on the next poll after its time, it just doesn't repeat).
   function checkBell() {
     const now = new Date();
-    const dismissedToday = localStorage.getItem(BELL_DISMISSED_KEY) === dayStamp();
-    const due = now.getHours() >= 17 && !dismissedToday;
-    setBellDue(due);
-    if (due) {
-      const lastRing = Number(localStorage.getItem(BELL_LAST_RING_KEY) || 0);
-      if (now.getTime() - lastRing >= BELL_SNOOZE_MS) {
+    const today = dayStamp(now);
+    const { hours, minutes } = istTimeParts(now);
+    const dismissedToday = localStorage.getItem(BELL_DISMISSED_KEY) === today;
+    setBellDue(hours >= 18 && !dismissedToday);
+    if (dismissedToday) return;
+
+    const [rungDay, rungSlotsStr] = (localStorage.getItem(BELL_RUNG_KEY) || '').split('|');
+    const rungSlots = new Set(rungDay === today ? rungSlotsStr.split(',').filter(Boolean) : []);
+
+    let changed = false;
+    for (const slot of BELL_SLOTS) {
+      const slotKey = `${slot.hour}:${slot.minute}`;
+      if (rungSlots.has(slotKey)) continue;
+      const reached = hours > slot.hour || (hours === slot.hour && minutes >= slot.minute);
+      if (reached) {
         playBellSound();
-        localStorage.setItem(BELL_LAST_RING_KEY, String(now.getTime()));
+        rungSlots.add(slotKey);
+        changed = true;
       }
     }
+    if (changed) localStorage.setItem(BELL_RUNG_KEY, `${today}|${[...rungSlots].join(',')}`);
   }
 
   function buildDailyReportText(): string {
@@ -2117,7 +2146,7 @@ export default function PartnershipTrackerPage() {
                     >
                       <option value="">Select city</option>
                       {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                      <option value="__other__">Others…</option>
+                      <option value="__other__">Others (Manually Fill)</option>
                     </select>
                     {otherCityMode && (
                       <input

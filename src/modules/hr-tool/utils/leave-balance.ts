@@ -15,7 +15,7 @@
  *    and accrual restarts as if January were a fresh "joining month" (so a tenured employee
  *    goes straight back to `perMonth` on 1 Jan, not 0).
  */
-import { eachDateInRange } from './time';
+import { eachDateInRange, isSunday } from './time';
 
 /** How many months' worth of accrual have landed for this calendar year as of `asOf` — 0 if
  * the employee hasn't joined yet (relative to `asOf`) or `doj` is missing/unparseable. Doesn't
@@ -37,8 +37,11 @@ export function monthsAccruedThisYear(doj: string, asOf: string): number {
 interface LeaveUsageRow { type: string; from: string; to: string; status: string; }
 
 /** Approved days of `type` this employee has used, clipped to the calendar year of `asOf` —
- * a request spanning outside that year (e.g. Dec 28 → Jan 3) only counts the days inside it. */
-export function usedDaysThisYearByType(requests: LeaveUsageRow[], type: string, asOf: string): number {
+ * a request spanning outside that year (e.g. Dec 28 → Jan 3) only counts the days inside it.
+ * Sundays and admin holidays inside the range are NOT counted — they're paid week-offs, exactly
+ * as computePayrollForMonth treats them, so a Sat→Mon leave uses 2 days of balance, not 3. */
+export function usedDaysThisYearByType(requests: LeaveUsageRow[], type: string, asOf: string, holidayDates: Iterable<string> = []): number {
+  const holidaySet = new Set(holidayDates);
   const year = asOf.slice(0, 4);
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
@@ -48,7 +51,7 @@ export function usedDaysThisYearByType(requests: LeaveUsageRow[], type: string, 
     const clippedFrom = r.from < yearStart ? yearStart : r.from;
     const clippedTo = r.to > yearEnd ? yearEnd : r.to;
     if (clippedFrom > clippedTo) continue;
-    total += eachDateInRange(clippedFrom, clippedTo).length;
+    total += eachDateInRange(clippedFrom, clippedTo).filter((d) => !isSunday(d) && !holidaySet.has(d)).length;
   }
   return total;
 }
@@ -67,12 +70,15 @@ export function computeLeaveBalances(
   doj: string,
   leaveTypes: Record<string, { enabled: boolean; perMonth: number }>,
   requests: LeaveUsageRow[],
-  asOf: string
+  asOf: string,
+  /** Admin holiday dates ("YYYY-MM-DD") — skipped along with Sundays when counting days used. */
+  holidayDates: Iterable<string> = []
 ): Record<string, number> {
+  const holidays = Array.from(holidayDates);
   const out: Record<string, number> = {};
   for (const [name, cfg] of Object.entries(leaveTypes)) {
     if (!cfg.enabled) continue;
-    out[name] = computeLeaveBalance(doj, asOf, cfg.perMonth, usedDaysThisYearByType(requests, name, asOf));
+    out[name] = computeLeaveBalance(doj, asOf, cfg.perMonth, usedDaysThisYearByType(requests, name, asOf, holidays));
   }
   return out;
 }

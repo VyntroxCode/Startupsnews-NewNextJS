@@ -110,5 +110,11 @@
 		"safari >= 15.4",
 		"ios_saf >= 15.4",
 		"not dead"
-	]
+	],
+	"allowScripts": {
+		"@parcel/watcher@2.5.1": true,
+		"esbuild@0.27.3": true,
+		"sharp@0.34.5": true,
+		"unrs-resolver@1.11.1": true
+	}
 }

@@ -32,17 +32,17 @@ export async function POST(req: NextRequest) {
     if (!pubUserId) return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
 
     const body = await req.json() as {
-      phone?: string; country?: string; city?: string; linkedin_url?: string; website?: string; bio?: string;
+      name?: string; phone?: string; country?: string; city?: string; linkedin_url?: string; website?: string; bio?: string;
       category?: string; otherCategory?: string;
       profile?: Partial<RegistrationProfileFields>;
       founders?: Founder[];
       fundingRounds?: FundingRound[];
     };
 
-    const { phone, country, city, linkedin_url, website, bio, category, otherCategory, profile, founders, fundingRounds } = body;
+    const { name, phone, country, city, linkedin_url, website, bio, category, otherCategory, profile, founders, fundingRounds } = body;
 
     await repo.updateProfile(pubUserId, {
-      phone, country, city, linkedin_url, website, bio,
+      name, phone, country, city, linkedin_url, website, bio,
       category,
       other_category: otherCategory,
       ...(profile || {}),

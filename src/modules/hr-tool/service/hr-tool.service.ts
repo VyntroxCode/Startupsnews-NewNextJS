@@ -2,7 +2,7 @@ import { HrToolRepository } from '../repository/hr-tool.repository';
 import {
   HrBootstrap, HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPunchGeo,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrPayrollEntry, HrRules, HrAuditLogEntry, HrCompanyProfile,
-  HrLeaveTypeConfig, HrEmployeeRef,
+  HrLeaveTypeConfig, HrEmployeeRef, WFH_LEAVE_TYPE,
 } from '../domain/types';
 import { todayStr, nowTimeStr, nowMinutesSinceMidnight, nowMysqlDatetime, payrollPeriodRange, eachDateInRange, isSunday, addDaysUTC, daysUntil } from '../utils/time';
 import { latenessBucket, realDayHoursBucket, hhmmToMinutes, formatTime12h } from '../utils/lateness';
@@ -185,7 +185,8 @@ export class HrToolService {
       this.repository.findLeaveRequestsForEmployee(employeeId),
     ]);
     const source = rules || DEFAULT_RULES;
-    return computeLeaveBalances(employee?.doj || '', source.leaveTypes, requests, todayStr());
+    const holidays = await this.repository.findHolidays();
+    return computeLeaveBalances(employee?.doj || '', source.leaveTypes, requests, todayStr(), holidays.map((h) => h.date));
   }
   getRegularizationsForEmployee(employeeId: string) { return this.repository.findRegularizationsForEmployee(employeeId); }
   countRegularizationsForEmployeeInRange(employeeId: string, fromDate: string, toDate: string) {
@@ -299,6 +300,13 @@ export class HrToolService {
   }
 
   getLeaveRequestsForEmployee(employeeId: string) { return this.repository.findLeaveRequestsForEmployee(employeeId); }
+
+  /** Whether `date` is covered by one of this employee's APPROVED Work From Home requests — such a
+   * day is already a full shift in hr_attendance, so punchEmployee refuses to punch over it. */
+  async isApprovedWfhDay(employeeId: string, date: string): Promise<boolean> {
+    const reqs = await this.repository.findLeaveRequestsForEmployeeInRange(employeeId, date, date);
+    return reqs.some((r) => r.type === WFH_LEAVE_TYPE && r.status === 'approved');
+  }
 
   /**
    * Employee-submitted leave request, used by the isolated Publisher/Event Admin and
@@ -554,6 +562,12 @@ export class HrToolService {
     const existing = await this.getPunchByEmployee(employee.id);
     const todaysPunch = existing?.date === today ? existing : null;
 
+    // An approved Work From Home day is already recorded as a full shift (syncWfhAttendance) —
+    // a real punch would overwrite it, so there's nothing to punch.
+    if (await this.isApprovedWfhDay(employee.id, today)) {
+      return { ok: false, error: 'Today is an approved Work From Home day — it is already marked as a full day.', code: 'ALREADY_PUNCHED' };
+    }
+
     // Duplicate-punch check comes BEFORE the geofence so someone who already punched in today
     // gets "Already punched in" rather than a confusing location error.
     if (type === 'in' && todaysPunch?.inTime) {
@@ -665,7 +679,43 @@ export class HrToolService {
 
     return { ok: true, updated };
   }
-  saveLeaveRequests(items: HrLeaveRequest[]) { return this.repository.replaceLeaveRequests(items); }
+  async saveLeaveRequests(items: HrLeaveRequest[]) {
+    await this.repository.replaceLeaveRequests(items);
+    await this.syncWfhAttendance(items);
+  }
+
+  /**
+   * Work From Home: every working day (not Sunday / holiday) of an APPROVED WFH request is written
+   * to hr_attendance as a full shift — punch-in at shift start, punch-out at shift end, status
+   * 'WFH' — so the calendar, Today table and payroll all read it as a Full day with no special
+   * casing. WFH rows no longer backed by an approved request (rejected or deleted after approval)
+   * are removed. Idempotent: runs on every save of the leave list, which is how HR approves.
+   */
+  async syncWfhAttendance(items: HrLeaveRequest[]): Promise<void> {
+    const [rulesRow, holidays, existing] = await Promise.all([
+      this.repository.findRules(), this.repository.findHolidays(), this.repository.findWfhAttendanceDays(),
+    ]);
+    const rules = rulesRow || DEFAULT_RULES;
+    const holidaySet = new Set(holidays.map((h) => h.date));
+    const inM = hhmmToMinutes(rules.shiftStartTime);
+    const outM = hhmmToMinutes(rules.shiftEndTime);
+    const keep = new Set<string>();
+    for (const r of items) {
+      if (r.type !== WFH_LEAVE_TYPE || r.status !== 'approved' || !r.employeeId) continue;
+      for (const date of eachDateInRange(r.from, r.to)) {
+        if (isSunday(date) || holidaySet.has(date)) continue;
+        keep.add(`${r.employeeId}|${date}`);
+        await this.repository.upsertAttendance({
+          employeeId: r.employeeId, emp: r.emp, date, status: 'WFH',
+          inTime: formatTime12h(inM), inMinutes: inM, outTime: formatTime12h(outM), outMinutes: outM,
+          inGeo: null, outGeo: null,
+        });
+      }
+    }
+    for (const d of existing) {
+      if (!keep.has(`${d.employeeId}|${d.date}`)) await this.repository.deleteAttendanceDay(d.employeeId, d.date);
+    }
+  }
   saveExpenses(items: HrExpense[]) { return this.repository.replaceExpenses(items); }
   saveTickets(items: HrTicket[]) { return this.repository.replaceTickets(items); }
   saveTemplate(name: string, content: string) { return this.repository.upsertTemplate(name, content); }
@@ -782,7 +832,9 @@ export class HrToolService {
 
       const approvedLeaveDates = new Set<string>();
       for (const leave of leaves) {
-        if (leave.status !== 'approved') continue;
+        // A Work From Home day is not leave: syncWfhAttendance has already written it as a full
+        // shift, so it's paid as a worked day and must not also use up the Casual allowance.
+        if (leave.status !== 'approved' || leave.type === WFH_LEAVE_TYPE) continue;
         const leaveFrom = leave.from > clippedFrom ? leave.from : clippedFrom;
         const leaveTo = leave.to < to ? leave.to : to;
         if (leaveFrom > leaveTo) continue;

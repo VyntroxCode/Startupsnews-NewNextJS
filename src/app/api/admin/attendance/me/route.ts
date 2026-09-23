@@ -60,7 +60,11 @@ export async function GET(request: NextRequest) {
         regularizations,
         regularizationPolicy: { windowDays: policy.regularizationWindowDays, monthlyQuota: regUsage.quota, usedThisMonth: regUsage.used, cycleFrom: regUsage.from, cycleTo: regUsage.to },
         // Tells the widget whether to ask the browser for location before punching.
-        geofence: { enabled: policy.geoFencing, radiusM: policy.geoFenceRadiusM },
+        geofence: {
+          enabled: policy.geoFencing, radiusM: policy.geoFenceRadiusM,
+          // Approved Work From Home today → already recorded as a full day; the widget hides punching.
+          wfhToday: await hrToolService.isApprovedWfhDay(employee.id, todayStr()),
+        },
       },
     });
   } catch (error) {

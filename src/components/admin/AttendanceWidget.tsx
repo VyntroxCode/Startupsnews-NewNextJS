@@ -22,7 +22,7 @@ interface AttendanceMeData {
   regularizations?: RegularizationRecord[];
   regularizationPolicy?: { windowDays: number; monthlyQuota: number; usedThisMonth: number };
   /** When enabled, punch() asks the browser for a GPS fix first; the server does the actual check. */
-  geofence?: { enabled: boolean; radiusM: number };
+  geofence?: { enabled: boolean; radiusM: number; wfhToday?: boolean };
 }
 
 const cardStyle: CSSProperties = {
@@ -299,7 +299,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const hasIn = !!selectedRecord?.inTime && selectedRecord.inTime !== '—';
   const hasOut = !!selectedRecord?.outTime && selectedRecord.outTime !== '—';
   const selectedHoliday = holidayMap.get(selectedDate);
-  const rowStatus = selectedHoliday ? `Holiday — ${selectedHoliday}` : selectedRecord?.status || (isSelectedToday ? 'Not punched in yet' : 'No record');
+  const rowStatus = selectedHoliday ? `Holiday — ${selectedHoliday}` : (selectedRecord?.status === 'WFH' ? 'Work From Home — full day' : selectedRecord?.status) || (isSelectedToday ? 'Not punched in yet' : 'No record');
   // Combined bucket (arrival time + hours worked, worse of the two) drives the day's displayed
   // status/color; the pure arrival-time bucket separately gates punch-in Regularization, since
   // that's specifically about correcting the punch-in itself, not the day's overall outcome —
@@ -338,7 +338,12 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             Shift: {shiftRules.shiftStartTime}–{shiftRules.shiftEndTime} — set by HR
           </p>
         )}
-        {data.geofence?.enabled && (
+        {data.geofence?.wfhToday && (
+          <p style={{ color: '#047857', fontSize: '0.8125rem', margin: '0.25rem 0 0', fontWeight: 600 }}>
+            🏠 Work From Home today — already marked as a full day ({shiftRules?.shiftStartTime} – {shiftRules?.shiftEndTime}). No need to punch.
+          </p>
+        )}
+        {data.geofence?.enabled && !data.geofence.wfhToday && (
           <p style={{ color: '#94a3b8', fontSize: '0.8125rem', margin: '0.25rem 0 0' }}>
             📍 Punch In / Punch Out only within {data.geofence.radiusM} m of the office — your browser will ask for your location.
           </p>

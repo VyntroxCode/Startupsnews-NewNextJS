@@ -26,6 +26,13 @@ export class SalesTrackerRepository {
       lead.type || null,
       lead.otherType || null,
       lead.query || null,
+      lead.eventTitle || null,
+      lead.eventSlug || null,
+      lead.eventDate || null,
+      lead.eventTime || null,
+      lead.externalUrl || null,
+      lead.posterUrl || null,
+      lead.description || null,
       lead.assignedTo || null,
       lead.status || null,
       lead.nextFollowUpDate || null,
@@ -34,13 +41,16 @@ export class SalesTrackerRepository {
     ];
     await query(
       `INSERT INTO sales_leads
-        (id, lead_date, name, company, contact, email, country, city, source, type, other_type, query_text, assigned_to, status, next_follow_up_date, last_connect_date, last_call_discussion)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, lead_date, name, company, contact, email, country, city, source, type, other_type, query_text, event_title, event_slug, event_date, event_time, external_url, poster_url, description, assigned_to, status, next_follow_up_date, last_connect_date, last_call_discussion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
         lead_date = VALUES(lead_date), name = VALUES(name), company = VALUES(company), contact = VALUES(contact),
         email = VALUES(email), country = VALUES(country), city = VALUES(city), source = VALUES(source),
         type = VALUES(type), other_type = VALUES(other_type),
-        query_text = VALUES(query_text), assigned_to = VALUES(assigned_to), status = VALUES(status),
+        query_text = VALUES(query_text), event_title = VALUES(event_title), event_slug = VALUES(event_slug),
+        event_date = VALUES(event_date), event_time = VALUES(event_time), external_url = VALUES(external_url),
+        poster_url = VALUES(poster_url), description = VALUES(description),
+        assigned_to = VALUES(assigned_to), status = VALUES(status),
         next_follow_up_date = VALUES(next_follow_up_date), last_connect_date = VALUES(last_connect_date),
         last_call_discussion = VALUES(last_call_discussion)`,
       params

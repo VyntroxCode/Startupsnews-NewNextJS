@@ -45,6 +45,10 @@ export function leadExportRow(l: SalesLead): Record<string, string> {
     Email: l.email || '', Country: l.country || '', City: l.city || '', Source: l.source || '', Type: typeLabel, Query: l.query || '',
     'Assigned To': l.assignedTo || '', 'Current Status': l.status || '', 'Next Follow-up': l.nextFollowUpDate || '',
     'Last Connect Date': l.lastConnectDate || '', 'Last Call Discussion': l.lastCallDiscussion || '',
+    // Populated only for Sponsor Event Page Leads — blank for every other row, same "-" convention
+    // the unified All leads table uses on screen.
+    'Event Title': l.eventTitle || '', 'Event Date': l.eventDate || '', 'Event Time': l.eventTime || '',
+    'External URL': l.externalUrl || '', 'Poster': l.posterUrl || '', 'Event Description': l.description || '',
   };
 }
 
@@ -53,5 +57,6 @@ export function emptyLead(): SalesLead {
     id: '', date: todayStr(), name: '', company: '', contact: '', email: '', country: '', city: '', source: '',
     type: 'Social Media', otherType: '', query: '', assignedTo: '', status: 'Query received',
     nextFollowUpDate: '', lastConnectDate: '', lastCallDiscussion: '',
+    eventTitle: '', eventSlug: '', eventDate: '', eventTime: '', externalUrl: '', posterUrl: '', description: '',
   };
 }

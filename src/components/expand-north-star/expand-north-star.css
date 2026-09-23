@@ -237,7 +237,7 @@
   position: sticky;
   top: var(--ens-nav-top, 0px);
   z-index: 40;
-  padding: clamp(12px, 1.6vw, 20px) var(--ens-gutter);
+  padding: clamp(8px, 1vw, 13px) var(--ens-gutter);
   background: linear-gradient(100deg, #FFFFFF 0%, #FDF1F7 45%, #F4CDE4 100%);
   transition: padding 0.5s var(--ens-ease), box-shadow 0.5s ease;
 }
@@ -273,8 +273,9 @@
 }
 
 /* 700 → 560px on 2026-09-18 for space before the button; 680px on 2026-09-19 (too small on wide
-   screens) now that the row itself is capped instead. */
-.ens-nav-inner .ens-nav-logo { flex: 0 1 680px; min-width: 0; }
+   screens) now that the row itself is capped instead; 540px on 2026-09-23 as part of shrinking the
+   whole bar's height — the lockup's aspect ratio (1920×245) ties its height to this width. */
+.ens-nav-inner .ens-nav-logo { flex: 0 1 540px; min-width: 0; }
 
 /* Matches the thin vertical rules inside the lockup itself. */
 .ens-nav-divider {
@@ -305,7 +306,7 @@
   margin: 0;
   padding: 0;
   font-family: var(--ens-strip-font, var(--ens-sans));
-  font-size: clamp(13px, 1.7vw, 25px);
+  font-size: clamp(11px, 1.3vw, 19px);
   font-weight: 900;
   line-height: 1.02;
   letter-spacing: 0.01em;
@@ -351,7 +352,7 @@
 .ens-nav-konnect-img {
   display: block;
   width: auto;
-  height: clamp(34px, 3.8vw, 62px);
+  height: clamp(26px, 2.9vw, 48px);
   transition: height 0.6s var(--ens-ease);
 }
 
@@ -368,12 +369,12 @@
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  padding: 0.68em 1.35em;
+  padding: 0.6em 1.2em;
   border-radius: 999px;
   background: var(--ens-pink);
   color: #fff;
   font-family: var(--ens-strip-font, var(--ens-sans));
-  font-size: clamp(11px, 1.05vw, 14px);
+  font-size: clamp(10px, 0.95vw, 13px);
   font-weight: 800;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -478,10 +479,10 @@
   transition: font-size 0.4s var(--ens-ease);
 }
 
-/* Once the page has scrolled the title drops to half its size (2026-09-19, on request): full
-   width at the top of the page, 50% while reading, so the pinned stack takes half the room. EnsNav
-   watches the band's border-box, so the bar follows the shrink. */
-.ens-delegation-band.is-scrolled .ens-delegation-title { font-size: calc(100cqi / 36); }
+/* The title used to drop to half its size once scrolled (2026-09-19 — 2026-09-21); dropped on
+   request: the title now stays the same full size at every scroll position, matching the top of
+   the page. The band's padding still tightens on scroll (`.is-scrolled` above) — only the text
+   itself no longer shrinks. */
 
 .ens-delegation-accent { color: var(--ens-pink); }
 
@@ -493,10 +494,80 @@
 /* ---- Hero ----------------------------------------------------------------- */
 
 .ens-hero {
+  position: relative;
   isolation: isolate;
   overflow: hidden;
   padding: clamp(26px, 3.4vw, 42px) 0 var(--ens-section-y);
   background: linear-gradient(180deg, #FCEFF6 0%, #F9E2EF 55%, #F5CDE3 100%);
+}
+
+/* Headline block: the "back to home" pill stacked above the heading, always — not beside it.
+   Beside-the-heading (flex row) was tried first, but it's geometrically incompatible with the pill
+   sitting near the browser's true left edge: on ordinary desktop widths (roughly 1024-1296px) the
+   gap between the true edge and where the heading/video column starts is only ~25-40px, far
+   narrower than a pill with a visible "Back To Home" label (~170px) — sharing a row meant the pill
+   necessarily overlapped the start of the heading text. Stacking removes the conflict entirely: the
+   heading is a plain block with nothing beside it, so it always starts at the same x as the video
+   card below it (`.ens-hero-stage`), and the pill's own left offset (below) is free to reach toward
+   the true edge without touching anything. */
+.ens-hero-title-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(12px, 1.6vw, 18px);
+}
+
+/* Pink-on-white pill (icon + "Back To Home" label), the same "translate for hover, not transform"
+   convention every other button on this page follows, since Motion doesn't own this element's
+   transform. `flex-shrink: 0` keeps its own size fixed rather than being squeezed by the heading's
+   width; `white-space: nowrap` keeps the label on one line at any pill width. */
+.ens-home-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px 0 14px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ens-pink);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 10px 22px -12px rgba(228, 21, 124, 0.85);
+  transition: background 0.3s var(--ens-ease), color 0.3s var(--ens-ease), box-shadow 0.3s var(--ens-ease), translate 0.3s var(--ens-ease);
+}
+
+.ens-home-btn svg { flex-shrink: 0; }
+
+/* Pulled almost all the way to the browser's own left edge — not just `.ens-wrap`'s padded
+   content-column edge, but past the wrap's own `margin-inline: auto` centering inset too, which
+   only vanishes once the viewport is narrower than the wrap's own max-width. `max(0px, ...)` is
+   that inset (zero below ~1296px, where the wrap already fills the viewport); adding the gutter on
+   top cancels the wrap's left padding the same way the single-gutter version of this rule always
+   did. `+ 16px` (not a full cancel to 0) leaves a small fixed breathing margin off the true edge —
+   the first version landed the button flush at 0px, which read as glued to the browser's edge with
+   no margin at all. */
+.ens-home-btn {
+  margin-left: calc(-1 * (var(--ens-gutter) + max(0px, (100vw - var(--ens-column) - 2 * var(--ens-gutter)) / 2)) + 16px);
+}
+
+.ens-home-btn:hover {
+  background: var(--ens-pink);
+  color: #fff;
+  box-shadow: 0 14px 26px -12px rgba(189, 12, 99, 0.95);
+  translate: 0 -2px;
+}
+
+.ens-home-btn:focus-visible {
+  outline: 2px solid var(--ens-ink);
+  outline-offset: 3px;
+}
+
+@media (max-width: 559px) {
+  .ens-home-btn { height: 38px; padding: 0 14px 0 10px; font-size: 13px; }
+  .ens-home-btn svg { width: 17px; height: 17px; }
 }
 
 .ens-hero-blob-a {
@@ -544,6 +615,17 @@
 }
 
 .ens-hero-media { position: absolute; inset: -7% 0; }
+
+/* The hero's YouTube embed, filling `.ens-hero-media` exactly like the video it replaced — the
+   card's `overflow: hidden` crops the -7% top/bottom overscan for the same scroll-drift effect. */
+.ens-hero-yt {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
+}
 
 .ens-hero-shade {
   position: absolute;
@@ -1139,6 +1221,13 @@
   padding: var(--ens-section-y) 0;
   background: #0A0A0B;
   color: #fff;
+  /* Fallback for the plain `#ens-days` jump from the "More Info" button before its JS handler
+     runs: clears the sticky delegation band plus the bar, same reasoning as `.ens-journey`'s. */
+  scroll-margin-top: 180px;
+}
+
+@media (max-width: 760px) {
+  .ens-days { scroll-margin-top: 130px; }
 }
 
 .ens-days .ens-title { color: #fff; }

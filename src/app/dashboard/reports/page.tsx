@@ -7,12 +7,56 @@ import { useSearchParams } from 'next/navigation';
 import { getPublicToken } from '@/lib/public-auth';
 import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
 
+/** Branded animated loader for the report-preview modal — covers both gaps that used to
+ * render as a blank white box: the `react-pdf` chunk itself loading (no `loading` fallback
+ * was set on the `dynamic()` call below), and the actual PDF byte-range fetch once it's
+ * mounted (react-pdf's own `<Document loading>` prop). Also reused for the image-preview
+ * case so every file type gets the same feedback while its bytes are still in flight.
+ * `position: absolute; inset: 0` (not `width/height: 100%`) deliberately — react-pdf's
+ * `<Document>` wraps whatever `loading` is given in its own div with no explicit width, so a
+ * percentage-sized child there shrink-wraps to its own content (previously produced a narrow
+ * vertical strip with the spinner squeezed inside it, not the full preview pane); `absolute`
+ * instead reaches past that shrink-wrapped wrapper to the nearest *positioned* ancestor — the
+ * pane the caller already marks `position: relative` — and fills it regardless. */
+function ReportLoader() {
+  return (
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+        <span className="report-loader-ring" aria-hidden="true" />
+        <span className="report-loader-text">Preparing your report…</span>
+      </div>
+      <style jsx>{`
+        .report-loader-ring {
+          width: 52px; height: 52px; border-radius: 50%;
+          border: 4px solid rgba(238, 23, 97, 0.15);
+          border-top-color: #ee1761;
+          animation: report-loader-spin 0.85s linear infinite;
+        }
+        .report-loader-text {
+          font-size: 14px; font-weight: 600; color: #64748b;
+          animation: report-loader-pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes report-loader-spin { to { transform: rotate(360deg); } }
+        @keyframes report-loader-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+        @media (prefers-reduced-motion: reduce) {
+          .report-loader-ring { animation: none; border-top-color: rgba(238, 23, 97, 0.45); }
+          .report-loader-text { animation: none; opacity: 0.85; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // react-pdf pulls in the ~pdf.js core, only needed once a report preview is opened —
-// load it on demand instead of bundling it into every /dashboard/reports page load.
+// load it on demand instead of bundling it into every /dashboard/reports page load. The
+// `loading` fallback here is what covers the chunk-fetch gap (previously blank/null, since
+// `dynamic()` renders nothing until the import resolves) — it can't see the open report's
+// own thumbnail (this call is module-scope, outside the component), so it shows the plain
+// spinner; the report-specific thumbnail-backed version is passed to `<Document loading>` below.
 const Document = dynamic(() => import('react-pdf').then((m) => {
   m.pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${m.pdfjs.version}/build/pdf.worker.min.mjs`;
   return m.Document;
-}), { ssr: false });
+}), { ssr: false, loading: () => <ReportLoader /> });
 const Page = dynamic(() => import('react-pdf').then((m) => m.Page), { ssr: false });
 
 // Module-level constant so the reference is stable across renders — react-pdf treats a new
@@ -128,6 +172,7 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [visibleCount, setVisibleCount] = useState(CARD_BATCH);
   const gridSentinelObserver = useRef<IntersectionObserver | null>(null);
+  const [previewImageLoaded, setPreviewImageLoaded] = useState(false);
   const [pdfNumPages, setPdfNumPages] = useState(0);
   const [pdfViewportWidth, setPdfViewportWidth] = useState(0);
   const [pdfVisiblePages, setPdfVisiblePages] = useState(2);
@@ -176,6 +221,7 @@ export default function ReportsPage() {
   useEffect(() => {
     setPdfNumPages(0);
     setPdfVisiblePages(2);
+    setPreviewImageLoaded(false);
   }, [selectedReport]);
 
   useEffect(() => {
@@ -303,22 +349,23 @@ export default function ReportsPage() {
   return (
     <div style={{ padding: isMobile ? '1rem' : '1.5rem', minHeight: '100vh', boxSizing: 'border-box', width: '100%' }}>
 
-      {/* Header */}
-      <div style={{ background: '#fff', borderRadius: 12, padding: isMobile ? '1.25rem' : '1.75rem 2rem', border: '1px solid #e5e7eb', marginBottom: '1.25rem' }}>
-        <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: 6, background: '#fde8f0', color: '#ee1761', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          Section
-        </span>
-        <h1 style={{ fontSize: isMobile ? '1.7rem' : '2.1rem', fontWeight: 800, color: '#111827', margin: '10px 0 6px', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
-          {activeSection ? activeSection.title : 'Reports'}
-        </h1>
-        <p style={{ fontSize: 15, color: '#4b5563', margin: 0 }}>
-          {filtered.length} report{filtered.length !== 1 ? 's' : ''} in this section
-        </p>
-      </div>
+      {/* Header + search, one row — search sits inline on the right on desktop instead of its
+          own full-width card below, and drops beneath the title on mobile where there's no
+          room for both side by side. */}
+      <div style={{ background: '#fff', borderRadius: 12, padding: isMobile ? '1.25rem' : '1.75rem 2rem', border: '1px solid #e5e7eb', marginBottom: '1.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? 16 : 24 }}>
+        <div style={{ minWidth: 0 }}>
+          <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: 6, background: '#fde8f0', color: '#ee1761', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            Section
+          </span>
+          <h1 style={{ fontSize: isMobile ? '1.7rem' : '2.1rem', fontWeight: 800, color: '#111827', margin: '10px 0 6px', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+            {activeSection ? activeSection.title : 'Reports'}
+          </h1>
+          <p style={{ fontSize: 15, color: '#4b5563', margin: 0 }}>
+            {filtered.length} report{filtered.length !== 1 ? 's' : ''} in this section
+          </p>
+        </div>
 
-      {/* Search */}
-      <div style={{ background: '#fff', borderRadius: 12, padding: isMobile ? '12px' : '12px 16px', border: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', width: isMobile ? '100%' : 260, flexShrink: 0 }}>
           <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
@@ -327,7 +374,7 @@ export default function ReportsPage() {
             placeholder="Search by name or month…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '100%', padding: '10px 16px 10px 36px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, outline: 'none', background: '#fff', color: '#111827', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '9px 14px 9px 34px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13.5, outline: 'none', background: '#fff', color: '#111827', boxSizing: 'border-box' }}
             onFocus={(e) => { e.currentTarget.style.borderColor = '#ee1761'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(238,23,97,0.1)'; }}
             onBlur={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = 'none'; }}
           />
@@ -409,20 +456,12 @@ export default function ReportsPage() {
             </div>
             <div style={{ flex: 1, background: '#f8fafc', padding: isMobile ? 8 : 18, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               {isPdf ? (
-                <div ref={pdfViewportRef} onContextMenu={(e) => e.preventDefault()} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', borderRadius: isMobile ? 8 : 12, background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isMobile ? 10 : 16, padding: isMobile ? '10px 0' : '16px 0' }}>
+                <div ref={pdfViewportRef} onContextMenu={(e) => e.preventDefault()} style={{ position: 'relative', flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', borderRadius: isMobile ? 8 : 12, background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: pdfNumPages === 0 ? 'center' : 'flex-start', gap: isMobile ? 10 : 16, padding: isMobile ? '10px 0' : '16px 0' }}>
                   <Document
                     file={selectedReport.fileUrl}
                     options={PDF_LOAD_OPTIONS}
                     onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
-                    loading={
-                      selectedReport.thumbnailUrl ? (
-                        <div style={{ position: 'relative', width: '100%', maxWidth: 480, aspectRatio: '3 / 4' }}>
-                          <Image src={selectedReport.thumbnailUrl} alt="" fill sizes="480px" style={{ objectFit: 'contain' }} />
-                        </div>
-                      ) : (
-                        <p style={{ padding: 24, color: '#64748b', fontSize: 14 }}>Loading document…</p>
-                      )
-                    }
+                    loading={<ReportLoader />}
                     error={<p style={{ padding: 24, color: '#dc2626', fontSize: 14 }}>Failed to load PDF.</p>}
                   >
                     {pdfViewportWidth > 0 && Array.from({ length: Math.min(pdfVisiblePages, pdfNumPages) }, (_, i) => (
@@ -439,8 +478,16 @@ export default function ReportsPage() {
                   </Document>
                 </div>
               ) : isImage ? (
-                <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'relative', width: '100%', height: '100%', borderRadius: 12, overflow: 'hidden' }}>
-                  <Image src={selectedReport.fileUrl} alt={selectedReport.title} fill sizes="100vw" style={{ objectFit: 'contain' }} />
+                <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'relative', width: '100%', height: '100%', borderRadius: 12, overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {!previewImageLoaded && <ReportLoader />}
+                  <Image
+                    src={selectedReport.fileUrl}
+                    alt={selectedReport.title}
+                    fill
+                    sizes="100vw"
+                    style={{ objectFit: 'contain', opacity: previewImageLoaded ? 1 : 0, transition: 'opacity 0.25s ease' }}
+                    onLoad={() => setPreviewImageLoaded(true)}
+                  />
                 </div>
               ) : (
                 <div style={{ height: '100%', borderRadius: 12, background: '#fff', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>

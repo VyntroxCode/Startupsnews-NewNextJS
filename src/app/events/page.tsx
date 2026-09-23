@@ -158,21 +158,25 @@ export default async function EventsPage() {
                   title="Events"
                   subtitle="Discover startup and technology events by region."
                 >
-                  {Object.entries(eventsByCountry).map(([country, cities]) => (
-                    <section key={country} className="event-by-country-section">
-                      <h2 className="event-by-country-region">{country}</h2>
-                      {Object.entries(cities).map(([city, events]) => (
-                        <div key={city} className="event-by-country-city-group">
-                          <EventsCarousel
-                            events={events}
-                            maxEvents={events.length}
-                            title={city !== country && !NON_GEOGRAPHIC_REGIONS.has(city) ? city : null}
-                            className="event-country-carousel"
-                          />
-                        </div>
-                      ))}
-                    </section>
-                  ))}
+                  {Object.entries(eventsByCountry).map(([country, cities]) => {
+                    const isCohort = country === COHORT_PARTNERSHIP_TYPE;
+                    return (
+                      <section key={country} className="event-by-country-section">
+                        <h2 className="event-by-country-region">{country}</h2>
+                        {Object.entries(cities).map(([city, events]) => (
+                          <div key={city} className="event-by-country-city-group">
+                            <EventsCarousel
+                              events={events}
+                              maxEvents={events.length}
+                              title={city !== country && !NON_GEOGRAPHIC_REGIONS.has(city) ? city : null}
+                              className="event-country-carousel"
+                              showCountry={isCohort}
+                            />
+                          </div>
+                        ))}
+                      </section>
+                    );
+                  })}
                 </EventsSearchBar>
               </div>
             </div>

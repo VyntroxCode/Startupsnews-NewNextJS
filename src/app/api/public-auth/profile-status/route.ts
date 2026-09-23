@@ -45,21 +45,22 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ success: false, error: 'Not found.' }, { status: 404 });
 
   const missing: string[] = [];
-  let total = 5; // phone, country, city, linkedin_url, category
+  // Every field actually offered on the wizard's "Basic info" step counts here, not just the
+  // ones that happen to have a required asterisk — a profile-completion score that silently
+  // ignores Website/Bio no matter how thoroughly they're filled in doesn't reflect completion.
+  let total = 7; // phone, country, city, linkedin_url, website, bio, category
 
   if (!user.phone) missing.push('phone');
   if (!user.country) missing.push('country');
   if (!user.city) missing.push('city');
   if (!user.linkedin_url) missing.push('linkedin_url');
+  if (!user.website) missing.push('website');
+  if (!user.bio) missing.push('bio');
   if (!user.category) missing.push('category');
 
   if (user.category === 'other') {
     total += 1;
     if (!user.other_category) missing.push('other_category');
-  }
-  if (user.category === 'startup') {
-    total += 1;
-    if (!user.website) missing.push('website');
   }
 
   if (user.category === 'startup') {

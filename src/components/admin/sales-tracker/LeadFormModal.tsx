@@ -235,6 +235,35 @@ export default function LeadFormModal({ lead, team, promotedCities, onClose, onS
           <div className="row">
             <div className="field" style={{ flexBasis: '100%' }}><label>Query description</label><textarea placeholder="Details of the query" value={draft.query} onChange={(e) => setDraft({ ...draft, query: e.target.value })} /></div>
           </div>
+          {draft.type === 'Sponsor Event Page Leads' && (
+            <>
+              {/* Only a Sponsor Event Page Lead carries these — mirrored in full from
+                  sponsor_event_submissions on submit (see to-sales-lead.ts) and, unlike that
+                  original submission, editable here like the rest of the row. */}
+              <div className="row" style={{ marginTop: 4 }}>
+                <div className="field" style={{ flexBasis: '100%', fontWeight: 600, color: 'var(--pink-dark)' }}>Event details</div>
+              </div>
+              <div className="row">
+                <div className="field"><label>Event title</label><input type="text" placeholder="Event title" value={draft.eventTitle} onChange={(e) => setDraft({ ...draft, eventTitle: e.target.value })} /></div>
+                <div className="field"><label>Event URL / slug</label><input type="text" placeholder="event-slug" value={draft.eventSlug} onChange={(e) => setDraft({ ...draft, eventSlug: e.target.value })} /></div>
+              </div>
+              <div className="row">
+                <div className="field"><label>Event date</label><input type="date" value={draft.eventDate} onChange={(e) => setDraft({ ...draft, eventDate: e.target.value })} /></div>
+                <div className="field"><label>Event time</label><input type="time" value={draft.eventTime} onChange={(e) => setDraft({ ...draft, eventTime: e.target.value })} /></div>
+                <div className="field"><label>External URL</label><input type="url" placeholder="https://..." value={draft.externalUrl} onChange={(e) => setDraft({ ...draft, externalUrl: e.target.value })} /></div>
+              </div>
+              <div className="row">
+                <div className="field" style={{ flexBasis: '100%' }}>
+                  <label>Poster URL</label>
+                  <input type="url" placeholder="https://..." value={draft.posterUrl} onChange={(e) => setDraft({ ...draft, posterUrl: e.target.value })} />
+                  {draft.posterUrl && <a href={draft.posterUrl} target="_blank" rel="noopener noreferrer" className="hint" style={{ display: 'inline-block', marginTop: 4 }}>View current poster ↗</a>}
+                </div>
+              </div>
+              <div className="row">
+                <div className="field" style={{ flexBasis: '100%' }}><label>Event description</label><textarea placeholder="Event description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></div>
+              </div>
+            </>
+          )}
           {formMsg && <div className={`msg ${formMsg.kind}`}>{formMsg.text}</div>}
         </div>
         <div className="modal-actions">

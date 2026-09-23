@@ -748,7 +748,7 @@ export default function Rules() {
             </div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month. Shown to employees, publisher admins, and event admins on their Rules &amp; Policy page. Whole numbers up to 5.</div></div>
+            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month. Shown to employees, publisher admins, and event admins on their Admin Rules page. Whole numbers up to 5.</div></div>
             <div className="rule-inputs">
               <input
                 className="mini-input" type="number" min={0} max={SHORT_LEAVE_MAX} step={1}

@@ -37,6 +37,8 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
 @source "./ecosystem-partners/page.tsx";
 @source "./contact-us/page.tsx";
 @source "./careers/page.tsx";
+@source "../components/user/DashboardHome.tsx";
+@source "../components/user/UserDashboardLayout.tsx";
 
 @theme {
   /* About Us page tokens */
@@ -69,4 +71,20 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   --color-cr-muted-2: #9AA1A9;
   --color-cr-line: #ECE7EA;
   --color-cr-panel: #FAF6F8;
+
+  /* User dashboard (/dashboard/*) editorial palette — sidebar + main content share this one
+     system. Values follow the brief's suggested hex values (light warm-gray/lavender background,
+     vivid pink primary, deep-navy ink) rather than the previous, more saturated bento-era tokens.
+     `db-card`/`db-panel` are the two "white" surfaces: `card` for content cards sitting on the
+     lavender-tinted `db-bg`, `panel` a hair warmer for a surface that sits *inside* a card (e.g.
+     an empty state) so it still reads as a distinct layer without another border. */
+  --color-db-pink: #ec1760;
+  --color-db-pink-deep: #c01050;
+  --color-db-violet: #7c3aed;
+  --color-db-ink: #111827;
+  --color-db-muted: #6b7280;
+  --color-db-line: #e7e3ee;
+  --color-db-bg: #f7f6fa;
+  --color-db-card: #ffffff;
+  --color-db-panel: #fcfbfe;
 }

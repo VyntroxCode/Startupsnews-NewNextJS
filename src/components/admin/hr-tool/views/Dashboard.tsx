@@ -126,7 +126,7 @@ function EmployeeDashboard() {
   const myAtt = state.attendance.find((a) => a.employeeId === me.id && a.date === todayStr());
   // Live-computed, same accrual rule as Directory.tsx's profile modal — not the stored,
   // never-accruing me.leaveBalance snapshot.
-  const myLeaveBalance = computeLeaveBalances(me.doj, state.rules.leaveTypes, myLeave, todayStr());
+  const myLeaveBalance = computeLeaveBalances(me.doj, state.rules.leaveTypes, myLeave, todayStr(), state.orgStructure.holidays.map((h) => h.date));
   return (
     <>
       <PageHead title={`Welcome back, ${me.name.split(' ')[0]}`} sub="Here's where things stand for you today." />

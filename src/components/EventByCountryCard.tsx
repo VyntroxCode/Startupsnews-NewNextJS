@@ -8,13 +8,18 @@ import { getStartupEventDetailPath } from "@/lib/event-utils";
 interface EventByCountryCardProps {
   event: StartupEvent;
   imageUrl: string;
+  /** Prefix the location line with the event's country ("India, Jaipur") instead of just the
+   * city. Used where the card has no surrounding country heading to supply that context — the
+   * Cohort section and search results mix events from many countries in one row/list, unlike a
+   * country's own section where the city alone is unambiguous. */
+  showCountry?: boolean;
 }
 
 /**
  * Shared event card for /events and /events/[slug].
  * Layout: image, content (date, title, excerpt).
  */
-export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps) {
+export function EventByCountryCard({ event, imageUrl, showCountry = false }: EventByCountryCardProps) {
   const detailUrl = getStartupEventDetailPath(event);
   const isInternal = detailUrl.startsWith("/");
   const rawSummary = event.excerpt || event.description || "";
@@ -24,6 +29,10 @@ export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps)
     .trim();
   const displaySummary = summaryText || "Discover event details, agenda, and registration information.";
   const [loaded, setLoaded] = useState(false);
+  const locationText =
+    showCountry && event.country && event.country !== event.location
+      ? `${event.country}, ${event.location}`
+      : event.location;
 
   return (
     <li className="event-by-country-card">
@@ -50,8 +59,8 @@ export function EventByCountryCard({ event, imageUrl }: EventByCountryCardProps)
         </div>
         <div className="event-by-country-card-content">
           <span className="event-by-country-date">{event.dateRange}</span>
-          {event.location && (
-            <span className="event-by-country-venue">{event.location}</span>
+          {locationText && (
+            <span className="event-by-country-venue">{locationText}</span>
           )}
           <h3 className="event-by-country-card-title">{event.title}</h3>
           <p className="event-by-country-excerpt">{displaySummary}</p>

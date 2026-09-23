@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { animate, motion, useInView } from "motion/react";
 import { RevealWords } from "./RevealWords";
-import { scrollToParticipate, useReducedMotion, useRise } from "./hooks";
+import { scrollToSection, useReducedMotion, useRise } from "./hooks";
 
 /** 2025 edition figures, as published by the event. */
 const STATS = [
@@ -105,10 +105,12 @@ export function ShowNumbers() {
           ))}
         </ul>
 
-        {/* Under the figures: the same action as the event bar's button, into the enquiry form. */}
+        {/* Under the figures: to the day-by-day delegation programme, not the enquiry form (the
+            event bar's own "Participate Now" button still goes there) — changed on request,
+            2026-09-21. */}
         <motion.div className="ens-numbers-cta-wrap" {...rise(0.25)}>
-          <a href="#ens-participate" className="ens-numbers-cta" onClick={(e) => scrollToParticipate(e, reducedMotion)}>
-            Participate Now
+          <a href="#ens-days" className="ens-numbers-cta" onClick={(e) => scrollToSection(e, "ens-days", reducedMotion)}>
+            More Info
           </a>
         </motion.div>
       </div>

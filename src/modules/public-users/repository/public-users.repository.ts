@@ -302,11 +302,16 @@ export async function unsubscribeByEmail(email: string): Promise<{ found: boolea
 
 export async function updateProfile(
   id: number,
-  data: { phone?: string; country?: string; city?: string; linkedin_url?: string; bio?: string } & Partial<RegistrationProfileFields>
+  data: { name?: string; phone?: string; country?: string; city?: string; linkedin_url?: string; bio?: string } & Partial<RegistrationProfileFields>
 ): Promise<void> {
   const fields: string[] = [];
   const params: (string | number | boolean | null | Date)[] = [];
 
+  // `name` is NOT NULL on this table — only ever write a real, non-empty value, never null/''.
+  if (data.name !== undefined && data.name.trim()) {
+    fields.push('name = ?');
+    params.push(data.name.trim());
+  }
   if (data.phone !== undefined) {
     fields.push('phone = ?');
     params.push(data.phone || null);

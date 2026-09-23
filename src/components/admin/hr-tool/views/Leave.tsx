@@ -59,7 +59,7 @@ export default function Leave() {
       <div className="card"><table><thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th>Remarks</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
         <tbody>
           {rows.map((l) => (
-            <tr key={l.id}><td>{employeeName(state.employees, l.employeeId, l.emp)}</td><td>{l.type}</td><td>{l.from}{l.to !== l.from ? ` – ${l.to}` : ''}</td><td>{l.remarks || '—'}</td><td><ApprovalBadge req={l} /></td>
+            <tr key={l.id}><td>{employeeName(state.employees, l.employeeId, l.emp)}</td><td>{l.type === 'WFH' ? <span className="badge active">Work From Home</span> : l.type}</td><td>{l.from}{l.to !== l.from ? ` – ${l.to}` : ''}</td><td>{l.remarks || '—'}</td><td><ApprovalBadge req={l} /></td>
               <td style={{ textAlign: 'right' }}><ApprovalCell req={l} onDecide={(level, decision, r) => decide(l.id, level, decision, r)} /></td>
             </tr>
           ))}

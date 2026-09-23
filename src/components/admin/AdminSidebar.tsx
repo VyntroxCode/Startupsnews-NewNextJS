@@ -183,7 +183,7 @@ const menuItems: MenuItem[] = [
   { href: '/admin/attendance', label: 'Attendance', icon: AttendanceIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/leave', label: 'Leave', icon: LeaveIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/documents', label: 'Documents', icon: DocumentsIcon, roles: ['event_admin', 'publisher_admin'] },
-  { href: '/admin/rules-policy', label: 'Rules & Policy', icon: RulesPolicyIcon, roles: ['event_admin', 'publisher_admin'] },
+  { href: '/admin/rules-policy', label: 'Admin Rules', icon: RulesPolicyIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/tools', label: 'Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },
