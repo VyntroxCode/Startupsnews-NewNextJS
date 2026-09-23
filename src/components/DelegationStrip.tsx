@@ -9,7 +9,18 @@ const COPIES = 6;
 
 function Sparkle() {
   return (
-    <svg className="sn-ds-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    // The width/height attributes are a fallback, not the real size — .sn-ds-star in
+    // delegation-strip.css overrides them (11px, 9px on mobile). They matter only when the
+    // stylesheet is missing: an attribute-less SVG with just a viewBox stretches to fill its
+    // container, and six of these would push the whole page below the fold.
+    <svg
+      className="sn-ds-star"
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <path d="M12 0c.7 6.3 5 10.9 12 12-7 1.1-11.3 5.7-12 12-.7-6.3-5-10.9-12-12C7 10.9 11.3 6.3 12 0z" />
     </svg>
   );
