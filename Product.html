@@ -116,7 +116,7 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v84</span>
+    <span class="badge v">Version v85</span>
     <span class="badge">Released 2026-09-29</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
@@ -829,6 +829,7 @@ flowchart LR
       <tr><td><strong>v82</strong></td><td>2026-09-29</td><td>Medium</td><td>One status per lead, the same four everywhere (Pending, Follow Up, Confirmed, Not Interested), shared between the admin Sales Tracker and the employee's My Leads</td></tr>
       <tr><td><strong>v83</strong></td><td>2026-09-29</td><td>Medium</td><td>My Leads: a "Lead Status" card sums up every assigned lead by status (Pending, Followed up, Confirmed, Not interested) and opens the full list</td></tr>
       <tr><td><strong>v84</strong></td><td>2026-09-29</td><td>Medium</td><td>My Leads: Lead Status card moved to the end, and a Lead Status filter on the lead list that works together with the cards</td></tr>
+      <tr><td><strong>v85</strong></td><td>2026-09-29</td><td>Medium</td><td>Posts: a draft can be saved with no fields filled in; the full checks only apply when the post is published or scheduled</td></tr>
       <tr><td><strong>v81</strong></td><td>2026-09-29</td><td>Medium</td><td>Employee panel works properly on phones: a menu button and bottom tabs instead of a fixed sidebar, a big Punch In / Punch Out card for today, and card lists instead of wide tables</td></tr>
     </tbody>
   </table>
@@ -4107,6 +4108,28 @@ PHONE                                   +--------------------+
 <!-- ───────────────────────── 11 ───────────────────────── -->
 
 <!-- ───────────────────────── 11 ───────────────────────── -->
+
+<section id="v85">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v85</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> When writing a post, choosing <strong>Draft</strong> as the status means nothing on the form is mandatory any more. The button reads <strong>Save Draft</strong>, the red asterisks disappear, and an empty or half-written post can be saved and finished later. This works on both the new-post page and the edit page.</p>
+    <table>
+      <thead><tr><th>Left empty on a draft</th><th>What is saved</th></tr></thead>
+      <tbody>
+        <tr><td>Title</td><td>"Untitled draft"</td></tr>
+        <tr><td>Slug (web address)</td><td>An automatic one such as <code>draft-1759…-k3x9a2</code>; change it before publishing</td></tr>
+        <tr><td>Category</td><td>The default category (on the dev site this is Tech)</td></tr>
+        <tr><td>Author</td><td>The default author (StartupNews.fyi Editorial Team)</td></tr>
+        <tr><td>Excerpt, content</td><td>Left empty</td></tr>
+      </tbody>
+    </table>
+    <p>On the edit page, clearing the title, slug, category or author on a draft keeps what was saved before rather than blanking it. Switching the status to <strong>Published</strong> or <strong>Scheduled</strong> brings every check back: category, author, at least 10 characters of content and excerpt, and a date for scheduled posts. Drafts never appear on the public site.</p>
+  </div>
+</section>
 
 <!-- ───────────────────────── 11 ───────────────────────── -->
 <section id="maintenance">

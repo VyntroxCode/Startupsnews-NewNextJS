@@ -306,8 +306,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // A draft can be saved with nothing filled in: blank fields get placeholders that satisfy the
+    // NOT NULL / UNIQUE / FK columns, and the full rules apply once it is published or scheduled.
+    const isDraft = !body.status || String(body.status) === 'draft';
+    if (isDraft) {
+      if (!String(body.title ?? '').trim()) body.title = 'Untitled draft';
+      if (!String(body.slug ?? '').trim()) body.slug = `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      body.excerpt = body.excerpt ?? '';
+      body.content = body.content ?? '';
+    }
+
     // Validation
-    if (!body.title || !body.slug || !body.excerpt || !body.content) {
+    if (!body.title || !body.slug || (!isDraft && (!body.excerpt || !body.content))) {
       return NextResponse.json(
         {
           success: false,
@@ -318,7 +328,20 @@ export async function POST(request: NextRequest) {
     }
 
     let categoryId = typeof body.categoryId === 'number' ? body.categoryId : parseInt(String(body.categoryId ?? ''), 10);
-    const authorId = typeof body.authorId === 'number' ? body.authorId : parseInt(String(body.authorId ?? ''), 10);
+    let authorId = typeof body.authorId === 'number' ? body.authorId : parseInt(String(body.authorId ?? ''), 10);
+
+    if (isDraft && isNaN(categoryId)) {
+      const fallbackCategory = await queryOne<{ id: number }>(
+        "SELECT id FROM categories ORDER BY (slug = 'uncategorized') DESC, id ASC LIMIT 1"
+      );
+      if (fallbackCategory) categoryId = fallbackCategory.id;
+    }
+    if (isDraft && isNaN(authorId)) {
+      const fallbackAuthor = await queryOne<{ id: number }>(
+        "SELECT id FROM users ORDER BY (role = 'author' AND is_default_author = 1) DESC, (role = 'author') DESC, id ASC LIMIT 1"
+      );
+      if (fallbackAuthor) authorId = fallbackAuthor.id;
+    }
 
     // Event Admin can only create posts in the Press Release category — ignore any other category sent by the client.
     if (auth.user.role === 'event_admin') {

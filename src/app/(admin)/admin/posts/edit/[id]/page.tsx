@@ -191,6 +191,8 @@ export default function EditPostPage() {
     }
   };
 
+  const isDraft = formData.status === 'draft';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -216,7 +218,8 @@ export default function EditPostPage() {
       const authorId = formData.authorId ? parseInt(formData.authorId, 10) : NaN;
 
 
-      if (isNaN(categoryId) || isNaN(authorId)) {
+      // Drafts save with whatever is filled in (blank fields keep their stored value). Full rules apply on publish.
+      if (!isDraft && (isNaN(categoryId) || isNaN(authorId))) {
         setError('Please select both category and author.');
         setSaving(false);
         return;
@@ -232,14 +235,14 @@ export default function EditPostPage() {
       const contentPlainText = sanitizedContent
         .replace(/<[^>]*>/g, '') // Remove all HTML tags
         .trim();
-      if (!contentPlainText || contentPlainText.length < 10) {
+      if (!isDraft && (!contentPlainText || contentPlainText.length < 10)) {
         setError('Content is required. Please write at least 10 characters.');
         setSaving(false);
         return;
       }
 
       // Validate excerpt
-      if (!formData.excerpt || formData.excerpt.trim().length < 10) {
+      if (!isDraft && (!formData.excerpt || formData.excerpt.trim().length < 10)) {
         setError('Excerpt is required. Please write at least 10 characters.');
         setSaving(false);
         return;
@@ -527,13 +530,13 @@ export default function EditPostPage() {
             fontWeight: '500',
             color: '#4a5568',
           }}>
-            Title *
+            Title{isDraft ? '' : ' *'}
           </label>
           <input
             type="text"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            required
+            required={!isDraft}
             style={{
               width: '100%',
               padding: '0.75rem',
@@ -552,13 +555,13 @@ export default function EditPostPage() {
             fontWeight: '500',
             color: '#4a5568',
           }}>
-            Slug *
+            Slug{isDraft ? '' : ' *'}
           </label>
           <input
             type="text"
             value={formData.slug}
             onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-            required
+            required={!isDraft}
             style={{
               width: '100%',
               padding: '0.75rem',
@@ -583,12 +586,12 @@ export default function EditPostPage() {
             fontWeight: '500',
             color: '#4a5568',
           }}>
-            Category *
+            Category{isDraft ? '' : ' *'}
           </label>
           <select
             value={formData.categoryId}
             onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-            required
+            required={!isDraft}
             disabled={isEventAdmin}
             style={{
               width: '100%',
@@ -617,12 +620,12 @@ export default function EditPostPage() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Author *
+            Author{isDraft ? '' : ' *'}
           </label>
           <select
             value={formData.authorId}
             onChange={(e) => setFormData({ ...formData, authorId: e.target.value })}
-            required
+            required={!isDraft}
             style={{
               width: '100%',
               padding: '0.75rem',
@@ -646,12 +649,12 @@ export default function EditPostPage() {
             fontWeight: '500',
             color: '#4a5568',
           }}>
-            Excerpt *
+            Excerpt{isDraft ? '' : ' *'}
           </label>
           <textarea
             value={formData.excerpt}
             onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-            required
+            required={!isDraft}
             rows={3}
             style={{
               width: '100%',
@@ -737,7 +740,7 @@ export default function EditPostPage() {
             fontWeight: '500',
             color: '#4a5568',
           }}>
-            Content * {(() => {
+            Content{isDraft ? '' : ' *'} {(() => {
               const plainText = formData.content.replace(/<[^>]*>/g, '').trim();
               const status = plainText.length < 10 ? '❌ Too short' : '✅ Valid';
               const color = plainText.length < 10 ? '#e53e3e' : '#22543d';

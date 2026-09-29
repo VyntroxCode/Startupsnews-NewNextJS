@@ -76,6 +76,7 @@ export default function CreatePostPage() {
   });
   const [restorableDraft, setRestorableDraft] = useState<{ savedAt: number; data: CreatePostFormData } | null>(null);
 
+  const isDraft = formData.status === 'draft';
   const completionRatio = completionRatioOf(formData);
   useFormDraftAutosave(DRAFT_KEY, formData, completionRatio);
 
@@ -252,12 +253,13 @@ export default function CreatePostPage() {
       const categoryId = formData.categoryId ? parseInt(formData.categoryId, 10) : NaN;
       const authorId = formData.authorId ? parseInt(formData.authorId, 10) : NaN;
 
-      if (!formData.categoryId || isNaN(categoryId)) {
+      // Drafts save with whatever is filled in; the server fills blanks. Full rules apply on publish.
+      if (!isDraft && (!formData.categoryId || isNaN(categoryId))) {
         setError('Please select a category.');
         setLoading(false);
         return;
       }
-      if (!formData.authorId || isNaN(authorId)) {
+      if (!isDraft && (!formData.authorId || isNaN(authorId))) {
         setError('Please select an author.');
         setLoading(false);
         return;
@@ -267,14 +269,14 @@ export default function CreatePostPage() {
       const contentPlainText = sanitizedContent
         .replace(/<[^>]*>/g, '') // Remove all HTML tags
         .trim();
-      if (!contentPlainText || contentPlainText.length < 10) {
+      if (!isDraft && (!contentPlainText || contentPlainText.length < 10)) {
         setError('Content is required. Please write at least 10 characters.');
         setLoading(false);
         return;
       }
 
       // Validate excerpt
-      if (!formData.excerpt || formData.excerpt.trim().length < 10) {
+      if (!isDraft && (!formData.excerpt || formData.excerpt.trim().length < 10)) {
         setError('Excerpt is required. Please write at least 10 characters.');
         setLoading(false);
         return;
@@ -289,8 +291,8 @@ export default function CreatePostPage() {
       const payload = {
         ...formData,
         content: sanitizedContent,
-        categoryId,
-        authorId,
+        categoryId: isNaN(categoryId) ? undefined : categoryId,
+        authorId: isNaN(authorId) ? undefined : authorId,
         featuredImageSmallUrl: formData.featuredImageSmallUrl || formData.featuredImageUrl,
         ...(formData.status === 'scheduled' && formData.scheduledAt
           ? { publishedAt: new Date(formData.scheduledAt).toISOString() }
@@ -443,26 +445,26 @@ export default function CreatePostPage() {
       }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Title *
+            Title{isDraft ? '' : ' *'}
           </label>
           <input
             type="text"
             value={formData.title}
             onChange={(e) => handleTitleChange(e.target.value)}
-            required
+            required={!isDraft}
             style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
           />
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Slug *
+            Slug{isDraft ? '' : ' *'}
           </label>
           <input
             type="text"
             value={formData.slug}
             onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
-            required
+            required={!isDraft}
             style={{ width: '100%', padding: '0.75rem', border: `1px solid ${formData.slug.length > 75 ? '#e53e3e' : '#e2e8f0'}`, borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box', color: formData.slug.length > 75 ? '#e53e3e' : 'inherit' }}
           />
           {formData.slug.length > 75 && (
@@ -474,12 +476,12 @@ export default function CreatePostPage() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Category *
+            Category{isDraft ? '' : ' *'}
           </label>
           <select
             value={formData.categoryId}
             onChange={(e) => setFormData((prev) => ({ ...prev, categoryId: e.target.value }))}
-            required
+            required={!isDraft}
             disabled={isEventAdmin}
             style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box', background: isEventAdmin ? '#f1f5f9' : undefined, cursor: isEventAdmin ? 'not-allowed' : undefined }}
           >
@@ -497,12 +499,12 @@ export default function CreatePostPage() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Author *
+            Author{isDraft ? '' : ' *'}
           </label>
           <select
             value={formData.authorId}
             onChange={(e) => setFormData((prev) => ({ ...prev, authorId: e.target.value }))}
-            required
+            required={!isDraft}
             style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
           >
             <option value="">Select an author</option>
@@ -514,12 +516,12 @@ export default function CreatePostPage() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Excerpt *
+            Excerpt{isDraft ? '' : ' *'}
           </label>
           <textarea
             value={formData.excerpt}
             onChange={(e) => setFormData((prev) => ({ ...prev, excerpt: e.target.value }))}
-            required
+            required={!isDraft}
             rows={3}
             style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box', fontFamily: 'inherit' }}
           />
@@ -574,7 +576,7 @@ export default function CreatePostPage() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Content * {(() => {
+            Content{isDraft ? '' : ' *'} {(() => {
               const plainText = formData.content.replace(/<[^>]*>/g, '').trim();
               const status = plainText.length < 10 ? '❌ Too short' : '✅ Valid';
               const color = plainText.length < 10 ? '#e53e3e' : '#22543d';
@@ -743,7 +745,7 @@ export default function CreatePostPage() {
               cursor: loading || uploading ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading ? 'Creating...' : 'Create Post'}
+            {loading ? (isDraft ? 'Saving...' : 'Creating...') : (isDraft ? 'Save Draft' : 'Create Post')}
           </button>
           <Link
             href="/admin/posts"

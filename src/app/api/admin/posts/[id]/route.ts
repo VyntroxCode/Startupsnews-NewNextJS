@@ -266,19 +266,27 @@ async function handleUpdateRequest(
       updatedBy: string;
     }> = {};
 
-    if (body.title !== undefined) updateData.title = String(body.title);
-    if (body.slug !== undefined) updateData.slug = String(body.slug).trim().replace(/^\/+|\/+$/g, '');
+    // Blank title / slug / category / author (possible when saving a draft) keep the stored value
+    // instead of writing an empty or NaN value into the NOT NULL / UNIQUE / FK columns.
+    if (body.title !== undefined && String(body.title).trim()) updateData.title = String(body.title);
+    if (body.slug !== undefined && String(body.slug).trim().replace(/^\/+|\/+$/g, '')) {
+      updateData.slug = String(body.slug).trim().replace(/^\/+|\/+$/g, '');
+    }
     if (body.excerpt !== undefined) updateData.excerpt = String(body.excerpt);
     if (body.metaDescription !== undefined) updateData.metaDescription = String(body.metaDescription).trim().slice(0, 160);
     if (body.robots != null) updateData.robots = String(body.robots).trim() || 'index,follow';
     if (body.contentFollow != null) updateData.contentFollow = String(body.contentFollow).trim() || 'nofollow';
     if (body.imageCredit != null) updateData.imageCredit = String(body.imageCredit).trim().slice(0, 255);
     if (body.content !== undefined) updateData.content = String(body.content);
-    if (body.categoryId !== undefined) updateData.categoryId = parseInt(String(body.categoryId), 10);
+    if (body.categoryId !== undefined && !isNaN(parseInt(String(body.categoryId), 10))) {
+      updateData.categoryId = parseInt(String(body.categoryId), 10);
+    }
     if (auth.user.role === 'event_admin' && pressReleaseCategoryId != null) {
       updateData.categoryId = pressReleaseCategoryId;
     }
-    if (body.authorId !== undefined) updateData.authorId = parseInt(String(body.authorId), 10);
+    if (body.authorId !== undefined && !isNaN(parseInt(String(body.authorId), 10))) {
+      updateData.authorId = parseInt(String(body.authorId), 10);
+    }
 
     // Same as RSS: upload featured image file to S3 server-side when sent via multipart
     if (featuredImageFile && isS3Configured()) {
