@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
+import { rememberAdminReturnTo } from '@/lib/admin-return-to';
 import type { BrandStoryEntity } from '@/modules/brand-stories/domain/types';
 import type { BrandStorySectionEntity } from '@/modules/brand-stories/domain/section-types';
 import Image from 'next/image';
@@ -57,6 +58,11 @@ export default function AdminBrandStoriesPage() {
     setSectionFilter(id ? Number(id) : null);
     if (id) setActiveTab('stories');
   }, [searchParams]);
+
+  // Create / edit pages send the admin back to this same section view after saving.
+  useEffect(() => {
+    rememberAdminReturnTo('admin:brand-stories:returnTo', sectionFilter ? `/admin/brand-stories?section=${sectionFilter}` : '/admin/brand-stories');
+  }, [sectionFilter]);
 
   const [stories, setStories] = useState<BrandStoryWithMeta[]>([]);
   const [loading, setLoading] = useState(true);

@@ -9,6 +9,7 @@ import ImageUpload from '@/components/admin/ImageUpload';
 import type { BrandStoryEntity } from '@/modules/brand-stories/domain/types';
 import type { BrandStorySectionEntity } from '@/modules/brand-stories/domain/section-types';
 import { PDFDocument } from 'pdf-lib';
+import { adminReturnTo } from '@/lib/admin-return-to';
 
 async function countPdfPagesFromFile(file: File): Promise<number | null> {
   try {
@@ -229,7 +230,7 @@ export default function AdminBrandStoryEditPage() {
         throw new Error(data.error || 'Failed to update brand story');
       }
 
-      router.push('/admin/brand-stories');
+      router.push(adminReturnTo('admin:brand-stories:returnTo', '/admin/brand-stories'));
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');

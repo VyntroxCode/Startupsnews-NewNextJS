@@ -21,6 +21,24 @@ import '@/components/admin/staff-panel-tailwind.css';
 
 const ADMIN_DATA_UPDATED_EVENT = 'admin:data-updated';
 
+// List pages that already reload or patch their own rows after every write (or refetch via the
+// admin:data-updated event through useAdminData). The blanket <main> remount after a write is
+// skipped while one of these is open — it wiped their filters, search, sort, tab and page and
+// dropped the admin back on the unfiltered list after every create / edit / delete.
+const SELF_REFRESHING_ADMIN_PAGES = new Set([
+  '/admin/posts',
+  '/admin/partnership-tracker',
+  '/admin/newsletter',
+  '/admin/sales-tracker',
+  '/admin/it-tickets',
+  '/admin/hr-tool',
+  '/admin/tools',
+  '/admin/reports',
+  '/admin/brand-stories',
+  '/admin/inner-pages',
+  '/admin/contacts',
+]);
+
 export default function AdminLayout({
   children,
 }: {
@@ -38,6 +56,9 @@ export default function AdminLayout({
   const sidebarOpen = sidebarPinned || sidebarHovered;
   const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The fetch patch below is installed once, so it reads the live pathname through this ref.
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -213,6 +234,10 @@ export default function AdminLayout({
         );
 
         // Fallback for admin pages that do not use useAdminData
+        if (SELF_REFRESHING_ADMIN_PAGES.has(pathnameRef.current ?? '')) {
+          return response;
+        }
+
         if (refreshTimeoutRef.current) {
           clearTimeout(refreshTimeoutRef.current);
         }

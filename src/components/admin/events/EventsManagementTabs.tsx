@@ -96,6 +96,7 @@ export default function EventsManagementTabs() {
     endpoint: '/api/admin/events',
     limit: 20,
     enabled: tab === 'events',
+    persistKey: 'admin:events:list',
   });
 
   const handleDeleteEvent = useCallback(async (id: string) => {
@@ -271,6 +272,7 @@ export default function EventsManagementTabs() {
     endpoint: '/api/admin/banners',
     limit: 20,
     enabled: tab === 'banners',
+    persistKey: 'admin:banners:list',
   });
 
   const handleDeleteBanner = useCallback(async (id: string) => {

@@ -9,6 +9,7 @@ import ImageUpload from '@/components/admin/ImageUpload';
 import type { ReportEntity } from '@/modules/reports/domain/types';
 import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
 import { PDFDocument } from 'pdf-lib';
+import { adminReturnTo } from '@/lib/admin-return-to';
 
 async function countPdfPagesFromFile(file: File): Promise<number | null> {
   try {
@@ -229,7 +230,7 @@ export default function AdminReportEditPage() {
         throw new Error(data.error || 'Failed to update report');
       }
 
-      router.push('/admin/reports');
+      router.push(adminReturnTo('admin:reports:returnTo', '/admin/reports'));
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');

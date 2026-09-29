@@ -22,6 +22,9 @@ export interface UseAdminDataOptions {
   limit?: number;
   enabled?: boolean;
   disableCache?: boolean;
+  /** When set, page / limit / search / filters are kept in sessionStorage under this key, so the
+   * list comes back exactly as it was after a save, a delete, or a round trip to an edit page. */
+  persistKey?: string;
   onSuccess?: <T>(data: T[]) => void;
   onError?: (error: string) => void;
 }
@@ -73,6 +76,30 @@ export function clearAllAdminApiCache(): void {
   }
 }
 
+interface PersistedListState {
+  page: number;
+  limit: number;
+  search: string;
+  filters: Record<string, string | number | boolean | null>;
+}
+
+function readPersistedListState(key: string | undefined): Partial<PersistedListState> | null {
+  if (!key || typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedListState>;
+    return {
+      page: typeof parsed.page === 'number' && parsed.page >= 1 ? parsed.page : undefined,
+      limit: typeof parsed.limit === 'number' && parsed.limit >= 1 ? parsed.limit : undefined,
+      search: typeof parsed.search === 'string' ? parsed.search : undefined,
+      filters: parsed.filters && typeof parsed.filters === 'object' ? parsed.filters : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function getRequestTimeoutMs(): number {
   if (typeof window === 'undefined') return REQUEST_TIMEOUT_MS;
   const host = window.location?.hostname || '';
@@ -84,21 +111,34 @@ export function useAdminData<T = unknown>({
   limit = 20,
   enabled = true,
   disableCache = false,
+  persistKey,
   onSuccess,
   onError,
 }: UseAdminDataOptions): UseAdminDataReturn<T> {
+  const [persisted] = useState(() => readPersistedListState(persistKey));
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [currentLimit, setCurrentLimit] = useState(limit);
-  const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState<Record<string, string | number | boolean | null>>({});
+  const [page, setPage] = useState(persisted?.page ?? 1);
+  const [currentLimit, setCurrentLimit] = useState(persisted?.limit ?? limit);
+  const [search, setSearch] = useState(persisted?.search ?? '');
+  const [filters, setFilters] = useState<Record<string, string | number | boolean | null>>(persisted?.filters ?? {});
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortedByTimeoutRef = useRef(false);
+  // The debounced search effect below resets to page 1; skip that on mount so a restored page sticks.
+  const skipInitialSearchResetRef = useRef(true);
+
+  useEffect(() => {
+    if (!persistKey) return;
+    try {
+      sessionStorage.setItem(persistKey, JSON.stringify({ page, limit: currentLimit, search, filters }));
+    } catch {
+      // Storage unavailable (private mode / quota) — the list just won't be remembered.
+    }
+  }, [persistKey, page, currentLimit, search, filters]);
 
   const buildUrl = useCallback(() => {
     const url = new URL(endpoint, window.location.origin);
@@ -119,7 +159,7 @@ export function useAdminData<T = unknown>({
   }, [endpoint, page, currentLimit, search, filters]);
 
   // Clear cache when filters change (but not on every render)
-  const prevFiltersRef = useRef<{ search: string; filters: Record<string, string | number | boolean | null> }>({ search: '', filters: {} });
+  const prevFiltersRef = useRef<{ search: string; filters: Record<string, string | number | boolean | null> }>({ search, filters });
 
   useEffect(() => {
     const filtersChanged =
@@ -236,6 +276,11 @@ export function useAdminData<T = unknown>({
 
   // Debounced search: only reset to page 1 when search term changes (do not depend on fetchData or page changes)
   useEffect(() => {
+    if (skipInitialSearchResetRef.current) {
+      skipInitialSearchResetRef.current = false;
+      return;
+    }
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }

@@ -8,6 +8,7 @@ import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { PDFDocument } from 'pdf-lib';
 import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
+import { adminReturnTo } from '@/lib/admin-return-to';
 
 async function countPdfPagesFromFile(file: File): Promise<number | null> {
   try {
@@ -164,7 +165,7 @@ export default function AdminReportCreatePage() {
       }
 
       setSuccess(true);
-      router.push('/admin/reports');
+      router.push(adminReturnTo('admin:reports:returnTo', '/admin/reports'));
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');

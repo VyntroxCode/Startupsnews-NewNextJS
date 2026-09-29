@@ -237,6 +237,8 @@ const NEWSLETTER_TABS: { id: Tab; label: string }[] = [
   { id: 'cron', label: 'Cron Settings' },
 ];
 
+const RSS_CATEGORY_FILTER_KEY = 'admin:newsletter:rssCategory';
+
 export default function NewsletterPage() {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') as Tab | null;
@@ -258,7 +260,10 @@ export default function NewsletterPage() {
   const [testingId, setTestingId] = useState<number | null>(null);
   const [disablingAll, setDisablingAll] = useState(false);
   const [rssCategories, setRssCategories] = useState<RssCategory[]>([]);
-  const [selectedRssCategoryId, setSelectedRssCategoryId] = useState<string>('');
+  // Remembered for the session so a round trip to /admin/rss-feeds/edit/[id] keeps the filter.
+  const [selectedRssCategoryId, setSelectedRssCategoryId] = useState<string>(() => {
+    try { return sessionStorage.getItem(RSS_CATEGORY_FILTER_KEY) || ''; } catch { return ''; }
+  });
   const [isMobile, setIsMobile] = useState(false);
 
   /* ── Mail Config state ── */
@@ -508,6 +513,10 @@ export default function NewsletterPage() {
       alert('Delete failed');
     }
   };
+
+  useEffect(() => {
+    try { sessionStorage.setItem(RSS_CATEGORY_FILTER_KEY, selectedRssCategoryId); } catch { /* ignore */ }
+  }, [selectedRssCategoryId]);
 
   const filteredRssFeeds = selectedRssCategoryId
     ? rssFeeds.filter((feed) => String(feed.category_id) === selectedRssCategoryId)

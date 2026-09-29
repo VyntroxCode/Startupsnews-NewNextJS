@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
+import { rememberAdminReturnTo } from '@/lib/admin-return-to';
 import type { ReportEntity } from '@/modules/reports/domain/types';
 import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
 import Image from 'next/image';
@@ -57,6 +58,11 @@ export default function AdminReportsPage() {
     setSectionFilter(id ? Number(id) : null);
     if (id) setActiveTab('reports');
   }, [searchParams]);
+
+  // Create / edit pages send the admin back to this same section view after saving.
+  useEffect(() => {
+    rememberAdminReturnTo('admin:reports:returnTo', sectionFilter ? `/admin/reports?section=${sectionFilter}` : '/admin/reports');
+  }, [sectionFilter]);
 
   const [reports, setReports] = useState<ReportWithMeta[]>([]);
   const [loading, setLoading] = useState(true);

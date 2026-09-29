@@ -8,6 +8,7 @@ import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { PDFDocument } from 'pdf-lib';
 import type { BrandStorySectionEntity } from '@/modules/brand-stories/domain/section-types';
+import { adminReturnTo } from '@/lib/admin-return-to';
 
 async function countPdfPagesFromFile(file: File): Promise<number | null> {
   try {
@@ -164,7 +165,7 @@ export default function AdminBrandStoryCreatePage() {
       }
 
       setSuccess(true);
-      router.push('/admin/brand-stories');
+      router.push(adminReturnTo('admin:brand-stories:returnTo', '/admin/brand-stories'));
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');

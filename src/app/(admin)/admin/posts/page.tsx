@@ -119,6 +119,7 @@ export default function PostsPage() {
     limit: 20,
     disableCache: true,
     enabled: tab === 'posts',
+    persistKey: 'admin:posts:list',
   });
 
   // Load categories and authors for the filter dropdowns on mount
