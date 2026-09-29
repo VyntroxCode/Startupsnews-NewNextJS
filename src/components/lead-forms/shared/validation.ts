@@ -1,5 +1,13 @@
 import { PHONE_RULES } from "@/components/ui/constants/phone";
-import { hasValidCustomCode, resolvePhoneCode, type PhoneParts } from "./compose";
+import { OTHER_CITY_VALUE } from "@/components/submit-event/constants";
+import {
+  hasValidCustomCode,
+  resolveCity,
+  resolveCountry,
+  resolvePhoneCode,
+  type LocationParts,
+  type PhoneParts,
+} from "./compose";
 import type { LeadFormData } from "./types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -56,6 +64,19 @@ export function validateWebsite(data: LeadFormData): string {
   return "";
 }
 
+/** Country and city are required on every lead page — the Sales Tracker's Country/City columns
+ * were arriving empty too often to route a lead. Both read the RESOLVED value, so picking
+ * "Others (Manually Fill)" and leaving the box blank still counts as missing. */
+export function validateCountry(data: LocationParts): string {
+  return resolveCountry(data) ? "" : "Please select your country.";
+}
+
+export function validateCity(data: LocationParts): string {
+  if (resolveCity(data)) return "";
+  if (!data.country) return "Please select your country first, then your city.";
+  return data.city === OTHER_CITY_VALUE ? "Please type your city name." : "Please select your city.";
+}
+
 export function validatePdfFile(data: LeadFormData): string {
   const f = data.pdfFile;
   if (!f) return "Please upload a PDF with the details.";
@@ -80,13 +101,19 @@ const STEP_VALIDATOR_MAP: Record<number, StepValidatorEntry[]> = {
   2: [
     { field: "email", fn: validateEmail },
     { field: "website", fn: validateWebsite },
+    { field: "country", fn: validateCountry },
+    { field: "city", fn: validateCity },
   ],
   3: [{ field: "pdfFile", fn: validatePdfFile }],
   // Steps 4 and 5 split step 2 into its two fields, so a page can put email on a different visual
   // page from website without changing 1-3, which Feature Your Startup and Funding Round rely on.
   // Submit Your Press Release uses them: [[1, 4], [5], []] puts email on its first page.
   4: [{ field: "email", fn: validateEmail }],
-  5: [{ field: "website", fn: validateWebsite }],
+  5: [
+    { field: "website", fn: validateWebsite },
+    { field: "country", fn: validateCountry },
+    { field: "city", fn: validateCity },
+  ],
 };
 
 export function validateStep(step: number, data: LeadFormData): Record<string, string> {

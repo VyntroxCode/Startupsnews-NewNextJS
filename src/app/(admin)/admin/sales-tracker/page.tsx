@@ -8,17 +8,20 @@ import SalesTrackerStyles from '@/components/admin/sales-tracker/SalesTrackerSty
 import EnsEnquiryDetailModal from '@/components/admin/sales-tracker/EnsEnquiryDetailModal';
 import SummaryCard from '@/components/admin/sales-tracker/SummaryCard';
 import PageLeadsKpis from '@/components/admin/sales-tracker/PageLeadsKpis';
-import TeamCard from '@/components/admin/sales-tracker/TeamCard';
-import { useSalesTrackerData } from '@/components/admin/sales-tracker/useSalesTrackerData';
+import { assignmentKey, useSalesTrackerData } from '@/components/admin/sales-tracker/useSalesTrackerData';
 import { emptyLead } from '@/components/admin/sales-tracker/utils';
 import type { SalesLead, UnifiedLeadRow } from '@/components/admin/sales-tracker/types';
+import { assignmentToDraft, type LeadAssignmentDraft, sameAssignmentDraft } from '@/modules/lead-assignments/domain/types';
 
 export default function SalesTrackerPage() {
   const {
-    leads, ensEnquiries, rows, team, promotedCities, loaded,
-    saveLead, deleteLead, deleteAllLeads, updateLeadField, setTeam, applyEnsEnquiryUpdate,
+    leads, ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
+    saveLead, deleteLead, deleteAllLeads, assignLead, applyEnsEnquiryUpdate,
   } = useSalesTrackerData();
   const [activeLead, setActiveLead] = useState<SalesLead | null>(null);
+  // Whether LeadFormModal opens unlocked. Existing leads open read-only (row click / View) unless
+  // the table's Edit button was used; a brand-new lead always opens editable.
+  const [leadStartEditing, setLeadStartEditing] = useState(false);
   const [activeEnsId, setActiveEnsId] = useState<string | null>(null);
   // Set by the Summary card's "Pending leads" tile, read by LeadsTable to filter down to just
   // those and cleared from there once the reader is done looking — see LeadsTable's own
@@ -29,8 +32,13 @@ export default function SalesTrackerPage() {
   const [pageFilter, setPageFilter] = useState('');
   const [jumpToken, setJumpToken] = useState(0);
 
-  async function handleSave(lead: SalesLead) {
-    await saveLead(lead);
+  // The lead is saved first (a new lead needs its row before it can be assigned), then its
+  // departments and people, only if they changed. An assignment error keeps the dialog open with its
+  // message; saving again is safe (the lead save is an upsert, the assignment save replaces).
+  async function handleSave(lead: SalesLead, assignmentDraft: LeadAssignmentDraft) {
+    const saved = await saveLead(lead);
+    const current = assignmentToDraft(assignments[assignmentKey('lead', saved.id)]);
+    if (!sameAssignmentDraft(assignmentDraft, current)) await assignLead('lead', saved.id, assignmentDraft);
     setActiveLead(null);
   }
 
@@ -38,8 +46,8 @@ export default function SalesTrackerPage() {
   // enquiries — see useSalesTrackerData's `rows`. A click opens whichever modal actually owns that
   // row's data: LeadFormModal saves through the generic lead upsert, EnsEnquiryDetailModal through
   // its own PATCH endpoint. Neither reads or writes the other's table.
-  function handleRowEdit(row: UnifiedLeadRow) {
-    if (row._source === 'lead') setActiveLead(row);
+  function handleRowEdit(row: UnifiedLeadRow, startEditing = false) {
+    if (row._source === 'lead') { setLeadStartEditing(startEditing); setActiveLead(row); }
     else setActiveEnsId(row.id);
   }
 
@@ -53,10 +61,10 @@ export default function SalesTrackerPage() {
             <h1>Sales Tracker</h1>
             <div className="sub">Shared across your team · saved automatically{!loaded ? ' · loading…' : ''}</div>
           </div>
-          <button type="button" className="primary" onClick={() => setActiveLead(emptyLead())}>+ Add new lead</button>
+          <button type="button" className="primary" onClick={() => { setLeadStartEditing(true); setActiveLead(emptyLead()); }}>+ Add new lead</button>
         </div>
 
-        <SummaryCard leads={leads} loaded={loaded} onPendingLeadsClick={() => setPendingOnly(true)} />
+        <SummaryCard leads={leads} ensPendingCount={ensEnquiries.filter((e) => !e.leadStatus).length} loaded={loaded} onPendingLeadsClick={() => setPendingOnly(true)} />
 
         <PageLeadsKpis
           rows={rows}
@@ -67,17 +75,27 @@ export default function SalesTrackerPage() {
         {/* Sponsor Event submissions and Expand North Star enquiries used to get their own
             standalone sections here (KPI tiles + table + detail view each). Removed 2026-09-23 —
             all of that data now shows as rows in the unified "All leads" table below, with Sponsor
-            Event's fields fully editable there and an Expand North Star row still opening
+            Event's fields editable from its lead window and an Expand North Star row still opening
             EnsEnquiryDetailModal (rendered below) on click, exactly as it did from its old card. */}
 
         {activeLead && (
-          <LeadFormModal lead={activeLead} team={team} promotedCities={promotedCities} onClose={() => setActiveLead(null)} onSave={handleSave} />
+          <LeadFormModal
+            lead={activeLead}
+            startEditing={leadStartEditing}
+            employees={employees}
+            departments={departments}
+            assignment={activeLead.id ? assignments[assignmentKey('lead', activeLead.id)] : undefined}
+            promotedCities={promotedCities} onClose={() => setActiveLead(null)} onSave={handleSave} />
         )}
 
         {activeEnsEnquiry && (
           <EnsEnquiryDetailModal
             key={activeEnsEnquiry.id}
             enquiry={activeEnsEnquiry}
+            employees={employees}
+            departments={departments}
+            assignment={assignments[assignmentKey('ens', activeEnsEnquiry.id)]}
+            onAssign={(draft) => assignLead('ens', activeEnsEnquiry.id, draft)}
             onClose={() => setActiveEnsId(null)}
             onSaved={applyEnsEnquiryUpdate}
           />
@@ -85,19 +103,18 @@ export default function SalesTrackerPage() {
 
         <LeadsTable
           rows={rows}
-          team={team}
+          employees={employees}
+          departments={departments}
+          assignments={assignments}
           onEdit={handleRowEdit}
           onDelete={deleteLead}
           onDeleteAll={deleteAllLeads}
-          onUpdateField={updateLeadField}
           pendingOnly={pendingOnly}
           onClearPendingOnly={() => setPendingOnly(false)}
           filterPageType={pageFilter}
           onFilterPageTypeChange={setPageFilter}
           jumpToken={jumpToken}
         />
-
-        <TeamCard team={team} onTeamChange={setTeam} />
 
         <SalesTrackerStyles />
       </div>

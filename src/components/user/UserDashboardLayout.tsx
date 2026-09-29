@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import CompleteProfileWizard from './CompleteProfileWizard';
 
@@ -35,7 +34,7 @@ const NAV_GROUPS = [
   {
     title: '',
     items: [
-      { href: '/dashboard', label: 'Dashboard', badge: '', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg> },
+      { href: '/dashboard', label: 'Dashboard', badge: '', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg> },
     ]
   },
   {
@@ -43,15 +42,15 @@ const NAV_GROUPS = [
     // render as their own visual group (see the `mb-6`/`mb-8` split in the nav map below).
     title: '',
     items: [
-      { href: '/dashboard/reports', label: 'Reports', badge: '', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
+      { href: '/dashboard/reports', label: 'Reports', badge: '', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
       // Locked — no real brand-story content exists yet (`/api/brand-stories` and
       // `/api/brand-story-sections` both come back empty). Shows a lock icon and doesn't
       // navigate; the route itself renders the same locked state in place (no redirect) as a
       // second guard against a direct URL visit (see `src/app/dashboard/brand-stories/page.tsx`).
       // Remove `locked` here (and flip `BRAND_STORIES_LOCKED` there) once there's real content.
-      { href: '/dashboard/brand-stories', label: 'Brand Stories', badge: '', locked: true, icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> },
-      { href: '/dashboard/newsletter', label: 'Newsletter', badge: '', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
-      { href: '/dashboard/settings', label: 'Profile', badge: '', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
+      { href: '/dashboard/brand-stories', label: 'Brand Stories', badge: '', locked: true, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> },
+      { href: '/dashboard/newsletter', label: 'Newsletter', badge: '', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
+      { href: '/dashboard/settings', label: 'Profile', badge: '', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
     ]
   }
 ];
@@ -131,7 +130,7 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#fdf2f8_0%,_#f8fafc_45%,_#eef2ff_100%)]">
+      <div className="flex min-h-screen items-center justify-center bg-db-bg">
         <div className="h-11 w-11 animate-spin rounded-full border-[3px] border-slate-300/40 border-t-db-pink" />
       </div>
     );
@@ -140,13 +139,13 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   const initials = user.name.charAt(0).toUpperCase();
   const userColor = avatarColor(user.name);
 
-  const sidebarWidth = collapsed ? 68 : 248;
+  const sidebarWidth = collapsed ? 84 : 272;
   // Mobile's slide-out drawer always shows full labels (it opens via the hamburger tap, not
   // hover, and touch devices have no hover state) — only the desktop rail auto-collapses.
   const showCollapsed = !isMobile && collapsed;
 
   const sidebar = (
-    <div className="relative flex h-full flex-col overflow-hidden border-r border-db-line bg-db-card font-sans">
+    <div className="relative flex h-full flex-col overflow-hidden border-r border-db-line bg-db-card font-db-nav">
       {/* Header / Logo — desktop shows the logo in its own full-width masthead above the rail
           instead (see the `!isMobile` branch below), so it never shrinks down to the 28px
           icon-only mark when the rail auto-collapses; the mobile drawer keeps it here since it
@@ -171,9 +170,9 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
       )}
 
       {/* Nav */}
-      <nav className={`relative flex-1 overflow-y-auto ${showCollapsed ? 'p-2.5' : 'px-3 py-1'}`}>
+      <nav className={`relative flex-1 overflow-y-auto ${showCollapsed ? 'px-2.5 py-5' : 'px-3 pb-4 pt-6'}`}>
         {NAV_GROUPS.map((group, gIdx) => (
-          <div key={gIdx} className={group.title ? 'mb-8' : 'mb-6'}>
+          <div key={gIdx} className={`flex flex-col gap-1 ${group.title ? 'mb-6' : 'mb-4'}`}>
             {!showCollapsed && group.title && (
               <div className="mb-3 flex items-center justify-between px-2.5">
                 <p className="m-0 text-[11px] font-bold tracking-[0.08em] text-slate-400">{group.title}</p>
@@ -182,9 +181,8 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
             {group.items.map((item) => {
               const active = item.href === '/dashboard' ? pathname === '/dashboard' : (item.href !== '#' && pathname?.startsWith(item.href));
 
-              // Same row styling for every state — active gets a soft pink tint + pink icon/text
-              // + a thin animated indicator bar; everything else fades to a light neutral hover
-              // (no oversized bright block, no per-row inline hover handlers).
+              // Same row styling for every state — active is pink icon/text + a thin left bar (no
+              // tinted block behind it); everything else gets a light neutral hover.
               // focus-visible ring restored explicitly — the legacy site-wide CSS reset strips
               // the browser's default outline from every link, so without this a keyboard user
               // tabbing through the nav gets no visible indicator of where focus is at all.
@@ -195,10 +193,11 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
               // getComputedStyle() can't catch this in testing, since browsers deliberately
               // report the *unvisited* colour to JS to prevent history-sniffing, even while
               // painting the real visited colour on screen. Force it to match every other state.
-              const rowClass = `group relative flex items-center rounded-[10px] text-[19px] font-semibold no-underline outline-none transition-colors duration-250 ease-out focus-visible:ring-2 focus-visible:ring-db-pink/50 focus-visible:ring-offset-1 ${
-                active ? 'bg-db-pink/8 text-db-pink visited:text-db-pink' : 'text-db-ink visited:text-db-ink hover:bg-slate-100 hover:text-db-pink visited:hover:text-db-pink'
+              const rowClass = `group relative flex items-center rounded-md text-[17px] no-underline outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-db-pink/50 focus-visible:ring-offset-1 ${
+                active ? 'font-semibold text-db-pink visited:text-db-pink' : 'font-medium text-db-ink visited:text-db-ink hover:bg-slate-50 hover:text-db-pink visited:hover:text-db-pink'
               }`;
-              const iconClass = `flex shrink-0 transition-transform duration-250 ease-out group-hover:translate-x-0.5 ${active ? 'text-db-pink visited:text-db-pink' : 'text-db-ink visited:text-db-ink group-hover:text-db-pink visited:group-hover:text-db-pink'}`;
+              const iconSize = showCollapsed ? '[&>svg]:size-6' : '[&>svg]:size-5';
+              const iconClass = `flex shrink-0 ${iconSize} ${active ? 'text-db-pink visited:text-db-pink' : 'text-db-ink visited:text-db-ink group-hover:text-db-pink visited:group-hover:text-db-pink'}`;
 
               // Locked items (Brand Stories — no real content yet) render as an inert row, not a
               // link: no `href`, no click handler, `aria-disabled` + a native `title` tooltip so
@@ -214,12 +213,12 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                     aria-disabled="true"
                     tabIndex={0}
                     title={`${item.label} — locked, no content yet`}
-                    className={`relative mb-1 flex cursor-not-allowed items-center rounded-[10px] text-[19px] font-semibold text-slate-400 outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${showCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-3'}`}
+                    className={`relative flex cursor-not-allowed items-center rounded-md text-[17px] font-medium text-slate-400 outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${showCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'}`}
                   >
-                    <span className="flex shrink-0">{item.icon}</span>
+                    <span className={`flex shrink-0 ${showCollapsed ? '[&>svg]:size-6' : '[&>svg]:size-5'}`}>{item.icon}</span>
                     {!showCollapsed && (
-                      <span className="flex min-w-0 flex-1 items-center justify-between">
-                        <span className="block truncate">{item.label}</span>
+                      <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                        <span className="block whitespace-nowrap leading-[1.4]">{item.label}</span>
                         <span className="flex shrink-0 text-slate-400">{LOCK_ICON}</span>
                       </span>
                     )}
@@ -238,19 +237,15 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                   href={item.href}
                   title={showCollapsed ? item.label : undefined}
                   onClick={() => setMobileOpen(false)}
-                  className={`${rowClass} mb-1 ${showCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-3'}`}
+                  className={`${rowClass} ${showCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'}`}
                 >
                   {active && (
-                    <motion.span
-                      layoutId="nav-active-bar"
-                      className={`absolute top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-db-pink ${showCollapsed ? '-left-1' : 'left-0'}`}
-                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    />
+                    <span className={`absolute inset-y-2 w-[3px] rounded-full bg-db-pink ${showCollapsed ? '-left-1' : 'left-0'}`} aria-hidden="true" />
                   )}
                   <span className={iconClass}>{item.icon}</span>
                   {!showCollapsed && (
-                    <span className="flex min-w-0 flex-1 items-center justify-between">
-                      <span className="block truncate transition-transform duration-250 ease-out group-hover:translate-x-0.5">{item.label}</span>
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      <span className="block whitespace-nowrap leading-[1.4]">{item.label}</span>
                       {item.badge && <span className="rounded border border-slate-300 px-1 text-[9px] font-bold text-slate-500">{item.badge}</span>}
                     </span>
                   )}
@@ -261,16 +256,16 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
         ))}
       </nav>
 
-      {/* Bottom section — profile completeness + logout, one cohesive block */}
-      <div className={`border-t border-db-line/70 ${showCollapsed ? 'p-2.5' : 'p-3'}`}>
+      {/* Bottom section — profile completeness + a quiet logout link */}
+      <div className={`border-t border-db-line/70 pb-6 pt-3 ${showCollapsed ? 'px-2.5' : 'px-3'}`}>
         {profilePercent !== null && profilePercent < 100 && (
-          <div className={showCollapsed ? 'mb-2' : 'mb-2.5'}>
+          <div className="mb-1">
             {showCollapsed ? (
               <button
                 type="button"
                 onClick={() => setShowWizard(true)}
                 title={`Profile ${profilePercent}% complete`}
-                className="flex h-8 w-full cursor-pointer items-center justify-center rounded-lg border border-db-line bg-db-bg text-[10px] font-extrabold text-db-pink transition-colors duration-200 hover:bg-rose-50"
+                className="flex h-8 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[11px] font-bold text-db-pink transition-colors duration-200 hover:bg-slate-50"
               >
                 {profilePercent}%
               </button>
@@ -278,14 +273,14 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
               <button
                 type="button"
                 onClick={() => setShowWizard(true)}
-                className="w-full cursor-pointer rounded-[10px] border border-db-line bg-db-bg px-3 py-2.5 text-left transition-colors duration-200 hover:bg-rose-50/60"
+                className="w-full cursor-pointer rounded-md border-0 bg-transparent px-3 py-3 text-left transition-colors duration-200 hover:bg-slate-50"
               >
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-[15.5px] font-bold text-db-ink">Profile</span>
-                  <span className="text-[15.5px] font-extrabold text-db-pink">{profilePercent}%</span>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[14px] font-medium leading-[1.4] text-db-muted">Profile complete</span>
+                  <span className="text-[14px] font-semibold leading-[1.4] text-db-ink">{profilePercent}%</span>
                 </div>
-                <div className="h-[5px] overflow-hidden rounded-full bg-db-line">
-                  <div className="h-full rounded-full bg-linear-to-r from-db-pink to-db-violet transition-[width] duration-300 ease-out" style={{ width: `${profilePercent}%` }} />
+                <div className="h-1 overflow-hidden rounded-sm bg-db-line">
+                  <div className="h-full bg-db-pink transition-[width] duration-300 ease-out" style={{ width: `${profilePercent}%` }} />
                 </div>
               </button>
             )}
@@ -296,24 +291,22 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
           type="button"
           onClick={handleLogout}
           title={showCollapsed ? 'Logout' : undefined}
-          className={`flex w-full cursor-pointer items-center justify-center rounded-[10px] border-0 bg-db-pink font-bold text-white shadow-[0_10px_22px_-12px_rgba(236,23,96,0.6)] transition-colors duration-200 hover:bg-db-pink-deep ${showCollapsed ? 'py-2.5 text-[15px]' : 'py-2.5 text-[17px]'}`}
+          aria-label={showCollapsed ? 'Logout' : undefined}
+          className={`flex w-full cursor-pointer items-center gap-3 rounded-md border-0 bg-transparent text-[15px] font-medium leading-[1.4] text-db-muted transition-colors duration-200 hover:bg-slate-50 hover:text-db-pink ${showCollapsed ? 'justify-center py-2.5' : 'px-3 py-2.5'}`}
         >
-          {showCollapsed ? (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          ) : (
-            'Logout'
-          )}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          {!showCollapsed && 'Logout'}
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-db-bg" style={{ fontFamily: '"Garnett", Helvetica, Arial, sans-serif' }}>
+    <div className="min-h-screen bg-db-bg font-db">
       {isMobile && (
         <>
           {/* z-[1004] — above the backdrop (1002) AND the drawer (1003). CSS stacking contexts
@@ -322,12 +315,12 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
               lift it above a *sibling* (the drawer) — only raising the bar itself works. The
               drawer's own logo header sits in this same 72px band and is now visually tucked
               behind this bar while open; its nav items, well below that band, are unaffected. */}
-          <div className="fixed inset-x-0 top-0 z-[1004] flex h-[72px] items-center gap-3 border-b border-slate-200/60 bg-white/90 px-4 backdrop-blur-xl">
+          <div className="fixed inset-x-0 top-0 z-[1004] flex h-[72px] items-center gap-3 border-b border-db-line bg-db-card px-4">
             <button
               type="button"
               onClick={() => setMobileOpen((value) => !value)}
               aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-[14px] border border-slate-200 bg-white text-db-ink shadow-[0_10px_24px_-14px_rgba(17,24,39,0.35)] outline-none focus-visible:ring-2 focus-visible:ring-db-pink/50"
+              className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-db-line bg-db-card text-db-ink outline-none focus-visible:ring-2 focus-visible:ring-db-pink/50"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12" />
@@ -340,8 +333,8 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
               <p className="m-0 mt-0.5 truncate text-[12px] text-db-muted">{user.name}</p>
             </div>
             <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] text-[16px] font-black text-white"
-              style={{ background: `linear-gradient(135deg, ${userColor}, ${userColor}cc)`, boxShadow: `0 12px 24px ${userColor}35` }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-bold text-white"
+              style={{ background: userColor }}
             >
               {initials}
             </div>
@@ -350,7 +343,7 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
           {mobileOpen && <div onClick={() => setMobileOpen(false)} className="fixed inset-0 z-[1002] bg-slate-900/55 backdrop-blur-sm" />}
 
           <div
-            className="fixed inset-y-0 left-0 z-[1003] w-[272px] max-w-[82vw] transition-transform duration-250 ease-out"
+            className="fixed inset-y-0 left-0 z-[1003] w-[288px] max-w-[86vw] transition-transform duration-250 ease-out"
             style={{ transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)' }}
           >
             {sidebar}

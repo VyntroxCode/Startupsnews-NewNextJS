@@ -1,15 +1,15 @@
 'use client';
 
 import { useMemo } from 'react';
-import { PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS } from './constants';
+import { isOpenStatusLabel, PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS } from './constants';
 import { matchesType } from './LeadsTable';
 import type { UnifiedLeadRow } from './types';
 
-/** Still needs work: a sales lead not yet Successfully closed / Dropped, or an Expand North Star
- * enquiry not yet Confirmed / Cancelled (no conversation yet or Followed Up). */
+/** Still needs work: status Pending or Follow Up (not Confirmed / Not Interested) — the same four
+ * statuses for a sales lead and an Expand North Star enquiry. */
 function isOpen(row: UnifiedLeadRow): boolean {
   if (row._source === 'ens') return row.leadStatus !== 'confirmed' && row.leadStatus !== 'cancelled';
-  return row.status !== 'Successfully closed' && row.status !== 'Dropped';
+  return isOpenStatusLabel(row.status);
 }
 
 /** "Leads by page" — one clickable tile per public page that feeds the Sales Tracker, showing how

@@ -67,7 +67,7 @@ export function normalizeSubmissionInput(raw: unknown): FeatureStartupSubmission
     city: str(body.city),
   };
 
-  const missing = (['name', 'companyName', 'phone', 'email'] as const).filter((k) => !input[k]);
+  const missing = (['name', 'companyName', 'phone', 'email', 'country', 'city'] as const).filter((k) => !input[k]);
   if (missing.length) {
     throw new FeatureStartupValidationError(`Please fill the required fields: ${missing.map((k) => LABELS[k]).join(', ')}.`);
   }

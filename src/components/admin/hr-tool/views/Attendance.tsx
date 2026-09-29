@@ -5,6 +5,7 @@ import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
 import AttendanceCalendar from './AttendanceCalendar';
+import PunchOutTimeInput from '../../PunchOutTimeInput';
 import { ApprovalBadge, StatusBadge, arrivalBucket, employeeName, isAdmin, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
 import { hrApi } from '../api';
 import { realDayHoursBucket } from '@/modules/hr-tool/utils/lateness';
@@ -207,7 +208,9 @@ export default function Attendance() {
         ]}>
           <div className="notice">Requests must be submitted within {state.rules.regularizationWindowDays} days of the attendance date.</div>
           <div className="field"><label className="field-label">Date</label><input type="date" value={regDate} onChange={(e) => setRegDate(e.target.value)} /></div>
-          <div className="field"><label className="field-label">{regPunchType === 'out' ? 'Punch Out' : 'Punch In'} time</label><input type="time" value={regTime} onChange={(e) => setRegTime(e.target.value)} /></div>
+          <div className="field"><label className="field-label">{regPunchType === 'out' ? 'Punch Out' : 'Punch In'} time</label>{regPunchType === 'out'
+            ? <div><PunchOutTimeInput value={regTime} onChange={setRegTime} selectStyle={{ width: 'auto' }} /></div>
+            : <input type="time" value={regTime} onChange={(e) => setRegTime(e.target.value)} />}</div>
           <div className="field"><label className="field-label">Reason</label>
             <select value={regReason} onChange={(e) => setRegReason(e.target.value)}>
               {REG_REASONS.map((r) => <option key={r}>{r}</option>)}

@@ -128,7 +128,7 @@ export default function SettingsPage() {
         borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
       }} />
 
-      <div style={{ maxWidth: 1360, position: 'relative', zIndex: 1 }}>
+      <div style={{ width: '100%', maxWidth: 1800, position: 'relative', zIndex: 1 }}>
         <ProfileHeader isMobile={isMobile} />
 
         <AnimatePresence>

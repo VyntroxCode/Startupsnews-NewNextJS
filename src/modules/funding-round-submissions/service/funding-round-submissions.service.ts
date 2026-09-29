@@ -67,7 +67,7 @@ export function normalizeSubmissionInput(raw: unknown): FundingRoundSubmissionIn
     city: str(body.city),
   };
 
-  const missing = (['name', 'companyName', 'phone', 'email'] as const).filter((k) => !input[k]);
+  const missing = (['name', 'companyName', 'phone', 'email', 'country', 'city'] as const).filter((k) => !input[k]);
   if (missing.length) {
     throw new FundingRoundValidationError(`Please fill the required fields: ${missing.map((k) => LABELS[k]).join(', ')}.`);
   }

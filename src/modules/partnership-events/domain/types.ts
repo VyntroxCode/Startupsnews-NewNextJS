@@ -317,3 +317,26 @@ export const EVENT_DESCRIPTION_MIN_LENGTH = 150;
 export const POSTER_SPEC = '1260×630px, JPG, PNG or WebP, under 2MB — used on the event listing page.';
 export const BANNER_SPEC = '2438×413px, JPG, PNG or WebP, under 2MB — used on the homepage.';
 export const SOCIAL_CREATIVE_SPEC = '1080×1440px, JPG, PNG or WebP.';
+
+/* ---------- Follow Up notes (partnership_event_follow_ups) ----------
+ * Admin-only notes on what happened in the conversation with the organiser. Added from the
+ * Add/Edit event form; never edited — the date is set by the database when a note is added. */
+/** How many notes each event keeps. Adding a 6th drops the oldest. */
+export const FOLLOW_UP_KEEP_COUNT = 5;
+export const FOLLOW_UP_MAX_LENGTH = 2000;
+
+export interface PartnershipEventFollowUpEntity {
+  id: number;
+  partnership_event_id: number;
+  message: string;
+  created_by: string | null;
+  /** 'YYYY-MM-DD HH:MM:SS', IST (the pool runs at +05:30 with dateStrings). */
+  created_at: string;
+}
+
+export interface PartnershipEventFollowUp {
+  id: number;
+  message: string;
+  createdBy: string;
+  createdAt: string;
+}

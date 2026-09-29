@@ -7,7 +7,9 @@ import { CountryCityFields } from "@/components/submit-event/CountryCityFields";
 import { FieldReveal } from "../FieldReveal";
 import type { FeatureStartupFormController } from "../useFeatureStartupForm";
 import {
+  validateCity,
   validateCompanyName,
+  validateCountry,
   validateEmail,
   validateName,
   validatePhone,
@@ -28,7 +30,8 @@ import {
  *               the admin Partnership Tracker's curated cities, each with an "Other (add manually)"
  *               escape. It replaced ONE box labelled "Country / City", which stored whatever was
  *               typed — so "Bengaluru, India", "bangalore" and "IN" all arrived as different
- *               places. Passing `required={false}` keeps the pair optional, as that box was.
+ *               places. Both are required (validateCountry / validateCity), so every lead reaches the Sales
+ *               Tracker with a location.
  *
  * The controller still exposes one `phone` and one `countryCity` string composed from these inputs,
  * so nothing downstream had to change. The FieldReveal wrappers ladder the fields in on scroll. */
@@ -126,13 +129,14 @@ export function DetailsContactStep({
           city={data.city}
           cityOther={data.cityOther}
           promotedCities={promotedCities}
-          required={false}
-          onChangeCountry={(v) => ctrl.setField("country", v)}
+          countryError={errors.country}
+          cityError={errors.city}
+          onChangeCountry={(v) => ctrl.updateAndMaybeValidate("country", v, "country", validateCountry)}
           onChangeCountryOther={(v) => ctrl.setField("countryOther", v)}
-          onChangeCity={(v) => ctrl.setField("city", v)}
-          onChangeCityOther={(v) => ctrl.setField("cityOther", v)}
-          onBlurCountry={() => {}}
-          onBlurCity={() => {}}
+          onChangeCity={(v) => ctrl.updateAndMaybeValidate("city", v, "city", validateCity)}
+          onChangeCityOther={(v) => ctrl.updateAndMaybeValidate("cityOther", v, "city", validateCity)}
+          onBlurCountry={() => ctrl.blurValidate("country", validateCountry)}
+          onBlurCity={() => ctrl.blurValidate("city", validateCity)}
         />
       </FieldReveal>
 

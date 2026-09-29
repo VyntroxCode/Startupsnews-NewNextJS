@@ -79,7 +79,7 @@ interface PolicySummaryWidgetProps {
  * alone decide the day, credited only inside the shift window; arrival time only marks "late").
  * Reused by the Publisher/Event Admin dashboard (default props) and the plain employee dashboard
  * (apiBase="/api/employee/attendance", getHeaders=getEmployeeAuthHeaders). Styled with Tailwind
- * via src/components/admin/rules-policy-tailwind.css. */
+ * via src/components/admin/staff-panel-tailwind.css. */
 export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance', getHeaders = getAuthHeaders }: PolicySummaryWidgetProps) {
   const [policy, setPolicy] = useState<PolicyData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -229,10 +229,6 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
           <li className="flex gap-2">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
             <span>Forgot to punch out? The day counts as Absent until a regularization request is approved.</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
-            <span>Work From Home: apply from the Leave page. Once approved, each WFH day is marked as a full day automatically — no punching needed.</span>
           </li>
           {policy.geoFencing && (
             <li className="flex gap-2">

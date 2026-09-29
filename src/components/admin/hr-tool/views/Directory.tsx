@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import HireEmployeeButton from './HireEmployeeButton';
+import HrPhoneField, { hrPhoneError, phonePartsFromStored, storedPhoneFromParts } from '../HrPhoneField';
+import { StartExitModal } from './Offboarding';
 import EditCredentialModal from './EditCredentialModal';
 import { PANEL_ROLE_LABEL } from './CredentialFields';
 import { StatusBadge, addDays, initialLeaveBalance, computeCtcBreakdown, employeeName, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
@@ -86,7 +88,7 @@ function PageHead({ title, sub }: { title: string; sub: string }) {
 }
 
 export default function Directory() {
-  const { state, persistEmployees, deleteEmployee, persistDesignations, logRuleChange, upsertEmployeeCredentialInState, applyEmployeeRenameInState } = useHrTool();
+  const { state, persistEmployees, deleteEmployee, persistDesignations, logRuleChange, upsertEmployeeCredentialInState, applyEmployeeRenameInState, applyEmployeeStatusInState } = useHrTool();
   const [search, setSearch] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
   // The Directory's one status control: Active (anyone not exited — onboarding/probation/active
@@ -231,7 +233,7 @@ export default function Directory() {
       `Permanently delete ${e.name}?\n\n` +
       'This removes their Directory record, their Employee ID login, and all of their attendance, ' +
       'leave, expense, ticket and payroll records.\n\n' +
-      'For a real exit use "Mark as exited" instead — that keeps the record and moves them to ' +
+      'For a real exit use "Start exit" instead — that keeps the record and runs it through ' +
       "Offboarding. This can't be undone."
     )) return;
     setRemovingId(e.id);
@@ -248,21 +250,16 @@ export default function Directory() {
   async function confirmProbation(e: HrEmployee) {
     await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, status: 'active', leaveBalance: initialLeaveBalance(state.rules) } : x)));
     logRuleChange(`Confirmed ${e.name} — moved from Probation to Active`);
-    setProfileId(null);
   }
   async function extendProbation(e: HrEmployee) {
     const days = prompt('Extend probation by how many days?', '30');
     if (!days || isNaN(Number(days))) return;
     await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, probationExtendedBy: (x.probationExtendedBy || 0) + Number(days) } : x)));
     logRuleChange(`Extended ${e.name}'s probation by ${days} days`);
-    setProfileId(null);
   }
-  async function markExited(e: HrEmployee) {
-    if (!confirm(`Mark ${e.name} as exited? They'll move to Offboarding and lose portal access. This doesn't delete their record.`)) return;
-    await persistEmployees(state.employees.map((x) => (x.id === e.id ? { ...x, status: 'exited' } : x)));
-    logRuleChange(`Marked ${e.name} as exited`);
-    setProfileId(null);
-  }
+  // Exits go through Offboarding (hr_offboarding) rather than a bare status flip — that is what
+  // sets the last working day and actually ends portal access. Flipping status here alone never did.
+  const [startingExitFor, setStartingExitFor] = useState<HrEmployee | null>(null);
 
   async function kycDocAction(empId: string, slotKey: string, status: 'approved' | 'rejected') {
     if (status === 'rejected') { setKycRejectTarget({ empId, slotKey }); setKycRejectRemarks(''); return; }
@@ -343,7 +340,7 @@ export default function Directory() {
             <button className="btn sm" onClick={() => exportDirectory('csv')}>⇩ CSV</button>
             <button className="btn sm" onClick={() => exportDirectory('excel')}>⇩ Excel</button>
             <button className="btn" onClick={() => setBulkOpen(true)}>⇧ Bulk import (CSV)</button>
-            <HireEmployeeButton label="+ Add Employee" className="btn primary" />
+            <HireEmployeeButton label="+ Add Employee" className="btn primary" onHired={setProfileId} />
           </div>
         )}
       </div>
@@ -382,16 +379,11 @@ export default function Directory() {
 
 
 
-      {kycRejectTarget && (
-        <ModalShell title="Reject KYC document" onClose={() => setKycRejectTarget(null)} actions={[
-          { label: 'Cancel', cls: 'btn', onClick: () => setKycRejectTarget(null) },
-          { label: 'Reject', cls: 'btn reject', onClick: confirmKycDocReject },
-        ]}>
-          <div className="field"><label className="field-label">Remarks (required — shown to the employee)</label><textarea value={kycRejectRemarks} onChange={(e) => setKycRejectRemarks(e.target.value)} /></div>
-        </ModalShell>
-      )}
-
-      {profile && !ctcSplitId && (
+      {/* The profile stays mounted under every dialog it opens (CTC split, credential, KYC reject,
+          start exit) so its open sections, scroll position and unsaved edits are still there when
+          that dialog closes. Modals share one z-index, so each dialog is rendered AFTER this one
+          to paint on top of it. */}
+      {profile && (
         <EmployeeProfileModal
           employee={profile}
           admin={admin}
@@ -401,12 +393,34 @@ export default function Directory() {
           onRemove={() => removeEmployeeRecord(profile)}
           onConfirmProbation={() => confirmProbation(profile)}
           onExtendProbation={() => extendProbation(profile)}
-          onMarkExited={() => markExited(profile)}
+          onMarkExited={() => setStartingExitFor(profile)}
           onEditCredential={(c) => setEditingCredential(c)}
           onIssueCredential={() => setIssuingCredentialFor(profile)}
           onApproveKyc={(slotKey) => kycDocAction(profile.id, slotKey, 'approved')}
           onRejectKyc={(slotKey) => kycDocAction(profile.id, slotKey, 'rejected')}
           onSaveEdits={(updates) => saveEmployeeEdits(profile, updates)}
+        />
+      )}
+      {kycRejectTarget && (
+        <ModalShell title="Reject KYC document" onClose={() => setKycRejectTarget(null)} actions={[
+          { label: 'Cancel', cls: 'btn', onClick: () => setKycRejectTarget(null) },
+          { label: 'Reject', cls: 'btn reject', onClick: confirmKycDocReject },
+        ]}>
+          <div className="field"><label className="field-label">Remarks (required — shown to the employee)</label><textarea value={kycRejectRemarks} onChange={(e) => setKycRejectRemarks(e.target.value)} /></div>
+        </ModalShell>
+      )}
+
+      {startingExitFor && (
+        <StartExitModal
+          employees={state.employees}
+          settings={null}
+          preselectId={startingExitFor.id}
+          onClose={() => setStartingExitFor(null)}
+          onStarted={(c) => {
+            if (c.status === 'exited') applyEmployeeStatusInState(c.employeeId, 'exited');
+            setStartingExitFor(null);
+            alert(`Exit started for ${c.emp}. Track it under Offboarding.`);
+          }}
         />
       )}
       {ctcSplitId && (
@@ -492,6 +506,8 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
   const [editing, setEditing] = useState(admin);
   const [viewerDoc, setViewerDoc] = useState<{ name: string; url: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  // "Saved ✓" on the Save button for a moment after a save — the form stays open (see saveEdit).
+  const [savedFlash, setSavedFlash] = useState(false);
   const [formError, setFormError] = useState('');
   const formFromEmployee = () => ({
     name: employee.name, phone: employee.phone || '',
@@ -501,9 +517,14 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
     doj: employee.doj, email: employee.email === '—' ? '' : employee.email, ctc: String(employee.ctc),
   });
   const [form, setForm] = useState(formFromEmployee);
+  // Country code + digits for the contact number (see HrPhoneField); `form.phone` is composed from it.
+  const [phoneParts, setPhoneParts] = useState(() => phonePartsFromStored(employee.phone));
+  const [phoneError, setPhoneError] = useState('');
 
   function startEdit() {
     setForm(formFromEmployee());
+    setPhoneParts(phonePartsFromStored(employee.phone));
+    setPhoneError('');
     setFormError('');
     setEditing(true);
   }
@@ -513,14 +534,11 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
     const name = form.name.trim().replace(/\s+/g, ' ');
     if (!name) { setFormError('Full name is required.'); return; }
     // No uniqueness check: records are linked by employee id, so two employees may share a name.
-    const phone = form.phone.trim();
-    if (phone) {
-      const digits = phone.replace(/\D/g, '');
-      if (!/^[+\d\s()-]+$/.test(phone) || digits.length < 7 || digits.length > 15 || phone.length > 20) {
-        setFormError('Enter a valid contact number: 7 to 15 digits, optionally starting with + (e.g. +91 98765 43210).');
-        return;
-      }
-    }
+    // Optional here (older records may have none), but when given it must pass the same
+    // per-country rule as the public forms.
+    const phoneProblem = hrPhoneError(phoneParts, false);
+    if (phoneProblem) { setPhoneError(phoneProblem); setFormError(phoneProblem); return; }
+    const phone = storedPhoneFromParts(phoneParts);
     setFormError('');
     setSaving(true);
     await onSaveEdits({
@@ -532,7 +550,11 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
       doj: form.doj, email: form.email.trim() || '—', ctc: Number(form.ctc) || 0,
     });
     setSaving(false);
-    setEditing(false);
+    // Stay in the form after saving: it used to flip to the read-only summary, so every save
+    // looked like the profile had reset and needed another "Edit details" click to carry on.
+    setForm((f) => ({ ...f, name }));
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 2000);
   }
 
   // Header summary, so a collapsed section still says what's inside it.
@@ -557,7 +579,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
         // the same as the × in the header, or it looks like Cancel silently "does nothing" and
         // leaves a dead, non-editable form on screen.
         { label: 'Cancel', cls: 'btn', onClick: onClose },
-        { label: saving ? 'Saving…' : 'Save changes', cls: 'btn primary', onClick: saveEdit },
+        { label: saving ? 'Saving…' : savedFlash ? 'Saved ✓' : 'Save changes', cls: 'btn primary', onClick: saveEdit },
       ]
     : [{ label: 'Close', cls: 'btn', onClick: onClose }];
   // These stay available regardless of edit state (admins now land straight in the form, so
@@ -565,7 +587,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
   if (!editing && admin) buttons.unshift({ label: 'Edit details', cls: 'btn', onClick: startEdit });
   if (admin && employee.id !== state.currentUser?.id) buttons.unshift({ label: 'Remove employee', cls: 'btn reject', onClick: onRemove });
   if (admin && employee.status !== 'exited' && employee.id !== state.currentUser?.id) {
-    buttons.unshift({ label: 'Mark as exited', cls: 'btn', onClick: onMarkExited });
+    buttons.unshift({ label: 'Start exit', cls: 'btn', onClick: onMarkExited });
   }
   if (employee.status === 'probation' && admin) {
     buttons.unshift({ label: 'Extend probation', cls: 'btn', onClick: onExtendProbation });
@@ -584,10 +606,18 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
               <label className="field-label">Full name *</label>
               <input type="text" value={form.name} maxLength={255} onChange={(ev) => setForm((f) => ({ ...f, name: ev.target.value }))} placeholder="e.g. Kunal Verma" />
             </div>
-            <div className="field">
-              <label className="field-label">Contact number</label>
-              <input type="tel" inputMode="tel" value={form.phone} maxLength={20} onChange={(ev) => setForm((f) => ({ ...f, phone: ev.target.value }))} placeholder="e.g. +91 98765 43210" />
-            </div>
+            {/* PhoneField renders its own .field wrapper. */}
+            <HrPhoneField
+                id={`edit-contact-${employee.id}`}
+                parts={phoneParts}
+                error={phoneError}
+                onChange={(p) => {
+                  setPhoneParts(p);
+                  setForm((f) => ({ ...f, phone: storedPhoneFromParts(p) }));
+                  if (phoneError) setPhoneError(hrPhoneError(p, false));
+                }}
+                onBlur={(p) => setPhoneError(hrPhoneError(p, false))}
+              />
           </div>
           <div className="field-grid-2">
             <div className="field">
@@ -632,7 +662,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
             {canSeeCTC && (
               <div className="field">
                 <label className="field-label">Annual CTC (₹)</label>
-                <input type="number" value={form.ctc} onChange={(ev) => setForm((f) => ({ ...f, ctc: ev.target.value }))} />
+                <input type="text" inputMode="numeric" value={form.ctc} onChange={(ev) => setForm((f) => ({ ...f, ctc: ev.target.value.replace(/\D/g, '') }))} />
               </div>
             )}
           </div>
@@ -685,7 +715,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
                 <div className="table-scroll wrap-table">
                 <table><thead><tr><th>Document</th><th>Details</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
                   <tbody>{section.slots.map((slot) => {
-                    const d = employee.kycDocuments[slot.key];
+                    const d = employee.kycDocuments[slot.key] || emptyKycDocuments()[slot.key];
                     return (
                       <tr key={slot.key}>
                         <td>

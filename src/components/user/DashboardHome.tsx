@@ -149,8 +149,6 @@ function staggerVariants(reduced: boolean, stagger = 0.08): Variants {
   return { hidden: {}, show: { transition: { staggerChildren: reduced ? 0 : stagger, delayChildren: reduced ? 0 : 0.03 } } };
 }
 
-const HOVER_LIFT = { y: -3, transition: { duration: 0.2, ease: 'easeOut' as const } };
-
 /** Count-up hook: animates 0 → target on first mount, respects prefers-reduced-motion. */
 function useCountUp(target: number, ready: boolean, reduced: boolean) {
   const [value, setValue] = useState(0);
@@ -196,12 +194,8 @@ function Skel({ className = '' }: { className?: string }) {
 function KpiCard({ label, children }: { label: string; children: React.ReactNode }) {
   const reduced = useReducedMotion();
   return (
-    <motion.div
-      variants={riseVariants(!!reduced, 14)}
-      whileHover={reduced ? undefined : HOVER_LIFT}
-      className="flex flex-col gap-2 rounded-[20px] border border-db-line bg-db-card p-5 shadow-[0_1px_2px_rgba(17,24,39,0.04)] transition-shadow duration-250 ease-out hover:shadow-[0_18px_38px_-24px_rgba(17,24,39,0.28)]"
-    >
-      <p className="m-0 text-[11px] font-extrabold uppercase tracking-[0.08em] text-db-muted">{label}</p>
+    <motion.div variants={riseVariants(!!reduced, 14)} className="flex flex-col gap-2 bg-db-card px-5 py-4">
+      <p className="m-0 text-[13px] font-medium text-db-muted">{label}</p>
       {children}
     </motion.div>
   );
@@ -209,9 +203,9 @@ function KpiCard({ label, children }: { label: string; children: React.ReactNode
 
 function KpiSkeleton() {
   return (
-    <div className="flex flex-col gap-2 rounded-[20px] border border-db-line bg-db-card p-5">
-      <Skel className="h-3 w-24 rounded-md" />
-      <Skel className="mt-1 h-7 w-16 rounded-lg" />
+    <div className="flex flex-col gap-2 bg-db-card px-5 py-4">
+      <Skel className="h-3.5 w-24 rounded-md" />
+      <Skel className="mt-1 h-6 w-16 rounded-md" />
     </div>
   );
 }
@@ -381,7 +375,7 @@ export default function DashboardHome() {
           variants={riseVariants(!!reduced)}
           initial="hidden"
           animate="show"
-          className="rounded-[22px] border border-db-line bg-db-card p-6 shadow-[0_1px_2px_rgba(17,24,39,0.04)] sm:p-8"
+          className="rounded-xl border border-db-line bg-db-card p-6 sm:p-8"
         >
           <h1 ref={titleRef} className="m-0 w-fit text-[30px] font-extrabold leading-tight tracking-tight text-db-ink sm:text-[34px]">
             Welcome back, {firstName}{' '}
@@ -457,20 +451,20 @@ export default function DashboardHome() {
           variants={staggerVariants(!!reduced)}
           initial="hidden"
           animate={ready ? 'show' : 'hidden'}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-db-line bg-db-line sm:grid-cols-2 lg:grid-cols-4"
         >
           {!ready ? (
             Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)
           ) : (
             <>
               <KpiCard label="Reports Unlocked">
-                <p className="m-0 text-[26px] font-extrabold leading-none tabular-nums tracking-tight text-db-ink">
+                <p className="m-0 text-[22px] font-bold leading-none tabular-nums tracking-tight text-db-ink">
                   {siteStats!.freeReports} <span className="text-db-muted">/ {siteStats!.totalReports}</span>
                 </p>
               </KpiCard>
 
               <KpiCard label="Saved Events">
-                <p className="m-0 text-[26px] font-extrabold leading-none tabular-nums tracking-tight text-db-ink">{savedEventsCount}</p>
+                <p className="m-0 text-[22px] font-bold leading-none tabular-nums tracking-tight text-db-ink">{savedEventsCount}</p>
               </KpiCard>
 
               <KpiCard label="WhatsApp Community">
@@ -492,7 +486,7 @@ export default function DashboardHome() {
               </KpiCard>
 
               <KpiCard label="Member Since">
-                <p className="m-0 text-[26px] font-extrabold leading-none tracking-tight text-db-ink">{memberSince ?? ''}</p>
+                <p className="m-0 text-[22px] font-bold leading-none tracking-tight text-db-ink">{memberSince ?? ''}</p>
               </KpiCard>
             </>
           )}
@@ -507,7 +501,7 @@ export default function DashboardHome() {
           variants={riseVariants(!!reduced)}
           initial="hidden"
           animate={nearbyEvents !== null ? 'show' : 'hidden'}
-          className="rounded-[22px] border border-db-line bg-db-card p-6 shadow-[0_1px_2px_rgba(17,24,39,0.04)] sm:p-8"
+          className="border-t border-db-line pt-6 sm:pt-8"
         >
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -529,7 +523,7 @@ export default function DashboardHome() {
           {nearbyEvents === null ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="overflow-hidden rounded-xl border border-db-line">
+                <div key={i} className="overflow-hidden rounded-xl border border-db-line bg-db-card">
                   <Skel className="aspect-[1260/630] w-full" />
                   <div className="flex flex-col gap-2 p-5">
                     <Skel className="h-3 w-1/3 rounded-md" />
@@ -565,7 +559,7 @@ export default function DashboardHome() {
           variants={riseVariants(!!reduced)}
           initial="hidden"
           animate={profile !== null ? 'show' : 'hidden'}
-          className="rounded-[22px] border border-db-line bg-db-card p-6 shadow-[0_1px_2px_rgba(17,24,39,0.04)] sm:p-8"
+          className="rounded-xl border border-db-line bg-db-panel p-6 sm:p-8"
         >
           {profile === null ? (
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -573,7 +567,7 @@ export default function DashboardHome() {
                 <Skel className="h-6 w-80 max-w-full rounded-md" />
                 <Skel className="h-4 w-64 max-w-full rounded-md" />
               </div>
-              <Skel className="h-12 w-full rounded-xl lg:w-96" />
+              <Skel className="h-12 w-full rounded-lg lg:w-96" />
             </div>
           ) : profile.user.newsletterSubscribed ? (
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -625,11 +619,11 @@ export default function DashboardHome() {
                   defaultValue={profile.user.email ?? ''}
                   placeholder="you@startup.com"
                   aria-label="Email address"
-                  className="w-full rounded-xl border border-db-line bg-db-panel px-4 py-3 text-[14px] text-db-ink outline-none transition-colors focus:border-db-pink sm:w-72"
+                  className="w-full rounded-lg border border-db-line bg-db-card px-4 py-3 text-[14px] text-db-ink outline-none transition-colors focus:border-db-pink sm:w-72"
                 />
                 <button
                   type="submit"
-                  className="shrink-0 rounded-xl bg-db-pink px-6 py-3 text-[14px] font-bold text-white transition-colors hover:bg-db-pink-deep"
+                  className="shrink-0 rounded-lg bg-db-pink px-6 py-3 text-[14px] font-bold text-white transition-colors hover:bg-db-pink-deep"
                 >
                   Subscribe
                 </button>

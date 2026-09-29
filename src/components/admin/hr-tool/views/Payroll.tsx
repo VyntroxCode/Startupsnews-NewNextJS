@@ -7,7 +7,7 @@ import { StatusBadge, employeeName, exportCSV, exportExcel, salaryPeriodLabel, m
 import { payrollCycleToRunKey, currentPayrollMonthKey, payrollPeriodRange } from '@/modules/hr-tool/utils/time';
 import { hrApi, type PayrollApiResult } from '../api';
 import type { HrPayrollEntry, HrPayrollRun } from '../types';
-import { generatePayslipPdf, generateBulkPayslipPdf, triggerPdfDownload, type PayslipData } from '../payslipPdf';
+import { generatePayslipPdf, generatePayslipZip, singlePayslipFilename, triggerBlobDownload, triggerPdfDownload, type PayslipData } from '../payslipPdf';
 
 function fmtShortDate(ymd: string): string {
   if (!ymd) return '—';
@@ -57,8 +57,10 @@ export default function Payroll() {
     return `${fmtShortDate(from)} – ${fmtShortDate(to)}`;
   }
 
-  async function loadPayroll(signal?: { cancelled: boolean }) {
-    setLoading(true);
+  /** `silent` refreshes the figures in place instead of swapping the table for "Loading…" — used
+   * after a run, where the swap shortened the page and jumped the admin away from the Run button. */
+  async function loadPayroll(signal?: { cancelled: boolean }, silent = false) {
+    if (!silent) setLoading(true);
     setLoadError('');
     const res = await hrApi.getPayroll(month);
     if (signal?.cancelled) return;
@@ -147,7 +149,7 @@ export default function Payroll() {
       const data = buildPayslipData(entry, entry.tds, entry.netPay, month, payroll?.periodTo || '');
       if (!data) return;
       const bytes = await generatePayslipPdf(data);
-      triggerPdfDownload(bytes, `payslip_${data.employeeCode}_${month}.pdf`);
+      triggerPdfDownload(bytes, singlePayslipFilename(data, month));
     } finally {
       setPdfBusy(false);
     }
@@ -160,10 +162,27 @@ export default function Payroll() {
         .map((e) => buildPayslipData(e, liveTds(e.employeeId, e.tds), liveNetPay(e), month, payroll?.periodTo || ''))
         .filter((d): d is PayslipData => d !== null);
       if (!list.length) return;
-      const bytes = await generateBulkPayslipPdf(list);
-      triggerPdfDownload(bytes, `payroll_slips_${month}.pdf`);
+      // One PDF per employee, zipped — not one combined PDF (each payslip goes to a different person).
+      triggerBlobDownload(await generatePayslipZip(list, month), `payslips_${month}.zip`);
+    } catch {
+      alert('Could not create the payslips. Please try again.');
     } finally {
       setPdfBusy(false);
+    }
+  }
+  /** One employee's payslip from the current run's table. */
+  const [rowBusyId, setRowBusyId] = useState<string | null>(null);
+  async function handleDownloadRowPayslip(e: HrPayrollEntry) {
+    if (!payroll || rowBusyId) return;
+    setRowBusyId(e.employeeId);
+    try {
+      const data = buildPayslipData(e, liveTds(e.employeeId, e.tds), liveNetPay(e), month, payroll.periodTo || '');
+      if (!data) { alert('This employee has no Directory record, so no payslip can be made.'); return; }
+      triggerPdfDownload(await generatePayslipPdf(data), singlePayslipFilename(data, month));
+    } catch {
+      alert('Could not create the payslip. Please try again.');
+    } finally {
+      setRowBusyId(null);
     }
   }
 
@@ -204,8 +223,9 @@ export default function Payroll() {
         .map((e) => buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo))
         .filter((d): d is PayslipData => d !== null);
       if (!list.length) return;
-      const bytes = await generateBulkPayslipPdf(list);
-      triggerPdfDownload(bytes, `payroll_slips_${run.month}.pdf`);
+      triggerBlobDownload(await generatePayslipZip(list, run.month), `payslips_${run.month}.zip`);
+    } catch {
+      alert('Could not create the payslips. Please try again.');
     } finally {
       setHistoryBusyKey(null);
     }
@@ -219,7 +239,7 @@ export default function Payroll() {
       const slip = buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo);
       if (!slip) return;
       const bytes = await generatePayslipPdf(slip);
-      triggerPdfDownload(bytes, `payslip_${slip.employeeCode}_${run.month}.pdf`);
+      triggerPdfDownload(bytes, singlePayslipFilename(slip, run.month));
     } finally {
       setHistoryBusyKey(null);
     }
@@ -232,7 +252,9 @@ export default function Payroll() {
     entries.forEach((e) => { tds[e.employeeId] = liveTds(e.employeeId, e.tds); });
     const res = await runPayrollForMonth(month, tds);
     if (res.success) {
-      await loadPayroll();
+      await loadPayroll(undefined, true);
+      // A re-run changes that month's slips — drop the cached copy so its history row refetches.
+      setHistoryCache((c) => { const next = { ...c }; delete next[month]; return next; });
     } else {
       setRunError(res.error || 'Failed to run payroll');
     }
@@ -328,7 +350,7 @@ export default function Payroll() {
         {loadError && <div className="notice" style={{ borderColor: '#FECACA' }}>{loadError}</div>}
         {!loading && !loadError && (
           <>
-            <div className="table-scroll"><table><thead><tr><th>Employee</th><th>CTC (Monthly)</th><th>Total Days</th><th>Present Days</th><th>Absent Days</th><th>Week Off</th><th>Leaves</th><th>LOP Days</th><th>Gross</th><th>TDS</th><th>Net Pay</th></tr></thead>
+            <div className="table-scroll"><table><thead><tr><th>Employee</th><th>CTC (Monthly)</th><th>Total Days</th><th>Present Days</th><th>Absent Days</th><th>Week Off</th><th>Leaves</th><th>LOP Days</th><th>Gross</th><th>TDS</th><th>Net Pay</th><th>Payslip</th></tr></thead>
               <tbody>
                 {entries.map((e) => {
                   const ctc = employeeById.get(e.employeeId)?.ctc ?? 0;
@@ -354,16 +376,28 @@ export default function Payroll() {
                         </div>
                       </td>
                       <td>₹{liveNetPay(e).toLocaleString('en-IN')}</td>
+                      <td>
+                        <button className="btn ghost sm" disabled={!alreadyRun || rowBusyId === e.employeeId}
+                          title={alreadyRun ? `Download ${employeeName(state.employees, e.employeeId, e.emp)}'s payslip` : 'Payslips are available once payroll is run'}
+                          onClick={() => handleDownloadRowPayslip(e)}>
+                          {rowBusyId === e.employeeId ? '…' : '⇩ PDF'}
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
-                {entries.length === 0 && <tr><td colSpan={11}><div className="empty">No active employees to run payroll for yet.</div></td></tr>}
+                {entries.length === 0 && <tr><td colSpan={12}><div className="empty">No active employees to run payroll for yet.</div></td></tr>}
               </tbody>
             </table></div>
             {!alreadyRun && payroll && missingCtc.length > 0 && (
               <div className="notice" style={{ borderColor: '#FECACA', marginTop: 12 }}>
                 <strong>CTC not set for {missingCtc.length} employee{missingCtc.length > 1 ? 's' : ''}: {missingCtc.join(', ')}.</strong>{' '}
                 Run Payroll is disabled until every active employee has an Annual CTC — set it from Directory, then come back here.
+              </div>
+            )}
+            {!alreadyRun && (payroll?.fnfSettledEmployees?.length ?? 0) > 0 && (
+              <div className="notice info mt-3">
+                Not in this run — paid in their Full &amp; Final instead: {payroll!.fnfSettledEmployees!.join(', ')}.
               </div>
             )}
             {runError && <div className="notice" style={{ borderColor: '#FECACA', marginTop: 12 }}>{runError}</div>}
@@ -380,7 +414,7 @@ export default function Payroll() {
                 <button className="btn sm" onClick={() => exportPayroll('csv')} disabled={entries.length === 0}>⇩ CSV</button>
                 <button className="btn sm" onClick={() => exportPayroll('excel')} disabled={entries.length === 0}>⇩ Excel</button>
                 <button className="btn sm" disabled={!alreadyRun || entries.length === 0 || pdfBusy} onClick={handleDownloadAllPayslips}>
-                  {pdfBusy ? 'Generating…' : '⇩ Payslips (PDF)'}
+                  {pdfBusy ? 'Generating…' : '⇩ All payslips (ZIP)'}
                 </button>
                 <button
                   className="btn primary"
@@ -430,7 +464,7 @@ export default function Payroll() {
                               disabled={!data || data.entries.length === 0 || historyBusyKey === run.month}
                               onClick={() => handleDownloadHistoryAll(run)}
                             >
-                              {historyBusyKey === run.month ? 'Generating…' : 'Download all (PDF)'}
+                              {historyBusyKey === run.month ? 'Generating…' : 'Download all (ZIP)'}
                             </button>
                           </span>
                         </td>

@@ -324,6 +324,31 @@ const ClassPreserveExtension = Extension.create({
   },
 });
 
+/* Image with an optional credit, stored as data-credit on the <img>.
+   FullArticle turns it into a right-aligned "Image credit: …" line under the image. */
+const CreditImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      credit: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('data-credit') || null,
+        renderHTML: (attrs) => attrs.credit ? { 'data-credit': attrs.credit as string } : {},
+      },
+    };
+  },
+});
+
+/** Ask for an image credit; null = cancelled, '' = no credit. */
+function promptImageCredit(current = ''): string | null {
+  const value = window.prompt('Image credit (optional, e.g. Reuters, Unsplash / John Doe):', current);
+  return value === null ? null : value.trim().slice(0, 255);
+}
+
+function insertCreditedImage(editor: ReturnType<typeof useEditor> | null, src: string, credit: string | null) {
+  editor?.chain().focus().insertContent({ type: 'image', attrs: { src, credit: credit || null } }).run();
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    Props
    ═══════════════════════════════════════════════════════════════════ */
@@ -516,7 +541,19 @@ function MenuBar({ editor, onImageUpload, onHtmlUpload, onPasteHtml }: { editor:
   const addImageUrl = useCallback(() => {
     if (!editor) return;
     const url = window.prompt('Enter image URL:');
-    if (url) editor.chain().focus().setImage({ src: url }).run();
+    if (!url) return;
+    insertCreditedImage(editor, url, promptImageCredit());
+  }, [editor]);
+
+  const editImageCredit = useCallback(() => {
+    if (!editor) return;
+    if (!editor.isActive('image')) {
+      window.alert('Click an image in the editor first, then press © Credit.');
+      return;
+    }
+    const credit = promptImageCredit(editor.getAttributes('image').credit || '');
+    if (credit === null) return;
+    editor.chain().focus().updateAttributes('image', { credit: credit || null }).run();
   }, [editor]);
 
   const addYoutube = useCallback(() => {
@@ -637,6 +674,7 @@ function MenuBar({ editor, onImageUpload, onHtmlUpload, onPasteHtml }: { editor:
           />
         </label>
         <Btn onClick={addImageUrl} title="Insert Image by URL">🔗 Img URL</Btn>
+        <Btn onClick={editImageCredit} title="Add or edit the credit of the selected image">© Credit</Btn>
         <Btn onClick={addYoutube} title="Embed YouTube">▶ YouTube</Btn>
         <Btn onClick={insertTable} title="Insert Table">⊞ Table</Btn>
 
@@ -721,7 +759,7 @@ export default function RichTextEditorClient({
         openOnClick: false,
         HTMLAttributes: { target: '_blank' },
       }),
-      Image.configure({ inline: false, allowBase64: true }),
+      CreditImage.configure({ inline: false, allowBase64: true }),
       Placeholder.configure({ placeholder }),
       TextAlign.configure({ types: ['heading', 'paragraph', 'listItem', 'bulletList', 'orderedList'] }),
       Highlight.configure({ multicolor: true }),
@@ -764,6 +802,7 @@ export default function RichTextEditorClient({
 
   const handleImageUpload = useCallback(async (file: File) => {
     if (imageUploading) return;
+    const credit = promptImageCredit();
     setImageUploading(true);
     try {
       // Try presign upload; fall back to base64 data URL if unavailable
@@ -788,7 +827,7 @@ export default function RichTextEditorClient({
               body: file,
             });
             if (uploadRes.ok) {
-              editor?.chain().focus().setImage({ src: presignData.data.fileUrl }).run();
+              insertCreditedImage(editor, presignData.data.fileUrl, credit);
               return;
             }
           }
@@ -799,14 +838,14 @@ export default function RichTextEditorClient({
       const reader = new FileReader();
       reader.onload = (e) => {
         const src = e.target?.result as string;
-        if (src) editor?.chain().focus().setImage({ src }).run();
+        if (src) insertCreditedImage(editor, src, credit);
       };
       reader.readAsDataURL(file);
     } catch {
       const reader = new FileReader();
       reader.onload = (e) => {
         const src = e.target?.result as string;
-        if (src) editor?.chain().focus().setImage({ src }).run();
+        if (src) insertCreditedImage(editor, src, credit);
       };
       reader.readAsDataURL(file);
     } finally {

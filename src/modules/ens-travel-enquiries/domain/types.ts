@@ -27,7 +27,7 @@ export interface EnsTravelEnquiry {
   /** Where the team's conversation with this lead stands — see lead-status.ts. Null until an admin
    * sets one in the Sales Tracker: "no conversation yet". */
   leadStatus: EnsLeadStatus | null;
-  /** What the last conversation led to. Only kept while `leadStatus` is "followed-up"; empty
+  /** What the last conversation led to. Only kept while `leadStatus` is "confirmed" or "followed-up"; empty
    * otherwise. */
   conversationNote: string;
   /** When the visitor submitted, as the DB returns it ("2026-09-17 11:30:00", IST pool timezone). */

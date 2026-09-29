@@ -6,6 +6,7 @@ import ModalShell from '../ModalShell';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { addDays, buildOfferLetterContent, initialLeaveBalance, mergeTemplate, nextEmployeeId, todayStr, type OfferLetterData } from '../utils';
 import { JoiningLetterView } from './JoiningLetterView';
+import HrPhoneField, { hrPhoneError, phonePartsFromStored, storedPhoneFromParts, type HrPhoneParts } from '../HrPhoneField';
 import { generateJoiningLetterPdf, generatePlainLetterPdf, triggerPdfDownload } from '../joiningLetterPdf';
 
 /** How many days a new hire has to submit their required-documents checklist, counted from doj. */
@@ -83,10 +84,16 @@ function emptyForm(state: ReturnType<typeof useHrTool>['state']): FormState {
  * fields and Employee ID/credential fields share one form, no field asked twice) and, on
  * approval, creates the login AND the Directory record together — no more employees who
  * exist in one place but not the other. Shared by Directory and Onboarding. */
-export default function HireEmployeeButton({ label, className }: { label: string; className: string }) {
+/** `onHired` gets the new employee's id once the hire is saved, so the caller can open that
+ * record instead of leaving the admin to go and find the person they just created. */
+export default function HireEmployeeButton({ label, className, onHired }: { label: string; className: string; onHired?: (employeeId: string) => void }) {
   const { state, persistEmployees, upsertEmployeeCredentialInState, logRuleChange } = useHrTool();
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState<FormState>(() => emptyForm(state));
+  // The contact number's structured inputs (country code + digits) — `form.contact` holds the
+  // stored "+91 9876543210" composed from them. Same control and rules as the public forms.
+  const [contactParts, setContactParts] = useState<HrPhoneParts>(() => phonePartsFromStored(''));
+  const [contactError, setContactError] = useState('');
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<FormState | null>(null);
   const [sending, setSending] = useState(false);
@@ -141,6 +148,8 @@ export default function HireEmployeeButton({ label, className }: { label: string
    * tab/session) could otherwise suggest a stale/duplicate ID. Still fully editable either way. */
   function openAdd() {
     setForm(emptyForm(state));
+    setContactParts(phonePartsFromStored(''));
+    setContactError('');
     setError('');
     setFreshCredentials(null);
     setAddOpen(true);
@@ -163,7 +172,8 @@ export default function HireEmployeeButton({ label, className }: { label: string
   function previewOffer() {
     if (!form.firstName.trim() || !form.lastName.trim()) { setError("Please enter the employee's first and last name."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError('Please enter a valid email address.'); return; }
-    if (!/^\+?[0-9 -]{7,15}$/.test(form.contact.trim())) { setError('Please enter a valid contact number.'); return; }
+    const phoneError = hrPhoneError(contactParts, true);
+    if (phoneError) { setContactError(phoneError); setError(phoneError); return; }
     if (!form.designation) { setError('Please choose a designation.'); return; }
     if (!form.team) { setError('Please choose a department.'); return; }
     if (!form.ctc.trim() || Number(form.ctc) <= 0) { setError('Please enter the Annual CTC.'); return; }
@@ -223,8 +233,12 @@ export default function HireEmployeeButton({ label, className }: { label: string
       // looks for, so it raced in and created a SECOND employee record for the same credential.
       upsertEmployeeCredentialInState(credential);
 
+      // The hire is saved either way; the email is sent after, and the audit log records what
+      // ACTUALLY happened — it used to log "emailed" after a placeholder send that sent nothing.
       const emailAddr = preview.email.trim();
+      const who = `${fullNameOf(preview)} (${emailAddr})`;
       if (emailAddr) {
+        let mailProblem: string | null = null;
         try {
           const mailRes = await fetch('/api/admin/hr-tool/onboarding/send-offer-letter', {
             method: 'POST',
@@ -234,19 +248,25 @@ export default function HireEmployeeButton({ label, className }: { label: string
               employeeName: fullNameOf(preview),
               subject: `Your Offer of Employment — ${preview.designation}`,
               textBody: offerMerged,
+              letterData: hasCustomTemplate() ? undefined : letterDataFor(preview),
             }),
           });
-          const mailData = await mailRes.json();
-          if (mailRes.ok && mailData.success) {
-            logRuleChange(`Offer letter emailed to ${fullNameOf(preview)} (${emailAddr})`);
-          }
+          const mailData = await mailRes.json().catch(() => null);
+          if (!mailRes.ok || !mailData?.success) mailProblem = mailData?.error || 'the email request failed';
+          else if (!mailData.data?.sent) mailProblem = mailData.data?.error || 'the email could not be sent';
         } catch {
-          // Best-effort — the employee/offer letter are already saved either way; email dispatch
-          // failing here shouldn't block the hire.
+          mailProblem = 'the email request could not reach the server';
+        }
+        if (mailProblem) {
+          logRuleChange(`Offer letter NOT emailed to ${who} — ${mailProblem}`);
+          alert(`${fullNameOf(preview)} was created, but the offer letter email was not sent: ${mailProblem}\n\nYou can download the letter and send it yourself.`);
+        } else {
+          logRuleChange(`Offer letter emailed to ${who}`);
         }
       }
 
       setPreview(null);
+      onHired?.(newEmployee.id);
     } catch {
       setError('An error occurred while creating this employee');
     } finally {
@@ -298,7 +318,19 @@ export default function HireEmployeeButton({ label, className }: { label: string
 
           <div className="field-grid-2">
             <div className="field"><label className="field-label">Email *</label><input type="email" placeholder="name@snf.co" value={form.email} onChange={(e) => patch({ email: e.target.value })} /></div>
-            <div className="field"><label className="field-label">Contact *</label><input type="tel" placeholder="e.g. 9876543210" value={form.contact} onChange={(e) => patch({ contact: e.target.value })} /></div>
+            <HrPhoneField
+              id="hire-contact"
+              label="Contact"
+              required
+              parts={contactParts}
+              error={contactError}
+              onChange={(p) => {
+                setContactParts(p);
+                patch({ contact: storedPhoneFromParts(p) });
+                if (contactError) setContactError(hrPhoneError(p, true));
+              }}
+              onBlur={(p) => setContactError(hrPhoneError(p, true))}
+            />
           </div>
 
           <div className="field-grid-3">
@@ -332,7 +364,7 @@ export default function HireEmployeeButton({ label, className }: { label: string
           </div>
 
           <div className="field-grid-2">
-            <div className="field"><label className="field-label">Annual CTC (₹) *</label><input type="number" placeholder="e.g. 480000" value={form.ctc} onChange={(e) => patch({ ctc: e.target.value })} /></div>
+            <div className="field"><label className="field-label">Annual CTC (₹) *</label><input type="text" inputMode="numeric" placeholder="e.g. 480000" value={form.ctc} onChange={(e) => patch({ ctc: e.target.value.replace(/\D/g, '') })} /></div>
             <div className="field"><label className="field-label">Date of joining *</label><input type="date" value={form.doj} onChange={(e) => patch({ doj: e.target.value })} /></div>
           </div>
 

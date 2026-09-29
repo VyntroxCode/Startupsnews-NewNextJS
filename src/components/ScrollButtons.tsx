@@ -12,10 +12,12 @@ const EDGE_THRESHOLD_PX = 240;
 
 /** The admin back office (everything under the `(admin)` route group, which serves `/admin/...`)
  * is excluded by request — its screens carry their own toolbars and the floating buttons would
- * only get in the way. The reader-facing `/dashboard` and the internal `/employee` sections do
+ * only get in the way. The internal `/employee` panel is excluded for the same reason — on phones
+ * its bottom tab bar sits exactly where these buttons float. The reader-facing `/dashboard` does
  * still get them. */
 function isExcludedRoute(pathname: string | null): boolean {
-  return pathname === "/admin" || !!pathname?.startsWith("/admin/");
+  return pathname === "/admin" || !!pathname?.startsWith("/admin/")
+    || pathname === "/employee" || !!pathname?.startsWith("/employee/");
 }
 
 /**

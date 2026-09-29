@@ -22,6 +22,7 @@ export class PostsRepository {
   private metaDescriptionColumnExists: boolean | null = null;
   private robotsColumnExists: boolean | null = null;
   private contentFollowColumnExists: boolean | null = null;
+  private imageCreditColumnExists: boolean | null = null;
 
   /** Escape %, _, and \\ for SQL LIKE … ESCAPE '\\'. */
   private escapeLikePattern(value: string): string {
@@ -145,6 +146,26 @@ export class PostsRepository {
       this.contentFollowColumnExists = true;
     }
     return this.contentFollowColumnExists;
+  }
+
+  /** Featured-image credit line (shown under the image on the article page). Added on first use. */
+  private async hasImageCreditColumn(): Promise<boolean> {
+    if (this.imageCreditColumnExists !== null) return this.imageCreditColumnExists;
+    const row = await queryOne<{ cnt: number }>(
+      `SELECT COUNT(*) AS cnt
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'posts'
+         AND COLUMN_NAME = 'image_credit'`
+    );
+    if (!row?.cnt) {
+      await query(
+        `ALTER TABLE posts ADD COLUMN image_credit VARCHAR(255) NULL AFTER featured_image_small_url`,
+        []
+      );
+    }
+    this.imageCreditColumnExists = true;
+    return this.imageCreditColumnExists;
   }
 
   /**
@@ -720,6 +741,7 @@ export class PostsRepository {
     authorId: number;
     featuredImageUrl?: string;
     featuredImageSmallUrl?: string;
+    imageCredit?: string;
     format?: string;
     status?: string;
     featured?: boolean;
@@ -732,6 +754,7 @@ export class PostsRepository {
       this.hasRobotsColumn(),
     ]);
     await this.hasContentFollowColumn();
+    await this.hasImageCreditColumn();
 
     const columns = [
       'title', 'slug', 'excerpt',
@@ -739,7 +762,7 @@ export class PostsRepository {
       ...(hasRobots ? ['robots'] : []),
       'content_follow',
       'content', 'category_id', 'author_id',
-      'featured_image_url', 'featured_image_small_url', 'format', 'status', 'featured', 'published_at',
+      'featured_image_url', 'featured_image_small_url', 'image_credit', 'format', 'status', 'featured', 'published_at',
       'created_by', 'updated_by',
     ];
 
@@ -766,6 +789,7 @@ export class PostsRepository {
       data.authorId,
       data.featuredImageUrl || null,
       data.featuredImageSmallUrl || null,
+      data.imageCredit || null,
       data.format || 'standard',
       status,
       data.featured ? 1 : 0,
@@ -797,6 +821,7 @@ export class PostsRepository {
       this.hasRobotsColumn(),
     ]);
     await this.hasContentFollowColumn();
+    if (Object.prototype.hasOwnProperty.call(data, 'image_credit')) await this.hasImageCreditColumn();
     if (!hasMetaDescription && Object.prototype.hasOwnProperty.call(data, 'meta_description')) {
       delete (data as Partial<PostEntity>).meta_description;
     }

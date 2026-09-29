@@ -81,20 +81,37 @@ function initialState(): HrState {
  *
  * sessionStorage (not localStorage) so it lasts the tab, not forever, and is wrapped because it
  * throws in private-mode Safari and is absent during SSR.
+ *
+ * The section is also mirrored into the URL as `?section=<view>` (history.replaceState — no Next
+ * navigation, so nothing remounts). The bare /admin/hr-tool URL used to be all the admin ever saw,
+ * so a reload, a new tab or a shared link could only ever open the Dashboard. The query wins over
+ * sessionStorage; an unknown value falls back to the Dashboard, and a section the role can't open
+ * is still bounced by HrToolApp's VIEW_ACCESS check.
  */
 const VIEW_STORAGE_KEY = 'hr-tool:view';
+const VIEW_QUERY_PARAM = 'section';
+
+function isHrView(v: string | null): v is HrView {
+  return !!v && Object.prototype.hasOwnProperty.call(VIEW_ACCESS, v);
+}
 
 function readStoredView(): HrView {
   if (typeof window === 'undefined') return 'dashboard';
+  const fromUrl = new URLSearchParams(window.location.search).get(VIEW_QUERY_PARAM);
+  if (isHrView(fromUrl)) return fromUrl;
   try {
     const stored = window.sessionStorage.getItem(VIEW_STORAGE_KEY);
-    return stored && stored in VIEW_ACCESS ? (stored as HrView) : 'dashboard';
+    return isHrView(stored) ? stored : 'dashboard';
   } catch { return 'dashboard'; }
 }
 
 function storeView(view: HrView): void {
   if (typeof window === 'undefined') return;
   try { window.sessionStorage.setItem(VIEW_STORAGE_KEY, view); } catch { /* private mode */ }
+  const url = new URL(window.location.href);
+  if (view === 'dashboard') url.searchParams.delete(VIEW_QUERY_PARAM);
+  else url.searchParams.set(VIEW_QUERY_PARAM, view);
+  if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url.href);
 }
 
 function warnSaveFailed(): void { alert("Could not save that change. It's only kept until you reload — please try again."); }
@@ -145,6 +162,10 @@ interface HrToolContextValue {
    * the Employee ID login's name) so screens show the new name without a reload. */
   applyEmployeeRenameInState: (employeeId: string, name: string) => void;
   deleteEmployee: (employee: HrEmployee) => Promise<void>;
+  /** Local-state-only mirror of a status the server has ALREADY written (offboarding marks an
+   * employee 'exited' with a single-row update) — so the Directory shows it, and its next
+   * whole-list save doesn't write the old status back. */
+  applyEmployeeStatusInState: (employeeId: string, status: string) => void;
   persistOnboarding: (v: HrOnboarding[]) => Promise<void>;
   persistRegularizations: (v: HrRegularization[]) => Promise<void>;
   addRegularizationToState: (r: HrRegularization) => void;
@@ -214,6 +235,9 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
       }
     })();
   }, []);
+
+  // A view restored from sessionStorage on mount isn't in the URL yet — put it there.
+  useEffect(() => { storeView(state.view); }, [state.view]);
 
   const setView = useCallback((v: HrView) => { storeView(v); setState((s) => ({ ...s, view: v })); }, []);
   // Switching user is a deliberate reset, so these two DO go back to the Dashboard — and must
@@ -297,6 +321,9 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
         tickets: s.tickets.filter((t) => t.employeeId !== id),
       };
     });
+  }, []);
+  const applyEmployeeStatusInState = useCallback((employeeId: string, status: string) => {
+    setState((s) => ({ ...s, employees: s.employees.map((e) => (e.id === employeeId ? { ...e, status } : e)) }));
   }, []);
   const persistOnboarding = useCallback(async (v: HrOnboarding[]) => { setState((s) => ({ ...s, onboarding: v })); try { await hrApi.saveOnboarding(v); } catch { warnSaveFailed(); } }, []);
   const persistRegularizations = useCallback(async (v: HrRegularization[]) => { setState((s) => ({ ...s, regularizations: v })); try { await hrApi.saveRegularizations(v); } catch { warnSaveFailed(); } }, []);
@@ -429,13 +456,13 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const value = useMemo<HrToolContextValue>(() => ({
     state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
-    persistEmployees, applyEmployeeRenameInState, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
+    persistEmployees, applyEmployeeRenameInState, deleteEmployee, applyEmployeeStatusInState, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch, applyServerPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
     state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
-    persistEmployees, applyEmployeeRenameInState, deleteEmployee, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
+    persistEmployees, applyEmployeeRenameInState, deleteEmployee, applyEmployeeStatusInState, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch, applyServerPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   ]);

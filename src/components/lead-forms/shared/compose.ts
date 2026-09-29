@@ -44,8 +44,8 @@ export function resolveCity(data: LocationParts): string {
   return data.city === OTHER_CITY_VALUE ? data.cityOther.trim() : data.city;
 }
 
-/** "India, Bengaluru" — or just whichever half exists, since both are optional on the one page
- * that collects them separately. */
+/** "India, Bengaluru" — or just whichever half exists while the reader is still filling them in
+ * (both are required at submit; see validateCountry / validateCity). */
 export function composeCountryCity(data: LocationParts): string {
   return [resolveCountry(data), resolveCity(data)].filter(Boolean).join(", ");
 }

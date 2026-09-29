@@ -116,8 +116,8 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v54</span>
-    <span class="badge">Released 2026-09-23</span>
+    <span class="badge v">Version v84</span>
+    <span class="badge">Released 2026-09-29</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
     <span class="badge">Next.js 16 · React 19 · MariaDB</span>
@@ -617,6 +617,56 @@ sequenceDiagram
     </pre>
     <figcaption>Files never pass through the application server — it only hands out permission to upload. This keeps large uploads off the web process entirely.</figcaption>
   </figure>
+  <h3>Assigning a lead to an employee (arch.md §6.10)</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    A(("Admin")) --> P["Picks an employee's name<br/>on a lead in the Sales Tracker"]
+    HR[("HR Management<br/>current staff")] --> P
+    P --> S[("Saved: this lead → this employee<br/>status Pending")]
+    S --> M["Employee's My Leads page<br/>cards per page + the lead list"]
+    E(("Employee")) --> M
+    </pre>
+    <figcaption>The admin sees names; the system stores each person's permanent HR login ID. Giving the lead to someone else starts it over as Pending for them.</figcaption>
+  </figure>
+  <h3>Leaving the company (arch.md §6.11)</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    E(("Employee")) --> R["Resigns from<br/>My Exit"]
+    HR(("HR / Founder")) --> T["Starts an exit<br/>(resignation or termination)"]
+    R --> W["Waiting for HR"]
+    W -->|HR accepts, sets last day| N["Serving notice"]
+    W -->|employee withdraws or HR rejects| C["Closed"]
+    T --> N
+    N -->|HR cancels| C
+    N -->|last working day passes| X["Exited"]
+    X --> RO["Login is read-only:<br/>only My Exit"]
+    X --> BL["or blocked, if HR chose so"]
+    N --> CL["HR ticks the clearance checklist<br/>and hands sales leads to a colleague"]
+    X --> FF["Full &amp; Final: calculated,<br/>approved, paid"]
+    CL --> FF
+    FF --> LT["Relieving + experience letters<br/>emailed to personal email"]
+    LT --> DONE["Exit completed<br/>(case locked)"]
+    X --> CL
+    X -->|HR reinstates, with a reason| B["Back to work"]
+    </pre>
+    <figcaption>The exit record decides what the person can still open. Nobody has to remember to switch the login off: the day after the last working day, the system does it.</figcaption>
+  </figure>
+  <h3>Following up a lead (arch.md §6.12)</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    E(("Employee")) --> M["My Leads"]
+    M -->|clicks a lead| V["Lead window:<br/>everything the visitor filled in<br/>(view only)"]
+    V --> F["Adds a follow-up:<br/>status + message"]
+    F --> S[("Saved with today's date and time<br/>(set automatically)")]
+    S --> K["Lead moves into<br/>the Followed up card"]
+    S --> A["Admin opens the lead<br/>in the Sales Tracker"]
+    A --> P["Employee follow-ups panel:<br/>who, when, status, message"]
+    </pre>
+    <figcaption>Employees can read a lead and add follow-ups, but can never change what the visitor submitted. Everyone on the lead sees the same history.</figcaption>
+  </figure>
 </section>
 
 <!-- ───────────────────────── 8 ───────────────────────── -->
@@ -632,7 +682,7 @@ sequenceDiagram
       <tr><td>Long-form</td><td><code>reports</code>, <code>report_sections</code>, <code>brand_stories</code>, <code>brand_story_sections</code></td><td>Section-built research and sponsored pieces</td></tr>
       <tr><td>Events</td><td><code>events</code>, <code>event_regions</code>, <code>partnership_events</code></td><td>Listings, regions, and the partnership pipeline</td></tr>
       <tr><td>Accounts</td><td><code>users</code>, <code>panel_admins</code>, <code>public_registrations</code>, <code>public_registration_founders</code>, <code>public_registration_funding_rounds</code></td><td>The three separate login worlds</td></tr>
-      <tr><td>HR</td><td>16 <code>hr_*</code> tables — employees, attendance, punch log, leave, regularisations, payroll runs and entries, rules, teams, onboarding, expenses, templates, audit log, company profile, credentials, overrides, document requests</td><td>Everything the HR tool and employee portal touch</td></tr>
+      <tr><td>HR</td><td>19 <code>hr_*</code> tables — employees, attendance, punch log, leave, regularisations, payroll runs and entries, rules, teams, onboarding, expenses, templates, audit log, company profile, credentials, overrides, document requests, and (from v72) offboarding cases, their clearance checklists and offboarding settings</td><td>Everything the HR tool and employee portal touch</td></tr>
       <tr><td>IT helpdesk</td><td><code>it_tickets</code>, <code>it_ticket_comments</code>, <code>it_ticket_attachments</code>, <code>it_ticket_key_seq</code></td><td>Tickets and their human-readable keys</td></tr>
       <tr><td>Submissions</td><td><code>feature_startup_submissions</code>, <code>funding_round_submissions</code>, <code>incubatx_dossiers</code></td><td>What the public forms create</td></tr>
       <tr><td>Sales &amp; CRM</td><td><code>sales_leads</code>, <code>sales_team_members</code>, <code>contacts</code></td><td>Pipeline and contact book</td></tr>
@@ -749,6 +799,37 @@ sequenceDiagram
       <tr><td><strong>v52</strong></td><td>2026-09-23</td><td>Medium</td><td>Work From Home: employees can request WFH days (up to a monthly limit HR sets); on an approved WFH day they can punch in and out from anywhere, and their hours count as normal</td></tr>
       <tr><td><strong>v53</strong></td><td>2026-09-23</td><td>Medium</td><td>Work From Home made simple: no monthly limit and nothing for HR to set. Once a WFH request is approved, each of those days is marked as a full day automatically, with punch-in and punch-out filled in</td></tr>
       <tr><td><strong>v54</strong></td><td>2026-09-23</td><td>Medium</td><td>Sales Tracker: new "Leads by page" cards showing how many leads came from each page. Clicking one shows only that page's leads in "All leads"</td></tr>
+      <tr><td><strong>v55</strong></td><td>2026-09-24</td><td>Medium</td><td>Sales Tracker: the "All leads" table shows just 9 key columns. The full details open when you click a lead, with fields that don't apply to that lead's page locked</td></tr>
+      <tr><td><strong>v56</strong></td><td>2026-09-24</td><td>Medium</td><td>Sales Tracker: a lead's arrival date is now locked and can never be changed. "Last updated" changes on its own whenever the lead is edited</td></tr>
+      <tr><td><strong>v57</strong></td><td>2026-09-24</td><td>Medium</td><td>Reader dashboard Newsletter page now just lists every newsletter category. There is nothing to tick, select or save</td></tr>
+      <tr><td><strong>v58</strong></td><td>2026-09-24</td><td>Medium</td><td>Newsletter category lists now show every site category, not only those with a newsletter news feed switched on</td></tr>
+      <tr><td><strong>v59</strong></td><td>2026-09-24</td><td>Medium</td><td>Reader dashboard home and sidebar restyled to look plainer and less templated. The wording is unchanged</td></tr>
+      <tr><td><strong>v60</strong></td><td>2026-09-24</td><td>Medium</td><td>Sales Tracker leads can be assigned to an employee from HR; the employee sees them in a new "My Leads" section, marked Pending</td></tr>
+      <tr><td><strong>v61</strong></td><td>2026-09-24</td><td>Medium</td><td>Event Admin and Publisher Admin staff get the same My Leads page inside their admin panel</td></tr>
+      <tr><td><strong>v62</strong></td><td>2026-09-24</td><td>Medium</td><td>A lead can go to several people at once: pick whole departments and/or individual employees</td></tr>
+      <tr><td><strong>v63</strong></td><td>2026-09-25</td><td>Medium</td><td>Articles can credit the photographer or source of their main image, shown under the image</td></tr>
+      <tr><td><strong>v64</strong></td><td>2026-09-25</td><td>Medium</td><td>Pictures inside the article text can have their own credit too</td></tr>
+      <tr><td><strong>v65</strong></td><td>2026-09-25</td><td>Medium</td><td>The Events page shows events in the visitor's own city (and country) first</td></tr>
+      <tr><td><strong>v66</strong></td><td>2026-09-25</td><td>Medium</td><td>Events page asks the visitor for their location instead of guessing it; without one, everything is listed A–Z</td></tr>
+      <tr><td><strong>v67</strong></td><td>2026-09-25</td><td>Medium</td><td>Events page location strip removed; the browser location prompt is simply asked on every visit until the visitor shares a location</td></tr>
+      <tr><td><strong>v68</strong></td><td>2026-09-26</td><td>Medium</td><td>Sales Tracker: "Assigned to" now depends on Departments. Pick a department first, then choose people from it</td></tr>
+      <tr><td><strong>v69</strong></td><td>2026-09-26</td><td>Medium</td><td>Work From Home removed: employees can no longer apply for WFH; past WFH days stay paid, future and pending ones are cancelled</td></tr>
+      <tr><td><strong>v70</strong></td><td>2026-09-26</td><td>Medium</td><td>Regularizing a Punch Out no longer asks for AM/PM; it is always PM. Punch In is unchanged</td></tr>
+      <tr><td><strong>v71</strong></td><td>2026-09-26</td><td>Medium</td><td>Events Tracker: a Follow Up section on every event keeps the last 5 conversation notes, each with a fixed date and who wrote it</td></tr>
+      <tr><td><strong>v72</strong></td><td>2026-09-28</td><td>Major</td><td>Offboarding, part 1: employees can resign from their portal, HR approves and sets the last working day, and after that day the login becomes read-only. Also fixes exited employees still being able to log in</td></tr>
+      <tr><td><strong>v73</strong></td><td>2026-09-28</td><td>Medium</td><td>Offboarding, part 2: HR ticks off the clearance checklist (with recovery amounts), hands the leaver's sales leads to a colleague in one click, and can undo an exit done by mistake. Safer when two people act at the same time</td></tr>
+      <tr><td><strong>v74</strong></td><td>2026-09-28</td><td>Medium</td><td>Offboarding, part 3: the Full &amp; Final settlement is worked out automatically, checked and approved by HR, marked paid, and downloadable as a PDF. Payroll no longer pays a leaver for days after their last day, or twice</td></tr>
+      <tr><td><strong>v75</strong></td><td>2026-09-28</td><td>Medium</td><td>Offboarding, part 4 (final): relieving and experience letters, emails at each step, and Complete exit. Offboarding now runs from resignation to closed case</td></tr>
+      <tr><td><strong>v76</strong></td><td>2026-09-28</td><td>Medium</td><td>Expand North Star page: new "Benefits of Joining the Delegation" section — what founders and what enablers get from the Dubai delegation, side by side</td></tr>
+      <tr><td><strong>v77</strong></td><td>2026-09-28</td><td>Medium</td><td>Expand North Star page: quick section navigation — a floating bar on computers and a menu button with a side panel on phones, jumping to Itinerary, Benefits, Delegation Participation, Kick Start or home</td></tr>
+      <tr><td><strong>v78</strong></td><td>2026-09-29</td><td>Medium</td><td>HR Management and Events Tracker: saving no longer throws the admin back to the start — they stay on the section, record and filters they were working in</td></tr>
+      <tr><td><strong>v79</strong></td><td>2026-09-29</td><td>Medium</td><td>Sales Tracker: every lead page now insists on Country and City, and a lead opens read-only in the tracker — changes need the Edit button</td></tr>
+      <tr><td><strong>v80</strong></td><td>2026-09-29</td><td>Medium</td><td>My Leads: employees open a lead to see everything the visitor filled in, and log follow-ups with a status. The admin sees those follow-ups inside the lead in the Sales Tracker</td></tr>
+      <tr><td><strong>v81</strong></td><td>2026-09-29</td><td>Medium</td><td>My Leads cards: one per page showing pending + followed up / total, blinking red while any lead has had no conversation yet; clicking a card lists only that page's open leads</td></tr>
+      <tr><td><strong>v82</strong></td><td>2026-09-29</td><td>Medium</td><td>One status per lead, the same four everywhere (Pending, Follow Up, Confirmed, Not Interested), shared between the admin Sales Tracker and the employee's My Leads</td></tr>
+      <tr><td><strong>v83</strong></td><td>2026-09-29</td><td>Medium</td><td>My Leads: a "Lead Status" card sums up every assigned lead by status (Pending, Followed up, Confirmed, Not interested) and opens the full list</td></tr>
+      <tr><td><strong>v84</strong></td><td>2026-09-29</td><td>Medium</td><td>My Leads: Lead Status card moved to the end, and a Lead Status filter on the lead list that works together with the cards</td></tr>
+      <tr><td><strong>v81</strong></td><td>2026-09-29</td><td>Medium</td><td>Employee panel works properly on phones: a menu button and bottom tabs instead of a fixed sidebar, a big Punch In / Punch Out card for today, and card lists instead of wide tables</td></tr>
     </tbody>
   </table>
 
@@ -3066,6 +3147,960 @@ sequenceDiagram
         <div class="wf-box" style="margin-top:10px"><span class="t">All leads</span>"Showing Funding Round leads only &middot; Show all leads" &rarr; table with just those 5 rows</div>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="v55">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v55</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-24</span>
+    </div>
+    <p><strong>What changed.</strong> The "All leads" table had grown to 27 columns, most of them
+    empty for any given lead. It now shows only the 9 that matter at a glance. Everything else is in
+    the detail window that opens when you click a lead. In that window, fields that the lead's page
+    never asks for are shown greyed out and locked.</p>
+
+    <table>
+      <thead><tr><th>Area</th><th>What changed</th></tr></thead>
+      <tbody>
+        <tr><td>Table columns</td><td>Date, Name, Company, Contact, Email, City, Source, Assigned, Current Status (plus Edit / Delete).</td></tr>
+        <tr><td>Everything else</td><td>Country, type, query, follow-up dates, call notes and event details are in the detail window. Expand North Star enquiries still open their own window.</td></tr>
+        <tr><td>Locked fields</td><td>A &#128274; label explains why each locked field is locked.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Lead from</th><th>Locked in its detail window</th></tr></thead>
+      <tbody>
+        <tr><td>Feature Your Startup / Funding Round / Press Release</td><td>Event details (only Sponsor an Event collects them), plus Source and Type (set by the page)</td></tr>
+        <tr><td>Sponsor an Event</td><td>Company (its form doesn't ask for one), plus Source and Type</td></tr>
+        <tr><td>Added manually by the team</td><td>Event details only</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v56">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v56</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-24</span>
+    </div>
+    <p><strong>What changed.</strong> Every lead now keeps a fixed record of when it arrived.</p>
+    <table>
+      <thead><tr><th>Date</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>Arrival date</td><td>The day the lead came in, from a website form or added by the team (today's date for a new lead). It is shown locked in the lead's detail window and can't be changed. The system also refuses to change it behind the scenes.</td></tr>
+        <tr><td>Last updated</td><td>Changes automatically, to the exact date and time, whenever someone saves a real change to the lead, including changing its status in the table. Opening a lead and saving without changing anything leaves it as it was.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v57">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v57</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-24</span>
+    </div>
+    <p><strong>What changed.</strong> The Newsletter page in the reader dashboard is now a plain list of every newsletter category.</p>
+    <table>
+      <thead><tr><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Readers ticked up to 3 categories, with a check mark on each chosen one, a "x of 3" counter and Save / Clear buttons.</td><td>All categories are shown as simple cards with a total count. Nothing can be ticked or marked, and there is no Save button.</td></tr>
+        <tr><td>Page text said "Pick up to 3 categories".</td><td>Page text says these are the categories the Morning Signal covers.</td></tr>
+      </tbody>
+    </table>
+    <p>Readers can still choose categories in the Complete Profile steps.</p>
+  </div>
+</section>
+
+<section id="v58">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v58</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-24</span>
+    </div>
+    <p><strong>What changed.</strong> Newsletter category lists now show every category on the site (18 today).</p>
+    <table>
+      <thead><tr><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>A category appeared only if it had a news feed switched on for the newsletter. With no such feeds, the list was empty.</td><td>Every category appears, in A–Z order, whether or not it has a feed.</td></tr>
+      </tbody>
+    </table>
+    <p>This applies everywhere the newsletter category list is used: the dashboard Newsletter page, the Complete Profile steps, Settings and the admin Newsletter page.</p>
+  </div>
+</section>
+
+<section id="v59">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v59</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-24</span>
+    </div>
+    <p><strong>What changed.</strong> The reader dashboard home was restyled to look plainer and less like a template. All wording, links and data are the same.</p>
+    <table>
+      <thead><tr><th>Part</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Page sections</td><td>Three identical white boxes with big rounded corners and shadows</td><td>Smaller corners, no shadows. The events list sits directly on the page under a thin line. The newsletter box has a slightly tinted background</td></tr>
+        <tr><td>Stats row</td><td>Four separate floating tiles with tiny CAPITAL labels that lifted on hover</td><td>One strip split by thin lines, with normal-case labels and slightly smaller numbers</td></tr>
+        <tr><td>Sidebar and phone header</td><td>Pink-to-violet profile bar, glowing Logout button, frosted-glass header, glowing square avatar</td><td>Solid pink profile bar, flat Logout button, solid white header, plain round avatar</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v60">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v60</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-24</span>
+    </div>
+    <p><strong>What changed.</strong> Any lead in the Sales Tracker can now be given to one employee. The list of people comes straight from HR Management, so it's always the current staff. The employee then sees that lead in their own panel.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>"Assigned to" in the Sales Tracker</td><td>A typed-in team list (Bhavika, Kapil, Madhur) with no link to HR, and not available for Expand North Star enquiries</td><td>A dropdown of HR employees by name, on every lead, including Expand North Star enquiries. It can be set from the All leads table or from the Add / Edit lead window</td></tr>
+        <tr><td>Who is listed</td><td>Whoever had been typed in</td><td>Everyone with an active HR login, except people HR has marked as having left</td></tr>
+        <tr><td>"Team members" box</td><td>At the bottom of the Sales Tracker</td><td>Removed. HR Management is now the only list of staff</td></tr>
+        <tr><td>Filter and search</td><td>Filtered by typed-in name</td><td>Filter by employee or "Unassigned". Search also matches the employee's name</td></tr>
+        <tr><td>Employee panel</td><td>No leads</td><td>A new <strong>My Leads</strong> section (see below)</td></tr>
+      </tbody>
+    </table>
+    <p><strong>How it works behind the scenes.</strong> Staff only ever see names. The system saves each person's permanent HR login ID, so an assignment stays correct even if HR edits the person's name or Employee ID. If the lead is moved to a different person, it starts again as Pending for them.</p>
+    <p><strong>My Leads, in the employee panel.</strong></p>
+    <figure class="diagram">
+      <pre>
+┌ My Leads ───────────────────────────────────────────────────────────────┐
+│ Leads the sales team has assigned to you, grouped by the page they came from. │
+│                                                                          │
+│ [ 3  All my leads ] [ 1  Feature Your Startup ] [ 0  Funding Round ]      │
+│ [ 0  Press Release ] [ 0  Sponsor an Event ] [ 2  Expand North Star ]     │
+│   each card: how many leads, and how many are still pending — tap to filter │
+│                                                                          │
+│ Assigned on │ Lead              │ Page              │ Contact    │ Status  │
+│ 24 Sep 2026 │ Priya S. · Acme   │ Expand North Star │ +91 98…  ✉ │ Pending │
+│ 24 Sep 2026 │ Arvind            │ Feature Your…     │ +91 87…  ✉ │ Pending │
+└──────────────────────────────────────────────────────────────────────────┘</pre>
+      <figcaption>My Leads. The phone number and email open a call or an email directly. For now the page is read-only and every lead shows Pending. Updating the status is the next step.</figcaption>
+    </figure>
+    <p><strong>Known gap.</strong> Two employees (Bhawna Panchal and Abhishek Upadhyay) log in to the admin panel instead of the employee panel. They can be assigned leads but won't see My Leads yet.</p>
+  </div>
+</section>
+
+<section id="v61">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v61</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-24</span>
+    </div>
+    <p><strong>What changed.</strong> Some staff log in to the admin panel instead of the employee panel, because they also run the Events or Publishing side of the site. Until now they couldn't see the leads assigned to them. Now they can.</p>
+    <table>
+      <thead><tr><th>Who</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Event Admin and Publisher Admin staff (today: Bhawna Panchal and Abhishek Upadhyay)</td><td>Could be assigned leads, but had nowhere to see them</td><td>A <strong>My Leads</strong> item in their admin sidebar, with the same cards and list as the employee panel</td></tr>
+        <tr><td>Everyone else in the admin panel</td><td>—</td><td>No change. The item only appears for those two roles</td></tr>
+      </tbody>
+    </table>
+    <p><strong>How it knows whose leads to show.</strong> HR already links these people's HR login to their admin account. The page follows that link to the right person. If an admin account isn't linked, the page says so and asks them to contact HR.</p>
+  </div>
+</section>
+
+<section id="v62">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v62</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-24</span>
+    </div>
+    <p><strong>What changed.</strong> A lead is no longer limited to one person. Open any lead (including Expand North Star enquiries) and use two fields, Departments and Assigned to, to choose who works it. Everyone chosen sees the lead in their own My Leads, each with their own Pending status.</p>
+    <figure class="diagram">
+      <pre>
+┌ Edit lead ─────────────────────────────────────────────────────────────┐
+│ Departments                         Assigned to                          │
+│ [ Add a department…          ▾ ]    [ Add an employee…             ▾ ]   │
+│  ( Tech × ) ( Social Media × )       ( Yash Goswami · Tech × )           │
+│                                      ( Vandana Prajapati · Social Media × ) │
+│                                      ( Bhavika Arora · Social Media × )  │
+│                                      ( Kapil Suri × )   ← picked by hand  │
+└─────────────────────────────────────────────────────────────────────────┘</pre>
+      <figcaption>Picking a department adds everyone in it. Each chip has an × to remove it. People already on the lead are greyed out in Assigned to.</figcaption>
+    </figure>
+    <table>
+      <thead><tr><th>You do this</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Pick a department</td><td>Everyone currently in that department (from HR Management) is added. Only departments that have people are listed</td></tr>
+        <tr><td>Remove a department (×)</td><td>The people it added are removed. People you picked by hand stay</td></tr>
+        <tr><td>Remove one person (×)</td><td>Only that person is removed; the department stays</td></tr>
+        <tr><td>Pick a person in Assigned to</td><td>They are added. Anyone already on the lead can't be picked twice</td></tr>
+        <tr><td>Someone joins a department later</td><td>They don't get older leads automatically. Departments add the people who are in them at the time</td></tr>
+        <tr><td>Someone leaves the company</td><td>They stay on the lead, marked "no longer active", until someone removes them. They can't be added to new leads</td></tr>
+        <tr><td>Save</td><td>Everything is saved together. People who were already on the lead keep their status; new people start at Pending</td></tr>
+      </tbody>
+    </table>
+    <p><strong>In the All leads table.</strong> The Assigned column now just shows the names (e.g. "Yash, Kapil +2"). You change them inside the lead. There's a new "Filter: department", and search also finds names and departments. Exports list every assigned name and the departments.</p>
+  </div>
+</section>
+
+<section id="v63">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v63</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-25</span>
+    </div>
+    <p><strong>What changed.</strong> Writers can now say where an article's main picture came from (for example "Reuters" or "Unsplash / John Doe"). Readers see this credit in small grey text under the picture, on the right.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Admin panel: Create post and Edit post</td><td>No place to credit the picture</td><td>A new <strong>Image Credit</strong> box right under Featured Image. It is optional</td></tr>
+        <tr><td>Article page</td><td>Picture only</td><td>"Image credit: …" under the picture, on the right. If the box is empty, nothing extra shows</td></tr>
+        <tr><td>Posts that come in automatically from news feeds</td><td>—</td><td>No credit by default. An editor can add one by editing the post</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Article page · top of the story</div>
+      <div class="wf-body wf-stack">
+        <div class="wf-box brand" style="min-height:90px"><span class="t">Featured picture</span></div>
+        <div style="text-align:right;color:#888;font-size:11px">Image credit: Reuters</div>
+        <div class="wf-box"><span class="t">Article text</span>starts here …</div>
+      </div>
+    </div>
+    <p><strong>Search engines.</strong> The credit is also added to the page's hidden image details, so Google can see who took the picture.</p>
+  </div>
+</section>
+
+<section id="v64">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v64</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-25</span>
+    </div>
+    <p><strong>What changed.</strong> v63 let writers credit the main picture. Now every picture they add inside the article text can have its own credit too, shown the same way: small grey text under the picture, on the right.</p>
+    <table>
+      <thead><tr><th>In the editor</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Upload a picture (🖼 Image)</td><td>A small box asks for the credit. Leave it empty or press Cancel to add the picture without one</td></tr>
+        <tr><td>Add a picture from a link (🔗 Img URL)</td><td>Same question, right after the link</td></tr>
+        <tr><td>Change or remove a credit later</td><td>Click the picture, then the new <strong>© Credit</strong> button. Clear the text to remove it</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Article page · middle of the story</div>
+      <div class="wf-body wf-stack">
+        <div class="wf-box"><span class="t">Paragraph</span>…</div>
+        <div class="wf-box brand" style="min-height:70px"><span class="t">Picture in the text</span></div>
+        <div style="text-align:right;color:#888;font-size:11px">Image credit: Unsplash / John Doe</div>
+        <div class="wf-box"><span class="t">Paragraph</span>…</div>
+      </div>
+    </div>
+    <p>Pictures added before this change have no credit. An editor can open the post, click a picture, and use © Credit.</p>
+  </div>
+</section>
+
+<section id="v65">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v65</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-25</span>
+    </div>
+    <p><strong>What changed.</strong> The Events page now puts events near the visitor at the top. Someone in Dubai sees UAE and the Dubai events first; someone in Gurugram sees India and Delhi NCR first. Every other event is still on the page, just further down.</p>
+    <table>
+      <thead><tr><th>How we know where the visitor is</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Automatically, from their internet connection</td><td>No question is asked. Usually right to the city, sometimes only to the country</td></tr>
+        <tr><td>They click <strong>Use my exact location</strong></td><td>The browser asks permission, then uses the phone's or laptop's location. Remembered for 30 days; <strong>Reset location</strong> goes back to automatic</td></tr>
+        <tr><td>Their city has only one or two events (shown under "Other Cities")</td><td>"Other Cities" moves to the top, with their city's events first in it</td></tr>
+        <tr><td>No events in their city or country, or location unknown</td><td>The page looks the same as before</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Events page · visitor in Dubai</div>
+      <div class="wf-body wf-stack">
+        <div class="wf-box">📍 Showing events near <strong>Dubai, UAE</strong> first (based on your network) <span style="float:right" class="t">[ Use my exact location ]</span></div>
+        <div class="wf-box brand"><span class="t">UAE › Dubai</span> event cards…</div>
+        <div class="wf-box"><span class="t">India › Bengaluru, Delhi NCR, …</span></div>
+        <div class="wf-box"><span class="t">Other countries, then Online and Cohort</span></div>
+      </div>
+    </div>
+    <p>While a visitor types in the search box, the location line is hidden and search works across all events, as before.</p>
+  </div>
+</section>
+
+<section id="v66">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v66</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-25</span>
+    </div>
+    <p><strong>What changed.</strong> The Events page no longer guesses where the visitor is from their internet connection. It asks them, and only uses a location they agree to share. If they don't share one, every country and city is simply listed A to Z.</p>
+    <table>
+      <thead><tr><th>Situation</th><th>What the visitor sees</th></tr></thead>
+      <tbody>
+        <tr><td>First visit</td><td>The browser asks "Allow location?" once</td></tr>
+        <tr><td>They allow it</td><td>Their city and country move to the top. Remembered for 30 days</td></tr>
+        <tr><td>They block or ignore it</td><td>Countries A–Z, and inside each country its cities A–Z ("Other Cities" at the end). They are not asked again automatically</td></tr>
+        <tr><td>They change their mind</td><td><strong>Use my location</strong> asks again; <strong>Reset location</strong> goes back to A–Z</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Events page · no location shared</div>
+      <div class="wf-body wf-stack">
+        <div class="wf-box">📍 Share your location to see events near you first <span style="float:right" class="t">[ Use my location ]</span></div>
+        <div class="wf-box"><span class="t">Australia</span> …</div>
+        <div class="wf-box"><span class="t">India › Bengaluru, Delhi NCR, Hyderabad, Mumbai, … Other Cities</span></div>
+        <div class="wf-box"><span class="t">UAE › Abu Dhabi, Dubai</span></div>
+        <div class="wf-box"><span class="t">Online, Cohort</span></div>
+      </div>
+    </div>
+    <p>India used to always come first. Now it only comes first for visitors who share a location in India.</p>
+  </div>
+</section>
+
+
+<section id="v67">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v67</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-25</span>
+    </div>
+    <p><strong>What changed.</strong> The pink "📍 Showing events near … first" strip with the <strong>Use my location</strong> / <strong>Reset location</strong> buttons is gone from the Events page. Asking for location is now just the default: the browser's own "Allow location?" prompt appears when the page opens.</p>
+    <table>
+      <thead><tr><th>Situation</th><th>What the visitor sees</th></tr></thead>
+      <tbody>
+        <tr><td>Visit without a shared location</td><td>The browser asks "Allow location?" — every visit, not just the first (the browser itself stops asking if they choose Block)</td></tr>
+        <tr><td>They allow it</td><td>Their city and country move to the top, with no strip on the page. Remembered for 30 days</td></tr>
+        <tr><td>They block or ignore it</td><td>Countries A–Z, cities A–Z inside each country</td></tr>
+        <tr><td>They want to undo it</td><td>No button on the page any more — they change it in the browser's site settings, or it expires after 30 days</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Events page · after v67</div>
+      <div class="wf-body wf-stack">
+        <div class="wf-box"><span class="t">Browser prompt: startupnews.fyi wants to know your location [ Allow ] [ Block ]</span></div>
+        <div class="wf-box"><span class="t">India › Delhi NCR, … (visitor's city first when shared)</span></div>
+        <div class="wf-box"><span class="t">Other countries A–Z …</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v68">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v68</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-26</span>
+    </div>
+    <p><strong>What changed.</strong> In the Sales Tracker lead window, people are now chosen <em>through</em> their department. Picking a department no longer assigns everyone in it.</p>
+    <table>
+      <thead><tr><th>You do this</th><th>Before (v62)</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Pick a department</td><td>Everyone in it was added at once</td><td>Nobody is added. Its people become available in "Assigned to"</td></tr>
+        <tr><td>Open "Assigned to" with no department picked</td><td>Listed every employee</td><td>Locked, showing "Pick a department first"</td></tr>
+        <tr><td>Open "Assigned to" after picking departments</td><td>Listed every employee</td><td>Lists only the people in the picked departments, grouped by department</td></tr>
+        <tr><td>Pick a person</td><td>Added as a chip</td><td>Added as a chip, labelled with their department</td></tr>
+        <tr><td>Remove a department (×)</td><td>Removed the people it had added</td><td>Removes the department and the people picked from it</td></tr>
+      </tbody>
+    </table>
+    <p>People assigned before this change, without a department, stay on their leads and can still be removed.</p>
+  </div>
+</section>
+
+<section id="v69">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v69</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-26</span>
+    </div>
+    <p><strong>What changed.</strong> Work From Home has been removed. Employees can no longer apply for WFH, and approving a request no longer fills in attendance automatically. Every working day now needs a normal Punch In and Punch Out, or approved leave.</p>
+    <table>
+      <thead><tr><th>Area</th><th>Before (v53)</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Leave page, type list</td><td>"Work From Home" was an option</td><td>Gone. Typing it under "Other" is also refused ("Work From Home is no longer available")</td></tr>
+        <tr><td>Approving a request</td><td>An approved WFH request filled in each day as a full shift</td><td>Nothing is filled in. Approval only affects leave, as normal</td></tr>
+        <tr><td>Attendance card</td><td>Showed "Work From Home today" and blocked punching</td><td>No WFH message. Punching works the same every day</td></tr>
+        <tr><td>Policy summary</td><td>Had a line telling employees how to apply for WFH</td><td>Line removed</td></tr>
+        <tr><td>Pay</td><td>An approved WFH day was paid as a full day</td><td>No new WFH days. Past WFH days are still paid as full days</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Existing WFH request</th><th>What happens to it</th></tr></thead>
+      <tbody>
+        <tr><td>Already approved, dates in the past</td><td>Kept. Those days stay full days and stay paid</td></tr>
+        <tr><td>Approved, running into the future</td><td>Cut short to end today</td></tr>
+        <tr><td>Approved, starting after today</td><td>Rejected ("Work From Home discontinued"); those days need a normal punch</td></tr>
+        <tr><td>Still waiting for approval</td><td>Rejected ("Work From Home discontinued")</td></tr>
+      </tbody>
+    </table>
+    <p>Payrolls that have already been run are not changed. Old WFH requests still show a "Work From Home" label in the history lists.</p>
+  </div>
+</section>
+<section id="v70">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v70</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-26</span>
+    </div>
+    <p><strong>What changed.</strong> When someone asks to correct a missed or wrong <strong>Punch Out</strong> (a "regularization"), they no longer choose AM or PM. The office closes at 6:30 PM, so a Punch Out is always PM.</p>
+    <table>
+      <thead><tr><th>Form</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Regularize Punch Out</td><td>A time box that asked for hour, minute and AM/PM</td><td>Pick the hour (12, 1&ndash;11) and minute. "PM" is shown fixed next to them</td></tr>
+        <tr><td>Regularize Punch In</td><td>Hour, minute and AM/PM</td><td>Unchanged, so a late arrival after 12 noon can still be entered</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;display:inline-block">Punch Out time &nbsp; [ 6 &#9662;] : [ 30 &#9662;] &nbsp;PM</div>
+    <p>This applies everywhere a regularization can be requested: the employee Attendance page, the Publisher/Event Admin Attendance page, and the HR tool (Attendance and the day calendar). If a morning Punch Out is ever sent, it is refused with "Punch Out time must be in the afternoon or evening (PM)".</p>
+  </div>
+</section>
+
+<section id="v71">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v71</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-26</span>
+    </div>
+    <p><strong>What changed.</strong> The Add/Edit event form in the <strong>Events Tracker</strong> (earlier called the Partnership Tracker) now has a <strong>Follow Up</strong> section. The team writes a short note on what happened in the latest conversation with the organiser. Notes are for the team only and never appear on the website.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where is it?</td><td>In the "Partnership tracking" part of the Add/Edit event form, under Internal comment</td></tr>
+        <tr><td>How many notes are kept?</td><td>The last 5 for each event. Adding a 6th removes the oldest</td></tr>
+        <tr><td>What does each note show?</td><td>The note, the date and time it was added, and who added it</td></tr>
+        <tr><td>Can the date be changed?</td><td>No. It is set automatically when the note is added. Notes can't be edited either</td></tr>
+        <tr><td>New event</td><td>Type the note and click <strong>Add event</strong>. The note is saved with the event</td></tr>
+        <tr><td>Existing event</td><td>Type the note and click <strong>Add note</strong> to save it straight away, or just click <strong>Save changes</strong></td></tr>
+        <tr><td>Events created before this change</td><td>They have the Follow Up section too, starting with no notes</td></tr>
+        <tr><td>Deleting an event</td><td>Its notes are deleted with it</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">FOLLOW UP (internal, last 5 kept)
+[ What happened in the latest conversation with the organiser?      ]
+Saved with today's date, which can't be changed.          [ Add note ]
+&#9484;&#9472; 26 Sep 2026, 6:01 PM &middot; Aditya &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;
+&#9474; Organiser agreed to a listing, sending poster Monday &#9474;
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;
+(newest first, up to 5)</div>
+    <p>Before this goes live, a one-time database update has to be run to create the place where notes are stored.</p>
+  </div>
+</section>
+
+
+<section id="v72">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v72</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-28</span>
+    </div>
+    <p><strong>What changed.</strong> This is part 1 of 4 of <strong>Offboarding</strong>, the process for someone leaving the company. An employee can now hand in their resignation from their own portal. HR or the Founder accepts it and confirms the last working day. After that day the person's login no longer opens the normal portal: they can only see their exit page, or nothing at all if HR blocks them.</p>
+    <p><strong>A problem this also fixes.</strong> Before, marking someone as "exited" in the Directory only changed a label. The person could still log in and mark attendance. Now the login really is limited once the last working day has passed.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Who can start an exit?</td><td>The employee (a resignation from <strong>My Exit</strong>), or HR / Founder (a resignation handed in offline, or a termination) from <strong>HR Management → Offboarding</strong> or from the employee's profile in the Directory ("Start exit")</td></tr>
+        <tr><td>Who approves a resignation?</td><td>HR or the Founder, in one step. They can accept it (and change the last day) or reject it with a note</td></tr>
+        <tr><td>How long is the notice period?</td><td>15 days for someone on probation, 30 days once confirmed. HR can change these in Offboarding → Settings, and can shorten or waive the notice for one person when accepting</td></tr>
+        <tr><td>Can the employee change their mind?</td><td>Yes, they can withdraw while it is still waiting for HR. After it is accepted, only HR can cancel it</td></tr>
+        <tr><td>Termination</td><td>HR picks "after notice period" or "immediately". Immediately means today is the last day and the login changes right away</td></tr>
+        <tr><td>What happens after the last working day?</td><td>The person is marked Exited in the Directory. Their login opens only the My Exit page (read-only), or is blocked if HR chose that. Event / Publisher admins lose access to the admin panel</td></tr>
+        <tr><td>What does the employee need to give?</td><td>A reason, a personal email (letters are sent there after they leave), a preferred last day, and optional handover notes</td></tr>
+        <tr><td>What comes in the next parts?</td><td>Part 2: ticking off the clearance checklist (laptop, ID card, handover, dues, access) and moving their sales leads to someone else. Part 3: the Full &amp; Final settlement. Part 4: relieving and experience letters by email</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Employee's My Exit page</strong></p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">MY EXIT
+Your notice period is 30 days, so your last working day would be around 28 Oct 2026.
+Reason *            [ Better opportunity      v ]   Preferred last day [ 28-10-2026 ]
+Personal email *    [ you@gmail.com                                               ]
+Anything to add     [                                                             ]
+Handover notes      [                                                             ]
+                                                            [ Submit resignation ]
+
+After submitting:
+(1) Submitted -- (2) Accepted -- (3) Notice period -- (4) Exited -- (5) Settled
+"12 days left - your last working day is 28 Oct 2026."        [ Withdraw ] (while waiting)</div>
+    <p><strong>HR's Offboarding screen</strong></p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">OFFBOARDING                                                      [ + Start exit ]
+[ Awaiting approval 1 ] [ Serving notice 2 ] [ Leaving in 7 days 1 ] [ Exited this month 0 ]
+( Requests ) ( Serving notice ) ( Exited ) ( Closed ) ( Settings )
+Employee        Type         Submitted    Last working day   Notice   Status
+Riya Sharma     Resignation  28 Sep 2026  28 Oct (requested) 30d      Awaiting approval  [ Review ]
+
+Review: last working day [ 28-10-2026 ]  notice [ 30 ]  waived [ 0 ]
+        access after last day [ Read-only (My Exit only) v ]   note [        ]
+                                                  [ Reject ]  [ Accept resignation ]</div>
+    <p>Before this goes live, a one-time database update has to be run to create the place where exits are stored. Until then, logins work exactly as before.</p>
+  </div>
+</section>
+
+
+<section id="v73">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v73</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-28</span>
+    </div>
+    <p><strong>What changed.</strong> This is part 2 of 4 of <strong>Offboarding</strong>. Once a resignation is accepted, HR works through a <strong>clearance checklist</strong> for that person (company items returned, work handed over, money settled, access removed). HR can also give all of the person's <strong>sales leads</strong> to a colleague in one step. The employee sees the checklist on their My Exit page, so they know what to return.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What is on the checklist?</td><td>By default: laptop, charger, ID card, access card; leads reassigned, handover notes received; expense claims settled, advances recovered; company email disabled, tools and social access removed, admin-panel access removed. HR can add extra items for one person (for example "Company phone")</td></tr>
+        <tr><td>How is an item marked?</td><td>Pending, Done, or N/A (not needed). N/A always needs a short reason</td></tr>
+        <tr><td>Something was not returned?</td><td>For company items and money owed, HR marks it Done and enters the amount to recover, with a note. The total shows on the checklist and will be taken off in the Full &amp; Final settlement (part 3)</td></tr>
+        <tr><td>Giving away their sales leads</td><td>HR picks a colleague and clicks <strong>Hand over</strong>. Every lead moves to that colleague as Pending. If the colleague was already on a lead, it is simply kept once. HR can also just remove the person from their leads</td></tr>
+        <tr><td>Who can receive the leads?</td><td>Anyone active who belongs to a department, and is not leaving themselves</td></tr>
+        <tr><td>Does anything tick itself?</td><td>Yes. "Leads reassigned" ticks once no leads are left. "Admin-panel access removed" ticks on the last day, or is marked N/A if the person had no admin-panel account</td></tr>
+        <tr><td>Handover notes</td><td>The employee can keep them up to date until their last day, and HR can edit them too</td></tr>
+        <tr><td>An exit done by mistake</td><td>HR can <strong>Reinstate</strong> someone who has already left, with a reason. They get back their earlier status (probation or confirmed) and their logins</td></tr>
+        <tr><td>Rehire</td><td>After someone leaves, HR can note whether they are eligible to be hired again</td></tr>
+        <tr><td>Two people acting at the same time</td><td>If two HR screens (or HR and the employee) act on the same exit at once, only the first action counts. The other person is asked to refresh. An employee can never have two exits open at once</td></tr>
+      </tbody>
+    </table>
+    <p><strong>HR's case window</strong></p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">CLEARANCE CHECKLIST            [######------------]  3 of 11 cleared &middot; Rs 1,500 to recover
+Assets to return
+  Laptop        [Pending] [DONE] [N/A]   [ Rs --  ]  [ Returned in good condition ]
+  ID card       [Pending] [DONE] [N/A]   [ 1500   ]  [ Card lost                  ]
+  Access card   [PENDING] [Done] [N/A]   [ Rs --  ]  [ Note                       ]  x
+[ Assets to return v ] [ Add an item, e.g. Company phone ]           [ + Add item ]
+
+HANDOVER
+Handover notes  [ Ongoing work, where files live, who takes over...                   ]
+Sales leads     3 leads still assigned (2 Sales Tracker, 1 Expand North Star)
+                [ Hand over to...          v ]  [ Hand over ]  [ Just remove them ]</div>
+    <p><strong>Employee's My Exit page</strong> now also shows the checklist (read-only), for example "Laptop: Done", "ID card: Done, Rs 1,500 to be recovered", "Access card: Pending", plus a box to keep their handover notes up to date.</p>
+    <p>A second one-time database update was run on the development database for this part. It has to be run on the live database too before this goes live.</p>
+  </div>
+</section>
+
+
+<section id="v74">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v74</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-28</span>
+    </div>
+    <p><strong>What changed.</strong> This is part 3 of 4 of <strong>Offboarding</strong>: the <strong>Full &amp; Final settlement</strong>, the last payment (or recovery) between the company and someone who has left. The system works it out, HR checks and approves it, marks it paid, and both HR and the employee can download it as a PDF.</p>
+    <table>
+      <thead><tr><th>Line</th><th>How it is worked out</th></tr></thead>
+      <tbody>
+        <tr><td>Final salary</td><td>Pay for the last month up to the last working day, using the same rules as normal payroll. If that month's payroll has already been run, this line is zero (it was paid there)</td></tr>
+        <tr><td>Leave encashment</td><td>Unused leave of the types HR allows to be encashed (Earned by default) × one day's pay. Leave taken beyond the balance is recovered instead</td></tr>
+        <tr><td>Expense claims</td><td>Approved claims that are still owed</td></tr>
+        <tr><td>Notice not served</td><td>For a resignation: notice days not worked (after any waived days) × one day's pay</td></tr>
+        <tr><td>Recoveries</td><td>Every amount HR entered on the clearance checklist (for example an unreturned laptop)</td></tr>
+        <tr><td>Anything else</td><td>HR can add lines, such as a bonus or tax deducted</td></tr>
+      </tbody>
+    </table>
+    <p>One day's pay = yearly CTC ÷ 12 ÷ 30.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can HR change a calculated amount?</td><td>Yes, with a note saying why. The screen shows the original figure next to it, and recalculating keeps the change</td></tr>
+        <tr><td>When can it be approved?</td><td>Only when the clearance checklist is fully done. If the checklist or that month's payroll changed after it was worked out, HR is asked to recalculate first</td></tr>
+        <tr><td>After approval</td><td>The checklist and the figures lock. HR can reopen it as a draft if something is wrong, until it is marked paid</td></tr>
+        <tr><td>Marking it paid</td><td>Needs the payment date and a reference (UTR or cheque number). After that it can't be changed</td></tr>
+        <tr><td>If the person owes money</td><td>The total shows as an amount to recover from them, in red</td></tr>
+        <tr><td>What the employee sees</td><td>Nothing while it is a draft. Once approved, the lines and the total on My Exit, plus a PDF download. HR's internal notes are never shown</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Two payroll fixes that came with this.</strong> 1) Payroll used to pay a leaver for the days after their last working day when a month was still in progress, Sundays included. It now stops at the last working day. 2) Once a Full &amp; Final is approved, the normal payroll run for that month leaves the person out, so their final salary is never paid twice. The Payroll page says who was left out and why.</p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">FULL &amp; FINAL SETTLEMENT     [Paid]  Rs 30,000/month (Rs 1,000/day) &middot; paid 28 Sept, ref UTR123456
+Salary 1 Sept - 28 Sept (11 paid days)          Earning      Rs 11,000
+Leave encashment - Casual (9 days)              Earning       Rs 9,000
+Approved expense claims (1)                     Earning       Rs 1,500
+Notice not served (10 of 30 days, 20 waived)    Deduction     Rs 5,000   Edited - calculated Rs 10,000
+Recovery - Laptop: not returned                 Deduction    Rs 25,000
+TDS                                             Deduction       Rs 500   Added by HR
+Total       Earnings Rs 21,500 &middot; Deductions Rs 32,000      Recover Rs 10,500 from employee
+                                                               [ Download PDF ]</div>
+    <p>No database update is needed for this part.</p>
+  </div>
+</section>
+
+
+<section id="v75">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v75</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-28</span>
+    </div>
+    <p><strong>What changed.</strong> This is the last part (4 of 4) of <strong>Offboarding</strong>. HR can now issue the <strong>relieving letter</strong> and the <strong>experience letter</strong>, email them to the person's personal email, and <strong>complete</strong> the exit, which closes the case. The system also sends short emails at the key moments.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where does the letter wording come from?</td><td>From the "Relieving Letter" and "Experience Letter" templates in Company Profile. While a template is empty, standard wording is used. Fields such as name, employee ID, designation, joining date, last working day and length of service fill in automatically</td></tr>
+        <tr><td>Can HR check a letter first?</td><td>Yes: <strong>Preview</strong> shows the PDF before anything is issued. If the template uses a field the system doesn't know, it says which one instead of printing it</td></tr>
+        <tr><td>When can letters be issued?</td><td>After the last working day, once the clearance checklist is done. The relieving letter also waits until the Full &amp; Final is paid</td></tr>
+        <tr><td>If the template changes later?</td><td>Letters already issued stay exactly as they were. HR can re-issue if needed (the letter shows its version number)</td></tr>
+        <tr><td>Emailing</td><td>Letters go as a PDF attachment to the personal email (HR can correct it). If the email fails, the letter stays issued, the problem is shown, and HR can send it again</td></tr>
+        <tr><td>What other emails go out?</td><td>Resignation received (to HR and to the employee), resignation accepted (with the last day) or not accepted, and "your settlement is ready"</td></tr>
+        <tr><td>Completing the exit</td><td>Allowed when the checklist is done, the Full &amp; Final is paid and the relieving letter is issued. The button lists anything still missing. After completion nothing on the case can be changed</td></tr>
+        <tr><td>What the person keeps</td><td>Read-only My Exit: timeline, settlement, checklist, and their letters to download at any time</td></tr>
+        <tr><td>Where are the letters stored?</td><td>Only as text in the HR system. The PDF is created fresh whenever someone who is allowed to see it downloads it, so no letter sits at a public web address</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">LETTERS
+Relieving letter    Issued 28 Sept by HR &middot; emailed to leaver@gmail.com      [Preview] [Download] [Resend] [Re-issue]
+Experience letter   Finish the clearance checklist first (2 pending)              [Preview]                     [Issue]
+[x] Email letters to leaver@gmail.com when issuing
+
+To complete: Full &amp; Final not paid; relieving letter not issued.               [ Complete exit ]</div>
+    <p>With this, offboarding runs end to end: <strong>resign &rarr; accept &rarr; notice &rarr; exit &rarr; checklist &amp; handover &rarr; Full &amp; Final &rarr; letters &rarr; completed</strong>. No database update is needed for this part.</p>
+  </div>
+</section>
+
+<section id="v76">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v76</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-28</span>
+    </div>
+    <p><strong>What changed.</strong> The <strong>Expand North Star</strong> event page has a new section, <strong>"Benefits of Joining the Delegation"</strong>. It sits right after the six-day delegation programme and before the participation charges, and shows in two cards what each kind of visitor gets from joining the Dubai delegation.</p>
+    <table>
+      <thead><tr><th>Card</th><th>Who it is for</th><th>What it lists</th><th>Button</th></tr></thead>
+      <tbody>
+        <tr><td>Cream card</td><td>Startups and founders</td><td>Meet founders from 90+ countries, pre-scheduled investor meetings, closed-door evening events, Launchpad Middle East introductions, setting up a company in Dubai, go-to-market in the UAE</td><td>Join as a Founder</td></tr>
+        <tr><td>Navy card</td><td>Enablers: VCs, angel funds and networks, family offices, accelerators, incubators</td><td>Investors Lounge access, closed-door evenings with global capital, corporate partnerships, Launchpad Middle East introductions, Dubai entity setup, UAE go-to-market for portfolio startups. Plus a box of paid extras on request: Speaker Slots, Branding, Pavilion</td><td>Join as an Enabler</td></tr>
+      </tbody>
+    </table>
+    <p>Both buttons scroll down to the enquiry form at the bottom of the page. Nothing new is saved and no new form was added.</p>
+    <p><strong>How it moves.</strong> The heading's words rise into place, then the two cards slide in from their own sides. Inside each card the title wipes in, each benefit appears in turn with its gold tick drawing itself, and the paid-extras tags pop in. On a computer a soft light follows the mouse over a card, and the buttons lift with a shine when hovered. People who turn off animations on their device see everything at once.</p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">              BENEFITS OF JOINING THE DELEGATION
++-------------------------------+  +-------------------------------+
+| FOR STARTUPS AND FOUNDERS     |  | FOR ENABLERS                  |
+| Raise, Partner and Enter the  |  | Source Global Deals and Grow  |
+| UAE Market                    |  | Your Portfolio                |
+| v Meet Founders from 90+ ...  |  | v Investors Lounge Access     |
+| v ... (6 benefits)            |  | v ... (6 benefits)            |
+|                               |  | [ Available on Request (Paid) |
+|                               |  |   Speaker Slots Branding ... ]|
+| (Join as a Founder)           |  | (Join as an Enabler)          |
++-------------------------------+  +-------------------------------+</div>
+  </div>
+</section>
+
+<section id="v77">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v77</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-28</span>
+    </div>
+    <p><strong>What changed.</strong> The <strong>Expand North Star</strong> page now has quick links so visitors can jump straight to the part they want. They appear once the visitor scrolls past the top of the page and stay on screen as they keep scrolling.</p>
+    <table>
+      <thead><tr><th>Link</th><th>Takes the visitor to</th></tr></thead>
+      <tbody>
+        <tr><td>Itinerary</td><td>The six-day "Startup Delegation to Dubai" programme</td></tr>
+        <tr><td>Benefits</td><td>"Benefits of Joining the Delegation" (founders and enablers cards)</td></tr>
+        <tr><td>Delegation Participation</td><td>The participation charges and the two packages</td></tr>
+        <tr><td>Kick Start</td><td>The enquiry form at the bottom of the page</td></tr>
+        <tr><td>Back to Home</td><td>The StartupNews.fyi home page</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Screen</th><th>How it looks</th></tr></thead>
+      <tbody>
+        <tr><td>Computer</td><td>A dark floating bar at the bottom centre of the screen. The section you are reading is highlighted in pink (the highlight slides along as you scroll), and a thin line along the bar fills up as you read down the page</td></tr>
+        <tr><td>Phone and tablet</td><td>A round pink menu button in the bottom-right corner. Tapping it slides in a panel from the right with the same links; tapping a link closes the panel and scrolls there. The panel also closes with the X, by tapping outside it, or with the Escape key</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">COMPUTER (bottom of screen)
+( Itinerary  [Benefits]  Delegation Participation  Kick Start | (home) Back to Home )
+  ────────────── reading progress ──────────────
+
+PHONE                                   +--------------------+
+                                        | JUMP TO        (X) |
+                                        | &bull; Itinerary         &rarr; |
+                              ( = )     | &bull; Benefits          &rarr; |
+                          menu button   | &bull; Delegation Part.  &rarr; |
+                                        | &bull; Kick Start        &rarr; |
+                                        |  [ Back to Home ]  |
+                                        +--------------------+</div>
+  </div>
+</section>
+
+
+<section id="v78">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v78</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> Admins said that saving a change in the <strong>Events Tracker</strong> or in <strong>HR Management</strong> felt like the page "refreshed": they lost the event list they had filtered, or the employee, section or window they were working in. Now, after a save, the admin stays exactly where they were.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Events Tracker</td><td>Saving an event reloaded the whole tracker and cleared the search, filters, selected card, sort and page</td><td>The edit window closes, the row shows the new details, and the filtered list stays as it was</td></tr>
+        <tr><td>HR Management — any section</td><td>The web address was always just "hr-tool", so reopening or reloading always started on the Dashboard</td><td>The address names the section (for example <em>?section=rules</em>), so a reload or a shared link opens that same section</td></tr>
+        <tr><td>Directory — employee profile</td><td>"Save changes" switched the profile to read-only, and editing the salary split, confirming or extending probation, or starting an exit closed the profile</td><td>The profile stays open and editable, and the Save button briefly says "Saved ✓"</td></tr>
+        <tr><td>Directory — Add Employee</td><td>After "Approve &amp; Send" the window just closed</td><td>The new employee's profile opens straight away</td></tr>
+        <tr><td>Rules &amp; Org Structure</td><td>Saving the salary (CTC) split quietly threw away unsaved edits in the other rule sections</td><td>Unsaved edits in other sections are kept</td></tr>
+        <tr><td>Offboarding — case window</td><td>Almost every action jumped the window back to the top, cleared half-typed fields and hid messages such as "letter emailed"</td><td>The window stays where it was, messages stay, and the list switches to the tab the case has moved to (for example Serving notice after accepting)</td></tr>
+        <tr><td>Attendance — day popup</td><td>Saving a correction or approving a regularization closed the popup</td><td>The popup stays open and says what was done</td></tr>
+        <tr><td>Payroll</td><td>Running payroll made the page jump up while figures reloaded</td><td>The figures update in place</td></tr>
+        <tr><td>All admin popups</td><td>With one popup open on top of another, pressing Escape closed both</td><td>Escape closes only the top popup</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v79">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v79</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> Two changes to how leads reach and are handled in the <strong>Sales Tracker</strong>. First, every public form that sends leads to the tracker now asks for Country and City and will not submit without them, so each lead arrives with a location. Second, opening a lead in the tracker no longer lets anyone change it by accident: details are shown locked, and the admin must click <strong>Edit</strong> first.</p>
+    <table>
+      <thead><tr><th>Page</th><th>Country &amp; City before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Feature Your Startup</td><td>Optional</td><td>Required</td></tr>
+        <tr><td>Submit Your Funding Round</td><td>Optional (review showed "Optional")</td><td>Required (review lists it as a required field)</td></tr>
+        <tr><td>Submit Your Press Release</td><td>Optional</td><td>Required</td></tr>
+        <tr><td>Partner / Sponsor an Event</td><td>Marked required, but a country alone was accepted</td><td>Both country and city required</td></tr>
+        <tr><td>Expand North Star</td><td>Already required</td><td>No change</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>In the Sales Tracker</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Clicking a lead</td><td>Opened a form where every field could be typed over straight away</td><td>Opens the lead locked (read-only), with a note to click Edit lead</td></tr>
+        <tr><td>Edit lead button</td><td>—</td><td>Unlocks the fields; Cancel throws away the changes and locks it again; Update lead saves</td></tr>
+        <tr><td>Buttons on each row</td><td>Edit, Delete</td><td>View (locked), Edit (opens unlocked), Delete</td></tr>
+        <tr><td>Status column</td><td>A dropdown that saved the moment it was changed</td><td>A coloured label; status is changed inside the lead with Edit</td></tr>
+        <tr><td>Add new lead</td><td>Opens ready to type</td><td>No change</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">+------------------------------------------+
+| Lead details                         (X) |
+| (lock) Read-only. Click Edit lead to     |
+|        change any detail.                |
+| Name      [ Priya S.        ] (greyed)   |
+| Country   [ India           ] (greyed)   |
+| City      [ Bengaluru       ] (greyed)   |
+| ...                                      |
+|                  [ Close ] [ Edit lead ] |
++------------------------------------------+</div>
+  </div>
+</section>
+
+<section id="v80">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v80</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> Employees who are given leads from the Sales Tracker used to see only a short line per lead on their <strong>My Leads</strong> page. Now they can open any lead, see <strong>everything the visitor filled in</strong> on the page it came from, and <strong>record each follow-up</strong>: a short message and a status. The date and time are added automatically. The admin sees all of it inside the lead in the Sales Tracker.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>My Leads — the list</td><td>Rows could not be clicked; status always "Pending"</td><td>Every row opens the lead. Status shows the employee's latest choice, and a "Last follow-up" column shows when the lead was last followed up</td></tr>
+        <tr><td>My Leads — cards</td><td>All my leads + one card per page</td><td>New <strong>Followed up</strong> card: leads with at least one follow-up. Clicking it shows just those</td></tr>
+        <tr><td>Opening a lead</td><td>—</td><td>A panel slides in from the right with Call / WhatsApp / Email buttons and every field the visitor submitted, grouped (for example Contact, Company, Event, Participation). Nothing can be edited</td></tr>
+        <tr><td>Adding a follow-up</td><td>—</td><td>Pick a status (Contacted, Interested, Not interested, Closed), write what happened, Save. The date and time are set automatically and can't be changed</td></tr>
+        <tr><td>Several people on one lead</td><td>—</td><td>Each person has their own status. Everyone sees the full follow-up history, with who wrote each one</td></tr>
+        <tr><td>Sales Tracker (admin)</td><td>—</td><td>Opening a lead shows an <strong>Employee follow-ups</strong> panel: each assigned person's status, then every follow-up (who, when, status, message). The All leads table shows "N follow-ups" under the assigned names</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">MY LEADS                                  LEAD PANEL (slides in)
+[2 All] [1 Followed up] [1 Feature] ...   +----------------------------------+
++-------------------------------------+   | Feature Your Startup  (Interested)|
+| Yash G. | Feature | ... | Interested |-&gt;| Yash Goswami                  (X) |
+|         |         | 29 Sep, 1 f-up  |   | [Call] [WhatsApp] [Email]         |
++-------------------------------------+   | SUBMITTED DETAILS (view only)     |
+                                          |  Contact: name, company, phone... |
+                                          |  Company: website, country, city  |
+                                          | ADD A FOLLOW-UP                   |
+                                          |  Status [Interested v]            |
+                                          |  Message [....................]   |
+                                          |  Date added automatically  [Save] |
+                                          | FOLLOW-UPS                        |
+                                          |  You - 29 Sep 2026, 14:05 (Int.)  |
+                                          |  "Spoke on call, sending deck"    |
+                                          +----------------------------------+</div>
+  </div>
+</section>
+
+<section id="v81">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v81</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> Staff mark attendance from their phones every day, but the employee panel was built only for a computer screen. The side menu took up most of a phone screen and pushed everything else into a thin strip. This is the first of four steps to make every staff screen work on a phone. This step covers the <strong>employee panel</strong>. Nothing changes on a computer.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before (on a phone)</th><th>Now (on a phone)</th></tr></thead>
+      <tbody>
+        <tr><td>Menu</td><td>The side menu was always open and left a thin strip for the page</td><td>A top bar with a menu button that slides the full menu in. <strong>Bottom tabs</strong> for Attendance, Leave and My Leads, plus "More" for everything else</td></tr>
+        <tr><td>Attendance</td><td>Small punch buttons squeezed inside a table</td><td>A <strong>Today</strong> card at the top with the current time, today's In and Out times, and a large full-width <strong>Punch In</strong> / <strong>Punch Out</strong> button. After both punches it shows "You're done for today"</td></tr>
+        <tr><td>Attendance calendar</td><td>Day boxes crushed to slivers</td><td>A neat 7-column month grid with square days. Tap a day to see its details in a card, then "Back to today"</td></tr>
+        <tr><td>Leave</td><td>A wide table that got cut off</td><td>One card per request with the type, dates, reason and status. The Apply button is full width</td></tr>
+        <tr><td>Documents</td><td>Two or three input boxes side by side</td><td>Inputs stack one under another. Long file names are shortened. Buttons are easy to tap</td></tr>
+        <tr><td>My Leads</td><td>A table you had to scroll sideways</td><td>Swipeable summary cards, then one card per lead with Call and Email buttons</td></tr>
+        <tr><td>My Exit</td><td>Five steps squeezed into one row</td><td>The steps are listed top to bottom</td></tr>
+        <tr><td>IT Support</td><td>Filters with fixed widths; board columns cramped</td><td>Filters fill the width. The board scrolls one column at a time</td></tr>
+        <tr><td>Pop-ups</td><td>The site's scroll buttons, "Install app" card and reader login pop-up could cover the panel</td><td>Hidden on the employee panel</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Next steps:</strong> 2 — the admin panel frame (menu and header), 3 — HR Management, 4 — Events and Publish screens.</p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">PHONE — ATTENDANCE
++-----------------------------+
+| [=]  Attendance         (A) |   top bar (menu, page, avatar)
++-----------------------------+
+| TODAY                10:42AM|
+| Tuesday, 29 September 2026  |
+| +-----------+ +-----------+ |
+| | PUNCH IN  | | PUNCH OUT | |
+| | 09:58     | | --        | |
+| +-----------+ +-----------+ |
+| (On time)                   |
+| [     Punch Out          ]  |   full-width button
++-----------------------------+
+| &lt;   September 2026      &gt;   |
+| S  M  T  W  T  F  S         |
+| [] [] [] [] [] [] []        |   tap a day for details
++-----------------------------+
+| Attendance Leave Leads More |   bottom tabs
++-----------------------------+</div>
+  </div>
+</section>
+
+
+<section id="v81">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v81</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> The cards at the top of <strong>My Leads</strong> now tell an employee at a glance which pages still have people waiting for a first conversation.</p>
+    <table>
+      <thead><tr><th>Word on the card</th><th>Means</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Pending</strong> (red)</td><td>Still open, and nobody on the lead has added a follow-up yet, so no conversation has happened</td></tr>
+        <tr><td><strong>Followed up</strong> (green)</td><td>Still open, and at least one follow-up has been added</td></tr>
+        <tr><td><strong>Total</strong></td><td>Every lead from that page, including ones marked Closed or Not interested (these count as finished)</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Which cards</td><td>"All my leads", "Followed up", then one per page</td><td>Only one card per page (Feature Your Startup, Funding Round, Press Release, Sponsor an Event, Expand North Star, and "Added manually" when there are any)</td></tr>
+        <tr><td>What a card says</td><td>Total, and "N pending"</td><td>Pending + Followed up / Total, for example <em>1 + 2 / 5</em></td></tr>
+        <tr><td>Warning</td><td>—</td><td>A card with any pending lead has a red border and a gently blinking red background, until every lead on it has a follow-up</td></tr>
+        <tr><td>Clicking a card</td><td>All of that page's leads</td><td>Only that page's pending and followed-up leads (finished ones are hidden). Clicking again, or "Show all", shows every lead</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">+=========================+  +-------------------------+  +-------------------------+
+| Feature Your Startup  * |  | Funding Round           |  | Expand North Star     * |
+|  1  +  2  /  5          |  |  0  +  0  /  0          |  |  1  +  0  /  1          |
+|  Pending Followed Total |  |  Pending Followed Total |  |  Pending Followed Total |
++=========================+  +-------------------------+  +=========================+
+ ^ red, blinking                grey, nothing waiting        ^ red, blinking</div>
+  </div>
+</section>
+
+<section id="v82">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v82</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> A lead now has <strong>one status</strong>, and the admin and the assigned employees see and change the same one. There are only four choices, everywhere.</p>
+    <table>
+      <thead><tr><th>Status</th><th>Means</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Pending</strong></td><td>Nobody has had a conversation yet (every new lead starts here)</td></tr>
+        <tr><td><strong>Follow Up</strong></td><td>Conversation going on</td></tr>
+        <tr><td><strong>Confirmed</strong></td><td>Deal done — finished</td></tr>
+        <tr><td><strong>Not Interested</strong></td><td>Lead said no — finished</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Sales Tracker status (admin)</td><td>Eight options such as "Query received", "Under discussion", "Successfully closed"; Expand North Star enquiries had their own three</td><td>The same four for every lead</td></tr>
+        <tr><td>My Leads follow-up (employee)</td><td>Contacted / Interested / Not interested / Closed — the employee's own status, separate from the admin's</td><td>The same four. The status picked with a follow-up becomes the lead's status, so the admin sees it at once</td></tr>
+        <tr><td>Sales Tracker summary</td><td>Active, Closed, Dropped; "Pending leads" meant "never edited"</td><td>Active (Pending + Follow Up), Confirmed, Not Interested; "Pending leads" means status Pending, Expand North Star included</td></tr>
+        <tr><td>Existing leads</td><td>—</td><td>All reset to Pending (the history of past follow-ups is kept)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v83">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v83</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> My Leads opens with a new <strong>Lead Status</strong> card, before the page cards. It adds up every lead assigned to the employee, from all pages, by status.</p>
+    <table>
+      <thead><tr><th>Row on the card</th><th>Shows</th></tr></thead>
+      <tbody>
+        <tr><td>Pending leads</td><td>Leads with status Pending / all assigned leads</td></tr>
+        <tr><td>Followed up leads</td><td>Leads with status Follow Up / all assigned leads</td></tr>
+        <tr><td>Confirmed leads</td><td>Leads with status Confirmed / all assigned leads</td></tr>
+        <tr><td>Not interested leads</td><td>Leads with status Not Interested / all assigned leads</td></tr>
+      </tbody>
+    </table>
+    <p>Clicking the card shows <strong>every</strong> assigned lead in the list, whatever its status, including Confirmed and Not Interested ones (a page card shows only that page's open leads).</p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">+------------------------------+
+| Lead Status         3 total  |
+| (o) Pending leads      2 / 3 |
+| (o) Followed up leads  0 / 3 |
+| (o) Confirmed leads    1 / 3 |
+| (o) Not interested     0 / 3 |
++------------------------------+</div>
+  </div>
+</section>
+
+<section id="v84">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v84</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> On My Leads the <strong>Lead Status</strong> card now sits after the page cards, and the lead list has a <strong>Lead Status</strong> filter (All statuses, Pending, Followed up, Confirmed, Not Interested). The card picks <em>which pages</em>, the filter picks <em>which status</em>.</p>
+    <table>
+      <thead><tr><th>Card picked</th><th>Filter</th><th>List shows</th></tr></thead>
+      <tbody>
+        <tr><td>A page card (e.g. Press Release)</td><td>All statuses</td><td>That page's open leads (Pending + Followed up)</td></tr>
+        <tr><td>A page card</td><td>One status (e.g. Confirmed)</td><td>That page's leads with that status</td></tr>
+        <tr><td>Lead Status card</td><td>All statuses</td><td>Every assigned lead, any status</td></tr>
+        <tr><td>Lead Status card</td><td>One status</td><td>Leads from all pages with that status</td></tr>
+      </tbody>
+    </table>
+    <p>"Show all" clears both the card and the filter.</p>
   </div>
 </section>
 

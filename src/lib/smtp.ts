@@ -45,6 +45,7 @@ export type MailPayload = {
   text: string;
   html?: string;
   replyTo?: string;
+  attachments?: { filename: string; content: Buffer; contentType?: string }[];
 };
 
 export async function sendSmtpMail(payload: MailPayload) {
@@ -58,5 +59,6 @@ export async function sendSmtpMail(payload: MailPayload) {
     text: payload.text,
     html: payload.html,
     replyTo: payload.replyTo,
+    attachments: payload.attachments,
   });
 }

@@ -37,6 +37,7 @@ export interface PostEntity {
   author_id: number;
   featured_image_url?: string;
   featured_image_small_url?: string;
+  image_credit?: string | null;
   format: "standard" | "video" | "gallery";
   status: "draft" | "published" | "scheduled" | "archived";
   is_gone_410?: boolean | number;
@@ -68,6 +69,7 @@ export interface CreatePostDto {
   authorId: number;
   featuredImageUrl?: string;
   featuredImageSmallUrl?: string;
+  imageCredit?: string;
   format?: "standard" | "video" | "gallery";
   status?: "draft" | "published" | "scheduled" | "archived";
   featured?: boolean;

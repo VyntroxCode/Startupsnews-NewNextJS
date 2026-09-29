@@ -36,7 +36,7 @@ export function ChapterReview({
     { label: "Phone / WhatsApp", value: data.phone, fieldId: "fr-phone", required: true, hint: "For the follow-up conversation" },
     { label: "Official email", value: data.email, fieldId: "fr-email", required: true, hint: "Where our reply lands" },
     { label: "Website", value: data.website, fieldId: "fr-website", required: false, hint: "Optional" },
-    { label: "Country / City", value: data.countryCity, fieldId: "fr-country-city", required: false, hint: "Optional" },
+    { label: "Country / City", value: data.countryCity, fieldId: "fr-country-city", required: true, hint: "Where the company is based" },
   ];
 
   const missingRequired = rows.filter((row) => row.required && !row.value.trim()).length;

@@ -367,6 +367,8 @@ export interface Post {
   metaDescription?: string;
   robots?: string | null;
   contentFollow?: string | null;
+  /** Credit line for the featured image, shown under it on the article page */
+  imageCredit?: string | null;
   content: string;
   category: string;
   categorySlug: string;
@@ -600,6 +602,7 @@ export async function entityToPost(entity: PostEntity): Promise<Post> {
     metaDescription: entity.meta_description ?? entity.excerpt ?? '',
     robots: (entity as PostEntity & Record<string, unknown>)['robots'] as string | null ?? 'index,follow',
     contentFollow: (entity as PostEntity & Record<string, unknown>)['content_follow'] as string | null ?? 'nofollow',
+    imageCredit: entity.image_credit || null,
     content: fullContent,
     category: category?.name || 'Uncategorized',
     categorySlug: category?.slug || 'uncategorized',
@@ -715,6 +718,7 @@ export async function entitiesToPosts(entities: PostEntity[]): Promise<Post[]> {
         metaDescription: entity.meta_description ?? entity.excerpt ?? '',
         robots: (entity as PostEntity & Record<string, unknown>)['robots'] as string | null ?? 'index,follow',
         contentFollow: (entity as PostEntity & Record<string, unknown>)['content_follow'] as string | null ?? 'nofollow',
+        imageCredit: entity.image_credit || null,
         content: fullContent,
         category: category?.name || 'Uncategorized',
         categorySlug: category?.slug || 'uncategorized',

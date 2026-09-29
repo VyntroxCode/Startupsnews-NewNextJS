@@ -48,7 +48,7 @@ export function submissionToSalesLead(submission: SponsorEventSubmission): Sales
     posterUrl: submission.posterUrl,
     description: submission.description,
     assignedTo: '',
-    status: 'Query received',
+    status: 'Pending',
     nextFollowUpDate: '',
     lastConnectDate: '',
     lastCallDiscussion: '',

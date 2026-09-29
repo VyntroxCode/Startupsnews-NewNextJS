@@ -54,7 +54,7 @@ export default function FilterBar({ filters, onFiltersChange, view, onViewChange
   return (
     <div className={`${CARD} mb-[18px] px-4 py-3`} data-testid="filter-bar">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="relative block w-[220px] max-w-full">
+        <label className="relative block w-full sm:w-[220px] sm:max-w-full">
           <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
@@ -67,15 +67,15 @@ export default function FilterBar({ filters, onFiltersChange, view, onViewChange
           />
         </label>
 
-        <select className={`${COMPACT_INPUT} w-[132px]`} aria-label="Filter by status" value={filters.status || ''} onChange={(e) => set('status', e.target.value as TicketFilters['status'])}>
+        <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[132px] sm:flex-none`} aria-label="Filter by status" value={filters.status || ''} onChange={(e) => set('status', e.target.value as TicketFilters['status'])}>
           <option value="">All statuses</option>
           {STATUS_COLUMNS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
-        <select className={`${COMPACT_INPUT} w-[132px]`} aria-label="Filter by priority" value={filters.priority || ''} onChange={(e) => set('priority', e.target.value as TicketFilters['priority'])}>
+        <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[132px] sm:flex-none`} aria-label="Filter by priority" value={filters.priority || ''} onChange={(e) => set('priority', e.target.value as TicketFilters['priority'])}>
           <option value="">All priorities</option>
           {PRIORITIES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
         </select>
-        <select className={`${COMPACT_INPUT} w-[140px]`} aria-label="Filter by type" value={filters.type || ''} onChange={(e) => set('type', e.target.value as TicketFilters['type'])}>
+        <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[140px] sm:flex-none`} aria-label="Filter by type" value={filters.type || ''} onChange={(e) => set('type', e.target.value as TicketFilters['type'])}>
           <option value="">All types</option>
           {TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>

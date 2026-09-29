@@ -38,7 +38,7 @@ export function submissionToSalesLead(submission: PressReleaseSubmission): Sales
     posterUrl: '',
     description: '',
     assignedTo: '',
-    status: 'Query received',
+    status: 'Pending',
     nextFollowUpDate: '',
     lastConnectDate: '',
     lastCallDiscussion: '',

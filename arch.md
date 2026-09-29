@@ -20,7 +20,7 @@
 |---|---|---|---|
 | 1 | **Public news & media site** — articles, categories, events, reports, brand stories | Anonymous readers, logged-in readers | `/`, `/[...slug]`, `/news`, `/events`, `/category/*` |
 | 2 | **CMS / admin panel** — publish and manage all of the above | Staff (`admin`, `editor`, `author`, `event_admin`, `publisher_admin`, `it_support`) | `/admin/*` |
-| 3 | **Internal business tools** — HR tool, Sales Tracker, Network Manager (CRM), Partnership Tracker, IT Tickets, Newsletter | Staff, scoped by role | `/admin/hr-tool`, `/admin/sales-tracker`, `/admin/it-tickets`, … |
+| 3 | **Internal business tools** — HR tool, Sales Tracker, Network Manager (CRM), Events Tracker (formerly Partnership Tracker; route still `/admin/partnership-tracker`), IT Tickets, Newsletter | Staff, scoped by role | `/admin/hr-tool`, `/admin/sales-tracker`, `/admin/it-tickets`, … |
 | 4 | **Employee self-service portal** — punch in/out, leave, documents, KYC | Employees (separate credential table) | `/employee/*` |
 
 Plus a **background process** (separate PM2 app) that runs cron jobs: RSS ingestion, scheduled
@@ -59,6 +59,7 @@ graph TB
         Turnstile["Cloudflare Turnstile<br/>form CAPTCHA"]
         OAuth["Google / LinkedIn OAuth"]
         Feeds["Third-party RSS feeds"]
+        Geo["BigDataCloud<br/>reverse geocode<br/>(called from the browser)"]
     end
 
     Reader --> Nginx
@@ -72,6 +73,7 @@ graph TB
     Web --> SMTP
     Web --> Turnstile
     Web --> OAuth
+    Reader -.lat/lng.-> Geo
     Reader -.images.-> CDN
     CDN -.origin.-> S3
 
@@ -158,7 +160,7 @@ components).
 | `panel-admins` | Scoped panel accounts (`event_admin`, `publisher_admin`, `it_support`) | `panel_admins` |
 | `public-users` | Reader accounts, Google/LinkedIn sign-in, newsletter prefs | `public_registrations`, `public_registration_founders`, `public_registration_funding_rounds` |
 | `events` | Event listings + regions | `events`, `event_regions` |
-| `partnership-events` | Partnership/sponsorship pipeline, site listing status | `partnership_events` |
+| `partnership-events` | Events Tracker (formerly Partnership Tracker) pipeline, site listing status, Follow Up notes | `partnership_events`, `partnership_event_follow_ups` |
 | `event-submission` | Public event submissions | `events` (pending state) |
 | `banners` | Home page banners | `banners` |
 | `brand-stories` | Sponsored long-form + sections | `brand_stories`, `brand_story_sections` |
@@ -166,15 +168,18 @@ components).
 | `inner-pages` | Editable content for standalone pages, partner logos | `inner_page_content`, `partner_logos` |
 | `rss-feeds` | Feed registry, fetch state, imported items | `rss_feeds`, `rss_feed_items` |
 | `contacts` | Network Manager CRM | `contacts` |
-| `sales-tracker` | Sales leads + team | `sales_leads`, `sales_team_members` |
+| `sales-tracker` | Sales leads. `sales_leads.assigned_to` and `sales_team_members` are **unused since 2026-09-24** (replaced by `lead-assignments`; left in place, never written) | `sales_leads`, `sales_team_members` |
+| `lead-assignments` | Which HR employees each Sales Tracker lead is assigned to (**several per lead**, since 2026-09-24), and which HR departments (`hr_employees.team`) were picked on it, for both sources (`lead_source` `'lead'` = `sales_leads`, `'ens'` = `ens_travel_enquiries`). Stores `hr_employee_credentials.id` (the permanent login id) per person, plus `via_department` (the department that added them; NULL = picked by hand); shows names. Assignable = active login not linked to an `exited` `hr_employees` row. **Since 2026-09-26 Assigned to depends on Departments**: picking a department only unlocks its people in the Assigned to dropdown (nobody is added automatically); every newly added person must come from a picked department, and is stored with that department as `via_department` (server-enforced in `setForLead`). Rows with `via_department` NULL are only older hand-picks, kept until removed. Each person has their own `status`, starting at `pending` (`domain/types.ts` `ASSIGNMENT_STATUS_OPTIONS`). Saves replace the whole set in one transaction (`replaceForLead`): kept people keep status/assigned_at/by, new ones start pending, missing ones are deleted. Admin: `GET\|PUT /api/admin/sales-tracker/assignments`; employee: `GET /api/employee/leads` → `/employee/leads` (My Leads); Event / Publisher Admins: `GET /api/admin/my-leads` → `/admin/my-leads` (same `MyLeadsPage`, caller's `panel_admins.id` → `hr_employee_credentials.linked_panel_admin_id` → `credential.id`) | `sales_lead_assignments`, `sales_lead_departments` |
 | `hr-tool` | Attendance, leave, payroll, onboarding, rules, geo-fencing, KYC. Every employee-owned record is keyed by `employee_id` (= `hr_employees.id`); `emp` is a display-name snapshot only (§9 #17) | `hr_employees`, `hr_attendance`, `hr_punch_log`, `hr_leave_requests`, `hr_regularizations`, `hr_payroll_runs`, `hr_payroll_entries`, `hr_rules`, `hr_teams`, `hr_onboarding`, `hr_expenses`, `hr_templates`, `hr_audit_log`, `hr_company_profile`, `hr_attendance_overrides`, `hr_document_upload_requests` |
 | `hr-credentials` | Employee portal login (separate from staff auth) | `hr_employee_credentials` |
+| `hr-offboarding` | Exits (since 2026-09-28): resignation from the portal or HR-started resignation/termination, one-level HR/Founder approval, notice + last working day (LWD), post-LWD portal access (`alumni` read-only / `blocked`), clearance checklist seed, settings (notice days 15 probation / 30 confirmed, default checklist, encashable leave types). **Source of truth for exit state** — nothing is stored on `hr_employees` except the `status='exited'` mirror (§9 #22). `HrOffboardingService.applyDueExits()` is the lazy sweep (no cron). Phase 2 (2026-09-28): clearance checklist ticking, sales-lead handover (via `lead-assignments` `handOverAll`), handover notes, rehire flag, Reinstate; every state change compare-and-set (`transition`), one open exit per employee enforced by `uniq_open_case`. Phase 3: Full & Final in `hr_offboarding.fnf` (version-checked JSON; auto lines via the payroll engine; approve/reopen/paid) and payroll leaver handling (LWD cut-off, F&F-settled exclusion). Phase 4: letters (text snapshot in `hr_offboarding.letters`, PDF rebuilt on request, no S3), offboarding emails (`lib/hr-offboarding-mailer.ts`), `complete` | `hr_offboarding`, `hr_offboarding_clearance`, `hr_offboarding_settings` |
 | `it-tickets` | Internal helpdesk: tickets, comments, attachments, key sequence. Raised by admin-panel staff and by plain employees from the employee portal (actor role `'employee'`); status rules in `domain/status-policy.ts` | `it_tickets`, `it_ticket_comments`, `it_ticket_attachments`, `it_ticket_key_seq` |
 | `feature-startup-submissions` | "Feature your startup" pipeline | `feature_startup_submissions` |
 | `funding-round-submissions` | Funding round submissions | `funding_round_submissions` |
 | `press-release-submissions` | Press release submissions (`/submit-press-release`), mirrored into `sales_leads` | `press_release_submissions` |
+| `lead-followups` | **Since 2026-09-29.** Follow-ups the assigned employees log on Sales Tracker leads from My Leads, plus the read-only lead view they open. `domain/types.ts` (`LeadFollowUp`, `LeadDetail`, `LeadSubmission` sections/fields, `FOLLOW_UP_NOTE_MAX_LENGTH` 2000); `service/lead-details.ts` `buildLeadSubmission` (the page's **original** submission row by the same id — feature/funding/press/sponsor/ens repositories + their `entityTo*` mappers — falling back to the `sales_leads` row for manual leads or a missing original); `service/lead-followups.service.ts` (`getDetailForEmployee`, `addForEmployee`, `getForAdmin`; 404 unless the caller is assigned); `service/http.ts` shared error → response; repository `add` = INSERT follow-up + UPDATE the author's `sales_lead_assignments.status` in one transaction (row lock on the assignment) | `sales_lead_followups` |
 | `sponsor-event-submissions` | Partner / Sponsor an Event submissions (`/sponsor-event`): own Sales Tracker card + mirrored into `sales_leads` | `sponsor_event_submissions` |
-| `ens-travel-enquiries` | Expand North Star travel enquiries (the "Plan your visit" form at the foot of `/expand-north-star`): domain (`participation.ts` options + package inclusions; `sources.ts` Referred-by partners + How-did-you-find-us channels; `lead-status.ts` Confirmed / Followed Up / Cancelled + conversation note), repository, service (`normalizeEnquiryInput` shared by the public form and admin edits; `normalizeLeadStatusInput` admin-only). Own Sales Tracker card with editing, lead status and a "Followed Up Leads" tile. **Never written to `sales_leads`** — kept apart from the other pages' leads | `ens_travel_enquiries` |
+| `ens-travel-enquiries` | Expand North Star travel enquiries (the "Plan your visit" form at the foot of `/expand-north-star`): domain (`participation.ts` options + package inclusions; `sources.ts` Referred-by partners + How-did-you-find-us channels; `lead-status.ts` Confirmed / Follow Up / Not Interested — stored as `confirmed` / `followed-up` / `cancelled` — + conversation note under Confirmed or Follow Up via `leadStatusTakesNote`), repository, service (`normalizeEnquiryInput` shared by the public form and admin edits; `normalizeLeadStatusInput` admin-only). Own Sales Tracker card with editing, lead status and a "Followed Up Leads" tile. **Never written to `sales_leads`** — kept apart from the other pages' leads | `ens_travel_enquiries` |
 | `incubatx-dossier` | IncubatX dossiers | `incubatx_dossiers` |
 | `newsletter` *(routes + tables, no module folder)* | Newsletter categories, items, schedules | `newsletter_categories`, `newsletter_items`, `newsletter_schedules` |
 | *settings* | Key-value site settings (e.g. footer copyright, hero images) | `site_settings`, `settings`, `admin_tools` |
@@ -185,29 +190,51 @@ components).
 
 ### Public (reader-facing)
 `/` (home — the only route that renders `components/DelegationStrip.tsx`, the delegation announcement band; `showDelegationStrip = pathname === '/'` in `ConditionalLayout`, placed between `<Header />` and the banner carousel) · `/[...slug]` (article + legacy WP slugs) · `/news` · `/category/*` · `/author/*` · `/search` ·
-`/events` · `/startup-events` · `/press-release` · `/about-us` · `/advertise-with-us` ·
+`/events` (country → city carousels, countries A–Z and cities A–Z with "Other Cities" last — that heading is hidden when Other Cities is the country's only section, Online/Cohort trailing; when the visitor has shared a location, `orderByVisitorLocation` moves their city/country to the top — location comes only from the `sn_event_loc` cookie that the headless `EventsLocationBar` (renders nothing; asks the browser prompt on every load while no cookie) writes, read by `lib/visitor-location.ts`; no IP lookup) · `/startup-events` · `/press-release` · `/about-us` · `/advertise-with-us` ·
 `/our-partners` · `/ecosystem-partners` · `/incubatx` · `/careers` · `/dashboard` (reader) ·
-`/expand-north-star` (Expand North Star 2026 event page — a **bare route**: `BARE_ROUTES` in `components/ConditionalLayout.tsx` renders it without the site `Header`, banner carousel or `Footer` (footer dropped 2026-09-19) and tags `#mvp-main-body-wrap` with `is-bare-route` so the page can drop the 72px header clearance; grounds run full width with a 1200px content column; `src/app/expand-north-star/page.tsx` loads Cairo via `next/font/google` as `--ens-font` → client `components/expand-north-star/ExpandNorthStarPage.tsx`; the hero (`EnsHero`) opens with a white "Back To Home" pill (pink home icon + label, `.ens-home-btn`, added 2026-09-21 since this bare route has no site header to carry a home link; flipped from pink-fill/white-icon to white-fill/pink-icon 2026-09-21 — a solid pink fill blended into the page's own pink hero background; gained its visible label 2026-09-21), sitting above the headline in a `.ens-hero-title-row` column flex — tried beside the heading first, but the pill sitting near the true left edge and the heading needing to align with the video card below it turned out to be geometrically incompatible in one row on ordinary desktop widths (the pill is wider than the gap between the true edge and the content column there), so it reverted to stacked, unconditionally, 2026-09-21; the pill's own `margin-left` formula flushes it to the true browser viewport edge (plus a 16px margin) rather than just the centred content column's edge; the big rounded card below the headline plays a **YouTube embed** (`<iframe>`, `.ens-hero-yt`, swapped in 2026-09-23 for the local `.mp4` background clip — `EnsVideo`/`ensVideos.hero` are now unused but left in place) with `autoplay=1&mute=1&loop=1&playlist=<id>&controls=0` params approximating the old muted/looping/no-controls behaviour, `pointer-events: none` (still no play/pause UI, per row 23's removal); above the bar a sticky white band (`EnsDelegationTitle`) reads **"Startup Delegation to Dubai"**, its Montserrat 900 type sized to the band's width (`calc(100cqi / 18)`; ratio re-measured whenever the wording changes); the sticky event bar (`EnsNav`, full-width row: lockup → Launchpad → Konnect packed left, button `margin-left: auto` at the right gutter; bar padding and the lockup/Launchpad/Konnect/button sizes all shrunk together 2026-09-23 to cut the bar's height) ends in a **Participate Now** button that scrolls to `#ens-participate`, the closing enquiry section (`PlanYourJourney`), and a second, larger **Participate Now** under the 2025 figures (`ShowNumbers`) lands in the same place via the shared `scrollToParticipate()` in `hooks.ts` (reads the pinned band + bar heights at click time); `EnsPartners` reuses `PartnerLogosMarquee` with `rows={2}`, fed by this page's own fixed `REFERRAL_PARTNER_LOGOS_FOR_MARQUEE` (referralPartnerLogos.ts, served from S3 via `ENS_REFERRAL_LOGOS` in media.ts) rather than the admin Inner Pages feed `/our-partners` reads — two of its ten logos (Angel Bay, Indicorn Angels) carry a `linkUrl` opening the partner's own site in a new tab, corrected/added 2026-09-19, every other logo still links nowhere; the six `DelegationDays` cards date as `6th Dec 2026` (three-letter month) with the Day 1 host (Dubai Konnect) on its own `.ens-day-host` line under the title; media/links in `media.ts`, clips served from `public/images/gif/`. Everything above the closing section is static — the one API call on the page is the travel-enquiry form's `POST /api/expand-north-star/travel-enquiry`, see §6.6) ·
+`/expand-north-star` (Expand North Star 2026 event page — a **bare route**: `BARE_ROUTES` in `components/ConditionalLayout.tsx` renders it without the site `Header`, banner carousel or `Footer` (footer dropped 2026-09-19) and tags `#mvp-main-body-wrap` with `is-bare-route` so the page can drop the 72px header clearance; grounds run full width with a 1200px content column; `src/app/expand-north-star/page.tsx` loads Cairo via `next/font/google` as `--ens-font` → client `components/expand-north-star/ExpandNorthStarPage.tsx`; the hero (`EnsHero`) opens straight on its headline — the white "Back To Home" pill that stood above it (`.ens-home-btn` / `.ens-hero-title-row`, added 2026-09-21) was removed with its CSS on request 2026-09-28, so the only link home on this bare route is `SectionNav`'s "Back to Home" once the reader scrolls past the hero; the big rounded card below the headline plays a **YouTube embed** (`<iframe>`, `.ens-hero-yt`, swapped in 2026-09-23 for the local `.mp4` background clip — `EnsVideo`/`ensVideos.hero` are now unused but left in place) with `autoplay=1&mute=1&loop=1&playlist=<id>&controls=0` params approximating the old muted/looping/no-controls behaviour, `pointer-events: none` (still no play/pause UI, per row 23's removal); above the bar a sticky white band (`EnsDelegationTitle`) reads **"Startup Delegation to Dubai"**, its Montserrat 900 type sized to the band's width (`calc(100cqi / 18)`; ratio re-measured whenever the wording changes); the sticky event bar (`EnsNav`, full-width row: lockup → Launchpad → Konnect packed left, button `margin-left: auto` at the right gutter; bar padding and the lockup/Launchpad/Konnect/button sizes all shrunk together 2026-09-23 to cut the bar's height) ends in a **Participate Now** button that scrolls to `#ens-participate`, the closing enquiry section (`PlanYourJourney`), and a second, larger **Participate Now** under the 2025 figures (`ShowNumbers`) lands in the same place via the shared `scrollToParticipate()` in `hooks.ts` (reads the pinned band + bar heights at click time); `EnsPartners` reuses `PartnerLogosMarquee` with `rows={2}`, fed by this page's own fixed `REFERRAL_PARTNER_LOGOS_FOR_MARQUEE` (referralPartnerLogos.ts, served from S3 via `ENS_REFERRAL_LOGOS` in media.ts) rather than the admin Inner Pages feed `/our-partners` reads — two of its ten logos (Angel Bay, Indicorn Angels) carry a `linkUrl` opening the partner's own site in a new tab, corrected/added 2026-09-19, every other logo still links nowhere; a floating `SectionNav` (added 2026-09-28, Tailwind only, appears after 60% of a viewport of scroll) jumps via `scrollToSection` to `#ens-days` (Itinerary), `#ens-benefits` (Benefits), `#ens-fee` (Participate Now), `#ens-participate` (Kick Start) or `/` — a bottom-centre dock with a `layoutId` active pill (scroll-spy line at 45% of the viewport) and reading-progress line at ≥1024px, a pink menu button (stacked above the root-layout `ScrollButtons` at bottom 122px) + right-hand `role="dialog"` sidebar (portalled to `<body>` at z 10000 so ScrollButtons at 9999 can't cover it; body scroll lock, Escape, focus trap) below; right after the six days, `DelegationBenefits` ("Benefits of Joining the Delegation", added 2026-09-28) shows a cream founders card and a navy enablers card (six benefits each, paid add-on chips on the enablers card, both CTAs scroll to `#ens-participate` via `scrollToSection`) — the page's **only Tailwind section**: `src/app/expand-north-star/layout.tsx` imports the shared `isolated-tailwind.css`, which carries an `@source` line for that one file and the `--color-ens-*` tokens, while every other section stays on `expand-north-star.css` (the CTA pill is drawn on a span inside the `<a>` because style.css's unlayered `a, a:visited` colour/transition outranks a single utility); the six `DelegationDays` cards date as `6th Dec 2026` (three-letter month) with the Day 1 host (Dubai Konnect) on its own `.ens-day-host` line under the title; media/links in `media.ts`, clips served from `public/images/gif/`. Everything above the closing section is static — the one API call on the page is the travel-enquiry form's `POST /api/expand-north-star/travel-enquiry`, see §6.6) ·
 policy pages (`/privacy-policy`, `/terms-and-conditions`, `/editorial-policy`, `/return-refund-policy`, `/delete-your-account`) ·
 lead-gen forms (`/feature-your-startup`, `/submit-funding-round`, `/submit-press-release`, `/submit-event`, `/list-your-event`, `/sponsor-event`, `/contact-us`) ·
 SEO (`/sitemap_index.xml`, `/sitemap.xml`, `/sitemap-news.xml`, `/sitemap-posts-N.xml`, `/sitemap-events.xml`, `/sitemap-static.xml`, `/llms.txt`, `/unsubscribe`)
 
-### Admin (`/admin/*`, 39 pages)
+### Admin (`/admin/*`, 40 pages)
 Dashboard · Posts (list/create/edit) · Categories · Authors · Banners · Events · Brand Stories ·
 Reports · Inner Pages · RSS Feeds · Newsletter (+ categories) · Users · Registered Users ·
-Panel Admins · Contacts · Sales Tracker · Partnership Tracker · HR Tool · Attendance · Leave ·
+Panel Admins · Contacts · Sales Tracker · Events Tracker (`/admin/partnership-tracker`, renamed from Partnership Tracker) · HR Tool · My Leads (`/admin/my-leads`, Event / Publisher Admin only — `MY_LEADS_PANEL_ROLES`) · Attendance · Leave ·
 Documents · Admin Rules (`/admin/rules-policy`) · IT Tickets · HTML Tools · Login
 
 ### Employee (`/employee/*`)
-Punch in/out + attendance, leave requests, documents upload + window, KYC, **IT Support**
+Punch in/out + attendance, **My Leads** (`/employee/leads` — Sales Tracker leads assigned to this
+employee: one KPI card per source page + "Added manually", click to filter, then a list with
+contact links and the assignment status; read-only, `components/employee/my-leads/MyLeadsPage.tsx`,
+Tailwind via `staff-panel-tailwind.css`), leave requests, documents upload + window, KYC, **IT Support**
 (`/employee/it-tickets` — raise and track own IT tickets; the shared IT Tickets UI mounted with
 `EMPLOYEE_TICKETS_CONFIG` from `src/lib/employee-it-tickets.ts`).
+**My Exit** (`/employee/exit`, since 2026-09-28 — submit/withdraw a resignation, status timeline,
+LWD countdown; `components/offboarding/ExitWidget.tsx`, Tailwind via `staff-panel-tailwind.css`). Past
+the last working day an `alumni` login sees only this page: the layout filters the sidebar to it and
+redirects every other `/employee/*` path there, and every other `/api/employee/*` route answers 403
+`code: ALUMNI`. Publisher/Event Admins get the same widget at `/admin/my-exit` (sidebar "Resignation").
+**Mobile frame (since 2026-09-29, responsive overhaul phase 1).** `src/app/employee/layout.tsx` is
+Tailwind (sheet `src/components/admin/staff-panel-tailwind.css`). At `md` (768px) and up it keeps the
+260px sticky sidebar. Below `md` there is no sidebar column. Instead there is a sticky 56px top bar
+(hamburger, current page name, avatar), an off-canvas drawer (`z-[1003]`, backdrop `z-[1002]`, with
+the same `SidebarContent`) and a fixed bottom tab bar (Attendance · Leave · My Leads · More → drawer;
+hidden for alumni). The drawer's open state is `drawerPath === pathname`, so any navigation closes it
+without an effect; Esc closes it via `useEscapeKey`, and body scroll is locked while it is open. Main
+content is `px-4` on phones and reserves space for the tab bar and safe area at the bottom.
+`ScrollButtons`, `InstallPWA` and `AuthModal` do not render on `/employee/*`.
+`AttendanceWidget` leads with a **Today** card: live clock, today's In/Out tiles from the API's
+`today` block (so it stays correct while the calendar shows another month), and full-width 48px
+Punch In / Punch Out buttons. A day-details card appears only when a non-today date is picked. The
+calendar is a compact `grid-cols-7` of square cells on phones. `LeaveWidget` and `MyLeadsPage` show
+card lists below `md` and keep their tables from `md` up.
 
-### API (184 handlers)
+### API (186 handlers)
 | Prefix | Count | Notes |
 |---|---|---|
-| `/api/admin/*` | 122 | JWT-gated, role-checked. `sales-tracker/ens-enquiries` (GET list; `[id]` GET + PATCH edit) serves the Expand North Star card. Biggest groups: `hr-tool` (30), `newsletter` (10), `it-tickets` (8, incl. `export`), `rss-feeds` (7), `contacts` (5) |
-| `/api/employee/*` | 19 | Employee-credential auth (separate middleware). Includes `it-tickets` (8): list/create, get/update (no delete), comments, attachments, `me`, `presign` |
+| `/api/admin/*` | 123 | JWT-gated, role-checked. `sales-tracker/ens-enquiries` (GET list; `[id]` GET + PATCH edit) serves the Expand North Star card. `sales-tracker/assignments` (GET employees + assignments; PUT assign/unassign) replaced `sales-tracker/team` (deleted 2026-09-24). `my-leads` (GET, `MY_LEADS_PANEL_ROLES`): the caller's assigned leads via their linked HR login; `linked: false` + empty list when there's no link. `my-leads/[source]/[id]` (GET lead view) + `…/follow-ups` (POST `{note, status}`) for the same callers; `sales-tracker/follow-ups` (GET `?source&leadId`, `SALES_TRACKER_ROLES`, read-only). Employee: `GET /api/employee/leads/[source]/[id]`, `POST …/follow-ups`. Biggest groups: `hr-tool` (30), `newsletter` (10), `it-tickets` (8, incl. `export`), `rss-feeds` (7), `contacts` (5) |
+| `/api/employee/*` | 20 | Employee-credential auth (separate middleware). Includes `leads` (GET: my assigned leads, matched on `credential.id`). Includes `it-tickets` (8): list/create, get/update (no delete), comments, attachments, `me`, `presign` |
 | `/api/public-auth/*` | 8 | Reader register/login, Google verify, LinkedIn OAuth, profile, newsletter prefs |
 | `/api/events/*` | 8 | Public event reads + submission |
 | `/api/cron/*` | 4 | HTTP-triggered job entry points |
@@ -334,6 +361,10 @@ sequenceDiagram
     CDN-->>B: optimized image (S3 origin)
 ```
 
+**Featured-image credit.** `posts.image_credit VARCHAR(255) NULL` (after `featured_image_small_url`) is added on first use by `PostsRepository.hasImageCreditColumn()`, the same self-healing pattern as `robots` / `content_follow` — no migration file. Written by admin create/edit (`imageCredit`, trimmed, max 255, empty → NULL; JSON and multipart paths both carry it) and exposed as `Post.imageCredit` by the two full-content mappers in `posts.utils.ts` (the list mapper leaves it out). `FullArticle.tsx` renders it only when set, as `<span class="mvp-feat-caption">Image credit: …</span>` straight after `#mvp-post-feat-img` (the theme's existing right-aligned caption rule in `style.css` / `media-queries.css`, so no new CSS) plus `<meta itemProp="creditText">` inside the ImageObject. RSS-created posts insert NULL.
+
+**Body-image credits.** Images in the post body carry their credit on the tag itself: `data-credit` on `<img>`, via the `CreditImage` node (`Image.extend` with a `credit` attribute) in `RichTextEditorClient.tsx`. The editor asks for it on 🖼 Image upload and 🔗 Img URL (`promptImageCredit` → `insertCreditedImage`, which uses `insertContent`, not `setImage`, so the attribute lands on the new node), and the toolbar's **© Credit** button edits the selected image's credit (it alerts if no image is selected; the toolbar doesn't re-render on selection in TipTap v3, so the button is never disabled). Nothing on the save path strips it: `sanitizeHtmlForEdgeSecurity` in the forms, and `normalizeEditorHtml` (only `normalizeRssHtmlForEditor` whitelists img attributes). `FullArticle.addContentImageCredits()` runs after the nofollow pass and appends `<span class="mvp-img-credit">Image credit: …</span>` after each credited `<img>` (the value is entity-decoded, then re-escaped). The rule `span.mvp-img-credit` in `styles/style.css` is plain CSS because Tailwind isn't loaded on article routes.
+
 ### 6.4 Level 2 — Admin authentication & role gating
 
 ```mermaid
@@ -433,7 +464,10 @@ visual pages (default `[[1],[2],[3]]`). `/feature-your-startup` passes `[[1,2],[
 2-step wizard over 3 validation steps — that parameter is the shared seam; do not fork the hook.
 `STEP_VALIDATOR_MAP` canonical steps: `1` name/company/phone · `2` email+website · `3` PDF ·
 `4` email only · `5` website only (4/5 are additive splits of 2, added so `/submit-press-release`
-can pass `[[1,4],[5],[]]` and ask for email on its first page). Never change 1–3 in place — other
+can pass `[[1,4],[5],[]]` and ask for email on its first page). **Since 2026-09-29 steps 2 and 5
+also run `validateCountry` + `validateCity`** (errors keyed `country` / `city`, read on the resolved
+value, so "Others (Manually Fill)" with an empty box still fails); Funding Round's own
+`FIELD_VALIDATORS` and Press Release's `ReviewStep` re-check both before submit. Never change 1–3 in place — other
 pages depend on them; add a new canonical step instead.
 
 **Page-lead mirroring into the Sales Tracker.** The three `useLeadForm` pages each pass a real
@@ -443,6 +477,27 @@ email on these three — the route rate-limits by IP (5 per 10 min, key-prefixed
 `checkRateLimit`), validates in the module service (`normalizeSubmissionInput`), inserts the raw
 row, then **best-effort** mirrors it into `sales_leads` via `SalesTrackerService.saveLead`
 (same id, `status = 'Query received'`); a mirror failure is logged, not returned.
+
+**Country and City are required on every page that feeds the Sales Tracker (since 2026-09-29).**
+Client: the shared `validateCountry`/`validateCity` above (the three `useLeadForm` pages no longer
+pass `required={false}` to `CountryCityFields`); `/sponsor-event`'s `validateLocation` now requires
+both resolved halves (previously the composed `location` passed with only a country) and shows the
+one `location` error under whichever dropdown is empty. Server backstop: the three lead services'
+`normalizeSubmissionInput` add `country`, `city` to their `missing` list, and the sponsor-event
+service adds both to `required`. These normalizers are only called from the public POST routes, so
+older rows with an empty location are unaffected. `/expand-north-star` already required both.
+`LeadFormModal` (admin manual add) keeps `required={false}`.
+
+**Sales Tracker lead window is read-only until "Edit lead" (since 2026-09-29).** `LeadFormModal`
+takes `startEditing`; an existing lead opens with every control inside `<fieldset disabled>` and the
+PhoneField / CountryCityFields swapped for plain read-only inputs (the searchable `CustomSelect`
+opens from its wrapper `div`'s onClick and ignores a disabled fieldset). "Edit lead" unlocks; Cancel
+restores the lead/location/assignment drafts and relocks. Add new lead opens editable. `LeadsTable`:
+row click and **View** → read-only; **Edit** → `onEdit(row, true)`; the inline status `<select>`
+(`StatusSelect.tsx`, which saved on change via `updateLeadField`) became the read-only
+`StatusBadge.tsx`, and `updateLeadField` was removed from `useSalesTrackerData`. **Invariant:** no
+control in the All leads table writes data — every edit goes through the lead window.
+`EnsEnquiryDetailModal` already had this view → "Edit details" flow.
 
 | Page | Route | Raw table (id prefix) | `sales_leads.type` / `source` |
 |---|---|---|---|
@@ -558,9 +613,11 @@ row never has a real Participation value). Row click dispatches by `_source` in
 `saveLead` → `POST …/leads` upsert, untouched); an ENS row opens `EnsEnquiryDetailModal` fed from the
 hook's own `ensEnquiries` state, saving through `updateEnsEnquiry` → `PATCH …/ens-enquiries/[id]` —
 the hook's `applyEnsEnquiryUpdate` just patches its local copy after that save succeeds. Neither path
-reads or writes the other's table. CSV/Excel/PDF export (`exports.ts`) stays scoped to `_source:
-'lead'` rows only — ENS enquiries have no equivalent flat shape and their own detail view already
-covers exporting/replying to one. **2026-09-23: `SponsorEventSubmissionsCard.tsx` /
+reads or writes the other's table. CSV/Excel/PDF export (`exports.ts`) takes the table's own `filteredRows` — **both** sources, same
+filters and order (since 2026-09-29; before that ENS rows were silently left out). `utils.leadExportRow`
+maps either row to one column set (ENS: Source "Expand North Star", status via `statusFromEns`,
+requirement → Query, conversation note → Last Call Discussion, plus Participation / Referred By /
+How They Found Us; "Follow-ups" count for every row); PDF wide columns are chosen by header name. **2026-09-23: `SponsorEventSubmissionsCard.tsx` /
 `SponsorEventDetailModal.tsx` / `sponsorEventsApi.ts` / `GET /api/admin/sales-tracker/sponsor-events`
 and `EnsEnquiriesCard.tsx` were all deleted** — once every field either was already in the unified
 table or (for Sponsor Event) became editable there, the standalone read-only/duplicate views had no
@@ -784,8 +841,6 @@ flowchart TB
     API["POST /api/employee/attendance/punch<br/>{type, location}"]
     AUTH{"employee-auth.middleware"}
     RULES["findRules() -> hr_rules<br/>geoFencing, lat, lng, radiusM"]
-    WFH{"approved WFH today?<br/>isApprovedWfhDay()"}
-    RWFH["409 ALREADY_PUNCHED<br/>(day already a full shift)"]
     ON{"geoFencing enabled?"}
     CALC["utils/geofence.ts<br/>haversine distance"]
     IN{"distance <= radiusM?"}
@@ -797,9 +852,7 @@ flowchart TB
 
     E --> W --> API --> AUTH
     AUTH -->|fail| R401["401"]
-    AUTH -->|ok| WFH
-    WFH -->|yes| RWFH
-    WFH -->|no| RULES --> ON
+    AUTH -->|ok| RULES --> ON
     ON -->|no| LATE
     ON -->|yes| CALC --> IN
     IN -->|no| R403
@@ -812,7 +865,17 @@ flowchart TB
 > nothing changes for employees until a Founder enables it. MariaDB returns `DECIMAL` lat/lng as
 > **strings**, hence the `Number()` wrapping in `findRules()` / `geoFromRow()`.
 
-> **Work From Home** (`agent.md` #967, replacing #966's quota design). A WFH day is an
+> **Work From Home — REMOVED** (`agent.md` #1006, arch #191). `syncWfhAttendance`,
+> `isApprovedWfhDay`, the `punchEmployee` WFH guard, `findWfhAttendanceDays`/`deleteAttendanceDay`
+> and `/attendance/me`'s `geofence.wfhToday` are gone; `saveLeaveRequests` is a plain replace.
+> `submitEmployeeLeaveRequest` rejects type `WFH` / "work from home" (normalised, so "Other" can't
+> sneak it in). `WFH_LEAVE_TYPE` survives only for history: payroll still skips `type='WFH'` in
+> `approvedLeaveDates` (past approved WFH days remain as full-shift `hr_attendance` rows with
+> status `'WFH'` and must not double-count as leave), and the Leave/Attendance UIs still label old
+> rows. Data cutover: `scripts/migrations/retire-wfh-leave-type.sql` (keep past, cancel future;
+> "today" = `UTC_DATE()` to match `todayStr()`). The paragraph below is the historical design.
+
+> **Work From Home** (historical, `agent.md` #967, replacing #966's quota design). A WFH day is an
 > `hr_leave_requests` row with `type = 'WFH'` (`WFH_LEAVE_TYPE`). There is no quota and no HR
 > setting: it goes through the same submit and approve pipeline as leave (future dates only, no
 > overlaps). Approval happens by HR saving the leave list (PUT `/api/admin/hr-tool/leave-requests` →
@@ -945,7 +1008,222 @@ sequenceDiagram
     CDN-->>UI: next/image optimized (qualities 60, 90)
 ```
 
+### 6.10 Level 2 — Sales lead assignment
+
+```mermaid
+flowchart TB
+    AD(("Admin"))
+    EMP(("Employee"))
+    ST["/admin/sales-tracker lead window<br/>LeadAssignmentFields: Departments + Assigned to<br/>(LeadFormModal / EnsEnquiryDetailModal edit)"]
+    GA["GET /api/admin/sales-tracker/assignments"]
+    PA["PUT /api/admin/sales-tracker/assignments<br/>{source, leadId, departments[], assignees[{credentialId, viaDepartment}]}"]
+    V{"source is lead/ens? lead exists?<br/>newly added people assignable?<br/>viaDepartment in departments else hand"}
+    DP[("sales_lead_departments")]
+    CR[("hr_employee_credentials<br/>+ hr_employees.status")]
+    AS[("sales_lead_assignments<br/>PK (lead_source, lead_id)")]
+    SL[("sales_leads")]
+    EN[("ens_travel_enquiries")]
+    GE["GET /api/employee/leads<br/>requireEmployeeAuth → credential.id"]
+    ML["/employee/leads (My Leads)<br/>KPI cards per page + list, status Pending"]
+
+    AD --> ST --> GA
+    GA --> CR
+    GA --> AS
+    ST --> PA --> V
+    V -->|no| X["400 with message"]
+    V -->|yes| TX["one transaction (replaceForLead):<br/>delete people/departments not in the lists,<br/>insert new people as pending (kept ones unchanged),<br/>INSERT IGNORE departments"]
+    TX --> AS
+    TX --> DP
+    GA --> DP
+    EMP --> ML --> GE
+    GE --> AS
+    AS --> SL
+    AS --> EN
+```
+
+- Lead window (`LeadAssignmentFields.tsx`, since 2026-09-26): picking a department only adds the
+  department chip and unlocks its people in Assigned to, which is disabled ("Pick a department
+  first") until a department is picked and lists only the picked departments' people, grouped by
+  department, already-selected people disabled. A picked person is stored with their department;
+  removing a department removes it and the people picked from it; any person can be removed alone.
+  Server (`setForLead`): a newly added person must be assignable and their current HR department must
+  be one of the lead's departments (else 400 "Each new person must be picked from one of the selected
+  departments."); `viaDepartment` is set server-side from that. People already on the lead are
+  exempt (they may have moved department or left). Departments with 0 assignable people aren't offered; a saved one shows "(no active members
+  now)"; a person who has left shows "(no longer active)" and can be removed, not re-added (the server
+  refuses newly added non-assignable ids but keeps existing ones). Chips reuse the page's `.team-chip`
+  CSS (Tailwind utilities would lose to `.sales-tracker-page button` rules). The All leads Assigned
+  column is read-only ("A, B +N"); filters: assigned to (any person), department.
+- Stored: the employee's `hr_employee_credentials.id`. Shown: their name (joined at read time, so a
+  rename or a changed `employee_code` shows up without touching assignments).
+- Deleting a `sales_leads` row (one or all) also deletes its people and departments
+  (`SalesTrackerRepository.deleteLead` / `deleteAllLeads`); the employee query inner-joins the lead
+  tables anyway, so an orphan never shows.
+- A lead whose assignee has since left keeps the assignment; `AssigneeSelect` lists that person as
+  "(no longer active)" until someone reassigns it.
+- Employees whose login is linked to a panel admin (`panel_role` set) log in to the admin panel, so
+  they read the same page at `/admin/my-leads` via `GET /api/admin/my-leads`: `requireAnyRole(
+  MY_LEADS_PANEL_ROLES)` → `hrCredentialsService.getByLinkedPanelAdminId(auth.user.id)` →
+  `getForEmployee(credential.id)`. The role guard guarantees `auth.user.id` is a `panel_admins.id`
+  (§9 #12). Sidebar item restricted to those two roles; path added to both in `lib/admin-role-access.ts`.
+
+
+### 6.11 Level 2 — Offboarding (resignation → notice → exit)
+
+```mermaid
+flowchart TB
+    EMP(("Employee /<br/>Publisher·Event Admin"))
+    HR(("HR / Founder"))
+    MX["/employee/exit · /admin/my-exit<br/>ExitWidget"]
+    RS["POST /api/employee/offboarding<br/>POST /api/admin/my-exit<br/>{reason, requestedLwd, personalEmail, handover}"]
+    WD["POST …/withdraw<br/>(pending only)"]
+    OV["/admin/hr-tool → Offboarding<br/>tabs + case modal"]
+    DIR["Directory profile<br/>'Start exit'"]
+    ST["POST /api/admin/hr-tool/offboarding<br/>resignation (offline) or termination<br/>immediate | with_notice"]
+    DC["POST /api/admin/hr-tool/offboarding/[id]<br/>decide · cancel · access · exit-now"]
+    OB[("hr_offboarding<br/>source of truth")]
+    CL[("hr_offboarding_clearance<br/>seeded on accept")]
+    SE[("hr_offboarding_settings<br/>notice 15 / 30")]
+    SW["applyDueExits()<br/>bootstrap · list · login · every employee request<br/>throttled 1/min"]
+    EM[("hr_employees.status<br/>= 'exited' mirror")]
+    PA[("panel_admins.is_active = 0<br/>if linked")]
+    AU{"requireEmployeeAuth / login:<br/>isPastLwd(case)?"}
+    FULL["full access"]
+    ALU["alumni: only allowAlumni routes<br/>(GET /api/employee/offboarding)<br/>others → 403 ALUMNI"]
+    BLK["blocked: 401 / 403 at login"]
+
+    EMP --> MX --> RS --> OB
+    MX --> WD --> OB
+    RS -.notice days by status.-> SE
+    HR --> OV --> DC --> OB
+    HR --> DIR --> ST
+    OV --> ST --> OB
+    DC --> CL
+    ST --> CL
+    SW --> OB
+    SW --> EM
+    SW --> PA
+    OB --> AU
+    AU -->|no| FULL
+    AU -->|yes, alumni| ALU
+    AU -->|yes, blocked| BLK
+```
+
+- States: `pending → accepted → exited → completed`; `withdrawn` (employee, pending), `rejected`
+  (HR, note required), `cancelled` (HR, accepted and LWD not passed). A termination is created
+  `accepted`, or `exited` with LWD = today when immediate. At most one open (`pending`/`accepted`/
+  `exited`) case per employee.
+- Access is decided **from dates** (`isPastLwd`: `exited`/`completed`, or `accepted` with
+  `approved_lwd < today`), so it is right even before the sweep flips the row. If `hr_offboarding`
+  doesn't exist yet (migration not run), `accessForCredential` returns `full` — the pre-offboarding
+  behaviour.
+- The Employee ID login is **not** deactivated on exit — alumni sign in with it. A linked Publisher/
+  Event Admin's `panel_admins` row is switched off, which kills their admin JWT on the next request
+  (`getAuthUserFromToken` checks `isActive`); at login they fall through to the employee path.
+- The sweep also re-applies `status='exited'` to every exited/completed case's employee: the
+  Directory saves `hr_employees` as a whole list, and payroll skips leavers by that status.
+- **Concurrency (phase 2):** every state change is `UPDATE … WHERE id=? AND status IN (expected)`
+  (`HrOffboardingRepository.transition`); 0 rows ⇒ 409 "changed by someone else — refresh". The DB
+  enforces one open case per employee (`open_employee_id` generated column + `uniq_open_case`), so
+  racing inserts get `OpenCaseExistsError` ⇒ 409. Checklist items are unique per case and seeded with
+  one `INSERT IGNORE`; `listCases` re-seeds a workable case that has none (the last item can't be removed).
+- **Clearance & handover (phase 2):** HR case window (`GET /api/admin/hr-tool/offboarding/[id]`) works
+  the checklist, handover notes and leads only while `accepted`/`exited`. Lead handover =
+  `LeadAssignmentsRepository.handOverAll` in one transaction with `FOR UPDATE`: moved rows become fresh
+  `pending` assignments through the colleague's department (added to `sales_lead_departments`), rows the
+  colleague already had are merged, or the leaver is just removed. System ticks only touch still-pending
+  items by keyword ("panel" in access on exit, "lead" in handover when none remain).
+- **Full & Final (phase 3):** `exited` cases only. `calculateFnf` builds keyed auto lines — `salary`
+  (`HrToolService.computePayrollForMonth(salaryMonth, [leaver], …, { onlyEmployeeId, includeFnfSettled })`,
+  or ₹0 if `hr_payroll_entries` already has that cycle), `leave:<type>`, `expenses`, `notice`, `clearance:<id>`
+  — keeps manual lines and overridden auto lines. `updateFnf` = `UPDATE … WHERE status='exited' AND
+  JSON version = expected`. Approve re-checks: no pending checklist items, recoveries unchanged, no payroll
+  entry for `salaryMonth` newer than the calculation. Approved/paid ⇒ checklist edits and Reinstate refused.
+- **Payroll ↔ offboarding:** `computePayrollForMonth` reads `findExitDates` (days after the LWD are
+  not-employed: unpaid, never week-off or future-paid; LWD before the cycle ⇒ no row) and
+  `findFnfSettledEmployeeIds(month)` (approved/paid F&F with that `salaryMonth` ⇒ skipped, reported in
+  `fnfSettledEmployees`). Both return empty when the offboarding tables don't exist.
+- **Letters & completion (phase 4):** `issueLetter` merges the template (`utils/letters.ts`, unknown tag ⇒
+  409) into a text snapshot on the case; PDFs are generated server-side from that snapshot on every
+  download (HR route, employee route with `allowAlumni`) — never uploaded anywhere. Gates: `exited` + no
+  pending checklist items; relieving also needs F&F `paid`. `completeCase` = `transition(['exited'] →
+  'completed')` after re-checking checklist, F&F paid and relieving issued; `completed` is terminal.
+- **Email:** `sendOffboardingMail` (timeout 20 s, returns instead of throwing, `HR_MAIL_DRY_RUN`). Letter
+  sends record `sentAt`/`sendError` on the snapshot (re-read before write so the other letter isn't
+  clobbered; in-process lock per case+letter). Notifications are fire-and-forget; failures go to
+  `hr_audit_log`.
+- **Reinstate:** `exited` → `cancelled` (note required), restores `prior_employee_status` (recorded at
+  exit) and the linked `panel_admins` row; the response carries `restoredStatus` so the HR tool's
+  in-memory Directory is patched before its next whole-list save.
+
 ---
+
+### 6.12 Level 2 — Lead follow-up (My Leads → Sales Tracker)
+
+```mermaid
+flowchart TB
+    EMP(("Employee /<br/>Event-Publisher Admin"))
+    ML["My Leads<br/>components/employee/my-leads/MyLeadsPage.tsx<br/>KPI cards incl. Followed up"]
+    DR["LeadDetailDrawer.tsx<br/>submitted details (read-only)<br/>+ add follow-up form"]
+    GET["GET /api/employee/leads/[source]/[id]<br/>(or /api/admin/my-leads/…)"]
+    POST["POST …/follow-ups {note, status}"]
+    SVC{"LeadFollowUpsService<br/>assigned to this lead?"}
+    SUB["buildLeadSubmission<br/>original page submission row<br/>(fallback: sales_leads)"]
+    A[("sales_lead_assignments<br/>per-person status")]
+    F[("sales_lead_followups<br/>created_at = DB time")]
+    ADM(("Admin"))
+    ST["Sales Tracker lead window<br/>FollowUpsPanel.tsx (read-only)"]
+    AG["GET /api/admin/sales-tracker/follow-ups"]
+
+    EMP --> ML -->|row click| DR
+    DR --> GET --> SVC
+    DR --> POST --> SVC
+    SVC -->|no| E404["404"]
+    SVC -->|yes, read| SUB
+    SVC -->|yes, write| TX["one transaction:<br/>INSERT follow-up + UPDATE author's status"]
+    TX --> F
+    TX --> A
+    ADM --> ST --> AG --> F
+    AG --> A
+```
+
+- The employee can only **read** the lead (no endpoint writes lead fields for them) and **add**
+  follow-ups; nobody edits or deletes a follow-up. The date is never taken from the request.
+- **One shared status per lead (since 2026-09-29, v82)** — Pending · Follow Up · Confirmed · Not
+  Interested (`lead-assignments/domain/types.ts` `ASSIGNMENT_STATUS_OPTIONS`, values `pending` /
+  `follow-up` / `confirmed` / `not-interested`). Stored on the lead itself: `sales_leads.status` =
+  the label (`SALES_LEAD_STATUS_LABELS`, which the admin `STATUSES` list now is), or
+  `ens_travel_enquiries.lead_status` = its old codes (NULL / `followed-up` / `confirmed` / `cancelled`);
+  convert only through `statusFromSalesLead` / `statusFromEns` / `ensCodeFor`. The admin sets it in
+  the lead window; an employee's follow-up (any of the four) sets it in the same transaction as the
+  insert (ENS: `updated_at`/`updated_by` untouched — they mean "last admin edit"). Every follow-up
+  keeps the status it was saved with. `sales_lead_assignments.status` is no longer read.
+  Admin: Summary metrics Active (Pending + Follow Up) / Confirmed / Not Interested, "Pending leads"
+  tile = status Pending across sales leads + ENS (was "never edited"); the All leads status filter
+  and Status column cover ENS rows too; `PageLeadsKpis` open = not Confirmed / Not Interested.
+  Data reset: `scripts/migrations/unify-sales-lead-status.sql` (every lead → Pending; history renamed).
+- Everyone on a lead sees the whole log. **My Leads KPI cards (since 2026-09-29, v81)** — one per
+  page only (the "All my leads" and "Followed up" cards were removed), each ONE number
+  "(pending + followed up) / total" with "N pending · N followed up" underneath, via `MyLeadsPage.stageOf`: `finished` = lead status `confirmed`/`not-interested` (`FINISHED_LEAD_STATUSES`)
+  (total only); `pending` = open and `followUpCount === 0` (no follow-up by anyone on the lead);
+  `followed` = open with ≥1 follow-up (`AssignedLead.followUpCount`, subquery in `findForEmployee`).
+  A card with pending > 0 gets a red border + an `animate-pulse` red wash behind its text
+  (`motion-reduce:animate-none`). Clicking a card lists that page's open leads (pending + followed);
+  no card picked lists every assigned lead. A **"Lead Status" card comes last** (since 2026-09-29, v83; moved last in v84): every
+  assigned lead across all pages counted by its shared status — Pending / Followed up / Confirmed /
+  Not interested, each "count / all leads" (`statusCounts` over `ASSIGNMENT_STATUS_OPTIONS`; by
+  status, not by `stageOf`). Clicking it clears the page filter → every lead, finished included.
+  Grid `xl:grid-cols-6`/`7`. **Table "Lead Status" dropdown (v84)** — `statusFilter`, independent of
+  the card: card picks the page (or all pages), dropdown picks one status. No status → page card
+  shows its open leads, Lead Status card all leads; a status → exactly that status within the
+  card's scope (so Confirmed / Not Interested are reachable per page). "Show all" clears both. My Leads' Tailwind classes now come from the merged
+  `components/admin/staff-panel-tailwind.css` (the per-feature `my-leads-tailwind.css` was merged
+  into it outside this change). The admin All leads Assigned
+  cell shows "N follow-ups" (`LeadAssignment.followUpCount` from `GET …/assignments`).
+- Deleting a `sales_leads` row deletes its follow-ups; offboarding handover keeps them (author name is
+  a snapshot) and resets the new person's status to `pending` as before.
+- `/api/admin/my-leads` is in the admin layout's `isSpecialPath`, so a follow-up POST from
+  `/admin/my-leads` doesn't remount the page.
 
 ## 7. Cross-cutting concerns
 
@@ -954,7 +1232,7 @@ sequenceDiagram
 | System | Store | Credential | Guard | Surfaces |
 |---|---|---|---|---|
 | **Staff/admin** | `users` + `panel_admins` | email + bcrypt → JWT (`JWT_SECRET`) | `shared/middleware/auth.middleware.ts` + `roles.ts` | `/admin/*`, `/api/admin/*` |
-| **Employee** | `hr_employee_credentials` | own login → own token | `shared/middleware/employee-auth.middleware.ts` | `/employee/*`, `/api/employee/*` — incl. IT tickets, where the credential becomes ticket actor `(id, 'employee')` |
+| **Employee** | `hr_employee_credentials` | own login → own token | `shared/middleware/employee-auth.middleware.ts` (+ offboarding access gate: past the LWD `alumni` → only `{ allowAlumni: true }` routes, `blocked` → 401; §6.11) | `/employee/*`, `/api/employee/*` — incl. IT tickets, where the credential becomes ticket actor `(id, 'employee')` |
 | **Reader** | `public_registrations` | email/password, Google, LinkedIn OAuth | `/api/public-auth/*` | `/dashboard`, newsletter prefs |
 
 The JWT `role` claim decides **which table the id is resolved against** — `event_admin`,
@@ -1011,23 +1289,33 @@ carousel title (`BannerCarousel.tsx`), the post category tag (`FullArticle.tsx`)
 ### 7.5 Styling — three co-existing systems (deliberate)
 
 1. **Plain CSS** (`globals.css`, `style.css`, `media-queries.css`) — the default for the whole site.
-2. **Isolated Tailwind v4** — three scoped sheets, all `source(none)` + explicit `@source` lines,
+2. **Isolated Tailwind v4** — two scoped sheets, both `source(none)` + explicit `@source` lines,
    both unlayered (no `layer(theme)`) or they lose the cascade to the legacy reset:
    `src/app/isolated-tailwind.css` for the public marketing routes (`/about-us`,
    `/advertise-with-us`, `/careers`, `/contact-us`, `/ecosystem-partners`) plus the reader
    dashboard home and sidebar (`src/components/user/DashboardHome.tsx` and
    `src/components/user/UserDashboardLayout.tsx`, sheet imported by `src/app/dashboard/layout.tsx`;
-   their shared `--color-db-*` tokens live in the same `@theme`), and
-   `src/components/admin/rules-policy-tailwind.css` for the read-only Admin Rules page
-   (`PolicySummaryWidget.tsx`, imported by `src/app/(admin)/admin/rules-policy/layout.tsx` and
-   `src/app/employee/rules-policy/layout.tsx`), and
-   `src/components/admin/it-tickets/it-tickets-tailwind.css` for the IT Tickets admin
-   feature, imported by `src/app/(admin)/admin/it-tickets/layout.tsx` and (same components, employee
-   config) `src/app/employee/it-tickets/layout.tsx`. Every new file that uses
+   their shared `--color-db-*` tokens live in the same `@theme`, as does `--font-db`, which
+   points at the `--font-schibsted` variable that `next/font/google` (Schibsted Grotesk) sets on a
+   wrapper `<div>` in `src/app/dashboard/layout.tsx`; the dashboard uses the `font-db` utility, not
+   `"Garnett"`, which has no `@font-face` anywhere and so only ever rendered as Helvetica/Arial), and
+   `src/components/admin/staff-panel-tailwind.css`, the **single** sheet for every staff panel. It is
+   imported only by `src/app/employee/layout.tsx` and `src/app/(admin)/layout.tsx`, and it `@source`s the
+   employee frame, the self-service widgets (`AttendanceWidget`, `LeaveWidget`, `KycDocumentsWidget`,
+   `ProfileProgressStrip`, `PunchOutTimeInput`), Admin Rules (`PolicySummaryWidget`), My Leads,
+   offboarding (`ExitWidget`, HR tool `Offboarding`/`Payroll`/`HrPhoneField`) and IT Tickets. Since
+   2026-09-29 it replaces the four former per-feature sheets (`it-tickets-tailwind.css`,
+   `rules-policy-tailwind.css`, `my-leads-tailwind.css`, `offboarding-tailwind.css`) and the
+   import-only route layouts that loaded them. Reason: every scoped sheet emits its own unlayered copy
+   of the utilities, and a route sheet loads after the layout's. With two sheets on one page, the
+   later sheet's plain `.hidden` / `.flex` beat the earlier sheet's `md:flex` / `md:hidden` (same
+   specificity, later source wins). That hid the employee sidebar on `/employee/leads`. **Never put
+   two scoped Tailwind sheets on one page** (invariant §9 #5). Full-width controls need an explicit
+   `box-border`, since there is no Preflight. Every new file that uses
    classes must be added as an `@source` line; class names must be literal strings. Because
    Preflight is skipped, buttons/inputs there carry explicit `border-transparent` / `font-sans`
    resets (see `ui.ts`) so the legacy theme's element styles don't leak in. The IT Tickets sheet
-   also defines a plain `.it-tickets-scope` rule set (on the page root and the portaled
+   also defines a plain `.it-tickets-scope` rule set (now at the end of `staff-panel-tailwind.css`) (on the page root and the portaled
    DragOverlay ghost): `box-sizing: border-box` for every descendant — without it `w-full` +
    padding overflowed every form control — and the admin Inter font stack, inherited by all
    descendants. Its `ui.ts` tokens deliberately mirror `.sales-tracker-page`
@@ -1171,8 +1459,10 @@ on re-run) so a retry is harmless.
 3. **Never build, `pm2 restart`, or apply a migration unless the user explicitly asks.**
 4. **Never delete sections from `agent.md`** — append or update only.
 5. Tailwind classes work only where a scoped sheet lists the file in an `@source` line: the public
-   marketing routes and `components/user/{DashboardHome,UserDashboardLayout}.tsx` under `src/app/isolated-tailwind.css` and the IT Tickets feature (admin and employee routes) under
-   `src/components/admin/it-tickets/it-tickets-tailwind.css`. Everywhere else, write plain CSS.
+   marketing routes and `components/user/{DashboardHome,UserDashboardLayout}.tsx` under `src/app/isolated-tailwind.css`, and every
+   staff-panel file (`/employee/*`, `/admin/*`) under the single `src/components/admin/staff-panel-tailwind.css`
+   (loaded only by the two panel layouts). Never add a second scoped Tailwind sheet to a staff route: a later
+   sheet's base utilities silently override the earlier sheet's responsive variants. Everywhere else, write plain CSS.
 6. Redis must stay optional — no code path may assume a cache hit.
 7. Cron jobs must be idempotent; the in-memory queue loses work on restart by design.
 8. Lat/lng and other `DECIMAL` columns come back from MariaDB as **strings** — coerce with `Number()`.
@@ -1185,8 +1475,12 @@ on re-run) so a retry is harmless.
     ownership or scoping check (IT tickets reporter/assignee/author/uploader, and anything similar
     added later) must compare both columns — never the numeric id alone.
 13. The admin layout's write-triggered page remount (`isSpecialPath` in `src/app/(admin)/layout.tsx`)
-    must keep excluding features that manage their own client state (`hr-tool`, `it-tickets`);
+    must keep excluding features that manage their own client state (`hr-tool`, `it-tickets`,
+    `sales-tracker/ens-enquiries`, `sales-tracker/assignments`, `partnership-events`);
     add a new feature to that list rather than working around the remount inside the feature.
+    Inside the HR tool the same goal holds per view: the active section lives in `?section=` (+ sessionStorage),
+    and no modal/section may be keyed on a server timestamp or version that changes on save — re-seed the
+    affected fields instead (see Offboarding `CaseModalBody`, Rules' rules draft).
 14. **Every IT ticket status change goes through `canSetTicketStatus`**
     (`src/modules/it-tickets/domain/status-policy.ts`) — on create and update in the service, and in every
     UI control that changes status. Never hard-code who may block/unblock in a component or route; change
@@ -1217,8 +1511,35 @@ on re-run) so a retry is harmless.
     `0.0.0.0` plus `root`/`rootpassword` in `docker-compose.yml` (§8). A published port is not
     protected by `ufw`: Docker writes its own iptables rules and bypasses it. Tunnel over SSH
     instead, and keep secrets in the gitignored `.env`.
+20. **Fonts are self-hosted with `next/font/local`; never use `next/font/google`.** The files live
+    in `src/fonts/` (Latin variable woff2, listed in `src/fonts/README.md`). When the build requests
+    several Google fonts at once, Google can return extensionless `fonts.gstatic.com/l/font?kit=…`
+    URLs, and Next 16.1.6's Google loader crashes on them (`Cannot read properties of null
+    (reading '1')`). Because `deploy.sh` deletes `.next` before building, that failed build takes
+    the dev site down with a 500 until a build succeeds (2026-09-24).
 
 ---
+
+21. `partnership_event_follow_ups` notes are **append-only** and capped at `FOLLOW_UP_KEEP_COUNT` (5) per event: no PUT/DELETE endpoint, `created_at` is the column default (never client-supplied), and `PartnershipEventFollowUpsRepository.add()` prunes older rows in the same transaction as the insert. Keep notes out of the event's own `WRITABLE_COLUMNS`/PUT so an event save can never overwrite them.
+22. **Exit state lives only in `hr_offboarding`.** Never add exit columns to `hr_employees` (the Directory's
+    whole-table save would wipe them) and never decide portal access from `hr_employees.status` — use
+    `HrOffboardingService.accessForCredential` (date-based). Every new `/api/employee/*` route gets the
+    alumni block for free from `requireEmployeeAuth`; pass `{ allowAlumni: true }` only for read-only My Exit data.
+    Every offboarding status change must go through `transition()` (compare-and-set) — never a plain
+    `updateCase({ status })` — and anything that can move an employee's `hr_employees.status` must hand the
+    new value back to the HR tool so its in-memory list is patched (§6.11).
+23. **A leaver's final-cycle salary is paid exactly once.** Payroll skips anyone whose approved/paid F&F
+    `salaryMonth` is that cycle, and the F&F salary line is ₹0 once that cycle's payroll entry exists;
+    `approveFnf` refuses when a payroll entry appeared after calculation. Don't add another path that
+    pays or recomputes a leaver's final cycle without going through both checks.
+24. **`scripts/migrations/add-sales-lead-followups.sql` must run before the build that ships lead
+    follow-ups.** `GET /api/admin/sales-tracker/assignments` (Sales Tracker) and `findForEmployee`
+    (My Leads) read `sales_lead_followups`; without the table both return 500. Employees never write
+    lead details — only follow-ups on leads they're assigned to.
+25. **A lead has exactly one status, from `ASSIGNMENT_STATUS_OPTIONS`.** Never add a second status
+    list (admin-only or employee-only) or read `sales_lead_assignments.status`; convert between
+    `sales_leads.status` labels and ENS codes only with the helpers in
+    `lead-assignments/domain/types.ts`.
 
 ## 10. Architecture Change Log
 
@@ -1389,3 +1710,81 @@ Every change to this system appends a row here. `Impact` drives what else gets u
 | 159 | 2026-09-23 | minor | Sales Tracker — Leads by page tiles turn red while a page has unclosed leads (`PageLeadsKpis.tsx`, `SalesTrackerStyles.tsx`) | `isOpen(row)`: a sales lead whose status is not `Successfully closed`/`Dropped`, or an ENS enquiry whose `leadStatus` is not `confirmed`/`cancelled`. A tile with open > 0 gets `.metric-btn.alert` (danger tokens: red border and background, red number) plus a "N not closed" line. The active+alert state keeps the red ring. | — |
 | 160 | 2026-09-23 | minor | Deploy — `scripts/deploy.sh` step 5 (server-local, gitignored) | The pre-build cleanup now removes `.next/dev/types` along with `.next/types`. `tsconfig.json` includes `.next/dev/types/**/*.ts`, so a `validator.ts` left by a `next dev` run referenced the deleted `api/admin/sales-tracker/sponsor-events/route` and failed `tsc`. Neither directory is read at runtime. | — |
 | 161 | 2026-09-23 | minor | Home — `src/components/DelegationStrip.tsx` | The Sparkle `<svg>` carries `width`/`height="11"` attributes as a fallback. The `.sn-ds-star` CSS (11px, 9px on mobile) still sets the real size; without the attributes, an unstyled viewBox-only SVG stretches to its container. | — |
+| 160 | 2026-09-24 | minor | Sales Tracker — Leads by page tile click resets other All leads filters (`LeadsTable.tsx`) | The `jumpToken` effect now also clears `filterType`, `filterStatus`, `filterAssigned`, `filterSearch` and `pendingOnly` (via `onClearPendingOnly`) before opening and scrolling. Before, a leftover filter could make the table show fewer rows than the tile counted, even 0. | — |
+| 161 | 2026-09-24 | medium | Sales Tracker — slim All leads table and field locking in the lead modal (`LeadsTable.tsx`, `LeadFormModal.tsx`, `SalesTrackerStyles.tsx`) | The table dropped from 27 columns to 9 plus actions: Date, Name, Company, Contact, Email, City, Source, Assigned, Current Status (sales lead = inline `StatusSelect`; ENS = `leadStatusLabel` badge). Everything else lives only in the click-through modal. The inline next-follow-up, last-connect and last-call cells were removed from the table (still editable in `LeadFormModal`). `typeLabel` removed; search haystack unchanged. `LeadFormModal` computes `lock` from the lead's own `type` to match each page's `to-sales-lead.ts` mapper: `event` locked unless Sponsor Event; `company` locked for Sponsor Event (its form has no company); `source` + `type` locked on an existing page lead (they define the page filter/KPI tile). The Event details section now always renders (locked when not relevant), with `🔒` `.lock-hint` labels. The disabled style is extended to `select`/`textarea`. ENS rows still open `EnsEnquiryDetailModal` (ENS-only fields). | v55 |
+| 162 | 2026-09-24 | medium | Sales Tracker — arrival date locked (`sales-tracker.repository.ts` `upsertLead`, `LeadFormModal.tsx`) | `ON DUPLICATE KEY UPDATE lead_date = COALESCE(lead_date, VALUES(lead_date))`: the arrival date is set on insert and can't be overwritten by a later save from any client or mirror (a legacy NULL is still backfilled). The modal's Date field is renamed "Arrival date" and always disabled (a new manual lead gets today via `emptyLead`). "Last updated" is shown locked; it tracks edits through `updated_at ON UPDATE CURRENT_TIMESTAMP` (bumped only when a value actually changes) and refreshes in the UI because `upsertLead` reloads the row. The Pending-leads rule (`createdAt === updatedAt`) is unaffected. | v56 |
+| 163 | 2026-09-24 | minor | `/dashboard` sidebar: typeface and nav spacing (`src/app/dashboard/layout.tsx`, `isolated-tailwind.css`, `UserDashboardLayout.tsx`) | The dashboard now loads Schibsted Grotesk through `next/font/google` (weights 400–800, `--font-schibsted` on a wrapper div) and exposes it as the `--font-db` theme token. The root wrapper's inline `"Garnett"` style and the sidebar's `font-sans` are replaced by `font-db`, so the whole dashboard (children inherit) uses it. Nav: padding `px-3 py-1` → `px-3 pb-4 pt-6` (collapsed `p-2.5` → `px-2.5 py-5`); each group is `flex flex-col gap-2.5` with `mb-8` (`mb-10` when titled) instead of per-row `mb-1` and `mb-6`/`mb-8`; rows `py-3` → `py-3.5`, `gap-3.5 px-3.5` (collapsed `py-3`); label `19px font-semibold` → `18px font-medium tracking-[-0.01em]`, with `font-semibold` on the active row only. This fills more of the rail and leaves less empty space above Profile/Logout. `tsc` clean. Not built/restarted. | — |
+| 164 | 2026-09-24 | minor | `/dashboard` sidebar: bigger, bolder, roomier nav (`UserDashboardLayout.tsx`, follow-up to row 163) | Nav labels `18px font-medium` → `20px font-bold` (active row no longer needs its own `font-semibold`); icons 20 → 22px; rows `py-4 px-4 gap-4` (collapsed `py-3.5`); item gap `gap-2.5` → `gap-3.5`; group margin `mb-10` (`mb-12` titled); nav padding `pt-8 pb-5` (collapsed `py-6`). Profile widget label/percent 15.5 → 17px; Logout 17 → 18px with `py-3`. Rail widths 68/248 → 72/272 and mobile drawer 272 → 288px (`max-w-[86vw]`) so the larger "Brand Stories" label keeps room. `tsc` clean. Not built/restarted. | — |
+| 165 | 2026-09-24 | minor | `/dashboard` sidebar bottom block: raised and taller Profile card (`UserDashboardLayout.tsx`) | Bottom block padding `p-3` → `px-3 pt-4 pb-10` (collapsed `p-2.5` → `px-2.5 pt-3 pb-8`), which lifts the Profile card and Logout off the bottom edge. Profile card `px-3 py-2.5` → `px-4 py-5`, label-to-bar gap `mb-1.5` → `mb-3`, progress bar 5 → 7px, gap above Logout `mb-2.5` → `mb-3.5` (collapsed `mb-2.5`). `tsc` clean. Not built/restarted. | — |
+| 166 | 2026-09-24 | minor | `/dashboard` sidebar: larger icons and a wider closed rail (`UserDashboardLayout.tsx`) | Nav icon size now comes from the wrapper span (`[&>svg]:size-6` = 24px open, `[&>svg]:size-7` = 28px closed); CSS beats the SVGs' own `width`/`height` attributes, which stay as the fallback. Closed-rail Logout icon 15 → 20px. Closed rail width 72 → 84px (open stays 272px). `tsc` clean. Not built/restarted. | — |
+| 167 | 2026-09-24 | minor | Build: all fonts self-hosted (`src/fonts/*.woff2`, `src/app/dashboard/layout.tsx`, `src/app/expand-north-star/page.tsx`, `src/app/(admin)/admin/partnership-tracker/page.tsx`) | `deploy.sh` failed twice in `next/font` on `/expand-north-star` (`TypeError … reading '1'`, `google/loader.js:122`). Cause: under parallel requests Google Fonts serves extensionless `/l/font?kit=` URLs (reproduced: 25 bad URLs across 20 parallel Montserrat/Cairo CSS fetches with Next's own `fetchCSSFromGoogleFonts`), and the loader's extension regex returns null. Because the deploy had already deleted `.next`, the dev app ran with no build and returned 500. Fix: all six `next/font/google` families (Cairo, Montserrat, Schibsted Grotesk, Space Grotesk, Inter, JetBrains Mono) now load through `next/font/local` from Latin variable woff2 files in `src/fonts/`, with a weight range covering the old weights and the same CSS variables. The build no longer needs Google Fonts. New invariant in §9. Deploy rerun: build passed; `/`, `/dashboard`, `/expand-north-star` and `/admin/partnership-tracker` return 200; 6 woff2 files emitted to `.next/static/media`. | — |
+| 168 | 2026-09-24 | medium | `/dashboard/newsletter`: read-only list of all newsletter categories (`src/app/dashboard/newsletter/page.tsx`, `src/components/user/newsletter/{NewsletterCard,CategoryCard,HowItWorksCard,NewsletterHeader}.tsx`; `SelectionProgress.tsx` deleted) | User asked to show every category with no boolean/marking. The page now only calls `GET /api/newsletter/categories` (enabled `rss_feeds` with `feed_for` containing `newsletter`); it no longer reads or writes `/api/public-auth/newsletter-preferences`, and the `selectedCats`/save/clear/max-3 state is gone. `CategoryCard` is a static `motion.div` (no `role="checkbox"`, no check badge, no disabled state); `NewsletterCard` header shows "Newsletter Categories" plus a count pill instead of `SelectionProgress`. Copy in the header and How it works card no longer says "pick up to 3". Category preferences are still saved by `CompleteProfileWizard.tsx`, and the `DashboardHome` newsletter card still links here (its "Manage preferences" link now opens a read-only page). `tsc` clean. Not built/restarted. | v57 |
+| 168 | 2026-09-24 | minor | `/dashboard` sidebar label clipping and full-width Newsletter/Profile pages (`UserDashboardLayout.tsx`, `src/app/dashboard/newsletter/page.tsx`, `src/app/dashboard/settings/page.tsx`) | Nav labels used `truncate` (`overflow:hidden`), and with no line height of their own they inherited a tight one, so descenders were cut off (the "p" in Reports). Labels are now `whitespace-nowrap leading-[1.4]` (no overflow clip), label/lock row gets `gap-2`, and the Profile card and Logout text get `leading-[1.4]`. Content width: Newsletter's wrapper `maxWidth: 1180` and Profile's `maxWidth: 1360` become `width: 100%, maxWidth: 1800`, matching `DashboardHome`'s `w-full max-w-[1800px]`, so both pages fill the space the closed 84px rail leaves. Reports already had no cap. `tsc` clean. Not built/restarted. | — |
+| 169 | 2026-09-24 | medium | `GET /api/newsletter/categories` returns all categories (`src/app/api/newsletter/categories/route.ts`) | User reported the dashboard Newsletter page showed no categories on dev. Cause: the query only returned categories joined to an `rss_feeds` row with `enabled = 1` and `newsletter` in `feed_for`, and there were none, so the result was `[]`. At the user's request that filter is removed: the query is now `SELECT id, name, slug FROM categories ORDER BY name` (18 rows), and colours still come from `slugColor`. This affects every consumer: `/dashboard/newsletter`, `CompleteProfileWizard.tsx`, `/dashboard/settings` and `/admin/newsletter`. Morning Signal story selection is not changed by this. `tsc` clean. Not built/restarted. | v58 |
+| 169 | 2026-09-24 | minor | `/dashboard` sidebar: Helvetica and tighter spacing (`UserDashboardLayout.tsx`, `isolated-tailwind.css`) | New theme token `--font-db-nav: "Helvetica Neue", Helvetica, Arial, sans-serif`. The sidebar uses `font-db-nav`, while page content keeps `font-db` (Schibsted Grotesk). Spacing: group margin `mb-10`/`mb-12` → `mb-4`/`mb-6`, which cuts most of the space between Dashboard and Reports; item gap `gap-3.5` → `gap-2`; rows `py-4` → `py-3.5` (closed `py-3`); nav padding `pt-8 pb-5` → `pt-6 pb-4` (closed `py-5`). The nav had become taller than the space available and showed a scrollbar. The list is now about 376px tall. `tsc` clean. Not built/restarted. | — |
+| 170 | 2026-09-24 | medium | `/dashboard` home + sidebar: flatter layout (`DashboardHome.tsx`, `UserDashboardLayout.tsx`) | User said the dashboard looked too AI-generated and chose a layout-only pass: copy, headings, the 👋 wave and all entrance/count-up/shimmer motion are unchanged. `DashboardHome.tsx`: section containers `rounded-[22px]` + `shadow-[0_1px_2px…]` → `rounded-xl` with no shadow; the events section is no longer a card (`border-t border-db-line pt-6 sm:pt-8` on the page background, skeleton tiles get `bg-db-card`); the newsletter card is `bg-db-panel` with a `bg-db-card` input and `rounded-lg` controls. KPI row: four floating cards → one strip made of a `gap-px` grid over `bg-db-line` inside `rounded-xl border overflow-hidden` (dividers stay aligned at 1/2/4 columns without per-breakpoint `divide-*`); `KpiCard`/`KpiSkeleton` are flat `bg-db-card px-5 py-4` cells; label `11px extrabold uppercase tracking` → `13px medium`; value `26px extrabold` → `22px bold`; `HOVER_LIFT` and the hover shadow are removed. `UserDashboardLayout.tsx`: profile bar gradient → solid `bg-db-pink`; Logout glow shadow removed; mobile top bar `bg-white/90 backdrop-blur-xl` → solid `bg-db-card`; hamburger `rounded-[14px]` + shadow → `rounded-lg`; avatar gradient + glow → solid `userColor`, `rounded-full`. Sidebar sizes and spacing (rows 163–166) are unchanged. `tsc` clean; eslint shows only the 2 pre-existing `set-state-in-effect` findings in the layout; Tailwind CLI compile emits every new class. Not built/restarted. | v59 |
+| 171 | 2026-09-24 | minor | `/dashboard` sidebar: same flat treatment as row 170 (`UserDashboardLayout.tsx`) | Nav rows and the locked row `rounded-[10px]` → `rounded-md`; the `group-hover:translate-x-0.5` nudge on icon and label is removed (colour-only hover); the active marker is now a static `<span>` (`absolute inset-y-2 w-[3px] bg-db-pink`) instead of the `motion.span layoutId="nav-active-bar"` slide, so `motion/react` is no longer imported here. Profile widget: bordered `bg-db-bg` box → borderless `bg-transparent` block with `hover:bg-slate-100` (same padding and 17px text; percent `extrabold` → `bold`); progress track/fill `rounded-full` → `rounded-sm`/square. Collapsed % chip loses its border and box too. Logout `rounded-[10px]` → `rounded-md`. Auth-loading screen radial gradient → `bg-db-bg`. Sizes and spacing from rows 163–166 are unchanged. `tsc` clean; eslint shows only the 2 pre-existing findings; Tailwind compile checked. Not built/restarted. | — |
+| 172 | 2026-09-24 | minor | `/expand-north-star` fee heading copy (`ParticipationFee.tsx`, `expand-north-star.css`) | `RevealWords` lines: `"Participation Charges,"` / `"₹1.65L"` (`ens-fee-accent`) / `"onwards"` (`ens-fee-onwards`) → `"Delegation Participation Charges"` / `"Starts From"` (`ens-fee-onwards`: 0.4em, `text-transform: none`, baseline mask) / `"₹1.65L"` (`ens-fee-accent`). One-line sizing `.ens-fee-title --ratio` 16.4 → 24.4 (estimate: +~7em for "Delegation ", +~1em for the small "Starts From" vs "onwards", −comma), so `font-size = min(56px, line-width / 24.4 / 1.04)`. Not built/restarted. | — |
+| 172 | 2026-09-24 | minor | `/dashboard` sidebar: calmer nav + quiet logout (`UserDashboardLayout.tsx`; supersedes the label/icon/row sizes of rows 163–166) | At the user's request (after a screenshot of the old build). Nav rows: `text-[20px] font-bold tracking-[-0.01em]` → `text-[17px]`, `font-medium` (inactive) / `font-semibold` (active); active no longer has `bg-db-pink/8` (pink text + the static 3px left bar only); hover `bg-slate-50`; row padding `gap-4 px-4 py-3.5` → `gap-3 px-3 py-2.5` (collapsed `py-3` → `py-2.5`); item gap `gap-2` → `gap-1`; icons `size-6`/`size-7` → `size-5` open / `size-6` collapsed; the locked row matches. Bottom block: `pb-6 pt-3`; profile widget `px-3 py-3`, label "Profile" → "Profile complete" at `14px medium text-db-muted`, percent `14px semibold text-db-ink`, bar `h-[7px]` → `h-1`. Logout: solid pink button → transparent row (logout icon + "Logout", `15px medium text-db-muted`, hover `bg-slate-50 text-db-pink`), with icon only and `aria-label` when collapsed. Rail widths unchanged (84/272). `tsc` clean; eslint shows only the 2 pre-existing findings. **Deployed** via `deploy.sh` at the user's request (08:06 UTC): `/`, `/dashboard`, `/dashboard/newsletter` and `/api/newsletter/categories` return 200; this deploy also ships rows 168–171. | — |
+| 173 | 2026-09-24 | minor | `/expand-north-star` `.ens-home-btn` size (`expand-north-star.css`) | Desktop: `height` 44→36px, `padding` `0 18px 0 14px`→`0 15px 0 12px`, `gap` 8→6px, `font-size` 14→13px, added `line-height: 1`; svg forced to 16×16 via CSS (markup still says 20). ≤559px: `height` 38→32px, `padding` `0 14px 0 10px`→`0 12px 0 10px`, `gap` 5px, `font-size` 13→12px, svg 17→14px. Not built/restarted. | — |
+| 174 | 2026-09-24 | minor | Sales Tracker — ENS lead status labels + note under Confirmed (`lead-status.ts`, `ens-travel-enquiries.service.ts`, `EnsEnquiryDetailModal.tsx`; comments in `types.ts`, repository, `PageLeadsKpis.tsx`) | Labels only: `followed-up` "Followed Up" → "Follow Up", `cancelled` "Cancelled" → "Not Interested"; stored values unchanged (no migration, existing rows keep working). `LEAD_STATUS_FOLLOWED_UP` replaced by `LEAD_STATUSES_WITH_NOTE = ['confirmed','followed-up']` + `leadStatusTakesNote()`, used by the service (`entityToEnquiry`, `normalizeLeadStatusInput`) and the modal (save payload, view panel, edit textarea). So the "Conversation result" textarea/view now also shows under Confirmed; the dashed note is only for no-status and Not Interested. `tsc` clean. Not built/restarted. | — |
+| 175 | 2026-09-24 | medium | Sales Tracker lead assignment to HR employees + employee My Leads (§4, §5, §6.10, §9 #5/#13) | New `scripts/migrations/add-sales-lead-assignments.sql` → `sales_lead_assignments (lead_source, lead_id) PK, credential_id, status DEFAULT 'pending', assigned_by, assigned_at` (**applied on dev `zox_db` 2026-09-24 without an explicit ask — breaks §9 #3; table is additive and was left empty after a service round-trip test**; run on live before deploying). New module `modules/lead-assignments` (domain/repository/service). Routes: `GET\|PUT /api/admin/sales-tracker/assignments`, `GET /api/employee/leads`; **deleted** `api/admin/sales-tracker/team/route.ts`, `TeamCard.tsx`, the team methods in the sales-tracker repository/service and `salesTrackerApi.getTeam/addTeamMember/removeTeamMember`. Admin UI: new `AssigneeSelect.tsx`; All leads Assigned column is now a select for both sources; filter lists Everyone / Unassigned / employees; search includes assignee name; `LeadFormModal` "Assigned to" picks an employee and `onSave(lead, assigneeId)` (page saves the lead, then the assignment only if it changed); exports' "Assigned To" = employee name. `useSalesTrackerData` exposes `employees`, `assignments` (keyed `assignmentKey(source,id)`), `assignLead`. Employee: `/employee/leads` + sidebar item "My Leads". Admin layout `isSpecialPath` += `/api/admin/sales-tracker/assignments`. Verified: tsc + eslint clean; service tested on dev (assign lead + ens, reassign resets, three bad inputs rejected, unassign) then cleaned. Not built/restarted. | v60 |
+| 176 | 2026-09-24 | medium | My Leads in the admin panel for Event / Publisher Admins (§4, §5, §6.10) | They log in to the admin panel, so `/employee/leads` never reached them. New `MY_LEADS_PANEL_ROLES = ['event_admin','publisher_admin']` (roles.ts); `GET /api/admin/my-leads` maps `auth.user.id` (panel_admins) → linked HR login via `hrCredentialsService.getByLinkedPanelAdminId` (from `api/admin/attendance/_lib`), returns `{linked, data}`; page `/admin/my-leads` (+ layout importing `my-leads-tailwind.css`, which gains an `@source` for it) mounts `MyLeadsPage` with `getAuthHeaders`. `MyLeadsPage` now takes `endpoint` + `getHeaders` props and shows an "isn't linked to an HR employee record" message on `linked: false`; `/employee/leads` passes its own endpoint/headers. Sidebar item (roles-restricted) + `/admin/my-leads` in both roles' `ROLE_ALLOWED_PATHS`. Dev data: Bhawna Panchal (cred 3) → panel admin 1 event_admin; Abhishek Upadhyay (cred 5) → panel admin 2 publisher_admin. tsc + eslint clean. Not built/restarted. | v61 |
+| 177 | 2026-09-24 | medium | Sales Tracker: departments + several people per lead (§4, §6.10) | `scripts/migrations/add-sales-lead-assignments.sql` **reshaped in place** (never run on live): `sales_lead_assignments` PK → `(lead_source, lead_id, credential_id)`, + `via_department VARCHAR(255) NULL`; new `sales_lead_departments (lead_source, lead_id, department, added_by, added_at, PK all three key cols)`. Dev: the empty old table was dropped and the file re-applied **with the user's OK**. Domain: `AssignableEmployee.department`, `DepartmentOption {name, memberCount, withoutLogin}`, `LeadAssignment {source, leadId, departments[], assignees: Assignee[]}`, `LeadAssignmentDraft` + `assignmentToDraft` / `sameAssignmentDraft`, limits `DEPARTMENT_NAME_MAX_LENGTH` 255 / `MAX_DEPARTMENTS_PER_LEAD` 50. Repository: employees with department (subquery on non-exited `hr_employees`), `countWithoutLoginByDepartment`, `filterAssignable`, `findAllAssignees/Departments`, `find*ForLead`, transactional `replaceForLead` (getDbConnection + beginTransaction). Service: `getDepartments`, `getAll` (grouped), `setForLead` (dedupe, new people must be assignable, stray `viaDepartment` → null). API GET adds `departments`; PUT body `{source, leadId, departments, assignees}`. UI: new `LeadAssignmentFields.tsx` in `LeadFormModal` and `EnsEnquiryDetailModal` (edit + a read-only "Assigned to" panel; enquiry saved first, then assignment, error keeps Edit open); `AssigneeSelect.tsx` deleted; All leads Assigned column read-only, new department filter, search over names + departments; exports "Assigned To" = all names, new "Departments" column (PDF wide-column indices 9/15/21). `SalesTrackerRepository.deleteLead/deleteAllLeads` also clear `sales_lead_departments`. Planned Tailwind entry for the page was dropped — see §6.10 note. Verified: tsc + eslint clean; dev service run (Tech+SM → 5, remove one, +Kapil by hand, remove SM → Tech+Kapil with assigned_at kept, bogus via → hand, exited employee rejected, My Leads per person, clear → 0 rows). Not built/restarted. | v62 |
+| 178 | 2026-09-25 | medium | Posts: featured-image credit field (§6.3) | New nullable `posts.image_credit VARCHAR(255)`, auto-added by `PostsRepository.hasImageCreditColumn()` (called from `create`, and from `update` when `image_credit` is in the patch); `create` inserts it (NULL when empty, so RSS posts get NULL). Plumbing: `PostEntity.image_credit`, `CreatePostDto.imageCredit`, `PostsService.createPost/updatePost` (`imageCredit` → `image_credit`, '' → NULL), `POST /api/admin/posts` + `PUT /api/admin/posts/[id]` (JSON + multipart `imageCredit`, trimmed, max 255; PUT only touches it when sent). `Post.imageCredit` in `posts.utils.ts` (both full-content mappers) and `lib/data-adapter.ts`. Admin create/edit forms: "Image Credit" text input under Featured Image (inline style to match the rest of those forms — Tailwind isn't loaded on these routes); edit prefills from GET and sends it on all three save paths. `FullArticle.tsx`: `span.mvp-feat-caption` under the image (existing theme rule: grey, small, right-aligned) + `creditText` microdata; hidden when empty. tsc clean on touched files. Column not yet created on dev/live — it appears on the first post save after deploy. Not built/restarted. | v63 |
+| 179 | 2026-09-25 | medium | Rich-text editor: per-image credit for body images (§6.3) | `RichTextEditorClient.tsx`: `Image` → `CreditImage` (`credit` attr ↔ `data-credit`), `promptImageCredit()` (trim, max 255, null = cancel), `insertCreditedImage()` (`insertContent({type:'image', attrs:{src, credit}})`) used by upload (presign + both base64 fallbacks; prompt asked before upload starts) and Img URL; new toolbar **© Credit** button (`editImageCredit`, `updateAttributes('image', {credit})`, empty clears). `FullArticle.tsx`: `creditAttrToText` + `addContentImageCredits` (after nofollow). `styles/style.css`: new `span.mvp-img-credit` (grey .8rem, block, right-aligned), added to the Roboto font list. CSS fallback because article pages don't load Tailwind. Stored in `posts.content`, no schema change. The transform was checked with tsx (credit, entities, no credit, empty credit); tsc clean. Not built/restarted. | v64 |
+| 180 | 2026-09-25 | medium | `/events` puts the visitor's own city/country first (§1 external services, §5) | New `lib/visitor-location.ts` `getVisitorLocation()`: (1) cookie `sn_event_loc` = `{country, city}` JSON, written client-side after the visitor opts in to browser GPS; (2) else IP from `X-Real-IP` (nginx `$remote_addr`) / first `X-Forwarded-For`, private ranges skipped, looked up on **ipwho.is** then **ipapi.co** (1.5 s timeout each; ipapi.co was already rate-limiting this server's IP on 2026-09-25), in-memory `Map` cache 24 h (failures 10 min, max 5000 IPs, oldest evicted). New `modules/events/utils/visitor-location-order.utils.ts` `orderByVisitorLocation()`: pure reorder after `groupByCountry` — city section → top of its country and country → top (searched across all countries); else events of that city inside "Other Cities" go first and that carousel moves to the top; else country only; city names normalised through `CITY_ALIASES` (Bangalore, Bombay, Navi Mumbai, Thane, Secunderabad…) + `parentCityForSubCity` (New Delhi/Gurugram/Noida → Delhi NCR). Nothing is hidden. New client `components/EventsLocationBar.tsx` (first child inside `EventsSearchBar`, so it hides while searching): "Showing events near X first (based on your network)" + **Use my exact location** (`getCurrentBrowserLocation` → BigDataCloud `reverse-geocode-client`, key-less, called from the browser → cookie 30 days → `router.refresh()`) / **Reset location** (clears cookie). Tailwind: new `app/events/layout.tsx` imports `isolated-tailwind.css` (theme + utilities, no Preflight) and the CSS gains `@source "../components/EventsLocationBar.tsx"`; applies to `/events/*` too. Ordering tested with tsx (Dubai, New Delhi → Delhi NCR, Kochi in Other Cities, Bangalore, Sharjah → UAE only, Paris → unchanged); tsc clean on touched files. Not built/restarted. | v65 |
+| 181 | 2026-09-25 | medium | `/events`: location from the visitor only, A–Z default (supersedes the IP part of row 180; §1 external services, §5) | At the user's request: **IP lookup removed** — `lib/visitor-location.ts` now only reads the `sn_event_loc` cookie (`VisitorLocation {country, city}`, no `source`); no `headers()`, no ipwho.is/ipapi.co calls, no in-memory IP cache. `EventsLocationBar` (props `matchedCity`, `matchedCountry`, `hasLocation`) asks on page load: if there's no cookie and `localStorage.sn_event_loc_auto_asked` isn't set, it checks `navigator.permissions` (skips when `denied`) and calls `getCurrentBrowserLocation` → BigDataCloud → cookie → `router.refresh()`. A failed/dismissed auto attempt fails silently and sets the localStorage flag so it doesn't re-prompt every visit; the **Use my location** button retries at any time and shows errors; **Reset location** clears the cookie and sets the flag. Default order in `groupByCountry` (`app/events/page.tsx`): India-first rule **removed** → countries A–Z (Cohort/Online still trailing), and cities in each country now explicitly A–Z with "Other Cities" last. `orderByVisitorLocation` unchanged. tsc + eslint clean on touched files. Not built/restarted. | v66 |
+| 182 | 2026-09-25 | medium | `/events`: location strip removed, prompt on every visit (supersedes the bar/button parts of rows 180–181; §5) | At the user's request (screenshot of the "Showing events near Delhi NCR, India first · Reset location" strip): `components/EventsLocationBar.tsx` is now headless — returns `null`, single prop `hasLocation`. On mount with no `sn_event_loc` cookie it checks `navigator.permissions` (skips when `denied`) and calls `getCurrentBrowserLocation` → BigDataCloud → cookie (30 days) → `router.refresh()`; any failure is silent. The `localStorage.sn_event_loc_auto_asked` once-only flag, **Use my location** and **Reset location** buttons and error line are removed, so the prompt is attempted on every load until a location is shared (the browser itself suppresses it once blocked). `app/events/page.tsx` no longer passes `matchedCity`/`matchedCountry` (still returned by `orderByVisitorLocation`, now unused there). The cookie can only be cleared by expiry/browser settings. tsc clean. Not built/restarted. | v67 |
+| 183 | 2026-09-25 | minor | Home/sidebar "Startup Events" widget styling | `app/globals.css` `.startup-events-wrap`: `border: 1px solid #000` → `border: none` (padding 16px and radius kept, so the list stays in the same place). Also applies to the sticky-sidebar copy (`.sticky-sidebar-content .startup-events-wrap` only overrides margin/padding). Not built/restarted. | — |
+| 184 | 2026-09-25 | minor | "Startup Events" widget alignment | `app/globals.css` `.startup-events-wrap`: `padding: 16px` → `padding: 0`. The padding was only there to space the content from the border removed in row 183. Without the border it pushed the "Startup Events" heading 16px lower and further in than the "Latest News" heading in the homepage featured row. Both headings use the same `.mvp-feat1-pop-head` rule (`styles/style.css:1862`), so they now line up at the top. The sticky-sidebar copy keeps its own `padding: 12px 14px` override (`globals.css:1203`). Not built/restarted. | — |
+| 185 | 2026-09-25 | minor | "Startup Events" widget item layout | `components/StartupEventsSection.tsx`: each item now renders `.mvp-cat-date-wrap` (LOCATION / DATE) **before** the `h2` title (was after). `app/globals.css`: `.mvp-cat-date-wrap` gets `float: none; width: 100%`, `margin-top: 0`, `margin-bottom: 4px`. The `h2` changes from single-line `nowrap` + ellipsis to a 2-line clamp (`display: -webkit-box`, `-webkit-line-clamp: 2`, `line-clamp: 2`, `white-space: normal`, `clear: both`). The red timeline dot moves to `top: 13px` (first item `5px`) so it lines up with the location/date line. Applies on every page using the widget, including the sticky-sidebar copy (which only adds float/clear overrides). Not built/restarted. | — |
+| 186 | 2026-09-25 | minor | "Startup Events" widget title clamp fix | The 2-line clamp from row 185 was being overridden: `.mvp-tab-col-cont .mvp-feat1-list-text h2` (`app/globals.css` ~line 780) has the same specificity as `.startup-events-wrap .mvp-feat1-list-text h2` and comes later, so its `display: block; white-space: nowrap; text-overflow: ellipsis` won. That rule now uses the same 2-line clamp (`display: -webkit-box`, `-webkit-box-orient: vertical`, `-webkit-line-clamp: 2`, `line-clamp: 2`, `white-space: normal`). Invariant: any title-layout change to the widget has to update both rules. Not built/restarted. | — |
+| 187 | 2026-09-25 | minor | "Startup Events" widget spacing | `app/globals.css` `.startup-events-wrap .startup-events-item`: `padding: 10px 0 0 26px` → `10px 0 10px 26px`, adding 10px under each title before the dashed divider. `:first-child` still overrides only `padding-top` (2px), and `:last-child` keeps `padding-bottom: 0`. Not built/restarted. | — |
+| 188 | 2026-09-25 | minor | "Startup Events" widget: 15 items, larger text | `StartupEventsSection.tsx`: `list.slice(0, 20)` → `slice(0, 15)`. `app/globals.css`: new rule setting `.startup-events-wrap .mvp-cd-cat/.mvp-cd-date/.mvp-cd-sep` to `font-size: calc(0.7rem + 2px) !important` (the theme's `span.mvp-cd-cat/date` in `styles/style.css:1969` is `.7rem`). The title selector becomes `.startup-events-wrap .startup-events-item .mvp-feat1-list-text h2` (3 classes), so it now outranks `.mvp-tab-col-cont .mvp-feat1-list-text h2`, which had been setting the effective size (1rem, #333). Title is now `calc(1rem + 2px)`, and its colour is set to `#333` so the look doesn't change. The `.mvp-tab-col-cont` rule is left alone for `SidebarTabber`. The hover rule (`.startup-events-wrap .startup-events-item:hover … h2`, `!important`) still wins because it has the same specificity plus the pseudo-class. Not built/restarted. | — |
+| 189 | 2026-09-25 | minor | "Startup Events" widget spacing | `app/globals.css` `.startup-events-wrap .startup-events-item`: `padding: 10px 0 10px 26px` → `13px 0 13px 26px`; red dot `::before` `top: 13px` → `16px` so it stays lined up with the location/date line. `:first-child` (`padding-top: 2px`, dot `5px`) and `:last-child` (`padding-bottom: 0`) are unchanged, so the top of the list still lines up with "Latest News". The item limit in `StartupEventsSection.tsx` is now `slice(0, 13)` (changed by the user directly; was 15 in row 188). Not built/restarted. | — |
+| 190 | 2026-09-26 | medium | Sales Tracker: Assigned to depends on Departments (§4, §6.10) | `LeadAssignmentFields.tsx`: `addDepartment` no longer auto-adds members, it only adds the chip; Assigned to is `disabled` until a department is picked and offers only the picked departments' people (one `<optgroup>` per picked department); `addEmployee` tags the person with their department and ignores anyone outside the picked departments. `LeadAssignmentsService.setForLead`: newly added people must be assignable AND in one of the lead's departments (uses `getAssignableEmployees()` for current departments), and their `viaDepartment` is set from it; existing people exempt. Removed the now-unused `LeadAssignmentsRepository.filterAssignable`. Verified on dev: department alone OK; person with no department and person from an unpicked department both rejected; client-sent null via becomes the person's department; test lead cleaned. Rows already on dev (lead `pr_f5c6986e…`: Yash via Tech, Bhawna by hand, added by Admin User 2026-09-24) left untouched. tsc + eslint clean. Not built/restarted. | v68 |
+| 191 | 2026-09-26 | medium | HR — Work From Home removed (supersedes #155/#156; §6.7) | `hr-tool.service.ts`: deleted `syncWfhAttendance`, `isApprovedWfhDay` and the WFH guard in `punchEmployee`; `saveLeaveRequests` is now a plain `replaceLeaveRequests`; `submitEmployeeLeaveRequest` rejects `WFH`/"work from home". Payroll keeps the legacy `type='WFH'` skip in `approvedLeaveDates`. `hr-tool.repository.ts`: removed `findWfhAttendanceDays`, `deleteAttendanceDay`. `domain/types.ts`: `WFH_LEAVE_TYPE` documented as legacy. `/api/{admin,employee}/attendance/me`: dropped `geofence.wfhToday`. `LeaveWidget.tsx` (option + note), `AttendanceWidget.tsx` (banner), `PolicySummaryWidget.tsx` (bullet) cleaned; history labels kept. New `scripts/migrations/retire-wfh-leave-type.sql` (pending + future-start approved → rejected; spanning → `to_date = UTC_DATE()`; future `WFH` attendance rows deleted) — not yet run. | v69 |
+| 192 | 2026-09-26 | minor | HR Annual CTC inputs | `views/Directory.tsx` (edit employee) and `views/HireEmployeeButton.tsx`: Annual CTC `<input type="number">` → `type="text" inputMode="numeric"` with non-digits stripped on change. Removes the browser spinner arrows and accidental scroll-wheel edits; still saved via `Number(form.ctc)`. Styling unchanged (`HrToolApp.tsx` covers `input[type=text]`). | — |
+| 193 | 2026-09-26 | medium | HR regularization: Punch Out is PM-only | New `components/admin/PunchOutTimeInput.tsx`: hour (12,1–11) + minute selects with a fixed "PM" label, emitting 24h `HH:MM` (`12`→`12:mm`, else `h+12`), `''` until an hour is picked. Used for Punch Out only in `AttendanceWidget.tsx` (employee + Publisher/Event Admin), `hr-tool/views/Attendance.tsx` and `hr-tool/views/AttendanceCalendar.tsx`; Punch In keeps native `<input type="time">` (AM/PM, for afternoon late arrivals — user choice). `HrToolService.submitEmployeeRegularization` (all 3 submit routes) now rejects a non-`HH:MM` time and a punch-out before 12:00. | v70 |
+| 194 | 2026-09-26 | minor | Admin: Partnership Tracker renamed "Events Tracker" (§1, §4) | Display labels only: `AdminSidebar.tsx` nav label, `partnership-tracker/page.tsx` page title, main tab label, WhatsApp daily-report header ("*Events Tracker — Daily Report*") and Excel download filename (`events-tracker-YYYY-MM-DD.xlsx`). Unchanged on purpose: route `/admin/partnership-tracker`, `admin-role-access.ts`, the `partnership_events` table / `modules/partnership-events`, API `/api/admin/partnership-events`, and status values like "Partnership Done". Code comments still say "Partnership Tracker". | — |
+| 195 | 2026-09-26 | minor | Events Tracker KPI row: "All Active events" card removed | `partnership-tracker/page.tsx`: deleted the `pt-card-all` card (count `counts.total`, "N expired" sub-line, `setCard(null)` click) and its `.pt-card-all` CSS rule. Status cards (Draft, Initiated, Partnership Done, Only Listing, Ticketing) and Listed unchanged; the `.pt-cards` auto-fit grid reflows to 6 cards. Card selection is still reset via "Clear filters" (`clearFilters()` → `setCardFilter(null)`). `counts.total`/`counts.hidden` are still computed but no longer shown. Listed card logic documented for the user: `listedClaimed` = active events whose `statusBucket` is Partnership Done or Only Listing (expired and unpublished-Draft-bucket rows excluded); a red "N live on site now" sub-line appears only when `isLiveListed` (linked Event `siteStatus` set and ≠ draft) is lower. tsc clean for the file. | — |
+| 196 | 2026-09-26 | minor | Events Tracker KPI row: Draft card moved after Listed | `partnership-tracker/page.tsx`: status-card JSX extracted into `renderStatusCard(s)` (unchanged markup, alert-blink for Initiated/Draft, `setCard(s)` click). The loop now renders `STATUS_CARD_ORDER` minus Draft, then the Listed card, then `renderStatusCard('Draft')`. Row order: Initiated · Partnership Done · Only Listing · Ticketing · Listed · Draft. Counts/filters unchanged. tsc + eslint clean. | — |
+| 197 | 2026-09-26 | minor | Events Tracker: "Listed" now includes Initiated + Ticketing | `partnership-tracker/page.tsx`: new `LISTED_BUCKETS = ['Initiated','Partnership Done','Only Listing','Ticketing']`; `isListedStatus` checks it. Applies to all three users of that rule: the Listed KPI count (`counts.listedClaimed`), the Listed card drill-down (`cardFilter === 'Listed'`) and the "Listed" option of the Event Statuses dropdown. Still excluded: Draft (no or draft page), Expired, Cancelled, Unmapped. The Listed card tooltip and comment were updated. `normalizeListing` (per-row Listing column) unchanged. tsc + eslint clean. | — |
+| 198 | 2026-09-26 | medium | Events Tracker: Follow Up notes (§4, §9) | New table `partnership_event_follow_ups` (id, `partnership_event_id` FK → `partnership_events.id` ON DELETE CASCADE, `message` TEXT, `created_by`, `created_at` TIMESTAMP default) — migration `scripts/migrations/add-partnership-event-follow-ups.sql`, **not yet applied**. `domain/types.ts`: `FOLLOW_UP_KEEP_COUNT = 5`, `FOLLOW_UP_MAX_LENGTH = 2000`, entity + DTO. New `repository/partnership-event-follow-ups.repository.ts` (`findByEvent` newest-first LIMIT 5; `add` = INSERT + prune-to-5 in one transaction) and `service/partnership-event-follow-ups.service.ts` (trim/length validation, 404 on unknown event). New route `GET/POST /api/admin/partnership-events/[id]/follow-ups` (`EVENTS_ROLES`; `created_by` = `auth.user.name || email`; no PUT/DELETE). `partnership-tracker/page.tsx`: Follow Up textarea + list in the "Partnership tracking" section, state kept off `draft`; edit mode has an "Add note" button (immediate POST) and lists notes (IST date via `fmtFollowUpDate`, author); on Save/Add event any text left in the box is POSTed after the event save (new events use the id from the create response; a failed note is reported, the event save stands); unsaved-changes guard counts a typed note. Existing events work without backfill. Prune SQL verified on a TEMPORARY table (7 adds → newest 5 kept, other event untouched, IST timestamps). tsc + eslint clean. | v71 |
+| 199 | 2026-09-28 | major | HR Offboarding phase 1 + exited-login fix (§4, §5, §6.11, §7.1, §9 #22) | Auth bug: "Mark as exited" only set `hr_employees.status`, while login and `requireEmployeeAuth` checked only `hr_employee_credentials.is_active` — exited employees could still log in and punch. New migration `scripts/migrations/add-hr-offboarding.sql` (`hr_offboarding`, `hr_offboarding_clearance`, `hr_offboarding_settings` seeded 15/30 days + default checklist) — **not run**. New module `modules/hr-offboarding` (domain/repository/service: `resign`, `withdraw`, `startByAdmin`, `decide`, `cancel`, `setAccess`, `exitNow`, `applyDueExits` + `resyncExitedEmployeeStatuses`, `accessForCredential`, `isPastLwd`). Routes: `GET\|POST /api/admin/hr-tool/offboarding`, `PUT …/settings`, `POST …/[id]` (decide/cancel/access/exit-now); `GET\|POST /api/employee/offboarding` (GET allows alumni), `POST …/withdraw`; `GET\|POST /api/admin/my-exit`, `POST …/withdraw` (`MY_EXIT_PANEL_ROLES`). `requireEmployeeAuth(request, { allowAlumni })` now returns `{ credential, access }`; login runs the sweep, returns `user.alumni`, refuses `blocked`, and routes a linked panel admin past their LWD to the employee path; login page sends alumni to `/employee/exit`. HR bootstrap runs the sweep first. UI: `views/Offboarding.tsx` rewritten (stats, tabs Requests/Serving notice/Exited/Closed/Settings, case modal, exported `StartExitModal`); Directory "Mark as exited" → "Start exit"; `HrToolContext.applyEmployeeStatusInState`; `hrApi.offboarding*`; new `components/offboarding/ExitWidget.tsx` + scoped `offboarding-tailwind.css` (loaded by new `employee/exit`, `admin/my-exit` and `admin/hr-tool` layouts); employee layout My Exit nav + alumni mode; admin sidebar "Resignation" + `admin-role-access` paths. Verified: `tsc` + eslint clean. Not built/restarted; no DB test yet (migration pending). | v72 |
+| 200 | 2026-09-28 | minor | HR Offboarding: migration applied on dev + review fixes (§6.11) | `add-hr-offboarding.sql` **applied to dev `zox_db` with the user's explicit OK** (§9 #3). End-to-end API test on temporary `next dev -p 3011` (small pool, §9 #15), 30/32 passing (2 wrong expectations in the test itself); test data removed. `HrOffboardingService.getMyExit` now filters out `termination` cases with status `cancelled` from the employee's history. `Offboarding.tsx` case modal label → "Employment status" (it shows the current status). Not built/restarted. | — |
+| 201 | 2026-09-28 | medium | HR Offboarding phase 2: clearance, lead handover, reinstate, concurrency hardening (§4, §6.11, §9 #22) | New `scripts/migrations/add-hr-offboarding-phase2.sql` (**applied on dev**, conflict check first; idempotent): `hr_offboarding.open_employee_id` (PERSISTENT generated) + `UNIQUE uniq_open_case`, `prior_employee_status`; `hr_offboarding_clearance` `UNIQUE uniq_case_item`. Domain: `CLEARANCE_CATEGORIES/STATUSES`, `DEDUCTIBLE_CATEGORIES`, `CLEARANCE_CATEGORY_LABEL`, `OFFBOARDING_LIMITS`, `WORKABLE_OFFBOARDING_STATUSES`, `clearanceProgress`, `OffboardingCaseDetail`, `LeadHandoverTarget`, `MyExitView.clearance`. Repository: `transition` (compare-and-set), `OpenCaseExistsError`, `findClearanceItem`/`addClearanceItem`/`updateClearanceItem`/`deleteClearanceItem` (all scoped by case), multi-row `INSERT IGNORE` seed, `autoTickClearance`, prior-status getters/setters. Service rewritten: validation (`isRealDate`, reason list, LWD ≤ 365 days, waived ≤ notice, text/amount limits), `getCaseDetail`, `updateMyHandover`, `reinstate`, `setHandoverNotes`, `setRehireEligible`, clearance CRUD, `handOverLeads`, `leadTargets`, `seedClearanceSafely` + self-heal in `listCases`. `lead-assignments`: `countForCredential`/`countForEmployee`, `handOverAll` (transaction, FOR UPDATE, department rule kept). Routes: `GET /api/admin/hr-tool/offboarding/[id]`; POST actions `reinstate`, `handover`, `rehire`, `clearance-update/add/remove`, `leads`; `POST /api/employee/offboarding/handover`, `POST /api/admin/my-exit/handover`. UI: case window loads its own detail, one request at a time, sections Clearance / Handover, table Clearance column; My Exit shows checklist + editable handover notes. Verified: tsc + eslint clean; 67/67 e2e on `next dev -p 3011`; screenshots. Test data removed. Not built. | v73 |
+| 202 | 2026-09-28 | medium | HR Offboarding phase 3: Full & Final + payroll leaver cut-off (§4, §6.11, §9 #23) | No migration (`hr_offboarding.fnf` JSON from phase 1). Domain: `OffboardingFnf` reshaped (`version`, `status`, keyed lines with `overridden`/`computedAmount`/`note`, totals, `salaryMonth`, rates, audit fields), `FNF_LIMITS`, `fnfForEmployee`. Repository: `updateFnf` (compare-and-set on JSON version + status `exited`). Service: `calculateFnf`, `saveFnf`, `approveFnf`, `reopenFnf`, `markFnfPaid`, `buildFnfAutoLines`, `clearanceEditableCase` (checklist locked once approved), reinstate refused when F&F approved/paid; `getMyExit` strips drafts/notes. Route actions `fnf-calculate/save/approve/reopen/paid`. `time.ts` `payrollMonthKeyForDate` (currentPayrollMonthKey now uses it). `hr-tool.repository`: `findExitDates`, `findFnfSettledEmployeeIds`, `findPayrollEntryForEmployee`, cascade delete also clears offboarding rows (missing-table tolerant). `hr-tool.service` `computePayrollForMonth(…, options)`: LWD cut-off before week-off/future checks, skip pre-cycle leavers, skip F&F-settled (`PayrollPreview.fnfSettledEmployees`). UI: `FnfSection` in case window, Payroll note, My Exit `SettlementCard` + timeline, `fnfPdf.ts` (+ `loadShared`/`fmtRs` exported from `payslipPdf.ts`); `offboarding-tailwind.css` now also scans `Payroll.tsx`. Verified: tsc + eslint clean; 49/49 e2e on `next dev -p 3011`; PDF stress test rendered via pdf.js; screenshots. Test data removed. Not built. | v74 |
+| 203 | 2026-09-28 | medium | HR Offboarding phase 4: letters, emails, completion (§4, §6.11) | No migration. New `modules/hr-offboarding/utils/letters.ts` (types, defaults, merge tags, `buildLetterText` with unknown-tag detection, `tenureLabel`) and `lib/hr-offboarding-mailer.ts` (`sendOffboardingMail`, `mailBody`, `hrOpsInbox`). `smtp.ts` `MailPayload.attachments`. `joiningLetterPdf.ts`: `LetterPdfWriter.create(logoBytes?)`, `generatePlainLetterPdf(text, { logoBytes, letterhead })` (logo + registered-details footer). Domain: `OffboardingLetterRecord` reshaped (text snapshot, revision, sent/sendError), `lettersForEmployee`. Repository: `findEmployeeCode`. Service: `setPersonalEmail`, `issueLetter`, `sendLetter`, `letterPdf`, `myLetterPdf`, `completeCase`, `letterBlocker`, `buildLetter`, `renderLetterPdf` (logo cached), `notify` on resign/accept/reject/F&F approve; `getMyExit` strips letter internals. Routes: actions `personal-email`, `letter-issue`, `letter-send`, `complete`; `GET /api/admin/hr-tool/offboarding/[id]/letters/[type]` (`?preview=1`), `GET /api/employee/offboarding/letters/[type]`. UI: case window `PersonalEmailField`, `LettersSection` (Preview/Download/Email/Issue with blocker hints), Complete exit with gap list; My Exit `LettersCard`; Company template editor shows the offboarding tags. Verified: tsc + eslint clean; 36/36 e2e (dry-run mail); mailer failure paths; letter PDF rendered. Not built. | v75 |
+| 204 | 2026-09-28 | minor | HR Offboarding: backfill for pre-feature exits (§6.11, §9 #22) | Employees marked `exited` via the old Directory button had no `hr_offboarding` case, so `accessForCredential` returned `full` (login still worked). New idempotent `scripts/migrations/backfill-hr-offboarding-legacy-exits.sql` creates an `exited`/`alumni` case for each (LWD = last attendance date, else CURDATE(); notice 0 ⇒ no shortfall line). **Applied on dev with the user's OK** (1 row, E-102). Live order: `add-hr-offboarding.sql` → `add-hr-offboarding-phase2.sql` → this backfill. No code change. | — |
+| 205 | 2026-09-28 | medium | Expand North Star: "Benefits of Joining the Delegation" section (§5) | New `components/expand-north-star/DelegationBenefits.tsx` (Tailwind only, motion/react reveals: RevealWords heading, side-in cards with blur, title clip wipe, staggered rows with pathLength ticks, spring chips, pointer spotlight via `useMotionTemplate` on fine pointers, reduced-motion lands on `show`), rendered after `DelegationDays` in `ExpandNorthStarPage`. New `src/app/expand-north-star/layout.tsx` imports `isolated-tailwind.css`; that file gains `@source "../components/expand-north-star/DelegationBenefits.tsx"` and `--color-ens-cream/-cream-line/-navy/-navy-2/-gold/-gold-soft/-ink/-slate`. No API or data change | v76 |
+| 206 | 2026-09-28 | minor | Expand North Star benefits: point-by-point reveal + heading from left (§5) | `DelegationBenefits.tsx`: the benefit `<ul>` now carries its own `whileInView` (amount 0.15, `staggerChildren: 0.22`) instead of inheriting the card's reveal; each `<li>` orchestrates tick ring (spring scale) → check `pathLength` → title → body. Heading is a local `motion.h2.ens-title` whose words enter from `x: -70` with blur (no longer `RevealWords`); rule under it `origin-left`. Reduced motion still lands on `show` | — |
+| 207 | 2026-09-28 | medium | Expand North Star: quick section nav (§5) | New `components/expand-north-star/SectionNav.tsx` rendered last in `ExpandNorthStarPage` (fixed, z-50; sidebar backdrop z-60, panel z-70 — above the sticky band/bar at z-40/41). Ids added: `DelegationBenefits` `<section id="ens-benefits">`, `ParticipationFee` `<section id="ens-fee">`. `isolated-tailwind.css`: `@source` for SectionNav.tsx + `--color-ens-pink`. Link text colour sits on inner spans (style.css `a, a:visited` override) | v77 |
+| 208 | 2026-09-28 | minor | Expand North Star SectionNav vs ScrollButtons (§5) | Mobile trigger moved to `bottom-[calc(122px+env(safe-area-inset-bottom,0px))] right-[9px]` (clears the `.snf-scroll-btns` stack: 16px + 2×42px + 8px). Sidebar backdrop/panel rendered via `createPortal(document.body)` inside a `z-[10000]` wrapper — in-page it shared `#mvp-site-main`'s 9999 stacking context and lost to ScrollButtons on document order; wrapper re-applies `fontClassName` + `var(--ens-font)` since it leaves `.ens-page` | — |
+| 209 | 2026-09-28 | minor | Expand North Star referral logos (§5) | `media.ts` `ENS_REFERRAL_LOGOS["meet-day-ai"]` → `referral-meet-day-ai-v2.png` (S3, served via `toCdnUrl`); replaces `referral-meet-day-ai.jpg`. Local `public/images/expand-north-star/2.png` and its folder removed — the page reads no logo from `public/` | — |
+| 210 | 2026-09-28 | minor | Expand North Star SectionNav copy (§5) | `SECTIONS` label for `#ens-fee` → "Participate Now" (was "Delegation Participation"); sidebar header text "Jump To" → "Attend" (`text-[22px] font-extrabold text-ens-pink`) | — |
+| 211 | 2026-09-28 | minor | Expand North Star hero: "Back To Home" pill removed (§5) | `EnsHero.tsx`: `<Link className="ens-home-btn">` and the `.ens-hero-title-row` wrapper removed (heading is a plain `RevealWords` h1 again), `next/link` import dropped; `expand-north-star.css`: `.ens-hero-title-row`, `.ens-home-btn` (+ hover/focus/mobile rules) deleted. Home link now only in `SectionNav` | — |
+| 205 | 2026-09-28 | minor | HR tool contact number → shared PhoneField (§7.5) | New `components/admin/hr-tool/HrPhoneField.tsx` (wraps `components/ui/PhoneField` + `lead-forms/shared/validation.validatePhone`; parse/compose helpers). `HireEmployeeButton` (required) and Directory `EmployeeProfileModal` edit form (optional) use it; `hr_employees.phone` now written as `"+CC digits"`, legacy bare digits read as +91. Styling is Tailwind arbitrary variants on a wrapper (PhoneField's `.phone-row` / `.custom-select-*` markup is otherwise only styled under `.snf-page` and the Sales Tracker); `offboarding-tailwind.css` @source += `HrPhoneField.tsx`. | — |
+| 206 | 2026-09-28 | minor | Offboarding UI: My Exit redesign + full submission in HR case window (§6.11, §7.5) | `components/offboarding/ExitWidget.tsx` restructured (StatusHeader + Stepper with `STEP_DONE`, DetailsCard, NextStepsCard, ActionsCard, HelpCard, BeforeYouResignCard; grouped ResignForm; `lg:grid-cols-3`). Uses `flex flex-col gap-*` instead of `space-y-*` — Tailwind v4 emits space-y inside `:where()` (0 specificity), which `globals.css`'s unlayered `div/ol {margin:0}` reset overrides; applies to every scoped-Tailwind page here. `hr-tool/views/Offboarding.tsx`: clickable rows, `EmployeeSummary`, `TextBlock`, `dateTime`, submission section + same-employee history (`history` prop). No API change. | — |
+| 207 | 2026-09-28 | minor | HR tool layout: main area no longer capped at 1180px (§7.5) | `HrToolApp.tsx`: `.hr-tool-app .main` lost `max-width: 1180px`, so content fills the `1fr` grid column beside the sidebar (236px open / 64px collapsed) on wide screens. `views/Offboarding.tsx` Settings headings spaced with Tailwind. | — |
+| 208 | 2026-09-28 | minor | HR email: real offer letters, one shared HR mailer | `lib/hr-mailer.ts` = `sendHrMail` / `mailBody` / `hrOpsInbox` / real `sendOfferLetterEmail` (PDF attachment); `lib/hr-offboarding-mailer.ts` deleted (offboarding imports `sendHrMail`); `lib/letterhead-logo.ts` (cached `public/logo.png`). `joiningLetterPdf.generateJoiningLetterPdf(d, { logoBytes })`. `POST /api/admin/hr-tool/onboarding/send-offer-letter` renders the PDF server-side and returns `{sent, error?}`; `HireEmployeeButton` audit-logs the true outcome. | — |
+| 209 | 2026-09-28 | minor | Payroll: per-employee payslip PDFs in a ZIP | `components/admin/hr-tool/payslipPdf.ts`: `generateBulkPayslipPdf` removed → `generatePayslipZip` (one `PDFDocument` per employee, `jszip` DEFLATE), `singlePayslipFilename`, `triggerBlobDownload`, `pdfSafe` in the text helper (WinAnsi-only fonts). `views/Payroll.tsx`: bulk buttons → ZIP (current run + history), per-row payslip button in the current run. | — |
+| 210 | 2026-09-29 | minor | Events Tracker: saving an event no longer resets filters (§9 #13) | `src/app/(admin)/layout.tsx` `isSpecialPath` now also excludes `/api/admin/partnership-events`. Every non-GET there (save/create PUT/POST, delete, bulk, import, follow-up notes) used to trigger the layout's 150 ms `router.refresh()` + `contentRefreshKey` remount, which reset `partnership-tracker/page.tsx`'s client state (search, status/type/listing filters, card/month filter, sort, page) back to the unfiltered tracker. The page already refreshes itself after each write (`loadEvents()` / `setEvents`), and it is the only caller of that API. | — |
+| 211 | 2026-09-29 | medium | HR Tool: admin keeps their place after every save (§7.5, §9 #13) | Review of all 13 HR views; the layout remount was already excluded for `/api/admin/hr-tool`, so the fixes are inside the module. `HrToolContext.tsx`: view mirrored to `?section=<view>` via `history.replaceState` (read first, then sessionStorage; synced by an effect on `state.view`). `Directory.tsx`: profile stays mounted under CTC split / credential / KYC reject / start-exit dialogs (dialogs rendered after it, same z-index); `saveEdit` stays in edit mode with a 'Saved ✓' flash; probation confirm/extend no longer close the profile; missing `kycDocuments` slot guarded. `HireEmployeeButton` `onHired(id)` → Directory opens the new profile. `Rules.tsx`: the rules-draft resync only re-seeds keys whose saved value changed (CTC save no longer wipes other sections' drafts). `Offboarding.tsx`: `CaseModalBody` no longer keyed on `updatedAt` (it re-seeds lwd/notice/waived/access/note on `updatedAt` change during render); `onOpenCaseChanged` moves `tab` to `tabForCase()`. `AttendanceCalendar.tsx` day modal stays open with a result note. `Payroll.tsx` `loadPayroll(signal, silent)` after a run and drops that month's `historyCache`. `src/hooks/useEscapeKey.ts`: module-level stack, only the most recent enabled handler fires; `onClose` held in a ref so re-renders don't reorder (affects every caller). | v78 |
+| 212 | 2026-09-29 | medium | Country + City mandatory on all Sales Tracker lead pages; lead window read-only until Edit (§6.6) | `lead-forms/shared/validation.ts` `validateCountry`/`validateCity` on canonical steps 2 and 5; `DetailsContactStep`, `ChapterDetails`, `SourceStep` wire errors/blur; `FundingRoundPage.FIELD_VALIDATORS` + `ReviewStep.LOCATION_CHECKS`; `sponsor-event/validation.validateLocation` requires both halves. Server: `country`/`city` required in feature-startup, funding-round, press-release and sponsor-event `normalizeSubmissionInput`. Admin: `LeadFormModal` view/edit mode (`startEditing`, disabled fieldset, `cancelEdit`); `LeadsTable` View + Edit buttons, `StatusSelect` → read-only `StatusBadge`; `updateLeadField` removed. | v79 |
+| 213 | 2026-09-29 | medium | My Leads: clickable read-only lead view + employee follow-ups with status, shown to admin (§4, §5, §6.12, §9 #24) | New table `sales_lead_followups` (migration `add-sales-lead-followups.sql`); new module `lead-followups` (`buildLeadSubmission` reads the original page submission, follow-up add = INSERT + author status UPDATE in one tx). `ASSIGNMENT_STATUS_OPTIONS` += contacted/interested/not-interested/closed (+ tones, `PICKABLE_ASSIGNMENT_STATUSES`, `assignmentStatusChipClass`, `ASSIGNMENT_STATUS_COLORS`). `AssignedLead` += `followUpCount`, `lastFollowUpAt`; `LeadAssignment.followUpCount`. Routes: employee `leads/[source]/[id]` (+`/follow-ups`), admin `my-leads/[source]/[id]` (+`/follow-ups`), `sales-tracker/follow-ups`. UI: `MyLeadsPage` (Followed up KPI, clickable rows, status chips, Last follow-up column), new `LeadDetailDrawer.tsx`, new `FollowUpsPanel.tsx` in `LeadFormModal` + `EnsEnquiryDetailModal`, `LeadsTable` Assigned cell count. `sales-tracker.repository` delete cascades follow-ups; `/api/admin/my-leads` added to admin layout `isSpecialPath`. | v80 |
+| 214 | 2026-09-29 | minor | Sales Tracker lead window: Event details section only for Sponsor an Event leads (supersedes row 161's "always renders, locked") | `LeadFormModal.tsx`: the Event title / slug / date / time / external URL / poster / description rows render only when `lead.type === 'Sponsor Event Page Leads'` (`isSponsor`); every other lead (other page leads, manual leads, new leads) no longer shows the greyed-out section. `lock.event` removed. | — |
+| 215 | 2026-09-29 | minor | My Leads list table restyled (§6.12) | `MyLeadsPage.tsx` rows: columns now Lead (initials avatar + name + company, truncated) · Page (+ "Arrived") · Contact (email truncated with `title`, no more `break-all`) · Location (city / country on two lines) · Assigned (date + by) · Follow-ups (count pill + "Last" date) · Status · open chevron; all headers `whitespace-nowrap`, rows `align-middle`. The per-row query text (the pages' auto "… form submission.") is no longer shown in the list — it stays in the lead window. Tailwind only. | — |
+| 216 | 2026-09-29 | medium | My Leads KPI cards: per page "pending + followed up / total", red blink on pending, filter = open leads (§6.12) | `MyLeadsPage.tsx`: `stageOf` (pending / followed / finished), cards only per page (+ "Added manually" when present), "All my leads" and "Followed up" cards removed; `alert` cards get `border-red-400` + pulsing `bg-red-100` overlay and dot; page filter now `pageKey === filter && stage !== 'finished'`; grid `xl:grid-cols-5`/`6` by card count; heading "<Page> — pending & followed up". Phone swipe row kept. | v81 |
+| 217 | 2026-09-29 | minor | My Leads KPI number: single "(pending + followed) / total" (§6.12) | `MyLeadsPage.tsx` card shows the sum over the total (red while any pending, green when only followed up) and a "N pending · N followed up" line; the separate "+" numbers and Pending/Followed up/Total labels removed. | — |
+| 218 | 2026-09-29 | minor | Employee layout: `/employee/leads` gets full content width | `src/app/employee/layout.tsx` `wideContent` now also matches `/employee/leads` (was only `/employee/it-tickets`), so `<main>` drops `md:max-w-[1100px]` and My Leads' cards + table fill the space beside the sidebar. `/admin/my-leads` unaffected (admin layout). | — |
+| 219 | 2026-09-29 | medium | One shared lead status (Pending / Follow Up / Confirmed / Not Interested) for Sales Tracker + My Leads (§6.12, §9 #25) | `ASSIGNMENT_STATUS_OPTIONS` rewritten (4 values with label, tone, ENS code) + `SALES_LEAD_STATUS_LABELS`, `FINISHED_LEAD_STATUSES`, `statusFromSalesLead`, `statusFromEns`, `ensCodeFor`; admin `constants.ts` `STATUSES`/`STATUS_COLORS` derived from it (`SUMMARY_STATUSES`/`STATUS_TO_SUMMARY` removed, `isOpenStatusLabel`); `SummaryCard` (metrics + pending = status Pending, new `ensPendingCount` prop), `PageLeadsKpis`, `LeadsTable` (`statusLabelOf`, ENS rows in status filter/badge); ENS `NO_STATUS_LABEL` = "Pending", options reordered. Follow-ups: repository `add` updates `sales_leads.status` / `ens_travel_enquiries.lead_status`; `findLeadStatusRaw`; `LeadDetail.myStatus` → `leadStatus`; `findForEmployee` reads the lead's status. Per-person status chips removed (drawer, FollowUpsPanel). Page mappers + `emptyLead` default `'Pending'`. Migration `unify-sales-lead-status.sql` (reset). | v82 |
+| 220 | 2026-09-29 | medium | My Leads: "Lead Status" summary card (§6.12) | `MyLeadsPage.tsx`: first card lists the four shared statuses as "count / total" across all pages (`STATUS_ROW` wording/colours, `statusCounts`); `aria-pressed` when no page filter; click → `setFilter('')` (all leads incl. Confirmed / Not Interested). Grid columns +1. | v83 |
+| 221 | 2026-09-29 | medium | My Leads: Lead Status card moved last + table "Lead Status" filter (§6.12) | `MyLeadsPage.tsx`: card order page cards → Lead Status; new `statusFilter` `<select>` (All statuses / Pending / Followed up / Confirmed / Not Interested) in the table header, combined with the card filter as above; `tableTitle` names page + status; empty-state text per case; "Show all" resets both. | v84 |
+| 222 | 2026-09-29 | minor | Sales Tracker exports include every row the table shows | `LeadsTable.tsx` passes `filteredRows` (was `exportableLeads`, sales_leads only) and `assignmentFor(row)` keyed by source; `exports.ts` takes `UnifiedLeadRow[]`, PDF `columnStyles` by header name (`WIDE_PDF_COLUMNS`); `utils.leadExportRow(row, assignment)` handles ENS rows and adds Follow-ups, Participation, Referred By, How They Found Us columns. Hint text under the buttons updated. Verified on dev data: 10 table rows (8 + 2 ENS) → 10 Excel rows. | — |
+| 214 | 2026-09-29 | minor | `/expand-north-star` Easy Knowledge Club referral logo → v2 | `media.ts` `ENS_REFERRAL_LOGOS["easy-knowledge-club"]` now `referral-easy-knowledge-club-v2.jpg` (new S3 key, CDN-cache-safe); old `.png` key orphaned; local `public/images/expand-north-star/` removed. | — |
+| 215 | 2026-09-29 | minor | `/expand-north-star` Venture Wolf referral logo → v2 | `media.ts` `ENS_REFERRAL_LOGOS["venture-wolf"]` now `referral-venture-wolf-v2.png` (new S3 key, CDN-cache-safe); old `.jpg` key orphaned; local `public/images/expand-north-star/` removed. | — |
+| 216 | 2026-09-29 | medium | Mobile-responsive staff panels, phase 1: employee frame + self-service widgets (§5 Employee, §7.5) | New scoped sheet `src/components/admin/staff-panel-tailwind.css`, imported by `employee/layout.tsx` and `(admin)/layout.tsx`. `employee/layout.tsx` is rewritten in Tailwind: sidebar from `md` up; below `md`, a sticky top bar, an off-canvas drawer (state derived from `drawerPath === pathname`) and a bottom tab bar. The following are converted from inline styles to Tailwind: `AttendanceWidget` (Today card with 48px punch buttons driven by `data.today`; a day-details card for non-today dates; a square-cell 7-column calendar on phones), `LeaveWidget` (cards below `md`, table from `md`), `KycDocumentsWidget` (field grid stacks, filename truncates, 44px buttons), `ProfileProgressStrip`, and the headings on the employee attendance / leave / documents pages. `PunchOutTimeInput` gains a `selectClassName` prop. `ExitWidget` stepper is vertical below `sm`. `MyLeadsPage` gets a swipeable KPI row and a card list below `md`. IT Tickets `FilterBar` selects are fluid below `sm`, and `KanbanBoard` columns are 82vw snap columns on phones. `ScrollButtons` / `InstallPWA` / `AuthModal` are suppressed on `/employee` (and `InstallPWA` also on `/admin`). Admin shell, HR tool, Events and Publish are phases 2–4. | v81 |
+| 217 | 2026-09-29 | minor | Staff panels: the five scoped Tailwind sheets merged into one (§5, §7.5, §9 #5) | Bug found on `/employee/leads` after the row 216 build: the sidebar and the phone top bar were both missing on desktop. The layout's `staff-panel-tailwind.css` loaded first and the route's `my-leads-tailwind.css` second, so its unlayered `.hidden{display:none}` came after `.md\:flex` (same specificity), and likewise for `.flex` vs `.md\:hidden`. Fix: `staff-panel-tailwind.css` now `@source`s every staff-panel Tailwind file and carries the `.it-tickets-scope` block. Deleted `it-tickets-tailwind.css`, `rules-policy-tailwind.css`, `my-leads-tailwind.css`, `offboarding-tailwind.css` and the nine import-only layouts (`employee/{it-tickets,rules-policy,exit,leads}/layout.tsx`, `(admin)/admin/{hr-tool,it-tickets,my-exit,rules-policy,my-leads}/layout.tsx`). The sheet now loads on every admin page. The utility names it generates were checked against className literals in non-Tailwind admin files: only HR-tool semantic `grid`/`flex`/`block` (same display, and `.hr-tool-app`-scoped rules outrank them) and the reports / brand-stories edit loading states (already written with Tailwind classes, now actually styled) match. The compile check emits every class. Stale `.next/types` for the deleted layouts clear on the next build. | — |
+| 218 | 2026-09-29 | minor | `/events`: the "Other Cities" heading is hidden when it's a country's only section (§5) | `app/events/page.tsx` render: `onlyOtherCities` = the country's cities map has exactly one key and that key is `OTHER_CITIES_SECTION`. In that case `EventsCarousel` gets `title={null}`. Grouping (`groupByCountry`) and `orderByVisitorLocation` are unchanged. | — |

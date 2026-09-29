@@ -177,6 +177,7 @@ async function handleUpdateRequest(
         featured: formData.get('featured'),
         featuredImageUrl: formData.get('featuredImageUrl'),
         featuredImageSmallUrl: formData.get('featuredImageSmallUrl'),
+        imageCredit: formData.get('imageCredit'),
         publishedAt: formData.get('publishedAt'),
       };
     } else {
@@ -257,6 +258,7 @@ async function handleUpdateRequest(
       authorId: number;
       featuredImageUrl: string;
       featuredImageSmallUrl: string;
+      imageCredit: string;
       format: "standard" | "video" | "gallery";
       status: "draft" | "published" | "archived" | "scheduled";
       featured: boolean;
@@ -270,6 +272,7 @@ async function handleUpdateRequest(
     if (body.metaDescription !== undefined) updateData.metaDescription = String(body.metaDescription).trim().slice(0, 160);
     if (body.robots != null) updateData.robots = String(body.robots).trim() || 'index,follow';
     if (body.contentFollow != null) updateData.contentFollow = String(body.contentFollow).trim() || 'nofollow';
+    if (body.imageCredit != null) updateData.imageCredit = String(body.imageCredit).trim().slice(0, 255);
     if (body.content !== undefined) updateData.content = String(body.content);
     if (body.categoryId !== undefined) updateData.categoryId = parseInt(String(body.categoryId), 10);
     if (auth.user.role === 'event_admin' && pressReleaseCategoryId != null) {

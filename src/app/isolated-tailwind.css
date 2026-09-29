@@ -39,6 +39,9 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
 @source "./careers/page.tsx";
 @source "../components/user/DashboardHome.tsx";
 @source "../components/user/UserDashboardLayout.tsx";
+@source "../components/EventsLocationBar.tsx";
+@source "../components/expand-north-star/DelegationBenefits.tsx";
+@source "../components/expand-north-star/SectionNav.tsx";
 
 @theme {
   /* About Us page tokens */
@@ -87,4 +90,20 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   --color-db-bg: #f7f6fa;
   --color-db-card: #ffffff;
   --color-db-panel: #fcfbfe;
+  --font-db: var(--font-schibsted), "Helvetica Neue", Arial, sans-serif;
+  /* Sidebar only — Helvetica, per request; the page content keeps --font-db. */
+  --font-db-nav: "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* Expand North Star — "Benefits of Joining the Delegation" (DelegationBenefits.tsx): the cream
+     founders card, the navy enablers card and the gold that highlights both. */
+  --color-ens-cream: #F5F0E7;
+  --color-ens-cream-line: #EADFCB;
+  --color-ens-navy: #0E1A33;
+  --color-ens-navy-2: #17294F;
+  --color-ens-gold: #C9963E;
+  --color-ens-gold-soft: #E0B866;
+  --color-ens-ink: #0F1626;
+  --color-ens-slate: #5A6070;
+  /* The page's own magenta (expand-north-star.css --ens-pink), for SectionNav. */
+  --color-ens-pink: #E4157C;
 }

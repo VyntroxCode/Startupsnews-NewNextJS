@@ -289,7 +289,7 @@ export interface OfferLetterData {
   employeeName: string;
   employeeCode: string;
   /** Their portal login password — included in the letter since, for now, this is the only
-   * place a new hire actually receives it (see HireEmployeeButton's dummy email send). */
+   * place a new hire actually receives it (it is emailed to them as the offer letter — see api/admin/hr-tool/onboarding/send-offer-letter). */
   password: string;
   designation: string;
   team: string;

@@ -98,6 +98,9 @@ function TemplateEditorModal({ type, onClose, onSaved }: { type: string; onClose
   const [content, setContent] = useState(state.templates[type]?.content || '');
   const [preview, setPreview] = useState<string | null>(null);
   const extraTags = type === 'Employment Agreement' ? ', {{basic}}, {{hra}}, {{convenience}}, {{allowances}}' : '';
+  // Offboarding letters are merged server-side (modules/hr-offboarding/utils/letters.ts) with their own tag set;
+  // an unknown tag there blocks issuing, so list exactly what works.
+  const offboardingLetter = type === 'Relieving Letter' || type === 'Experience Letter';
 
   async function handleDocxUpload(file: File) {
     const reader = new FileReader();
@@ -125,7 +128,9 @@ function TemplateEditorModal({ type, onClose, onSaved }: { type: string; onClose
       { label: 'Cancel', cls: 'btn', onClick: onClose },
       { label: 'Save draft', cls: 'btn primary', onClick: save },
     ]}>
-      <div className="notice info">Merge tags available: {'{{employee_name}}, {{designation}}, {{team}}, {{doj}}, {{ctc}}' + extraTags}. They auto-fill when the document is generated.</div>
+      <div className="notice info">Merge tags available: {offboardingLetter
+        ? '{{employee_name}}, {{employee_id}}, {{designation}}, {{team}}, {{doj}}, {{lwd}}, {{tenure}}, {{today}}, {{company_name}}, {{brand}}. Leave the template empty to use the standard wording.'
+        : '{{employee_name}}, {{designation}}, {{team}}, {{doj}}, {{ctc}}' + extraTags}. They auto-fill when the document is generated.</div>
       <div className="field"><label className="field-label">Upload a Word document (.docx) to pull its text in — or just type/paste below</label>
         <input type="file" accept=".docx" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDocxUpload(f); }} />
       </div>

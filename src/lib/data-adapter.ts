@@ -39,6 +39,7 @@ export interface Post {
   metaDescription?: string;
   robots?: string | null;
   contentFollow?: string | null;
+  imageCredit?: string | null;
   content: string;
   category: string;
   categorySlug: string;

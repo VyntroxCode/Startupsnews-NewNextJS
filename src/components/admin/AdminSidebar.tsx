@@ -135,6 +135,14 @@ const RulesPolicyIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   </svg>
 );
 
+const ExitIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+    <polyline points="16 17 21 12 16 7"></polyline>
+    <line x1="21" y1="12" x2="9" y2="12"></line>
+  </svg>
+);
+
 const DocumentsIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -175,15 +183,17 @@ const menuItems: MenuItem[] = [
   // Events no longer has its own sidebar item — Partnership Tracker (below) is now the
   // primary entry point and links out to /admin/events, /events?tab=regions and
   // /events?tab=banners itself ("View:" row) for anyone who needs those tables directly.
-  { href: '/admin/partnership-tracker', label: 'Partnership Tracker', icon: EventsIcon },
+  { href: '/admin/partnership-tracker', label: 'Events Tracker', icon: EventsIcon },
   { href: '/admin/newsletter', label: 'Newsletter', icon: NewsletterIcon },
   { href: '/admin/sales-tracker', label: 'Sales Tracker', icon: ReportsIcon },
   { href: '/admin/it-tickets', label: 'IT Tickets', icon: TicketIcon },
   { href: '/admin/hr-tool', label: 'HR Management', icon: RegisteredUsersIcon },
+  { href: '/admin/my-leads', label: 'My Leads', icon: RegisteredUsersIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/attendance', label: 'Attendance', icon: AttendanceIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/leave', label: 'Leave', icon: LeaveIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/documents', label: 'Documents', icon: DocumentsIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/rules-policy', label: 'Admin Rules', icon: RulesPolicyIcon, roles: ['event_admin', 'publisher_admin'] },
+  { href: '/admin/my-exit', label: 'Resignation', icon: ExitIcon, roles: ['event_admin', 'publisher_admin'] },
   { href: '/admin/tools', label: 'Tools', icon: ToolsIcon },
   { href: '/admin/reports', label: 'Reports', icon: ReportsIcon },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BrandStoriesIcon },

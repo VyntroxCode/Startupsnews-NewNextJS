@@ -117,6 +117,21 @@ function addNoFollowToLinks(html: string): string {
     );
 }
 
+/** Decode the few entities an attribute value can carry, then escape for use as text. */
+function creditAttrToText(value: string): string {
+    return value
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Body images inserted with a credit in the editor carry data-credit — show it under the image, right-aligned. */
+function addContentImageCredits(html: string): string {
+    return html.replace(/<img\b[^>]*\sdata-credit\s*=\s*(["'])(.*?)\1[^>]*>/gi, (tag, _q, credit: string) => {
+        const text = creditAttrToText(credit).trim();
+        return text ? `${tag}<span class="mvp-img-credit">Source: ${text}</span>` : tag;
+    });
+}
+
 const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || 'https://startupnews.fyi';
 
 export function FullArticle({ post, related = [], prev, next }: FullArticleProps) {
@@ -129,6 +144,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
     } else {
         processedContent = addNoFollowToLinks(rawContent);
     }
+    processedContent = addContentImageCredits(processedContent);
     const postPath = `/${post.slug}`;
     const publishedIso = post.publishedAt || (post.date + 'T00:00:00+05:30');
     const updatedIso = post.updatedAt || publishedIso;
@@ -289,7 +305,11 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                         <meta itemProp="url" content={post.image} />
                                         <meta itemProp="width" content="1200" />
                                         <meta itemProp="height" content="630" />
+                                        {post.imageCredit && <meta itemProp="creditText" content={post.imageCredit} />}
                                     </div>
+                                    {post.imageCredit && (
+                                        <span className="mvp-feat-caption">Source: {post.imageCredit}</span>
+                                    )}
                                     <div id="mvp-content-wrap" className="left relative">
                                         <div className="mvp-post-soc-out right relative">
                                             <div className="mvp-post-soc-in">

@@ -266,9 +266,10 @@ export default function InstallPWA() {
   };
 
   /* ── Resolve what to actually render ───────────────────────────────── */
-  // Never over the signed-in user dashboard — it's a working surface, not a
-  // browsing one, and the card sits on top of its modals.
-  if (pathname?.startsWith("/dashboard")) return null;
+  // Never over the signed-in user dashboard or the staff panels (admin / employee) —
+  // they're working surfaces, not browsing ones, and the card sits on top of their
+  // modals and the employee panel's bottom tab bar.
+  if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin") || pathname?.startsWith("/employee")) return null;
   if (!armed || authBusy) return null;
 
   let visible: Mode = "none";

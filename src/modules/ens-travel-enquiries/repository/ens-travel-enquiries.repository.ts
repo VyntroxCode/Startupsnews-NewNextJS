@@ -28,7 +28,7 @@ export class EnsTravelEnquiriesRepository {
   /** An admin edit. `updated_at` is set here explicitly rather than by an ON UPDATE clause, so it
    * only ever records an admin change — never, say, a future maintenance script touching the row.
    * The conversation record is written as-is: the service has already blanked the note for any
-   * status other than "followed-up", and nulls a cleared status. */
+   * status other than "confirmed" or "followed-up", and nulls a cleared status. */
   async update(id: string, input: EnsTravelEnquiryAdminInput, updatedBy: string): Promise<void> {
     await query(
       `UPDATE ens_travel_enquiries

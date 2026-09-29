@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getAuthHeaders } from '@/lib/admin-auth';
+import PunchOutTimeInput from './PunchOutTimeInput';
 import { getCurrentBrowserLocation, geofenceHintFor, type BrowserLocation } from '@/lib/browser-geolocation';
 import { latenessBucket, combinedAttendanceBucket, type ShiftSettings, type LatenessBucket } from '@/modules/hr-tool/utils/lateness';
 
@@ -13,6 +14,8 @@ interface RegularizationRecord {
 }
 interface AttendanceMeData {
   linked: boolean;
+  /** Today's punch, independent of which month the calendar is showing. */
+  today?: { inTime: string | null; outTime: string | null; inMinutes: number | null; outMinutes: number | null };
   employeeCode?: string;
   name?: string;
   month?: string;
@@ -22,37 +25,16 @@ interface AttendanceMeData {
   regularizations?: RegularizationRecord[];
   regularizationPolicy?: { windowDays: number; monthlyQuota: number; usedThisMonth: number };
   /** When enabled, punch() asks the browser for a GPS fix first; the server does the actual check. */
-  geofence?: { enabled: boolean; radiusM: number; wfhToday?: boolean };
+  geofence?: { enabled: boolean; radiusM: number };
 }
 
-const cardStyle: CSSProperties = {
-  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-  padding: '2rem',
-  borderRadius: '12px',
-  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-  border: '1px solid rgba(0, 0, 0, 0.04)',
-  marginTop: '1.5rem',
-};
+const cardClass = 'rounded-xl border border-solid border-black/5 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm box-border sm:p-6 md:p-8';
 
-const thStyle: CSSProperties = {
-  textAlign: 'left', padding: '0.6rem 0.9rem', fontSize: '0.75rem', textTransform: 'uppercase',
-  letterSpacing: '0.04em', color: '#64748b', fontWeight: 600, borderBottom: '1px solid #e2e8f0',
-};
-const tdStyle: CSSProperties = { padding: '0.75rem 0.9rem', borderBottom: '1px solid #f1f5f9', color: '#0f172a' };
+const actionButtonClass = 'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border-0 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300';
+const blueButtonClass = `${actionButtonClass} bg-gradient-to-br from-blue-400 to-blue-500`;
+const secondaryButtonClass = 'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-solid border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60';
 
-function punchButtonStyle(color1: string, color2: string, disabled: boolean): CSSProperties {
-  return {
-    padding: '0.45rem 1rem',
-    background: disabled ? '#cbd5e1' : `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`,
-    color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-  };
-}
-
-const navButtonStyle: CSSProperties = {
-  width: '2rem', height: '2rem', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#fff',
-  color: '#334155', fontSize: '1.125rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
+const navButtonClass = 'flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-solid border-slate-200 bg-white text-xl text-slate-700 disabled:cursor-not-allowed disabled:opacity-35';
 
 /** Matches the DB's date-column convention already used across the HR Tool (see hr-tool's own
  * client-side todayStr()) — UTC-based, not locale/timezone-aware, kept consistent on purpose. */
@@ -82,13 +64,14 @@ function formatDateLong(dateStr: string): string {
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const BUCKET_COLORS: Record<LatenessBucket, { bg: string; border: string; text: string }> = {
-  'on-time': { bg: '#dcfce7', border: '#4ade80', text: '#166534' },
-  grace: { bg: '#fef9c3', border: '#facc15', text: '#854d0e' },
-  late: { bg: '#ffe4d5', border: '#fb923c', text: '#c2410c' },
-  'short-leave': { bg: '#ffedd5', border: '#fb923c', text: '#c2410c' },
-  'half-day': { bg: '#fed7aa', border: '#f97316', text: '#9a3412' },
-  absent: { bg: '#fee2e2', border: '#f87171', text: '#b91c1c' },
+/** Tailwind bg / border / text per bucket — the same palette the calendar has always used. */
+const BUCKET_TONE: Record<LatenessBucket, string> = {
+  'on-time': 'bg-green-100 border-green-400 text-green-800',
+  grace: 'bg-yellow-100 border-yellow-400 text-yellow-800',
+  late: 'bg-orange-100 border-orange-400 text-orange-700',
+  'short-leave': 'bg-orange-100 border-orange-400 text-orange-700',
+  'half-day': 'bg-orange-200 border-orange-500 text-orange-800',
+  absent: 'bg-red-100 border-red-400 text-red-700',
 };
 
 /** Short Leave / Half Day / Absent now carry real payroll consequences (see
@@ -101,22 +84,26 @@ const BUCKET_LABEL: Record<LatenessBucket, string> = {
 /** A date with a regularization request on file shows light blue on the calendar, overriding
  * whatever lateness color it would otherwise have — the request itself is now the more
  * relevant status for that day. */
-const REG_COLORS = { bg: '#dbeafe', border: '#60a5fa', text: '#1e40af' };
+const REG_TONE = 'bg-blue-100 border-blue-400 text-blue-800';
 const REG_STATUS_LABEL: Record<string, string> = { pending: 'Pending admin approval', approved: 'Approved', rejected: 'Rejected' };
 const REG_TYPE_LABEL: Record<'in' | 'out', string> = { in: 'Punch In', out: 'Punch Out' };
 
 /** A day on the admin's Holiday calendar (HR Management → Rules & Org Structure) — shown in
  * violet, distinct from every lateness/regularization color, on both the calendar grid and the
  * selected-date detail panel. */
-const HOLIDAY_COLORS = { bg: '#ede9fe', border: '#a78bfa', text: '#6d28d9' };
+const HOLIDAY_TONE = 'bg-violet-100 border-violet-400 text-violet-700';
 
-function LegendDot({ color, border, label }: { color: string; border: string; label: string }) {
+function LegendDot({ tone, label }: { tone: string; label: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#64748b' }}>
-      <span style={{ width: '0.85rem', height: '0.85rem', borderRadius: '3px', background: color, border: `1px solid ${border}` }} />
+    <div className="flex items-center gap-1.5 text-xs text-slate-500 sm:text-[0.8rem]">
+      <span className={`h-3 w-3 shrink-0 rounded-[3px] border border-solid ${tone}`} />
       {label}
     </div>
   );
+}
+
+function formatClock(d: Date): string {
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
 interface AttendanceWidgetProps {
@@ -128,11 +115,11 @@ interface AttendanceWidgetProps {
 
 /** Attendance card — resolves the caller's HR identity and writes into the same
  * hr_attendance/hr_punch_log tables the Founder's HR Tool Attendance view already reads.
- * Shows a date-detail table (Date/Status/Punch In/Punch Out) for whichever day is selected —
- * defaulting to today — plus a month calendar that colors each day green/orange/red by how the
- * punch-in landed against the admin-configured shift start + grace period. Clicking any day in
- * the calendar loads that day's details into the table above; punch in/out only ever apply to
- * today, so those actions only appear in the table when today is the selected day. Reused as-is
+ * A "Today" card always leads (live clock, today's punch times and full-width Punch In / Punch Out
+ * buttons — the one thing staff open this page for, sized for a thumb on a phone). Picking any
+ * other day in the month calendar below adds a "day details" card (status, punch times,
+ * regularization) for that date. The calendar colors each day green/orange/red by how the
+ * punch-in landed against the admin-configured shift start + grace period. Reused as-is
  * by both the Publisher/Event Admin dashboard (default props) and the plain employee dashboard
  * (apiBase="/api/employee/attendance", getHeaders=getEmployeeAuthHeaders). */
 export default function AttendanceWidget({ apiBase = '/api/admin/attendance', getHeaders = getAuthHeaders }: AttendanceWidgetProps) {
@@ -152,6 +139,12 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const [regTime, setRegTime] = useState('');
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [regError, setRegError] = useState('');
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const load = async (month: string) => {
     setLoading(true);
@@ -276,17 +269,17 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
 
   if (loading && !data) {
     return (
-      <div style={cardStyle}>
-        <p style={{ color: '#64748b', margin: 0 }}>Loading attendance…</p>
+      <div className={`${cardClass} mt-4 md:mt-6`}>
+        <p className="m-0 text-slate-500">Loading attendance…</p>
       </div>
     );
   }
 
   if (!data?.linked) {
     return (
-      <div style={cardStyle}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.01em' }}>Attendance</h2>
-        <p style={{ color: '#64748b', fontSize: '0.9375rem', margin: 0 }}>
+      <div className={`${cardClass} mt-4 md:mt-6`}>
+        <h2 className="m-0 mb-2 text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">Attendance</h2>
+        <p className="m-0 text-[0.9375rem] text-slate-500">
           No Employee ID has been assigned to your account yet. Ask your Founder to assign one under HR Management → Assigning IDs to start marking attendance.
         </p>
       </div>
@@ -320,177 +313,244 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
     && (!hasIn || (!!selectedTimeBucket && selectedTimeBucket !== 'on-time'));
   const canRequestOutRegularization = !selectedRegOut && !isSelectedToday && !isSelectedFuture && !hasOut;
 
+  // Today's punch comes from the API's own `today` block, so the Today card stays right even while
+  // the calendar is showing an earlier month (whose `calendar` rows don't include today).
+  const todayRecord = calendarMap.get(today);
+  const todayIn = data.today ? data.today.inTime : (todayRecord?.inTime && todayRecord.inTime !== '—' ? todayRecord.inTime : null);
+  const todayOut = data.today ? data.today.outTime : (todayRecord?.outTime && todayRecord.outTime !== '—' ? todayRecord.outTime : null);
+  const todayInMinutes = data.today ? data.today.inMinutes : todayRecord?.inMinutes ?? null;
+  const todayOutMinutes = data.today ? data.today.outMinutes : todayRecord?.outMinutes ?? null;
+  const todayBucket = shiftRules && todayIn ? combinedAttendanceBucket(todayInMinutes, todayOutMinutes, shiftRules, false) : null;
+  const todayHoliday = holidayMap.get(today);
+
   const totalDays = daysInMonth(calendarMonth);
   const leadPad = firstWeekday(calendarMonth);
   const cells: (number | null)[] = [...Array(leadPad).fill(null), ...Array.from({ length: totalDays }, (_, i) => i + 1)];
   while (cells.length % 7 !== 0) cells.push(null);
   const canGoNext = calendarMonth < today.slice(0, 7);
 
+  const punchLabel = (type: 'in' | 'out') => (punching === type
+    ? (locating ? 'Getting your location…' : type === 'in' ? 'Punching in…' : 'Punching out…')
+    : type === 'in' ? 'Punch In' : 'Punch Out');
+
+  const regularizationBlock = (
+    <>
+      {(selectedRegIn || selectedRegOut) && (
+        <div className="mt-3 flex flex-col gap-1">
+          {selectedRegIn && (
+            <p className="m-0 text-sm font-semibold text-blue-800">
+              Punch In regularization ({selectedRegIn.requestedTime}) — {REG_STATUS_LABEL[selectedRegIn.status] || selectedRegIn.status}
+            </p>
+          )}
+          {selectedRegOut && (
+            <p className="m-0 text-sm font-semibold text-blue-800">
+              Punch Out regularization ({selectedRegOut.requestedTime}) — {REG_STATUS_LABEL[selectedRegOut.status] || selectedRegOut.status}
+            </p>
+          )}
+        </div>
+      )}
+
+      {(canRequestInRegularization || canRequestOutRegularization) && (
+        <div className="mt-4 border-t border-solid border-slate-200 pt-4">
+          {!regFormOpen ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+              {canRequestInRegularization && (
+                <button type="button" onClick={() => setRegFormOpen('in')} disabled={quotaReached} className={`${blueButtonClass} w-full sm:w-auto`}>
+                  Regularize Punch In
+                </button>
+              )}
+              {canRequestOutRegularization && (
+                <button type="button" onClick={() => setRegFormOpen('out')} disabled={quotaReached} className={`${blueButtonClass} w-full sm:w-auto`}>
+                  Regularize Punch Out
+                </button>
+              )}
+              {regPolicy && (
+                <span className="text-center text-xs text-slate-400 sm:text-left sm:text-[0.8rem]">
+                  {regPolicy.usedThisMonth} of {regPolicy.monthlyQuota} used this month
+                  {quotaReached ? ' — limit reached' : ''}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:max-w-[420px]">
+              <p className="m-0 text-sm font-semibold text-slate-700">Regularizing: {REG_TYPE_LABEL[regFormOpen]}</p>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-500">{REG_TYPE_LABEL[regFormOpen]} time</label>
+                {/* Punch Out is always PM (office closes in the evening), so no AM/PM choice. */}
+                {regFormOpen === 'out' ? (
+                  <div className="text-sm">
+                    <PunchOutTimeInput
+                      value={regTime}
+                      onChange={setRegTime}
+                      selectClassName="min-h-11 rounded-lg border border-solid border-slate-200 bg-white px-2.5 text-base sm:text-sm"
+                    />
+                  </div>
+                ) : (
+                  <input
+                    type="time"
+                    value={regTime}
+                    onChange={(e) => setRegTime(e.target.value)}
+                    className="box-border min-h-11 w-full rounded-lg border border-solid border-slate-200 bg-white px-3 text-base sm:w-auto sm:text-sm"
+                  />
+                )}
+              </div>
+              <textarea
+                value={regReason}
+                onChange={(e) => setRegReason(e.target.value)}
+                placeholder="Reason for regularization…"
+                rows={3}
+                className="box-border block w-full rounded-lg border border-solid border-slate-200 bg-white p-3 font-[inherit] text-base sm:text-sm"
+              />
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
+                <button type="button" onClick={submitRegularization} disabled={regSubmitting} className={blueButtonClass}>
+                  {regSubmitting ? 'Submitting…' : 'Submit'}
+                </button>
+                <button type="button" onClick={() => { setRegFormOpen(null); setRegReason(''); setRegTime(''); setRegError(''); }} disabled={regSubmitting} className={secondaryButtonClass}>
+                  Cancel
+                </button>
+              </div>
+              {regError && <p className="m-0 text-[0.8rem] text-red-700">{regError}</p>}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
   return (
-    <div style={cardStyle}>
-      <div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: '#0f172a', letterSpacing: '-0.01em' }}>Attendance</h2>
-        <p style={{ color: '#64748b', fontSize: '0.9375rem', margin: '0.25rem 0 0' }}>
-          {data.name} · <span style={{ fontFamily: 'monospace' }}>{data.employeeCode}</span>
-        </p>
-        {shiftRules && (
-          <p style={{ color: '#94a3b8', fontSize: '0.8125rem', margin: '0.25rem 0 0' }}>
-            Shift: {shiftRules.shiftStartTime}–{shiftRules.shiftEndTime} — set by HR
-          </p>
+    <div className="mt-4 flex flex-col gap-4 md:mt-6 md:gap-6">
+      {/* Today — punch card */}
+      <section className={cardClass}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wider text-indigo-500">Today</div>
+            <div className="mt-0.5 text-base font-semibold text-slate-900 md:text-lg">{formatDateLong(today)}</div>
+            <div className="mt-0.5 truncate text-[0.8rem] text-slate-500">
+              {data.name} · <span className="font-mono">{data.employeeCode}</span>
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-2xl font-bold tabular-nums tracking-tight text-slate-900 md:text-3xl">{formatClock(now)}</div>
+            {shiftRules && <div className="mt-0.5 text-[0.7rem] text-slate-400 md:text-xs">Shift {shiftRules.shiftStartTime}–{shiftRules.shiftEndTime}</div>}
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-solid border-slate-200 bg-white p-3">
+            <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">Punch In</div>
+            <div className={`mt-1 text-lg font-bold tabular-nums ${todayIn ? 'text-slate-900' : 'text-slate-300'}`}>{todayIn || '—'}</div>
+          </div>
+          <div className="rounded-lg border border-solid border-slate-200 bg-white p-3">
+            <div className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">Punch Out</div>
+            <div className={`mt-1 text-lg font-bold tabular-nums ${todayOut ? 'text-slate-900' : 'text-slate-300'}`}>{todayOut || '—'}</div>
+          </div>
+        </div>
+
+        {(todayBucket || todayHoliday) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {todayHoliday && <span className={`rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${HOLIDAY_TONE}`}>Holiday — {todayHoliday}</span>}
+            {todayBucket && (
+              <span className={`rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${BUCKET_TONE[todayBucket]}`}>
+                {todayBucket === 'on-time' ? '✓ ' : '⚠ '}{BUCKET_LABEL[todayBucket]}
+              </span>
+            )}
+          </div>
         )}
-        {data.geofence?.wfhToday && (
-          <p style={{ color: '#047857', fontSize: '0.8125rem', margin: '0.25rem 0 0', fontWeight: 600 }}>
-            🏠 Work From Home today — already marked as a full day ({shiftRules?.shiftStartTime} – {shiftRules?.shiftEndTime}). No need to punch.
-          </p>
+
+        {todayIn && todayOut ? (
+          <p className="m-0 mt-4 rounded-lg bg-green-50 px-3 py-3 text-center text-sm font-semibold text-green-800">✓ You&apos;re done for today</p>
+        ) : (
+          <div className={`mt-4 grid gap-2 sm:gap-3 ${!todayIn && !todayOut ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:max-w-xs'}`}>
+            {!todayIn && (
+              <button type="button" onClick={() => punch('in')} disabled={punching !== null} className={`${actionButtonClass} min-h-12 w-full bg-gradient-to-br from-green-500 to-green-600 text-base shadow-sm`}>
+                ⏱ {punchLabel('in')}
+              </button>
+            )}
+            {!todayOut && (
+              <button
+                type="button"
+                onClick={() => punch('out')}
+                disabled={punching !== null}
+                className={todayIn
+                  ? `${actionButtonClass} min-h-12 w-full bg-gradient-to-br from-red-400 to-red-500 text-base shadow-sm`
+                  : `${secondaryButtonClass} min-h-12 w-full text-base text-red-600`}
+              >
+                ⏱ {punchLabel('out')}
+              </button>
+            )}
+          </div>
         )}
-        {data.geofence?.enabled && !data.geofence.wfhToday && (
-          <p style={{ color: '#94a3b8', fontSize: '0.8125rem', margin: '0.25rem 0 0' }}>
+
+        {data.geofence?.enabled && (
+          <p className="m-0 mt-3 text-xs text-slate-400">
             📍 Punch In / Punch Out only within {data.geofence.radiusM} m of the office — your browser will ask for your location.
           </p>
         )}
-      </div>
+        {note && <p className="m-0 mt-3 text-sm text-amber-700">{note}</p>}
+        {error && <p className="m-0 mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && errorHint && <p className="m-0 mt-1 text-[0.8rem] text-slate-500">{errorHint}</p>}
 
-      {note && <p style={{ color: '#b45309', fontSize: '0.85rem', margin: '1rem 0 0' }}>{note}</p>}
-      {error && <p style={{ color: '#b91c1c', fontSize: '0.85rem', margin: '1rem 0 0' }}>{error}</p>}
-      {error && errorHint && <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.25rem 0 0' }}>{errorHint}</p>}
+        {isSelectedToday && regularizationBlock}
+      </section>
 
-      {/* Selected-date detail table */}
-      <div style={{ marginTop: '1.5rem' }}>
-        <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#334155', marginBottom: '0.5rem' }}>
-          {formatDateLong(selectedDate)}{isSelectedToday ? ' · Today' : ''}
-        </h3>
-        <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                <th style={thStyle}>Date</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Punch In</th>
-                <th style={thStyle}>Punch Out</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={tdStyle}>{selectedDate}</td>
-                <td style={tdStyle}>{rowStatus}</td>
-                <td style={tdStyle}>
-                  {hasIn ? selectedRecord?.inTime : isSelectedToday ? (
-                    <button type="button" onClick={() => punch('in')} disabled={punching !== null} style={punchButtonStyle('#48bb78', '#38a169', punching !== null)}>
-                      {punching === 'in' ? (locating ? 'Getting your location…' : 'Punching in…') : '⏱ Punch In'}
-                    </button>
-                  ) : <span style={{ color: '#94a3b8' }}>—</span>}
-                </td>
-                <td style={tdStyle}>
-                  {hasOut ? selectedRecord?.outTime : isSelectedToday ? (
-                    <button type="button" onClick={() => punch('out')} disabled={punching !== null} style={punchButtonStyle('#f56565', '#e53e3e', punching !== null)}>
-                      {punching === 'out' ? (locating ? 'Getting your location…' : 'Punching out…') : '⏱ Punch Out'}
-                    </button>
-                  ) : <span style={{ color: '#94a3b8' }}>—</span>}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        {selectedBucket && (
-          <p style={{ fontWeight: 600, color: BUCKET_COLORS[selectedBucket].text, fontSize: '0.85rem', margin: '0.5rem 0 0' }}>
-            {selectedBucket === 'on-time' ? '✓ ' : '⚠ '}{BUCKET_LABEL[selectedBucket]}
-          </p>
-        )}
-
-        {(selectedRegIn || selectedRegOut) && (
-          <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            {selectedRegIn && (
-              <p style={{ fontWeight: 600, color: REG_COLORS.text, fontSize: '0.85rem', margin: 0 }}>
-                Punch In regularization ({selectedRegIn.requestedTime}) — {REG_STATUS_LABEL[selectedRegIn.status] || selectedRegIn.status}
-              </p>
-            )}
-            {selectedRegOut && (
-              <p style={{ fontWeight: 600, color: REG_COLORS.text, fontSize: '0.85rem', margin: 0 }}>
-                Punch Out regularization ({selectedRegOut.requestedTime}) — {REG_STATUS_LABEL[selectedRegOut.status] || selectedRegOut.status}
-              </p>
-            )}
+      {/* Selected-day details (any day other than today, picked from the calendar) */}
+      {!isSelectedToday && (
+        <section className={cardClass}>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="m-0 text-[0.9375rem] font-semibold text-slate-700">{formatDateLong(selectedDate)}</h3>
+            <button type="button" onClick={() => selectDate(today)} className="min-h-9 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent px-2 text-sm font-semibold text-indigo-600">
+              Back to today
+            </button>
           </div>
-        )}
-
-        {(canRequestInRegularization || canRequestOutRegularization) && (
-          <div style={{ marginTop: '0.75rem' }}>
-            {!regFormOpen ? (
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                {canRequestInRegularization && (
-                  <button type="button" onClick={() => setRegFormOpen('in')} disabled={quotaReached} style={punchButtonStyle('#60a5fa', '#3b82f6', quotaReached)}>
-                    Regularize Punch In
-                  </button>
-                )}
-                {canRequestOutRegularization && (
-                  <button type="button" onClick={() => setRegFormOpen('out')} disabled={quotaReached} style={punchButtonStyle('#60a5fa', '#3b82f6', quotaReached)}>
-                    Regularize Punch Out
-                  </button>
-                )}
-                {regPolicy && (
-                  <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
-                    {regPolicy.usedThisMonth} of {regPolicy.monthlyQuota} used this month
-                    {quotaReached ? ' — limit reached' : ''}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div>
-                <p style={{ fontWeight: 600, color: '#334155', fontSize: '0.85rem', margin: '0 0 0.5rem' }}>
-                  Regularizing: {REG_TYPE_LABEL[regFormOpen]}
-                </p>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>
-                  {REG_TYPE_LABEL[regFormOpen]} time
-                </label>
-                <input
-                  type="time"
-                  value={regTime}
-                  onChange={(e) => setRegTime(e.target.value)}
-                  style={{ borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.5rem 0.6rem', fontSize: '0.875rem', fontFamily: 'inherit', marginBottom: '0.5rem' }}
-                />
-                <textarea
-                  value={regReason}
-                  onChange={(e) => setRegReason(e.target.value)}
-                  placeholder="Reason for regularization…"
-                  rows={3}
-                  style={{ width: '100%', maxWidth: 420, boxSizing: 'border-box', display: 'block', borderRadius: 8, border: '1px solid #e2e8f0', padding: '0.6rem', fontSize: '0.875rem', fontFamily: 'inherit' }}
-                />
-                <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.5rem' }}>
-                  <button type="button" onClick={submitRegularization} disabled={regSubmitting} style={punchButtonStyle('#60a5fa', '#3b82f6', regSubmitting)}>
-                    {regSubmitting ? 'Submitting…' : 'Submit'}
-                  </button>
-                  <button type="button" onClick={() => { setRegFormOpen(null); setRegReason(''); setRegTime(''); setRegError(''); }} disabled={regSubmitting} style={{ padding: '0.45rem 1rem', background: '#fff', color: '#334155', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
-                    Cancel
-                  </button>
-                </div>
-                {regError && <p style={{ color: '#b91c1c', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>{regError}</p>}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          <dl className="m-0 mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="col-span-2 rounded-lg border border-solid border-slate-200 bg-white p-3 md:col-span-1">
+              <dt className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">Date</dt>
+              <dd className="m-0 mt-1 text-sm font-semibold text-slate-900">{selectedDate}</dd>
+            </div>
+            <div className="col-span-2 rounded-lg border border-solid border-slate-200 bg-white p-3 md:col-span-1">
+              <dt className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">Status</dt>
+              <dd className="m-0 mt-1 text-sm font-semibold text-slate-900">{rowStatus}</dd>
+            </div>
+            <div className="rounded-lg border border-solid border-slate-200 bg-white p-3">
+              <dt className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">Punch In</dt>
+              <dd className="m-0 mt-1 text-sm font-semibold tabular-nums text-slate-900">{hasIn ? selectedRecord?.inTime : '—'}</dd>
+            </div>
+            <div className="rounded-lg border border-solid border-slate-200 bg-white p-3">
+              <dt className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">Punch Out</dt>
+              <dd className="m-0 mt-1 text-sm font-semibold tabular-nums text-slate-900">{hasOut ? selectedRecord?.outTime : '—'}</dd>
+            </div>
+          </dl>
+          {selectedBucket && (
+            <span className={`mt-3 inline-block rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${BUCKET_TONE[selectedBucket]}`}>
+              {selectedBucket === 'on-time' ? '✓ ' : '⚠ '}{BUCKET_LABEL[selectedBucket]}
+            </span>
+          )}
+          {regularizationBlock}
+        </section>
+      )}
 
       {/* Month calendar */}
-      <div style={{ marginTop: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-          <button type="button" onClick={() => changeMonth(-1)} style={navButtonStyle} aria-label="Previous month">‹</button>
-          <h3 style={{ fontSize: '1.0625rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>{monthLabel(calendarMonth)}</h3>
+      <section className={cardClass}>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <button type="button" onClick={() => changeMonth(-1)} className={navButtonClass} aria-label="Previous month">‹</button>
+          <h3 className="m-0 text-base font-semibold text-slate-900 md:text-[1.0625rem]">{monthLabel(calendarMonth)}</h3>
           <button
             type="button"
             onClick={() => canGoNext && changeMonth(1)}
             disabled={!canGoNext}
             aria-label="Next month"
-            style={{ ...navButtonStyle, opacity: canGoNext ? 1 : 0.35, cursor: canGoNext ? 'pointer' : 'not-allowed' }}
+            className={navButtonClass}
           >
             ›
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.4rem', marginBottom: '0.4rem' }}>
+        <div className="mb-1 grid grid-cols-7 gap-1 sm:gap-1.5">
           {WEEKDAY_LABELS.map((w) => (
-            <div key={w} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>{w}</div>
+            <div key={w} className="text-center text-[0.65rem] font-semibold uppercase text-slate-400 sm:text-xs">{w}</div>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.4rem' }}>
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
           {cells.map((day, idx) => {
             if (day === null) return <div key={`pad-${idx}`} />;
             const dateStr = `${calendarMonth}-${String(day).padStart(2, '0')}`;
@@ -501,7 +561,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             // Regularization is the most actionable status, so it still wins if a request happens
             // to land on a holiday; otherwise a holiday must win over the plain attendance bucket,
             // since no punch on a non-working day would otherwise render as a false "Absent".
-            const colors = isRegularized ? REG_COLORS : holidayName ? HOLIDAY_COLORS : bucket ? BUCKET_COLORS[bucket] : null;
+            const tone = isRegularized ? REG_TONE : holidayName ? HOLIDAY_TONE : bucket ? BUCKET_TONE[bucket] : 'bg-white border-slate-200 text-slate-700';
             const isSelected = dateStr === selectedDate;
             const isToday = dateStr === today;
             return (
@@ -510,41 +570,28 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                 key={dateStr}
                 onClick={() => selectDate(dateStr)}
                 title={holidayName}
-                style={{
-                  minHeight: '3.75rem',
-                  borderRadius: '8px',
-                  border: isSelected ? '2px solid #334155' : `1px solid ${colors ? colors.border : '#e2e8f0'}`,
-                  background: colors ? colors.bg : '#fff',
-                  color: colors ? colors.text : '#334155',
-                  fontWeight: isToday ? 700 : 500,
-                  fontSize: '0.9375rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.15rem',
-                  padding: '0.4rem',
-                }}
+                aria-pressed={isSelected}
+                className={`relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-solid p-0 text-sm sm:aspect-auto sm:min-h-[3.75rem] sm:p-1.5 sm:text-[0.9375rem] ${tone} ${isToday ? 'font-bold' : 'font-medium'} ${isSelected ? 'ring-2 ring-slate-700 ring-offset-1' : ''}`}
               >
                 <span>{day}</span>
-                {isToday && <span style={{ fontSize: '0.625rem', fontWeight: 600 }}>Today</span>}
-                {!isToday && holidayName && <span style={{ fontSize: '0.625rem', fontWeight: 600 }}>Holiday</span>}
+                {isToday && <span className="hidden text-[0.625rem] font-semibold sm:block">Today</span>}
+                {!isToday && holidayName && <span className="hidden text-[0.625rem] font-semibold sm:block">Holiday</span>}
+                {isToday && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-current sm:hidden" aria-hidden="true" />}
               </button>
             );
           })}
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <LegendDot color={HOLIDAY_COLORS.bg} border={HOLIDAY_COLORS.border} label="Holiday" />
-          <LegendDot color={BUCKET_COLORS['on-time'].bg} border={BUCKET_COLORS['on-time'].border} label={BUCKET_LABEL['on-time']} />
-          <LegendDot color={BUCKET_COLORS.grace.bg} border={BUCKET_COLORS.grace.border} label={BUCKET_LABEL.grace} />
-          <LegendDot color={BUCKET_COLORS['short-leave'].bg} border={BUCKET_COLORS['short-leave'].border} label={BUCKET_LABEL['short-leave']} />
-          <LegendDot color={BUCKET_COLORS['half-day'].bg} border={BUCKET_COLORS['half-day'].border} label={BUCKET_LABEL['half-day']} />
-          <LegendDot color={BUCKET_COLORS.absent.bg} border={BUCKET_COLORS.absent.border} label={BUCKET_LABEL.absent} />
-          <LegendDot color={REG_COLORS.bg} border={REG_COLORS.border} label="Regularization requested" />
+        <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 sm:flex sm:flex-wrap sm:gap-4">
+          <LegendDot tone={HOLIDAY_TONE} label="Holiday" />
+          <LegendDot tone={BUCKET_TONE['on-time']} label={BUCKET_LABEL['on-time']} />
+          <LegendDot tone={BUCKET_TONE.grace} label={BUCKET_LABEL.grace} />
+          <LegendDot tone={BUCKET_TONE['short-leave']} label={BUCKET_LABEL['short-leave']} />
+          <LegendDot tone={BUCKET_TONE['half-day']} label={BUCKET_LABEL['half-day']} />
+          <LegendDot tone={BUCKET_TONE.absent} label={BUCKET_LABEL.absent} />
+          <LegendDot tone={REG_TONE} label="Regularization requested" />
         </div>
-      </div>
+      </section>
     </div>
   );
 }

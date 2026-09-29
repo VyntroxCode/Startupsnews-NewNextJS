@@ -48,7 +48,8 @@ export default function AdminLoginPage() {
 
       if (data.data?.accountType === 'employee') {
         setEmployeeSession(data.data.token, data.data.user);
-        router.push('/employee/attendance');
+        // Past their last working day, an employee only has the read-only My Exit page.
+        router.push(data.data.user?.alumni ? '/employee/exit' : '/employee/attendance');
         return;
       }
 

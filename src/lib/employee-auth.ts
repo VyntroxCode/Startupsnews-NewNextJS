@@ -7,6 +7,8 @@
 export interface EmployeeUser {
   name: string;
   employeeCode: string;
+  /** Past their last working day (offboarding) — the portal shows only My Exit. */
+  alumni?: boolean;
 }
 
 const EMPLOYEE_TOKEN_KEY = 'employee_token';

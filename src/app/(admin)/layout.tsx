@@ -15,6 +15,9 @@ import { isPathAllowed, defaultPathForRole } from '@/lib/admin-role-access';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import { clearAllAdminApiCache } from '@/hooks/useAdminData';
+// The self-service widgets (Attendance / Leave / KYC Documents / profile strip) are Tailwind-styled
+// and also render inside this shell (/admin, /admin/attendance, /admin/leave, /admin/documents).
+import '@/components/admin/staff-panel-tailwind.css';
 
 const ADMIN_DATA_UPDATED_EVENT = 'admin:data-updated';
 
@@ -178,13 +181,20 @@ export default function AdminLayout({
       // sales-tracker/ens-enquiries is excluded for the same reason: its detail dialog saves an edit
       // and then shows the saved record with its new "Last updated" date; the blanket remount would
       // close the dialog ~150ms after the save and throw that away. The card updates its own row.
+      // partnership-events (the Events Tracker) is excluded for the same reason: every write there
+      // (save, delete, bulk delete, import, follow-up note) already reloads or patches its own rows,
+      // and the remount wiped the search box, filters, card/month selection, sort and page, so a
+      // save dropped the admin back on the unfiltered tracker instead of where they were editing.
       const isSpecialPath = requestUrl.includes('/api/admin/upload') ||
                             requestUrl.includes('/api/admin/presign') ||
                             requestUrl.includes('/api/admin/auth/') ||
                             requestUrl.includes('/api/admin/media/ingest') ||
                             requestUrl.includes('/api/admin/hr-tool') ||
                             requestUrl.includes('/api/admin/it-tickets') ||
-                            requestUrl.includes('/api/admin/sales-tracker/ens-enquiries');
+                            requestUrl.includes('/api/admin/sales-tracker/ens-enquiries') ||
+                            requestUrl.includes('/api/admin/sales-tracker/assignments') ||
+                            requestUrl.includes('/api/admin/partnership-events') ||
+                            requestUrl.includes('/api/admin/my-leads');
 
       if (response.ok && method !== 'GET' && requestUrl.includes('/api/admin/') && !isSpecialPath) {
         // Clear the cache directly here, not just via the event below — the event only reaches a

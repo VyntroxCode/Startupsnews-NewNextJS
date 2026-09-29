@@ -1,24 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { KYC_SECTIONS, validateKycField, type HrKycDocuments, type HrKycSlotValue, type KycSlotDef } from '@/modules/hr-tool/domain/kyc';
 
-const cardStyle: CSSProperties = {
-  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-  padding: '2rem',
-  borderRadius: '12px',
-  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-  border: '1px solid rgba(0, 0, 0, 0.04)',
-  marginTop: '1.5rem',
-};
-const slotCardStyle: CSSProperties = {
-  border: '1px solid #e2e8f0', borderRadius: 10, padding: '1rem 1.1rem', marginBottom: '0.75rem', background: '#fff',
-};
-const inputStyle: CSSProperties = {
-  width: '100%', padding: '0.5rem 0.7rem', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.875rem', boxSizing: 'border-box',
-};
-const labelStyle: CSSProperties = { display: 'block', marginBottom: 4, fontSize: '0.78rem', fontWeight: 600, color: '#475569' };
+const cardClass = 'mt-4 rounded-xl border border-solid border-black/5 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm box-border sm:p-6 md:mt-6 md:p-8';
+const inputClass = 'box-border min-h-11 w-full rounded-lg border border-solid border-slate-200 bg-white px-3 py-2 text-base sm:text-sm';
+const labelClass = 'mb-1 block text-xs font-semibold text-slate-600';
+/** A slot with 2–3 text fields sits side by side from `sm` up and stacks on phones. */
+const FIELD_GRID = ['grid-cols-1', 'grid-cols-1', 'grid-cols-1 sm:grid-cols-2', 'grid-cols-1 sm:grid-cols-3'];
 
 /** PUT via XHR (not fetch) so real upload-progress events are available — same pattern as
  * ImageUpload.tsx's uploadWithProgress, since fetch() has no byte-level progress API. */
@@ -39,17 +29,17 @@ function uploadWithProgress(uploadUrl: string, file: File, onProgress: (pct: num
   });
 }
 
-const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  not_uploaded: { bg: '#f1f5f9', text: '#64748b', label: 'Not uploaded' },
-  pending: { bg: '#ffedd5', text: '#c2410c', label: 'Pending review' },
-  approved: { bg: '#dcfce7', text: '#166534', label: 'Approved' },
-  rejected: { bg: '#fee2e2', text: '#b91c1c', label: 'Rejected' },
+const STATUS_STYLE: Record<string, { tone: string; label: string }> = {
+  not_uploaded: { tone: 'bg-slate-100 text-slate-500', label: 'Not uploaded' },
+  pending: { tone: 'bg-orange-100 text-orange-700', label: 'Pending review' },
+  approved: { tone: 'bg-green-100 text-green-800', label: 'Approved' },
+  rejected: { tone: 'bg-red-100 text-red-700', label: 'Rejected' },
 };
 
 function StatusBadge({ status }: { status: string }) {
   const s = STATUS_STYLE[status] || STATUS_STYLE.not_uploaded;
   return (
-    <span style={{ background: s.bg, color: s.text, padding: '0.2rem 0.6rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+    <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${s.tone}`}>
       {s.label}
     </span>
   );
@@ -114,68 +104,66 @@ function SlotCard({ slotDef, value, onSave }: {
     }
   }
 
+  const saveDisabled = saving || !dirty || hasFieldError;
+
   return (
-    <div style={slotCardStyle}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: fields ? 10 : 0 }}>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0f172a' }}>
-            {slotDef.label} {slotDef.required && <span style={{ color: '#dc2626' }}>*</span>}
+    <div className="mb-3 rounded-xl border border-solid border-slate-200 bg-white p-3.5 sm:p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[0.9rem] font-semibold text-slate-900">
+            {slotDef.label} {slotDef.required && <span className="text-red-600">*</span>}
           </div>
           {value.status === 'rejected' && value.remarks && (
-            <div style={{ marginTop: 4, fontSize: '0.8rem', color: '#b91c1c' }}>Rejected: {value.remarks}</div>
+            <div className="mt-1 text-[0.8rem] text-red-700">Rejected: {value.remarks}</div>
           )}
           {value.uploadedAt && value.status !== 'not_uploaded' && (
-            <div style={{ marginTop: 4, fontSize: '0.78rem', color: '#94a3b8' }}>Uploaded {value.uploadedAt}</div>
+            <div className="mt-1 text-xs text-slate-400">Uploaded {value.uploadedAt}</div>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {value.url && <a href={value.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#6366f1', fontWeight: 600, textDecoration: 'none' }}>View</a>}
+        <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
           <StatusBadge status={value.status} />
+          {value.url && <a href={value.url} target="_blank" rel="noopener noreferrer" className="text-[0.8rem] font-semibold text-indigo-500 no-underline">View</a>}
         </div>
       </div>
 
       {slotDef.fields.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(slotDef.fields.length, 3)}, 1fr)`, gap: '0.6rem', marginBottom: '0.6rem' }}>
+        <div className={`mt-3 grid gap-2.5 ${FIELD_GRID[Math.min(slotDef.fields.length, 3)]}`}>
           {slotDef.fields.map((f) => (
-            <div key={f.key}>
-              <label style={labelStyle}>{f.label}</label>
-              <input type="text" style={inputStyle} placeholder={f.placeholder} value={fields[f.key] || ''} onChange={(e) => updateField(f.key, e.target.value)} />
-              {fieldErrors[f.key] && <div style={{ marginTop: 3, fontSize: '0.75rem', color: '#dc2626' }}>{fieldErrors[f.key]}</div>}
+            <div key={f.key} className="min-w-0">
+              <label className={labelClass}>{f.label}</label>
+              <input type="text" className={inputClass} placeholder={f.placeholder} value={fields[f.key] || ''} onChange={(e) => updateField(f.key, e.target.value)} />
+              {fieldErrors[f.key] && <div className="mt-1 text-xs text-red-600">{fieldErrors[f.key]}</div>}
             </div>
           ))}
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:items-center sm:gap-2.5">
         <input
           ref={fileInputRef}
           type="file"
           accept="application/pdf,image/*"
-          style={{ display: 'none' }}
+          className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) setFile(f); e.target.value = ''; }}
         />
-        <button type="button" onClick={() => fileInputRef.current?.click()} style={{ padding: '0.4rem 0.8rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
+        <button type="button" onClick={() => fileInputRef.current?.click()} className="min-h-11 min-w-0 cursor-pointer truncate rounded-lg border border-solid border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 sm:max-w-[280px]">
           {file ? file.name : value.url ? 'Replace file' : 'Choose file'}
         </button>
         <button
           type="button"
-          disabled={saving || !dirty || hasFieldError}
+          disabled={saveDisabled}
           onClick={save}
-          style={{
-            padding: '0.4rem 0.9rem', background: saving || !dirty || hasFieldError ? '#cbd5e1' : '#6366f1', color: '#fff',
-            border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.8rem', cursor: saving || !dirty || hasFieldError ? 'not-allowed' : 'pointer',
-            minWidth: saving && uploadPct !== null ? 96 : undefined,
-          }}
+          className={`min-h-11 cursor-pointer whitespace-nowrap rounded-lg border-0 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed ${saveDisabled ? 'bg-slate-300' : 'bg-indigo-500'}`}
         >
           {saving ? (uploadPct !== null ? `Uploading… ${uploadPct}%` : 'Saving…') : 'Save'}
         </button>
       </div>
       {saving && uploadPct !== null && (
-        <div style={{ height: 5, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden', marginTop: 8 }}>
-          <div style={{ height: '100%', width: `${uploadPct}%`, background: '#6366f1', transition: 'width 0.15s' }} />
+        <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-slate-200">
+          <div className="h-full bg-indigo-500 transition-[width] duration-150" style={{ width: `${uploadPct}%` }} />
         </div>
       )}
-      {error && <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#b91c1c' }}>{error}</div>}
+      {error && <div className="mt-2 text-[0.8rem] text-red-700">{error}</div>}
     </div>
   );
 }
@@ -237,11 +225,11 @@ export default function KycDocumentsWidget({
     }
   }
 
-  if (loading) return <div style={cardStyle}>Loading KYC documents…</div>;
+  if (loading) return <div className={`${cardClass} text-slate-500`}>Loading KYC documents…</div>;
   if (!data?.linked || !data.documents) {
     return (
-      <div style={cardStyle}>
-        <div style={{ color: '#64748b' }}>No Directory record is linked to your login yet — ask your Founder/HR to complete your hire record first.</div>
+      <div className={cardClass}>
+        <div className="text-slate-500">No Directory record is linked to your login yet — ask your Founder/HR to complete your hire record first.</div>
       </div>
     );
   }
@@ -250,18 +238,18 @@ export default function KycDocumentsWidget({
   const pct = data.progress?.pct ?? 0;
 
   return (
-    <div style={cardStyle}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>KYC &amp; Personal Documents</h3>
-        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: pct === 100 ? '#166534' : '#64748b' }}>{pct}% complete</span>
+    <div className={cardClass}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="m-0 text-lg font-bold text-slate-900">KYC &amp; Personal Documents</h3>
+        <span className={`text-sm font-semibold ${pct === 100 ? 'text-green-800' : 'text-slate-500'}`}>{pct}% complete</span>
       </div>
-      <div style={{ height: 8, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden', marginBottom: '1.25rem' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#6366f1', transition: 'width 0.3s' }} />
+      <div className="mb-5 h-2 overflow-hidden rounded-full bg-slate-200">
+        <div className={`h-full transition-[width] duration-300 ${pct === 100 ? 'bg-green-500' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
       </div>
 
       {KYC_SECTIONS.map((section) => (
-        <div key={section.title} style={{ marginBottom: '1.5rem' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 10 }}>
+        <div key={section.title} className="mb-6">
+          <div className="mb-2.5 text-[0.8rem] font-bold uppercase tracking-wide text-slate-700">
             {section.title}
           </div>
           {section.slots.map((slot) => (

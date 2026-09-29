@@ -21,6 +21,16 @@ export interface PayrollPreview {
    * whose Directory record has no CTC set — Run Payroll refuses to proceed while this is
    * non-empty, since it would otherwise silently freeze a ₹0 payslip for them. */
   missingCtcEmployees: string[];
+  /** Leavers whose final salary for this cycle is paid in an approved/paid Full & Final — left out
+   * of the run so they aren't paid twice (see HrOffboardingService F&F). */
+  fnfSettledEmployees: string[];
+}
+
+/** computePayrollForMonth options — used by the offboarding Full & Final to price one leaver's final cycle. */
+export interface PayrollComputeOptions {
+  onlyEmployeeId?: string;
+  /** Include someone even if an approved F&F already covers this cycle (the F&F computing itself). */
+  includeFnfSettled?: boolean;
 }
 
 /** The real employee roster for payroll purposes — every active Employee ID issued via
@@ -241,6 +251,12 @@ export class HrToolService {
     if (!trimmedReason) return { ok: false, error: 'A reason is required.' };
     const trimmedTime = (requestedTime || '').trim();
     if (!trimmedTime) return { ok: false, error: 'The time you are requesting is required.' };
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(trimmedTime)) return { ok: false, error: 'Please enter a valid time.' };
+    // The office closes in the evening, so a punch-out is always PM — the Punch Out picker
+    // (PunchOutTimeInput) offers no AM/PM choice, and this keeps any other caller in line.
+    if (punchType === 'out' && hhmmToMinutes(trimmedTime) < 12 * 60) {
+      return { ok: false, error: 'Punch Out time must be in the afternoon or evening (PM).' };
+    }
 
     const existing = await this.repository.findRegularizationByEmployeeDateAndType(employee.id, date, punchType);
     if (existing) return { ok: false, error: `A ${punchType === 'in' ? 'punch-in' : 'punch-out'} regularization request already exists for this date.` };
@@ -301,13 +317,6 @@ export class HrToolService {
 
   getLeaveRequestsForEmployee(employeeId: string) { return this.repository.findLeaveRequestsForEmployee(employeeId); }
 
-  /** Whether `date` is covered by one of this employee's APPROVED Work From Home requests — such a
-   * day is already a full shift in hr_attendance, so punchEmployee refuses to punch over it. */
-  async isApprovedWfhDay(employeeId: string, date: string): Promise<boolean> {
-    const reqs = await this.repository.findLeaveRequestsForEmployeeInRange(employeeId, date, date);
-    return reqs.some((r) => r.type === WFH_LEAVE_TYPE && r.status === 'approved');
-  }
-
   /**
    * Employee-submitted leave request, used by the isolated Publisher/Event Admin and
    * plain-employee leave surfaces (the Founder's own "+ Apply for leave" in views/Leave.tsx is
@@ -324,6 +333,11 @@ export class HrToolService {
   ): Promise<{ ok: boolean; error?: string }> {
     const trimmedType = (type || '').trim();
     if (!trimmedType) return { ok: false, error: 'A leave type is required.' };
+    // Work From Home has been discontinued — also catches it typed in via "Other (please specify)".
+    const normalizedType = trimmedType.toLowerCase().replace(/[^a-z]/g, '');
+    if (normalizedType === WFH_LEAVE_TYPE.toLowerCase() || normalizedType === 'workfromhome') {
+      return { ok: false, error: 'Work From Home is no longer available.' };
+    }
     const trimmedReason = (reason || '').trim();
     if (!trimmedReason) return { ok: false, error: 'A reason is required.' };
     if (!from || !to) return { ok: false, error: 'From and to dates are required.' };
@@ -562,12 +576,6 @@ export class HrToolService {
     const existing = await this.getPunchByEmployee(employee.id);
     const todaysPunch = existing?.date === today ? existing : null;
 
-    // An approved Work From Home day is already recorded as a full shift (syncWfhAttendance) —
-    // a real punch would overwrite it, so there's nothing to punch.
-    if (await this.isApprovedWfhDay(employee.id, today)) {
-      return { ok: false, error: 'Today is an approved Work From Home day — it is already marked as a full day.', code: 'ALREADY_PUNCHED' };
-    }
-
     // Duplicate-punch check comes BEFORE the geofence so someone who already punched in today
     // gets "Already punched in" rather than a confusing location error.
     if (type === 'in' && todaysPunch?.inTime) {
@@ -679,43 +687,7 @@ export class HrToolService {
 
     return { ok: true, updated };
   }
-  async saveLeaveRequests(items: HrLeaveRequest[]) {
-    await this.repository.replaceLeaveRequests(items);
-    await this.syncWfhAttendance(items);
-  }
-
-  /**
-   * Work From Home: every working day (not Sunday / holiday) of an APPROVED WFH request is written
-   * to hr_attendance as a full shift — punch-in at shift start, punch-out at shift end, status
-   * 'WFH' — so the calendar, Today table and payroll all read it as a Full day with no special
-   * casing. WFH rows no longer backed by an approved request (rejected or deleted after approval)
-   * are removed. Idempotent: runs on every save of the leave list, which is how HR approves.
-   */
-  async syncWfhAttendance(items: HrLeaveRequest[]): Promise<void> {
-    const [rulesRow, holidays, existing] = await Promise.all([
-      this.repository.findRules(), this.repository.findHolidays(), this.repository.findWfhAttendanceDays(),
-    ]);
-    const rules = rulesRow || DEFAULT_RULES;
-    const holidaySet = new Set(holidays.map((h) => h.date));
-    const inM = hhmmToMinutes(rules.shiftStartTime);
-    const outM = hhmmToMinutes(rules.shiftEndTime);
-    const keep = new Set<string>();
-    for (const r of items) {
-      if (r.type !== WFH_LEAVE_TYPE || r.status !== 'approved' || !r.employeeId) continue;
-      for (const date of eachDateInRange(r.from, r.to)) {
-        if (isSunday(date) || holidaySet.has(date)) continue;
-        keep.add(`${r.employeeId}|${date}`);
-        await this.repository.upsertAttendance({
-          employeeId: r.employeeId, emp: r.emp, date, status: 'WFH',
-          inTime: formatTime12h(inM), inMinutes: inM, outTime: formatTime12h(outM), outMinutes: outM,
-          inGeo: null, outGeo: null,
-        });
-      }
-    }
-    for (const d of existing) {
-      if (!keep.has(`${d.employeeId}|${d.date}`)) await this.repository.deleteAttendanceDay(d.employeeId, d.date);
-    }
-  }
+  saveLeaveRequests(items: HrLeaveRequest[]) { return this.repository.replaceLeaveRequests(items); }
   saveExpenses(items: HrExpense[]) { return this.repository.replaceExpenses(items); }
   saveTickets(items: HrTicket[]) { return this.repository.replaceTickets(items); }
   saveTemplate(name: string, content: string) { return this.repository.upsertTemplate(name, content); }
@@ -757,7 +729,7 @@ export class HrToolService {
    * Directory record, or a record with no CTC, is listed in missingCtcEmployees (which blocks Run
    * Payroll) rather than being silently invisible.
    */
-  async computePayrollForMonth(monthKey: string, roster: PayrollRosterEntry[], tdsByEmp?: Record<string, number>): Promise<PayrollPreview> {
+  async computePayrollForMonth(monthKey: string, roster: PayrollRosterEntry[], tdsByEmp?: Record<string, number>, options: PayrollComputeOptions = {}): Promise<PayrollPreview> {
     const rules = (await this.repository.findRules()) || DEFAULT_RULES;
     const { from, to } = payrollPeriodRange(monthKey, rules);
     const today = todayStr();
@@ -772,6 +744,13 @@ export class HrToolService {
       this.repository.findHolidays(),
     ]);
     const holidaySet = new Set(holidays.map((h) => h.date));
+    // Offboarding: a leaver's last working day ends their employment for pay purposes, and anyone
+    // whose final salary is in an approved Full & Final is left out (else they'd be paid twice).
+    const [exitDates, fnfSettled] = await Promise.all([
+      this.repository.findExitDates(today),
+      options.includeFnfSettled ? Promise.resolve(new Set<string>()) : this.repository.findFnfSettledEmployeeIds(monthKey),
+    ]);
+    const fnfSettledEmployees: string[] = [];
 
     // Short-leave leftovers carried in from the cycle before. Only a COMPLETED run stores
     // entries, so a skipped cycle simply contributes 0 rather than reaching further back —
@@ -807,6 +786,11 @@ export class HrToolService {
       }
       if (paidEmployeeIds.has(emp.id)) continue;
       paidEmployeeIds.add(emp.id);
+      if (options.onlyEmployeeId && emp.id !== options.onlyEmployeeId) continue;
+      if (fnfSettled.has(emp.id)) { fnfSettledEmployees.push(emp.name); continue; }
+      const lastDay = exitDates.get(emp.id) ?? null;
+      // Left before this cycle began — nothing to pay, and no ₹0 payslip either.
+      if (lastDay && lastDay < from) continue;
       // Exited employees were skipped outright, so anyone who worked part of a cycle and then
       // left got NO payslip at all — the mirror of the mid-cycle joiner bug. They are now
       // skipped only if they have no attendance in this cycle, i.e. someone who left long ago
@@ -832,8 +816,8 @@ export class HrToolService {
 
       const approvedLeaveDates = new Set<string>();
       for (const leave of leaves) {
-        // A Work From Home day is not leave: syncWfhAttendance has already written it as a full
-        // shift, so it's paid as a worked day and must not also use up the Casual allowance.
+        // Legacy Work From Home (discontinued): past approved WFH days were written to hr_attendance
+        // as full shifts, so they're paid as worked days and must not also count as leave.
         if (leave.status !== 'approved' || leave.type === WFH_LEAVE_TYPE) continue;
         const leaveFrom = leave.from > clippedFrom ? leave.from : clippedFrom;
         const leaveTo = leave.to < to ? leave.to : to;
@@ -870,6 +854,9 @@ export class HrToolService {
       // Sundays before someone joined are NOT credited as paid week-offs.
       for (const date of eachDateInRange(from, to)) {
         if (date < clippedFrom) { notEmployedDays++; continue; }
+        // After the last working day: not employed. Tested before the week-off and future-day
+        // checks so neither Sundays after leaving nor days that haven't happened yet are paid.
+        if (lastDay && date > lastDay) { notEmployedDays++; continue; }
         if (isSunday(date) || holidaySet.has(date)) { weekOffDays++; continue; }
         if (date > evalTo) { futureDays++; continue; }
         const att = attendanceByDate.get(date);
@@ -962,7 +949,7 @@ export class HrToolService {
       });
     }
 
-    return { month: monthKey, periodFrom: from, periodTo: to, periodEnded, canRun, entries, missingCtcEmployees };
+    return { month: monthKey, periodFrom: from, periodTo: to, periodEnded, canRun, entries, missingCtcEmployees, fnfSettledEmployees };
   }
 
   /** Freezes a month's payroll: computes it (refusing if the cycle hasn't fully ended yet, or if
@@ -999,7 +986,7 @@ export class HrToolService {
         this.repository.findRules(),
       ]);
       const { from, to } = payrollPeriodRange(monthKey, rules || DEFAULT_RULES);
-      return { month: monthKey, periodFrom: from, periodTo: to, periodEnded: true, canRun: true, entries, missingCtcEmployees: [], alreadyRun: true };
+      return { month: monthKey, periodFrom: from, periodTo: to, periodEnded: true, canRun: true, entries, missingCtcEmployees: [], fnfSettledEmployees: [], alreadyRun: true };
     }
     const preview = await this.computePayrollForMonth(monthKey, roster);
     return { ...preview, alreadyRun: false };

@@ -7,6 +7,7 @@ import { PanelAdminsRepository } from '@/modules/panel-admins/repository/panel-a
 import { HrCredentialsService } from '@/modules/hr-credentials/service/hr-credentials.service';
 import { HrCredentialsRepository } from '@/modules/hr-credentials/repository/hr-credentials.repository';
 import { signEmployeeToken } from '@/modules/hr-credentials/utils/employee-jwt';
+import { HrOffboardingService } from '@/modules/hr-offboarding/service/hr-offboarding.service';
 
 // Initialize services
 const usersRepository = new UsersRepository();
@@ -15,8 +16,10 @@ const panelAdminsRepository = new PanelAdminsRepository();
 const panelAdminsService = new PanelAdminsService(panelAdminsRepository);
 const authService = new AuthService(usersService, panelAdminsService);
 const hrCredentialsService = new HrCredentialsService(new HrCredentialsRepository(), panelAdminsRepository);
+const hrOffboardingService = new HrOffboardingService();
 
 const INVALID_EMPLOYEE_CREDENTIALS = { success: false, error: 'Invalid Employee ID or password' } as const;
+const ACCESS_ENDED = { success: false, error: 'Your portal access has ended. Please contact HR.' } as const;
 
 /**
  * POST /api/admin/auth/login
@@ -47,7 +50,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(INVALID_EMPLOYEE_CREDENTIALS, { status: 401 });
       }
 
-      if (credential.linkedPanelAdmin) {
+      // Offboarding: past the last working day, a login is either read-only "alumni" (the
+      // employee portal's My Exit page only — even for a Publisher/Event Admin, whose panel
+      // account is switched off on exit) or blocked outright. See HrOffboardingService.
+      await hrOffboardingService.applyDueExits();
+      const access = await hrOffboardingService.accessForCredential(credential.id);
+
+      if (credential.linkedPanelAdmin && access === 'full') {
         // Linked to a Publisher Admin / Event Admin account — signs into the admin panel, as before.
         const result = await authService.loginWithEmployeeId(employeeId, password);
         const allowedLoginRoles = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support'];
@@ -60,16 +69,22 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, data: { ...result, accountType: 'admin' } });
       }
 
-      // No linked account — a plain HR employee, authenticated directly against their own
-      // credential and issued an isolated token for the /employee/attendance dashboard.
+      // No linked account (or an exited one) — a plain HR employee, authenticated directly against
+      // their own credential and issued an isolated token for the /employee/* portal.
       const verified = await hrCredentialsService.verifyEmployeePassword(employeeId, password);
       if (!verified) {
         return NextResponse.json(INVALID_EMPLOYEE_CREDENTIALS, { status: 401 });
       }
+      if (access === 'blocked') {
+        return NextResponse.json(ACCESS_ENDED, { status: 403 });
+      }
       const token = signEmployeeToken(verified);
       return NextResponse.json({
         success: true,
-        data: { accountType: 'employee', token, user: { name: verified.name, employeeCode: verified.employeeCode } },
+        data: {
+          accountType: 'employee', token,
+          user: { name: verified.name, employeeCode: verified.employeeCode, alumni: access === 'alumni' },
+        },
       });
     }
 

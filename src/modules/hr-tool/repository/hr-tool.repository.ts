@@ -59,6 +59,11 @@ interface RulesRow {
   geo_fence_lat?: string | number | null; geo_fence_lng?: string | number | null; geo_fence_radius_m?: number | null;
 }
 
+function isMissingTable(e: unknown): boolean {
+  const err = e as { code?: string; errno?: number } | null;
+  return err?.code === 'ER_NO_SUCH_TABLE' || err?.errno === 1146;
+}
+
 /** Office point + radius seeded by add-hr-geofence.sql; also the fallback if that migration
  * hasn't run yet (SELECT * then simply omits the columns). StartupNews.fyi, Jhandewalan. */
 const DEFAULT_GEO_FENCE = { lat: 28.644533, lng: 77.2003635, radiusM: 50 } as const;
@@ -316,6 +321,14 @@ export class HrToolRepository {
         if (uniqueName) await connection.query(`UPDATE ${table} SET manager = NULL WHERE manager_id IS NULL AND manager = ?`, [row.name]);
       }
       await connection.query('DELETE FROM hr_onboarding WHERE employee_id = ?', [employeeId]);
+      // Offboarding cases and their checklists go too. Tolerates the tables not existing yet
+      // (add-hr-offboarding.sql not run) — MariaDB rolls back only the failed statement.
+      for (const sql of [
+        'DELETE c FROM hr_offboarding_clearance c JOIN hr_offboarding o ON o.id = c.offboarding_id WHERE o.employee_id = ?',
+        'DELETE FROM hr_offboarding WHERE employee_id = ?',
+      ]) {
+        try { await connection.query(sql, [employeeId]); } catch (e) { if (!isMissingTable(e)) throw e; }
+      }
       await connection.query('DELETE FROM hr_employees WHERE id = ?', [employeeId]);
       if (row.credential_id != null) {
         await connection.query('DELETE FROM hr_employee_credentials WHERE id = ?', [row.credential_id]);
@@ -408,14 +421,6 @@ export class HrToolRepository {
     );
   }
 
-  /** Every auto-written Work From Home day (status 'WFH') — see HrToolService.syncWfhAttendance. */
-  async findWfhAttendanceDays(): Promise<{ employeeId: string; date: string }[]> {
-    const rows = await query<AttendanceRow>("SELECT * FROM hr_attendance WHERE status = 'WFH'");
-    return rows.map((r) => this.mapAttendanceRow(r)).map((a) => ({ employeeId: a.employeeId, date: a.date }));
-  }
-  async deleteAttendanceDay(employeeId: string, date: string): Promise<void> {
-    await query('DELETE FROM hr_attendance WHERE employee_id = ? AND attendance_date = ?', [employeeId, date]);
-  }
 
   async findAttendanceOverrides(): Promise<HrAttendanceOverride[]> {
     const rows = await findAllRows<OverrideRow>('hr_attendance_overrides');
@@ -579,6 +584,43 @@ export class HrToolRepository {
   }
 
   // --- Payroll entries (per-employee-per-month computed payroll) ---
+  /** Last working day of everyone whose exit has taken effect (offboarding). Payroll treats days
+   * after it as not employed. Empty when the offboarding tables don't exist yet. */
+  async findExitDates(today: string): Promise<Map<string, string>> {
+    try {
+      const rows = await query<{ employee_id: string; approved_lwd: string }>(
+        `SELECT employee_id, approved_lwd FROM hr_offboarding
+          WHERE approved_lwd IS NOT NULL AND (status IN ('exited', 'completed') OR (status = 'accepted' AND approved_lwd < ?))`,
+        [today]
+      );
+      return new Map(rows.map((r) => [r.employee_id, String(r.approved_lwd).slice(0, 10)]));
+    } catch (e) {
+      if (isMissingTable(e)) return new Map();
+      throw e;
+    }
+  }
+
+  /** Employees whose final salary for `month` is paid in an approved/paid Full & Final — the
+   * payroll run must skip them or they'd be paid twice. */
+  async findFnfSettledEmployeeIds(month: string): Promise<Set<string>> {
+    try {
+      const rows = await query<{ employee_id: string }>(
+        `SELECT employee_id FROM hr_offboarding
+          WHERE status IN ('exited', 'completed') AND fnf IS NOT NULL
+            AND JSON_VALUE(fnf, '$.status') IN ('approved', 'paid') AND JSON_VALUE(fnf, '$.salaryMonth') = ?`,
+        [month]
+      );
+      return new Set(rows.map((r) => r.employee_id));
+    } catch (e) {
+      if (isMissingTable(e)) return new Set();
+      throw e;
+    }
+  }
+
+  async findPayrollEntryForEmployee(month: string, employeeId: string): Promise<HrPayrollEntry | null> {
+    return (await this.findPayrollEntriesForMonth(month)).find((e) => e.employeeId === employeeId) ?? null;
+  }
+
   async findPayrollEntriesForMonth(month: string): Promise<HrPayrollEntry[]> {
     const rows = await query<PayrollEntryRow>('SELECT * FROM hr_payroll_entries WHERE month = ? ORDER BY emp ASC', [month]);
     return rows.map((r) => ({

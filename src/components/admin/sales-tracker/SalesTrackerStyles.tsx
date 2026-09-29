@@ -73,7 +73,8 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page input:hover, .sales-tracker-page select:hover, .sales-tracker-page textarea:hover { border-color: var(--border-hover); }
       .sales-tracker-page input:focus, .sales-tracker-page select:focus, .sales-tracker-page textarea:focus { outline: none; border-color: var(--pink); box-shadow: var(--ring); }
       .sales-tracker-page input.invalid { border-color: var(--danger); box-shadow: 0 0 0 3px #FEE2E2; }
-      .sales-tracker-page input:disabled, .sales-tracker-page input[readonly] { background: #F1F5F9; color: var(--muted); cursor: not-allowed; }
+      .sales-tracker-page input:disabled, .sales-tracker-page input[readonly], .sales-tracker-page select:disabled, .sales-tracker-page textarea:disabled { background: #F1F5F9; color: var(--muted); cursor: not-allowed; }
+      .sales-tracker-page .lock-hint { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
       .sales-tracker-page .field-error { align-items: center; gap: 6px; color: var(--danger); font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
       .sales-tracker-page .field-error.visible { display: flex; }
       .sales-tracker-page .field.has-error .custom-select-btn,
@@ -284,6 +285,14 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .ee-panel-head { display: flex; flex-direction: column; gap: 2px; margin: 0 -18px 16px; padding: 12px 18px; background: var(--pink-bg2); border-bottom: 1px solid var(--border); }
       .sales-tracker-page .ee-panel-head h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: 0; text-transform: none; }
       .sales-tracker-page .ee-panel-head span { font-size: 12px; color: var(--text2); }
+      .sales-tracker-page .fu-panel { margin: 8px 0 12px; border-top-color: var(--pink); }
+      .sales-tracker-page .fu-team { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+      .sales-tracker-page .fu-person { display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+      .sales-tracker-page .fu-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+      .sales-tracker-page .fu-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+      .sales-tracker-page .fu-item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+      .sales-tracker-page .fu-item-head .badge { margin-left: auto; }
+      .sales-tracker-page .fu-note { margin: 6px 0 0; font-size: 13.5px; color: var(--text); white-space: pre-line; }
       .sales-tracker-page .ee-panel-kv { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 0 16px; margin: 0; font-size: 13.5px; }
       .sales-tracker-page .ee-panel-kv dt { padding: 9px 0; color: var(--text2); font-weight: 600; border-bottom: 1px solid var(--border); }
       .sales-tracker-page .ee-panel-kv dd { margin: 0; padding: 9px 0; color: var(--text); font-weight: 500; overflow-wrap: anywhere; border-bottom: 1px solid var(--border); }

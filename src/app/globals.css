@@ -623,8 +623,8 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 /* Startup Events block – list styling only (title uses theme default) */
 .startup-events-wrap {
   margin-top: 0px;
-  border: 1px solid #000;
-  padding: 16px;
+  border: none;
+  padding: 0;
   box-sizing: border-box;
   border-radius: 10px;
 }
@@ -664,7 +664,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   border: none;
   border-bottom: 1px dashed #ccc;
   margin-bottom: 0;
-  padding: 10px 0 0 26px;
+  padding: 12px 0 12px 26px;
   border-radius: 0 !important;
   overflow: hidden;
 }
@@ -674,7 +674,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   content: "";
   position: absolute;
   left: 0;
-  top: 18px;
+  top: 16px;
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -687,7 +687,7 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
 }
 
 .startup-events-wrap .startup-events-item:first-child::before {
-  top: 6px;
+  top: 5px;
 }
 
 .startup-events-wrap .startup-events-item:last-child {
@@ -710,16 +710,25 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin-top: 0;
 }
 
-/* Second line: smaller, lighter grey – LOCATION / DATE (below the title, like a timestamp) */
+/* First line: smaller, lighter grey – LOCATION / DATE (above the title; the red dot lines up with it) */
 .startup-events-wrap .mvp-cat-date-wrap {
+  float: none;
+  width: 100%;
   font-size: 0.7rem;
   color: #999;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-top: 5px;
-  margin-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 4px;
   line-height: 1.4;
   overflow: hidden;
+}
+
+/* Theme sets span.mvp-cd-cat/date to .7rem; the widget uses 2px larger. */
+.startup-events-wrap .mvp-cd-cat,
+.startup-events-wrap .mvp-cd-date,
+.startup-events-wrap .mvp-cd-sep {
+  font-size: calc(0.7rem + 2px) !important;
 }
 
 .startup-events-wrap .mvp-cd-cat,
@@ -740,20 +749,25 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin: 0 3px;
 }
 
-/* First line: larger, bolder, dark grey/black – event title */
-.startup-events-wrap .mvp-feat1-list-text h2 {
-  color: #1a1a1a !important;
-  font-size: 1.05rem !important;
+/* Below the location/date: larger, bolder, dark grey/black – event title, up to two lines.
+   `.startup-events-item` in the selector outranks `.mvp-tab-col-cont .mvp-feat1-list-text h2`
+   further down (which sets 1rem for the shared tabber list), so the widget's own size wins. */
+.startup-events-wrap .startup-events-item .mvp-feat1-list-text h2 {
+  color: #333 !important;
+  font-size: calc(1rem + 2px) !important;
   font-weight: 700 !important;
   line-height: 1.4 !important;
   margin: 0 !important;
   float: none;
   padding: 0;
   transition: color 0.15s ease-in-out;
-  display: block;
-  white-space: nowrap;
+  clear: both;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Event list: smaller, lighter grey – LOCATION / DATE */
@@ -771,7 +785,8 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   color: #999 !important;
 }
 
-/* Event title: larger, bolder, dark */
+/* Event title: larger, bolder, dark — up to two lines (this rule comes after, and has the same
+   specificity as, `.startup-events-wrap .mvp-feat1-list-text h2`, so it must clamp too) */
 .mvp-tab-col-cont .mvp-feat1-list-text h2 {
   color: #333 !important;
   font-size: 1rem !important;
@@ -780,10 +795,12 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   margin: 0 !important;
   float: none;
   padding: 0;
-  display: block;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* More News sidebar: CSS sticky so it stays visible and scrolls with page until footer (no disappear) */

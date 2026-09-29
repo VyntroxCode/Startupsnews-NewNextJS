@@ -38,6 +38,14 @@ export const CONTACTS_ROLES = ['admin'] as const;
 /** Sales Tracker — super admin only, standalone tool. */
 export const SALES_TRACKER_ROLES = ['admin'] as const;
 
+/** My Leads inside the admin panel — for staff whose HR login is linked to an Event Admin / Publisher
+ * Admin account (they log in here, not to the employee panel). Leads are matched through that link. */
+export const MY_LEADS_PANEL_ROLES = ['event_admin', 'publisher_admin'] as const;
+
+/** Publisher/Event Admins resign from the admin panel (`/admin/my-exit`) while employed. After their
+ * last working day the panel account is switched off and they use the employee portal's My Exit. */
+export const MY_EXIT_PANEL_ROLES = ['event_admin', 'publisher_admin'] as const;
+
 /** HR Tool — super admin only, standalone tool (has its own internal role system for HR Head/Manager/Employee). */
 export const HR_TOOL_ROLES = ['admin'] as const;
 

@@ -24,19 +24,4 @@ export class SalesTrackerService {
   async deleteAllLeads(): Promise<void> {
     await this.repository.deleteAllLeads();
   }
-
-  async getTeam(): Promise<string[]> {
-    const rows = await this.repository.findAllTeamMembers();
-    return rows.map((r) => r.name);
-  }
-
-  async addTeamMember(name: string): Promise<void> {
-    const trimmed = name.trim();
-    if (!trimmed) throw new Error('Name is required');
-    await this.repository.addTeamMember(trimmed);
-  }
-
-  async removeTeamMember(name: string): Promise<void> {
-    await this.repository.removeTeamMember(name);
-  }
 }

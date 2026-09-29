@@ -27,7 +27,7 @@ const DRAFT_KEY = 'admin_post_draft_create';
 type CreatePostFormData = {
   title: string; slug: string; excerpt: string; metaDescription: string; robots: string;
   contentFollow: string; content: string; categoryId: string; authorId: string;
-  featuredImageUrl: string; featuredImageSmallUrl: string; format: 'standard' | 'video' | 'gallery';
+  featuredImageUrl: string; featuredImageSmallUrl: string; imageCredit: string; format: 'standard' | 'video' | 'gallery';
   status: 'draft' | 'published' | 'scheduled' | 'archived'; featured: boolean; scheduledAt: string;
 };
 
@@ -68,6 +68,7 @@ export default function CreatePostPage() {
     authorId: '',
     featuredImageUrl: '',
     featuredImageSmallUrl: '',
+    imageCredit: '',
     format: 'standard' as 'standard' | 'video' | 'gallery',
     status: 'draft' as 'draft' | 'published' | 'scheduled' | 'archived',
     featured: false,
@@ -655,6 +656,20 @@ export default function CreatePostPage() {
           </div>
           <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b' }}>
             Select an image to upload it immediately. The URL will appear above.
+          </p>
+          <label style={{ display: 'block', marginTop: '1rem', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
+            Source
+          </label>
+          <input
+            type="text"
+            value={formData.imageCredit ?? ''}
+            onChange={(e) => setFormData((prev) => ({ ...prev, imageCredit: e.target.value }))}
+            maxLength={255}
+            placeholder="e.g. Reuters, Unsplash / John Doe"
+            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: '1rem', boxSizing: 'border-box' }}
+          />
+          <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b' }}>
+            Shown below the featured image (right corner) on the article page. Leave empty to hide.
           </p>
         </div>
 

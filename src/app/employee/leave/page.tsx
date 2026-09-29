@@ -6,11 +6,11 @@ import { getEmployeeAuthHeaders } from '@/lib/employee-auth';
 export default function EmployeeLeavePage() {
   return (
     <div>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>
+      <div className="mb-1">
+        <h2 className="m-0 hidden text-[2rem] font-bold tracking-tight text-slate-900 md:block">
           Leave
         </h2>
-        <p style={{ color: '#64748b', fontSize: '1rem', margin: '0.5rem 0 0' }}>
+        <p className="m-0 text-sm text-slate-500 md:mt-2 md:text-base">
           Apply for leave in advance and track your requests.
         </p>
       </div>

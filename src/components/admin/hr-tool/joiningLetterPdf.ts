@@ -44,7 +44,8 @@ class LetterPdfWriter {
   private y: number;
   readonly contentW = PAGE_W - MARGIN * 2;
 
-  static async create(): Promise<LetterPdfWriter> {
+  /** `logoBytes` lets a server caller (no relative fetch in Node) pass the letterhead in directly. */
+  static async create(logoBytes?: Uint8Array | null): Promise<LetterPdfWriter> {
     const doc = await PDFDocument.create();
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -52,8 +53,7 @@ class LetterPdfWriter {
     // generating, it just comes out without the letterhead image.
     let logo: PDFImage | null = null;
     try {
-      const res = await fetch('/logo.png');
-      const bytes = await res.arrayBuffer();
+      const bytes = logoBytes ?? await (await fetch('/logo.png')).arrayBuffer();
       logo = await doc.embedPng(bytes);
     } catch {
       logo = null;
@@ -141,8 +141,8 @@ class LetterPdfWriter {
  * acceptance/closing) — as a properly typeset, paginated A4 PDF instead of a plain-text dump.
  * Deliberately doesn't itemize the CTC split (Basic/HRA/Convenience) the way the internal
  * Payroll/CTC Structure tooling does — that breakdown is for payroll math, not this letter. */
-export async function generateJoiningLetterPdf(d: OfferLetterData): Promise<Uint8Array> {
-  const w = await LetterPdfWriter.create();
+export async function generateJoiningLetterPdf(d: OfferLetterData, opts: { logoBytes?: Uint8Array | null } = {}): Promise<Uint8Array> {
+  const w = await LetterPdfWriter.create(opts.logoBytes);
   const dateStr = ordinalDate(todayStr());
   const firstName = d.employeeName.trim().split(/\s+/)[0] || d.employeeName;
   const ctcWords = amountToIndianWords(d.ctc);
@@ -200,11 +200,22 @@ export async function generateJoiningLetterPdf(d: OfferLetterData): Promise<Uint
 /** Fallback for when HR has drafted a fully custom "Offer Letter" template in Company Profile —
  * there's no structured data to lay out a table from, so this just paginates the merged plain
  * text as-is (still a real, properly wrapped/paginated PDF, not a screenshot of a text box). */
-export async function generatePlainLetterPdf(text: string): Promise<Uint8Array> {
-  const w = await LetterPdfWriter.create();
+export async function generatePlainLetterPdf(text: string, opts: { logoBytes?: Uint8Array | null; letterhead?: boolean } = {}): Promise<Uint8Array> {
+  const w = await LetterPdfWriter.create(opts.logoBytes);
+  // Offboarding letters are printed on letterhead: logo on top, registered details in the footer.
+  if (opts.letterhead) { w.logoImage(); w.gap(24); }
   for (const paragraph of text.split('\n')) {
     if (!paragraph.trim()) { w.gap(10); continue; }
     w.text(paragraph, { size: 10, gapAfter: 4 });
+  }
+  if (opts.letterhead) {
+    w.gap(30);
+    w.hr();
+    w.gap(10);
+    w.text(COMPANY.name, { size: 8.5, color: MUTED });
+    w.text(COMPANY.cin, { size: 8.5, color: MUTED });
+    w.text(COMPANY.address, { size: 8.5, color: MUTED });
+    w.text(COMPANY.email, { size: 8.5, color: MUTED });
   }
   return w.finish();
 }

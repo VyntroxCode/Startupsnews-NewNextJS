@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFundingRoundForm } from "./useFundingRoundForm";
 import {
+  validateCity,
   validateCompanyName,
+  validateCountry,
   validateEmail,
   validateName,
   validatePhone,
@@ -32,6 +34,8 @@ const FIELD_VALIDATORS: Array<{ field: keyof LeadFormData; chapterId: string; va
   { field: "phone", chapterId: "details", validate: validatePhone },
   { field: "email", chapterId: "details", validate: validateEmail },
   { field: "website", chapterId: "details", validate: validateWebsite },
+  { field: "country", chapterId: "details", validate: validateCountry },
+  { field: "city", chapterId: "details", validate: validateCity },
 ];
 
 const CHAPTER_IDS = CHAPTERS.map((c) => c.id);

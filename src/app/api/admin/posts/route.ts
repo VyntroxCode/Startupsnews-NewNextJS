@@ -275,6 +275,7 @@ export async function POST(request: NextRequest) {
       featured: formData.get('featured'),
       featuredImageUrl: formData.get('featuredImageUrl'),
       featuredImageSmallUrl: formData.get('featuredImageSmallUrl'),
+      imageCredit: formData.get('imageCredit'),
     };
   } else {
     formToken = null;
@@ -477,6 +478,7 @@ export async function POST(request: NextRequest) {
       authorId,
       featuredImageUrl,
       featuredImageSmallUrl,
+      imageCredit: body.imageCredit != null ? String(body.imageCredit).trim().slice(0, 255) : '',
       format: (body.format as 'standard' | 'video' | 'gallery') || 'standard',
       status,
       featured: String(body.featured) === 'true' || body.featured === true,

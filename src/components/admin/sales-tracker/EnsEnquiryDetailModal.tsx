@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import type { EnsTravelEnquiry, EnsTravelEnquiryAdminInput } from '@/modules/ens-travel-enquiries/domain/types';
 import {
   CONVERSATION_NOTE_MAX_LENGTH,
-  LEAD_STATUS_FOLLOWED_UP,
   LEAD_STATUS_OPTIONS,
   leadStatusLabel,
+  leadStatusTakesNote,
   NO_STATUS_LABEL,
 } from '@/modules/ens-travel-enquiries/domain/lead-status';
 import {
@@ -27,6 +27,16 @@ import {
   referredByLabel,
 } from '@/modules/ens-travel-enquiries/domain/sources';
 import { COUNTRY_NAMES } from '@/modules/partnership-events/domain/country-city-data';
+import {
+  type AssignableEmployee,
+  assignmentToDraft,
+  type DepartmentOption,
+  type LeadAssignment,
+  type LeadAssignmentDraft,
+  sameAssignmentDraft,
+} from '@/modules/lead-assignments/domain/types';
+import FollowUpsPanel from './FollowUpsPanel';
+import LeadAssignmentFields from './LeadAssignmentFields';
 import { updateEnsEnquiry } from './ensEnquiriesApi';
 import { formatSubmittedOn, whatsappLink } from './sponsorEventFormat';
 
@@ -68,22 +78,30 @@ export function participationBadge(value: string): { label: string; tone: 'deleg
  * edited it (and who).
  *
  * Edit: the same fields the visitor filled, checked by the same rules server-side, plus the team's
- * own record of the conversation — a Lead status (Confirmed / Followed Up / Cancelled, or none yet)
- * and, under Followed Up, a note on what the conversation led to. Saving stamps "Last updated" and
- * switches back to the view showing the saved record. These enquiries have no row in All leads;
- * this dialog is where they are worked. */
-export default function EnsEnquiryDetailModal({ enquiry, onClose, onSaved }: {
+ * own record of the conversation — a Lead status (Confirmed / Follow Up / Not Interested, or none yet)
+ * and, under Confirmed or Follow Up, a note on what the conversation led to — and who works it:
+ * Departments + Assigned to (LeadAssignmentFields), saved through the Sales Tracker's assignments
+ * endpoint (`onAssign`) right after the enquiry itself. Saving stamps "Last updated" and
+ * switches back to the view showing the saved record. */
+export default function EnsEnquiryDetailModal({ enquiry, employees, departments, assignment, onAssign, onClose, onSaved }: {
   enquiry: EnsTravelEnquiry;
+  employees: AssignableEmployee[];
+  departments: DepartmentOption[];
+  /** The enquiry's stored departments and people, if any. */
+  assignment?: LeadAssignment;
+  onAssign: (draft: LeadAssignmentDraft) => Promise<void>;
   onClose: () => void;
   onSaved: (updated: EnsTravelEnquiry) => void;
 }) {
   const [current, setCurrent] = useState(enquiry);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<EnsTravelEnquiryAdminInput>(() => toInput(enquiry));
+  const [assignmentDraft, setAssignmentDraft] = useState<LeadAssignmentDraft>(() => assignmentToDraft(assignment));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
-  const dirty = editing && JSON.stringify(draft) !== JSON.stringify(toInput(current));
+  const assignmentDirty = !sameAssignmentDraft(assignmentDraft, assignmentToDraft(assignment));
+  const dirty = editing && (JSON.stringify(draft) !== JSON.stringify(toInput(current)) || assignmentDirty);
 
   function requestClose() {
     if (dirty && !window.confirm('Discard your unsaved changes?')) return;
@@ -100,6 +118,7 @@ export default function EnsEnquiryDetailModal({ enquiry, onClose, onSaved }: {
 
   function startEdit() {
     setDraft(toInput(current));
+    setAssignmentDraft(assignmentToDraft(assignment));
     setMsg(null);
     setEditing(true);
   }
@@ -117,11 +136,19 @@ export default function EnsEnquiryDetailModal({ enquiry, onClose, onSaved }: {
         ...draft,
         requirement: draft.participation === PARTICIPATION_OTHERS ? draft.requirement : '',
         foundUsDetail: draft.foundUs === FOUND_US_OTHERS ? draft.foundUsDetail : '',
-        conversationNote: draft.leadStatus === LEAD_STATUS_FOLLOWED_UP ? draft.conversationNote : '',
+        conversationNote: leadStatusTakesNote(draft.leadStatus) ? draft.conversationNote : '',
       };
       const saved = await updateEnsEnquiry(current.id, payload);
       setCurrent(saved);
       onSaved(saved);
+      // The enquiry is saved by now; if only the assignment fails, say so and stay in Edit so it
+      // can be retried (saving again is safe — both saves replace).
+      if (assignmentDirty) {
+        try { await onAssign(assignmentDraft); } catch (err) {
+          setMsg({ kind: 'err', text: `Details saved, but the assignment wasn't: ${err instanceof Error ? err.message : 'try again'}` });
+          return;
+        }
+      }
       setEditing(false);
       setMsg({ kind: 'ok', text: `Changes saved · last updated ${formatSubmittedOn(saved.updatedAt ?? undefined)}` });
     } catch (err) {
@@ -242,7 +269,7 @@ export default function EnsEnquiryDetailModal({ enquiry, onClose, onSaved }: {
                   <span className="ee-status-lbl">Lead status</span>
                   <span className={`badge ee-status is-${statusBadge.tone}`}>{statusBadge.label}</span>
                 </div>
-                {e.leadStatus === LEAD_STATUS_FOLLOWED_UP ? (
+                {leadStatusTakesNote(e.leadStatus) ? (
                   <>
                     <p className="ee-package-sub">Conversation result</p>
                     <p className="se-desc">{e.conversationNote || <span className="hint">No note written yet — use Edit details to add what the conversation led to.</span>}</p>
@@ -251,12 +278,31 @@ export default function EnsEnquiryDetailModal({ enquiry, onClose, onSaved }: {
                   <p className="ee-panel-note">
                     {e.leadStatus === null
                       ? 'Nobody has logged a conversation with this lead yet. Use Edit details to set a status once you have spoken to them.'
-                      : e.leadStatus === 'confirmed'
-                        ? 'This lead has confirmed. No further conversation note is kept for confirmed leads.'
-                        : 'This lead has been cancelled. No further conversation note is kept for cancelled leads.'}
+                      : 'This lead is not interested. No further conversation note is kept for these leads.'}
                   </p>
                 )}
               </section>
+
+              <section className="ee-panel">
+                <header className="ee-panel-head">
+                  <h3>Assigned to</h3>
+                  <span>Who on the team is working this lead</span>
+                </header>
+                {assignment?.assignees.length || assignment?.departments.length ? (
+                  <dl className="ee-panel-kv">
+                    <dt>Departments</dt>
+                    <dd>{assignment.departments.length ? assignment.departments.join(', ') : <span className="hint">None — people picked by hand</span>}</dd>
+                    <dt>People</dt>
+                    <dd>{assignment.assignees.length
+                      ? assignment.assignees.map((p) => `${p.employeeName || 'Former employee'}${p.active ? '' : ' (no longer active)'}`).join(', ')
+                      : <span className="hint">Nobody</span>}</dd>
+                  </dl>
+                ) : (
+                  <p className="ee-panel-note">Nobody is assigned yet. Use Edit details to pick departments or people.</p>
+                )}
+              </section>
+
+              <FollowUpsPanel source="ens" leadId={e.id} />
             </div>
           ) : (
             <div className="ee-form">
@@ -337,6 +383,16 @@ export default function EnsEnquiryDetailModal({ enquiry, onClose, onSaved }: {
                 )}
               </div>
 
+              <div className="ee-form-divider">Assigned to</div>
+              <LeadAssignmentFields
+                idPrefix="ee"
+                employees={employees}
+                departments={departments}
+                assignment={assignment}
+                value={assignmentDraft}
+                onChange={setAssignmentDraft}
+              />
+
               <div className="ee-form-divider">Conversation</div>
               <div className="row">
                 <div className="field">
@@ -352,7 +408,7 @@ export default function EnsEnquiryDetailModal({ enquiry, onClose, onSaved }: {
                   <div className="hint">How the conversation with this lead stands</div>
                 </div>
               </div>
-              {draft.leadStatus === LEAD_STATUS_FOLLOWED_UP && (
+              {leadStatusTakesNote(draft.leadStatus) && (
                 <div className="row">
                   <div className="field" style={{ flexBasis: '100%' }}>
                     <label htmlFor="ee-conversation-note">Conversation result</label>

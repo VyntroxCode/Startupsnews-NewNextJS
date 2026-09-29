@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cairo, Montserrat } from "next/font/google";
+import localFont from "next/font/local";
 import { ExpandNorthStarPage } from "@/components/expand-north-star/ExpandNorthStarPage";
 import { getPromotedCityOptions } from "@/lib/data-adapter";
 
@@ -7,9 +7,10 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
 // The event's own typeface (expandnorthstar.com sets Cairo, headings at 800), scoped to this page
 // through a CSS variable (--ens-font) so it never replaces the site font anywhere else.
-const cairo = Cairo({
-  subsets: ["latin"],
-  weight: ["300", "400", "600", "700", "800"],
+// Self-hosted (src/fonts, latin variable file) rather than next/font/google: see src/fonts/README.md.
+const cairo = localFont({
+  src: "../../fonts/cairo-latin-var.woff2",
+  weight: "200 1000",
   variable: "--ens-font",
   display: "swap",
 });
@@ -17,9 +18,9 @@ const cairo = Cairo({
 // The delegation pieces use this, matching the delegation artwork and programme PDF: the green
 // strip (800/900) and the day cards (400 body, 700 bold lead-ins). Without 400/700 the card text
 // would fall back to the heavy faces and read as all bold.
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "800", "900"],
+const montserrat = localFont({
+  src: "../../fonts/montserrat-latin-var.woff2",
+  weight: "100 900",
   variable: "--ens-strip-font",
   display: "swap",
 });

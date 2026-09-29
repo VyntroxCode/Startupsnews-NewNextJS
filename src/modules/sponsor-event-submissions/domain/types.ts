@@ -12,7 +12,7 @@ export interface SponsorEventSubmission {
   eventSlug: string;
   /** Composed "Bengaluru, India" — city first, as the form shows and the email always carried. */
   location: string;
-  /** The picked country, or what was typed under "Other (add manually)". Empty if not given. */
+  /** The picked country, or what was typed under "Other (add manually)". Required on new submissions (older rows may be empty). */
   country: string;
   city: string;
   externalUrl: string;

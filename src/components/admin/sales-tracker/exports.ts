@@ -1,10 +1,20 @@
 import * as XLSX from 'xlsx';
 import { csvCell, downloadBlob, leadExportRow, loadScriptOnce, todayStr } from './utils';
-import type { JsPdfDoc, SalesLead } from './types';
+import type { LeadAssignment } from '@/modules/lead-assignments/domain/types';
+import type { JsPdfDoc, UnifiedLeadRow } from './types';
 
-/** Exports the given (already-filtered) leads as CSV — synchronous, no external library. */
-export function exportLeadsCsv(leads: SalesLead[]): void {
-  const rows = leads.map(leadExportRow);
+/** Looks up a row's departments / people / follow-up count (keyed by its source + id). */
+type AssignmentFor = (row: UnifiedLeadRow) => LeadAssignment | undefined;
+
+/** Every export takes the All leads table's own filtered, sorted rows — sales leads and Expand North
+ * Star enquiries alike — so the file always holds exactly what the table shows. */
+function toRows(rows: UnifiedLeadRow[], assignmentFor: AssignmentFor): Record<string, string>[] {
+  return rows.map((r) => leadExportRow(r, assignmentFor(r)));
+}
+
+/** Exports as CSV — synchronous, no external library. */
+export function exportLeadsCsv(leads: UnifiedLeadRow[], assignmentFor: AssignmentFor): void {
+  const rows = toRows(leads, assignmentFor);
   if (!rows.length) { alert('No leads match the current filters — nothing to export.'); return; }
   const headers = Object.keys(rows[0]);
   const lines = [headers.join(',')].concat(rows.map((r) => headers.map((h) => csvCell(r[h])).join(',')));
@@ -13,8 +23,8 @@ export function exportLeadsCsv(leads: SalesLead[]): void {
 }
 
 /** Exports via the `xlsx` npm package (already a project dependency). */
-export async function exportLeadsExcel(leads: SalesLead[]): Promise<void> {
-  const rows = leads.map(leadExportRow);
+export async function exportLeadsExcel(leads: UnifiedLeadRow[], assignmentFor: AssignmentFor): Promise<void> {
+  const rows = toRows(leads, assignmentFor);
   if (!rows.length) { alert('No leads match the current filters — nothing to export.'); return; }
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = Object.keys(rows[0]).map(() => ({ wch: 20 }));
@@ -23,9 +33,15 @@ export async function exportLeadsExcel(leads: SalesLead[]): Promise<void> {
   XLSX.writeFile(wb, `sales-tracker-leads-${todayStr()}.xlsx`);
 }
 
+/** The free-text columns that get extra width in the PDF, by header name (not position, so adding
+ * a column can't give the width to the wrong one). */
+const WIDE_PDF_COLUMNS: Record<string, number> = {
+  Query: 160, 'Last Call Discussion': 140, 'Event Description': 160,
+};
+
 /** Exports via jsPDF + jspdf-autotable, loaded from CDN on demand (not npm deps here). */
-export async function exportLeadsPdf(leads: SalesLead[]): Promise<void> {
-  const rows = leads.map(leadExportRow);
+export async function exportLeadsPdf(leads: UnifiedLeadRow[], assignmentFor: AssignmentFor): Promise<void> {
+  const rows = toRows(leads, assignmentFor);
   if (!rows.length) { alert('No leads match the current filters — nothing to export.'); return; }
   try {
     const w = window as unknown as { jspdf?: { jsPDF: new (opts: Record<string, unknown>) => JsPdfDoc } };
@@ -35,6 +51,9 @@ export async function exportLeadsPdf(leads: SalesLead[]): Promise<void> {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt' });
     const headers = Object.keys(rows[0]);
     const body = rows.map((r) => headers.map((h) => r[h]));
+    const columnStyles = Object.fromEntries(
+      headers.flatMap((h, i) => (WIDE_PDF_COLUMNS[h] ? [[i, { cellWidth: WIDE_PDF_COLUMNS[h] }]] : []))
+    );
     doc.setFontSize(14);
     doc.setTextColor(79, 70, 229);
     doc.text('Sales Tracker — Leads', 40, 30);
@@ -42,9 +61,7 @@ export async function exportLeadsPdf(leads: SalesLead[]): Promise<void> {
       head: [headers], body, startY: 45,
       styles: { fontSize: 7, cellPadding: 4, overflow: 'linebreak' },
       headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-      // Indices into leadExportRow's key order: Query, Last Call Discussion and Event Description
-      // get extra width — the three free-text columns.
-      columnStyles: { 9: { cellWidth: 160 }, 14: { cellWidth: 140 }, 20: { cellWidth: 160 } },
+      columnStyles,
     });
     doc.save(`sales-tracker-leads-${todayStr()}.pdf`);
   } catch {

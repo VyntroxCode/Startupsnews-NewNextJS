@@ -8,6 +8,7 @@ import {
   validateDate,
   validateDescription,
   validateExternalUrl,
+  validateLocation,
   validateSlug,
   validateTime,
   validateTitle,
@@ -67,13 +68,16 @@ export function EventDetailsStep({
         city={data.city}
         cityOther={data.cityOther}
         promotedCities={promotedCities}
-        countryError={errors.location}
-        onChangeCountry={(v) => ctrl.setField("country", v)}
+        /* One `location` error, shown under whichever half is missing: under Country until one
+           is picked, then under City. */
+        countryError={data.country ? undefined : errors.location}
+        cityError={data.country ? errors.location : undefined}
+        onChangeCountry={(v) => ctrl.updateAndMaybeValidate("country", v, "location", validateLocation)}
         onChangeCountryOther={(v) => ctrl.setField("countryOther", v)}
-        onChangeCity={(v) => ctrl.setField("city", v)}
-        onChangeCityOther={(v) => ctrl.setField("cityOther", v)}
-        onBlurCountry={() => {}}
-        onBlurCity={() => {}}
+        onChangeCity={(v) => ctrl.updateAndMaybeValidate("city", v, "location", validateLocation)}
+        onChangeCityOther={(v) => ctrl.updateAndMaybeValidate("cityOther", v, "location", validateLocation)}
+        onBlurCountry={() => ctrl.blurValidate("location", validateLocation)}
+        onBlurCity={() => ctrl.blurValidate("location", validateLocation)}
       />
       {data.location.trim() ? (
         <p className="sp-location-pulse sp-location-echo">

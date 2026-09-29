@@ -45,7 +45,7 @@ export default function NewsletterHeader({ isMobile }: { isMobile: boolean }) {
         transition={{ duration: 0.45, delay: reducedMotion ? 0 : 0.18, ease: [0.22, 1, 0.36, 1] }}
         style={{ color: '#64748b', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}
       >
-        Pick up to <strong style={{ color: '#0f172a' }}>3 newsletter categories</strong> and your Morning Signal briefing will be curated just for you.
+        Here are all the <strong style={{ color: '#0f172a' }}>newsletter categories</strong> your Morning Signal briefing covers.
       </motion.p>
     </div>
   );

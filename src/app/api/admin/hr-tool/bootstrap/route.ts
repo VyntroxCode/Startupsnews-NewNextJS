@@ -3,12 +3,16 @@ import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { HR_TOOL_ROLES } from '@/shared/middleware/roles';
 import { hrToolService } from '../_lib';
 import { hrCredentialsService } from '../employee-credentials/_lib';
+import { hrOffboardingService } from '../offboarding/_lib';
 
 export async function GET(request: NextRequest) {
   const auth = await requireAnyRole(request, HR_TOOL_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
+    // Flip any exit whose last working day has passed before reading employees, so the
+    // Directory loads (and later re-saves) the up-to-date 'exited' status.
+    await hrOffboardingService.applyDueExits();
     const [data, employeeCredentials] = await Promise.all([
       hrToolService.getBootstrap(),
       hrCredentialsService.getAll(),

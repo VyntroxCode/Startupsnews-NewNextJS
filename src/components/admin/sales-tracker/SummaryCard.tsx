@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import BarChart from './BarChart';
-import { SUMMARY_STATUSES, STATUS_TO_SUMMARY, TYPES, STATUSES } from './constants';
+import { isOpenStatusLabel, STATUSES, TYPES } from './constants';
 import type { SalesLead } from './types';
 
-export default function SummaryCard({ leads, loaded, onPendingLeadsClick }: {
+export default function SummaryCard({ leads, ensPendingCount, loaded, onPendingLeadsClick }: {
   leads: SalesLead[];
+  /** Expand North Star enquiries with no status yet — they're Pending too, and the Pending leads
+   * tile opens the All leads table where they sit alongside sales leads. */
+  ensPendingCount: number;
   loaded: boolean;
   /** Jumps the reader to All leads filtered down to just the pending ones — see the page's own
    * `pendingOnly` state, which this only sets; LeadsTable owns applying and clearing the filter. */
@@ -16,15 +19,13 @@ export default function SummaryCard({ leads, loaded, onPendingLeadsClick }: {
 
   const totals = useMemo(() => ({
     total: leads.length,
-    open: leads.filter((l) => !['Successfully closed', 'Dropped'].includes(l.status)).length,
-    closed: leads.filter((l) => l.status === 'Successfully closed').length,
-    dropped: leads.filter((l) => l.status === 'Dropped').length,
-    // "Never touched since it arrived" — created_at and updated_at land on the exact same
-    // CURRENT_TIMESTAMP default at insert and only updated_at moves on any later save, so an
-    // untouched lead is simply one where the two still match. Applies to every lead regardless of
-    // how it arrived (manually added or mirrored in from a public form).
-    pending: leads.filter((l) => !!l.createdAt && l.createdAt === l.updatedAt).length,
-  }), [leads]);
+    open: leads.filter((l) => isOpenStatusLabel(l.status)).length,
+    closed: leads.filter((l) => l.status === 'Confirmed').length,
+    dropped: leads.filter((l) => l.status === 'Not Interested').length,
+    // Status Pending, across sales leads and Expand North Star enquiries — the same rows the tile's
+    // "View in All leads" filter shows (LeadsTable isPending).
+    pending: leads.filter((l) => l.status === 'Pending').length + ensPendingCount,
+  }), [leads, ensPendingCount]);
 
   const typePairs = TYPES.map((t): [string, number] => [t, leads.filter((l) => l.type === t).length]);
   const statusPairs = STATUSES.map((s): [string, number] => [s, leads.filter((l) => l.status === s).length]);
@@ -35,9 +36,9 @@ export default function SummaryCard({ leads, loaded, onPendingLeadsClick }: {
         <h2 style={{ margin: 0, fontSize: 15.5, color: 'var(--pink-dark)' }}>Summary</h2>
         <div className="metrics" style={{ marginTop: 14, marginBottom: 0 }}>
           <div className="metric"><div className="num">{totals.total}</div><div className="lbl">Total leads</div></div>
-          <div className="metric"><div className="num">{totals.open}</div><div className="lbl">Active</div></div>
-          <div className="metric"><div className="num">{totals.closed}</div><div className="lbl">Closed</div></div>
-          <div className="metric"><div className="num">{totals.dropped}</div><div className="lbl">Dropped</div></div>
+          <div className="metric"><div className="num">{totals.open}</div><div className="lbl">Active (Pending + Follow Up)</div></div>
+          <div className="metric"><div className="num">{totals.closed}</div><div className="lbl">Confirmed</div></div>
+          <div className="metric"><div className="num">{totals.dropped}</div><div className="lbl">Not Interested</div></div>
           <button type="button" className="metric metric-btn" onClick={onPendingLeadsClick}>
             <div className="num">{totals.pending}</div>
             <div className="lbl">Pending leads</div>
@@ -54,7 +55,7 @@ export default function SummaryCard({ leads, loaded, onPendingLeadsClick }: {
         <div style={{ overflowX: 'auto' }}>
           <table className="summary-table">
             <thead>
-              <tr><th style={{ textAlign: 'left' }}>Type \ Status</th>{SUMMARY_STATUSES.map((s) => <th key={s}>{s}</th>)}<th>Total</th></tr>
+              <tr><th style={{ textAlign: 'left' }}>Type \ Status</th>{STATUSES.map((s) => <th key={s}>{s}</th>)}<th>Total</th></tr>
             </thead>
             <tbody>
               {TYPES.map((t) => {
@@ -62,8 +63,8 @@ export default function SummaryCard({ leads, loaded, onPendingLeadsClick }: {
                 return (
                   <tr key={t}>
                     <td className="rowlabel">{t}</td>
-                    {SUMMARY_STATUSES.map((s) => {
-                      const c = rowLeads.filter((l) => STATUS_TO_SUMMARY[l.status] === s).length;
+                    {STATUSES.map((s) => {
+                      const c = rowLeads.filter((l) => l.status === s).length;
                       return <td key={s}>{c || ''}</td>;
                     })}
                     <td className="total">{rowLeads.length}</td>
@@ -72,8 +73,8 @@ export default function SummaryCard({ leads, loaded, onPendingLeadsClick }: {
               })}
               <tr>
                 <td className="rowlabel">Total</td>
-                {SUMMARY_STATUSES.map((s) => {
-                  const c = leads.filter((l) => STATUS_TO_SUMMARY[l.status] === s).length;
+                {STATUSES.map((s) => {
+                  const c = leads.filter((l) => l.status === s).length;
                   return <td key={s} className="total">{c || ''}</td>;
                 })}
                 <td className="total">{totals.total}</td>

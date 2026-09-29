@@ -17,7 +17,7 @@ export function StartupEventsSection({ events, showLocationTag = true }: Startup
         </Link>
       </h3>
       <div id="mvp-feat-tab-col1" className="mvp-feat1-list left relative mvp-tab-col-cont startup-events-list" style={{ display: "block" }}>
-        {list.slice(0, 20).map((event) => {
+        {list.slice(0, 13).map((event) => {
           const detailUrl = getStartupEventDetailPath(event);
           const isInternal = detailUrl.startsWith("/");
 
@@ -30,7 +30,6 @@ export function StartupEventsSection({ events, showLocationTag = true }: Startup
             >
               <div className="mvp-feat1-list-cont left relative">
                 <div className="mvp-feat1-list-text">
-                  <h2 title={event.title}>{event.title}</h2>
                   <div className="mvp-cat-date-wrap left relative">
                     {showLocationTag && (
                       <>
@@ -40,6 +39,7 @@ export function StartupEventsSection({ events, showLocationTag = true }: Startup
                     )}
                     <span className="mvp-cd-date left relative">{event.date}</span>
                   </div>
+                  <h2 title={event.title}>{event.title}</h2>
                 </div>
               </div>
             </a>

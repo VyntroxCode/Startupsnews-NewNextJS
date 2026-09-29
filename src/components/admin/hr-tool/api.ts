@@ -5,6 +5,7 @@ import type {
   HrTicket, HrRules, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPayrollEntry, HrAuditLogEntry,
   HrCompanyProfile,
 } from './types';
+import type { OffboardingCase, OffboardingCaseDetail, OffboardingClearanceItem, OffboardingSettings } from '@/modules/hr-offboarding/domain/types';
 
 const API_BASE = '/api/admin/hr-tool';
 
@@ -38,6 +39,8 @@ export interface PayrollApiResult {
   alreadyRun: boolean;
   entries: HrPayrollEntry[];
   missingCtcEmployees: string[];
+  /** Leavers left out because an approved Full & Final pays their salary for this cycle. */
+  fnfSettledEmployees?: string[];
 }
 /** Payroll calls preserve the server's specific error message (e.g. "period hasn't ended
  * yet") instead of the generic apiGet/apiPost "Request failed", since that message is
@@ -52,6 +55,8 @@ export interface PunchApiResult {
   note?: string;
   geo?: { distanceM: number; allowedM: number };
 }
+
+export interface OffboardingListResult { cases: OffboardingCase[]; clearance: OffboardingClearanceItem[]; settings: OffboardingSettings; }
 
 export const hrApi = {
   bootstrap: () => apiGet<HrBootstrap>('/bootstrap'),
@@ -84,4 +89,14 @@ export const hrApi = {
   saveTemplate: (name: string, content: string) => apiPut('/templates/' + encodeURIComponent(name), { content }),
   appendAuditLog: (entry: HrAuditLogEntry) => apiPost('/audit-log', entry).catch(() => {}),
   resetSampleData: (keepEmployeeId: string | null) => apiPost('/reset-sample-data', { keepEmployeeId }),
+  // Offboarding — apiRaw throughout so the server's validation message reaches the admin.
+  offboardingList: () => apiRaw<OffboardingListResult>('/offboarding'),
+  offboardingStart: (body: Record<string, unknown>) =>
+    apiRaw<OffboardingCase>('/offboarding', { method: 'POST', body: JSON.stringify(body) }),
+  offboardingDetail: (id: number) => apiRaw<OffboardingCaseDetail>('/offboarding/' + id),
+  /** Returns the updated case, or the checklist / handover result for those actions. */
+  offboardingAction: <T = OffboardingCase>(id: number, body: Record<string, unknown>) =>
+    apiRaw<T>('/offboarding/' + id, { method: 'POST', body: JSON.stringify(body) }),
+  offboardingSaveSettings: (body: Partial<OffboardingSettings>) =>
+    apiRaw<OffboardingSettings>('/offboarding/settings', { method: 'PUT', body: JSON.stringify(body) }),
 };

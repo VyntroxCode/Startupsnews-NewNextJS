@@ -4,7 +4,9 @@ import { motion } from "motion/react";
 import type { LeadFormController } from "@/components/lead-forms/shared/useLeadForm";
 import type { LeadFormData } from "@/components/lead-forms/shared/types";
 import {
+  validateCity,
   validateCompanyName,
+  validateCountry,
   validateEmail,
   validateName,
   validatePhone,
@@ -26,7 +28,14 @@ const FIELDS: Array<{
   { field: "phone", label: "Phone / WhatsApp", step: 1, validate: validatePhone, fallback: "Not entered yet" },
   { field: "email", label: "Official email", step: 1, validate: validateEmail, fallback: "Not entered yet" },
   { field: "website", label: "Website", step: 2, validate: validateWebsite, fallback: "Not provided" },
-  { field: "countryCity", label: "Country / City", step: 2, fallback: "Not provided" },
+  { field: "countryCity", label: "Country / City", step: 2, fallback: "Not entered yet" },
+];
+
+/** The Country / City row reads back one composed string, but its errors show under the two
+ * separate dropdowns on step 2 — so the required check runs on those fields, not on the row. */
+const LOCATION_CHECKS: Array<{ field: keyof LeadFormData; validate: (d: LeadFormData) => string }> = [
+  { field: "country", validate: validateCountry },
+  { field: "city", validate: validateCity },
 ];
 
 /** Step 03 — "Review". Adds no fields of its own: it is a read-back of what the reader already
@@ -47,6 +56,11 @@ export function ReviewStep({ ctrl }: { ctrl: LeadFormController }) {
       const message = validate(data);
       ctrl.blurValidate(field, validate);
       if (message && firstInvalidStep === null) firstInvalidStep = step;
+    }
+    for (const { field, validate } of LOCATION_CHECKS) {
+      const message = validate(data);
+      ctrl.blurValidate(field, validate);
+      if (message && firstInvalidStep === null) firstInvalidStep = 2;
     }
     if (firstInvalidStep !== null) {
       ctrl.goToStep(firstInvalidStep);

@@ -290,9 +290,20 @@ export default function Rules() {
   // adjustment pattern, just inlined instead of going through the generic hook.
   const [ruleDraft, setRuleDraft] = useState<HrRules>(() => toRuleDraft(r));
   const [prevSavedRules, setPrevSavedRules] = useState(r);
+  // Only the keys whose SAVED value actually changed are re-seeded. Re-seeding the whole draft
+  // meant saving the CTC split (which writes the same rules row) silently threw away unsaved
+  // edits in Attendance & leave / Approval chain / Leave types / Other rules.
   if (prevSavedRules !== r) {
+    const prev = prevSavedRules;
+    const base = toRuleDraft(r);
     setPrevSavedRules(r);
-    setRuleDraft(toRuleDraft(r));
+    setRuleDraft((d) => {
+      const next = { ...d };
+      for (const k of Object.keys(base) as (keyof HrRules)[]) {
+        if (JSON.stringify(prev[k]) !== JSON.stringify(r[k])) (next as Record<string, unknown>)[k] = base[k];
+      }
+      return next;
+    });
   }
   const [savingRules, setSavingRules] = useState(false);
 

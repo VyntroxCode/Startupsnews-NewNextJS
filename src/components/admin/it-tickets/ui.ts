@@ -8,7 +8,7 @@
  *
  * Every accent utility lives in THIS file. Tailwind's scanner only sees literal class strings, so
  * never build class names by interpolation. Fonts and box-sizing come from `.it-tickets-scope`
- * in it-tickets-tailwind.css — don't add font-family utilities here. */
+ * in staff-panel-tailwind.css — don't add font-family utilities here. */
 
 export const FOCUS_RING = 'focus:outline-none focus-visible:ring-[3px] focus-visible:ring-[#6366F1]/20';
 

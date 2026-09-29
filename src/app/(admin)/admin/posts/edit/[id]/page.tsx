@@ -26,7 +26,7 @@ const EVENT_ADMIN_AUTHOR_IDS = [38, 221, 223, 224, 37];
 type EditPostFormData = {
   title: string; slug: string; excerpt: string; metaDescription: string; robots: string;
   contentFollow: string; content: string; categoryId: string; authorId: string;
-  featuredImageUrl: string; featuredImageSmallUrl: string; format: 'standard' | 'video' | 'gallery';
+  featuredImageUrl: string; featuredImageSmallUrl: string; imageCredit: string; format: 'standard' | 'video' | 'gallery';
   status: 'draft' | 'published' | 'scheduled' | 'archived'; featured: boolean; scheduledAt: string;
 };
 
@@ -72,6 +72,7 @@ export default function EditPostPage() {
     authorId: '',
     featuredImageUrl: '',
     featuredImageSmallUrl: '',
+    imageCredit: '',
     format: 'standard' as 'standard' | 'video' | 'gallery',
     status: 'draft' as 'draft' | 'published' | 'scheduled' | 'archived',
     featured: false,
@@ -177,6 +178,7 @@ export default function EditPostPage() {
         authorId: post.authorId ? String(post.authorId) : '',
         featuredImageUrl: post.image || '',
         featuredImageSmallUrl: post.imageSmall || '',
+        imageCredit: (post as { imageCredit?: string | null }).imageCredit || '',
         format: post.format || 'standard',
         status: post.status || 'draft',
         featured: post.featured || false,
@@ -269,6 +271,7 @@ export default function EditPostPage() {
           form.append('format', formData.format);
           form.append('status', formData.status);
           form.append('featured', String(formData.featured));
+          form.append('imageCredit', formData.imageCredit ?? '');
           if (formData.status === 'scheduled' && formData.scheduledAt) {
             form.append('publishedAt', new Date(formData.scheduledAt).toISOString());
           }
@@ -361,6 +364,7 @@ export default function EditPostPage() {
           multipart.append('featured', String(formData.featured));
           multipart.append('featuredImageUrl', formData.featuredImageUrl || '');
           multipart.append('featuredImageSmallUrl', formData.featuredImageSmallUrl || '');
+          multipart.append('imageCredit', formData.imageCredit ?? '');
           if (formData.status === 'scheduled' && formData.scheduledAt) {
             multipart.append('publishedAt', new Date(formData.scheduledAt).toISOString());
           }
@@ -824,6 +828,20 @@ export default function EditPostPage() {
           </div>
           <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b' }}>
             Choose a file to upload with the post (same as RSS: image is uploaded to S3 when you save). Or paste an image URL.
+          </p>
+          <label style={{ display: 'block', marginTop: '1rem', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
+            Source
+          </label>
+          <input
+            type="text"
+            value={formData.imageCredit ?? ''}
+            onChange={(e) => setFormData((p) => ({ ...p, imageCredit: e.target.value }))}
+            maxLength={255}
+            placeholder="e.g. Reuters, Unsplash / John Doe"
+            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: '1rem', boxSizing: 'border-box' }}
+          />
+          <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b' }}>
+            Shown below the featured image (right corner) on the article page. Leave empty to hide.
           </p>
         </div>
 

@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
-import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders, getAdminUser } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
@@ -13,17 +13,18 @@ import {
   PARTNERSHIP_STATUS_OPTIONS, PARTNERSHIP_TYPE_OPTIONS, SITE_STATUS_OPTIONS, ONLINE_PARTNERSHIP_TYPE,
   EVENT_DESCRIPTION_MIN_LENGTH,
   POSTER_SPEC, BANNER_SPEC, SOCIAL_CREATIVE_SPEC, SOCIAL_CREATIVE_PLATFORMS, SOCIAL_CREATIVE_PLATFORM_LABELS,
-  SOCIAL_LINK_FIELDS,
-  type Speaker, type SocialCreative, type LinkedEventSummary, type SocialLinkKey,
+  SOCIAL_LINK_FIELDS, FOLLOW_UP_KEEP_COUNT, FOLLOW_UP_MAX_LENGTH,
+  type Speaker, type SocialCreative, type LinkedEventSummary, type SocialLinkKey, type PartnershipEventFollowUp,
 } from '@/modules/partnership-events/domain/types';
 import { COUNTRY_NAMES, aliasesForCountry, canonicalCountryName, cityOptionsForCountry, countryForCity, flagForCountry, promotedCitiesByCountry, splitCityValue, subCitiesForCity } from '@/modules/partnership-events/domain/country-city-data';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/admin/SearchableSelect';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES, CUSTOM_CODE_RE, IMAGE_SPECS, slugify } from '@/components/submit-event/constants';
 import { STANDARD_HEADERS, partnershipEventToExportRow, dedupKey, classifyPartnershipStatus, DEFAULT_HIDDEN_STATUSES } from '@/modules/partnership-events/utils/partnership-events.utils';
 
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-pt-display' });
-const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-pt-body' });
-const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-pt-mono' });
+// Self-hosted (src/fonts, latin variable files) rather than next/font/google: see src/fonts/README.md.
+const spaceGrotesk = localFont({ src: '../../../../fonts/space-grotesk-latin-var.woff2', weight: '300 700', variable: '--font-pt-display' });
+const inter = localFont({ src: '../../../../fonts/inter-latin-var.woff2', weight: '100 900', variable: '--font-pt-body' });
+const jetbrainsMono = localFont({ src: '../../../../fonts/jetbrains-mono-latin-var.woff2', weight: '100 800', variable: '--font-pt-mono' });
 
 /* ============================================================
    TYPES
@@ -219,10 +220,14 @@ function normalizeListing(rawListing: string, rawLink: string, statusBucket: str
   if (l === 'no' && !hasLink) return 'No';
   return 'Pending';
 }
-/** The tracker's own claim that an event is "listed" (status = Partnership Done or Only
- * Listing) — see isLiveListed for whether that claim is actually true on the live site. */
+/** Buckets the "Listed" KPI card, its drill-down and the "Listed" status-dropdown option count.
+ * Initiated + Ticketing added on request (2026-09-26). Draft/Expired/Cancelled are never in these
+ * buckets (classifyStatus checks them first), so every event counted here has a non-draft page. */
+const LISTED_BUCKETS = ['Initiated', 'Partnership Done', 'Only Listing', 'Ticketing'];
+/** The tracker's own claim that an event is "listed" (see LISTED_BUCKETS) — see isLiveListed
+ * for whether that claim is actually true on the live site. */
 function isListedStatus(statusBucket: string): boolean {
-  return statusBucket === 'Partnership Done' || statusBucket === 'Only Listing';
+  return LISTED_BUCKETS.includes(statusBucket);
 }
 /** Actually live on the public site right now — siteStatus isn't sitting in Draft. The
  * "Listed" KPI card compares this against isListedStatus's count and warns when they disagree
@@ -616,6 +621,15 @@ function parseDbDatetime(s: string): number | null {
   const d = new Date(s.includes('T') ? s : s.replace(' ', 'T'));
   return isNaN(d.getTime()) ? null : d.getTime();
 }
+const FOLLOW_UP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** Follow Up note date: the server sends 'YYYY-MM-DD HH:MM:SS' already in IST, so it's formatted
+ * as text (no Date parsing) — the note shows the IST time whatever the viewer's own timezone. */
+function fmtFollowUpDate(s: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s || '');
+  if (!m) return s || '';
+  const h = parseInt(m[4], 10);
+  return `${parseInt(m[3], 10)} ${FOLLOW_UP_MONTHS[parseInt(m[2], 10) - 1]} ${m[1]}, ${h % 12 || 12}:${m[5]} ${h < 12 ? 'AM' : 'PM'}`;
+}
 function fmtDateTime(ms: number): string {
   return new Date(ms).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
@@ -747,6 +761,18 @@ export default function PartnershipTrackerPage() {
   const [draft, setDraft] = useState<EventDraft>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState('');
+  // Follow Up notes (Partnership tracking section). Kept off `draft` on purpose: notes have their
+  // own table and endpoint (/api/admin/partnership-events/[id]/follow-ups), so the event's own
+  // PUT can never overwrite them. followUpText is the note being typed — for an existing event it
+  // can be added straight away with "Add note"; any text still in the box is also added on Save.
+  const [followUps, setFollowUps] = useState<PartnershipEventFollowUp[]>([]);
+  const [followUpsLoading, setFollowUpsLoading] = useState(false);
+  const [followUpText, setFollowUpText] = useState('');
+  const [followUpSaving, setFollowUpSaving] = useState(false);
+  const [followUpError, setFollowUpError] = useState('');
+  // Which event the follow-up list belongs to, so a slow load for a previously opened event can't
+  // land in the one open now.
+  const followUpsForId = useRef<number | null>(null);
   // Which social-creative platform panels are expanded in the Add/Edit modal — reset per open.
   const [openCreativePlatforms, setOpenCreativePlatforms] = useState<Set<string>>(new Set());
   // "Others" manual-entry mode for the City field — reset per open. Region/Country has no such
@@ -779,7 +805,7 @@ export default function PartnershipTrackerPage() {
   // merely opened and looked at", so only the former is warned about. null until the modal has been
   // opened at least once, so the idle `draft` state this page always carries never counts as dirty.
   const baselineDraft = useRef<string | null>(null);
-  const modalDirty = modalOpen && baselineDraft.current !== null && JSON.stringify(draft) !== baselineDraft.current;
+  const modalDirty = modalOpen && ((baselineDraft.current !== null && JSON.stringify(draft) !== baselineDraft.current) || !!followUpText.trim());
   const [closeWarning, setCloseWarning] = useState(false);
   /* Whether the warning may offer to SAVE on the way out, rather than only to discard.
    *
@@ -918,7 +944,7 @@ export default function PartnershipTrackerPage() {
     const who = getAdminUser()?.name || getAdminUser()?.email || 'Team Member';
 
     return [
-      `*Partnership Tracker — Daily Report*`,
+      `*Events Tracker — Daily Report*`,
       `Date: ${dateStr}`,
       `Submitted By: ${who}`,
       '',
@@ -1207,7 +1233,45 @@ export default function PartnershipTrackerPage() {
     setPhoneCodeCustom('');
     setPhoneNumber('');
     setPhoneError('');
+    resetFollowUps(null);
     setModalOpen(true);
+  }
+  /** Clears the Follow Up section for a newly opened modal and, for an existing event, loads its notes. */
+  function resetFollowUps(eventId: number | null) {
+    followUpsForId.current = eventId;
+    setFollowUps([]);
+    setFollowUpText('');
+    setFollowUpError('');
+    setFollowUpSaving(false);
+    setFollowUpsLoading(eventId !== null);
+    if (eventId === null) return;
+    api<PartnershipEventFollowUp[]>(`/api/admin/partnership-events/${eventId}/follow-ups`).then((res) => {
+      if (followUpsForId.current !== eventId) return;
+      if (res.success) setFollowUps(res.data || []);
+      else setFollowUpError(res.error || 'Could not load follow ups.');
+      setFollowUpsLoading(false);
+    });
+  }
+  /** POSTs one note; returns an error message, or '' on success (and refreshes the list shown). */
+  async function postFollowUp(eventId: number, message: string): Promise<string> {
+    const res = await api<PartnershipEventFollowUp[]>(`/api/admin/partnership-events/${eventId}/follow-ups`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }),
+    });
+    if (!res.success) return res.error || 'Could not add the follow up.';
+    if (followUpsForId.current === eventId) setFollowUps(res.data || []);
+    return '';
+  }
+  /** "Add note" button — existing events only; a new event's note is added by saveModal once it exists. */
+  async function addFollowUpNow() {
+    const message = followUpText.trim();
+    if (!editingId || !message || followUpSaving) return;
+    setFollowUpSaving(true);
+    setFollowUpError('');
+    const err = await postFollowUp(editingId, message);
+    setFollowUpSaving(false);
+    if (err) { setFollowUpError(err); return; }
+    setFollowUpText('');
+    showToast('Follow up added.');
   }
   function openEditModal(e: PartnershipEvent) {
     setEditingId(e.id);
@@ -1300,6 +1364,7 @@ export default function PartnershipTrackerPage() {
     setPhoneCodeCustom(parsedPhone.codeCustom);
     setPhoneNumber(parsedPhone.number);
     setPhoneError('');
+    resetFollowUps(e.id);
     setModalOpen(true);
   }
   async function saveModal() {
@@ -1384,7 +1449,19 @@ export default function PartnershipTrackerPage() {
         ? await api(`/api/admin/partnership-events/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         : await api('/api/admin/partnership-events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (res.success) {
-        if (res.warning) {
+        // A note still in the Follow Up box goes in with the save. For a new event this is the only
+        // way to add one (it needs the id the POST just returned). The event itself is already
+        // saved at this point, so a failed note is reported but doesn't undo or block the save.
+        const pendingNote = followUpText.trim();
+        const savedId = editingId ?? (res.data as { id?: number } | undefined)?.id ?? null;
+        let noteError = '';
+        if (pendingNote && savedId) {
+          noteError = await postFollowUp(savedId, pendingNote);
+          if (!noteError) setFollowUpText('');
+        }
+        if (noteError) {
+          showToast(`Event saved, but the follow up note wasn't: ${noteError}`, 'error');
+        } else if (res.warning) {
           showToast(res.warning, 'error');
         } else {
           showToast(editingId ? 'Event updated.' : 'Event added.');
@@ -1611,12 +1688,30 @@ export default function PartnershipTrackerPage() {
   const editingEvent = editingId ? events.find((x) => x.id === editingId) || null : null;
 
   /* ---------------- Render ---------------- */
+
+  /** One status KPI card. Shared by the status loop and the Draft card, which sits after Listed. */
+  function renderStatusCard(s: string) {
+    const isAlertCard = (s === 'Initiated' || s === 'Draft') && (counts.byStatus[s] || 0) > 0;
+    return (
+      <div
+        key={s}
+        className={`pt-card ${cardFilter === s ? 'active' : ''} ${isAlertCard ? 'pt-card-blink' : ''}`}
+        style={{ ['--dot' as string]: isAlertCard ? '#C22B44' : STATUS_COLOR_HEX[s] }}
+        onClick={() => setCard(s)}
+        title={`Every active event set to "${s}" — expired ones aren't counted (pick "Expired" in the status dropdown for those). Click to see them all in the table.`}
+      >
+        <div className="pt-card-label"><span className="pt-dot" />{s}</div>
+        <div className="pt-card-count">{counts.byStatus[s] || 0}</div>
+      </div>
+    );
+  }
+
   return (
     <AdminErrorBoundary>
       <div className={`pt-wrap ${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
         <div className="pt-header">
           <div>
-            <div className="pt-title">Partnership Tracker</div>
+            <div className="pt-title">Events Tracker</div>
             <div className="pt-subtitle">Events, sponsorships and coverage partnerships in one place.</div>
           </div>
           <div className="pt-header-actions">
@@ -1678,7 +1773,7 @@ export default function PartnershipTrackerPage() {
             <button className="btn" disabled={busy} onClick={() => fileInputRef.current?.click()}>
               {busy ? (<span className="pt-btn-loading"><svg className="pt-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg>Uploading…</span>) : 'Upload / merge Excel'}
             </button>
-            <button className="btn btn-green" onClick={() => downloadEventsExcel(filtered, `partnership-tracker-${new Date().toISOString().slice(0, 10)}.xlsx`)}>Download Excel</button>
+            <button className="btn btn-green" onClick={() => downloadEventsExcel(filtered, `events-tracker-${new Date().toISOString().slice(0, 10)}.xlsx`)}>Download Excel</button>
             <button className="btn btn-accent" onClick={openAddModal}>+ Add event</button>
             <button className="btn btn-sm" onClick={openDailyReportModal}>📋 Daily Report</button>
             <button className="btn btn-sm pt-bell-btn" title="Daily report reminder" onClick={openDailyReportModal}>
@@ -1690,7 +1785,7 @@ export default function PartnershipTrackerPage() {
         </div>
 
         <div className="pt-main-tabs">
-          <button className={mainTab === 'tracker' ? 'active' : ''} onClick={() => setMainTab('tracker')}>Partnership Tracker</button>
+          <button className={mainTab === 'tracker' ? 'active' : ''} onClick={() => setMainTab('tracker')}>Events Tracker</button>
           {/* Was "Events, Regions & Banners" — the Events and Event Regions tabs inside
               EventsManagementTabs are commented out (partnership_events is the public
               source now), so Banners is all this section still shows. */}
@@ -1704,43 +1799,22 @@ export default function PartnershipTrackerPage() {
         ) : (
           <>
             <div className="pt-cards">
-              <div
-                className={`pt-card pt-card-all ${cardFilter === null ? 'active' : ''}`}
-                style={{ ['--dot' as string]: '#71798A' }}
-                onClick={() => setCard(null)}
-                title={counts.hidden ? `${counts.hidden} past/expired ${counts.hidden === 1 ? 'event is' : 'events are'} not counted here — pick "Expired" in the status dropdown to see them.` : undefined}
-              >
-                <div className="pt-card-label"><span className="pt-dot" />All Active events</div>
-                <div className="pt-card-count">{counts.total}</div>
-                {counts.hidden > 0 && <div className="pt-card-sub-text">{counts.hidden} expired</div>}
-              </div>
+              {/* The "All Active events" card was removed on request (2026-09-26). The status cards
+                  below are unchanged; "Clear filters" resets a card selection back to all rows. */}
               {/* No sub-line under these numbers any more: the count IS the full count for that
                   status, so there is nothing left over to explain. See counts.byStatus. */}
-              {STATUS_CARD_ORDER.map((s) => {
-                const isAlertCard = (s === 'Initiated' || s === 'Draft') && (counts.byStatus[s] || 0) > 0;
-                return (
-                  <div
-                    key={s}
-                    className={`pt-card ${cardFilter === s ? 'active' : ''} ${isAlertCard ? 'pt-card-blink' : ''}`}
-                    style={{ ['--dot' as string]: isAlertCard ? '#C22B44' : STATUS_COLOR_HEX[s] }}
-                    onClick={() => setCard(s)}
-                    title={`Every active event set to "${s}" — expired ones aren't counted (pick "Expired" in the status dropdown for those). Click to see them all in the table.`}
-                  >
-                    <div className="pt-card-label"><span className="pt-dot" />{s}</div>
-                    <div className="pt-card-count">{counts.byStatus[s] || 0}</div>
-                  </div>
-                );
-              })}
+              {/* Draft is rendered after Listed (below) on request (2026-09-26). */}
+              {STATUS_CARD_ORDER.filter((s) => s !== 'Draft').map(renderStatusCard)}
               <div
                 className={`pt-card ${cardFilter === 'Listed' ? 'active' : ''}`}
                 style={{ ['--dot' as string]: '#7C3FE0' }}
                 onClick={() => setCard('Listed')}
-                title={counts.listed === counts.listedClaimed ? undefined : `${counts.listed} of these ${counts.listed === 1 ? 'is' : 'are'} actually live on the site right now — the rest are marked Partnership Done / Only Listed but have no live page yet (missing or still-Draft listing).`}
+                title={counts.listed === counts.listedClaimed ? undefined : `${counts.listed} of these ${counts.listed === 1 ? 'is' : 'are'} actually live on the site right now — the rest are marked Initiated / Partnership Done / Only Listing / Ticketing but have no live page yet (missing or still-Draft listing).`}
               >
                 <div className="pt-card-label">
                   <span className="pt-dot" />Listed
                 </div>
-                {/* Total count of Partnership Done + Only Listing status, regardless of whether
+                {/* Total count of Initiated + Partnership Done + Only Listing + Ticketing (LISTED_BUCKETS), regardless of whether
                     the linked website page is actually live yet — see isListedStatus. The
                     stricter "actually live right now" count (isLiveListed) is shown as a small
                     note below instead of gating the headline number, which is what made this
@@ -1751,6 +1825,7 @@ export default function PartnershipTrackerPage() {
                   <div className="pt-card-warn-text">{counts.listed} live on site now</div>
                 )}
               </div>
+              {STATUS_CARD_ORDER.includes('Draft') && renderStatusCard('Draft')}
             </div>
 
             {(momData.keys.length > 0 || yoyData.years.length > 0) && (
@@ -2417,6 +2492,48 @@ export default function PartnershipTrackerPage() {
               <div className="pt-form-grid">
                 <div className="pt-fg pt-full"><label>Internal comment</label><textarea value={draft.comment} onChange={(e) => setDraft({ ...draft, comment: e.target.value })} /></div>
                 <div className="pt-fg pt-full">
+                  <label>Follow Up <span className="pt-muted">(internal, last {FOLLOW_UP_KEEP_COUNT} kept)</span></label>
+                  <textarea
+                    className="pt-followup-input"
+                    placeholder="What happened in the latest conversation with the organiser?"
+                    maxLength={FOLLOW_UP_MAX_LENGTH}
+                    value={followUpText}
+                    onChange={(e) => { setFollowUpText(e.target.value); setFollowUpError(''); }}
+                  />
+                  <div className="pt-followup-actions">
+                    <span className="pt-hint">
+                      {editingId
+                        ? `Saved with today's date, which can't be changed. Adding a ${FOLLOW_UP_KEEP_COUNT + 1}th note removes the oldest.`
+                        : "Added with today's date when you click Add event."}
+                    </span>
+                    {editingId && (
+                      <button type="button" className="btn btn-accent" disabled={!followUpText.trim() || followUpSaving} onClick={addFollowUpNow}>
+                        {followUpSaving ? 'Adding…' : 'Add note'}
+                      </button>
+                    )}
+                  </div>
+                  {followUpError && <div className="pt-modal-error">{followUpError}</div>}
+                  {editingId && (
+                    followUpsLoading ? (
+                      <div className="pt-hint">Loading follow ups…</div>
+                    ) : followUps.length === 0 ? (
+                      <div className="pt-hint">No follow ups yet.</div>
+                    ) : (
+                      <ol className="pt-followup-list">
+                        {followUps.map((f) => (
+                          <li key={f.id} className="pt-followup-item">
+                            <div className="pt-followup-meta">
+                              <span>{fmtFollowUpDate(f.createdAt)}</span>
+                              {f.createdBy && <span>· {f.createdBy}</span>}
+                            </div>
+                            <div className="pt-followup-text">{f.message}</div>
+                          </li>
+                        ))}
+                      </ol>
+                    )
+                  )}
+                </div>
+                <div className="pt-fg pt-full">
                   <label>Website Listing Status *</label>
                   <select value={draft.siteStatus} onChange={(e) => setDraft({ ...draft, siteStatus: e.target.value as EventDraft['siteStatus'] })}>
                     {SITE_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -2588,7 +2705,6 @@ export default function PartnershipTrackerPage() {
         .pt-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; cursor: pointer; transition: border-color .15s, transform .15s; }
         .pt-card:hover { border-color: var(--faint); transform: translateY(-1px); }
         .pt-card.active { border-color: var(--dot); box-shadow: 0 0 0 1px var(--dot) inset; }
-        .pt-card-all { background: linear-gradient(135deg, var(--surface), var(--surface-2)); }
         .pt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); display: inline-block; margin-right: 6px; }
         .pt-card-label { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; }
         .pt-card-count { font-family: var(--font-pt-display), sans-serif; font-size: 24px; font-weight: 700; margin-top: 5px; }
@@ -2742,6 +2858,12 @@ export default function PartnershipTrackerPage() {
         .pt-remove-social-btn { background: none; border: none; color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 0; }
         .pt-remove-social-btn:hover { color: #C22B44; }
         .pt-modal-error { color: #C22B44; font-size: 12px; margin-top: 10px; }
+        .pt-followup-input { min-height: 70px; }
+        .pt-followup-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; }
+        .pt-followup-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .pt-followup-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--surface-2); }
+        .pt-followup-meta { display: flex; gap: 6px; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+        .pt-followup-text { font-size: 13px; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
         .pt-confirm-layer { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(16,26,43,0.4); }
         .pt-confirm { width: 100%; max-width: 440px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; box-shadow: 0 18px 50px rgba(16,26,43,0.28); }
         .pt-confirm h3 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--text); }

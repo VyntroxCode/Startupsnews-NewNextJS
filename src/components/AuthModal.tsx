@@ -61,8 +61,9 @@ interface AuthUser {
 export default function AuthModal() {
 	const pathname = usePathname();
 	const router = useRouter();
+	// Staff panels (admin + employee) and the member dashboard never get the reader login popup.
 	const isAdmin =
-		pathname?.startsWith("/admin") || pathname?.startsWith("/dashboard");
+		pathname?.startsWith("/admin") || pathname?.startsWith("/dashboard") || pathname?.startsWith("/employee");
 	// Bare event-landing pages (currently /expand-north-star) bring their own header, CTAs and
 	// closing form; a site-wide login popup sliding up mid-scroll is off-brand there and competes
 	// with the page's own registration form for attention. Shares ConditionalLayout's route list

@@ -109,11 +109,16 @@ export function payrollPeriodRange(
  * configured salary period — the period-aware replacement for "just use today's calendar
  * month," needed once a cycle can wrap across two calendar months. */
 export function currentPayrollMonthKey(rules: { salaryPeriodFrom: number; salaryPeriodTo: number | string }): string {
-  const today = todayStr();
-  let key = today.slice(0, 7);
+  return payrollMonthKeyForDate(todayStr(), rules);
+}
+
+/** Which payroll cycle (by its end-month key) a given YYYY-MM-DD falls inside — e.g. a leaver's
+ * last working day, for their Full & Final. */
+export function payrollMonthKeyForDate(date: string, rules: { salaryPeriodFrom: number; salaryPeriodTo: number | string }): string {
+  let key = date.slice(0, 7);
   const { from, to } = payrollPeriodRange(key, rules);
-  if (today > to) key = shiftMonthKey(key, 1);
-  else if (today < from) key = shiftMonthKey(key, -1);
+  if (date > to) key = shiftMonthKey(key, 1);
+  else if (date < from) key = shiftMonthKey(key, -1);
   return key;
 }
 

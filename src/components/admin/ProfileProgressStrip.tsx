@@ -59,20 +59,20 @@ export default function ProfileProgressStrip({
   const overdue = daysLeft !== null && daysLeft < 0;
 
   return (
-    <Link href={documentsHref} style={{
-      display: 'flex', alignItems: 'center', gap: '0.9rem', textDecoration: 'none',
-      background: overdue ? 'linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)' : 'linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)',
-      border: overdue ? '1px solid #fecaca' : '1px solid #e0e7ff',
-      borderRadius: 10, padding: '0.75rem 1.1rem', marginBottom: '1.5rem',
-    }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: overdue ? '#b91c1c' : '#3730a3' }}>
+    <Link
+      href={documentsHref}
+      className={`mb-4 flex items-center gap-3 rounded-[10px] border border-solid px-3.5 py-3 no-underline md:mb-6 md:gap-4 md:px-4 ${
+        overdue ? 'border-red-200 bg-gradient-to-br from-red-50 to-rose-50' : 'border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50'
+      }`}
+    >
+      <div className="min-w-0 flex-1">
+        <div className={`text-[0.85rem] font-bold ${overdue ? 'text-red-700' : 'text-indigo-800'}`}>
           Complete your profile — {pct}%{daysLeft !== null && (overdue ? ' · window closed' : ` · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`)}
         </div>
-        <div style={{ fontSize: '0.78rem', color: overdue ? '#dc2626' : '#6366f1' }}>{submitted} of {total} required documents submitted. Tap to finish.</div>
+        <div className={`text-xs ${overdue ? 'text-red-600' : 'text-indigo-500'}`}>{submitted} of {total} required documents submitted. Tap to finish.</div>
       </div>
-      <div style={{ width: 90, height: 8, borderRadius: 999, background: overdue ? '#fecaca' : '#e0e7ff', overflow: 'hidden', flexShrink: 0 }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: overdue ? '#dc2626' : '#6366f1' }} />
+      <div className={`h-2 w-16 shrink-0 overflow-hidden rounded-full sm:w-[90px] ${overdue ? 'bg-red-200' : 'bg-indigo-100'}`}>
+        <div className={`h-full ${overdue ? 'bg-red-600' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
       </div>
     </Link>
   );

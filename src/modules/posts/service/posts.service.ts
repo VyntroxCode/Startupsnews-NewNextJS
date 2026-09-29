@@ -233,6 +233,7 @@ export class PostsService {
     authorId: number;
     featuredImageUrl?: string;
     featuredImageSmallUrl?: string;
+    imageCredit?: string;
     format?: "standard" | "video" | "gallery";
     status?: "draft" | "published" | "scheduled" | "archived";
     featured?: boolean;
@@ -290,6 +291,7 @@ export class PostsService {
     authorId: number;
     featuredImageUrl: string;
     featuredImageSmallUrl: string;
+    imageCredit: string;
     format: "standard" | "video" | "gallery";
     status: "draft" | "published" | "archived" | "scheduled";
     featured: boolean;
@@ -330,6 +332,7 @@ export class PostsService {
     if (data.authorId !== undefined) updateData.author_id = data.authorId;
     if (data.featuredImageUrl !== undefined) updateData.featured_image_url = data.featuredImageUrl;
     if (data.featuredImageSmallUrl !== undefined) updateData.featured_image_small_url = data.featuredImageSmallUrl;
+    if (data.imageCredit !== undefined) updateData.image_credit = data.imageCredit || null;
     if (data.format !== undefined) updateData.format = data.format;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.featured !== undefined) updateData.featured = data.featured;

@@ -4,19 +4,18 @@ import { motion } from "motion/react";
 import { FormField } from "@/components/ui/FormField";
 import { CountryCityFields } from "@/components/submit-event/CountryCityFields";
 import type { LeadFormController } from "@/components/lead-forms/shared/useLeadForm";
-import { validateWebsite } from "@/components/lead-forms/shared/validation";
+import { validateCity, validateCountry, validateWebsite } from "@/components/lead-forms/shared/validation";
 import { staggerVariants, staggerItemVariants } from "../motion";
 
-/** Step 02 — "The Source". Canonical validation step 5 (website) plus the location, which has no
- * validator of its own because it is optional. Email used to open this step; it moved to The Story,
+/** Step 02 — "The Source". Canonical validation step 5: website (optional) plus the location
+ * (country and city, both required). Email used to open this step; it moved to The Story,
  * straight after the phone number, on request. See StoryStep for how the split is kept in step with
  * validation.
  *
  * Location is collected by the shared `CountryCityFields` — the searchable Country dropdown and
  * the City list that reads the admin Partnership Tracker's curated cities, the same control
  * /list-your-event uses. It replaced ONE box labelled "Country / City" that stored whatever was
- * typed, so the same city arrived under several spellings. `required={false}` keeps the pair
- * optional, as that box was; the controller still exposes one composed `countryCity` string, so
+ * typed, so the same city arrived under several spellings. Both halves are required; the controller still exposes one composed `countryCity` string, so
  * ReviewStep did not have to change. */
 export function SourceStep({ ctrl, promotedCities }: {
   ctrl: LeadFormController;
@@ -51,13 +50,14 @@ export function SourceStep({ ctrl, promotedCities }: {
           city={data.city}
           cityOther={data.cityOther}
           promotedCities={promotedCities}
-          required={false}
-          onChangeCountry={(v) => ctrl.setField("country", v)}
+          countryError={errors.country}
+          cityError={errors.city}
+          onChangeCountry={(v) => ctrl.updateAndMaybeValidate("country", v, "country", validateCountry)}
           onChangeCountryOther={(v) => ctrl.setField("countryOther", v)}
-          onChangeCity={(v) => ctrl.setField("city", v)}
-          onChangeCityOther={(v) => ctrl.setField("cityOther", v)}
-          onBlurCountry={() => {}}
-          onBlurCity={() => {}}
+          onChangeCity={(v) => ctrl.updateAndMaybeValidate("city", v, "city", validateCity)}
+          onChangeCityOther={(v) => ctrl.updateAndMaybeValidate("cityOther", v, "city", validateCity)}
+          onBlurCountry={() => ctrl.blurValidate("country", validateCountry)}
+          onBlurCity={() => ctrl.blurValidate("city", validateCity)}
         />
       </motion.div>
 

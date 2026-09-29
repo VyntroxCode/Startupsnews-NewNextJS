@@ -192,9 +192,9 @@
    own stepped rule further down.) */
 .ens-new-heading { --ratio: 22.56; }
 .ens-themes-title { --ratio: 24.13; }
-/* Re-estimated 2026-09-19 for "Participation Charges, ₹1.65L onwards" ("onwards" at 0.4em): "Rs. "
-   went, a comma and the rupee sign came, so the line is ~1em narrower than the 17.32 measured before. */
-.ens-fee-title { --ratio: 16.4; }
+/* Re-estimated 2026-09-24 for "Delegation Participation Charges Starts From ₹1.65L" ("Starts From"
+   at 0.4em): "Delegation " adds ~7em and the small "Starts From" ~1em over the old "onwards" (16.4). */
+.ens-fee-title { --ratio: 24.4; }
 .ens-journey-title { --ratio: 20.17; }
 
 .ens-word-mask {
@@ -501,74 +501,8 @@
   background: linear-gradient(180deg, #FCEFF6 0%, #F9E2EF 55%, #F5CDE3 100%);
 }
 
-/* Headline block: the "back to home" pill stacked above the heading, always — not beside it.
-   Beside-the-heading (flex row) was tried first, but it's geometrically incompatible with the pill
-   sitting near the browser's true left edge: on ordinary desktop widths (roughly 1024-1296px) the
-   gap between the true edge and where the heading/video column starts is only ~25-40px, far
-   narrower than a pill with a visible "Back To Home" label (~170px) — sharing a row meant the pill
-   necessarily overlapped the start of the heading text. Stacking removes the conflict entirely: the
-   heading is a plain block with nothing beside it, so it always starts at the same x as the video
-   card below it (`.ens-hero-stage`), and the pill's own left offset (below) is free to reach toward
-   the true edge without touching anything. */
-.ens-hero-title-row {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: clamp(12px, 1.6vw, 18px);
-}
-
-/* Pink-on-white pill (icon + "Back To Home" label), the same "translate for hover, not transform"
-   convention every other button on this page follows, since Motion doesn't own this element's
-   transform. `flex-shrink: 0` keeps its own size fixed rather than being squeezed by the heading's
-   width; `white-space: nowrap` keeps the label on one line at any pill width. */
-.ens-home-btn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 18px 0 14px;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--ens-pink);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  box-shadow: 0 10px 22px -12px rgba(228, 21, 124, 0.85);
-  transition: background 0.3s var(--ens-ease), color 0.3s var(--ens-ease), box-shadow 0.3s var(--ens-ease), translate 0.3s var(--ens-ease);
-}
-
-.ens-home-btn svg { flex-shrink: 0; }
-
-/* Pulled almost all the way to the browser's own left edge — not just `.ens-wrap`'s padded
-   content-column edge, but past the wrap's own `margin-inline: auto` centering inset too, which
-   only vanishes once the viewport is narrower than the wrap's own max-width. `max(0px, ...)` is
-   that inset (zero below ~1296px, where the wrap already fills the viewport); adding the gutter on
-   top cancels the wrap's left padding the same way the single-gutter version of this rule always
-   did. `+ 16px` (not a full cancel to 0) leaves a small fixed breathing margin off the true edge —
-   the first version landed the button flush at 0px, which read as glued to the browser's edge with
-   no margin at all. */
-.ens-home-btn {
-  margin-left: calc(-1 * (var(--ens-gutter) + max(0px, (100vw - var(--ens-column) - 2 * var(--ens-gutter)) / 2)) + 16px);
-}
-
-.ens-home-btn:hover {
-  background: var(--ens-pink);
-  color: #fff;
-  box-shadow: 0 14px 26px -12px rgba(189, 12, 99, 0.95);
-  translate: 0 -2px;
-}
-
-.ens-home-btn:focus-visible {
-  outline: 2px solid var(--ens-ink);
-  outline-offset: 3px;
-}
-
-@media (max-width: 559px) {
-  .ens-home-btn { height: 38px; padding: 0 14px 0 10px; font-size: 13px; }
-  .ens-home-btn svg { width: 17px; height: 17px; }
-}
+/* The "Back To Home" pill (.ens-home-btn) and its stacking wrapper (.ens-hero-title-row) were
+   removed with the button on request (2026-09-28). */
 
 .ens-hero-blob-a {
   width: 64%;
@@ -1584,15 +1518,15 @@
 .ens-fee-title { font-size: clamp(28px, 4.4vw, 56px); }
 /* Single line at every width, phones included (on request, 2026-09-19): unlike the other
    `is-oneline` headings above, which fall back to wrapping under 760px because the ratio-based size
-   would be too small there, this line's ratio (16.4) keeps it comfortably readable (~17-20px) even at
-   a 320px viewport, so the nowrap sizing applies unconditionally instead of only above 760px. */
+   would be too small there, this line's ratio (24.4 since 2026-09-24's longer wording; was 16.4) keeps it
+   readable (~12-14px) even at a 320px viewport, so the nowrap sizing applies unconditionally instead of only above 760px. */
 .ens-fee-title.is-oneline {
   white-space: nowrap;
   font-size: min(56px, calc(var(--ens-line-width) / var(--ratio) / 1.04));
 }
 .ens-fee-accent { color: var(--ens-pink); }
 
-/* "onwards": lower-case (the heading is uppercase), 40% of the size, lighter weight, and sitting on
+/* "Starts From" (class kept from the old "onwards"): as typed, not uppercased like the heading, 40% of the size, lighter weight, and sitting on
    the heading's baseline — the shared word mask is `vertical-align: top`, which floated the small word
    to the top of the line (fixed 2026-09-19 on request). */
 .ens-fee-title .ens-fee-onwards { font-size: 0.4em; font-weight: 600; text-transform: none; }

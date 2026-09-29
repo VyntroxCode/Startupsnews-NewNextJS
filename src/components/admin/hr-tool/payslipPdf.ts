@@ -36,7 +36,18 @@ export interface PayslipData {
   netPay: number;
 }
 
-function fmtRs(n: number): string { return 'Rs. ' + Math.round(n).toLocaleString('en-IN'); }
+export function fmtRs(n: number): string { return 'Rs. ' + Math.round(n).toLocaleString('en-IN'); }
+
+/** The standard fonts only cover WinAnsi — one name in Devanagari (or an emoji, or ₹) made pdf-lib
+ * throw and the whole payslip (or the whole ZIP) fail. Map what we can, drop the rest. */
+function pdfSafe(str: string): string {
+  return str
+    .replace(/₹/g, 'Rs. ')
+    .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
+    .replace(/[^\x20-\x7E\u2013\u2014\u2022\u2026\u00A0-\u00FF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 /** Draws one payslip onto a fresh page of `doc` — used both for a single employee's own
  * download and for the admin's bulk "Download payslips (PDF)" (one page per employee). */
@@ -48,9 +59,10 @@ function drawPayslipPage(doc: PDFDocument, font: PDFFont, bold: PDFFont, logo: P
   function text(str: string, x: number, yy: number, opts: { size?: number; bold?: boolean; color?: ReturnType<typeof rgb>; align?: 'left' | 'right' } = {}) {
     const size = opts.size ?? 10;
     const f = opts.bold ? bold : font;
-    const width = f.widthOfTextAtSize(str, size);
+    const safe = pdfSafe(str) || '-';
+    const width = f.widthOfTextAtSize(safe, size);
     const drawX = opts.align === 'right' ? x - width : x;
-    page.drawText(str, { x: drawX, y: yy, size, font: f, color: opts.color ?? INK });
+    page.drawText(safe, { x: drawX, y: yy, size, font: f, color: opts.color ?? INK });
     return width;
   }
   function hr(yy: number, color = LINE) {
@@ -173,7 +185,8 @@ function drawPayslipPage(doc: PDFDocument, font: PDFFont, bold: PDFFont, logo: P
   return page;
 }
 
-async function loadShared(): Promise<{ doc: PDFDocument; font: PDFFont; bold: PDFFont; logo: PDFImage | null }> {
+/** A fresh document with Helvetica (regular + bold) and the site logo — shared with fnfPdf.ts. */
+export async function loadShared(): Promise<{ doc: PDFDocument; font: PDFFont; bold: PDFFont; logo: PDFImage | null }> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -195,11 +208,52 @@ export async function generatePayslipPdf(d: PayslipData): Promise<Uint8Array> {
   return doc.save();
 }
 
-/** Admin bulk download — every employee's payslip for the run, one per page in a single PDF. */
-export async function generateBulkPayslipPdf(list: PayslipData[]): Promise<Uint8Array> {
-  const { doc, font, bold, logo } = await loadShared();
-  for (const d of list) drawPayslipPage(doc, font, bold, logo, d);
-  return doc.save();
+/** "payslip_SNFYI-0004_Madhur-Mohan-Malik_2026-09.pdf" — safe on every OS, and unique within one
+ * batch even when two people share a name or someone has no Employee ID yet. */
+function payslipFilename(d: PayslipData, monthKey: string, taken: Set<string>): string {
+  const clean = (s: string) => s.normalize('NFKD').replace(/[^\w-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const code = clean(d.employeeCode === '—' ? '' : d.employeeCode);
+  const base = ['payslip', code, clean(d.employeeName) || 'employee', monthKey].filter(Boolean).join('_');
+  let name = `${base}.pdf`;
+  for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${base}_${n}.pdf`;
+  taken.add(name.toLowerCase());
+  return name;
+}
+
+/** Admin bulk download — one SEPARATE PDF per employee, delivered as a single ZIP (browsers block a
+ * burst of individual downloads). The logo is fetched once and embedded into each document. */
+export async function generatePayslipZip(list: PayslipData[], monthKey: string): Promise<Blob> {
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  let logoBytes: ArrayBuffer | null = null;
+  try { logoBytes = await (await fetch('/logo.png')).arrayBuffer(); } catch { logoBytes = null; }
+  const taken = new Set<string>();
+  for (const d of list) {
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    let logo: PDFImage | null = null;
+    if (logoBytes) { try { logo = await doc.embedPng(logoBytes); } catch { logo = null; } }
+    drawPayslipPage(doc, font, bold, logo, d);
+    zip.file(payslipFilename(d, monthKey, taken), await doc.save());
+  }
+  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+}
+
+/** File name for a single payslip download (same scheme as inside the ZIP). */
+export function singlePayslipFilename(d: PayslipData, monthKey: string): string {
+  return payslipFilename(d, monthKey, new Set());
+}
+
+export function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 export function triggerPdfDownload(bytes: Uint8Array, filename: string): void {

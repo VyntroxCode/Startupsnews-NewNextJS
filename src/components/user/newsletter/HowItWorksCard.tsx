@@ -5,8 +5,8 @@ import { CalendarIcon, MailboxIcon, TargetIcon } from './icons';
 
 const STEPS = [
   { icon: <CalendarIcon />, text: 'Your Morning Signal arrives daily at 8 AM in your timezone.' },
-  { icon: <TargetIcon />, text: 'Pick up to 3 newsletter categories, only matching stories are included.' },
-  { icon: <MailboxIcon />, text: 'Change your preferences anytime; it takes effect next send.' },
+  { icon: <TargetIcon />, text: 'Stories are drawn from the newsletter categories listed here.' },
+  { icon: <MailboxIcon />, text: 'New categories show up here automatically as they are added.' },
 ];
 
 export default function HowItWorksCard() {

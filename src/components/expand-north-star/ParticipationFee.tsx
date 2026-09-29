@@ -128,10 +128,10 @@ function PackageCard({ pack, index }: { pack: Package; index: number }) {
   );
 }
 
-/** "Participation Charges, ₹1.65L onwards" — the two ways to take part, side by side, just
+/** "Delegation Participation Charges Starts From ₹1.65L" — the two ways to take part, side by side, just
  * before the registration form.
  *
- * The headline's words rise out of their masks with the charge in pink and "onwards" small; a short pink rule draws out
+ * The headline's words rise out of their masks with the charge in pink and "Starts From" small; a short pink rule draws out
  * beneath it. Each card then rises (the second a beat after the first), a light band crosses its
  * coloured header, the card title wipes in left to right with a rule drawing under it, and the
  * items follow one by one, each tick drawing itself. Cards lift on hover. The ground fades to the
@@ -140,7 +140,7 @@ export function ParticipationFee() {
   const reducedMotion = useReducedMotion();
 
   return (
-    <section className="ens-fee" aria-labelledby="ens-fee-title">
+    <section id="ens-fee" className="ens-fee" aria-labelledby="ens-fee-title">
       <span className="ens-blob ens-fee-blob-a" aria-hidden="true" />
       <span className="ens-blob ens-fee-blob-b" aria-hidden="true" />
 
@@ -150,11 +150,12 @@ export function ParticipationFee() {
           className="ens-title is-oneline ens-fee-title"
           inline
           lines={[
-            { text: "Participation Charges," },
+            { text: "Delegation Participation Charges" },
+            // "Starts From" small, before the charge: lower-case, 40% size and on the baseline,
+            // against the heading's uppercase (replaced the trailing "onwards", 2026-09-24).
+            { text: "Starts From", className: "ens-fee-onwards" },
             // The rupee sign, not "Rs." (on request, 2026-09-19).
             { text: "₹1.65L", className: "ens-fee-accent" },
-            // Lower-case, 40% size and on the baseline, against the heading's uppercase (2026-09-19).
-            { text: "onwards", className: "ens-fee-onwards" },
           ]}
         />
         <motion.span

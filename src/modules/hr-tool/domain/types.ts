@@ -130,8 +130,10 @@ export interface HrApprovalBase {
 }
 export type HrRegularizationPunchType = 'in' | 'out';
 export interface HrRegularization extends HrApprovalBase { date: string; reason: string; punchType: HrRegularizationPunchType; requestedTime: string | null; }
-/** Reserved HrLeaveRequest.type for a Work From Home day. Once approved, every working day in the
- * range is written to hr_attendance as a full shift (status 'WFH') — see HrToolService.syncWfhAttendance. */
+/** Legacy HrLeaveRequest.type for Work From Home — DISCONTINUED. Employees can no longer apply for
+ * it (submitEmployeeLeaveRequest rejects it). Kept only to recognise historical rows: past approved
+ * WFH days remain in hr_attendance as full shifts (status 'WFH'), and payroll skips these requests
+ * so those days aren't also counted as leave. See scripts/migrations/retire-wfh-leave-type.sql. */
 export const WFH_LEAVE_TYPE = 'WFH';
 
 export interface HrLeaveRequest extends HrApprovalBase { type: string; from: string; to: string; remarks: string; }

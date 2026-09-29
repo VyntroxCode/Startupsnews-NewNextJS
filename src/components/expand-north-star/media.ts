@@ -103,14 +103,17 @@ export const DUBAI_KONNECT_LOGO = {
  * the old key is orphaned. `indicorn-angels` was added the same day from a second logo supplied
  * into the same folder; both local files were deleted once their S3 copies were confirmed live. */
 export const ENS_REFERRAL_LOGOS: Record<string, string> = {
-  "easy-knowledge-club": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-easy-knowledge-club.png"),
-  "venture-wolf": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-venture-wolf.jpg"),
+  // v2 (2026-09-29): circular "EASY KNOWLEDGE CLUB" badge (lotus + wordmark in a purple ring) replaced the old lotus mark.
+  "easy-knowledge-club": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-easy-knowledge-club-v2.jpg"),
+  // v2 (2026-09-29): "VENTURE WOLF — Creating Entrepreneurs" brick wordmark replaced the old "WOLF GROUP" mark.
+  "venture-wolf": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-venture-wolf-v2.png"),
   "billennium-divas": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-billennium-divas.png"),
   "xcel-ventures": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-xcel-ventures.jpg"),
   "confederation-of-indian-startups": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-confederation-of-indian-startups.webp"),
   "usp-house": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-usp-house.jpg"),
   "angel-bay": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-angel-bay-v2.jpg"),
-  "meet-day-ai": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-meet-day-ai.jpg"),
+  // v2 (2026-09-28): the full red "meetday" wordmark on white replaced the old red "ee" tile.
+  "meet-day-ai": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-meet-day-ai-v2.png"),
   "hbf-direct": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-hbf-direct.jpg"),
   "indicorn-angels": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-indicorn-angels.jpg"),
 };

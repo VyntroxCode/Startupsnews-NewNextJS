@@ -7,7 +7,9 @@ import { ChapterHeader } from "../ChapterHeader";
 import { ChapterContinue } from "../ChapterContinue";
 import type { LeadFormController } from "@/components/lead-forms/shared/useLeadForm";
 import {
+  validateCity,
   validateCompanyName,
+  validateCountry,
   validateEmail,
   validateName,
   validatePhone,
@@ -29,7 +31,7 @@ import {
  *   Location  — `CountryCityFields`, the searchable Country dropdown and the City list that reads
  *               the admin Partnership Tracker's curated cities. It replaced ONE box labelled
  *               "Country / City" that stored whatever was typed, so the same city arrived under
- *               several spellings. `required={false}` keeps the pair optional, as that box was.
+ *               several spellings. Both are required (validateCountry / validateCity).
  *
  * The controller still exposes one composed `phone` and one `countryCity` string, so the review
  * rows below and the submit handler above were not touched. */
@@ -122,13 +124,14 @@ export function ChapterDetails({
             city={data.city}
             cityOther={data.cityOther}
             promotedCities={promotedCities}
-            required={false}
-            onChangeCountry={(v) => ctrl.setField("country", v)}
+            countryError={errors.country}
+            cityError={errors.city}
+            onChangeCountry={(v) => ctrl.updateAndMaybeValidate("country", v, "country", validateCountry)}
             onChangeCountryOther={(v) => ctrl.setField("countryOther", v)}
-            onChangeCity={(v) => ctrl.setField("city", v)}
-            onChangeCityOther={(v) => ctrl.setField("cityOther", v)}
-            onBlurCountry={() => {}}
-            onBlurCity={() => {}}
+            onChangeCity={(v) => ctrl.updateAndMaybeValidate("city", v, "city", validateCity)}
+            onChangeCityOther={(v) => ctrl.updateAndMaybeValidate("cityOther", v, "city", validateCity)}
+            onBlurCountry={() => ctrl.blurValidate("country", validateCountry)}
+            onBlurCity={() => ctrl.blurValidate("city", validateCity)}
           />
           <ChapterContinue label="Review" onClick={onContinue} />
         </div>

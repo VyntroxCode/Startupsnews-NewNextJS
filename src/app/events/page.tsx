@@ -7,15 +7,18 @@ import { OTHER_CITIES_SECTION, citySectionQualifies } from "@/modules/partnershi
 import { eventDateSortKey } from "@/modules/partnership-events/utils/public-event.utils";
 import { NON_GEOGRAPHIC_REGIONS, resolveCountry } from "@/modules/events/utils/region-country.utils";
 import { COHORT_PARTNERSHIP_TYPE } from "@/modules/partnership-events/domain/types";
+import { getVisitorLocation } from "@/lib/visitor-location";
+import { orderByVisitorLocation } from "@/modules/events/utils/visitor-location-order.utils";
+import { EventsLocationBar } from "@/components/EventsLocationBar";
 
 import type { Metadata } from "next";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
 /** Regroups the flat region -> events map into country -> city -> events. Countries come out
- * India-first, then alphabetically — regions are keyed alphabetically by city/region name at
- * the source (event_regions ORDER BY name ASC), which otherwise puts whichever city happens to
- * sort first (e.g. "Abu Dhabi") ahead of India regardless of it being the primary market.
+ * A–Z, and the cities inside each country A–Z ("Other Cities" last) — the default order when
+ * the visitor hasn't shared a location. (It used to be India-first; changed 2026-09-25 at the
+ * user's request — orderByVisitorLocation now lifts the visitor's own country instead.)
  * Events within each city are already ascending by date from the query that builds
  * eventsByRegion (events.repository's ORDER BY event_date ASC), so that part needs no sorting
  * here — only the country-level order needs fixing. */
@@ -69,20 +72,18 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
   }
   for (const country of Object.keys(grouped)) {
     const others = grouped[country][OTHER_CITIES_SECTION];
-    if (!others) continue;
     // Each source region arrived date-ascending, but concatenating several of them interleaves
     // them wrongly — this is the one section built from more than one region, so it's the one
     // that has to be re-sorted. Every other section keeps the order the query gave it.
-    others.sort((a, b) => eventDateSortKey(a) - eventDateSortKey(b));
-    // And "Other Cities" is the catch-all, so it reads last under its country regardless of
-    // where its constituent regions happened to sort.
-    const sections = Object.entries(grouped[country]);
-    if (sections.length > 1) {
-      grouped[country] = Object.fromEntries([
-        ...sections.filter(([name]) => name !== OTHER_CITIES_SECTION),
-        [OTHER_CITIES_SECTION, others],
-      ]);
-    }
+    others?.sort((a, b) => eventDateSortKey(a) - eventDateSortKey(b));
+    // Cities A–Z; "Other Cities" is the catch-all, so it reads last under its country.
+    grouped[country] = Object.fromEntries(
+      Object.entries(grouped[country]).sort(([a], [b]) => {
+        if (a === OTHER_CITIES_SECTION) return 1;
+        if (b === OTHER_CITIES_SECTION) return -1;
+        return a.localeCompare(b);
+      })
+    );
   }
   // "Cohort" and "Online" aren't countries — they're non-geographic top-level headings (see
   // NON_GEOGRAPHIC_REGIONS) that end up as country keys of their own. They read last, after every
@@ -92,9 +93,6 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
     const aTrailing = TRAILING_COUNTRIES.has(a);
     const bTrailing = TRAILING_COUNTRIES.has(b);
     if (aTrailing !== bTrailing) return aTrailing ? 1 : -1;
-    if (aTrailing && bTrailing) return a.localeCompare(b);
-    if (a === "India") return -1;
-    if (b === "India") return 1;
     return a.localeCompare(b);
   });
   return Object.fromEntries(orderedEntries);
@@ -125,8 +123,13 @@ export const metadata: Metadata = {
 
 
 export default async function EventsPage() {
-  const eventsByRegion = await getEventsByRegion();
-  const eventsByCountry = groupByCountry(eventsByRegion);
+  const [eventsByRegion, visitorLocation] = await Promise.all([getEventsByRegion(), getVisitorLocation()]);
+  // The visitor's own city and its country read first when they've shared their location (browser
+  // prompt → cookie); everything else keeps groupByCountry's A–Z order below it.
+  const { eventsByCountry } = orderByVisitorLocation(
+    groupByCountry(eventsByRegion),
+    visitorLocation
+  );
   // Deduped by slug (falling back to id) — a handful of legacy/duplicate rows can otherwise
   // appear twice in the flat region map, which would show the same card twice in search results.
   const allEvents = Array.from(
@@ -158,8 +161,13 @@ export default async function EventsPage() {
                   title="Events"
                   subtitle="Discover startup and technology events by region."
                 >
+                  <EventsLocationBar hasLocation={!!visitorLocation} />
                   {Object.entries(eventsByCountry).map(([country, cities]) => {
                     const isCohort = country === COHORT_PARTNERSHIP_TYPE;
+                    // "Other Cities" only means something beside a country's own city sections — when
+                    // it's the country's sole section, the heading adds nothing, so drop it.
+                    const onlyOtherCities =
+                      Object.keys(cities).length === 1 && OTHER_CITIES_SECTION in cities;
                     return (
                       <section key={country} className="event-by-country-section">
                         <h2 className="event-by-country-region">{country}</h2>
@@ -168,7 +176,13 @@ export default async function EventsPage() {
                             <EventsCarousel
                               events={events}
                               maxEvents={events.length}
-                              title={city !== country && !NON_GEOGRAPHIC_REGIONS.has(city) ? city : null}
+                              title={
+                                city !== country &&
+                                !NON_GEOGRAPHIC_REGIONS.has(city) &&
+                                !(onlyOtherCities && city === OTHER_CITIES_SECTION)
+                                  ? city
+                                  : null
+                              }
                               className="event-country-carousel"
                               showCountry={isCohort}
                             />

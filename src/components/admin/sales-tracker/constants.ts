@@ -1,3 +1,11 @@
+import {
+  ASSIGNMENT_STATUS_COLORS,
+  ASSIGNMENT_STATUS_OPTIONS,
+  FINISHED_LEAD_STATUSES,
+  SALES_LEAD_STATUS_LABELS,
+  statusFromSalesLead,
+} from '@/modules/lead-assignments/domain/types';
+
 export const TYPES = ['Social Media', 'Events', 'PR-National', 'PR-International', 'Others'] as const;
 
 /** Leads mirrored in automatically from a public site form (see
@@ -29,19 +37,16 @@ export const PAGE_LEAD_LABELS: Record<string, string> = {
   'Sponsor Event Page Leads': 'Sponsor an Event',
   [ENS_ENQUIRY_TYPE_LABEL]: 'Expand North Star',
 };
-export const STATUSES = [
-  'Query received', 'Initiated', 'Under discussion', 'On hold', 'Dropped',
-  'No response', 'Will reach when needed', 'Successfully closed',
-] as const;
-export const STATUS_COLORS: Record<string, [string, string]> = {
-  'Query received': ['#EFF6FF', '#1D4ED8'], Initiated: ['#E9F7EE', '#1F7A3F'],
-  'Under discussion': ['#FFF3D6', '#8A5A00'], 'On hold': ['#F1EFE8', '#5F5E5A'],
-  Dropped: ['#FCE4E4', '#B3231F'], 'No response': ['#FCE4E4', '#B3231F'],
-  'Will reach when needed': ['#FFF3D6', '#8A5A00'], 'Successfully closed': ['#E9F7EE', '#1F7A3F'],
-};
-export const SUMMARY_STATUSES = ['Initiated', 'In progress', 'Successfully closed', 'Dropped'];
-export const STATUS_TO_SUMMARY: Record<string, string> = {
-  'Query received': 'In progress', Initiated: 'Initiated', 'Under discussion': 'In progress',
-  'On hold': 'In progress', Dropped: 'Dropped', 'No response': 'In progress',
-  'Will reach when needed': 'In progress', 'Successfully closed': 'Successfully closed',
-};
+/** The four lead statuses, shared with the employee My Leads page — one list, defined in
+ * lead-assignments/domain/types.ts (ASSIGNMENT_STATUS_OPTIONS). sales_leads.status stores these
+ * labels. Before 2026-09-29 there were eight ("Query received" … "Successfully closed"); every lead
+ * was reset to Pending by scripts/migrations/unify-sales-lead-status.sql. */
+export const STATUSES = SALES_LEAD_STATUS_LABELS;
+/** [background, text] per label, from the shared per-value colours. */
+export const STATUS_COLORS: Record<string, [string, string]> = Object.fromEntries(
+  ASSIGNMENT_STATUS_OPTIONS.map((o) => [o.label, ASSIGNMENT_STATUS_COLORS[o.value]])
+);
+/** Still being worked (not Confirmed / Not Interested). */
+export function isOpenStatusLabel(label: string): boolean {
+  return !(FINISHED_LEAD_STATUSES as readonly string[]).includes(statusFromSalesLead(label));
+}

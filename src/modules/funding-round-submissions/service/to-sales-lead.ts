@@ -39,7 +39,7 @@ export function submissionToSalesLead(submission: FundingRoundSubmission): Sales
     posterUrl: '',
     description: '',
     assignedTo: '',
-    status: 'Query received',
+    status: 'Pending',
     nextFollowUpDate: '',
     lastConnectDate: '',
     lastCallDiscussion: '',

@@ -4568,6 +4568,17 @@ span.mvp-feat-caption {
 	bottom: 10px;
 }
 
+/* Credit under a body image (data-credit from the admin editor, rendered by FullArticle) */
+span.mvp-img-credit {
+	color: #888;
+	display: block;
+	font-size: .8rem;
+	font-weight: 400;
+	line-height: 1.1;
+	padding: 6px 0 4px;
+	text-align: right;
+}
+
 #mvp-content-wrap,
 #mvp-content-body,
 #mvp-content-main,
@@ -7243,6 +7254,7 @@ span.mvp-post-excerpt,
 nav.mvp-fly-nav-menu ul li a,
 .mvp-ad-label,
 span.mvp-feat-caption,
+span.mvp-img-credit,
 .mvp-post-tags a,
 .mvp-post-tags a:visited,
 span.mvp-author-box-name a,

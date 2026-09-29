@@ -16,9 +16,9 @@ interface CountryCityFieldsProps {
   /** Cities that have earned a dropdown slot, keyed by country — see promotedCitiesByCountry.
    * Fetched server-side by the page so the list is complete on first paint. */
   promotedCities?: Record<string, string[]>;
-  /** Both fields are required by default, as an event listing needs a location. Feature Your
-   * Startup asks for the same two fields but does not insist on them, so it passes false and the
-   * labels pick up the site's "(optional)" hint instead of an asterisk. */
+  /** Both fields are required by default — every public page (events and all lead pages) insists
+   * on them. Only the admin Sales Tracker's manual Add lead form passes false, so its labels pick
+   * up the "(optional)" hint instead of an asterisk. */
   required?: boolean;
   /** Locks both selects — used for an online (virtual) event, which has no venue location. */
   locked?: boolean;

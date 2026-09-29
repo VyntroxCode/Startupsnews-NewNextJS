@@ -39,12 +39,16 @@ export class SalesTrackerRepository {
       lead.lastConnectDate || null,
       lead.lastCallDiscussion || null,
     ];
+    // lead_date is the ARRIVAL date: written once on insert and never overwritten by a later save
+    // (COALESCE keeps the stored value; it's only filled in if a legacy row has none). What moves
+    // on every real edit is updated_at, via its ON UPDATE CURRENT_TIMESTAMP — MySQL only bumps it
+    // when some column value actually changed, so saving an untouched lead leaves it alone.
     await query(
       `INSERT INTO sales_leads
         (id, lead_date, name, company, contact, email, country, city, source, type, other_type, query_text, event_title, event_slug, event_date, event_time, external_url, poster_url, description, assigned_to, status, next_follow_up_date, last_connect_date, last_call_discussion)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
-        lead_date = VALUES(lead_date), name = VALUES(name), company = VALUES(company), contact = VALUES(contact),
+        lead_date = COALESCE(lead_date, VALUES(lead_date)), name = VALUES(name), company = VALUES(company), contact = VALUES(contact),
         email = VALUES(email), country = VALUES(country), city = VALUES(city), source = VALUES(source),
         type = VALUES(type), other_type = VALUES(other_type),
         query_text = VALUES(query_text), event_title = VALUES(event_title), event_slug = VALUES(event_slug),
@@ -60,25 +64,20 @@ export class SalesTrackerRepository {
     return saved;
   }
 
+  /** Also drops the lead's people, departments and follow-ups (sales_lead_assignments /
+   * sales_lead_departments / sales_lead_followups), so it leaves every assignee's My Leads list
+   * with it. */
   async deleteLead(id: string): Promise<void> {
     await query('DELETE FROM sales_leads WHERE id = ?', [id]);
+    await query("DELETE FROM sales_lead_assignments WHERE lead_source = 'lead' AND lead_id = ?", [id]);
+    await query("DELETE FROM sales_lead_departments WHERE lead_source = 'lead' AND lead_id = ?", [id]);
+    await query("DELETE FROM sales_lead_followups WHERE lead_source = 'lead' AND lead_id = ?", [id]);
   }
 
   async deleteAllLeads(): Promise<void> {
     await query('DELETE FROM sales_leads', []);
-  }
-
-  async findAllTeamMembers(): Promise<{ id: number; name: string }[]> {
-    return query<{ id: number; name: string }>('SELECT id, name FROM sales_team_members ORDER BY sort_order ASC, id ASC');
-  }
-
-  async addTeamMember(name: string): Promise<void> {
-    const row = await queryOne<{ maxOrder: number | null }>('SELECT MAX(sort_order) as maxOrder FROM sales_team_members');
-    const nextOrder = (row?.maxOrder ?? -1) + 1;
-    await query('INSERT IGNORE INTO sales_team_members (name, sort_order) VALUES (?, ?)', [name, nextOrder]);
-  }
-
-  async removeTeamMember(name: string): Promise<void> {
-    await query('DELETE FROM sales_team_members WHERE name = ?', [name]);
+    await query("DELETE FROM sales_lead_assignments WHERE lead_source = 'lead'", []);
+    await query("DELETE FROM sales_lead_departments WHERE lead_source = 'lead'", []);
+    await query("DELETE FROM sales_lead_followups WHERE lead_source = 'lead'", []);
   }
 }

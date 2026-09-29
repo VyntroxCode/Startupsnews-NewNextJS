@@ -1,0 +1,102 @@
+/* The ONE scoped Tailwind sheet for the staff panels: everything under /employee/* and the admin
+   shell /admin/*. Imported by exactly two files, src/app/employee/layout.tsx and
+   src/app/(admin)/layout.tsx. Do not add another Tailwind sheet on those routes, and do not
+   import this one from a route-level layout.
+
+   Why one sheet: this project has no global Tailwind. Each scoped sheet emits its own complete,
+   unlayered copy of the utilities, and Next inserts a route's sheet after the layout's. When a page
+   carries two sheets, the later sheet's plain `.hidden` / `.flex` come after the earlier sheet's
+   `md:flex` / `md:hidden`. Same specificity, so source order wins, and every responsive variant in
+   the earlier sheet stops working. That hid the employee sidebar on /employee/leads, whose
+   my-leads sheet loaded after the layout's. One sheet keeps every utility in Tailwind's own
+   order. The old per-feature sheets (it-tickets, my-leads, offboarding, rules-policy) are merged
+   into this file.
+
+   Only the Tailwind setup: theme + utilities (no Preflight, so the legacy admin chrome is
+   untouched), unlayered so utilities beat globals.css's bare-element reset (`div, span, p … {
+   margin:0; padding:0; border:0 }`), and `source(none)` + @source so class detection stays
+   limited to these files. Any new staff-panel file that uses Tailwind classes must get an @source
+   line here; class names must be literal strings. No Preflight also means no global border-box:
+   pair w-full + padding with `box-border` (or sit inside `.it-tickets-scope`). */
+@import "tailwindcss/theme.css" source(none);
+@import "tailwindcss/utilities.css" source(none);
+
+/* Employee frame + self-service widgets (Attendance / Leave / KYC Documents / profile strip) */
+@source "../../app/employee/layout.tsx";
+@source "../../app/employee/attendance/page.tsx";
+@source "../../app/employee/leave/page.tsx";
+@source "../../app/employee/documents/page.tsx";
+@source "./AttendanceWidget.tsx";
+@source "./LeaveWidget.tsx";
+@source "./KycDocumentsWidget.tsx";
+@source "./ProfileProgressStrip.tsx";
+@source "./PunchOutTimeInput.tsx";
+
+/* Admin Rules (/admin/rules-policy, /employee/rules-policy) */
+@source "./PolicySummaryWidget.tsx";
+@source "../../app/employee/rules-policy/page.tsx";
+@source "../../app/(admin)/admin/rules-policy/page.tsx";
+
+/* My Leads (/employee/leads, /admin/my-leads) */
+@source "../employee/my-leads/MyLeadsPage.tsx";
+@source "../employee/my-leads/LeadDetailDrawer.tsx";
+@source "../../modules/lead-assignments/domain/types.ts";
+@source "../../app/(admin)/admin/my-leads/page.tsx";
+
+/* Offboarding: My Exit (/employee/exit, /admin/my-exit) + HR tool Tailwind-styled views */
+@source "../offboarding/ExitWidget.tsx";
+@source "../../app/employee/exit/page.tsx";
+@source "../../app/(admin)/admin/my-exit/page.tsx";
+@source "./hr-tool/views/Offboarding.tsx";
+@source "./hr-tool/views/Payroll.tsx";
+@source "./hr-tool/HrPhoneField.tsx";
+
+/* IT Tickets (/admin/it-tickets, /employee/it-tickets). utils.ts / constants.ts hold class
+   literals (avatar colours, status lozenges, priority/type tints). */
+@source "./it-tickets/ui.ts";
+@source "./it-tickets/utils.ts";
+@source "./it-tickets/constants.ts";
+@source "./it-tickets/ItTicketsPage.tsx";
+@source "./it-tickets/FilterBar.tsx";
+@source "./it-tickets/KanbanBoard.tsx";
+@source "./it-tickets/TicketCard.tsx";
+@source "./it-tickets/TicketListTable.tsx";
+@source "./it-tickets/TicketFormModal.tsx";
+@source "./it-tickets/TicketDetailPanel.tsx";
+@source "./it-tickets/TicketIcons.tsx";
+@source "./it-tickets/Avatar.tsx";
+@source "./it-tickets/StatusLozenge.tsx";
+@source "./it-tickets/FieldSelects.tsx";
+@source "./it-tickets/Modal.tsx";
+@source "./it-tickets/Toast.tsx";
+@source "./it-tickets/TicketReports.tsx";
+
+/* ---------- IT Tickets feature scope: the minimum of Preflight that feature needs ----------
+   (Moved unchanged from the former it-tickets-tailwind.css.) `.it-tickets-scope` is on the page
+   root (ItTicketsPage) and on the DragOverlay ghost, which is portaled to <body>. Without
+   Preflight:
+   - box-sizing stays content-box, so `w-full` + padding + border rendered every input/textarea
+     wider than its column.
+   - text inherited the legacy theme fonts, so the page didn't match the other admin sections,
+     which all use the Inter stack below (same stack as .sales-tracker-page).
+   Selectors here are (0,1,0); they come after the utilities in source order, so they win ties
+   against utilities and always beat the legacy reset's bare element selectors. */
+.it-tickets-scope,
+.it-tickets-scope *,
+.it-tickets-scope *::before,
+.it-tickets-scope *::after {
+  box-sizing: border-box;
+}
+.it-tickets-scope {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+.it-tickets-scope * {
+  font-family: inherit;
+}
+.it-tickets-scope input::placeholder,
+.it-tickets-scope textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}

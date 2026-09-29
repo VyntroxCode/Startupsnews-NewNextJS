@@ -11,8 +11,10 @@ import { WhatsNew } from "./WhatsNew";
 import { FoundersPass } from "./FoundersPass";
 import { CoreThemes } from "./CoreThemes";
 import { DelegationDays } from "./DelegationDays";
+import { DelegationBenefits } from "./DelegationBenefits";
 import { ParticipationFee } from "./ParticipationFee";
 import { PlanYourJourney } from "./PlanYourJourney";
+import { SectionNav } from "./SectionNav";
 
 /** Expand North Star 2026 — the event page, built from the reference screenshots and in the same
  * motion family as /feature-your-startup, /submit-funding-round and /sponsor-event.
@@ -27,9 +29,14 @@ import { PlanYourJourney } from "./PlanYourJourney";
  *   founder's pass white      offer copy, photo wiping open
  *   core themes    white      four colour cards, photos drifting at different depths
  *   delegation     dark       six day cards: photo shrinks to a circle, programme text rises in
+ *   benefits       white→cream founders (cream) and enablers (navy) benefit cards — Tailwind only
  *   participation  white→tint fee headline + delegation and pod/booth deliverables cards
  *   partners       tint       this event's referral partners — its own fixed logo set, not /our-partners'
  *   journey        tint→off-white  the closing travel enquiry form, revealing field by field
+ *
+ * Floating over all of it once the hero is passed: SectionNav — a bottom dock on desktop, a menu
+ * button + right-hand sidebar below 1024px — jumping to Itinerary (#ens-days), Benefits
+ * (#ens-benefits), Delegation Participation (#ens-fee), Kick Start (#ens-participate) or home.
  *
  * More sections are added as further reference screenshots arrive. Every clip, still and link
  * comes from media.ts. `MotionConfig reducedMotion="user"` backs up each component's own
@@ -53,9 +60,11 @@ export function ExpandNorthStarPage({
         <FoundersPass />
         <CoreThemes />
         <DelegationDays />
+        <DelegationBenefits />
         <ParticipationFee />
         <EnsPartners />
         <PlanYourJourney promotedCities={promotedCities} />
+        <SectionNav fontClassName={fontClassName} />
       </div>
     </MotionConfig>
   );

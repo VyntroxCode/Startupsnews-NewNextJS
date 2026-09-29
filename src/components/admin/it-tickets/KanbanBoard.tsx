@@ -130,7 +130,7 @@ export default function KanbanBoard({ ticketsByStatus, canManage, onOpenTicket, 
   }
 
   const board = (
-    <div className="flex items-start gap-3 overflow-x-auto pb-4" data-testid="kanban-board">
+    <div className="flex snap-x snap-mandatory items-start gap-3 overflow-x-auto pb-4 sm:snap-none" data-testid="kanban-board">
       {STATUS_COLUMNS.map((col) => {
         const items = ticketsByStatus[col.key] || [];
         const forbidden = !!activeTicket && activeTicket.status !== col.key && !canMove(activeTicket.status, col.key);
@@ -138,7 +138,7 @@ export default function KanbanBoard({ ticketsByStatus, canManage, onOpenTicket, 
         return (
           <div
             key={col.key}
-            className="flex max-h-[calc(100vh-330px)] min-h-[200px] min-w-[232px] flex-1 basis-0 flex-col rounded-[14px] border border-slate-200/80 bg-slate-100/70"
+            className="flex max-h-[70vh] min-h-[200px] min-w-[82vw] flex-1 basis-0 snap-start flex-col sm:max-h-[calc(100vh-330px)] sm:min-w-[232px] rounded-[14px] border border-slate-200/80 bg-slate-100/70"
             data-testid={`column-${col.key}`}
           >
             <div className={`flex items-center gap-2 px-3 pb-2 pt-3 text-[11px] font-bold uppercase tracking-wide ${col.column}`}>
@@ -183,7 +183,7 @@ export default function KanbanBoard({ ticketsByStatus, canManage, onOpenTicket, 
       })}
 
       {strays.map((key) => (
-        <div key={key} className="flex max-h-[calc(100vh-330px)] min-w-[232px] flex-1 basis-0 flex-col rounded-[14px] bg-amber-50 ring-1 ring-amber-200">
+        <div key={key} className="flex max-h-[70vh] min-w-[82vw] snap-start sm:max-h-[calc(100vh-330px)] sm:min-w-[232px] flex-1 basis-0 flex-col rounded-[14px] bg-amber-50 ring-1 ring-amber-200">
           <div className="flex items-center gap-2 px-3 pb-2 pt-3 text-[11px] font-bold uppercase tracking-wide text-amber-700">
             {STATUS_META[key as ItTicketStatus]?.label ?? key}
             <span className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200">{ticketsByStatus[key].length}</span>

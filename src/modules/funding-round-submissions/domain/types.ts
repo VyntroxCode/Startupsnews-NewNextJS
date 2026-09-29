@@ -13,7 +13,7 @@ export interface FundingRoundSubmission {
   phone: string;
   email: string;
   website: string;
-  /** The picked country, or what was typed under "Other (add manually)". Empty if not given. */
+  /** The picked country, or what was typed under "Other (add manually)". Required on new submissions (older rows may be empty). */
   country: string;
   city: string;
   createdAt?: string;

@@ -38,7 +38,7 @@ export function submissionToSalesLead(submission: FeatureStartupSubmission): Sal
     posterUrl: '',
     description: '',
     assignedTo: '',
-    status: 'Query received',
+    status: 'Pending',
     nextFollowUpDate: '',
     lastConnectDate: '',
     lastCallDiscussion: '',

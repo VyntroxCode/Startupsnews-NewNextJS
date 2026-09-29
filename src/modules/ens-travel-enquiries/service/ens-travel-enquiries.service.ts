@@ -8,7 +8,7 @@ import {
 } from '../domain/types';
 import { isParticipationValue, PARTICIPATION_OTHERS, REQUIREMENT_MAX_LENGTH } from '../domain/participation';
 import { FOUND_US_DETAIL_MAX_LENGTH, FOUND_US_OTHERS, isFoundUsValue, isReferredByValue, type ReferredByValue } from '../domain/sources';
-import { CONVERSATION_NOTE_MAX_LENGTH, type EnsLeadStatus, isLeadStatus, LEAD_STATUS_FOLLOWED_UP } from '../domain/lead-status';
+import { CONVERSATION_NOTE_MAX_LENGTH, type EnsLeadStatus, isLeadStatus, leadStatusTakesNote } from '../domain/lead-status';
 import type { EnsTravelEnquiriesRepository } from '../repository/ens-travel-enquiries.repository';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -43,7 +43,7 @@ export function entityToEnquiry(e: EnsTravelEnquiryEntity): EnsTravelEnquiry {
     foundUs: e.found_us && isFoundUsValue(e.found_us) ? e.found_us : FOUND_US_OTHERS,
     foundUsDetail: e.found_us === FOUND_US_OTHERS ? e.found_us_detail || '' : '',
     leadStatus: e.lead_status && isLeadStatus(e.lead_status) ? e.lead_status : null,
-    conversationNote: e.lead_status === LEAD_STATUS_FOLLOWED_UP ? e.conversation_note || '' : '',
+    conversationNote: leadStatusTakesNote(e.lead_status) ? e.conversation_note || '' : '',
     createdAt: toText(e.created_at),
     updatedAt: e.updated_at ? toText(e.updated_at) : null,
     updatedBy: e.updated_by || '',
@@ -112,7 +112,7 @@ export function normalizeEnquiryInput(body: Record<string, unknown>): EnsTravelE
   return { name, email, contact, city, country, participation, requirement, referredBy, foundUs, foundUsDetail };
 }
 
-/** The admin-only part of an edit: the lead status and, under "Followed Up", the conversation note.
+/** The admin-only part of an edit: the lead status and, under "Confirmed" / "Follow Up", the conversation note.
  * An empty status means "no conversation yet" and clears the note; a note sent with any other
  * status is dropped rather than stored against a status it doesn't describe. */
 export function normalizeLeadStatusInput(body: Record<string, unknown>): Pick<EnsTravelEnquiryAdminInput, 'leadStatus' | 'conversationNote'> {
@@ -122,7 +122,7 @@ export function normalizeLeadStatusInput(body: Record<string, unknown>): Pick<En
     if (!isLeadStatus(rawStatus)) throw new EnsTravelValidationError('Please select one of the listed lead statuses.');
     leadStatus = rawStatus;
   }
-  const conversationNote = leadStatus === LEAD_STATUS_FOLLOWED_UP ? str(body.conversationNote) : '';
+  const conversationNote = leadStatusTakesNote(leadStatus) ? str(body.conversationNote) : '';
   if (conversationNote.length > CONVERSATION_NOTE_MAX_LENGTH) {
     throw new EnsTravelValidationError(`Please keep the conversation note under ${CONVERSATION_NOTE_MAX_LENGTH} characters.`);
   }

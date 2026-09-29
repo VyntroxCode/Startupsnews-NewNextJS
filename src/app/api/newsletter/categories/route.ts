@@ -29,11 +29,8 @@ export async function GET() {
   try {
     const [rows, enabledRow] = await Promise.all([
       query<RawCategory>(
-        `SELECT DISTINCT c.id, c.name, c.slug
+        `SELECT c.id, c.name, c.slug
          FROM categories c
-         INNER JOIN rss_feeds rf ON rf.category_id = c.id
-         WHERE rf.enabled = 1
-           AND FIND_IN_SET('newsletter', rf.feed_for) > 0
          ORDER BY c.name ASC`
       ),
       queryOne<{ value: string }>('SELECT value FROM site_settings WHERE `key` = ?', ['nl_morning_signal_enabled']),

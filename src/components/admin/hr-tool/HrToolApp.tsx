@@ -271,7 +271,7 @@ function HrToolStyles() {
       .hr-tool-app .app.collapsed .role-switch { display: flex; justify-content: center; }
       .hr-tool-app .app.collapsed .role-switch label, .hr-tool-app .app.collapsed .role-switch .who { display: none; }
       .hr-tool-app .app.collapsed .logout-btn { width: 40px; padding: 8px; }
-      .hr-tool-app .main { padding: 28px 34px 60px; max-width: 1180px; overflow-y: auto; min-width: 0; }
+      .hr-tool-app .main { padding: 28px 34px 60px; overflow-y: auto; min-width: 0; }
       @media (max-width: 640px) {
         .hr-tool-app .main { padding: 18px 16px 40px; }
         .hr-tool-app .pad { padding: 14px 16px; }

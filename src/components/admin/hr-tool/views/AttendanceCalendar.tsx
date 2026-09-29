@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
+import PunchOutTimeInput from '../../PunchOutTimeInput';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { ApprovalBadge, attendanceKey, employeeName, isAdmin } from '../utils';
 import { isSunday, shiftMonthKey } from '@/modules/hr-tool/utils/time';
@@ -196,6 +197,9 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
   const [regTime, setRegTime] = useState('');
   const [regReason, setRegReason] = useState(REG_REASONS[0]);
   const [regReasonOther, setRegReasonOther] = useState('');
+  // The popup stays open after each action (it used to close, hiding the result): this line says
+  // what just happened, and the status / times / regularization badges above re-render from state.
+  const [doneNote, setDoneNote] = useState('');
 
   const real = state.attendance.find((a) => a.employeeId === employeeId && a.date === dateStr);
   const regIn = state.regularizations.find((r) => r.employeeId === employeeId && r.date === dateStr && r.punchType === 'in');
@@ -209,7 +213,7 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
   async function saveCorrection() {
     await persistAttendanceOverride({ employeeId, emp: empName, date: dateStr, status: manualStatus || 'present' });
     logRuleChange(`Manually set ${empName}'s attendance on ${dateStr} to ${manualStatus}`);
-    onClose();
+    setDoneNote('Correction saved.');
   }
   async function submitRegularization() {
     if (!showRegForm) return;
@@ -227,15 +231,19 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
     const json = await res.json().catch(() => null);
     if (!res.ok || !json?.success) { alert(json?.error || 'Could not submit the regularization request.'); return; }
     addRegularizationToState(json.data);
-    onClose();
+    setShowRegForm(null);
+    setRegTime('');
+    setRegReasonOther('');
+    setDoneNote('Regularization request submitted.');
   }
   async function decideReg(id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) {
     await decideRegularization(id, level, decision, remarks);
-    onClose();
+    setDoneNote(decision === 'approved' ? 'Regularization approved.' : 'Regularization rejected.');
   }
 
   return (
     <ModalShell title={`${empName} — ${new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`} onClose={onClose} actions={[{ label: 'Close', cls: 'btn', onClick: onClose }]}>
+      {doneNote && <div className="notice good">{doneNote}</div>}
       <div className="field"><label className="field-label">Status</label>{statusLabel}</div>
       <div className="field"><label className="field-label">In / Out</label>{times.inTime} – {times.outTime}</div>
       {(regIn || regOut) && (
@@ -267,7 +275,9 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
       {showRegForm && (
         <div className="field">
           <label className="field-label">{showRegForm === 'out' ? 'Punch Out' : 'Punch In'} time</label>
-          <input type="time" value={regTime} onChange={(e) => setRegTime(e.target.value)} />
+          {showRegForm === 'out'
+            ? <div><PunchOutTimeInput value={regTime} onChange={setRegTime} selectStyle={{ width: 'auto' }} /></div>
+            : <input type="time" value={regTime} onChange={(e) => setRegTime(e.target.value)} />}
           <label className="field-label" style={{ marginTop: 8 }}>Reason</label>
           <select value={regReason} onChange={(e) => setRegReason(e.target.value)}>
             {REG_REASONS.map((r) => <option key={r}>{r}</option>)}

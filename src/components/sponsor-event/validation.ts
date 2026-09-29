@@ -1,4 +1,11 @@
-import { SLUG_RE, EMAIL_RE, PHONE_RULES, CUSTOM_CODE_RE } from "@/components/submit-event/constants";
+import {
+  SLUG_RE,
+  EMAIL_RE,
+  PHONE_RULES,
+  CUSTOM_CODE_RE,
+  OTHER_CITY_VALUE,
+  OTHER_COUNTRY_VALUE,
+} from "@/components/submit-event/constants";
 import type { SponsorEventFormData } from "./types";
 
 function isValidHttpUrl(value: string): boolean {
@@ -20,10 +27,16 @@ export function validateSlug(data: SponsorEventFormData): string {
   return SLUG_RE.test(v) ? "" : "Use lowercase letters, numbers, and hyphens only (e.g. my-event-2026).";
 }
 
-/** Reads the COMPOSED `location`, not the dropdowns, so the message stays right whichever way the
- * value was produced — and so the API's own required-field check and this one agree. */
+/** Both halves are required — the composed `location` alone would pass with only a country
+ * picked, and the lead would reach the Sales Tracker with no city. Reads the RESOLVED values (the
+ * pick, or what was typed under "Others"), the same way the API re-derives them. */
 export function validateLocation(data: SponsorEventFormData): string {
-  return data.location.trim() ? "" : "Please choose the event's country and city.";
+  const country = data.country === OTHER_COUNTRY_VALUE ? data.countryOther.trim() : data.country;
+  const city = data.city === OTHER_CITY_VALUE ? data.cityOther.trim() : data.city;
+  if (!country && !city) return "Please choose the event's country and city.";
+  if (!country) return "Please choose the event's country.";
+  if (!city) return data.city === OTHER_CITY_VALUE ? "Please type the event's city." : "Please choose the event's city.";
+  return "";
 }
 
 export function validateExternalUrl(data: SponsorEventFormData): string {

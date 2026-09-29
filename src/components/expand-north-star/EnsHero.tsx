@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import Link from "next/link";
 import { motion, useScroll, useTransform } from "motion/react";
 import { RevealWords } from "./RevealWords";
 import { EASE, useReducedMotion } from "./hooks";
@@ -40,33 +39,16 @@ export function EnsHero() {
       <span className="ens-blob ens-hero-blob-b" aria-hidden="true" />
 
       <div className="ens-wrap">
-        {/* Back to the main site: this route is "bare" (no site Header — see ConditionalLayout),
-            so without this there is no way back to startupnews.fyi except editing the URL. Stacked
-            above the heading (`.ens-hero-title-row`, a column flex), not beside it — a flex row was
-            tried, but the pill (icon + "Back To Home" label, ~170px wide) sitting near the
-            browser's true left edge doesn't leave room beside the heading on ordinary desktop
-            widths without covering the start of its text: below ~1296px the heading/video column
-            already sits only ~25-40px from the true edge, far less than the pill's own width.
-            Stacking keeps the heading a plain, untouched block, so it always starts at the same x
-            as the video card below it — see `expand-north-star.css`'s comment on `.ens-hero-title-row`
-            for the full reasoning. */}
-        <div className="ens-hero-title-row">
-          <Link href="/" className="ens-home-btn" aria-label="Back to StartupNews.fyi home">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 3 2 12h3v8a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-8h3z" />
-            </svg>
-            <span>Back To Home</span>
-          </Link>
-
-          <RevealWords
-            as="h1"
-            id="ens-hero-title"
-            className="ens-hero-title"
-            immediate
-            delay={0.25}
-            lines={[{ text: "The World’s Largest", className: "is-strong" }, { text: "Gathering of Startups and Investors" }]}
-          />
-        </div>
+        {/* The "Back To Home" pill that sat above this heading was removed on request (2026-09-28);
+            the way home from this bare route is now SectionNav's "Back to Home". */}
+        <RevealWords
+          as="h1"
+          id="ens-hero-title"
+          className="ens-hero-title"
+          immediate
+          delay={0.25}
+          lines={[{ text: "The World’s Largest", className: "is-strong" }, { text: "Gathering of Startups and Investors" }]}
+        />
 
         <div className="ens-hero-stage">
           <motion.div
