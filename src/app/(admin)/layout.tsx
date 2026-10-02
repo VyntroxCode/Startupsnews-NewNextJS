@@ -274,7 +274,6 @@ export default function AdminLayout({
  if (loading) {
     return (
       <>
-        <meta name="robots" content="noindex, nofollow" />
         <div
           style={{
             minHeight: '100vh',
@@ -293,7 +292,6 @@ export default function AdminLayout({
   if (pathname === '/admin/login') {
     return (
       <>
-        <meta name="robots" content="noindex, nofollow" />
         {children}
       </>
     );
@@ -320,7 +318,6 @@ export default function AdminLayout({
         background: '#f7fafc',
       }}
     >
-      <meta name="robots" content="noindex, nofollow" />
       {/* Fixed Header */}
       <AdminHeader
         user={user}

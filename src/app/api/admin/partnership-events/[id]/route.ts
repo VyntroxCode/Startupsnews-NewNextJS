@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateEventPages } from '@/lib/revalidate-events';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { PartnershipEventsService } from '@/modules/partnership-events/service/partnership-events.service';
@@ -37,6 +38,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const linkedMap = await partnershipEventsService.getLinkedEventSummaries([entity]);
     const linkedEvent = entity.event_id ? linkedMap.get(entity.event_id) || null : null;
+    revalidateEventPages();
 
     return NextResponse.json({ success: true, data: { ...entityToPartnershipEvent(entity), linkedEvent }, warning });
   } catch (error) {
@@ -58,6 +60,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     if (!id) return NextResponse.json({ success: false, error: 'Invalid event id' }, { status: 400 });
 
     await partnershipEventsService.deleteEvent(id);
+    revalidateEventPages();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting partnership event:', error);

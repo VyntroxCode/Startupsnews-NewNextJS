@@ -5,7 +5,6 @@ import { PageHeading } from "@/components/PageHeading";
 import { PartnerLogosMarquee } from "@/components/PartnerLogosMarquee";
 
 export const revalidate = 60;
-export const dynamic = "force-dynamic";
 
 // Shown only if an admin hasn't set any Page Content yet from Inner Pages → Our Partners, so
 // the page never renders visibly empty.

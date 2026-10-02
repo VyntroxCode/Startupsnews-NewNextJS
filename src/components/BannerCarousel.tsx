@@ -45,59 +45,66 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     return null;
   }
 
-  const currentBanner = activeBanners[currentIndex];
-
+  // Every slide is rendered (inactive ones hidden via CSS) so the server HTML carries all banner
+  // images and links — crawlers don't run the autoplay timer, so a current-slide-only render left
+  // banners 2+ visible only after JS. Hidden slides' lazy images don't download until shown.
   return (
     <div className="banner-carousel-container">
       <div className="banner-carousel-wrapper">
-
-
-        <div className="banner-carousel-slide">
-          {currentBanner.linkUrl ? (
-            <Link href={currentBanner.linkUrl} className="banner-carousel-link">
-              <Image
-                src={currentBanner.imageUrl}
-                alt={currentBanner.title}
-                fill
-                className="banner-carousel-image"
-                priority={currentIndex === 0}
-                sizes="100vw"
-              />
-              <div className="banner-carousel-overlay">
-                <div className="banner-carousel-content">
-                  <div className="banner-carousel-title">{currentBanner.title}</div>
-                  {currentBanner.description && (
-                    <p className="banner-carousel-description">{currentBanner.description}</p>
-                  )}
-                  {currentBanner.linkText && (
-                    <span className="banner-carousel-link-text">{currentBanner.linkText} →</span>
-                  )}
+        {activeBanners.map((banner, index) => (
+          <div
+            key={banner.id ?? index}
+            className={`banner-carousel-slide${index === currentIndex ? "" : " banner-carousel-slide--inactive"}`}
+            aria-hidden={index === currentIndex ? undefined : true}
+          >
+            {banner.linkUrl ? (
+              <Link
+                href={banner.linkUrl}
+                className="banner-carousel-link"
+                tabIndex={index === currentIndex ? undefined : -1}
+              >
+                <Image
+                  src={banner.imageUrl}
+                  alt={banner.title}
+                  fill
+                  className="banner-carousel-image"
+                  priority={index === 0}
+                  sizes="100vw"
+                />
+                <div className="banner-carousel-overlay">
+                  <div className="banner-carousel-content">
+                    <div className="banner-carousel-title">{banner.title}</div>
+                    {banner.description && (
+                      <p className="banner-carousel-description">{banner.description}</p>
+                    )}
+                    {banner.linkText && (
+                      <span className="banner-carousel-link-text">{banner.linkText} →</span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ) : (
+              <div className="banner-carousel-slide-inner">
+                <Image
+                  src={banner.imageUrl}
+                  alt={banner.title}
+                  fill
+                  className="banner-carousel-image"
+                  priority={index === 0}
+                  sizes="100vw"
+                />
+                <div className="banner-carousel-overlay">
+                  <div className="banner-carousel-content">
+                    <div className="banner-carousel-title">{banner.title}</div>
+                    {banner.description && (
+                      <p className="banner-carousel-description">{banner.description}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </Link>
-          ) : (
-            <div className="banner-carousel-slide-inner">
-              <Image
-                src={currentBanner.imageUrl}
-                alt={currentBanner.title}
-                fill
-                className="banner-carousel-image"
-                priority={currentIndex === 0}
-                sizes="100vw"
-              />
-              <div className="banner-carousel-overlay">
-                <div className="banner-carousel-content">
-                  <div className="banner-carousel-title">{currentBanner.title}</div>
-                  {currentBanner.description && (
-                    <p className="banner-carousel-description">{currentBanner.description}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

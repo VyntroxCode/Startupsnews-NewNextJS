@@ -1,8 +1,6 @@
-"use client";
-
 import Link from "next/link";
-import Image from "next/image";
 import { PostImage } from "@/components/PostImage";
+import { AuthorAvatarImage, SourceLogoImg } from "@/components/AuthorFallbackImage";
 import type { Post } from "@/lib/data-adapter";
 import { getPostImage, hasThumbnail, toNewsBrief, stripFeaturedImageFromContent, getPostPath } from "@/lib/post-utils";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
@@ -200,17 +198,12 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                 <>
                                                     <div className="mvp-author-info-thumb left relative" style={{ width: 46, height: 46, borderRadius: "8px", overflow: "hidden", flexShrink: 0, backgroundColor: "#f0f0f0" }}>
                                                         {post.sourceLogoUrl ? (
-                                                            <img
+                                                            <SourceLogoImg
                                                                 src={post.sourceLogoUrl}
                                                                 alt={post.sourceName ? `${post.sourceName} logo` : "Source logo"}
                                                                 width={46}
                                                                 height={46}
                                                                 style={{ width: 46, height: 46, objectFit: "contain" }}
-                                                                onError={(e) => {
-                                                                    const img = e.currentTarget;
-                                                                    if (img.src.includes("/images/author-fallback.svg")) return;
-                                                                    img.src = "/images/author-fallback.svg";
-                                                                }}
                                                             />
                                                         ) : (
                                                             <span style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", color: "#888" }} aria-hidden>©</span>
@@ -243,18 +236,13 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                             ) : (
                                                 <>
                                                     <div className="mvp-author-info-thumb left relative">
-                                                        <Image
+                                                        <AuthorAvatarImage
                                                             src={post.authorAvatarUrl || "/images/author-fallback.svg"}
                                                             alt={post.authorName || "Author"}
                                                             className="mvp-author-avatar-circle"
                                                             width={46}
                                                             height={46}
                                                             style={{ width: 46, height: 46, objectFit: "cover", borderRadius: "50%" }}
-                                                            onError={(e) => {
-                                                                const img = e.currentTarget as HTMLImageElement;
-                                                                if (img.src.includes("/images/author-fallback.svg")) return;
-                                                                img.src = "/images/author-fallback.svg";
-                                                            }}
                                                         />
                                                     </div>
                                                     <div className="mvp-author-info-text left relative">

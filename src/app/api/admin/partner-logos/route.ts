@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { INNER_PAGES_ROLES } from '@/shared/middleware/roles';
 import { PartnerLogosRepository } from '@/modules/inner-pages/repository/inner-pages.repository';
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
 
     const entity = await repo.create({ section, imageUrl, linkUrl }, auth.user.email);
     await deleteCache('partner-logos:by-section');
+    revalidatePath('/our-partners');
     return NextResponse.json({ success: true, data: toPartnerLogo(entity) }, { status: 201 });
   } catch (err) {
     console.error('POST /api/admin/partner-logos error:', err);

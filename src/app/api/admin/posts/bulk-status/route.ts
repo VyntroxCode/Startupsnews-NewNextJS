@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/shared/middleware/auth.middleware';
 import { query, queryOne } from '@/shared/database/connection';
+import { getPostPath } from '@/lib/post-utils';
+import { isCloudflarePurgeConfigured, schedulePostPurge } from '@/lib/cloudflare-purge';
 
 type SelectionMode = 'selected' | 'byStatus';
 type StatusScope = 'published' | 'draft' | 'archived' | 'unpublished';
@@ -105,6 +107,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data: { updated: 0 } });
     }
 
+    // Paths of the affected articles, collected before the UPDATE changes which rows match.
+    const cachedPaths = isCloudflarePurgeConfigured()
+      ? ((await query(
+          `SELECT p.slug, c.slug AS category_slug
+           FROM posts p INNER JOIN categories c ON p.category_id = c.id
+           WHERE ${where}`,
+          params
+        )) as Array<{ slug: string; category_slug: string }>).map((r) =>
+          getPostPath({ categorySlug: r.category_slug, slug: r.slug })
+        )
+      : [];
+
     if (targetStatus === 410) {
       await query(`UPDATE posts p SET p.is_gone_410 = 1 WHERE ${where}`, params);
     } else if (targetStatus === 200) {
@@ -125,6 +139,8 @@ export async function POST(request: NextRequest) {
         params
       );
     }
+
+    schedulePostPurge(cachedPaths);
 
     return NextResponse.json({
       success: true,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/shared/middleware/auth.middleware';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { query, queryOne } from '@/shared/database/connection';
@@ -82,6 +83,8 @@ export async function PUT(request: NextRequest) {
        ON DUPLICATE KEY UPDATE \`value\` = VALUES(\`value\`), updated_at = CURRENT_TIMESTAMP`,
       [SETTING_KEY, value]
     );
+    // The footer is rendered by the root layout on every page, so every cached page carries it.
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

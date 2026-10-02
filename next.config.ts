@@ -123,15 +123,66 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
-      // HTML: do not cache documents at the edge so deploys cannot serve stale chunk refs
+      // Public HTML: shared caches (Cloudflare, once a Cache Rule makes HTML eligible) may keep a
+      // page for 60s and serve it stale for 5 more minutes while refetching — the same window as
+      // the pages' own ISR revalidate. Browsers (max-age=0) always revalidate. This used to be
+      // no-store everywhere so a deploy couldn't leave the edge serving HTML that points at
+      // deleted chunks; scripts/build.sh now keeps previous builds' chunks for 14 days, so edge
+      // HTML that is a few minutes old still resolves.
       {
-        source: "/:path*",
+        source: "/:path((?!(?:admin|api|dashboard|employee|unsubscribe)(?:/|$)|_next/).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, s-maxage=60, stale-while-revalidate=300",
+          },
+        ],
+      },
+      // Homepage: cached at Cloudflare for 15 min, matching page.tsx's revalidate=900. Listed after
+      // the public rule so it overrides it. Not purged on publish (a prefix purge of "/" would
+      // clear the whole site), so new posts can take up to 15 min to reach the edge copy.
+      {
+        source: "/",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, s-maxage=900, stale-while-revalidate=300",
+          },
+        ],
+      },
+      // Articles (/{category}/{slug}): cached at Cloudflare for a day — old articles almost never
+      // change, and most origin traffic is crawlers walking the long tail of them, which a 60s
+      // TTL can't absorb. Every post change purges its URL (src/lib/cloudflare-purge.ts), so this
+      // is only switched on when purging is configured at build time. Listed after the public
+      // rule so it overrides it. First-segment exclusions = top-level routes with nested pages.
+      ...(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ZONE_ID
+        ? [
+            {
+              source:
+                "/:category((?!(?:admin|api|author|category|dashboard|employee|events|incubatx|post|sitemap-posts|startup-events|unsubscribe|_next)(?![^/]))[^/]+)/:rest+",
+              headers: [
+                {
+                  key: "Cache-Control",
+                  value: "public, max-age=0, s-maxage=86400, stale-while-revalidate=300",
+                },
+              ],
+            },
+          ]
+        : []),
+      // Private/per-user areas and APIs: never cached anywhere.
+      {
+        source: "/:area(admin|api|dashboard|employee|unsubscribe)/:path*",
         headers: [
           {
             key: "Cache-Control",
             value: "no-cache, no-store, must-revalidate, max-age=0",
           },
         ],
+      },
+      // Staff/user areas: never indexed, even if a page forgets its robots metadata.
+      {
+        source: "/:area(admin|dashboard|employee)/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
     ];
   },

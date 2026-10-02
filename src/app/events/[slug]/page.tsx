@@ -21,6 +21,13 @@ function getRegionFromSlug(slug: string, regionKeys: string[]) {
 // Pages will be generated on-demand (first request) and cached with ISR
 export const dynamicParams = true; // Allow dynamic generation
 
+// Nothing is prerendered at build (keeps the DB out of the build), but declaring this is what
+// makes Next cache each URL on first request and honour `revalidate` — without it a dynamic
+// segment renders from the DB on every request and `revalidate` is ignored.
+export async function generateStaticParams() {
+  return [];
+}
+
 // Enable ISR - regenerate pages every hour
 export const revalidate = 3600; // 1 hour
 

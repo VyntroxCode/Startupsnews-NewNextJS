@@ -19,9 +19,11 @@ import { useReducedMotion } from "./hooks";
 export function FormSection({
   ctrl,
   promotedCities,
+  heroImageSrc,
 }: {
   ctrl: FeatureStartupFormController;
   promotedCities?: Record<string, string[]>;
+  heroImageSrc?: string;
 }) {
   const reducedMotion = useReducedMotion();
   return (
@@ -66,7 +68,7 @@ export function FormSection({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.25 } }}
             >
-              <ImagePanel />
+              <ImagePanel cdnSrc={heroImageSrc} />
               <FormPanel ctrl={ctrl} promotedCities={promotedCities} />
             </motion.div>
           )}

@@ -1,15 +1,12 @@
 import Link from "next/link";
 import { getEventsByRegion } from "@/lib/data-adapter";
-import { EventsCarousel } from "@/components/EventsCarousel";
 import { EventsSearchBar } from "@/components/EventsSearchBar";
 import type { StartupEvent } from "@/modules/events/domain/types";
 import { OTHER_CITIES_SECTION, citySectionQualifies } from "@/modules/partnership-events/domain/country-city-data";
 import { eventDateSortKey } from "@/modules/partnership-events/utils/public-event.utils";
 import { NON_GEOGRAPHIC_REGIONS, resolveCountry } from "@/modules/events/utils/region-country.utils";
 import { COHORT_PARTNERSHIP_TYPE } from "@/modules/partnership-events/domain/types";
-import { getVisitorLocation } from "@/lib/visitor-location";
-import { orderByVisitorLocation } from "@/modules/events/utils/visitor-location-order.utils";
-import { EventsLocationBar } from "@/components/EventsLocationBar";
+import { EventsByCountryList } from "@/components/EventsByCountryList";
 
 import type { Metadata } from "next";
 
@@ -99,8 +96,6 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
 }
 
 export const revalidate = 60;
-// Prevent build-time DB access; render at request time.
-export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "Startup Events by Region",
@@ -123,13 +118,10 @@ export const metadata: Metadata = {
 
 
 export default async function EventsPage() {
-  const [eventsByRegion, visitorLocation] = await Promise.all([getEventsByRegion(), getVisitorLocation()]);
-  // The visitor's own city and its country read first when they've shared their location (browser
-  // prompt → cookie); everything else keeps groupByCountry's A–Z order below it.
-  const { eventsByCountry } = orderByVisitorLocation(
-    groupByCountry(eventsByRegion),
-    visitorLocation
-  );
+  const eventsByRegion = await getEventsByRegion();
+  // Rendered A–Z here so the page stays ISR-cached; EventsByCountryList lifts the visitor's own
+  // city/country to the top in the browser once it knows their location.
+  const eventsByCountry = groupByCountry(eventsByRegion);
   // Deduped by slug (falling back to id) — a handful of legacy/duplicate rows can otherwise
   // appear twice in the flat region map, which would show the same card twice in search results.
   const allEvents = Array.from(
@@ -161,36 +153,7 @@ export default async function EventsPage() {
                   title="Events"
                   subtitle="Discover startup and technology events by region."
                 >
-                  <EventsLocationBar hasLocation={!!visitorLocation} />
-                  {Object.entries(eventsByCountry).map(([country, cities]) => {
-                    const isCohort = country === COHORT_PARTNERSHIP_TYPE;
-                    // "Other Cities" only means something beside a country's own city sections — when
-                    // it's the country's sole section, the heading adds nothing, so drop it.
-                    const onlyOtherCities =
-                      Object.keys(cities).length === 1 && OTHER_CITIES_SECTION in cities;
-                    return (
-                      <section key={country} className="event-by-country-section">
-                        <h2 className="event-by-country-region">{country}</h2>
-                        {Object.entries(cities).map(([city, events]) => (
-                          <div key={city} className="event-by-country-city-group">
-                            <EventsCarousel
-                              events={events}
-                              maxEvents={events.length}
-                              title={
-                                city !== country &&
-                                !NON_GEOGRAPHIC_REGIONS.has(city) &&
-                                !(onlyOtherCities && city === OTHER_CITIES_SECTION)
-                                  ? city
-                                  : null
-                              }
-                              className="event-country-carousel"
-                              showCountry={isCohort}
-                            />
-                          </div>
-                        ))}
-                      </section>
-                    );
-                  })}
+                  <EventsByCountryList eventsByCountry={eventsByCountry} />
                 </EventsSearchBar>
               </div>
             </div>

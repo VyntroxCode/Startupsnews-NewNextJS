@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateEventPages } from '@/lib/revalidate-events';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { EventsService } from '@/modules/events/service/events.service';
@@ -287,6 +288,7 @@ export async function POST(request: NextRequest) {
     });
 
     const event = entityToEvent(entity);
+    revalidateEventPages();
 
     return NextResponse.json({
       success: true,
