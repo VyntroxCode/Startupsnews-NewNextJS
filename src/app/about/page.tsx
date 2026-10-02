@@ -1,5 +1,3 @@
-"use client";
-
 import { LinkedInIcon } from "@/components/icons";
 
 /**
@@ -94,7 +92,7 @@ export default function AboutPage() {
 
             </div>
 
-            <style jsx>{`
+            <style>{`
                 @media (max-width: 1024px) {
                     .team-grid {
                         grid-template-columns: 1fr !important;

@@ -20,7 +20,7 @@ import { BannersRepository } from "@/modules/banners/repository/banners.reposito
 import { entityToBanner } from "@/modules/banners/utils/banners.utils";
 import type { Banner } from "@/modules/banners/domain/types";
 import { toCdnUrl } from "@/shared/utils/image-cdn";
-
+import { getFooterCopyrightText } from "@/lib/site-settings";
 const bannersRepository = new BannersRepository();
 const bannersService = new BannersService(bannersRepository);
 
@@ -233,7 +233,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const banners = await getActiveBanners();
+  const [banners, footerCopyright] = await Promise.all([getActiveBanners(), getFooterCopyrightText()]);
   return (
     <html lang="en">
       <head>
@@ -258,7 +258,7 @@ export default async function RootLayout({
       </head>
       <body>
         <TopLoader />
-        <ConditionalLayout banners={banners}>
+        <ConditionalLayout banners={banners} footerCopyright={footerCopyright}>
           {children}
         </ConditionalLayout>
         {/* Scroll up/down controls. Mounted here rather than inside ConditionalLayout so they

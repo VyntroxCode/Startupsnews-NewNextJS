@@ -26,9 +26,11 @@ export function isBareRoute(pathname: string | null): boolean {
 export default function ConditionalLayout({
   children,
   banners,
+  footerCopyright,
 }: {
   children: React.ReactNode;
   banners: Banner[];
+  footerCopyright: string;
 }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin');
@@ -65,7 +67,7 @@ export default function ConditionalLayout({
               {children}
             </div>
             {/* Bare event pages carry no site footer either (2026-09-19). */}
-            {!bareRoute && <Footer />}
+            {!bareRoute && <Footer copyrightText={footerCopyright} />}
           </div>
         </div>
       </div>

@@ -41,7 +41,13 @@ import { useFeatureStartupForm } from "./useFeatureStartupForm";
  * and so the wizard's state survives everything above it re-rendering. It is the same
  * `useFeatureStartupForm` / `useLeadForm` controller as before the redesign — same fields, same
  * validators, same step grouping, same submit path — none of which this page changes. */
-export function FeatureStartupPage({ promotedCities }: { promotedCities?: Record<string, string[]> }) {
+export function FeatureStartupPage({
+  promotedCities,
+  heroImageSrc,
+}: {
+  promotedCities?: Record<string, string[]>;
+  heroImageSrc?: string;
+}) {
   const ctrl = useFeatureStartupForm();
   const submittedRef = useRef(false);
 
@@ -62,7 +68,7 @@ export function FeatureStartupPage({ promotedCities }: { promotedCities?: Record
       <SpotlightStory />
       <ProcessTimeline />
       <WhyStartupNews />
-      <FormSection ctrl={ctrl} promotedCities={promotedCities} />
+      <FormSection ctrl={ctrl} promotedCities={promotedCities} heroImageSrc={heroImageSrc} />
     </div>
   );
 }

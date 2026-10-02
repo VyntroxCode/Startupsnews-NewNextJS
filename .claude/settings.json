@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -lE \"fetch\\\\\\(['\\\\\"\\\\`]/api\")",
+      "Bash(awk -F: '{print $1}')",
+      "Bash(git rm *)",
+      "Bash(sed -i '1{/^\"use client\";$/d}' src/components/FullArticle.tsx)",
+      "Bash(sed -i '1{/^$/d}' src/components/FullArticle.tsx)",
+      "Bash(npx eslint *)",
+      "Bash(curl -s -D - -o /dev/null http://127.0.0.1:3000/events)",
+      "Bash(curl -s -D - -o /dev/null https://startupnews.fyi/_next/static/chunks/webpack-7b8b26f7297e24f4.js)",
+      "Bash(curl -s http://127.0.0.1:3000/ai-deeptech/cars24-launches-ai-lab-commits-20m-to-ai-startups)",
+      "Bash(curl -s -D - -o /dev/null https://startupnews.fyi/events)",
+      "Bash(chmod +x scripts/build.sh)",
+      "Bash(sed -i 's#\"build\": \"next build --webpack\",#\"build\": \"bash scripts/build.sh\",#' package.json)",
+      "Bash(bash -n scripts/build.sh)",
+      "Bash(curl -s -D - -o /dev/null http://127.0.0.1:3000/admin/login)",
+      "Bash(curl -s -D - -o /dev/null \"http://127.0.0.1:3000/ai-deeptech/cars24-launches-ai-lab-commits-20m-to-ai-startups\")",
+      "Bash(curl -s -D - -o /dev/null https://startupnews.fyi/)",
+      "Bash(node -e ' *)",
+      "Bash(awk '$6==\"\\\\\"GET\" && $7 !~ /^\\\\/\\(_next|api|admin|dashboard|employee|images|favicon|robots|sitemap|wp-\\)/ && $7 !~ /_rsc=/ && $7 !~ /\\\\.\\(js|css|png|jpg|jpeg|webp|svg|ico|xml|txt|woff2?\\)\\(\\\\?|$\\)/ {split\\($4,t,\":\"\\); print t[2]\":\"substr\\(t[3],1,1\\)\"0\"}' /var/log/nginx/access.log)",
+      "Bash(CLOUDFLARE_ZONE_ID=0000 CLOUDFLARE_API_TOKEN=bogus npx tsx scripts/cf-purge.ts /fintech/x)",
+      "Bash(npx tsx *)"
+    ]
+  }
+}

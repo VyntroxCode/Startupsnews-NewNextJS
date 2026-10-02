@@ -30,6 +30,13 @@ const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 export const revalidate = 60;
 export const dynamicParams = true;
 
+// Nothing is prerendered at build (keeps the DB out of the build), but declaring this is what
+// makes Next cache each URL on first request and honour `revalidate` — without it a dynamic
+// segment renders from the DB on every request and `revalidate` is ignored.
+export async function generateStaticParams() {
+  return [];
+}
+
 function parseRobots(value: string | null | undefined): Metadata["robots"] {
   const str = (value || "index,follow").toLowerCase().replace(/\s/g, "");
   const index = !str.includes("noindex");
@@ -47,7 +54,7 @@ function formatTitle(slug: string): string {
 }
 
 async function renderCategoryPage(slug: string) {
-  const posts = await getPostsByCategory(slug, 30);
+  const [posts, startupEvents] = await Promise.all([getPostsByCategory(slug, 30), getStartupEvents()]);
 
   if (posts.length === 0) {
     notFound();
@@ -57,7 +64,6 @@ async function renderCategoryPage(slug: string) {
   const listPosts = posts.slice(0, 30);
   const heroPost = listPosts[0] ?? null;
   const remainingPosts = listPosts.slice(1);
-  const startupEvents = await getStartupEvents();
 
   const toBackgroundStyle = (imageUrl?: string | null): CSSProperties | undefined => {
     if (!imageUrl || !imageUrl.trim()) return undefined;

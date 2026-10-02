@@ -21,6 +21,13 @@ export const revalidate = 60;
 // Allow dynamic params for categories not pre-generated
 export const dynamicParams = true;
 
+// Nothing is prerendered at build (keeps the DB out of the build), but declaring this is what
+// makes Next cache each URL on first request and honour `revalidate` — without it a dynamic
+// segment renders from the DB on every request and `revalidate` is ignored.
+export async function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
   const displayName = slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -49,7 +56,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params;
-  const posts = await getPostsByCategory(slug, 20);
+  const [posts, startupEvents] = await Promise.all([getPostsByCategory(slug, 20), getStartupEvents()]);
   const title = slug
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -58,7 +65,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const listPosts = posts.slice(0, 20);
   const heroPost = listPosts[0] ?? null;
   const remainingPosts = listPosts.slice(1);
-  const startupEvents = await getStartupEvents();
 
   const toBackgroundStyle = (imageUrl?: string | null): CSSProperties | undefined => {
     if (!imageUrl || !imageUrl.trim()) return undefined;

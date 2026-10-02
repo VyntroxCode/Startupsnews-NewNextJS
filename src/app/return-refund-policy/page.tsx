@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";

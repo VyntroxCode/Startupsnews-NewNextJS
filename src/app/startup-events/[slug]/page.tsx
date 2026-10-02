@@ -10,7 +10,15 @@ import { buildEventJsonLd, serializeJsonLd } from "@/modules/events/utils/event-
 
 const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+export const dynamicParams = true;
+
+// Nothing is prerendered at build (keeps the DB out of the build), but declaring this is what
+// makes Next cache each URL on first request and honour `revalidate` — without it a dynamic
+// segment renders from the DB on every request and `revalidate` is ignored.
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({
   params,

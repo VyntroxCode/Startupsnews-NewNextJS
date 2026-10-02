@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateEventPages } from '@/lib/revalidate-events';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { PartnershipEventsService } from '@/modules/partnership-events/service/partnership-events.service';
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
     const input: PartnershipEventInput = { ...body, source: body.source || 'Manually added' };
     for (const { key } of SOCIAL_LINK_FIELDS) delete input[key];
     const { entity, warning } = await partnershipEventsService.createEvent(input, auth.user.email);
+    revalidateEventPages();
     const linkedMap = await partnershipEventsService.getLinkedEventSummaries([entity]);
     const linkedEvent = entity.event_id ? linkedMap.get(entity.event_id) || null : null;
 

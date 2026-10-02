@@ -5,7 +5,6 @@ import { getInnerPageContent } from "@/lib/data-adapter";
 import { HeadphonesIcon, MegaphoneIcon, BriefcaseIcon } from "@/components/icons";
 
 export const revalidate = 60;
-export const dynamic = "force-dynamic";
 
 // Shown only if an admin hasn't set any Page Content yet from Inner Pages → Contact Us, so the
 // page never renders visibly empty. See src/app/our-partners/page.tsx for the same pattern.

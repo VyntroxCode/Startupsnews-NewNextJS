@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { FeatureStartupPage } from "@/components/feature-startup/FeatureStartupPage";
 import { getPromotedCityOptions } from "@/lib/data-adapter";
+import { getFeatureStartupImages } from "@/lib/site-settings";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
@@ -21,8 +22,9 @@ export const metadata: Metadata = {
 
 // Fetched here rather than in the client form, for the same reason /list-your-event does it here:
 // the City dropdown is then complete on first paint — no endpoint, no loading state, and no flash
-// of a list missing the cities that have earned a slot.
+// of a list missing the cities that have earned a slot. Same for the admin hero-image override:
+// the chosen photo is in the HTML instead of replacing the bundled one after hydration.
 export default async function FeatureYourStartupRoute() {
-  const promotedCities = await getPromotedCityOptions();
-  return <FeatureStartupPage promotedCities={promotedCities} />;
+  const [promotedCities, heroImages] = await Promise.all([getPromotedCityOptions(), getFeatureStartupImages()]);
+  return <FeatureStartupPage promotedCities={promotedCities} heroImageSrc={heroImages.step1} />;
 }

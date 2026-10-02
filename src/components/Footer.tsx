@@ -2,35 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/config";
-export function Footer() {
-  const year = new Date().getFullYear();
-  const defaultCopyright = `© ${year} Dotfyi Media Ventures Pvt Ltd`;
-  const [copyrightText, setCopyrightText] = useState(defaultCopyright);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchFooterCopyright() {
-      try {
-        const res = await fetch('/api/site-settings/footer-copyright', { cache: 'no-store' });
-        const data = await res.json();
-        if (!cancelled && data?.success && typeof data?.data?.value === 'string' && data.data.value.trim()) {
-          const resolved = data.data.value.replace(/\{\{year\}\}/g, String(year));
-          setCopyrightText(resolved);
-        }
-      } catch {
-        // Keep default text on errors.
-      }
-    }
-
-    fetchFooterCopyright();
-    return () => {
-      cancelled = true;
-    };
-  }, [year]);
-
+/** `copyrightText` is resolved on the server (root layout → ConditionalLayout) so the admin-set
+ * text is in the initial HTML rather than swapped in after hydration. */
+export function Footer({ copyrightText }: { copyrightText: string }) {
   return (
     <>
     <footer className="footer">

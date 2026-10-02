@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateEventPages } from '@/lib/revalidate-events';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { PartnershipEventsService } from '@/modules/partnership-events/service/partnership-events.service';
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await partnershipEventsService.importEvents(body.rows, auth.user.email);
+    revalidateEventPages();
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error('Error importing partnership events:', error);

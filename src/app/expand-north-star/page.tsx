@@ -5,6 +5,11 @@ import { getPromotedCityOptions } from "@/lib/data-adapter";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
+// Link-preview thumbnail (WhatsApp, LinkedIn, X, …): the "Dubai is calling Indian founders"
+// creative, re-encoded from the supplied 1672×941 PNG (2.7 MB) to a 1200×675 JPEG (~190 KB) so
+// preview crawlers don't give up on the file size.
+const OG_IMAGE = `${SITE_URL}/images/expand-north-star/og-indian-founders.jpg`;
+
 // The event's own typeface (expandnorthstar.com sets Cairo, headings at 800), scoped to this page
 // through a CSS variable (--ens-font) so it never replaces the site font anywhere else.
 // Self-hosted (src/fonts, latin variable file) rather than next/font/google: see src/fonts/README.md.
@@ -37,6 +42,21 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/expand-north-star`,
     siteName: "StartupNews.fyi",
     type: "website",
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 675,
+        alt: "Dubai is calling Indian founders: Expand North Star, 6 to 11 December 2026, Dubai",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Expand North Star 2026 – StartupNews.fyi",
+    description:
+      "The startup and investor connector event: Summit 7 Dec 2026 at Dubai World Trade Centre, Expo 8 to 10 Dec 2026 at Expo City Dubai.",
+    images: [OG_IMAGE],
   },
 };
 

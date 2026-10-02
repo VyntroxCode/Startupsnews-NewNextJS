@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { INNER_PAGES_ROLES } from '@/shared/middleware/roles';
 import { InnerPageContentRepository } from '@/modules/inner-pages/repository/inner-pages.repository';
@@ -31,6 +32,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const contentHtml = String(body.contentHtml ?? '');
     const entity = await repo.upsert(pageKey, contentHtml, auth.user.email);
     await deleteCache(`inner-page-content:${pageKey}`);
+    // Public inner pages are ISR; the page key is also its URL path.
+    revalidatePath(`/${pageKey}`);
     return NextResponse.json({ success: true, data: toInnerPageContent(entity, pageKey) });
   } catch (err) {
     console.error('PUT /api/admin/inner-pages/[pageKey] error:', err);

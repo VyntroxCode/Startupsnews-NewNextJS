@@ -2,6 +2,8 @@ import { query, queryOne, getDbConnection } from '@/shared/database/connection';
 import { PostEntity } from '../domain/types';
 import { invalidatePostsListCache } from '@/shared/cache/redis.client';
 import { revalidatePath } from 'next/cache';
+import { getPostPath } from '@/lib/post-utils';
+import { isCloudflarePurgeConfigured, schedulePostPurge } from '@/lib/cloudflare-purge';
 
 /** Only show published posts that have body (content) and at least one image (featured or <img> in content). */
 const HAS_BODY_AND_IMAGE =
@@ -169,9 +171,40 @@ export class PostsRepository {
   }
 
   /**
+   * Public article paths (/{category}/{slug}) for these post ids — what Cloudflare caches and
+   * must purge when the posts change. Empty when Cloudflare purging isn't configured.
+   */
+  async publicPathsForIds(ids: number[]): Promise<string[]> {
+    const unique = Array.from(new Set(ids.filter((id) => Number.isFinite(id) && id > 0)));
+    if (unique.length === 0 || !isCloudflarePurgeConfigured()) return [];
+    try {
+      const rows = await query(
+        `SELECT p.slug, c.slug AS category_slug
+         FROM posts p INNER JOIN categories c ON p.category_id = c.id
+         WHERE p.id IN (${unique.map(() => '?').join(', ')})`,
+        unique
+      ) as Array<{ slug: string; category_slug: string }>;
+      return rows
+        .filter((r) => r.slug && r.category_slug)
+        .map((r) => getPostPath({ categorySlug: r.category_slug, slug: r.slug }));
+    } catch (err) {
+      console.error('publicPathsForIds failed:', err);
+      return [];
+    }
+  }
+
+  /**
    * Publish scheduled posts whose published_at <= NOW()
    */
   async publishScheduledPosts(): Promise<number> {
+    // Collected before the UPDATE (afterwards they're indistinguishable from other published
+    // posts) so a 404/410 Cloudflare cached for these URLs while scheduled gets purged.
+    const dueIds = isCloudflarePurgeConfigured()
+      ? ((await query(
+          `SELECT id FROM posts WHERE status = 'scheduled' AND published_at <= NOW()`,
+          []
+        )) as Array<{ id: number }>).map((r) => Number(r.id))
+      : [];
     const result = await query(
       `UPDATE posts SET status = 'published' WHERE status = 'scheduled' AND published_at <= NOW()`,
       []
@@ -185,10 +218,12 @@ export class PostsRepository {
       try {
         revalidatePath('/', 'page');
         revalidatePath('/news', 'page');
+        revalidatePath('/press-release', 'page');
         revalidatePath('/category/[slug]', 'page');
       } catch {
         // no-op outside a Next.js request context
       }
+      schedulePostPurge(await this.publicPathsForIds(dueIds));
     }
     return published;
   }
@@ -806,6 +841,8 @@ export class PostsRepository {
       const result = await connection.query(sql, params) as { insertId?: number };
       const insertId = result.insertId;
       if (!insertId) throw new Error('Failed to get insert ID');
+      // A 404 for this URL may already sit in Cloudflare (someone hit it before it existed).
+      if (status === 'published') schedulePostPurge(await this.publicPathsForIds([insertId]));
       return this.findById(insertId) as Promise<PostEntity>;
     } finally {
       connection.release();
@@ -844,7 +881,11 @@ export class PostsRepository {
     }
 
     params.push(id);
+    // Path before AND after: a slug/category change moves the article, and the old URL's cached
+    // copy must go too.
+    const pathsBefore = await this.publicPathsForIds([id]);
     await query(`UPDATE posts SET ${fields.join(', ')} WHERE id = ?`, params);
+    schedulePostPurge([...pathsBefore, ...(await this.publicPathsForIds([id]))]);
     return this.findById(id) as Promise<PostEntity>;
   }
 
@@ -852,7 +893,9 @@ export class PostsRepository {
    * Delete post
    */
   async delete(id: number): Promise<void> {
+    const paths = await this.publicPathsForIds([id]);
     await query('DELETE FROM posts WHERE id = ?', [id]);
+    schedulePostPurge(paths);
   }
 
   /**

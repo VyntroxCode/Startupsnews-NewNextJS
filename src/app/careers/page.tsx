@@ -1,10 +1,8 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";
+import { Reveal, StatsSection } from "@/components/marketing/Reveal";
 
 const SITE_FONT_FAMILY = '"Garnett", Helvetica, Arial, sans-serif';
 
@@ -61,124 +59,7 @@ const STEPS = [
   },
 ];
 
-/** Fires `inView` once the element scrolls into the viewport, then stops watching. */
-function useInView<T extends HTMLElement>(threshold = 0.2) {
-  const ref = useRef<T | null>(null);
-  const [inView, setInView] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { threshold }
-    );
-    observer.observe(el);
-    // Safety net: if the observer never fires (stale bundle, hydration hiccup, etc.), don't
-    // leave this content permanently invisible — force it visible after a few seconds regardless.
-    const fallback = setTimeout(() => setInView(true), 4000);
-    return () => {
-      observer.disconnect();
-      clearTimeout(fallback);
-    };
-  }, [threshold]);
-
-  return { ref, inView };
-}
-
-/** Counts up from 0 to `target` (as a float — callers round/format) once `active` flips true. */
-function useCountUp(target: number, active: boolean, durationMs = 1400) {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    if (!active) return;
-    let raf = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / durationMs);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(target * eased);
-      if (progress < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [active, target, durationMs]);
-
-  return value;
-}
-
-/** Reveal-on-scroll wrapper shared by every block on this page — fades in while sliding from
- * the left, right, or up, so the page reads as animated rather than static. */
-function Reveal({
-  children,
-  className = "",
-  direction = "up",
-  delay = 0,
-  threshold = 0.2,
-  as: Tag = "div",
-}: {
-  children: React.ReactNode;
-  className?: string;
-  direction?: "up" | "left" | "right";
-  delay?: number;
-  threshold?: number;
-  as?: "div" | "span" | "li";
-}) {
-  const { ref, inView } = useInView<HTMLDivElement>(threshold);
-  const hiddenTransform =
-    direction === "left" ? "-translate-x-16" : direction === "right" ? "translate-x-16" : "translate-y-8";
-  return (
-    <Tag
-      ref={ref as never}
-      className={`transition-all duration-700 ease-out ${
-        inView ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${hiddenTransform}`
-      } ${className}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </Tag>
-  );
-}
-
-/** Parses a display string like "10M+", "445K+", or "24" into a numeric count-up target, how
- * many decimal places to preserve, and the trailing suffix to re-append. */
-function parseStatValue(raw: string): { target: number; decimals: number; suffix: string } {
-  const match = raw.match(/^([\d.]+)(.*)$/);
-  if (!match) return { target: 0, decimals: 0, suffix: raw };
-  const [, numStr, suffix] = match;
-  const decimals = numStr.includes(".") ? numStr.split(".")[1]?.length || 0 : 0;
-  return { target: parseFloat(numStr), decimals, suffix };
-}
-
-function StatTile({ stat, index, active }: { stat: { value: string; label: string }; index: number; active: boolean }) {
-  const { target, decimals, suffix } = parseStatValue(stat.value);
-  const value = useCountUp(target, active);
-  const display = decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString();
-
-  return (
-    <div
-      className={`text-center transition-all duration-700 ease-out ${
-        active ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-      }`}
-      style={{ transitionDelay: `${150 + index * 90}ms` }}
-    >
-      <div className="text-[30px] sm:text-[36px] lg:text-[42px] font-black tracking-[-0.03em] text-cr-pink leading-none tabular-nums">
-        {display}
-        {suffix}
-      </div>
-      <div className="mt-2.5 text-[13px] font-semibold text-cr-muted leading-[1.4] px-1">{stat.label}</div>
-    </div>
-  );
-}
-
 export default function CareersPage() {
-  const { ref: statsRef, inView: statsInView } = useInView<HTMLDivElement>(0.15);
-
   return (
     <div className="bg-white text-cr-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
       <div className="mvp-main-box event-by-country-container">
@@ -259,7 +140,12 @@ export default function CareersPage() {
         </section>
 
         {/* REACH / STATS */}
-        <section ref={statsRef} className="px-5 sm:px-8 lg:px-10 py-8 sm:py-10 lg:py-14 bg-cr-panel">
+        <StatsSection
+          stats={STATS}
+          className="px-5 sm:px-8 lg:px-10 py-8 sm:py-10 lg:py-14 bg-cr-panel"
+          valueClassName="text-cr-pink"
+          labelClassName="text-cr-muted"
+        >
           <div className="text-center max-w-[720px] mx-auto">
             <Reveal>
               <span className="text-xs font-bold tracking-[0.16em] uppercase text-cr-pink">The platform you&apos;d build for</span>
@@ -270,12 +156,7 @@ export default function CareersPage() {
               </h2>
             </Reveal>
           </div>
-          <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-y-10 gap-x-6 sm:gap-x-8 max-w-[1100px] mx-auto">
-            {STATS.map((s, i) => (
-              <StatTile key={s.label} stat={s} index={i} active={statsInView} />
-            ))}
-          </div>
-        </section>
+        </StatsSection>
 
         {/* HOW YOU JOIN US */}
         <section className="px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16">

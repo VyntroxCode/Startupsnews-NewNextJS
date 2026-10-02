@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "next dev --webpack",
 		"dev:turbo": "next dev",
-		"build": "next build --webpack",
+		"build": "bash scripts/build.sh",
 		"start": "next start",
 		"lint": "next lint",
 		"db:migrate": "tsx scripts/migrate.ts",

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateEventPages } from '@/lib/revalidate-events';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { EVENTS_ROLES } from '@/shared/middleware/roles';
 import { EventsService } from '@/modules/events/service/events.service';
@@ -290,6 +291,7 @@ export async function PUT(
 
     const entity = await eventsService.updateEvent(eventId, updateData);
     const event = entityToEvent(entity);
+    revalidateEventPages();
 
     return NextResponse.json({
       success: true,
@@ -333,6 +335,7 @@ export async function DELETE(
     }
 
     await eventsService.deleteEvent(eventId);
+    revalidateEventPages();
 
     return NextResponse.json({
       success: true,

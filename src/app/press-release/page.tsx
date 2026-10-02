@@ -9,8 +9,7 @@ import { StartupEventsSection } from "@/components/StartupEventsSection";
 
 const SITE_BASE = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 
-export const revalidate = 3600;
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Press Release | StartupNews.fyi",
@@ -27,10 +26,9 @@ export const metadata: Metadata = {
 };
 
 export default async function PressReleasePage() {
-  const posts = await getPostsByCategory("press-release", 20);
+  const [posts, startupEvents] = await Promise.all([getPostsByCategory("press-release", 20), getStartupEvents()]);
   const heroPost = posts[0] ?? null;
   const remainingPosts = posts.slice(1);
-  const startupEvents = await getStartupEvents();
 
   const toBackgroundStyle = (imageUrl?: string | null): CSSProperties | undefined => {
     if (!imageUrl || !imageUrl.trim()) return undefined;

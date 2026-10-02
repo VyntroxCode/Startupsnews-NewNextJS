@@ -6842,6 +6842,11 @@ body .banner-carousel-container,
   box-sizing: border-box !important;
 }
 
+/* BannerCarousel renders every slide in the server HTML; only the current one is shown. */
+.banner-carousel-slide.banner-carousel-slide--inactive {
+  display: none !important;
+}
+
 .banner-carousel-slide-inner {
   position: absolute;
   inset: 0;

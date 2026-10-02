@@ -28,6 +28,7 @@ import { toCdnUrl } from "@/shared/utils/image-cdn";
 import { PartnerLogosRepository, InnerPageContentRepository } from "@/modules/inner-pages/repository/inner-pages.repository";
 import { toPartnerLogo, toInnerPageContent, PARTNER_LOGO_SECTIONS, type PartnerLogo } from "@/modules/inner-pages/domain/types";
 import * as fs from "fs";
+import { cache } from "react";
 import * as path from "path";
 
 // Post interface (backward compatible)
@@ -637,16 +638,30 @@ export async function getFeat1SectionPosts(categorySlug: string): Promise<{
   }
 }
 
-export async function getPostBySlug(slug: string): Promise<Post | undefined> {
+/**
+ * Wrapped in React `cache()` so generateMetadata and the page share one lookup per render
+ * instead of each hitting the DB.
+ */
+export const getPostBySlug = cache(async (slug: string): Promise<Post | undefined> => {
   try {
     const entity = await postsService.getPostBySlug(slug);
     if (!entity) return undefined;
     if (Boolean(entity.is_gone_410)) return undefined;
     if (entity.status !== "published") return undefined;
-    const post = await entityToPost(entity);
     const postId = Number(entity.id);
 
-    const sourceUrl = await postsService.getSourceLinkByPostId(postId);
+    // Independent lookups — run together rather than one after another. The staff user is
+    // fetched up front even though RSS-sourced posts don't use it (a cheap PK lookup, and it
+    // saves a round-trip for manually authored posts).
+    const [post, sourceUrl, rssResult, user] = await Promise.all([
+      entityToPost(entity),
+      postsService.getSourceLinkByPostId(postId),
+      rssFeedsRepository.getRssSourceByPostId(postId).then(
+        (value) => ({ value, error: null as unknown }),
+        (error: unknown) => ({ value: null, error }),
+      ),
+      entity.author_id ? usersRepository.findById(entity.author_id) : Promise.resolve(null),
+    ]);
     if (sourceUrl) post.sourceUrl = sourceUrl;
 
     let authorName = "Zox News Staff";
@@ -654,8 +669,16 @@ export async function getPostBySlug(slug: string): Promise<Post | undefined> {
     let authorId: number | undefined;
     let authorAvatarUrl: string | null | undefined;
 
-    try {
-      const rssSource = await rssFeedsRepository.getRssSourceByPostId(postId);
+    if (rssResult.error) {
+      // RSS source columns (logo_url, author) may not exist if migration not run; skip source attribution
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "getRssSourceByPostId failed (run add-rss-source-author-logo migration?):",
+          rssResult.error,
+        );
+      }
+    } else {
+      const rssSource = rssResult.value;
       if (rssSource && rssSource.sourceName !== "StartupNews Direct Import") {
         post.sourceName = rssSource.sourceName;
         post.sourceLogoUrl = rssSource.sourceLogoUrl ?? undefined;
@@ -671,19 +694,10 @@ export async function getPostBySlug(slug: string): Promise<Post | undefined> {
           authorType = "source";
         }
       }
-    } catch (rssErr) {
-      // RSS source columns (logo_url, author) may not exist if migration not run; skip source attribution
-      if (process.env.NODE_ENV === "development") {
-        console.warn(
-          "getRssSourceByPostId failed (run add-rss-source-author-logo migration?):",
-          rssErr,
-        );
-      }
     }
 
     // For manually authored posts, use the internal user name/avatar.
     if (authorType === "staff") {
-      const user = await usersRepository.findById(entity.author_id);
       if (user?.name?.trim()) {
         authorName = user.name.trim();
         authorId = user.id;
@@ -702,7 +716,7 @@ export async function getPostBySlug(slug: string): Promise<Post | undefined> {
     console.error("Error fetching post by slug:", error);
     throw new Error(`Failed to fetch post ${slug} from database`);
   }
-}
+});
 
 export interface AuthorPostsPageData {
   name: string;
@@ -1008,9 +1022,10 @@ export async function getStartupEvents(): Promise<StartupEvent[]> {
  * Get a single startup event by slug (for inner event detail page).
  * Returns null if not found.
  */
-export async function getEventBySlug(
+/** React `cache()`: generateMetadata and the page share one lookup per render. */
+export const getEventBySlug = cache(async (
   slug: string,
-): Promise<StartupEvent | null> {
+): Promise<StartupEvent | null> => {
   try {
     const entity = await partnershipEventsService.getPublicEventBySlug(slug);
     if (!entity) return null;
@@ -1021,7 +1036,7 @@ export async function getEventBySlug(
     console.error("Error fetching event by slug:", error);
     return null;
   }
-}
+});
 
 /**
  * Partner logos for /our-partners, grouped by section (International, National), in the same

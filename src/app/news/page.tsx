@@ -7,8 +7,7 @@ import { StickySidebarContent } from "@/components/StickySidebarContent";
 import { StartupEventsSection } from "@/components/StartupEventsSection";
 import { PageHeading } from "@/components/PageHeading";
 
-// Prevent build-time DB access; render at request time.
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function NewsPage() {
   const [posts, events] = await Promise.all([

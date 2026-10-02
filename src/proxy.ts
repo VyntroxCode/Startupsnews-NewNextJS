@@ -53,6 +53,42 @@ async function getPostMeta(categorySlug: string, postSlug: string, origin: strin
   return promise;
 }
 
+// Same idea for /startup-events/:slug. TTLs mirror the Cache-Control that /api/events/robots
+// sends: a live event's status rarely flips (5 min), while an unknown slug can go live the
+// moment an admin publishes it (1 min). Failures are never cached — they fail open.
+const eventStatusCache = new Map<string, { httpStatus: number; expiresAt: number }>();
+const eventStatusInFlight = new Map<string, Promise<number>>();
+
+async function getEventHttpStatus(eventSlug: string, origin: string): Promise<number> {
+  const now = Date.now();
+  const cached = eventStatusCache.get(eventSlug);
+  if (cached && cached.expiresAt > now) return cached.httpStatus;
+
+  const pending = eventStatusInFlight.get(eventSlug);
+  if (pending) return pending;
+
+  const promise = (async () => {
+    try {
+      const url = `${origin}/api/events/robots?slug=${encodeURIComponent(eventSlug)}`;
+      const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
+      if (!res.ok) return 200;
+      const data = await res.json() as { httpStatus?: number };
+      const httpStatus = data?.httpStatus === 410 ? 410 : 200;
+      eventStatusCache.set(eventSlug, {
+        httpStatus,
+        expiresAt: now + (httpStatus === 410 ? 60 : 300) * 1000,
+      });
+      return httpStatus;
+    } catch {
+      return 200; // fail open — an unreachable API must not 410 a live event
+    } finally {
+      eventStatusInFlight.delete(eventSlug);
+    }
+  })();
+  eventStatusInFlight.set(eventSlug, promise);
+  return promise;
+}
+
 function renderGoneHtml(slug: string, kind: 'post' | 'event' = 'post'): string {
   const isEvent = kind === 'event';
   const pageTitle = isEvent ? '410 - Event Removed' : '410 - Post Removed';
@@ -215,16 +251,9 @@ export async function proxy(request: NextRequest) {
     if (segments.length === 2) {
       const eventSlug = segments[1];
       const origin = toInternalOrigin(request.nextUrl.origin);
-      try {
-        const url = `${origin}/api/events/robots?slug=${encodeURIComponent(eventSlug)}`;
-        const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json() as { httpStatus?: number };
-          if (data?.httpStatus === 410) {
-            return goneResponse(eventSlug);
-          }
-        }
-      } catch { /* fail open — an unreachable API must not 410 a live event */ }
+      if ((await getEventHttpStatus(eventSlug, origin)) === 410) {
+        return goneResponse(eventSlug);
+      }
     }
   }
 

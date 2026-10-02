@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/shared/middleware/auth.middleware';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { query } from '@/shared/database/connection';
@@ -78,6 +79,7 @@ export async function PUT(request: NextRequest) {
       [KEY_STEP1, step1, KEY_STEP2, step2]
     );
 
+    revalidatePath('/feature-your-startup');
     return NextResponse.json({ success: true, data: { step1, step2 } });
   } catch (error) {
     console.error('Error saving feature-startup-images setting:', error);

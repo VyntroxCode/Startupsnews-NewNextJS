@@ -1,13 +1,9 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";
-import { Turnstile } from "@marsidev/react-turnstile";
-import type { TurnstileInstance } from "@marsidev/react-turnstile";
-import { trackEvent } from "@/lib/analytics";
+import { Reveal, StatsSection } from "@/components/marketing/Reveal";
+import { AdvertiseEnquiryForm } from "./AdvertiseEnquiryForm";
 
 const SITE_FONT_FAMILY = '"Garnett", Helvetica, Arial, sans-serif';
 
@@ -53,191 +49,7 @@ const WHY_CARDS = [
 	},
 ];
 
-const FIELD_LABEL = "block text-[13px] font-semibold text-adv-ink mb-2";
-
-const FIELD_INPUT =
-	"block w-full font-[inherit] text-[15px] leading-[1.4] px-4 py-3 border border-adv-line-2 rounded-xl bg-white text-adv-ink placeholder:text-adv-muted-2 transition-colors focus:outline-none focus:border-adv-red focus:ring-2 focus:ring-adv-red/15";
-
-/** Fires `inView` once the element scrolls into the viewport, then stops watching. */
-function useInView<T extends HTMLElement>(threshold = 0.2) {
-	const ref = useRef<T | null>(null);
-	const [inView, setInView] = useState(false);
-
-	useEffect(() => {
-		const el = ref.current;
-		if (!el) return;
-		const observer = new IntersectionObserver(
-			([entry]) => {
-				if (entry.isIntersecting) {
-					setInView(true);
-					observer.disconnect();
-				}
-			},
-			{ threshold }
-		);
-		observer.observe(el);
-		// Safety net: if the observer never fires (stale bundle, hydration hiccup, etc.),
-		// don't leave this content permanently invisible — force it visible after a few
-		// seconds regardless, so a JS failure can never hide real content forever.
-		const fallback = setTimeout(() => setInView(true), 4000);
-		return () => {
-			observer.disconnect();
-			clearTimeout(fallback);
-		};
-	}, [threshold]);
-
-	return { ref, inView };
-}
-
-/** Counts up from 0 to `target` (as a float — callers round/format) once `active` flips true. */
-function useCountUp(target: number, active: boolean, durationMs = 1400) {
-	const [value, setValue] = useState(0);
-
-	useEffect(() => {
-		if (!active) return;
-		let raf = 0;
-		const start = performance.now();
-		const tick = (now: number) => {
-			const progress = Math.min(1, (now - start) / durationMs);
-			const eased = 1 - Math.pow(1 - progress, 3);
-			setValue(target * eased);
-			if (progress < 1) raf = requestAnimationFrame(tick);
-		};
-		raf = requestAnimationFrame(tick);
-		return () => cancelAnimationFrame(raf);
-	}, [active, target, durationMs]);
-
-	return value;
-}
-
-/** Reveal-on-scroll wrapper shared by every text/image block on this page — fades in while
- * sliding from the left, right, or up, so the page reads as animated rather than static. */
-function Reveal({
-	children,
-	className = "",
-	direction = "up",
-	delay = 0,
-	threshold = 0.2,
-	as: Tag = "div",
-}: {
-	children: React.ReactNode;
-	className?: string;
-	direction?: "up" | "left" | "right";
-	delay?: number;
-	threshold?: number;
-	as?: "div" | "span" | "li";
-}) {
-	const { ref, inView } = useInView<HTMLDivElement>(threshold);
-	const hiddenTransform =
-		direction === "left" ? "-translate-x-16" : direction === "right" ? "translate-x-16" : "translate-y-8";
-	return (
-		<Tag
-			ref={ref as never}
-			className={`transition-all duration-700 ease-out ${
-				inView ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${hiddenTransform}`
-			} ${className}`}
-			style={{ transitionDelay: `${delay}ms` }}
-		>
-			{children}
-		</Tag>
-	);
-}
-
-/** Parses a display string like "90.3M", "445K+", "24", or "100's" into a numeric count-up
- * target, how many decimal places to preserve, and the trailing suffix to re-append. */
-function parseStatValue(raw: string): { target: number; decimals: number; suffix: string } {
-	const match = raw.match(/^([\d.]+)(.*)$/);
-	if (!match) return { target: 0, decimals: 0, suffix: raw };
-	const [, numStr, suffix] = match;
-	const decimals = numStr.includes(".") ? numStr.split(".")[1]?.length || 0 : 0;
-	return { target: parseFloat(numStr), decimals, suffix };
-}
-
-function StatTile({ stat, index, active }: { stat: { value: string; label: string }; index: number; active: boolean }) {
-	const { target, decimals, suffix } = parseStatValue(stat.value);
-	const value = useCountUp(target, active);
-	const display = decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString();
-
-	return (
-		<div
-			className={`text-center transition-all duration-700 ease-out ${
-				active ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-			}`}
-			style={{ transitionDelay: `${150 + index * 90}ms` }}
-		>
-			<div className="text-[30px] sm:text-[36px] lg:text-[42px] font-black tracking-[-0.03em] text-adv-red leading-none tabular-nums">
-				{display}
-				{suffix}
-			</div>
-			<div className="mt-2.5 text-[13px] font-semibold text-adv-muted leading-[1.4] px-1">{stat.label}</div>
-		</div>
-	);
-}
-
 export default function AdvertisePage() {
-	const [formData, setFormData] = useState({
-		firstName: "",
-		companyName: "",
-		email: "",
-		phone: "",
-		budgetRate: "",
-		campaignGoal: "",
-		objective: "",
-	});
-	const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-	const [submitting, setSubmitting] = useState(false);
-	const turnstileRef = useRef<TurnstileInstance>(null);
-
-	const { ref: statsRef, inView: statsInView } = useInView<HTMLDivElement>(0.15);
-
-	const handleChange = (
-		e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-	) => {
-		const { name, value } = e.target;
-		setFormData((prev) => ({ ...prev, [name]: value }));
-	};
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-
-		if (!turnstileToken) {
-			alert("Please complete the CAPTCHA verification.");
-			return;
-		}
-
-		setSubmitting(true);
-		const response = await fetch("/api/advertise", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ ...formData, turnstileToken }),
-		});
-
-		const result = await response.json().catch(() => null);
-		setSubmitting(false);
-
-		if (!response.ok || !result?.success) {
-			const errorMessage = result?.error || "Failed to send your enquiry. Please try again.";
-			alert(errorMessage);
-			turnstileRef.current?.reset();
-			setTurnstileToken(null);
-			return;
-		}
-
-		trackEvent("generate_lead", { form: "advertise_enquiry" });
-		alert("Thank you for your enquiry. Your message has been sent to office@startupnews.fyi.");
-		setFormData({
-			firstName: "",
-			companyName: "",
-			email: "",
-			phone: "",
-			budgetRate: "",
-			campaignGoal: "",
-			objective: "",
-		});
-		turnstileRef.current?.reset();
-		setTurnstileToken(null);
-	};
-
 	return (
 		<div className="bg-white text-adv-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
 			{/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
@@ -310,7 +122,12 @@ export default function AdvertisePage() {
 			</section>
 
 			{/* STATS */}
-			<section ref={statsRef} className="px-5 sm:px-8 lg:px-10 py-8 sm:py-10 lg:py-14">
+			<StatsSection
+				stats={STATS}
+				className="px-5 sm:px-8 lg:px-10 py-8 sm:py-10 lg:py-14"
+				valueClassName="text-adv-red"
+				labelClassName="text-adv-muted"
+			>
 				<div className="text-center max-w-[720px] mx-auto">
 					<Reveal>
 						<span className="text-xs font-bold tracking-[0.16em] uppercase text-adv-red">
@@ -324,12 +141,7 @@ export default function AdvertisePage() {
 						</h2>
 					</Reveal>
 				</div>
-				<div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-y-10 gap-x-6 sm:gap-x-8 max-w-[1100px] mx-auto">
-					{STATS.map((s, i) => (
-						<StatTile key={s.label} stat={s} index={i} active={statsInView} />
-					))}
-				</div>
-			</section>
+			</StatsSection>
 
 			{/* WAYS TO WORK WITH US */}
 			<section className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-20 items-center px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-adv-panel">
@@ -436,137 +248,7 @@ export default function AdvertisePage() {
 				</Reveal>
 
 				<Reveal direction="right" delay={150} className="min-w-0 border border-adv-line rounded-[24px] p-6 sm:p-8">
-					<form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-						<div className="min-w-0">
-							<label htmlFor="firstName" className={FIELD_LABEL}>
-								Your Name *
-							</label>
-							<input
-								id="firstName"
-								name="firstName"
-								required
-								value={formData.firstName}
-								onChange={handleChange}
-								placeholder="Jane Doe"
-								className={FIELD_INPUT}
-							/>
-						</div>
-						<div className="min-w-0">
-							<label htmlFor="companyName" className={FIELD_LABEL}>
-								Company Name *
-							</label>
-							<input
-								id="companyName"
-								name="companyName"
-								required
-								value={formData.companyName}
-								onChange={handleChange}
-								placeholder="Acme Inc."
-								className={FIELD_INPUT}
-							/>
-						</div>
-						<div className="min-w-0">
-							<label htmlFor="email" className={FIELD_LABEL}>
-								Email *
-							</label>
-							<input
-								id="email"
-								type="email"
-								name="email"
-								required
-								value={formData.email}
-								onChange={handleChange}
-								placeholder="you@company.com"
-								className={FIELD_INPUT}
-							/>
-						</div>
-						<div className="min-w-0">
-							<label htmlFor="phone" className={FIELD_LABEL}>
-								Phone / WhatsApp *
-							</label>
-							<input
-								id="phone"
-								type="tel"
-								name="phone"
-								required
-								value={formData.phone}
-								onChange={handleChange}
-								placeholder="+1 555 000 0000"
-								className={FIELD_INPUT}
-							/>
-						</div>
-						<div className="min-w-0">
-							<label htmlFor="budgetRate" className={FIELD_LABEL}>
-								Budget Range *
-							</label>
-							<input
-								id="budgetRate"
-								name="budgetRate"
-								required
-								value={formData.budgetRate}
-								onChange={handleChange}
-								placeholder="$5,000 – $10,000"
-								className={FIELD_INPUT}
-							/>
-						</div>
-						<div className="min-w-0">
-							<label htmlFor="campaignGoal" className={FIELD_LABEL}>
-								Campaign Goal *
-							</label>
-							<input
-								id="campaignGoal"
-								name="campaignGoal"
-								required
-								value={formData.campaignGoal}
-								onChange={handleChange}
-								placeholder="Brand awareness"
-								className={FIELD_INPUT}
-							/>
-						</div>
-						<div className="min-w-0 sm:col-span-2 lg:col-span-3">
-							<label htmlFor="objective" className={FIELD_LABEL}>
-								Tell us more *
-							</label>
-							<textarea
-								id="objective"
-								name="objective"
-								required
-								value={formData.objective}
-								onChange={handleChange}
-								placeholder="Share campaign details, timelines, and goals..."
-								rows={5}
-								className={`${FIELD_INPUT} min-h-[130px] resize-y`}
-							/>
-						</div>
-						<div className="min-w-0 sm:col-span-2 lg:col-span-3 flex flex-col items-start gap-4 pt-1">
-							<div className="w-full max-w-[360px]">
-								<label className={FIELD_LABEL}>Security Verification *</label>
-								<Turnstile
-									ref={turnstileRef}
-									siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-									options={{ theme: "light", size: "flexible" }}
-									onSuccess={(token) => setTurnstileToken(token)}
-									onExpire={() => setTurnstileToken(null)}
-									onError={() => setTurnstileToken(null)}
-								/>
-							</div>
-							<button
-								type="submit"
-								disabled={submitting || !turnstileToken}
-								className="font-[inherit] text-[15px] font-bold px-8 py-[15px] rounded-full border-0 bg-adv-red hover:bg-adv-red-deep disabled:bg-adv-muted-2 text-white cursor-pointer disabled:cursor-not-allowed transition-colors"
-							>
-								{submitting ? "Sending..." : "Submit Your Enquiry Today"}
-							</button>
-						</div>
-						<p className="sm:col-span-2 lg:col-span-3 text-[13px] leading-[1.6] text-adv-muted-2">
-							By submitting this form, I agree to StartupNews.fyi contacting me in
-							relation to this enquiry, as described in our{" "}
-							<Link href="/privacy-policy" className="text-adv-red hover:text-adv-red-deep">
-								Privacy Policy
-							</Link>
-							.
-						</p>
-					</form>
+					<AdvertiseEnquiryForm />
 				</Reveal>
 			</section>
 			</div>

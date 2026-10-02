@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { INNER_PAGES_ROLES } from '@/shared/middleware/roles';
 import { PartnerLogosRepository } from '@/modules/inner-pages/repository/inner-pages.repository';
@@ -43,6 +44,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const entity = await repo.update(logoId, update, auth.user.email);
     await deleteCache('partner-logos:by-section');
+    revalidatePath('/our-partners');
     return NextResponse.json({ success: true, data: entity ? toPartnerLogo(entity) : null });
   } catch (err) {
     console.error('PUT /api/admin/partner-logos/[id] error:', err);
@@ -67,6 +69,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
     await repo.delete(logoId);
     await deleteCache('partner-logos:by-section');
+    revalidatePath('/our-partners');
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/admin/partner-logos/[id] error:', err);
