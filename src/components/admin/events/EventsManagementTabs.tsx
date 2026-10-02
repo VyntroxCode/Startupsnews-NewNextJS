@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Calendar, CircleAlert, Download, Plus } from 'lucide-react';
 import { getAdminUser, getAuthHeaders } from '@/lib/admin-auth';
 import { isPathAllowed } from '@/lib/admin-role-access';
 import { useAdminData } from '@/hooks/useAdminData';
@@ -384,10 +385,7 @@ export default function EventsManagementTabs() {
                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(72, 187, 120, 0.3)';
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
+                <Plus size={18} strokeWidth={2.5} aria-hidden />
                 Create New Event
               </Link>
               <button
@@ -416,11 +414,7 @@ export default function EventsManagementTabs() {
                   (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)';
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
+                <Download size={18} strokeWidth={2.5} aria-hidden />
                 Export CSV
               </button>
             </div>
@@ -442,10 +436,7 @@ export default function EventsManagementTabs() {
                 boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)',
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
+              <Plus size={18} strokeWidth={2.5} aria-hidden />
               Create Banner
             </Link>
           )}
@@ -564,11 +555,7 @@ export default function EventsManagementTabs() {
                 flexWrap: 'wrap',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
+                  <CircleAlert size={20} strokeWidth={2} style={{ flexShrink: 0 }} aria-hidden />
                   <span>{error}</span>
                 </div>
                 <button type="button" onClick={() => refetch()} style={{ padding: '0.5rem 1rem', background: '#b91c1c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: '600' }}>Retry</button>
@@ -596,12 +583,7 @@ export default function EventsManagementTabs() {
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
+                  <Calendar size={40} color="#64748b" strokeWidth={2} aria-hidden />
                 </div>
                 <h3 style={{ color: '#0f172a', fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>
                   No events found
@@ -634,10 +616,7 @@ export default function EventsManagementTabs() {
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(72, 187, 120, 0.3)';
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
+                  <Plus size={18} strokeWidth={2.5} aria-hidden />
                   Create Your First Event
                 </Link>
               </div>
@@ -891,9 +870,7 @@ export default function EventsManagementTabs() {
                     gap: '0.5rem',
                   }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
+                  <Plus size={16} strokeWidth={2.5} aria-hidden />
                   {addingRegion ? 'Adding...' : 'Add Region'}
                 </button>
               </form>

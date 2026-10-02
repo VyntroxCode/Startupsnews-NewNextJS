@@ -48,7 +48,7 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page button.metric-btn.alert .num, .sales-tracker-page button.metric-btn.alert .metric-cta { color: #B91C1C; }
       .sales-tracker-page .metric-btn .metric-open { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--danger); }
       .sales-tracker-page .metric-btn .metric-cta { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--pink-dark); display: flex; align-items: center; gap: 6px; }
-      .sales-tracker-page .metric-btn .chev { transition: transform 0.15s; display: inline-block; }
+      .sales-tracker-page .metric-btn .chev { transition: transform 0.15s; display: inline-flex; }
       .sales-tracker-page .metric-btn .chev.open { transform: rotate(90deg); }
 
       /* ---------- Form layout ---------- */
@@ -60,6 +60,8 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .opt { font-weight: 400; color: var(--muted); }
       .sales-tracker-page .hint { font-size: 12px; color: var(--muted); }
       .sales-tracker-page .field .hint { margin-top: 6px; }
+      /* Text that ends in (or leads with) a Lucide icon, e.g. external-link arrows. */
+      .sales-tracker-page .ic-text { display: inline-flex; align-items: center; gap: 3px; }
 
       /* ---------- Inputs ---------- */
       .sales-tracker-page input[type=text], .sales-tracker-page input[type=date], .sales-tracker-page input[type=tel],
@@ -74,7 +76,7 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page input:focus, .sales-tracker-page select:focus, .sales-tracker-page textarea:focus { outline: none; border-color: var(--pink); box-shadow: var(--ring); }
       .sales-tracker-page input.invalid { border-color: var(--danger); box-shadow: 0 0 0 3px #FEE2E2; }
       .sales-tracker-page input:disabled, .sales-tracker-page input[readonly], .sales-tracker-page select:disabled, .sales-tracker-page textarea:disabled { background: #F1F5F9; color: var(--muted); cursor: not-allowed; }
-      .sales-tracker-page .lock-hint { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+      .sales-tracker-page .lock-hint { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; }
       .sales-tracker-page .field-error { align-items: center; gap: 6px; color: var(--danger); font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
       .sales-tracker-page .field-error.visible { display: flex; }
       .sales-tracker-page .field.has-error .custom-select-btn,
@@ -314,9 +316,9 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .ee-package-sub { margin: 14px 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); }
       .sales-tracker-page .ee-inclusions { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13.5px; }
       .sales-tracker-page .ee-inclusions li { position: relative; padding-left: 22px; color: var(--text); }
-      .sales-tracker-page .ee-inclusions li::before { content: '✓'; position: absolute; left: 0; top: 0; font-weight: 700; color: #059669; }
+      .sales-tracker-page .ee-inclusions li > svg { position: absolute; left: 0; top: 3px; color: #059669; }
       .sales-tracker-page .ee-inclusions li.is-highlight { font-weight: 700; }
-      .sales-tracker-page .ee-inclusions li.is-highlight::before { color: var(--pink); }
+      .sales-tracker-page .ee-inclusions li.is-highlight > svg { color: var(--pink); }
       .sales-tracker-page a.se-btn-link.ee-btn-ghost { background: #fff; color: var(--pink-dark); }
       .sales-tracker-page a.se-btn-link.ee-btn-ghost:hover { background: var(--pink-bg2); }
       @media (max-width: 760px) {

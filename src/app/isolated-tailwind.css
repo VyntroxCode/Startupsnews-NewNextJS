@@ -39,6 +39,12 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
 @source "./careers/page.tsx";
 @source "../components/user/DashboardHome.tsx";
 @source "../components/user/UserDashboardLayout.tsx";
+@source "../components/user/CompleteProfileWizard.tsx";
+@source "../components/user/LocationPrompt.tsx";
+@source "./dashboard/layout.tsx";
+@source "../components/user/profile/ProfileHeader.tsx";
+@source "./dashboard/newsletter/page.tsx";
+@source "../components/user/newsletter";
 @source "../components/EventsLocationBar.tsx";
 @source "../components/expand-north-star/DelegationBenefits.tsx";
 @source "../components/expand-north-star/SectionNav.tsx";
@@ -91,8 +97,9 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   --color-db-card: #ffffff;
   --color-db-panel: #fcfbfe;
   --font-db: var(--font-schibsted), "Helvetica Neue", Arial, sans-serif;
-  /* Sidebar only — Helvetica, per request; the page content keeps --font-db. */
-  --font-db-nav: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Sidebar only — Inter (Octaraa-style sidebar, per request; was Helvetica); the page content
+     keeps --font-db. --font-db-inter is set by src/app/dashboard/layout.tsx. */
+  --font-db-nav: var(--font-db-inter), "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
   /* Expand North Star — "Benefits of Joining the Delegation" (DelegationBenefits.tsx): the cream
      founders card, the navy enablers card and the gold that highlights both. */
@@ -106,4 +113,13 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   --color-ens-slate: #5A6070;
   /* The page's own magenta (expand-north-star.css --ens-pink), for SectionNav. */
   --color-ens-pink: #E4157C;
+
+  /* CompleteProfileWizard entrance motion — Tailwind ships no fade/slide-in keyframes, so the
+     three the modal uses are declared here as animate-* tokens. */
+  --animate-cpw-fade: cpw-fade 0.2s ease;
+  --animate-cpw-modal: cpw-modal 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-cpw-step: cpw-step 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  @keyframes cpw-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes cpw-modal { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes cpw-step { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 }

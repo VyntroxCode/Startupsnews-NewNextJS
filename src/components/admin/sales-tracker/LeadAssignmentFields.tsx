@@ -1,5 +1,6 @@
 'use client';
 
+import { X } from 'lucide-react';
 import type {
   AssignableEmployee,
   DepartmentOption,
@@ -87,7 +88,7 @@ export default function LeadAssignmentFields({ employees, departments, assignmen
             <span className="team-chip" key={d}>
               {d}
               {!departmentByName.has(d) && <span className="hint">(no active members now)</span>}
-              <button type="button" title={`Remove ${d} and the people it added`} aria-label={`Remove ${d}`} onClick={() => removeDepartment(d)}>&times;</button>
+              <button type="button" title={`Remove ${d} and the people it added`} aria-label={`Remove ${d}`} onClick={() => removeDepartment(d)}><X size={14} aria-hidden /></button>
             </span>
           ))}
         </div>
@@ -124,7 +125,7 @@ export default function LeadAssignmentFields({ employees, departments, assignmen
                 {name}
                 {!current && <span className="hint">(no longer active)</span>}
                 {a.viaDepartment && <span className="hint">· {a.viaDepartment}</span>}
-                <button type="button" title={`Remove ${name}`} aria-label={`Remove ${name}`} onClick={() => removeEmployee(a.credentialId)}>&times;</button>
+                <button type="button" title={`Remove ${name}`} aria-label={`Remove ${name}`} onClick={() => removeEmployee(a.credentialId)}><X size={14} aria-hidden /></button>
               </span>
             );
           })}

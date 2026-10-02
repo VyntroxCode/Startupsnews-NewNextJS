@@ -1,16 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, CircleCheck, MapPin, Timer, TriangleAlert } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import PunchOutTimeInput from './PunchOutTimeInput';
+import AttendanceCycleSummary from './AttendanceCycleSummary';
 import { getCurrentBrowserLocation, geofenceHintFor, type BrowserLocation } from '@/lib/browser-geolocation';
 import { latenessBucket, combinedAttendanceBucket, type ShiftSettings, type LatenessBucket } from '@/modules/hr-tool/utils/lateness';
+import { regularizationDeadline } from '@/modules/hr-tool/utils/regularization-policy';
 
 interface AttendanceDayRecord { date: string; status: string; inTime: string; outTime: string; inMinutes: number | null; outMinutes: number | null; }
 interface HolidayRecord { date: string; name: string; }
 interface RegularizationRecord {
   id: string; date: string; reason: string; punchType: 'in' | 'out'; requestedTime: string | null;
-  stage: string; status: string; rmRemarks: string; hrRemarks: string;
+  stage: string; status: string; rmRemarks: string; hrRemarks: string; source?: 'employee' | 'hr-edit';
 }
 interface AttendanceMeData {
   linked: boolean;
@@ -23,7 +26,10 @@ interface AttendanceMeData {
   holidays?: HolidayRecord[];
   shiftRules?: ShiftSettings & { shiftEndTime: string };
   regularizations?: RegularizationRecord[];
-  regularizationPolicy?: { windowDays: number; monthlyQuota: number; usedThisMonth: number };
+  /** Approved leave overlapping the month shown. */
+  leaves?: { from: string; to: string; type: string; halfDay: 'first' | 'second' | null }[];
+  /** usedThisMonth is in DAYS for the current payroll cycle (cycleFrom → cycleTo). */
+  regularizationPolicy?: { windowDays: number; monthlyQuota: number; usedThisMonth: number; cycleFrom?: string; cycleTo?: string };
   /** When enabled, punch() asks the browser for a GPS fix first; the server does the actual check. */
   geofence?: { enabled: boolean; radiusM: number };
 }
@@ -92,6 +98,8 @@ const REG_TYPE_LABEL: Record<'in' | 'out', string> = { in: 'Punch In', out: 'Pun
  * violet, distinct from every lateness/regularization color, on both the calendar grid and the
  * selected-date detail panel. */
 const HOLIDAY_TONE = 'bg-violet-100 border-violet-400 text-violet-700';
+/** An approved leave day (full or half). */
+const LEAVE_TONE = 'bg-sky-100 border-sky-400 text-sky-800';
 
 function LegendDot({ tone, label }: { tone: string; label: string }) {
   return (
@@ -245,6 +253,8 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
     return map;
   }, [data]);
 
+  const leaveFor = (dateStr: string) => (data?.leaves || []).find((l) => l.from <= dateStr && l.to >= dateStr) || null;
+
   const holidayMap = useMemo(() => {
     const map = new Map<string, string>();
     (data?.holidays || []).forEach((h) => map.set(h.date, h.name));
@@ -292,7 +302,9 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const hasIn = !!selectedRecord?.inTime && selectedRecord.inTime !== '—';
   const hasOut = !!selectedRecord?.outTime && selectedRecord.outTime !== '—';
   const selectedHoliday = holidayMap.get(selectedDate);
-  const rowStatus = selectedHoliday ? `Holiday — ${selectedHoliday}` : (selectedRecord?.status === 'WFH' ? 'Work From Home — full day' : selectedRecord?.status) || (isSelectedToday ? 'Not punched in yet' : 'No record');
+  const selectedLeave = leaveFor(selectedDate);
+  const leaveStatus = selectedLeave ? `On leave — ${selectedLeave.type}${selectedLeave.halfDay ? ` (${selectedLeave.halfDay} half)` : ''}` : null;
+  const rowStatus = selectedHoliday ? `Holiday — ${selectedHoliday}` : (selectedRecord?.status === 'WFH' ? 'Work From Home — full day' : (leaveStatus && !selectedRecord ? leaveStatus : selectedRecord?.status)) || leaveStatus || (isSelectedToday ? 'Not punched in yet' : 'No record');
   // Combined bucket (arrival time + hours worked, worse of the two) drives the day's displayed
   // status/color; the pure arrival-time bucket separately gates punch-in Regularization, since
   // that's specifically about correcting the punch-in itself, not the day's overall outcome —
@@ -303,15 +315,23 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const selectedRegIn = selectedRegs.find((r) => r.punchType === 'in');
   const selectedRegOut = selectedRegs.find((r) => r.punchType === 'out');
   const regPolicy = data.regularizationPolicy;
-  const quotaReached = !!regPolicy && regPolicy.usedThisMonth >= regPolicy.monthlyQuota;
+  // A date that already has a live request (the other punch) doesn't use another day of the limit.
+  const selectedDateCounted = selectedRegs.some((r) => r.status !== 'rejected' && r.source !== 'hr-edit');
+  const quotaReached = !!regPolicy && regPolicy.usedThisMonth >= regPolicy.monthlyQuota && !selectedDateCounted;
+  // Last day a request for the selected date can be filed — the server enforces the same rule.
+  const regDeadline = regPolicy ? regularizationDeadline(selectedDate, regPolicy.windowDays) : null;
+  const windowClosed = !!regDeadline && today > regDeadline;
   // A punch that never happened is exactly what regularization is for — someone who forgot to
   // punch in and only punched out would otherwise be left with a permanently broken day, since a
   // missing punch-in has no lateness bucket at all. Only an on-time punch-in has nothing to
   // correct. Future dates are excluded because there is nothing there to fix yet.
   const isSelectedFuture = selectedDate > today;
-  const canRequestInRegularization = !selectedRegIn && !isSelectedFuture
+  const canRequestInRegularization = !selectedRegIn && !isSelectedFuture && !windowClosed
     && (!hasIn || (!!selectedTimeBucket && selectedTimeBucket !== 'on-time'));
-  const canRequestOutRegularization = !selectedRegOut && !isSelectedToday && !isSelectedFuture && !hasOut;
+  const canRequestOutRegularization = !selectedRegOut && !isSelectedToday && !isSelectedFuture && !hasOut && !windowClosed;
+  // Something is wrong with the day but it's past the window — say so instead of silently hiding the buttons.
+  const missedWindow = windowClosed && !isSelectedFuture
+    && ((!selectedRegIn && (!hasIn || (!!selectedTimeBucket && selectedTimeBucket !== 'on-time'))) || (!selectedRegOut && !isSelectedToday && !hasOut));
 
   // Today's punch comes from the API's own `today` block, so the Today card stays right even while
   // the calendar is showing an earlier month (whose `calendar` rows don't include today).
@@ -350,6 +370,12 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
         </div>
       )}
 
+      {missedWindow && regPolicy && (
+        <p className="m-0 mt-3 text-[0.8rem] text-slate-500">
+          This day can no longer be regularized — requests must be made within {regPolicy.windowDays} days (last day was {regDeadline}).
+        </p>
+      )}
+
       {(canRequestInRegularization || canRequestOutRegularization) && (
         <div className="mt-4 border-t border-solid border-slate-200 pt-4">
           {!regFormOpen ? (
@@ -366,8 +392,9 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
               )}
               {regPolicy && (
                 <span className="text-center text-xs text-slate-400 sm:text-left sm:text-[0.8rem]">
-                  {regPolicy.usedThisMonth} of {regPolicy.monthlyQuota} used this month
+                  {regPolicy.usedThisMonth} of {regPolicy.monthlyQuota} days used this payroll cycle
                   {quotaReached ? ' — limit reached' : ''}
+                  {regDeadline ? ` · request by ${regDeadline}` : ''}
                 </span>
               )}
             </div>
@@ -375,7 +402,9 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             <div className="flex flex-col gap-3 sm:max-w-[420px]">
               <p className="m-0 text-sm font-semibold text-slate-700">Regularizing: {REG_TYPE_LABEL[regFormOpen]}</p>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-500">{REG_TYPE_LABEL[regFormOpen]} time</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-500">
+                  {REG_TYPE_LABEL[regFormOpen]} time ({regFormOpen === 'in' ? '8:00 AM – 2:00 PM' : '2:00 PM – 11:00 PM'})
+                </label>
                 {/* Punch Out is always PM (office closes in the evening), so no AM/PM choice. */}
                 {regFormOpen === 'out' ? (
                   <div className="text-sm">
@@ -388,6 +417,8 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                 ) : (
                   <input
                     type="time"
+                    min="08:00"
+                    max="14:00"
                     value={regTime}
                     onChange={(e) => setRegTime(e.target.value)}
                     className="box-border min-h-11 w-full rounded-lg border border-solid border-slate-200 bg-white px-3 text-base sm:w-auto sm:text-sm"
@@ -450,20 +481,20 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
           <div className="mt-3 flex flex-wrap gap-2">
             {todayHoliday && <span className={`rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${HOLIDAY_TONE}`}>Holiday — {todayHoliday}</span>}
             {todayBucket && (
-              <span className={`rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${BUCKET_TONE[todayBucket]}`}>
-                {todayBucket === 'on-time' ? '✓ ' : '⚠ '}{BUCKET_LABEL[todayBucket]}
+              <span className={`inline-flex items-center gap-1 rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${BUCKET_TONE[todayBucket]}`}>
+                {todayBucket === 'on-time' ? <CircleCheck className="size-3.5 shrink-0" aria-hidden /> : <TriangleAlert className="size-3.5 shrink-0" aria-hidden />}{BUCKET_LABEL[todayBucket]}
               </span>
             )}
           </div>
         )}
 
         {todayIn && todayOut ? (
-          <p className="m-0 mt-4 rounded-lg bg-green-50 px-3 py-3 text-center text-sm font-semibold text-green-800">✓ You&apos;re done for today</p>
+          <p className="m-0 mt-4 flex items-center justify-center gap-1.5 rounded-lg bg-green-50 px-3 py-3 text-center text-sm font-semibold text-green-800"><CircleCheck className="size-4 shrink-0" aria-hidden />You&apos;re done for today</p>
         ) : (
           <div className={`mt-4 grid gap-2 sm:gap-3 ${!todayIn && !todayOut ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:max-w-xs'}`}>
             {!todayIn && (
               <button type="button" onClick={() => punch('in')} disabled={punching !== null} className={`${actionButtonClass} min-h-12 w-full bg-gradient-to-br from-green-500 to-green-600 text-base shadow-sm`}>
-                ⏱ {punchLabel('in')}
+                <Timer className="size-5 shrink-0" aria-hidden />{punchLabel('in')}
               </button>
             )}
             {!todayOut && (
@@ -473,17 +504,17 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                 disabled={punching !== null}
                 className={todayIn
                   ? `${actionButtonClass} min-h-12 w-full bg-gradient-to-br from-red-400 to-red-500 text-base shadow-sm`
-                  : `${secondaryButtonClass} min-h-12 w-full text-base text-red-600`}
+                  : `${secondaryButtonClass} min-h-12 w-full gap-2 text-base text-red-600`}
               >
-                ⏱ {punchLabel('out')}
+                <Timer className="size-5 shrink-0" aria-hidden />{punchLabel('out')}
               </button>
             )}
           </div>
         )}
 
         {data.geofence?.enabled && (
-          <p className="m-0 mt-3 text-xs text-slate-400">
-            📍 Punch In / Punch Out only within {data.geofence.radiusM} m of the office — your browser will ask for your location.
+          <p className="m-0 mt-3 flex items-start gap-1 text-xs text-slate-400">
+            <MapPin className="mt-px size-3.5 shrink-0" aria-hidden />Punch In / Punch Out only within {data.geofence.radiusM} m of the office — your browser will ask for your location.
           </p>
         )}
         {note && <p className="m-0 mt-3 text-sm text-amber-700">{note}</p>}
@@ -521,8 +552,8 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             </div>
           </dl>
           {selectedBucket && (
-            <span className={`mt-3 inline-block rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${BUCKET_TONE[selectedBucket]}`}>
-              {selectedBucket === 'on-time' ? '✓ ' : '⚠ '}{BUCKET_LABEL[selectedBucket]}
+            <span className={`mt-3 inline-flex items-center gap-1 rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${BUCKET_TONE[selectedBucket]}`}>
+              {selectedBucket === 'on-time' ? <CircleCheck className="size-3.5 shrink-0" aria-hidden /> : <TriangleAlert className="size-3.5 shrink-0" aria-hidden />}{BUCKET_LABEL[selectedBucket]}
             </span>
           )}
           {regularizationBlock}
@@ -532,7 +563,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
       {/* Month calendar */}
       <section className={cardClass}>
         <div className="mb-3 flex items-center justify-between gap-2">
-          <button type="button" onClick={() => changeMonth(-1)} className={navButtonClass} aria-label="Previous month">‹</button>
+          <button type="button" onClick={() => changeMonth(-1)} className={navButtonClass} aria-label="Previous month"><ChevronLeft className="size-5" aria-hidden /></button>
           <h3 className="m-0 text-base font-semibold text-slate-900 md:text-[1.0625rem]">{monthLabel(calendarMonth)}</h3>
           <button
             type="button"
@@ -541,7 +572,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             aria-label="Next month"
             className={navButtonClass}
           >
-            ›
+            <ChevronRight className="size-5" aria-hidden />
           </button>
         </div>
 
@@ -558,10 +589,11 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             const bucket = shiftRules ? combinedAttendanceBucket(rec?.inMinutes ?? null, rec?.outMinutes ?? null, shiftRules, false) : null;
             const isRegularized = regularizationByDate.has(dateStr);
             const holidayName = holidayMap.get(dateStr);
+            const leave = leaveFor(dateStr);
             // Regularization is the most actionable status, so it still wins if a request happens
             // to land on a holiday; otherwise a holiday must win over the plain attendance bucket,
             // since no punch on a non-working day would otherwise render as a false "Absent".
-            const tone = isRegularized ? REG_TONE : holidayName ? HOLIDAY_TONE : bucket ? BUCKET_TONE[bucket] : 'bg-white border-slate-200 text-slate-700';
+            const tone = isRegularized ? REG_TONE : holidayName ? HOLIDAY_TONE : leave && (!bucket || leave.halfDay) ? LEAVE_TONE : bucket ? BUCKET_TONE[bucket] : 'bg-white border-slate-200 text-slate-700';
             const isSelected = dateStr === selectedDate;
             const isToday = dateStr === today;
             return (
@@ -590,7 +622,13 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
           <LegendDot tone={BUCKET_TONE['half-day']} label={BUCKET_LABEL['half-day']} />
           <LegendDot tone={BUCKET_TONE.absent} label={BUCKET_LABEL.absent} />
           <LegendDot tone={REG_TONE} label="Regularization requested" />
+          <LegendDot tone={LEAVE_TONE} label="On leave" />
         </div>
+      </section>
+
+      {/* Pay cycle — the same day ledger payroll pays by */}
+      <section className={cardClass}>
+        <AttendanceCycleSummary apiBase={apiBase} getHeaders={getHeaders} refreshKey={data} />
       </section>
     </div>
   );

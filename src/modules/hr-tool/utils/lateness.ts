@@ -113,6 +113,16 @@ export function hoursWorkedBucket(inMinutes: number | null, outMinutes: number |
   return 'full-time';
 }
 
+/** "hh:mm am/pm" (the stored display format, see formatTime12h) -> minutes since midnight, or
+ * null for "—"/blank/unparseable. Some early attendance rows carry only this text with a NULL
+ * minutes column; reading them through this keeps every screen and payroll on the same punch. */
+export function parseTime12h(text: string | null | undefined): number | null {
+  const m = /^(\d{1,2}):(\d{2})\s*(am|pm)$/i.exec((text || '').trim());
+  if (!m) return null;
+  const h = Number(m[1]) % 12 + (m[3].toLowerCase() === 'pm' ? 12 : 0);
+  return h * 60 + Number(m[2]);
+}
+
 /** "HH:MM" -> minutes since midnight. */
 export function hhmmToMinutes(hhmm: string): number {
   const [h, m] = (hhmm || '0:0').split(':').map(Number);

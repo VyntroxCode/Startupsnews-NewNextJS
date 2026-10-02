@@ -202,8 +202,9 @@ function requiredFileRef(requiredMessage: string) {
     .refine((v) => v !== null, { message: requiredMessage });
 }
 
-/** +91 / "other"+custom-code -> the 2-letter ISO libphonenumber-js needs. Empty for an
- * unrecognized custom code — validatePhoneWithIso falls back to a length check in that case. */
+/** +91 -> the 2-letter ISO libphonenumber-js needs. Empty for any code not in the list ("other",
+ * a hand-typed custom code) — checkPhone rejects those, since only the ISO is stored and an
+ * unlisted code would be saved with no dial code at all. */
 export function resolveMobileIso(phoneCode: string, phoneCodeCustom: string): string {
   const opt = COUNTRY_CODE_OPTIONS.find((c) => c.code === phoneCode);
   if (opt && opt.iso) return opt.iso.toUpperCase();
@@ -268,15 +269,15 @@ const fieldShapes = {
 function checkPhone(data: { phoneCode: string; phoneCodeCustom?: string; mobile: string }, ctx: z.RefinementCtx) {
   const iso = resolveMobileIso(data.phoneCode, data.phoneCodeCustom ?? "");
   const digits = (data.mobile || "").replace(/\D/g, "");
-  if (!digits) {
+  if (!iso) {
+    ctx.addIssue({ code: "custom", message: "Pick your country code from the list.", path: ["mobile"] });
+  } else if (!digits) {
     ctx.addIssue({ code: "custom", message: "Enter a valid mobile number for the country code you picked.", path: ["mobile"] });
-  } else if (iso) {
+  } else {
     const parsed = parsePhoneNumberFromString(digits, iso as never);
     if (!parsed || !parsed.isValid()) {
       ctx.addIssue({ code: "custom", message: "Enter a valid mobile number for the country code you picked.", path: ["mobile"] });
     }
-  } else if (!/^\d{6,15}$/.test(digits)) {
-    ctx.addIssue({ code: "custom", message: "Enter a valid phone number (6-15 digits).", path: ["mobile"] });
   }
 }
 

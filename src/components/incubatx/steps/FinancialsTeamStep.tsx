@@ -94,7 +94,11 @@ export function FinancialsTeamStep({ ctrl }: { ctrl: IncubatxDossierFormControll
             value={data.partTimeCount}
             error={errors.partTimeCount}
             onChange={(v) => ctrl.setField("partTimeCount", v.replace(/\D/g, ""))}
-            onBlur={() => ctrl.blurValidate("fullTimeCount")}
+            onBlur={() => {
+              // The "at least one team member" error sits on Full-Time, so re-check it too.
+              ctrl.blurValidate("partTimeCount");
+              ctrl.blurValidate("fullTimeCount");
+            }}
           />
         </div>
       </motion.div>

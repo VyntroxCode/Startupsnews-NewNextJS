@@ -15,6 +15,7 @@ interface PolicyData {
   fullDayMinWorkedHours: number;
   geoFencing?: boolean;
   geoFenceRadiusM?: number;
+  leaveTypes?: Record<string, { enabled: boolean; perMonth: number }>;
 }
 
 /** "HH:MM" -> minutes since midnight. */
@@ -122,7 +123,7 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
   const shortMin = Number(policy.shortLeaveMinWorkedHours) || 0;
   const fullMin = Number(policy.fullDayMinWorkedHours) || 0;
 
-  const shortLeavePay = `Paid as a full day, but counts as a Short Leave (${policy.shortLeaveMonthlyQuota} allowed per month). Every 3rd Short Leave deducts half a day's pay — leftovers carry into the next payroll cycle.`;
+  const shortLeavePay = `Paid as a full day for the first ${policy.shortLeaveMonthlyQuota} Short Leave days in a payroll cycle. Each one after that costs half a day's pay. Nothing carries into the next cycle.`;
   const bands: Band[] = ([
     { tone: 'full', status: 'Full day', from: fullMin, to: null, pay: 'Full day’s pay.' },
     { tone: 'short', status: 'Short Leave', from: shortMin, to: fullMin, pay: shortLeavePay },
@@ -172,8 +173,8 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
           />
           <StatCard
             label="Regularization limit"
-            value={`${policy.regularizationMonthlyQuota} / cycle`}
-            hint="Requests you may submit per payroll cycle (26th to 25th)."
+            value={`${policy.regularizationMonthlyQuota} days / cycle`}
+            hint="Days you may regularize per payroll cycle. Fixing punch-in and punch-out on the same day counts once; a rejected request frees its day. Punch-in 8 AM–2 PM, punch-out 2 PM–11 PM."
           />
         </div>
       </section>
@@ -236,6 +237,25 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
               <span>Punch In and Punch Out work only within {policy.geoFenceRadiusM ?? 50} m of the office — allow location access in your browser when asked.</span>
             </li>
           )}
+        </ul>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+        <h3 className="text-lg font-semibold text-slate-900">Leave</h3>
+        <ul className="mt-3 flex flex-col gap-2 text-sm leading-snug text-slate-600">
+          {[
+            `Leave types: ${Object.entries(policy.leaveTypes || {}).filter(([, c]) => c.enabled).map(([k, c]) => `${k} (${c.perMonth} per month)`).join(', ') || 'none switched on yet'}. Credited in your joining month and on the 1st of every month; unused balance lapses on 1 January.`,
+            'Apply for today, yesterday or any future date — full day, or the first or second half of a day (half a day of balance).',
+            'Days beyond your balance are still granted but unpaid. The form shows how many days are paid and unpaid before you submit.',
+            'A pending request holds your balance; rejecting or cancelling it gives the days back. You can cancel your own leave until it starts — after that, ask HR.',
+            'Sundays and holidays inside a leave aren\'t counted. All Saturdays are working days.',
+            'Full-day leave isn\'t possible on a day you punched in — use half-day leave or regularization instead.',
+          ].map((text) => (
+            <li key={text} className="flex gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+              <span>{text}</span>
+            </li>
+          ))}
         </ul>
       </section>
     </div>

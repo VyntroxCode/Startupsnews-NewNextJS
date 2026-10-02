@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { getAuthHeaders, getAdminToken } from '@/lib/admin-auth';
 import ImageUpload from '@/components/admin/ImageUpload';
 
@@ -92,10 +93,12 @@ export default function CreateBannerPage() {
             textDecoration: 'none',
             fontSize: '0.875rem',
             marginBottom: '1rem',
-            display: 'inline-block',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem',
           }}
         >
-          ← Back to Banners
+          <ArrowLeft size={14} aria-hidden />Back to Banners
         </Link>
         <h1 style={{
           fontSize: '2.25rem',

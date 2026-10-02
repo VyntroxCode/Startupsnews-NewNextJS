@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { AlarmClock, ArrowLeft, CalendarDays, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getAdminToken, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
@@ -239,8 +240,8 @@ export default function AdminBrandStoryCreatePage() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <Link href="/admin/brand-stories" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-block', marginBottom: '1rem' }}>
-              ← Back to Brand Stories
+            <Link href="/admin/brand-stories" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1rem' }}>
+              <ArrowLeft size={14} aria-hidden />Back to Brand Stories
             </Link>
             <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>
               Add New Brand Story
@@ -448,7 +449,7 @@ export default function AdminBrandStoryCreatePage() {
 
               {/* Publish settings */}
               <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <p style={{ margin: '0 0 1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.9rem' }}>📅 Publish Settings</p>
+                <p style={{ margin: '0 0 1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}><CalendarDays size={16} aria-hidden />Publish Settings</p>
 
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
                   <input
@@ -492,8 +493,8 @@ export default function AdminBrandStoryCreatePage() {
                             background: '#fffbeb',
                           }}
                         />
-                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#92400e' }}>
-                          ⏰ Brand story will automatically go live at this date/time. It will be hidden until then.
+                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <AlarmClock size={13} style={{ flexShrink: 0 }} aria-hidden />Brand story will automatically go live at this date/time. It will be hidden until then.
                         </p>
                       </div>
                     )}
@@ -523,9 +524,7 @@ export default function AdminBrandStoryCreatePage() {
                 onMouseEnter={(e) => { if (!uploading) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(99,102,241,0.4)'; } }}
                 onMouseLeave={(e) => { if (!uploading) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.3)'; } }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <Plus size={20} strokeWidth={2.5} aria-hidden />
                 {uploading ? 'Creating...' : 'Create Brand Story'}
               </button>
             </div>

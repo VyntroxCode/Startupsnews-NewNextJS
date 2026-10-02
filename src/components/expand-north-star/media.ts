@@ -116,6 +116,10 @@ export const ENS_REFERRAL_LOGOS: Record<string, string> = {
   "meet-day-ai": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-meet-day-ai-v2.png"),
   "hbf-direct": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-hbf-direct.jpg"),
   "indicorn-angels": s3Image("startupnews-in/uploads/2026/09/expand-north-star/referral-indicorn-angels.jpg"),
+  // 2026-09-30: supplied into public/images/expand-north/EritoNxt-Logo.png (2500×2500, mark in a thin
+  // band of white). White margin trimmed to a 2234×733 PNG so it fills the tile, then uploaded; the
+  // local file was deleted once this key was confirmed live. A partner, not a "Referred By" option.
+  "eritonxt": s3Image("startupnews-in/uploads/2026/09/expand-north-star/partner-eritonxt.png"),
 };
 
 export const ensImages = {

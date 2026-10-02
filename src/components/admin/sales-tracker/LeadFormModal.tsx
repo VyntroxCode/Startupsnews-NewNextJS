@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { ArrowUpRight, Lock, X } from 'lucide-react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { PhoneField } from '@/components/ui/PhoneField';
 import { COUNTRY_CODE_OPTIONS } from '@/components/ui/constants/phone';
@@ -13,6 +14,7 @@ import { validatePhone } from '@/components/lead-forms/shared/validation';
 import { type AssignableEmployee, assignmentToDraft, type DepartmentOption, type LeadAssignment, type LeadAssignmentDraft } from '@/modules/lead-assignments/domain/types';
 import FollowUpsPanel from './FollowUpsPanel';
 import LeadAssignmentFields from './LeadAssignmentFields';
+import LeadMessagesPanel from './LeadMessagesPanel';
 import { PAGE_LEAD_LABELS, PAGE_LEAD_TYPES, STATUSES, TYPES } from './constants';
 import type { SalesLead } from './types';
 
@@ -87,7 +89,8 @@ function toLocationFormData(lead: SalesLead, promotedCities: Record<string, stri
  *
  * Departments + Assigned to (LeadAssignmentFields) aren't part of the SalesLead row — they live in
  * sales_lead_departments / sales_lead_assignments — so they're held as a separate draft and handed
- * to `onSave` next to the lead.
+ * to `onSave` next to the lead. So is the new "Message for assigned employees" (LeadMessagesPanel,
+ * sales_lead_messages), offered only once both are filled.
  *
  * An existing lead opens READ-ONLY: every control sits inside a disabled <fieldset>, and the phone
  * and country/city pickers (whose searchable dropdown doesn't honour a fieldset) are swapped for
@@ -104,10 +107,14 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
   assignment?: LeadAssignment;
   promotedCities: Record<string, string[]>;
   onClose: () => void;
-  onSave: (lead: SalesLead, assignmentDraft: LeadAssignmentDraft) => Promise<void>;
+  /** `message` is the new "Message for assigned employees", already trimmed — '' when there's none
+   * or the lead has no departments + people to send it to. */
+  onSave: (lead: SalesLead, assignmentDraft: LeadAssignmentDraft, message: string) => Promise<void>;
 }) {
   const [draft, setDraft] = useState<SalesLead>(lead);
   const [assignmentDraft, setAssignmentDraft] = useState<LeadAssignmentDraft>(() => assignmentToDraft(assignment));
+  const [messageDraft, setMessageDraft] = useState('');
+  const canMessage = assignmentDraft.departments.length > 0 && assignmentDraft.assignees.length > 0;
   const [loc, setLoc] = useState<LeadFormData>(() => toLocationFormData(lead, promotedCities));
   // PhoneField validates straight after a code change, in the same tick — before `loc` has
   // re-rendered. Validating against this ref (always the latest loc) avoids a stale error.
@@ -138,7 +145,7 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
     company: isSponsor,
     sourceType: isPageLead && !!lead.id,
   };
-  const lockNote = (why: string) => <span className="lock-hint" title={why}>🔒 {why}</span>;
+  const lockNote = (why: string) => <span className="lock-hint" title={why}><Lock size={11} aria-hidden />{why}</span>;
   const notCollected = pageLabel ? `Not collected by ${pageLabel}` : 'Not used for this lead';
 
   function updateLoc(patch: Partial<LeadFormData>, revalidatePhone?: boolean) {
@@ -162,6 +169,7 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
     setLoc(original);
     setDraft(lead);
     setAssignmentDraft(assignmentToDraft(assignment));
+    setMessageDraft('');
     setNameInvalid(false);
     setContactError('');
     setFormMsg(null);
@@ -185,7 +193,7 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
     };
     setSaving(true);
     try {
-      await onSave(toSave, assignmentDraft);
+      await onSave(toSave, assignmentDraft, canMessage ? messageDraft.trim() : '');
     } catch (err) {
       setFormMsg({ kind: 'err', text: err instanceof Error && err.message ? err.message : 'Could not save the lead. Try again.' });
     } finally {
@@ -198,11 +206,11 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
       <div className="modal-box">
         <div className="modal-head">
           <h2>{isNew ? 'Add lead' : editing ? 'Edit lead' : 'Lead details'}</h2>
-          <button type="button" className="modal-close" aria-label="Close" onClick={onClose}>&times;</button>
+          <button type="button" className="modal-close" aria-label="Close" onClick={onClose}><X size={20} aria-hidden /></button>
         </div>
         <div className="modal-body">
           {!editing && (
-            <div className="hint" style={{ marginBottom: 10 }}>🔒 Read-only. Click <strong>Edit lead</strong> to change any detail.</div>
+            <div className="hint" style={{ marginBottom: 10 }}><Lock size={12} aria-hidden style={{ verticalAlign: -2, marginRight: 4 }} />Read-only. Click <strong>Edit lead</strong> to change any detail.</div>
           )}
           <fieldset disabled={!editing} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="row">
@@ -294,6 +302,15 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
             value={assignmentDraft}
             onChange={setAssignmentDraft}
           />
+          <LeadMessagesPanel
+            idPrefix="lead"
+            source="lead"
+            leadId={lead.id}
+            editing={editing}
+            canWrite={canMessage}
+            value={messageDraft}
+            onChange={setMessageDraft}
+          />
           <div className="row">
             <div className="field"><label>Status</label>
               <select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })}>
@@ -332,7 +349,7 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
                 <div className="field" style={{ flexBasis: '100%' }}>
                   <label>Poster URL</label>
                   <input type="url" placeholder="https://..." value={draft.posterUrl} onChange={(e) => setDraft({ ...draft, posterUrl: e.target.value })} />
-                  {draft.posterUrl && <a href={draft.posterUrl} target="_blank" rel="noopener noreferrer" className="hint" style={{ display: 'inline-block', marginTop: 4 }}>View current poster ↗</a>}
+                  {draft.posterUrl && <a href={draft.posterUrl} target="_blank" rel="noopener noreferrer" className="hint ic-text" style={{ marginTop: 4 }}>View current poster<ArrowUpRight size={12} aria-hidden /></a>}
                 </div>
               </div>
               <div className="row">

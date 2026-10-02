@@ -7,23 +7,23 @@ export default function ProfileHeader({ isMobile }: { isMobile: boolean }) {
   const reducedMotion = useReducedMotion();
 
   return (
-    <div style={{ marginBottom: '1.75rem' }}>
+    <div className="mb-7">
       <motion.div
         initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: -5 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 18, fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        className="mb-4 flex items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap text-xs leading-none text-[#94a3b8]"
       >
-        <Link href="/dashboard" style={{ color: '#94a3b8', textDecoration: 'none' }}>Dashboard</Link>
+        <Link href="/dashboard" className="text-[#94a3b8] no-underline hover:text-[#64748b]">Dashboard</Link>
         <span>/</span>
-        <span style={{ color: '#64748b', fontWeight: 500 }}>Profile</span>
+        <span className="font-medium text-[#64748b]">Profile</span>
       </motion.div>
 
       <motion.h1
         initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: reducedMotion ? 0 : 0.05, ease: [0.22, 1, 0.36, 1] }}
-        style={{ fontSize: isMobile ? '1.75rem' : '2.375rem', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', letterSpacing: '-0.03em' }}
+        className={`m-0 mb-2 font-extrabold leading-[1.15] tracking-[-0.03em] text-[#0f172a] ${isMobile ? 'text-[1.75rem]' : 'text-[2.375rem]'}`}
       >
         My Profile
       </motion.h1>
@@ -32,7 +32,7 @@ export default function ProfileHeader({ isMobile }: { isMobile: boolean }) {
         initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: reducedMotion ? 0 : 0.15, ease: [0.22, 1, 0.36, 1] }}
-        style={{ color: '#64748b', fontSize: '0.9375rem', margin: 0 }}
+        className="m-0 text-[0.9375rem] leading-relaxed text-[#64748b]"
       >
         View &amp; update your profile details.
       </motion.p>

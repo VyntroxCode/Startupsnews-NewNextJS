@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import { loadScriptOnce, mergeTemplate, salaryPeriodLabel, shiftTimingsLabel } from '../utils';
@@ -63,7 +64,7 @@ export default function Company() {
             <button className="btn sm" onClick={saveCompanyProfile} disabled={savingProfile || !profileDirty}>
               {savingProfile ? 'Saving…' : 'Save company details'}
             </button>
-            {profileSaved && <span className="meta">Saved ✓</span>}
+            {profileSaved && <span className="meta ic-text">Saved<Check size={12} aria-hidden /></span>}
           </div>
         </div>
         <div className="card pad">

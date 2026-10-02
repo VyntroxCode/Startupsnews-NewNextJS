@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { getAuthHeaders, getAdminToken } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { getPresignedUploadUrl } from '@/app/actions/upload-image';
@@ -233,10 +234,12 @@ export default function EditEventPage() {
             textDecoration: 'none',
             fontSize: '0.875rem',
             marginBottom: '1rem',
-            display: 'inline-block',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem',
           }}
         >
-          ← Back to Events
+          <ArrowLeft size={14} aria-hidden />Back to Events
         </Link>
         <h1 style={{
           fontSize: '2.25rem',
@@ -349,8 +352,8 @@ export default function EditEventPage() {
           </select>
           <p style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: '#64748b' }}>
             Region not listed?{' '}
-            <a href="/admin/events?tab=regions" target="_blank" style={{ color: '#48bb78', textDecoration: 'none' }}>
-              Add it in Event Regions →
+            <a href="/admin/events?tab=regions" target="_blank" style={{ color: '#48bb78', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              Add it in Event Regions <ArrowRight size={13} aria-hidden />
             </a>
           </p>
         </div>
@@ -500,7 +503,7 @@ export default function EditEventPage() {
                   width: 24, height: 24, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                ×
+                <X size={14} strokeWidth={2.5} aria-hidden />
               </button>
             </div>
           )}

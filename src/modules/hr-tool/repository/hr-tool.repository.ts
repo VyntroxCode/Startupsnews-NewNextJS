@@ -1,11 +1,12 @@
 import { getDbConnection, query, queryOne } from '@/shared/database/connection';
 import { findAllRows, replaceAllRows, parseJsonColumn, SqlParam } from './shared';
 import {
-  HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPunchGeo,
+  HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrPunch, HrPunchGeo,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrTemplate,
   HrRules, HrAuditLogEntry, HrCompanyProfile, HrDocumentUploadRequest, HrEmployeeRef, normalizeLeaveTypes,
 } from '../domain/types';
 import { HrKycDocuments, mergeKycDocuments } from '../domain/kyc';
+import { parseTime12h } from '../utils/lateness';
 
 interface NameRow { name: string; }
 interface TeamRow { name: string; manager: string | null; manager_id?: string | null; }
@@ -33,15 +34,18 @@ interface GeoColumns {
  * matched on — plus `emp`, a snapshot of the employee's name kept only for display. */
 interface EmployeeOwned { employee_id: string | null; emp: string; }
 interface AttendanceRow extends GeoColumns, EmployeeOwned { attendance_date: string; status: string; in_time: string | null; in_minutes: number | null; out_minutes: number | null; out_time: string | null; }
-interface OverrideRow extends EmployeeOwned { override_date: string; status: string; }
 interface PunchRow extends GeoColumns, EmployeeOwned { punch_date: string; in_time: string | null; in_minutes: number | null; out_minutes: number | null; out_time: string | null; }
 interface ApprovalRow extends EmployeeOwned { id: string; stage: string; status: string; rm_remarks: string | null; hr_remarks: string | null; }
-interface RegularizationRow extends ApprovalRow { reg_date: string; punch_type: string; reason: string | null; requested_time: string | null; }
-interface LeaveRow extends ApprovalRow { type: string; from_date: string; to_date: string; remarks: string | null; }
+interface RegularizationRow extends ApprovalRow { reg_date: string; punch_type: string; reason: string | null; requested_time: string | null; source?: string | null; }
+interface LeaveRow extends ApprovalRow { type: string; from_date: string; to_date: string; remarks: string | null; half_day?: string | null; }
 interface ExpenseRow extends ApprovalRow { category: string | null; amount: number; }
 interface TicketRow extends EmployeeOwned { id: string; category: string | null; status: string; note: string | null; }
 interface ComplianceRow { task: string; due_date: string | null; status: string; }
-interface PayrollRow { month: string; status: string; run_at: string | null; run_by: string | null; }
+interface PayrollRow {
+  month: string; status: string; run_at: string | null; run_by: string | null;
+  period_from?: string | null; period_to?: string | null; computed_at?: string | null; locked_at?: string | null;
+  reopened_until?: string | null; reopen_reason?: string | null;
+}
 interface PayrollEntryRow extends EmployeeOwned {
   month: string; working_days: number; total_days: number; present_days: number; absent_days: number;
   week_off_days: number; leave_days: number; short_leave_days: number; short_leave_carry_out: number;
@@ -100,12 +104,14 @@ function mapRegularizationRow(r: RegularizationRow): HrRegularization {
     id: r.id, employeeId: employeeIdOf(r), emp: r.emp, date: r.reg_date, punchType: (r.punch_type as HrRegularization['punchType']) || 'in',
     reason: r.reason || '', requestedTime: r.requested_time || null, stage: r.stage, status: r.status,
     rmRemarks: r.rm_remarks || '', hrRemarks: r.hr_remarks || '',
+    source: r.source === 'hr-edit' ? 'hr-edit' : 'employee',
   };
 }
 function mapLeaveRow(r: LeaveRow): HrLeaveRequest {
   return {
     id: r.id, employeeId: employeeIdOf(r), emp: r.emp, type: r.type, from: r.from_date, to: r.to_date, remarks: r.remarks || '',
     stage: r.stage, status: r.status, rmRemarks: r.rm_remarks || '', hrRemarks: r.hr_remarks || '',
+    halfDay: r.half_day === 'first' || r.half_day === 'second' ? r.half_day : null,
   };
 }
 
@@ -379,7 +385,9 @@ export class HrToolRepository {
   private mapAttendanceRow(r: AttendanceRow): HrAttendanceRecord {
     return {
       employeeId: employeeIdOf(r), emp: r.emp, date: r.attendance_date, status: r.status, inTime: r.in_time || '—', outTime: r.out_time || '—',
-      inMinutes: r.in_minutes, outMinutes: r.out_minutes,
+      // Early rows can hold only the text time (minutes NULL) — read the text so the calendar,
+      // payroll and leave balance all see the same punch.
+      inMinutes: r.in_minutes ?? parseTime12h(r.in_time), outMinutes: r.out_minutes ?? parseTime12h(r.out_time),
       inGeo: geoFromRow(r.in_lat, r.in_lng, r.in_accuracy_m, r.in_distance_m),
       outGeo: geoFromRow(r.out_lat, r.out_lng, r.out_accuracy_m, r.out_distance_m),
     };
@@ -422,17 +430,6 @@ export class HrToolRepository {
   }
 
 
-  async findAttendanceOverrides(): Promise<HrAttendanceOverride[]> {
-    const rows = await findAllRows<OverrideRow>('hr_attendance_overrides');
-    return rows.map((r) => ({ employeeId: employeeIdOf(r), emp: r.emp, date: r.override_date, status: r.status }));
-  }
-  async upsertAttendanceOverride(o: HrAttendanceOverride): Promise<void> {
-    await query(
-      `INSERT INTO hr_attendance_overrides (employee_id, emp, override_date, status) VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE status = VALUES(status), employee_id = VALUES(employee_id), emp = VALUES(emp)`,
-      [o.employeeId, o.emp, o.date, o.status]
-    );
-  }
 
   async findPunchLog(): Promise<HrPunch[]> {
     const rows = await findAllRows<PunchRow>('hr_punch_log');
@@ -463,12 +460,6 @@ export class HrToolRepository {
     const rows = await findAllRows<RegularizationRow>('hr_regularizations', 'created_at DESC');
     return rows.map(mapRegularizationRow);
   }
-  async replaceRegularizations(items: HrRegularization[]): Promise<void> {
-    await replaceAllRows(
-      'hr_regularizations', ['id', 'employee_id', 'emp', 'reg_date', 'punch_type', 'reason', 'requested_time', 'stage', 'status', 'rm_remarks', 'hr_remarks'], items,
-      (r) => [r.id, r.employeeId || null, r.emp, r.date, r.punchType, r.reason || null, r.requestedTime || null, r.stage, r.status, r.rmRemarks || null, r.hrRemarks || null]
-    );
-  }
   /** One employee's own regularization requests — used by the isolated Publisher/Event Admin
    * and plain-employee attendance surfaces, which must never see other employees' requests. */
   async findRegularizationsForEmployee(employeeId: string): Promise<HrRegularization[]> {
@@ -484,8 +475,8 @@ export class HrToolRepository {
   /** Single-row insert, safe for an isolated employee session to call directly. */
   async insertRegularization(reg: HrRegularization): Promise<void> {
     await query(
-      'INSERT INTO hr_regularizations (id, employee_id, emp, reg_date, punch_type, reason, requested_time, stage, status, rm_remarks, hr_remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [reg.id, reg.employeeId, reg.emp, reg.date, reg.punchType, reg.reason || null, reg.requestedTime || null, reg.stage, reg.status, reg.rmRemarks || null, reg.hrRemarks || null]
+      'INSERT INTO hr_regularizations (id, employee_id, emp, reg_date, punch_type, reason, requested_time, stage, status, rm_remarks, hr_remarks, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [reg.id, reg.employeeId, reg.emp, reg.date, reg.punchType, reg.reason || null, reg.requestedTime || null, reg.stage, reg.status, reg.rmRemarks || null, reg.hrRemarks || null, reg.source || 'employee']
     );
   }
   /** Single-row update by id — used to finalize one regularization's approve/reject decision. */
@@ -495,12 +486,14 @@ export class HrToolRepository {
       [reg.stage, reg.status, reg.rmRemarks || null, reg.hrRemarks || null, reg.id]
     );
   }
-  async countRegularizationsForEmployeeInRange(employeeId: string, fromDate: string, toDate: string): Promise<number> {
-    const rows = await query<{ cnt: number }>(
-      'SELECT COUNT(*) AS cnt FROM hr_regularizations WHERE employee_id = ? AND reg_date BETWEEN ? AND ?',
+  /** One employee's requests dated inside a range — the input to the per-cycle day limit
+   * (see countedRegularizationDates for which of them actually count). */
+  async findRegularizationsForEmployeeInRange(employeeId: string, fromDate: string, toDate: string): Promise<HrRegularization[]> {
+    const rows = await query<RegularizationRow>(
+      'SELECT * FROM hr_regularizations WHERE employee_id = ? AND reg_date BETWEEN ? AND ?',
       [employeeId, fromDate, toDate]
     );
-    return Number(rows[0]?.cnt || 0);
+    return rows.map(mapRegularizationRow);
   }
 
   async findLeaveRequests(): Promise<HrLeaveRequest[]> {
@@ -516,31 +509,36 @@ export class HrToolRepository {
     );
     return rows.map(mapLeaveRow);
   }
-  async replaceLeaveRequests(items: HrLeaveRequest[]): Promise<void> {
-    await replaceAllRows(
-      'hr_leave_requests', ['id', 'employee_id', 'emp', 'type', 'from_date', 'to_date', 'remarks', 'stage', 'status', 'rm_remarks', 'hr_remarks'], items,
-      (l) => [l.id, l.employeeId || null, l.emp, l.type, l.from, l.to, l.remarks || null, l.stage, l.status, l.rmRemarks || null, l.hrRemarks || null]
-    );
-  }
   /** One employee's own leave requests — for the isolated employee-facing leave surfaces. */
   async findLeaveRequestsForEmployee(employeeId: string): Promise<HrLeaveRequest[]> {
     const rows = await query<LeaveRow>('SELECT * FROM hr_leave_requests WHERE employee_id = ? ORDER BY created_at DESC', [employeeId]);
     return rows.map(mapLeaveRow);
   }
-  /** Any not-yet-rejected request of this employee's that overlaps the given range — blocks a
-   * duplicate/overlapping submission. A rejected request doesn't count. */
+  /** Any live (pending/approved) request of this employee's that overlaps the given range — blocks
+   * a duplicate/overlapping submission. Rejected and cancelled requests don't count. */
   async findOverlappingLeaveRequestForEmployee(employeeId: string, fromDate: string, toDate: string): Promise<HrLeaveRequest | null> {
     const row = await queryOne<LeaveRow>(
-      "SELECT * FROM hr_leave_requests WHERE employee_id = ? AND status != 'rejected' AND from_date <= ? AND to_date >= ?",
+      "SELECT * FROM hr_leave_requests WHERE employee_id = ? AND status IN ('pending', 'approved') AND from_date <= ? AND to_date >= ?",
       [employeeId, toDate, fromDate]
     );
     return row ? mapLeaveRow(row) : null;
   }
+  async findLeaveRequestById(id: string): Promise<HrLeaveRequest | null> {
+    const row = await queryOne<LeaveRow>('SELECT * FROM hr_leave_requests WHERE id = ?', [id]);
+    return row ? mapLeaveRow(row) : null;
+  }
+  /** Single-row decision/cancellation write — the only way a leave request changes after it's filed. */
+  async updateLeaveRequestStatus(req: HrLeaveRequest): Promise<void> {
+    await query(
+      'UPDATE hr_leave_requests SET stage = ?, status = ?, rm_remarks = ?, hr_remarks = ? WHERE id = ?',
+      [req.stage, req.status, req.rmRemarks || null, req.hrRemarks || null, req.id]
+    );
+  }
   /** Single-row insert, safe for an isolated employee session to call directly. */
   async insertLeaveRequest(req: HrLeaveRequest): Promise<void> {
     await query(
-      'INSERT INTO hr_leave_requests (id, employee_id, emp, type, from_date, to_date, remarks, stage, status, rm_remarks, hr_remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [req.id, req.employeeId, req.emp, req.type, req.from, req.to, req.remarks || null, req.stage, req.status, req.rmRemarks || null, req.hrRemarks || null]
+      'INSERT INTO hr_leave_requests (id, employee_id, emp, type, from_date, to_date, remarks, stage, status, rm_remarks, hr_remarks, half_day) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [req.id, req.employeeId, req.emp, req.type, req.from, req.to, req.remarks || null, req.stage, req.status, req.rmRemarks || null, req.hrRemarks || null, req.halfDay || null]
     );
   }
 
@@ -573,14 +571,63 @@ export class HrToolRepository {
   // --- Payroll runs ---
   async findPayrollRuns(): Promise<HrPayrollRun[]> {
     const rows = await findAllRows<PayrollRow>('hr_payroll_runs');
-    return rows.map((r) => ({ month: r.month, status: r.status, runAt: r.run_at, runBy: r.run_by }));
+    return rows.map((r) => ({
+      month: r.month, status: r.status, runAt: r.run_at, runBy: r.run_by,
+      periodFrom: r.period_from || null, periodTo: r.period_to || null, lockedAt: r.locked_at || null,
+      reopenedUntil: r.reopened_until || null, reopenReason: r.reopen_reason || null, computedAt: r.computed_at || null,
+    }));
   }
+  /** Records a run. computed_at is stamped by the DB clock (NOW()) — the same clock that stamps the
+   * request tables' updated_at — so "changed since the last run" compares like with like. */
   async upsertPayrollRun(run: HrPayrollRun): Promise<void> {
     await query(
-      `INSERT INTO hr_payroll_runs (month, status, run_at, run_by) VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE status = VALUES(status), run_at = VALUES(run_at), run_by = VALUES(run_by)`,
-      [run.month, run.status, run.runAt || null, run.runBy || null]
+      `INSERT INTO hr_payroll_runs (month, status, run_at, run_by, period_from, period_to, computed_at) VALUES (?, ?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE status = VALUES(status), run_at = VALUES(run_at), run_by = VALUES(run_by),
+         period_from = VALUES(period_from), period_to = VALUES(period_to), computed_at = NOW()`,
+      [run.month, run.status, run.runAt || null, run.runBy || null, run.periodFrom || null, run.periodTo || null]
     );
+  }
+  async lockPayrollRun(month: string): Promise<void> {
+    await query('UPDATE hr_payroll_runs SET locked_at = NOW(), reopened_until = NULL WHERE month = ? AND locked_at IS NULL', [month]);
+  }
+  async reopenPayrollRun(month: string, until: string, reason: string): Promise<void> {
+    await query('UPDATE hr_payroll_runs SET locked_at = NULL, reopened_until = ?, reopen_reason = ? WHERE month = ?', [until, reason, month]);
+  }
+  /** Requests still waiting for a decision that touch a date range — the cycle can't lock while
+   * any exist, and the Payroll page marks those employees' figures provisional. */
+  async findPendingRequestsInRange(fromDate: string, toDate: string): Promise<{ kind: 'regularization' | 'leave'; id: string; employeeId: string; emp: string; dates: string; detail: string }[]> {
+    const [regs, leaves] = await Promise.all([
+      query<{ id: string; employee_id: string | null; emp: string; reg_date: string; punch_type: string; requested_time: string | null; reason: string | null }>(
+        "SELECT id, employee_id, emp, reg_date, punch_type, requested_time, reason FROM hr_regularizations WHERE status = 'pending' AND reg_date BETWEEN ? AND ? ORDER BY reg_date",
+        [fromDate, toDate]
+      ),
+      query<{ id: string; employee_id: string | null; emp: string; from_date: string; to_date: string; type: string; half_day: string | null; remarks: string | null }>(
+        "SELECT id, employee_id, emp, from_date, to_date, type, half_day, remarks FROM hr_leave_requests WHERE status = 'pending' AND from_date <= ? AND to_date >= ? ORDER BY from_date",
+        [toDate, fromDate]
+      ),
+    ]);
+    return [
+      ...regs.map((r) => ({
+        kind: 'regularization' as const, id: r.id, employeeId: r.employee_id || '', emp: r.emp, dates: `${r.reg_date} (punch ${r.punch_type})`,
+        detail: [r.requested_time ? `Punch ${r.punch_type} at ${r.requested_time}` : '', r.reason || ''].filter(Boolean).join(' — '),
+      })),
+      ...leaves.map((l) => ({
+        kind: 'leave' as const, id: l.id, employeeId: l.employee_id || '', emp: l.emp, dates: l.from_date === l.to_date ? l.from_date : `${l.from_date} – ${l.to_date}`,
+        detail: [`${l.type} leave${l.half_day ? ` (half day, ${l.half_day} half)` : ''}`, l.remarks || ''].filter(Boolean).join(' — '),
+      })),
+    ];
+  }
+  /** True when a regularization or leave request touching the range changed after the month's
+   * last run (both timestamps from the DB clock) — the frozen figures are then out of date. */
+  async hasRequestChangesSinceRun(month: string, fromDate: string, toDate: string): Promise<boolean> {
+    const rows = await query<{ n: number }>(
+      `SELECT
+         (SELECT COUNT(*) FROM hr_regularizations g WHERE g.reg_date BETWEEN ? AND ? AND g.updated_at > r.computed_at)
+       + (SELECT COUNT(*) FROM hr_leave_requests l WHERE l.from_date <= ? AND l.to_date >= ? AND l.updated_at > r.computed_at) AS n
+       FROM hr_payroll_runs r WHERE r.month = ? AND r.computed_at IS NOT NULL`,
+      [fromDate, toDate, toDate, fromDate, month]
+    );
+    return Number(rows[0]?.n || 0) > 0;
   }
 
   // --- Payroll entries (per-employee-per-month computed payroll) ---
@@ -594,6 +641,22 @@ export class HrToolRepository {
         [today]
       );
       return new Map(rows.map((r) => [r.employee_id, String(r.approved_lwd).slice(0, 10)]));
+    } catch (e) {
+      if (isMissingTable(e)) return new Map();
+      throw e;
+    }
+  }
+
+  /** Notice start (resignation / termination date) of every accepted or past exit. From the payroll
+   * cycle containing that date, salary is held and paid in the Full & Final instead. Cancelled,
+   * rejected, withdrawn and still-pending exits hold nothing. Empty when the tables don't exist. */
+  async findNoticeStartDates(): Promise<Map<string, string>> {
+    try {
+      const rows = await query<{ employee_id: string; resignation_date: string }>(
+        `SELECT employee_id, resignation_date FROM hr_offboarding
+          WHERE status IN ('accepted', 'exited', 'completed')`
+      );
+      return new Map(rows.map((r) => [r.employee_id, String(r.resignation_date).slice(0, 10)]));
     } catch (e) {
       if (isMissingTable(e)) return new Map();
       throw e;
@@ -624,8 +687,9 @@ export class HrToolRepository {
   async findPayrollEntriesForMonth(month: string): Promise<HrPayrollEntry[]> {
     const rows = await query<PayrollEntryRow>('SELECT * FROM hr_payroll_entries WHERE month = ? ORDER BY emp ASC', [month]);
     return rows.map((r) => ({
-      employeeId: employeeIdOf(r), emp: r.emp, totalDays: r.total_days, weekOffDays: r.week_off_days, workingDays: r.working_days,
-      presentDays: r.present_days, leaveDays: r.leave_days, absentDays: r.absent_days,
+      // present/absent/leave/week-off are DECIMAL (half days) — mariadb returns DECIMAL as a string.
+      employeeId: employeeIdOf(r), emp: r.emp, totalDays: r.total_days, weekOffDays: Number(r.week_off_days), workingDays: r.working_days,
+      presentDays: Number(r.present_days), leaveDays: Number(r.leave_days), absentDays: Number(r.absent_days),
       shortLeaveDays: r.short_leave_days, shortLeaveCarryOut: r.short_leave_carry_out, halfDayDays: r.half_day_days,
       lopDays: Number(r.lop_days), monthlyGross: r.monthly_gross, tds: r.tds, netPay: r.net_pay,
     }));
@@ -648,6 +712,15 @@ export class HrToolRepository {
         entry.monthlyGross, entry.tds, entry.netPay,
       ]
     );
+  }
+  /** Drops one employee's payslip from a run — used when an auto-update finds they no longer
+   * belong in it (e.g. their salary moved into a Full & Final). */
+  async deletePayrollEntry(month: string, employeeId: string): Promise<void> {
+    await query('DELETE FROM hr_payroll_entries WHERE month = ? AND employee_id = ?', [month, employeeId]);
+  }
+  /** Re-stamps a run's computed_at (DB clock) after its entries were brought up to date. */
+  async touchPayrollRunComputedAt(month: string): Promise<void> {
+    await query('UPDATE hr_payroll_runs SET computed_at = NOW() WHERE month = ?', [month]);
   }
 
   // --- Templates ---

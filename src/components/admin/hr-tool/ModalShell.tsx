@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 
-export interface ModalAction { label: string; cls: string; onClick: () => void | Promise<void>; }
+export interface ModalAction { label: ReactNode; cls: string; onClick: () => void | Promise<void>; }
 
 /** Presentational modal shell. Each view keeps its own open/closed + form state locally
  * and renders this conditionally — that keeps every control inside it a normal, live
@@ -27,7 +28,7 @@ export default function ModalShell({ title, onClose, actions, children, maxWidth
       onClick={(e) => { if (e.target === e.currentTarget && pressedBackdrop.current) onClose(); }}
     >
       <div className="modal" style={maxWidth ? { maxWidth } : undefined}>
-        <div className="modal-head"><h3>{title}</h3><button className="x-close" onClick={onClose}>×</button></div>
+        <div className="modal-head"><h3>{title}</h3><button className="x-close" onClick={onClose} aria-label="Close"><X size={18} aria-hidden /></button></div>
         <div className="modal-body">{children}</div>
         <div className="modal-foot">
           {actions.map((a, i) => <button key={i} className={a.cls} onClick={() => a.onClick()}>{a.label}</button>)}

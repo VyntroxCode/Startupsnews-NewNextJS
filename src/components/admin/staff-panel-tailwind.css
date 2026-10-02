@@ -31,6 +31,7 @@
 @source "./KycDocumentsWidget.tsx";
 @source "./ProfileProgressStrip.tsx";
 @source "./PunchOutTimeInput.tsx";
+@source "../employee/PendingLeadsAlarm.tsx";
 
 /* Admin Rules (/admin/rules-policy, /employee/rules-policy) */
 @source "./PolicySummaryWidget.tsx";
@@ -71,6 +72,91 @@
 @source "./it-tickets/Toast.tsx";
 @source "./it-tickets/TicketReports.tsx";
 
+/* Content Studio (/admin/content-studio). The whole module is ported from the standalone
+   ContentStudio repo; class literals live in components/ and lib/ (toast, data palettes). */
+@source "../../modules/content-studio";
+@source "../../app/(admin)/admin/content-studio/page.tsx";
+
+/* Grants (/admin/grants) — IncubatX startup dossiers list + detail drawer. */
+@source "./grants";
+@source "../../app/(admin)/admin/grants/page.tsx";
+
+/* Content Studio theme — the pink palette ported 1:1 from the standalone app. Every token is
+   namespaced `cs-` (bg-cs-surface, text-cs-ink, font-cs-sans…) so it cannot change what an
+   existing utility such as `font-sans` means on the other staff panels sharing this sheet. */
+@theme {
+  --color-cs-bg: #fff8f9;
+  --color-cs-surface: #ffffff;
+  --color-cs-s2: #fdf0f3;
+  --color-cs-s3: #fce4ea;
+  --color-cs-edge: #f5d0d9;
+  --color-cs-edge2: #f0b8c6;
+  --color-cs-ink: #1f0d12;
+  --color-cs-t2: #7a4555;
+  --color-cs-t3: #c49aaa;
+  --color-cs-accent: #e8186d;
+  --color-cs-accent2: #d4105f;
+  --color-cs-abg: #fff0f4;
+  --color-cs-adark: #b80f55;
+  --color-cs-ok: #16a34a;
+  --color-cs-okbg: #f0fdf4;
+  --color-cs-bad: #dc2626;
+  --color-cs-badbg: #fef2f2;
+  --color-cs-warn: #d97706;
+  --color-cs-warnbg: #fffbeb;
+  --color-cs-aac-bg: #fffdf3;
+  --color-cs-aac-edge: #e0b400;
+  --color-cs-aac-edge2: #e2d29a;
+  --color-cs-aac-ink: #8a6d00;
+  --color-cs-aac-ink2: #a98c2e;
+  --color-cs-aac-ink3: #7a6310;
+  --color-cs-prose: #22243c;
+  --color-cs-mark: #ffd6e5;
+  --color-cs-code-bg: #16172a;
+  --color-cs-code-fg: #aab4d8;
+  --color-cs-code-edge: #252640;
+
+  --radius-cs-card: 8px;
+  --radius-cs-panel: 12px;
+
+  /* --font-fraunces / --font-jakarta come from next/font (modules/content-studio/components/shell/fonts.ts) */
+  --font-cs-serif: var(--font-fraunces), Georgia, serif;
+  --font-cs-sans: var(--font-jakarta), system-ui, sans-serif;
+
+  --shadow-cs-soft: 0 1px 3px rgba(232, 24, 109, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-cs-card: 0 4px 16px rgba(232, 24, 109, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-cs-lift: 0 8px 30px rgba(232, 24, 109, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  --text-cs-label: 10px;
+  --text-cs-label--line-height: 1.4;
+  --text-cs-meta: 11px;
+  --text-cs-meta--line-height: 1.45;
+  --text-cs-ui: 12px;
+  --text-cs-ui--line-height: 1.5;
+  --text-cs-body: 13px;
+  --text-cs-body--line-height: 1.55;
+
+  --animate-cs-spin-fast: cs-spin-fast 0.8s linear infinite;
+  --animate-cs-pulse-dot: cs-pulse-dot 1s ease-in-out infinite;
+
+  @keyframes cs-spin-fast {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes cs-pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.3;
+      transform: scale(0.7);
+    }
+  }
+}
+
 /* ---------- IT Tickets feature scope: the minimum of Preflight that feature needs ----------
    (Moved unchanged from the former it-tickets-tailwind.css.) `.it-tickets-scope` is on the page
    root (ItTicketsPage) and on the DragOverlay ghost, which is portaled to <body>. Without
@@ -98,5 +184,42 @@
 .it-tickets-scope input::placeholder,
 .it-tickets-scope textarea::placeholder {
   color: #94a3b8;
+  opacity: 1;
+}
+
+/* ---------- Content Studio scope: the parts of Preflight the studio was built against ----------
+   `.content-studio-scope` is on the page root and on each portaled modal root (Modal.tsx). The
+   legacy reset in style.css already zeroes margins/padding/borders and list styles on block
+   elements, but not on form controls, and nothing sets border-box. Every selector is wrapped in
+   :where() so it stays at element-level specificity (0,0,1): it beats the browser's own button and
+   input styles, and any studio utility (0,1,0) still wins over it. */
+:where(.content-studio-scope),
+:where(.content-studio-scope) *,
+:where(.content-studio-scope) *::before,
+:where(.content-studio-scope) *::after {
+  box-sizing: border-box;
+}
+:where(.content-studio-scope) :is(button, input, select, textarea) {
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+:where(.content-studio-scope) :is(h1, h2, h3, h4, h5, h6) {
+  font-size: inherit;
+  font-weight: inherit;
+}
+:where(.content-studio-scope) a {
+  color: inherit;
+  text-decoration: inherit;
+}
+:where(.content-studio-scope) :is(img, svg) {
+  display: block;
+}
+:where(.content-studio-scope) :is(input, textarea)::placeholder {
+  color: var(--color-cs-t3);
   opacity: 1;
 }

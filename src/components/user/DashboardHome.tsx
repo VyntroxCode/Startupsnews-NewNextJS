@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { animate, motion, useReducedMotion } from 'motion/react';
 import type { Variants } from 'motion/react';
 import { EventByCountryCard } from '@/components/EventByCountryCard';
+import LocationPrompt from '@/components/user/LocationPrompt';
 import { getEventImage } from '@/lib/event-utils';
 import type { StartupEvent } from '@/lib/data-adapter';
 
@@ -25,6 +26,7 @@ import type { StartupEvent } from '@/lib/data-adapter';
 interface ProfileUser {
   name: string;
   email: string | null;
+  country: string | null;
   city: string | null;
   createdAt: string | null;
   // Real subscription state for the "Join The Morning Pulse" card — `newsletter_category_slugs`
@@ -61,7 +63,7 @@ interface WeeklyHighlights {
    ──────────────────────────────────────────────────────────────────────────── */
 
 const SAVED_EVENTS_KEY = 'dash_saved_events';
-const WHATSAPP_CHANNEL_URL = 'https://whatsapp.com/channel/0029Va6fQrb7DAWuFPhvlm21';
+const WHATSAPP_COMMUNITY_URL = 'https://chat.whatsapp.com/HDxJbdL6mBUDG78XigT8iJ';
 
 /** Missing-profile-field keys (from /api/public-auth/profile-status's `missing` array) mapped to
  * plain-English labels for the "Add your X & Y" line. Covers every field the wizard can ask for
@@ -69,6 +71,10 @@ const WHATSAPP_CHANNEL_URL = 'https://whatsapp.com/channel/0029Va6fQrb7DAWuFPhvl
  * — a lawyer or investor account should see their own missing fields named correctly too. Falls
  * back to a humanised version of the raw key for anything not listed here. */
 const FIELD_LABELS: Record<string, string> = {
+  name: 'name',
+  email: 'email',
+  bio: 'short bio',
+  g_organization: 'organization',
   phone: 'phone number',
   country: 'country',
   city: 'city',
@@ -124,6 +130,25 @@ function readLocalArray(key: string): unknown[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+interface CachedUser {
+  name?: string;
+  email?: string;
+  country?: string;
+  city?: string;
+  created_at?: string;
+  newsletter_category_slugs?: string | null;
+}
+
+/** The user object login stored in `pub_auth_user` — the fallback when profile-status fails. */
+function readCachedUser(): CachedUser {
+  try {
+    const raw = localStorage.getItem('pub_auth_user');
+    return raw ? (JSON.parse(raw) as CachedUser) : {};
+  } catch {
+    return {};
   }
 }
 
@@ -232,7 +257,11 @@ export default function DashboardHome() {
   });
   const [profile, setProfile] = useState<ProfileStatus | null>(null);
   const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
+  const [profileFailed, setProfileFailed] = useState(false);
+  // `weekly` stays null when weekly-highlights fails; `weeklySettled` tells "still loading" apart
+  // from "failed", so the summary line can drop the this-week sentence instead of printing 0.
   const [weekly, setWeekly] = useState<WeeklyHighlights | null>(null);
+  const [weeklySettled, setWeeklySettled] = useState(false);
   const [nearbyEvents, setNearbyEvents] = useState<StartupEvent[] | null>(null);
 
   // Saved-events count is real, dynamic, device-local state — there is no saved-events feature
@@ -240,6 +269,37 @@ export default function DashboardHome() {
   // until a real backend exists. The WhatsApp tile always shows the follow link on request (no
   // "Joined" swap) — see the KPI row below.
   const [savedEventsCount] = useState(() => readLocalArray(SAVED_EVENTS_KEY).length);
+
+  // Weekly highlights and nearby events both need the city, so they wait for profile-status to
+  // settle — but they run whether it succeeded or not. Earlier they only ran on success, so any
+  // profile-status failure (e.g. an expired 30-day token on live) printed a hardcoded "0 new
+  // funding reports" and an empty events list instead of the real, public counts.
+  const loadCityData = useCallback((city: string | null) => {
+    const cityParam = city ? `?city=${encodeURIComponent(city)}` : '';
+    fetch(`/api/dashboard/weekly-highlights${cityParam}`)
+      .then((r) => r.json())
+      .then((wd) => {
+        if (wd?.success) {
+          setWeekly({
+            fundingReportsThisWeek: Number(wd.data.fundingReportsThisWeek) || 0,
+            cityEventsThisWeek: Number(wd.data.cityEventsThisWeek) || 0,
+          });
+        } else setWeekly(null);
+      })
+      .catch(() => setWeekly(null))
+      .finally(() => setWeeklySettled(true));
+
+    fetch(`/api/dashboard/nearby-events${cityParam}`)
+      .then((r) => r.json())
+      .then((ed) => {
+        if (ed?.success && Array.isArray(ed.data.events)) {
+          setNearbyEvents(ed.data.events);
+        } else {
+          setNearbyEvents([]);
+        }
+      })
+      .catch(() => setNearbyEvents([]));
+  }, []);
 
   useEffect(() => {
     let token: string | null = null;
@@ -263,15 +323,31 @@ export default function DashboardHome() {
       })
       .catch(() => setSiteStats({ totalReports: 0, freeReports: 0, totalEvents: 0 }));
 
+    // When profile-status fails, fall back to what login cached in `pub_auth_user` rather than
+    // all-null — and flag it, so the page says it couldn't load instead of claiming "0%".
+    const fallBackToCachedProfile = () => {
+      setProfileFailed(true);
+      const cached = readCachedUser();
+      setProfile({
+        percent: 0,
+        missing: [],
+        user: {
+          name: cached.name || 'there',
+          email: cached.email || null,
+          country: cached.country || null,
+          city: cached.city || null,
+          createdAt: cached.created_at || null,
+          newsletterSubscribed: Boolean(cached.newsletter_category_slugs),
+        },
+      });
+      loadCityData(cached.city || null);
+    };
+
     fetch('/api/public-auth/profile-status', { headers: auth })
       .then((r) => r.json())
       .then((d) => {
         if (!d?.success) {
-          setProfile({ percent: 0, missing: [], user: { name: 'there', email: null, city: null, createdAt: null, newsletterSubscribed: false } });
-          // profile-status responded but without success — weekly/nearby-events are chained off
-          // it below and would otherwise never resolve, leaving those sections stuck loading.
-          setWeekly({ fundingReportsThisWeek: 0, cityEventsThisWeek: 0 });
-          setNearbyEvents([]);
+          fallBackToCachedProfile();
           return;
         }
         const u = d.data.user || {};
@@ -281,48 +357,19 @@ export default function DashboardHome() {
           user: {
             name: String(u.name || ''),
             email: u.email ? String(u.email) : null,
+            country: u.country ? String(u.country) : null,
             city: u.city ? String(u.city) : null,
             createdAt: u.created_at ? String(u.created_at) : null,
             newsletterSubscribed: Boolean(u.newsletter_category_slugs) && !u.newsletter_unsubscribed,
           },
         };
         setProfile(nextProfile);
-
-        // Weekly highlights and nearby events both need the city, so both are chained off
-        // profile-status rather than run with a guessed/empty city; they don't depend on each
-        // other, so they fire together once the city is known.
-        const cityParam = nextProfile.user.city ? `?city=${encodeURIComponent(nextProfile.user.city)}` : '';
-        fetch(`/api/dashboard/weekly-highlights${cityParam}`)
-          .then((r) => r.json())
-          .then((wd) => {
-            if (wd?.success) {
-              setWeekly({
-                fundingReportsThisWeek: Number(wd.data.fundingReportsThisWeek) || 0,
-                cityEventsThisWeek: Number(wd.data.cityEventsThisWeek) || 0,
-              });
-            } else setWeekly({ fundingReportsThisWeek: 0, cityEventsThisWeek: 0 });
-          })
-          .catch(() => setWeekly({ fundingReportsThisWeek: 0, cityEventsThisWeek: 0 }));
-
-        fetch(`/api/dashboard/nearby-events${cityParam}`)
-          .then((r) => r.json())
-          .then((ed) => {
-            if (ed?.success && Array.isArray(ed.data.events)) {
-              setNearbyEvents(ed.data.events);
-            } else {
-              setNearbyEvents([]);
-            }
-          })
-          .catch(() => setNearbyEvents([]));
+        loadCityData(nextProfile.user.city);
       })
-      .catch(() => {
-        setProfile({ percent: 0, missing: [], user: { name: 'there', email: null, city: null, createdAt: null, newsletterSubscribed: false } });
-        setWeekly({ fundingReportsThisWeek: 0, cityEventsThisWeek: 0 });
-        setNearbyEvents([]);
-      });
-  }, []);
+      .catch(() => fallBackToCachedProfile());
+  }, [loadCityData]);
 
-  const ready = profile !== null && siteStats !== null && weekly !== null;
+  const ready = profile !== null && siteStats !== null && weeklySettled;
   const percent = profile?.percent ?? 0;
   const complete = percent >= 100;
   const shownPercent = useCountUp(percent, profile !== null, !!reduced);
@@ -337,14 +384,26 @@ export default function DashboardHome() {
   }, [profile, complete]);
 
   const summaryLine = useMemo(() => {
-    if (!profile || !weekly || !siteStats) return '';
+    if (!profile || !siteStats) return '';
+    const totals = `You've got ${siteStats.totalReports} reports, ${siteStats.totalEvents} events and a full incubator list waiting. Let's pick up where you left off.`;
+    // weekly-highlights failed — say nothing about this week rather than print a made-up 0.
+    if (!weekly) return totals;
     const city = profile.user.city;
     const { fundingReportsThisWeek, cityEventsThisWeek } = weekly;
     const cityPart = city
       ? `${fundingReportsThisWeek} new funding ${fundingReportsThisWeek === 1 ? 'report' : 'reports'} and ${cityEventsThisWeek} founder ${cityEventsThisWeek === 1 ? 'event' : 'events'} dropped in ${city} this week.`
       : `${fundingReportsThisWeek} new funding ${fundingReportsThisWeek === 1 ? 'report' : 'reports'} dropped this week. Add your city to see local founder events too.`;
-    return `${cityPart} You've got ${siteStats.totalReports} reports, ${siteStats.totalEvents} events and a full incubator list waiting. Let's pick up where you left off.`;
+    return `${cityPart} ${totals}`;
   }, [profile, weekly, siteStats]);
+
+  const needsLocation = profile !== null && !profileFailed && (!profile.user.city || !profile.user.country);
+
+  const onLocationSaved = (country: string, city: string) => {
+    setProfile((p) => (p ? { ...p, user: { ...p.user, country, city } } : p));
+    // Re-run the city-keyed sections so the new city shows straight away.
+    setNearbyEvents(null);
+    loadCityData(city);
+  };
 
   const memberSince = monthYear(profile?.user.createdAt ?? null);
 
@@ -421,11 +480,15 @@ export default function DashboardHome() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-db-pink">
-                  {shownPercent}%
+                  {profileFailed ? '—' : `${shownPercent}%`}
                 </div>
               </div>
 
-              {profile !== null ? (
+              {profileFailed ? (
+                <p className="m-0 text-[14.5px] leading-snug text-db-muted" style={titleWidthStyle}>
+                  <span className="font-bold text-db-ink">We couldn&apos;t load your profile right now.</span> Refresh the page, or open your profile to check your details.
+                </p>
+              ) : profile !== null ? (
                 <p className="m-0 text-[14.5px] leading-snug text-db-muted" style={titleWidthStyle}>
                   <span className="font-bold text-db-ink">Your profile is {percent}% complete.</span> {missingLine}
                 </p>
@@ -445,6 +508,11 @@ export default function DashboardHome() {
             </Link>
           </div>
         </motion.div>
+
+        {/* Location prompt — only while the profile is missing a city or country. */}
+        {needsLocation && (
+          <LocationPrompt initialCountry={profile.user.country} initialCity={profile.user.city} onSaved={onLocationSaved} />
+        )}
 
         {/* KPI row */}
         <motion.div
@@ -472,11 +540,11 @@ export default function DashboardHome() {
                     membership check to justify replacing it. Icon-only per request: the label
                     above already says what this is, so the link itself doesn't repeat it. */}
                 <a
-                  href={WHATSAPP_CHANNEL_URL}
+                  href={WHATSAPP_COMMUNITY_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Follow the StartupNews.fyi (MENA) channel on WhatsApp"
-                  title="Follow on WhatsApp"
+                  aria-label="Join the StartupNews.fyi WhatsApp community"
+                  title="Join the WhatsApp community"
                   className="group inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#25D366]/10 text-[#25D366] transition-transform duration-200 ease-out hover:scale-105"
                 >
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -486,7 +554,7 @@ export default function DashboardHome() {
               </KpiCard>
 
               <KpiCard label="Member Since">
-                <p className="m-0 text-[22px] font-bold leading-none tracking-tight text-db-ink">{memberSince ?? ''}</p>
+                <p className="m-0 text-[22px] font-bold leading-none tracking-tight text-db-ink">{memberSince ?? '—'}</p>
               </KpiCard>
             </>
           )}

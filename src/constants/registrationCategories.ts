@@ -10,12 +10,11 @@ export const REGISTRATION_CATEGORIES: RegistrationCategory[] = [
   { value: 'accelerator', label: 'Accelerator', icon: '⚡' },
   { value: 'incubator', label: 'Incubator', icon: '🏛️' },
   { value: 'creator', label: 'Content Creator', icon: '🎥' },
-  { value: 'lawyer', label: 'Lawyer', icon: '⚖️' },
-  { value: 'cacs', label: 'CA / CS', icon: '📊' },
+  // Lawyer + CA / CS merged into "Professionals", VC Firm + PE Firm into "VC / PE Firm", and
+  // Banker dropped (2026-09-30). No saved profile used lawyer / cacs / banker / vc / pe then.
+  { value: 'professional', label: 'Professionals', icon: '⚖️' },
   { value: 'ibanker', label: 'Investment Banker', icon: '🏦' },
-  { value: 'banker', label: 'Banker', icon: '🏧' },
-  { value: 'vc', label: 'VC Firm', icon: '🏙' },
-  { value: 'pe', label: 'PE Firm', icon: '🏢' },
+  { value: 'vcpe', label: 'VC / PE Firm', icon: '🏙' },
   { value: 'familyoffice', label: 'Family Office', icon: '🏪' },
   { value: 'govt', label: 'Govt / Policy', icon: '🏛️' },
   { value: 'media', label: 'Media / Journalist', icon: '📰' },

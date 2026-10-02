@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { AlarmClock, LayoutGrid, Pencil, Plus, Trash, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
@@ -301,9 +302,7 @@ export default function AdminBrandStoriesPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(99,102,241,0.4)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.3)'; }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <Plus size={18} strokeWidth={2.5} aria-hidden />
                 Add New Brand Story
               </Link>
             </div>
@@ -319,7 +318,7 @@ export default function AdminBrandStoriesPage() {
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6366f1', padding: 0, display: 'flex', alignItems: 'center', lineHeight: 1 }}
                     title="Clear filter"
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    <X size={13} strokeWidth={2.5} aria-hidden />
                   </button>
                 </span>
                 <span style={{ fontSize: '0.8125rem', color: '#94a3b8' }}>{visibleStories.length} brand stor{visibleStories.length !== 1 ? 'ies' : 'y'}</span>
@@ -386,6 +385,8 @@ export default function AdminBrandStoriesPage() {
                             <span style={{
                               padding: '0.2rem 0.55rem',
                               display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
                               fontSize: '0.75rem',
                               fontWeight: '600',
                               borderRadius: '9999px',
@@ -393,7 +394,7 @@ export default function AdminBrandStoriesPage() {
                               color: story.publish_at && story.is_active === 0 ? '#92400e' : story.is_active === 1 ? '#047857' : '#991b1b',
                             }}>
                               {story.publish_at && story.is_active === 0
-                                ? `⏰ ${new Date(story.publish_at!.toString().replace(' ', 'T')).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}`
+                                ? <><AlarmClock size={12} aria-hidden />{new Date(story.publish_at!.toString().replace(' ', 'T')).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}</>
                                 : story.is_active === 1 ? 'Active' : 'Inactive'}
                             </span>
                           </td>
@@ -495,9 +496,7 @@ export default function AdminBrandStoriesPage() {
                     boxShadow: addingSection || !newSectionTitle.trim() ? 'none' : '0 2px 8px rgba(99,102,241,0.3)',
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
+                  <Plus size={14} strokeWidth={2.5} aria-hidden />
                   {addingSection ? 'Adding...' : 'Add Section'}
                 </button>
               </div>
@@ -516,9 +515,7 @@ export default function AdminBrandStoriesPage() {
               ) : sections.length === 0 ? (
                 <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                   <div style={{ width: 48, height: 48, borderRadius: 12, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-                    </svg>
+                    <LayoutGrid size={22} color="#94a3b8" aria-hidden />
                   </div>
                   <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>No sections yet. Add one above to start grouping brand stories.</p>
                 </div>
@@ -589,7 +586,7 @@ export default function AdminBrandStoriesPage() {
                               onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#fde68a'; e.currentTarget.style.background = '#fffbeb'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'transparent'; }}
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
+                              <Pencil size={12} strokeWidth={2.2} aria-hidden />
                               Edit
                             </button>
                             <button
@@ -599,7 +596,7 @@ export default function AdminBrandStoriesPage() {
                               onMouseEnter={(e) => { if (!isDeleting) { e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.background = '#fef2f2'; } }}
                               onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'transparent'; }}
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                              <Trash size={12} strokeWidth={2.2} aria-hidden />
                               {isDeleting ? '...' : 'Delete'}
                             </button>
                           </>

@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
       { expiresIn: '30d' }
     );
 
-    const safeUser = { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, city: user.city, linkedin_url: user.linkedin_url };
+    const safeUser = { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, city: user.city, linkedin_url: user.linkedin_url, created_at: user.created_at };
 
     // 4. Return HTML to set localStorage and redirect
     const html = `

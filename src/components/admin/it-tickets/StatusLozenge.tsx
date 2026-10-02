@@ -1,5 +1,6 @@
 'use client';
 
+import { Lock } from 'lucide-react';
 import { STATUS_COLUMNS, STATUS_META } from './constants';
 import { ChevronDownIcon } from './TicketIcons';
 import type { ItTicketStatus } from './types';
@@ -40,10 +41,7 @@ export default function StatusLozenge({ status, onChange, isAllowed, disabled, s
       <span className={`${shape} gap-1 ${className}`} data-status={status} data-locked={lockedTitle ? 'true' : undefined} title={lockedTitle}>
         {label}
         {lockedTitle && (
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-            <rect x="3.5" y="7" width="9" height="6.5" rx="1.25" />
-            <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
-          </svg>
+          <Lock className="size-[11px] shrink-0" strokeWidth={2.5} aria-hidden />
         )}
       </span>
     );

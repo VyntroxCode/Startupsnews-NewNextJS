@@ -34,6 +34,9 @@ export interface PayslipData {
   providentFund: number;
   totalDeductions: number;
   netPay: number;
+  /** Set while the employee still has undecided leave/regularization requests in this cycle —
+   * printed under the month so a slip downloaded early is never mistaken for the final figure. */
+  provisionalNote?: string;
 }
 
 export function fmtRs(n: number): string { return 'Rs. ' + Math.round(n).toLocaleString('en-IN'); }
@@ -80,6 +83,7 @@ function drawPayslipPage(doc: PDFDocument, font: PDFFont, bold: PDFFont, logo: P
   }
   text('Payslip For the Month', PAGE_W - MARGIN, y - 2, { size: 9, color: MUTED, align: 'right' });
   text(d.monthLabel, PAGE_W - MARGIN, y - 18, { size: 13, bold: true, align: 'right' });
+  if (d.provisionalNote) text(d.provisionalNote, PAGE_W - MARGIN, y - 32, { size: 8, bold: true, color: rgb(0.72, 0.11, 0.11), align: 'right' });
   y -= 46;
   text(COMPANY.name, MARGIN, y, { size: 11, bold: true });
   y -= 14;

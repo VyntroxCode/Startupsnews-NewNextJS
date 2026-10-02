@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, X } from 'lucide-react';
 import { getAuthHeaders, getAdminToken } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { getPresignedUploadUrl } from '@/app/actions/upload-image';
@@ -227,9 +228,9 @@ export default function EditCategoryPage() {
             <div style={{ marginBottom: '2.5rem' }}>
                 <Link
                     href="/admin/posts?tab=industry"
-                    style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-block' }}
+                    style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                 >
-                    ← Back to Industry
+                    <ArrowLeft size={14} aria-hidden />Back to Industry
                 </Link>
                 <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
                     Edit Industry
@@ -291,7 +292,7 @@ export default function EditCategoryPage() {
                             <img src={formData.imageUrl} alt="Preview" style={{ maxWidth: 300, maxHeight: 200, borderRadius: 4, border: '1px solid #e2e8f0' }} />
                             <button type="button" onClick={() => { setFormData((p) => ({ ...p, imageUrl: '' })); setImageFile(null); }}
                                 style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#e53e3e', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                ×
+                                <X size={14} strokeWidth={2.5} aria-hidden />
                             </button>
                         </div>
                     )}

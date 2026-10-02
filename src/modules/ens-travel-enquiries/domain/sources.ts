@@ -13,7 +13,8 @@
  * the casing of "Billennium Divas" tidied; five labels were renamed on request 2026-09-19 (`value`
  * unchanged in each case, so stored/past enquiries still resolve correctly): "Venture Wolf" → "Wolf
  * Group", "Xcel Ventures" → "Xccel Ventures", "Startup Report.in" → "Startupreport.in", "HBF DIRECT"
- * → "HBF Direct", "Meet Day.ai" → "meetday.ai". */
+ * → "HBF Direct", "Meet Day.ai" → "meetday.ai". On 2026-09-30 "Startupreport.in" → "Startupreporter.in"
+ * (again label only). */
 
 export const REFERRED_BY_OPTIONS = [
   { value: 'easy-knowledge-club', label: 'Easy Knowledge Club' },
@@ -22,7 +23,7 @@ export const REFERRED_BY_OPTIONS = [
   { value: 'xcel-ventures', label: 'Xccel Ventures' },
   { value: 'confederation-of-indian-startups', label: 'Confederation of Indian Startups' },
   { value: 'usp-house', label: 'USP House' },
-  { value: 'startup-report-in', label: 'Startupreport.in' },
+  { value: 'startup-report-in', label: 'Startupreporter.in' },
   { value: 'tsfp-ventures', label: 'TSFP Ventures' },
   { value: 'angel-bay', label: 'Angel Bay' },
   { value: 'meet-day-ai', label: 'meetday.ai' },

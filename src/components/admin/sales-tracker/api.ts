@@ -1,6 +1,6 @@
 import { getAuthHeaders } from '@/lib/admin-auth';
 import type { AssignableEmployee, DepartmentOption, LeadAssignment, LeadAssignmentDraft, LeadSource } from '@/modules/lead-assignments/domain/types';
-import type { LeadFollowUpsView } from '@/modules/lead-followups/domain/types';
+import type { LeadFollowUpsView, LeadMessage } from '@/modules/lead-followups/domain/types';
 import type { SalesLead } from './types';
 
 const API_BASE = '/api/admin/sales-tracker';
@@ -20,10 +20,6 @@ async function apiSaveLead(lead: SalesLead): Promise<SalesLead> {
 async function apiDeleteLead(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/leads/${encodeURIComponent(id)}`, { method: 'DELETE', headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to delete lead');
-}
-async function apiDeleteAllLeads(): Promise<void> {
-  const res = await fetch(`${API_BASE}/leads`, { method: 'DELETE', headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Failed to delete leads');
 }
 async function apiGetAssignments(): Promise<{ employees: AssignableEmployee[]; departments: DepartmentOption[]; assignments: LeadAssignment[] }> {
   const res = await fetch(`${API_BASE}/assignments`, { headers: getAuthHeaders() });
@@ -47,12 +43,29 @@ async function apiGetFollowUps(source: LeadSource, leadId: string): Promise<Lead
   return json.data;
 }
 
+/** The admin's messages to the people on one lead, newest first. */
+async function apiGetMessages(source: LeadSource, leadId: string): Promise<LeadMessage[]> {
+  const qs = new URLSearchParams({ source, leadId });
+  const res = await fetch(`${API_BASE}/messages?${qs}`, { headers: getAuthHeaders() });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) throw new Error(json?.error || 'Failed to load messages');
+  return json.data;
+}
+/** Adds a message for everyone assigned to the lead; returns the whole history. */
+async function apiAddMessage(source: LeadSource, leadId: string, message: string): Promise<LeadMessage[]> {
+  const res = await fetch(`${API_BASE}/messages`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ source, leadId, message }) });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) throw new Error(json?.error || "Couldn't save the message");
+  return json.data;
+}
+
 export const salesTrackerApi = {
   getLeads: apiGetLeads,
   saveLead: apiSaveLead,
   deleteLead: apiDeleteLead,
-  deleteAllLeads: apiDeleteAllLeads,
   getAssignments: apiGetAssignments,
   assignLead: apiAssignLead,
   getFollowUps: apiGetFollowUps,
+  getMessages: apiGetMessages,
+  addMessage: apiAddMessage,
 };

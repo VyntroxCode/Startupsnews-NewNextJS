@@ -64,20 +64,14 @@ export class SalesTrackerRepository {
     return saved;
   }
 
-  /** Also drops the lead's people, departments and follow-ups (sales_lead_assignments /
-   * sales_lead_departments / sales_lead_followups), so it leaves every assignee's My Leads list
-   * with it. */
+  /** Also drops the lead's people, departments, follow-ups and admin messages
+   * (sales_lead_assignments / sales_lead_departments / sales_lead_followups / sales_lead_messages),
+   * so it leaves every assignee's My Leads list with it. */
   async deleteLead(id: string): Promise<void> {
     await query('DELETE FROM sales_leads WHERE id = ?', [id]);
     await query("DELETE FROM sales_lead_assignments WHERE lead_source = 'lead' AND lead_id = ?", [id]);
     await query("DELETE FROM sales_lead_departments WHERE lead_source = 'lead' AND lead_id = ?", [id]);
     await query("DELETE FROM sales_lead_followups WHERE lead_source = 'lead' AND lead_id = ?", [id]);
-  }
-
-  async deleteAllLeads(): Promise<void> {
-    await query('DELETE FROM sales_leads', []);
-    await query("DELETE FROM sales_lead_assignments WHERE lead_source = 'lead'", []);
-    await query("DELETE FROM sales_lead_departments WHERE lead_source = 'lead'", []);
-    await query("DELETE FROM sales_lead_followups WHERE lead_source = 'lead'", []);
+    await query("DELETE FROM sales_lead_messages WHERE lead_source = 'lead' AND lead_id = ?", [id]);
   }
 }

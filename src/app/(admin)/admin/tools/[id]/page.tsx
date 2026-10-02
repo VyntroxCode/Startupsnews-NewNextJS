@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import Link from 'next/link';
+import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Tool {
   id: number;
@@ -48,19 +49,17 @@ export default function ToolViewPage() {
             href="/admin/tools"
             style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: '#64748b', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500 }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
+            <ChevronLeft size={16} aria-hidden />
              Tools
           </Link>
-          <span style={{ color: '#cbd5e1' }}>›</span>
+          <ChevronRight size={14} color="#cbd5e1" aria-hidden />
           <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a' }}>{tool?.name ?? '…'}</span>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
             <button
               onClick={() => window.open(`/api/admin/tools/${id}`, '_blank')}
-              style={{ padding: '0.45rem 1rem', background: 'linear-gradient(135deg,#6366f1,#4f46e5)', color: 'white', border: 'none', borderRadius: '7px', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer' }}
+              style={{ padding: '0.45rem 1rem', background: 'linear-gradient(135deg,#6366f1,#4f46e5)', color: 'white', border: 'none', borderRadius: '7px', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
             >
-              Open full screen ↗
+              Open full screen <ArrowUpRight size={14} aria-hidden />
             </button>
             <button
               onClick={() => router.push('/admin/tools')}

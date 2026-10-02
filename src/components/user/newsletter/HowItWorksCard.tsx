@@ -1,12 +1,12 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { CalendarIcon, MailboxIcon, TargetIcon } from './icons';
+import { RiCalendarScheduleLine, RiEditLine, RiFocus3Line, RiInformationLine } from '@remixicon/react';
 
 const STEPS = [
-  { icon: <CalendarIcon />, text: 'Your Morning Signal arrives daily at 8 AM in your timezone.' },
-  { icon: <TargetIcon />, text: 'Stories are drawn from the newsletter categories listed here.' },
-  { icon: <MailboxIcon />, text: 'New categories show up here automatically as they are added.' },
+  { Icon: RiCalendarScheduleLine, text: 'Your Morning Signal arrives daily at 8 AM in your timezone.' },
+  { Icon: RiFocus3Line, text: 'Pick up to 3 newsletter categories, only matching stories are included.' },
+  { Icon: RiEditLine, text: 'Change your preferences anytime; it takes effect next send.' },
 ];
 
 export default function HowItWorksCard() {
@@ -16,34 +16,29 @@ export default function HowItWorksCard() {
     <motion.div
       initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: reducedMotion ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] }}
-      style={{ background: '#fff', borderRadius: 18, border: '1px solid #e5e7eb', padding: '1.25rem', boxShadow: '0 1px 4px rgba(15,23,42,0.04)' }}
+      transition={{ duration: 0.5, delay: reducedMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(15,23,42,0.04)]"
     >
-      <h3 style={{ margin: '0 0 14px', fontSize: '0.875rem', fontWeight: 700, color: '#0f172a' }}>How it works</h3>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {STEPS.map((item, i) => (
-          <motion.div
+      <h3 className="m-0 mb-3 flex items-center gap-2 text-sm font-bold text-slate-900">
+        <RiInformationLine size={17} className="text-slate-400" />
+        How it works
+      </h3>
+      <ol className="m-0 flex list-none flex-col p-0">
+        {STEPS.map(({ Icon, text }, i) => (
+          <motion.li
             key={i}
             initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: reducedMotion ? 0 : 0.4 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              display: 'flex', gap: 12, alignItems: 'flex-start',
-              padding: '10px 0',
-              borderTop: i > 0 ? '1px solid #f1f5f9' : 'none',
-            }}
+            transition={{ duration: 0.35, delay: reducedMotion ? 0 : 0.38 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+            className={`flex items-start gap-3 py-2.5 ${i > 0 ? 'border-t border-slate-100' : ''}`}
           >
-            <span style={{
-              width: 30, height: 30, borderRadius: 9, flexShrink: 0,
-              background: '#fde8f0', color: '#ee1761',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {item.icon}
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#fde8f0] text-[#ee1761]">
+              <Icon size={16} />
             </span>
-            <p style={{ margin: '5px 0 0', fontSize: '0.8125rem', color: '#64748b', lineHeight: 1.5 }}>{item.text}</p>
-          </motion.div>
+            <p className="m-0 pt-1 text-[13px] leading-normal text-slate-500">{text}</p>
+          </motion.li>
         ))}
-      </div>
+      </ol>
     </motion.div>
   );
 }

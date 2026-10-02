@@ -21,13 +21,14 @@ export async function GET(request: NextRequest) {
     }
 
     const { month, from, to } = monthRange(request.nextUrl.searchParams.get('month'));
-    const [punch, calendar, policy, regularizations, regUsage, allHolidays] = await Promise.all([
+    const [punch, calendar, policy, regularizations, regUsage, allHolidays, allLeave] = await Promise.all([
       hrToolService.getPunchByEmployee(employee.id),
       hrToolService.getAttendanceForEmployeeInRange(employee.id, from, to),
       hrToolService.getPolicySummary(),
       hrToolService.getRegularizationsForEmployee(employee.id),
       hrToolService.getRegularizationUsage(employee.id),
       hrToolService.getHolidays(),
+      hrToolService.getLeaveRequestsForEmployee(employee.id),
     ]);
     // Same admin Holiday calendar shown in the Employee Panel's attendance widget — this route
     // feeds the same shared <AttendanceWidget> for the Publisher/Event Admin's own attendance tab.
@@ -58,6 +59,10 @@ export async function GET(request: NextRequest) {
           fullDayMinWorkedHours: policy.fullDayMinWorkedHours,
         },
         regularizations,
+        // Approved leave overlapping this month, so the calendar can mark leave days.
+        leaves: allLeave
+          .filter((l) => l.status === 'approved' && l.type !== 'WFH' && l.from <= to && l.to >= from)
+          .map((l) => ({ from: l.from, to: l.to, type: l.type, halfDay: l.halfDay || null })),
         regularizationPolicy: { windowDays: policy.regularizationWindowDays, monthlyQuota: regUsage.quota, usedThisMonth: regUsage.used, cycleFrom: regUsage.from, cycleTo: regUsage.to },
         // Tells the widget whether to ask the browser for location before punching.
         geofence: {

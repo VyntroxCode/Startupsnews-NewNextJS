@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -22,6 +22,51 @@ import { Extension } from '@tiptap/core';
 import { normalizeEditorHtml } from '@/shared/utils/editor-html';
 import { getAdminToken } from '@/lib/admin-auth';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Bold,
+  ClipboardPaste,
+  Code,
+  Copyright,
+  FileUp,
+  Heading1,
+  Heading2,
+  Heading3,
+  Heading4,
+  Highlighter,
+  ImageIcon,
+  Italic,
+  Link2,
+  LinkIcon,
+  List,
+  ListIndentDecrease,
+  ListIndentIncrease,
+  ListOrdered,
+  ListTodo,
+  Minus,
+  Pilcrow,
+  Plus,
+  Quote,
+  Redo2,
+  RemoveFormatting,
+  SquareCode,
+  SquarePlay,
+  Strikethrough,
+  SubscriptIcon,
+  SuperscriptIcon,
+  Table,
+  TextAlignCenter,
+  TextAlignEnd,
+  TextAlignJustify,
+  TextAlignStart,
+  Trash2,
+  UnderlineIcon,
+  Undo2,
+  X,
+} from 'lucide-react';
 
 /* ─── HTML sanitizer + structural converter for paste/upload ───
    1. Strips dangerous content (scripts, event handlers)
@@ -357,7 +402,13 @@ export interface RichTextEditorClientProps {
   onChange: (value: string) => void;
   placeholder?: string;
   minHeight?: number;
+  /** Raw HTML to import once, through the same conversion as "Upload HTML"
+   *  (e.g. an article handed over from Content Studio). */
+  importHtml?: string;
 }
+
+/** Shared Lucide props for toolbar icons — 14px matches the old glyph/SVG size at 12px text. */
+const ICON = { size: 14, strokeWidth: 2, 'aria-hidden': true } as const;
 
 /* ═══════════════════════════════════════════════════════════════════
    Toolbar Button
@@ -419,7 +470,7 @@ function ColorPicker({ currentColor, onSelect, label }: {
         style={{ fontSize: 14 }}
       >
         <span style={{ borderBottom: `3px solid ${currentColor || '#000'}`, paddingBottom: 1 }}>
-          {label === 'Text Color' ? 'A' : '█'}
+          {label === 'Text Color' ? 'A' : <Highlighter {...ICON} />}
         </span>
       </button>
       {open && (
@@ -490,7 +541,7 @@ function FontSizePicker({ editor }: { editor: ReturnType<typeof useEditor> }) {
         title="Decrease font size"
         onMouseDown={(e) => { e.preventDefault(); decrease(); }}
         style={{ padding: '4px 6px', fontWeight: 700, fontSize: 14 }}
-      >−</button>
+      ><Minus {...ICON} /></button>
       <select
         className="tiptap-select"
         title="Font Size"
@@ -517,7 +568,7 @@ function FontSizePicker({ editor }: { editor: ReturnType<typeof useEditor> }) {
         title="Increase font size"
         onMouseDown={(e) => { e.preventDefault(); increase(); }}
         style={{ padding: '4px 6px', fontWeight: 700, fontSize: 14 }}
-      >+</button>
+      ><Plus {...ICON} /></button>
     </div>
   );
 }
@@ -574,28 +625,28 @@ function MenuBar({ editor, onImageUpload, onHtmlUpload, onPasteHtml }: { editor:
       {/* ── Row 1: Main formatting ── */}
       <div className="tiptap-toolbar-row">
         {/* Undo / Redo */}
-        <Btn disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)">↩</Btn>
-        <Btn disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)">↪</Btn>
+        <Btn disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)"><Undo2 {...ICON} /></Btn>
+        <Btn disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)"><Redo2 {...ICON} /></Btn>
 
         <Sep />
 
         {/* Headings */}
-        <Btn active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1">H1</Btn>
-        <Btn active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading 2">H2</Btn>
-        <Btn active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} title="Heading 3">H3</Btn>
-        <Btn active={editor.isActive('heading', { level: 4 })} onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()} title="Heading 4">H4</Btn>
-        <Btn active={editor.isActive('paragraph')} onClick={() => editor.chain().focus().setParagraph().run()} title="Paragraph">¶</Btn>
+        <Btn active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1"><Heading1 {...ICON} /></Btn>
+        <Btn active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading 2"><Heading2 {...ICON} /></Btn>
+        <Btn active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} title="Heading 3"><Heading3 {...ICON} /></Btn>
+        <Btn active={editor.isActive('heading', { level: 4 })} onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()} title="Heading 4"><Heading4 {...ICON} /></Btn>
+        <Btn active={editor.isActive('paragraph')} onClick={() => editor.chain().focus().setParagraph().run()} title="Paragraph"><Pilcrow {...ICON} /></Btn>
 
         <Sep />
 
         {/* Text formatting */}
-        <Btn active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold (Ctrl+B)"><strong>B</strong></Btn>
-        <Btn active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic (Ctrl+I)"><em>I</em></Btn>
-        <Btn active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Underline (Ctrl+U)"><u>U</u></Btn>
-        <Btn active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} title="Strikethrough"><s>S</s></Btn>
-        <Btn active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()} title="Inline Code">&lt;/&gt;</Btn>
-        <Btn active={editor.isActive('subscript')} onClick={() => editor.chain().focus().toggleSubscript().run()} title="Subscript">X₂</Btn>
-        <Btn active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()} title="Superscript">X²</Btn>
+        <Btn active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold (Ctrl+B)"><Bold {...ICON} /></Btn>
+        <Btn active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic (Ctrl+I)"><Italic {...ICON} /></Btn>
+        <Btn active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Underline (Ctrl+U)"><UnderlineIcon {...ICON} /></Btn>
+        <Btn active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} title="Strikethrough"><Strikethrough {...ICON} /></Btn>
+        <Btn active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()} title="Inline Code"><Code {...ICON} /></Btn>
+        <Btn active={editor.isActive('subscript')} onClick={() => editor.chain().focus().toggleSubscript().run()} title="Subscript"><SubscriptIcon {...ICON} /></Btn>
+        <Btn active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()} title="Superscript"><SuperscriptIcon {...ICON} /></Btn>
 
         <Sep />
 
@@ -620,46 +671,46 @@ function MenuBar({ editor, onImageUpload, onHtmlUpload, onPasteHtml }: { editor:
       {/* ── Row 2: Structure ── */}
       <div className="tiptap-toolbar-row">
         {/* Lists */}
-        <Btn active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Bullet List">• List</Btn>
-        <Btn active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Ordered List">1. List</Btn>
-        <Btn active={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()} title="Task List">☑ Tasks</Btn>
+        <Btn active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Bullet List"><List {...ICON} /> List</Btn>
+        <Btn active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Ordered List"><ListOrdered {...ICON} /> List</Btn>
+        <Btn active={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()} title="Task List"><ListTodo {...ICON} /> Tasks</Btn>
 
         <Sep />
 
         {/* Indent / Outdent */}
-        <Btn onClick={() => editor.chain().focus().indent().run()} title="Indent (Tab)">⇥ Indent</Btn>
-        <Btn onClick={() => editor.chain().focus().outdent().run()} title="Outdent (Shift+Tab)">⇤ Outdent</Btn>
+        <Btn onClick={() => editor.chain().focus().indent().run()} title="Indent (Tab)"><ListIndentIncrease {...ICON} /> Indent</Btn>
+        <Btn onClick={() => editor.chain().focus().outdent().run()} title="Outdent (Shift+Tab)"><ListIndentDecrease {...ICON} /> Outdent</Btn>
 
         <Sep />
 
         {/* Alignment */}
         <Btn active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()} title="Align Left">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2" rx="1"/><rect x="0" y="5" width="10" height="2" rx="1"/><rect x="0" y="9" width="14" height="2" rx="1"/><rect x="0" y="11" width="8" height="2" rx="1"/></svg>
+          <TextAlignStart {...ICON} />
         </Btn>
         <Btn active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} title="Align Center">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2" rx="1"/><rect x="2" y="5" width="10" height="2" rx="1"/><rect x="0" y="9" width="14" height="2" rx="1"/><rect x="3" y="11" width="8" height="2" rx="1"/></svg>
+          <TextAlignCenter {...ICON} />
         </Btn>
         <Btn active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="Align Right">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2" rx="1"/><rect x="4" y="5" width="10" height="2" rx="1"/><rect x="0" y="9" width="14" height="2" rx="1"/><rect x="6" y="11" width="8" height="2" rx="1"/></svg>
+          <TextAlignEnd {...ICON} />
         </Btn>
         <Btn active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="Justify">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="1" width="14" height="2" rx="1"/><rect x="0" y="5" width="14" height="2" rx="1"/><rect x="0" y="9" width="14" height="2" rx="1"/><rect x="0" y="11" width="14" height="2" rx="1"/></svg>
+          <TextAlignJustify {...ICON} />
         </Btn>
 
         <Sep />
 
         {/* Block elements */}
-        <Btn active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} title="Blockquote">❝ Quote</Btn>
-        <Btn active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="Code Block">{'{ }'}</Btn>
-        <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal Rule">― Line</Btn>
+        <Btn active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} title="Blockquote"><Quote {...ICON} /> Quote</Btn>
+        <Btn active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="Code Block"><SquareCode {...ICON} /></Btn>
+        <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal Rule"><Minus {...ICON} /> Line</Btn>
 
         <Sep />
 
         {/* Media & Table */}
-        <Btn active={editor.isActive('link')} onClick={addLink} title="Insert Link">🔗 Link</Btn>
+        <Btn active={editor.isActive('link')} onClick={addLink} title="Insert Link"><LinkIcon {...ICON} /> Link</Btn>
         {/* Image: file upload takes priority, URL prompt as fallback */}
         <label className="tiptap-btn" title="Upload Image" style={{ cursor: 'pointer', margin: 0 }}>
-          🖼 Image
+          <ImageIcon {...ICON} /> Image
           <input
             type="file"
             accept="image/*,.webp"
@@ -673,21 +724,21 @@ function MenuBar({ editor, onImageUpload, onHtmlUpload, onPasteHtml }: { editor:
             }}
           />
         </label>
-        <Btn onClick={addImageUrl} title="Insert Image by URL">🔗 Img URL</Btn>
-        <Btn onClick={editImageCredit} title="Add or edit the credit of the selected image">© Credit</Btn>
-        <Btn onClick={addYoutube} title="Embed YouTube">▶ YouTube</Btn>
-        <Btn onClick={insertTable} title="Insert Table">⊞ Table</Btn>
+        <Btn onClick={addImageUrl} title="Insert Image by URL"><Link2 {...ICON} /> Img URL</Btn>
+        <Btn onClick={editImageCredit} title="Add or edit the credit of the selected image"><Copyright {...ICON} /> Credit</Btn>
+        <Btn onClick={addYoutube} title="Embed YouTube"><SquarePlay {...ICON} /> YouTube</Btn>
+        <Btn onClick={insertTable} title="Insert Table"><Table {...ICON} /> Table</Btn>
 
         <Sep />
 
         {/* Clear */}
-        <Btn onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} title="Clear Formatting">✕ Clear</Btn>
+        <Btn onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} title="Clear Formatting"><RemoveFormatting {...ICON} /> Clear</Btn>
 
         <Sep />
 
         {/* HTML Upload */}
         <label className="tiptap-btn" title="Upload HTML file — replaces editor content" style={{ cursor: 'pointer', margin: 0 }}>
-          ⬆ HTML
+          <FileUp {...ICON} /> HTML
           <input
             type="file"
             accept=".html,.htm"
@@ -701,25 +752,25 @@ function MenuBar({ editor, onImageUpload, onHtmlUpload, onPasteHtml }: { editor:
             }}
           />
         </label>
-        <Btn onClick={onPasteHtml} title="Paste HTML — opens a text area to paste raw HTML">📋 Paste HTML</Btn>
+        <Btn onClick={onPasteHtml} title="Paste HTML — opens a text area to paste raw HTML"><ClipboardPaste {...ICON} /> Paste HTML</Btn>
       </div>
 
       {/* ── Table sub-toolbar (only when cursor is inside a table) ── */}
       {editor.isActive('table') && (
         <div className="tiptap-toolbar-row tiptap-table-bar">
           <span style={{ fontSize: 11, color: '#64748b', marginRight: 4 }}>Table:</span>
-          <Btn onClick={() => editor.chain().focus().addColumnBefore().run()} title="Add Column Before">+ Col ←</Btn>
-          <Btn onClick={() => editor.chain().focus().addColumnAfter().run()} title="Add Column After">+ Col →</Btn>
-          <Btn onClick={() => editor.chain().focus().deleteColumn().run()} title="Delete Column">− Col</Btn>
+          <Btn onClick={() => editor.chain().focus().addColumnBefore().run()} title="Add Column Before"><Plus {...ICON} /> Col <ArrowLeft {...ICON} /></Btn>
+          <Btn onClick={() => editor.chain().focus().addColumnAfter().run()} title="Add Column After"><Plus {...ICON} /> Col <ArrowRight {...ICON} /></Btn>
+          <Btn onClick={() => editor.chain().focus().deleteColumn().run()} title="Delete Column"><Minus {...ICON} /> Col</Btn>
           <Sep />
-          <Btn onClick={() => editor.chain().focus().addRowBefore().run()} title="Add Row Before">+ Row ↑</Btn>
-          <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title="Add Row After">+ Row ↓</Btn>
-          <Btn onClick={() => editor.chain().focus().deleteRow().run()} title="Delete Row">− Row</Btn>
+          <Btn onClick={() => editor.chain().focus().addRowBefore().run()} title="Add Row Before"><Plus {...ICON} /> Row <ArrowUp {...ICON} /></Btn>
+          <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title="Add Row After"><Plus {...ICON} /> Row <ArrowDown {...ICON} /></Btn>
+          <Btn onClick={() => editor.chain().focus().deleteRow().run()} title="Delete Row"><Minus {...ICON} /> Row</Btn>
           <Sep />
           <Btn onClick={() => editor.chain().focus().mergeCells().run()} title="Merge Cells">Merge</Btn>
           <Btn onClick={() => editor.chain().focus().splitCell().run()} title="Split Cell">Split</Btn>
           <Sep />
-          <Btn onClick={() => editor.chain().focus().deleteTable().run()} title="Delete Table" style={{ color: '#e53e3e' }}>🗑 Table</Btn>
+          <Btn onClick={() => editor.chain().focus().deleteTable().run()} title="Delete Table" style={{ color: '#e53e3e' }}><Trash2 {...ICON} /> Table</Btn>
         </div>
       )}
     </div>
@@ -734,6 +785,7 @@ export default function RichTextEditorClient({
   onChange,
   placeholder = 'Write here...',
   minHeight = 200,
+  importHtml,
 }: RichTextEditorClientProps) {
   const safeInitialContent = normalizeEditorHtml(value);
   const [imageUploading, setImageUploading] = useState(false);
@@ -882,6 +934,17 @@ export default function RichTextEditorClient({
     setHtmlModalText('');
   }, [editor, htmlModalText, onChange]);
 
+  const importedRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!editor || editor.isDestroyed || !importHtml || importedRef.current === importHtml) return;
+    importedRef.current = importHtml;
+    const sanitized = sanitizeHtmlForPaste(importHtml);
+    const css = extractContentCss(importHtml);
+    if (css) setInjectedCss(css);
+    editor.commands.setContent(sanitized, { emitUpdate: false });
+    onChange(sanitized);
+  }, [editor, importHtml, onChange]);
+
   const charCount = editor?.storage.characterCount;
 
   return (
@@ -899,9 +962,9 @@ export default function RichTextEditorClient({
       {editor && (
         <BubbleMenu editor={editor}>
           <div className="tiptap-bubble">
-            <Btn active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold"><strong>B</strong></Btn>
-            <Btn active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic"><em>I</em></Btn>
-            <Btn active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Underline"><u>U</u></Btn>
+            <Btn active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold"><Bold {...ICON} /></Btn>
+            <Btn active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic"><Italic {...ICON} /></Btn>
+            <Btn active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Underline"><UnderlineIcon {...ICON} /></Btn>
             <Btn active={editor.isActive('link')} onClick={() => {
               const prev = editor.getAttributes('link').href || '';
               const url = window.prompt('URL', prev);
@@ -913,7 +976,7 @@ export default function RichTextEditorClient({
               const rel = isNofollow ? 'noopener noreferrer nofollow' : 'noopener noreferrer';
               
               editor.chain().focus().extendMarkRange('link').setLink({ href: url, rel }).run();
-            }} title="Link">🔗</Btn>
+            }} title="Link"><LinkIcon {...ICON} /></Btn>
           </div>
         </BubbleMenu>
       )}
@@ -935,7 +998,7 @@ export default function RichTextEditorClient({
           <div className="tiptap-html-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="tiptap-html-modal-header">
               <span>Paste HTML</span>
-              <button type="button" className="tiptap-html-modal-close" onClick={() => { setHtmlModalOpen(false); setHtmlModalPreview(null); }}>✕</button>
+              <button type="button" className="tiptap-html-modal-close" onClick={() => { setHtmlModalOpen(false); setHtmlModalPreview(null); }} aria-label="Close"><X size={16} strokeWidth={2} aria-hidden /></button>
             </div>
             <textarea
               className="tiptap-html-modal-textarea"
@@ -1004,6 +1067,9 @@ const EDITOR_STYLES = `
 
 /* Button */
 .tiptap-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 4px 7px;
   border: 1px solid transparent;
   border-radius: 4px;

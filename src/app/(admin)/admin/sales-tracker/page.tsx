@@ -10,13 +10,14 @@ import SummaryCard from '@/components/admin/sales-tracker/SummaryCard';
 import PageLeadsKpis from '@/components/admin/sales-tracker/PageLeadsKpis';
 import { assignmentKey, useSalesTrackerData } from '@/components/admin/sales-tracker/useSalesTrackerData';
 import { emptyLead } from '@/components/admin/sales-tracker/utils';
+import { salesTrackerApi } from '@/components/admin/sales-tracker/api';
 import type { SalesLead, UnifiedLeadRow } from '@/components/admin/sales-tracker/types';
 import { assignmentToDraft, type LeadAssignmentDraft, sameAssignmentDraft } from '@/modules/lead-assignments/domain/types';
 
 export default function SalesTrackerPage() {
   const {
     leads, ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
-    saveLead, deleteLead, deleteAllLeads, assignLead, applyEnsEnquiryUpdate,
+    saveLead, deleteLead, assignLead, applyEnsEnquiryUpdate,
   } = useSalesTrackerData();
   const [activeLead, setActiveLead] = useState<SalesLead | null>(null);
   // Whether LeadFormModal opens unlocked. Existing leads open read-only (row click / View) unless
@@ -33,12 +34,19 @@ export default function SalesTrackerPage() {
   const [jumpToken, setJumpToken] = useState(0);
 
   // The lead is saved first (a new lead needs its row before it can be assigned), then its
-  // departments and people, only if they changed. An assignment error keeps the dialog open with its
-  // message; saving again is safe (the lead save is an upsert, the assignment save replaces).
-  async function handleSave(lead: SalesLead, assignmentDraft: LeadAssignmentDraft) {
+  // departments and people, only if they changed, then the admin's message to them (it needs the
+  // people stored first). An error keeps the dialog open with its message; saving again is safe (the
+  // lead save is an upsert, the assignment save replaces, and the message is only added once it
+  // gets through).
+  async function handleSave(lead: SalesLead, assignmentDraft: LeadAssignmentDraft, message: string) {
     const saved = await saveLead(lead);
     const current = assignmentToDraft(assignments[assignmentKey('lead', saved.id)]);
     if (!sameAssignmentDraft(assignmentDraft, current)) await assignLead('lead', saved.id, assignmentDraft);
+    if (message) {
+      try { await salesTrackerApi.addMessage('lead', saved.id, message); } catch (err) {
+        throw new Error(`Lead saved, but the message wasn't: ${err instanceof Error ? err.message : 'try again'}`);
+      }
+    }
     setActiveLead(null);
   }
 
@@ -108,7 +116,6 @@ export default function SalesTrackerPage() {
           assignments={assignments}
           onEdit={handleRowEdit}
           onDelete={deleteLead}
-          onDeleteAll={deleteAllLeads}
           pendingOnly={pendingOnly}
           onClearPendingOnly={() => setPendingOnly(false)}
           filterPageType={pageFilter}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getAdminToken } from '@/lib/admin-auth';
+import { Download, X } from 'lucide-react';
 
 interface ImageUploadProps {
   value: string;
@@ -258,8 +259,9 @@ export default function ImageUpload({
             }}
             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ef4444'; }}
             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#dc2626'; }}
+            aria-label="Remove image"
           >
-            ×
+            <X size={14} strokeWidth={2.5} aria-hidden />
           </button>
         </div>
       )}
@@ -334,7 +336,8 @@ export default function ImageUpload({
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.color = '#6366f1'; }}
           onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#4a5568'; }}
         >
-          ⬇ Download image
+          <Download size={14} strokeWidth={2} aria-hidden />
+          Download image
         </button>
       )}
     </div>

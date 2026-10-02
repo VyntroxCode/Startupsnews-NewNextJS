@@ -1,9 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CalendarDays, X } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell, { type ModalAction } from '../ModalShell';
 import { hrApi, type OffboardingListResult } from '../api';
+import AttendanceCalendar from './AttendanceCalendar';
+import { payrollMonthKeyForDate } from '@/modules/hr-tool/utils/time';
 import { addDays, initials, todayStr } from '../utils';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import type { HrEmployee } from '../types';
@@ -471,6 +474,8 @@ function CaseModalBody({ detail, employee, settings, history, error, busy, run, 
 
       {isDecided(c.status) && (
         <>
+          <SectionTitle>Attendance</SectionTitle>
+          <ExitAttendance c={c} />
           <SectionTitle>Clearance checklist</SectionTitle>
           <ClearanceSection items={detail.clearance} editable={workable} busy={busy} run={run} />
           <SectionTitle>Handover</SectionTitle>
@@ -494,6 +499,35 @@ function CaseModalBody({ detail, employee, settings, history, error, busy, run, 
 }
 
 /** Which list tab a case shows under — the same split as Offboarding's `groups`. */
+/** The leaver's attendance calendar, shown inside the exit window — a leaver drops out of the
+ * Attendance page's lists once they've gone, so this is where HR looks them up. Opens on the salary
+ * month of the last working day (today's if that day hasn't come yet); days after it show as "Not
+ * employed". Same day ledger as payroll, so it matches their last payslip / Full & Final. */
+function ExitAttendance({ c }: { c: OffboardingCase }) {
+  const { state } = useHrTool();
+  const [open, setOpen] = useState(false);
+  const today = todayStr();
+  const anchor = c.approvedLwd && c.approvedLwd < today ? c.approvedLwd : today;
+  // A run that actually paid the last working day wins (e.g. 31 Aug 2026 was paid in August's
+  // 1–31 Aug run, before the 26th→25th change); otherwise the cycle the date falls in today.
+  const paidIn = state.payrollRuns.find((r) => r.status === 'run' && r.periodFrom && r.periodTo && r.periodFrom <= anchor && anchor <= r.periodTo);
+  const month = paidIn?.month || payrollMonthKeyForDate(anchor, state.rules);
+  if (!open) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <button className="btn sm" onClick={() => setOpen(true)}><CalendarDays className="size-3.5 shrink-0" aria-hidden />View attendance calendar</button>
+        <span className="meta">Opens on the salary month of the last working day ({fmt(c.approvedLwd)}). Use the arrows for earlier months.</span>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="mb-2 flex justify-end"><button className="btn sm ghost" onClick={() => setOpen(false)}>Hide calendar</button></div>
+      <AttendanceCalendar employeeId={c.employeeId} initialMonth={month} />
+    </div>
+  );
+}
+
 function tabForCase(c: OffboardingCase, today: string): Tab {
   if (c.status === 'pending') return 'requests';
   if (hasLeft(c, today)) return 'exited';
@@ -604,8 +638,8 @@ function ClearanceRow({ item, editable, busy, run }: {
           {/* Fixed-width slot so rows line up whether or not the remove button shows. */}
           <div className="w-8 text-right">
             {item.status !== 'done' && !item.deductionAmount && (
-              <button className="btn sm ghost" disabled={busy} title="Remove from this exit's checklist"
-                onClick={() => run({ action: 'clearance-remove', itemId: item.id }, `Remove "${item.item}" from this checklist?`)}>×</button>
+              <button className="btn sm ghost" disabled={busy} title="Remove from this exit's checklist" aria-label="Remove from this exit's checklist"
+                onClick={() => run({ action: 'clearance-remove', itemId: item.id }, `Remove "${item.item}" from this checklist?`)}><X className="size-3.5 shrink-0" aria-hidden /></button>
             )}
           </div>
         </>
@@ -795,7 +829,7 @@ function FnfSection({ c, employee, clearance, busy, run }: {
                 </td>
                 {draft && (
                   <td className="text-right">
-                    {l.source === 'manual' && <button className="btn sm ghost" title="Remove line" onClick={() => setLines(lines.filter((_, j) => j !== i))}>×</button>}
+                    {l.source === 'manual' && <button className="btn sm ghost" title="Remove line" aria-label="Remove line" onClick={() => setLines(lines.filter((_, j) => j !== i))}><X className="size-3.5 shrink-0" aria-hidden /></button>}
                   </td>
                 )}
               </tr>

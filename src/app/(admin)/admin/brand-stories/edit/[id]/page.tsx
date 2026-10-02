@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { AlarmClock, ArrowLeft, CalendarDays, Save } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { getAdminToken, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
@@ -311,8 +312,8 @@ export default function AdminBrandStoryEditPage() {
             <div className="bg-red-100 text-red-800 px-4 py-3 rounded-lg mb-6 text-sm border border-red-200">
               <strong>Error:</strong> {error}
             </div>
-            <Link href="/admin/brand-stories" className="text-indigo-600 hover:text-indigo-800 text-sm">
-              ← Back to Brand Stories
+            <Link href="/admin/brand-stories" className="text-indigo-600 hover:text-indigo-800 text-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              <ArrowLeft size={14} aria-hidden />Back to Brand Stories
             </Link>
           </div>
         </AdminErrorBoundary>
@@ -322,8 +323,8 @@ export default function AdminBrandStoryEditPage() {
       <AdminErrorBoundary>
         <div className="admin-content-area p-6 text-center text-slate-500">
           Brand story not found.
-          <Link href="/admin/brand-stories" className="text-indigo-600 hover:text-indigo-800 text-sm block mt-4">
-            ← Back to Brand Stories
+          <Link href="/admin/brand-stories" className="text-indigo-600 hover:text-indigo-800 text-sm block mt-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+            <ArrowLeft size={14} aria-hidden />Back to Brand Stories
           </Link>
         </div>
       </AdminErrorBoundary>
@@ -335,8 +336,8 @@ export default function AdminBrandStoryEditPage() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <Link href="/admin/brand-stories" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-block', marginBottom: '1rem' }}>
-              ← Back to Brand Stories
+            <Link href="/admin/brand-stories" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1rem' }}>
+              <ArrowLeft size={14} aria-hidden />Back to Brand Stories
             </Link>
             <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem',marginBottom: '1rem', color: '#0f172a', letterSpacing: '-0.02em' }}>
               Edit Brand Story: {story.title}
@@ -548,7 +549,7 @@ export default function AdminBrandStoryEditPage() {
 
               {/* Publish settings */}
               <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <p style={{ margin: '0 0 1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.9rem' }}>📅 Publish Settings</p>
+                <p style={{ margin: '0 0 1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}><CalendarDays size={16} aria-hidden />Publish Settings</p>
 
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
                   <input
@@ -575,8 +576,8 @@ export default function AdminBrandStoryEditPage() {
 
                 {/* Show current publish date for already-published brand stories */}
                 {isActive && !scheduleEnabled && publishAt && (
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#64748b' }}>
-                    📅 Published on: {new Date(publishAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                    <CalendarDays size={14} aria-hidden />Published on: {new Date(publishAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                   </p>
                 )}
 
@@ -609,8 +610,8 @@ export default function AdminBrandStoryEditPage() {
                             background: '#fffbeb',
                           }}
                         />
-                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#92400e' }}>
-                          ⏰ Brand story will automatically go live at this date/time. It will be hidden until then.
+                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <AlarmClock size={13} style={{ flexShrink: 0 }} aria-hidden />Brand story will automatically go live at this date/time. It will be hidden until then.
                         </p>
                       </div>
                     )}
@@ -640,9 +641,7 @@ export default function AdminBrandStoryEditPage() {
                 onMouseEnter={(e) => { if (!saving) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(99,102,241,0.4)'; } }}
                 onMouseLeave={(e) => { if (!saving) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.3)'; } }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
+                <Save size={20} strokeWidth={2.5} aria-hidden />
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>

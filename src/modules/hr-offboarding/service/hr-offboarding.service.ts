@@ -1,6 +1,6 @@
 import { HrToolRepository } from '@/modules/hr-tool/repository/hr-tool.repository';
 import type { HrEmployee } from '@/modules/hr-tool/domain/types';
-import { addDaysUTC, nowMysqlDatetime, payrollMonthKeyForDate, payrollPeriodRange, todayStr } from '@/modules/hr-tool/utils/time';
+import { addDaysUTC, nowMysqlDatetime, payrollMonthKeyForDate, payrollPeriodRange, shiftMonthKey, todayStr } from '@/modules/hr-tool/utils/time';
 import { HrToolService } from '@/modules/hr-tool/service/hr-tool.service';
 import { LeadAssignmentsRepository } from '@/modules/lead-assignments/repository/lead-assignments.repository';
 import { LeadAssignmentsService, LeadAssignmentValidationError } from '@/modules/lead-assignments/service/lead-assignments.service';
@@ -28,6 +28,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 /** A last working day further out than this is almost certainly a typo (e.g. 2062 for 2026). */
 const MAX_LWD_AHEAD_DAYS = 365;
+/** Salary cycles one F&F prices (notice start → LWD); a year's notice spans at most 14. */
+const FNF_MAX_SALARY_CYCLES = 14;
 const MAX_NOTICE_DAYS = 180;
 const CONFLICT = 'This exit was just changed by someone else. Refresh and try again.';
 
@@ -833,10 +835,12 @@ export class HrOffboardingService {
     }) || fnf.lines.some((l) => l.key?.startsWith('clearance:') && !l.overridden && !recoveries.some((i) => `clearance:${i.id}` === l.key));
     if (staleRecovery) return fail('Checklist recoveries changed after this was calculated — click Recalculate, check, then approve.', 409);
 
-    const salary = lineFor('salary');
-    const paidInPayroll = await this.hrRepository.findPayrollEntryForEmployee(fnf.salaryMonth, c.employeeId);
-    if (paidInPayroll && salary && !salary.overridden && salary.amount > 0) {
-      return fail('Payroll for this cycle was run after the F&F was calculated, so their salary is already paid — click Recalculate.', 409);
+    for (const line of fnf.lines) {
+      const month = line.key === 'salary' ? fnf.salaryMonth : line.key?.startsWith('salary:') ? line.key.slice('salary:'.length) : null;
+      if (!month || line.overridden || line.amount <= 0) continue;
+      if (await this.hrRepository.findPayrollEntryForEmployee(month, c.employeeId)) {
+        return fail('Payroll for one of these cycles was run after the F&F was calculated, so that salary is already paid — click Recalculate.', 409);
+      }
     }
     if (!fnf.lines.length) return fail('The settlement has no lines.');
 
@@ -920,24 +924,35 @@ export class HrOffboardingService {
     const monthlySalary = employee.ctc / 12;
     const perDay = monthlySalary / 30;
     const salaryMonth = payrollMonthKeyForDate(lwd, rules);
-    const { from } = payrollPeriodRange(salaryMonth, rules);
     const lines: OffboardingFnfLine[] = [];
     const auto = (key: string, label: string, kind: 'earning' | 'deduction', amount: number): OffboardingFnfLine =>
       ({ key, label: label.slice(0, FNF_LIMITS.labelLength), kind, amount: Math.max(0, Math.round(amount)), source: 'auto' });
 
-    const alreadyPaid = await this.hrRepository.findPayrollEntryForEmployee(salaryMonth, employee.id);
-    if (alreadyPaid) {
-      lines.push(auto('salary', `Salary ${shortDate(from)} – ${shortDate(lwd)}: already paid in that month's payroll`, 'earning', 0));
-    } else {
+    // Payroll holds salary from the cycle the notice started in (see computePayrollForMonth), so the
+    // F&F pays every cycle from there to the LWD's — one line each. A cycle whose payroll already
+    // paid them (run before HR accepted the exit) shows ₹0.
+    const noticeMonth = payrollMonthKeyForDate(c.resignationDate.slice(0, 10), rules);
+    const months: string[] = [];
+    for (let m = noticeMonth < salaryMonth ? noticeMonth : salaryMonth; m <= salaryMonth && months.length < FNF_MAX_SALARY_CYCLES; m = shiftMonthKey(m, 1)) months.push(m);
+    if (months[months.length - 1] !== salaryMonth) return fail('The notice period is too long to settle automatically — add the salary lines by hand.', 409);
+    for (const month of months) {
+      const { from, to } = payrollPeriodRange(month, rules);
+      const final = month === salaryMonth;
+      const key = final ? 'salary' : `salary:${month}`;
+      const range = `${shortDate(from)} – ${shortDate(final ? lwd : to)}`;
+      if (await this.hrRepository.findPayrollEntryForEmployee(month, employee.id)) {
+        lines.push(auto(key, `Salary ${range}: already paid in that month's payroll`, 'earning', 0));
+        continue;
+      }
       const preview = await this.hrTool.computePayrollForMonth(
-        salaryMonth,
+        month,
         [{ credentialId: c.credentialId ?? employee.credentialId ?? -1, name: employee.name, doj: employee.doj }],
         undefined,
         { onlyEmployeeId: employee.id, includeFnfSettled: true },
       );
       const entry = preview.entries.find((e) => e.employeeId === employee.id);
       const paidDays = entry ? Math.round((entry.totalDays - entry.lopDays) * 100) / 100 : 0;
-      lines.push(auto('salary', `Salary ${shortDate(from)} – ${shortDate(lwd)} (${paidDays} paid days)`, 'earning', entry?.monthlyGross ?? 0));
+      lines.push(auto(key, `Salary ${range} (${paidDays} paid days${final ? '' : ', held during notice'})`, 'earning', entry?.monthlyGross ?? 0));
     }
 
     const settings = await this.repository.findSettings();

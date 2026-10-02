@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { CheckIcon, CloseIcon } from './TicketIcons';
+import { CircleCheck, CircleX, Info, type LucideIcon } from 'lucide-react';
+import { CloseIcon } from './TicketIcons';
 
 export type ToastKind = 'success' | 'error' | 'info';
 
@@ -38,31 +39,38 @@ const KIND_CLASSES: Record<ToastKind, string> = {
   info: 'border-slate-200 bg-white text-slate-800',
 };
 
-const DOT_CLASSES: Record<ToastKind, string> = {
-  success: 'bg-emerald-500 text-white',
-  error: 'bg-red-500 text-white',
-  info: 'bg-indigo-500 text-white',
+const ICON_CLASSES: Record<ToastKind, string> = {
+  success: 'text-emerald-500',
+  error: 'text-red-500',
+  info: 'text-indigo-500',
+};
+
+const KIND_ICONS: Record<ToastKind, LucideIcon> = {
+  success: CircleCheck,
+  error: CircleX,
+  info: Info,
 };
 
 export function ToastViewport({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
   if (toasts.length === 0) return null;
   return (
     <div className="pointer-events-none fixed bottom-5 right-5 z-[1400] flex w-[min(360px,calc(100vw-40px))] flex-col gap-2" aria-live="polite" role="status">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          data-toast={t.kind}
-          className={`pointer-events-auto flex items-start gap-3 rounded-md border px-3.5 py-3 text-sm shadow-lg ${KIND_CLASSES[t.kind]}`}
-        >
-          <span className={`mt-0.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${DOT_CLASSES[t.kind]}`}>
-            {t.kind === 'error' ? <CloseIcon size={11} /> : <CheckIcon size={11} />}
-          </span>
-          <span className="flex-1 leading-snug">{t.message}</span>
-          <button type="button" aria-label="Dismiss" className="-mr-1 rounded border-0 bg-transparent p-1 text-slate-400 hover:text-slate-700" onClick={() => onDismiss(t.id)}>
-            <CloseIcon size={12} />
-          </button>
-        </div>
-      ))}
+      {toasts.map((t) => {
+        const KindIcon = KIND_ICONS[t.kind];
+        return (
+          <div
+            key={t.id}
+            data-toast={t.kind}
+            className={`pointer-events-auto flex items-start gap-3 rounded-md border px-3.5 py-3 text-sm shadow-lg ${KIND_CLASSES[t.kind]}`}
+          >
+            <KindIcon className={`mt-0.5 size-5 shrink-0 ${ICON_CLASSES[t.kind]}`} aria-hidden />
+            <span className="flex-1 leading-snug">{t.message}</span>
+            <button type="button" aria-label="Dismiss" className="-mr-1 rounded border-0 bg-transparent p-1 text-slate-400 hover:text-slate-700" onClick={() => onDismiss(t.id)}>
+              <CloseIcon size={12} />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

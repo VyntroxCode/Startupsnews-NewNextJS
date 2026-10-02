@@ -8,7 +8,7 @@ import { hhmmToMinutes, formatTime12h } from '@/modules/hr-tool/utils/lateness';
 import { getAdminUser } from '@/lib/admin-auth';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 import type {
-  HrTeam, HrOrgStructure, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
+  HrTeam, HrOrgStructure, HrEmployee, HrOnboarding, HrAttendanceRecord, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrRules,
   HrAuditLogEntry, HrRole, HrView, HrCompanyProfile,
 } from './types';
@@ -24,7 +24,6 @@ interface HrState {
   employeeCredentials: HrEmployeeCredential[];
   onboarding: HrOnboarding[];
   attendance: HrAttendanceRecord[];
-  attendanceOverrides: Record<string, string>;
   punchLog: Record<string, HrPunch>;
   regularizations: HrRegularization[];
   leaveRequests: HrLeaveRequest[];
@@ -64,7 +63,7 @@ function initialState(): HrState {
   return {
     role: null, view: readStoredView(), currentUser: null, teams: [],
     orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
-    employees: [], employeeCredentials: [], onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
+    employees: [], employeeCredentials: [], onboarding: [], attendance: [], punchLog: {},
     regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
     payrollRun: { month: payrollCycleToRunKey(DEFAULT_RULES), status: 'not_run' }, payrollRuns: [],
     templates: {}, rules: DEFAULT_RULES, auditLog: [], companyProfile: DEFAULT_COMPANY_PROFILE,
@@ -167,17 +166,14 @@ interface HrToolContextValue {
    * whole-list save doesn't write the old status back. */
   applyEmployeeStatusInState: (employeeId: string, status: string) => void;
   persistOnboarding: (v: HrOnboarding[]) => Promise<void>;
-  persistRegularizations: (v: HrRegularization[]) => Promise<void>;
   addRegularizationToState: (r: HrRegularization) => void;
   decideRegularization: (id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) => Promise<boolean>;
-  persistLeaveRequests: (v: HrLeaveRequest[]) => Promise<void>;
+  /** Client-state only: mirrors a leave row the server has ALREADY written (create/decide/cancel). */
+  upsertLeaveRequestInState: (r: HrLeaveRequest) => void;
   persistExpenses: (v: HrExpense[]) => Promise<void>;
   persistTickets: (v: HrTicket[]) => Promise<void>;
   persistRules: (v: HrRules) => Promise<boolean>;
   persistCompanyProfile: (v: HrCompanyProfile) => Promise<void>;
-  persistAttendance: (rec: HrAttendanceRecord) => Promise<void>;
-  persistAttendanceOverride: (o: HrAttendanceOverride) => Promise<void>;
-  persistPunch: (p: HrPunch) => Promise<void>;
   /** Local-state-only: mirrors a punch the server has ALREADY recorded (via hrApi.punch) into
    * punchLog and today's attendance row, so the Today table updates without a bootstrap reload. */
   applyServerPunch: (p: HrPunch) => void;
@@ -204,9 +200,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const data = await hrApi.bootstrap();
-        const attendanceOverrides: Record<string, string> = {};
-        // Both keyed by employee id — never the name, which two employees may share.
-        (data.attendanceOverrides || []).forEach((o) => { attendanceOverrides[o.employeeId + '|' + o.date] = o.status; });
+        // Keyed by employee id — never the name, which two employees may share.
         const punchLog: Record<string, HrPunch> = {};
         (data.punchLog || []).forEach((p) => { punchLog[p.employeeId] = p; });
         const templates: Record<string, { content: string }> = {};
@@ -218,7 +212,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
             ...s,
             teams: data.teams, orgStructure: data.orgStructure, employees: data.employees,
             employeeCredentials: data.employeeCredentials || [],
-            onboarding: data.onboarding, attendance: data.attendance, attendanceOverrides, punchLog,
+            onboarding: data.onboarding, attendance: data.attendance, punchLog,
             regularizations: data.regularizations, leaveRequests: data.leaveRequests, expenses: data.expenses,
             tickets: data.tickets, compliance: data.compliance,
             payrollRun: currentMonthRun || s.payrollRun, payrollRuns: data.payrollRuns || [],
@@ -298,8 +292,6 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     setState((s) => {
       const punchLog = { ...s.punchLog };
       delete punchLog[id];
-      const attendanceOverrides: Record<string, string> = {};
-      Object.entries(s.attendanceOverrides).forEach(([k, v]) => { if (!k.startsWith(id + '|')) attendanceOverrides[k] = v; });
       return {
         ...s,
         employees: s.employees
@@ -313,7 +305,6 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
         teams: s.teams.map((t) => (t.managerId === id ? { ...t, manager: null, managerId: null } : t)),
         onboarding: s.onboarding.filter((o) => o.employeeId !== id),
         attendance: s.attendance.filter((a) => a.employeeId !== id),
-        attendanceOverrides,
         punchLog,
         regularizations: s.regularizations.filter((r) => r.employeeId !== id),
         leaveRequests: s.leaveRequests.filter((l) => l.employeeId !== id),
@@ -326,10 +317,8 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, employees: s.employees.map((e) => (e.id === employeeId ? { ...e, status } : e)) }));
   }, []);
   const persistOnboarding = useCallback(async (v: HrOnboarding[]) => { setState((s) => ({ ...s, onboarding: v })); try { await hrApi.saveOnboarding(v); } catch { warnSaveFailed(); } }, []);
-  const persistRegularizations = useCallback(async (v: HrRegularization[]) => { setState((s) => ({ ...s, regularizations: v })); try { await hrApi.saveRegularizations(v); } catch { warnSaveFailed(); } }, []);
   /** Client-state only. Used after the server has already inserted the row via the validated
-   * endpoint — calling persistRegularizations there would re-PUT the whole table and write it a
-   * second time. */
+   * endpoint (POST /regularizations) — the only way a regularization is created. */
   const addRegularizationToState = useCallback((r: HrRegularization) => {
     setState((s) => ({ ...s, regularizations: [r, ...s.regularizations] }));
   }, []);
@@ -344,7 +333,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const decideRegularization = useCallback(async (id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string): Promise<boolean> => {
     try {
       const res = await hrApi.decideRegularization(id, level, decision, remarks);
-      if (!res.success || !res.data) { warnSaveFailed(); return false; }
+      if (!res.success || !res.data) { if (res.error) alert(res.error); else warnSaveFailed(); return false; }
       const updated = res.data;
       setState((s) => {
         const regularizations = s.regularizations.map((r) => (r.id === id ? updated : r));
@@ -368,29 +357,15 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
       return true;
     } catch { warnSaveFailed(); return false; }
   }, []);
-  const persistLeaveRequests = useCallback(async (v: HrLeaveRequest[]) => { setState((s) => ({ ...s, leaveRequests: v })); try { await hrApi.saveLeaveRequests(v); } catch { warnSaveFailed(); } }, []);
+  const upsertLeaveRequestInState = useCallback((r: HrLeaveRequest) => {
+    setState((s) => ({ ...s, leaveRequests: s.leaveRequests.some((l) => l.id === r.id) ? s.leaveRequests.map((l) => (l.id === r.id ? r : l)) : [r, ...s.leaveRequests] }));
+  }, []);
   const persistExpenses = useCallback(async (v: HrExpense[]) => { setState((s) => ({ ...s, expenses: v })); try { await hrApi.saveExpenses(v); } catch { warnSaveFailed(); } }, []);
   const persistTickets = useCallback(async (v: HrTicket[]) => { setState((s) => ({ ...s, tickets: v })); try { await hrApi.saveTickets(v); } catch { warnSaveFailed(); } }, []);
   // Resolves true only when the server stored the rules, so the Rules page can skip writing an
   // audit entry for a save that failed.
   const persistRules = useCallback(async (v: HrRules) => { setState((s) => ({ ...s, rules: v })); try { await hrApi.saveRules(v); return true; } catch { warnSaveFailed(); return false; } }, []);
   const persistCompanyProfile = useCallback(async (v: HrCompanyProfile) => { setState((s) => ({ ...s, companyProfile: v })); try { await hrApi.saveCompanyProfile(v); } catch { warnSaveFailed(); } }, []);
-  const persistAttendance = useCallback(async (rec: HrAttendanceRecord) => {
-    setState((s) => {
-      const idx = s.attendance.findIndex((a) => a.employeeId === rec.employeeId && a.date === rec.date);
-      const attendance = idx >= 0 ? s.attendance.map((a, i) => (i === idx ? rec : a)) : [...s.attendance, rec];
-      return { ...s, attendance };
-    });
-    try { await hrApi.recordAttendance(rec); } catch { warnSaveFailed(); }
-  }, []);
-  const persistAttendanceOverride = useCallback(async (o: HrAttendanceOverride) => {
-    setState((s) => ({ ...s, attendanceOverrides: { ...s.attendanceOverrides, [o.employeeId + '|' + o.date]: o.status } }));
-    try { await hrApi.recordAttendanceOverride(o); } catch { warnSaveFailed(); }
-  }, []);
-  const persistPunch = useCallback(async (p: HrPunch) => {
-    setState((s) => ({ ...s, punchLog: { ...s.punchLog, [p.employeeId]: p } }));
-    try { await hrApi.recordPunch(p); } catch { warnSaveFailed(); }
-  }, []);
   const applyServerPunch = useCallback((p: HrPunch) => {
     setState((s) => {
       const rec: HrAttendanceRecord = {
@@ -444,7 +419,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
       ...s,
       employees: [{ ...me, manager: null, managerId: null, ctcSplitOverride: null }],
       teams: clearedTeams,
-      onboarding: [], attendance: [], attendanceOverrides: {}, punchLog: {},
+      onboarding: [], attendance: [], punchLog: {},
       regularizations: [], leaveRequests: [], expenses: [], tickets: [],
       payrollRun: { month: s.payrollRun.month, status: 'not_run' }, payrollRuns: [],
     }));
@@ -456,14 +431,14 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const value = useMemo<HrToolContextValue>(() => ({
     state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
-    persistEmployees, applyEmployeeRenameInState, deleteEmployee, applyEmployeeStatusInState, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
-    persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch, applyServerPunch,
+    persistEmployees, applyEmployeeRenameInState, deleteEmployee, applyEmployeeStatusInState, persistOnboarding, upsertLeaveRequestInState, persistExpenses,
+    persistTickets, persistRules, persistCompanyProfile, applyServerPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
     state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
-    persistEmployees, applyEmployeeRenameInState, deleteEmployee, applyEmployeeStatusInState, persistOnboarding, persistRegularizations, persistLeaveRequests, persistExpenses,
-    persistTickets, persistRules, persistCompanyProfile, persistAttendance, persistAttendanceOverride, persistPunch, applyServerPunch,
+    persistEmployees, applyEmployeeRenameInState, deleteEmployee, applyEmployeeStatusInState, persistOnboarding, upsertLeaveRequestInState, persistExpenses,
+    persistTickets, persistRules, persistCompanyProfile, applyServerPunch,
     runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   ]);
 

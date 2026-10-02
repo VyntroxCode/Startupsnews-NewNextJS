@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { getAuthHeaders, getAdminToken, withAdminToken } from '@/lib/admin-auth';
 import { getPresignedUploadUrl } from '@/app/actions/upload-image';
 
@@ -142,8 +143,8 @@ export default function EditAuthorPage() {
   return (
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
-        <Link href="/admin/posts?tab=authors" style={{ color: '#0ea5e9', textDecoration: 'none', display: 'inline-block', marginBottom: '2rem', fontSize: '0.875rem' }}>
-          ← Back to Authors
+        <Link href="/admin/posts?tab=authors" style={{ color: '#0ea5e9', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '2rem', fontSize: '0.875rem' }}>
+          <ArrowLeft size={14} aria-hidden />Back to Authors
         </Link>
         <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Edit Author</h1>
       </div>

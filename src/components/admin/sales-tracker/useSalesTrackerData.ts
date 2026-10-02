@@ -89,16 +89,8 @@ export function useSalesTrackerData() {
     });
   }
 
-  async function deleteAllLeads(): Promise<void> {
-    if (!leads.length) { alert('There are no leads to delete.'); return; }
-    if (!confirm(`Delete ALL ${leads.length} lead(s) from this table? This cannot be undone.`)) return;
-    try { await salesTrackerApi.deleteAllLeads(); } catch { alert('Could not delete leads. Try again.'); return; }
-    setLeads([]);
-    setAssignments((prev) => Object.fromEntries(Object.entries(prev).filter(([, a]) => a.source !== 'lead')));
-  }
-
   return {
     leads, ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
-    saveLead, deleteLead, deleteAllLeads, assignLead, applyEnsEnquiryUpdate,
+    saveLead, deleteLead, assignLead, applyEnsEnquiryUpdate,
   };
 }

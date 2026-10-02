@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { getAuthHeaders, getAdminToken } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 
@@ -204,9 +205,9 @@ export default function CreateEventPage() {
       <div style={{ marginBottom: '2.5rem' }}>
         <Link
           href="/admin/events"
-          style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-block' }}
+          style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
         >
-          ← Back to Events
+          <ArrowLeft size={14} aria-hidden />Back to Events
         </Link>
         <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
           Create New Event
@@ -243,8 +244,8 @@ export default function CreateEventPage() {
           </select>
           <p style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: '#64748b' }}>
             Region not listed?{' '}
-            <a href="/admin/events?tab=regions" target="_blank" style={{ color: '#48bb78', textDecoration: 'none' }}>
-              Add it in Event Regions →
+            <a href="/admin/events?tab=regions" target="_blank" style={{ color: '#48bb78', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              Add it in Event Regions <ArrowRight size={13} aria-hidden />
             </a>
           </p>
         </div>
@@ -298,7 +299,7 @@ export default function CreateEventPage() {
               <img src={formData.imageUrl} alt="Preview" style={{ maxWidth: 300, maxHeight: 200, borderRadius: 4, border: '1px solid #e2e8f0' }} />
               <button type="button" onClick={() => { setFormData((p) => ({ ...p, imageUrl: '' })); setImageFile(null); }}
                 style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#e53e3e', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                ×
+                <X size={14} strokeWidth={2.5} aria-hidden />
               </button>
             </div>
           )}

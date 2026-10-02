@@ -6,7 +6,16 @@
  * todayStr()) so records land on the same "today" the Founder's Attendance view filters by.
  */
 export function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Dev-only payroll testing (scripts/hr-payroll-test): pretend today is this date so a whole
+  // cycle of seeded future days is judged and Run Payroll opens. NEXT_PUBLIC_ so the browser's
+  // own cycle picks (Payroll view) agree with the server. Never set on live.
+  const testToday = process.env.NEXT_PUBLIC_HR_TEST_TODAY;
+  if (testToday && /^\d{4}-\d{2}-\d{2}$/.test(testToday)) return testToday;
+  // The office's calendar day (IST), not the server's. The server runs in UTC, so the plain UTC
+  // date put anything between 00:00 and 05:30 IST on the previous day — a punch, "today" for the
+  // regularization window, and the payroll cycle boundary all read the wrong date for 5½ hours.
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+  return new Date(Date.now() + IST_OFFSET).toISOString().slice(0, 10);
 }
 
 /** Whole days remaining until (positive) or past (negative/zero) a YYYY-MM-DD deadline,
@@ -122,18 +131,12 @@ export function payrollMonthKeyForDate(date: string, rules: { salaryPeriodFrom: 
   return key;
 }
 
-/** The most recently COMPLETED payroll cycle. "Run Payroll" only ever unlocks once a cycle has
- * fully ended — periodEnded = `to <= today`, same boundary computePayrollForMonth uses for
- * canRun — so this is what the Payroll page should actually show and act on: whichever cycle
- * today falls inside (currentPayrollMonthKey) IF that cycle has already ended by that boundary
- * (e.g. today is its last day), otherwise the one before it. Once a cycle has ended it stays
- * pointed at it for that entire following cycle's length, giving the admin weeks — not a handful
- * of days — to check the numbers and re-run as many times as they want before it naturally rolls
- * over again. */
+/** The most recently ENDED payroll cycle — the one the Payroll page acts on. A cycle has ended
+ * only once its last day is over, so this is always the cycle before the one today falls in: for a
+ * 26th→25th period, on 26 Oct–25 Nov it's the 26 Sep–25 Oct cycle (run window 26–30 Oct, then
+ * locked). The page can still switch to the in-progress cycle to preview it. */
 export function payrollCycleToRunKey(rules: { salaryPeriodFrom: number; salaryPeriodTo: number | string }): string {
-  const key = currentPayrollMonthKey(rules);
-  const { to } = payrollPeriodRange(key, rules);
-  return to <= todayStr() ? key : shiftMonthKey(key, -1);
+  return shiftMonthKey(currentPayrollMonthKey(rules), -1);
 }
 
 /** Every "YYYY-MM-DD" date from `from` to `to` inclusive — built entirely from UTC components

@@ -93,7 +93,8 @@ export interface OffboardingFnf {
   deductions: number;
   /** earnings − deductions. Negative = the employee owes the company. */
   net: number;
-  /** Payroll cycle (end-month key) whose salary this F&F pays — payroll skips them for it once approved. */
+  /** Payroll cycle (end-month key) of the LWD — the `salary` line. Earlier cycles held during the
+   * notice are their own `salary:<month>` lines. Payroll skips them for it once approved. */
   salaryMonth: string;
   /** Monthly salary (CTC ÷ 12) and per-day rate (÷ 30) the lines were priced at. */
   monthlySalary: number;

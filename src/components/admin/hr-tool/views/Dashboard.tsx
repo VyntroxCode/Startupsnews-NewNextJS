@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import { StatusBadge, ApprovalBadge, employeeName, initials, rmOf, todayStr, monthKeyToLabel } from '../utils';
 import { computeLeaveBalances } from '@/modules/hr-tool/utils/leave-balance';
@@ -62,7 +63,7 @@ export default function Dashboard() {
         <StatTile label="Probation ending soon" num={probation.length} note="review confirmation" view="directory" onClick={setView} />
       </div>
       <section className="block">
-        <div className="block-head"><h2>Upcoming compliance due dates</h2><button className="btn ghost sm" onClick={() => setView('compliance')}>View calendar →</button></div>
+        <div className="block-head"><h2>Upcoming compliance due dates</h2><button className="btn ghost sm" onClick={() => setView('compliance')}>View calendar<ArrowRight size={13} aria-hidden /></button></div>
         <div className="card">
           <table><thead><tr><th>Task</th><th>Due</th><th>Status</th></tr></thead>
             <tbody>
@@ -75,7 +76,7 @@ export default function Dashboard() {
         </div>
       </section>
       <section className="block">
-        <div className="block-head"><h2>Helpdesk tickets</h2><button className="btn ghost sm" onClick={() => setView('helpdesk')}>Open →</button></div>
+        <div className="block-head"><h2>Helpdesk tickets</h2><button className="btn ghost sm" onClick={() => setView('helpdesk')}>Open<ArrowRight size={13} aria-hidden /></button></div>
         <div className="card pad">
           {state.tickets.map((t) => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
@@ -106,7 +107,7 @@ function ManagerDashboard() {
         <StatTile label="Expenses — awaiting you" num={myPendingExp.length} note="first-level approval" view="expenses" onClick={setView} />
       </div>
       <section className="block">
-        <div className="block-head"><h2>Your team</h2><button className="btn ghost sm" onClick={() => setView('directory')}>Open directory →</button></div>
+        <div className="block-head"><h2>Your team</h2><button className="btn ghost sm" onClick={() => setView('directory')}>Open directory<ArrowRight size={13} aria-hidden /></button></div>
         <div className="card"><table><thead><tr><th>Name</th><th>Designation</th><th>Status</th></tr></thead>
           <tbody>{team.map((e) => (
             <tr key={e.id}><td><div className="row-name"><div className="avatar">{initials(e.name)}</div>{e.name}</div></td><td>{e.designation}</td><td><StatusBadge status={e.status} /></td></tr>
@@ -126,7 +127,8 @@ function EmployeeDashboard() {
   const myAtt = state.attendance.find((a) => a.employeeId === me.id && a.date === todayStr());
   // Live-computed, same accrual rule as Directory.tsx's profile modal — not the stored,
   // never-accruing me.leaveBalance snapshot.
-  const myLeaveBalance = computeLeaveBalances(me.doj, state.rules.leaveTypes, myLeave, todayStr(), state.orgStructure.holidays.map((h) => h.date));
+  const myWorkedDates = state.attendance.filter((a) => a.employeeId === me.id && a.inMinutes != null).map((a) => a.date);
+  const myLeaveBalance = computeLeaveBalances(me.doj, state.rules.leaveTypes, myLeave, todayStr(), state.orgStructure.holidays.map((h) => h.date), myWorkedDates);
   return (
     <>
       <PageHead title={`Welcome back, ${me.name.split(' ')[0]}`} sub="Here's where things stand for you today." />
@@ -142,7 +144,7 @@ function EmployeeDashboard() {
       </div>
       <div className="grid grid-2">
         <section className="block">
-          <div className="block-head"><h2>My leave requests</h2><button className="btn ghost sm" onClick={() => setView('leave')}>Open →</button></div>
+          <div className="block-head"><h2>My leave requests</h2><button className="btn ghost sm" onClick={() => setView('leave')}>Open<ArrowRight size={13} aria-hidden /></button></div>
           <div className="card pad">
             {myLeave.map((l) => (
               <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
@@ -153,7 +155,7 @@ function EmployeeDashboard() {
           </div>
         </section>
         <section className="block">
-          <div className="block-head"><h2>My helpdesk tickets</h2><button className="btn ghost sm" onClick={() => setView('helpdesk')}>Open →</button></div>
+          <div className="block-head"><h2>My helpdesk tickets</h2><button className="btn ghost sm" onClick={() => setView('helpdesk')}>Open<ArrowRight size={13} aria-hidden /></button></div>
           <div className="card pad">
             {myTix.map((t) => (
               <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>

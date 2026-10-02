@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       success: true,
       data: {
         token,
-        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country },
+        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, city: user.city, created_at: user.created_at },
       },
     });
   } catch (err) {

@@ -17,6 +17,15 @@ const schibsted = localFont({
   variable: '--font-schibsted',
 });
 
+// Sidebar-only typeface — Inter, matching the Octaraa-style sidebar reference. Exposed as
+// --font-db-inter and consumed via the `font-db-nav` utility (see isolated-tailwind.css).
+const inter = localFont({
+  src: '../../fonts/inter-latin-var.woff2',
+  weight: '100 900',
+  display: 'swap',
+  variable: '--font-db-inter',
+});
+
 export const metadata: Metadata = {
   title: 'My Dashboard | StartupNews.fyi',
   robots: {
@@ -28,7 +37,11 @@ export const metadata: Metadata = {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={schibsted.variable}>
+    // `leading-normal`: the legacy theme sets `body { line-height: 100% }`, which computes to a
+    // fixed 16px that every element inherits, so any text bigger than 16px without its own
+    // line-height (page titles, the profile wizard heading) overlapped the line below it. A
+    // unitless 1.5 here scales with each element's own font size across the whole dashboard.
+    <div className={`${schibsted.variable} ${inter.variable} leading-normal`}>
       <UserDashboardLayout>{children}</UserDashboardLayout>
     </div>
   );

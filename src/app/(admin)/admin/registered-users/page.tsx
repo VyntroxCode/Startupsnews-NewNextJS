@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Activity, ArrowLeft, ArrowRight, Clock, Download, Globe, Mail, Search, SearchX, Users } from "lucide-react";
+import { RiGoogleFill } from "@remixicon/react";
 import { REGISTRATION_CATEGORIES } from "@/constants/registrationCategories";
 
 function categoryLabel(value?: string | null) {
@@ -277,26 +279,17 @@ export default function RegisteredUsersPage() {
 						}}
 					>
 						<div style={{ position: "relative" }}>
-							<svg
+							<Search
+								size={16}
+								color="#94a3b8"
 								style={{
 									position: "absolute",
 									left: 12,
 									top: "50%",
 									transform: "translateY(-50%)",
-									color: "#94a3b8",
 								}}
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="2"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							>
-								<circle cx="11" cy="11" r="8" />
-								<line x1="21" y1="21" x2="16.65" y2="16.65" />
-							</svg>
+								aria-hidden
+							/>
 							<input
 								type="search"
 								placeholder="Search name, email, city, country…"
@@ -345,20 +338,7 @@ export default function RegisteredUsersPage() {
 								opacity: loading || filtered.length === 0 ? 0.5 : 1,
 							}}
 						>
-							<svg
-								width="15"
-								height="15"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="2.5"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							>
-								<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-								<polyline points="7 10 12 15 17 10" />
-								<line x1="12" y1="15" x2="12" y2="3" />
-							</svg>
+							<Download size={15} strokeWidth={2.5} aria-hidden />
 							Export CSV
 						</button>
 					</div>
@@ -378,28 +358,28 @@ export default function RegisteredUsersPage() {
 					{
 						label: "Total Users",
 						value: pagination.total,
-						icon: "👥",
+						icon: Users,
 						color: "#6366f1",
 						bg: "#eef2ff",
 					},
 					{
 						label: "Email Sign-ups",
 						value: stats.emailCount,
-						icon: "✉️",
+						icon: Mail,
 						color: "#8b5cf6",
 						bg: "#f5f3ff",
 					},
 					{
 						label: "Google Sign-ups",
 						value: stats.googleCount,
-						icon: "🔵",
+						icon: RiGoogleFill,
 						color: "#0ea5e9",
 						bg: "#f0f9ff",
 					},
 					{
 						label: "Active Today",
 						value: stats.activeToday,
-						icon: "🟢",
+						icon: Activity,
 						color: "#10b981",
 						bg: "#ecfdf5",
 					},
@@ -426,11 +406,10 @@ export default function RegisteredUsersPage() {
 								display: "flex",
 								alignItems: "center",
 								justifyContent: "center",
-								fontSize: 20,
 								flexShrink: 0,
 							}}
 						>
-							{card.icon}
+							<card.icon size={20} color={card.color} aria-hidden />
 						</div>
 						<div>
 							<p
@@ -588,7 +567,9 @@ export default function RegisteredUsersPage() {
 					</div>
 				) : filtered.length === 0 ? (
 					<div style={{ padding: "5rem", textAlign: "center" }}>
-						<div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+						<div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>
+							<SearchX size={40} color="#94a3b8" strokeWidth={1.75} aria-hidden />
+						</div>
 						<p
 							style={{
 								color: "#64748b",
@@ -801,7 +782,7 @@ export default function RegisteredUsersPage() {
 														fontWeight: 500,
 													}}
 												>
-													🌍
+													<Globe size={14} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
 													<span>
 														{u.city && (
 															<span
@@ -838,7 +819,7 @@ export default function RegisteredUsersPage() {
 										<td style={{ padding: "14px 16px", minWidth: 160, whiteSpace: "nowrap" }}>
 											{u.timezone ? (
 												<span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "#475569", fontWeight: 500 }}>
-													<span style={{ fontSize: 14 }}>🕐</span>
+													<Clock size={14} style={{ flexShrink: 0 }} aria-hidden />
 													<span>
 														<span style={{ display: "block", fontWeight: 600, color: "#1e293b", fontSize: 12 }}>
 															{u.timezone.split("/").pop()?.replace(/_/g, " ") ?? u.timezone}
@@ -936,7 +917,8 @@ export default function RegisteredUsersPage() {
 														fontWeight: 700,
 													}}
 												>
-													✉ Email
+													<Mail size={12} aria-hidden />
+													Email
 												</span>
 											)}
 										</td>
@@ -1016,9 +998,13 @@ export default function RegisteredUsersPage() {
 							fontWeight: 600,
 							fontSize: 13,
 							cursor: pagination.page === 1 ? "not-allowed" : "pointer",
+							display: "inline-flex",
+							alignItems: "center",
+							gap: 4,
 						}}
 					>
-						← Prev
+						<ArrowLeft size={14} aria-hidden />
+						Prev
 					</button>
 
 					{Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
@@ -1062,9 +1048,13 @@ export default function RegisteredUsersPage() {
 								pagination.page === pagination.totalPages
 									? "not-allowed"
 									: "pointer",
+							display: "inline-flex",
+							alignItems: "center",
+							gap: 4,
 						}}
 					>
-						Next →
+						Next
+						<ArrowRight size={14} aria-hidden />
 					</button>
 				</div>
 			)}

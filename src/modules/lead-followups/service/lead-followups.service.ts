@@ -13,10 +13,13 @@ import {
 import { LeadFollowUpsRepository } from '../repository/lead-followups.repository';
 import {
   FOLLOW_UP_NOTE_MAX_LENGTH,
+  LEAD_MESSAGE_MAX_LENGTH,
   type LeadDetail,
   type LeadFollowUp,
   type LeadFollowUpEntity,
   type LeadFollowUpsView,
+  type LeadMessage,
+  type LeadMessageEntity,
 } from '../domain/types';
 import { buildLeadSubmission } from './lead-details';
 
@@ -26,8 +29,20 @@ export class LeadFollowUpValidationError extends Error {}
  * employee can't probe for leads that aren't theirs). */
 export class LeadFollowUpNotFoundError extends Error {}
 
+/** Follow-up statuses from before the four shared statuses (2026-09-29), for rows that
+ * scripts/migrations/unify-sales-lead-status.sql hasn't translated yet — the same mapping it uses. */
+const LEGACY_FOLLOW_UP_STATUSES: Record<string, AssignmentStatus> = {
+  contacted: 'follow-up',
+  interested: 'follow-up',
+  closed: 'confirmed',
+};
+
 function toStatus(value: string): AssignmentStatus {
-  return ASSIGNMENT_STATUS_OPTIONS.find((o) => o.value === value)?.value ?? ASSIGNMENT_STATUS_PENDING;
+  return ASSIGNMENT_STATUS_OPTIONS.find((o) => o.value === value)?.value ?? LEGACY_FOLLOW_UP_STATUSES[value] ?? ASSIGNMENT_STATUS_PENDING;
+}
+
+function toMessage(e: LeadMessageEntity): LeadMessage {
+  return { id: Number(e.id), authorName: e.author_name || '', message: e.message || '', createdAt: String(e.created_at) };
 }
 
 function toFollowUp(e: LeadFollowUpEntity, readerId: number | null): LeadFollowUp {
@@ -62,10 +77,11 @@ export class LeadFollowUpsService {
     const source = parseSource(rawSource);
     const assignment = await this.repository.findAssignment(source, leadId, credentialId);
     if (!assignment) throw new LeadFollowUpNotFoundError('Lead not found.');
-    const [submission, team, followUps, statusRaw] = await Promise.all([
+    const [submission, team, followUps, messages, statusRaw] = await Promise.all([
       buildLeadSubmission(source, leadId),
       this.assignments.getForLead(source, leadId),
       this.repository.findForLead(source, leadId),
+      this.repository.findMessagesForLead(source, leadId),
       this.repository.findLeadStatusRaw(source, leadId),
     ]);
     if (!submission || statusRaw === undefined) throw new LeadFollowUpNotFoundError('Lead not found.');
@@ -75,6 +91,7 @@ export class LeadFollowUpsService {
       submission,
       assignees: team.assignees,
       followUps: followUps.map((f) => toFollowUp(f, credentialId)),
+      messages: messages.map(toMessage),
       leadStatus: source === 'lead' ? statusFromSalesLead(statusRaw) : statusFromEns(statusRaw),
       assignedAt: String(assignment.assigned_at),
       assignedBy: assignment.assigned_by || '',
@@ -107,5 +124,30 @@ export class LeadFollowUpsService {
     const source = parseSource(rawSource);
     const [team, followUps] = await Promise.all([this.assignments.getForLead(source, leadId), this.repository.findForLead(source, leadId)]);
     return { assignees: team.assignees, followUps: followUps.map((f) => toFollowUp(f, null)) };
+  }
+
+  /** The admin's messages on a lead, newest first, for the lead window. */
+  async getMessagesForAdmin(rawSource: unknown, leadId: string): Promise<LeadMessage[]> {
+    const source = parseSource(rawSource);
+    return (await this.repository.findMessagesForLead(source, leadId)).map(toMessage);
+  }
+
+  /** Adds an admin message for everyone assigned to the lead and returns the whole history. The
+   * lead window only offers the field once the lead has departments and people, and it saves the
+   * assignment first — so a lead with nobody on it is refused here too. */
+  async addMessageForAdmin(body: Record<string, unknown>, authorName: string): Promise<LeadMessage[]> {
+    const source = parseSource(body.source);
+    const leadId = typeof body.leadId === 'string' ? body.leadId : '';
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+    if (!message) throw new LeadFollowUpValidationError('Please write the message.');
+    if (message.length > LEAD_MESSAGE_MAX_LENGTH) {
+      throw new LeadFollowUpValidationError(`The message can be at most ${LEAD_MESSAGE_MAX_LENGTH} characters.`);
+    }
+    if ((await this.repository.findLeadStatusRaw(source, leadId)) === undefined) throw new LeadFollowUpNotFoundError('Lead not found.');
+    if ((await this.repository.countAssignees(source, leadId)) === 0) {
+      throw new LeadFollowUpValidationError('Assign at least one employee before writing them a message.');
+    }
+    await this.repository.addMessage(source, leadId, authorName || 'Admin', message);
+    return this.getMessagesForAdmin(source, leadId);
   }
 }

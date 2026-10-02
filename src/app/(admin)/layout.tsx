@@ -37,6 +37,7 @@ const SELF_REFRESHING_ADMIN_PAGES = new Set([
   '/admin/brand-stories',
   '/admin/inner-pages',
   '/admin/contacts',
+  '/admin/grants',
 ]);
 
 export default function AdminLayout({
@@ -215,7 +216,11 @@ export default function AdminLayout({
                             requestUrl.includes('/api/admin/sales-tracker/ens-enquiries') ||
                             requestUrl.includes('/api/admin/sales-tracker/assignments') ||
                             requestUrl.includes('/api/admin/partnership-events') ||
-                            requestUrl.includes('/api/admin/my-leads');
+                            requestUrl.includes('/api/admin/my-leads') ||
+                            // Content Studio's POSTs are all reads (news fetch, extract, generate)
+                            // and its drafts live only in client state — a remount would throw away
+                            // the article it just generated.
+                            requestUrl.includes('/api/admin/content-studio');
 
       if (response.ok && method !== 'GET' && requestUrl.includes('/api/admin/') && !isSpecialPath) {
         // Clear the cache directly here, not just via the event below — the event only reaches a
@@ -304,7 +309,8 @@ export default function AdminLayout({
   // HR Management renders its own full-bleed app shell (sidebar, header, rounded card) —
   // the standard 2rem content padding left a visible gap around it instead of the widget
   // sitting flush against the real admin header/sidebar.
-  const contentPadding = pathname === '/admin/hr-tool' ? '0' : '2rem';
+  // Content Studio is a fixed-viewport workstation with its own scrolling panes, so it sits flush too.
+  const contentPadding = pathname === '/admin/hr-tool' || pathname === '/admin/content-studio' ? '0' : '2rem';
 
   // Admin pages with layout
   return (

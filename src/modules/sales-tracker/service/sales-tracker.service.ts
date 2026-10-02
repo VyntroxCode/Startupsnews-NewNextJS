@@ -20,8 +20,4 @@ export class SalesTrackerService {
   async deleteLead(id: string): Promise<void> {
     await this.repository.deleteLead(id);
   }
-
-  async deleteAllLeads(): Promise<void> {
-    await this.repository.deleteAllLeads();
-  }
 }

@@ -2,6 +2,10 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  ArrowLeftRight, Building2, CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, Clock, IndianRupee,
+  LayoutDashboard, LifeBuoy, Receipt, Settings, ShieldCheck, UserMinus, Users, type LucideIcon,
+} from 'lucide-react';
 import { clearAdminSession } from '@/lib/admin-auth';
 import { useHrTool } from './HrToolContext';
 import Dashboard from './views/Dashboard';
@@ -25,31 +29,31 @@ const VIEWS: Record<HrView, () => React.JSX.Element> = {
   compliance: Compliance, posh: Posh, helpdesk: Helpdesk, company: Company, rules: Rules,
 };
 
-interface NavItem { view: HrView; label: string; icon: string; }
+interface NavItem { view: HrView; label: string; icon: LucideIcon; }
 interface NavGroup { label: string; items: NavItem[]; }
 
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Overview', items: [{ view: 'dashboard', label: 'Dashboard', icon: '◆' }] },
+  { label: 'Overview', items: [{ view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
   { label: 'People', items: [
-    { view: 'directory', label: 'Directory', icon: '☰' },
-    { view: 'offboarding', label: 'Offboarding', icon: '←' },
+    { view: 'directory', label: 'Directory', icon: Users },
+    { view: 'offboarding', label: 'Offboarding', icon: UserMinus },
   ] },
   { label: 'Time', items: [
-    { view: 'attendance', label: 'Attendance', icon: '◷' },
-    { view: 'leave', label: 'Leave', icon: '◇' },
+    { view: 'attendance', label: 'Attendance', icon: Clock },
+    { view: 'leave', label: 'Leave', icon: CalendarDays },
   ] },
   { label: 'Money', items: [
-    { view: 'payroll', label: 'Payroll', icon: '₹' },
-    { view: 'expenses', label: 'Expenses', icon: '◎' },
+    { view: 'payroll', label: 'Payroll', icon: IndianRupee },
+    { view: 'expenses', label: 'Expenses', icon: Receipt },
   ] },
   { label: 'Compliance', items: [
-    { view: 'compliance', label: 'Calendar & Reminders', icon: '▤' },
-    { view: 'posh', label: 'POSH Committee', icon: '✨' },
+    { view: 'compliance', label: 'Calendar & Reminders', icon: CalendarClock },
+    { view: 'posh', label: 'POSH Committee', icon: ShieldCheck },
   ] },
   { label: 'Org', items: [
-    { view: 'helpdesk', label: 'Helpdesk', icon: '◈' },
-    { view: 'company', label: 'Company Profile', icon: '◆' },
-    { view: 'rules', label: 'Rules & Org Structure', icon: '⚙' },
+    { view: 'helpdesk', label: 'Helpdesk', icon: LifeBuoy },
+    { view: 'company', label: 'Company Profile', icon: Building2 },
+    { view: 'rules', label: 'Rules & Org Structure', icon: Settings },
   ] },
 ];
 
@@ -167,7 +171,7 @@ function HrToolShell() {
               title={pinnedOpen ? 'Unpin — close the sidebar when the pointer leaves' : 'Keep the sidebar open'}
               aria-label={pinnedOpen ? 'Unpin sidebar' : 'Keep sidebar open'}
             >
-              {pinnedOpen ? '«' : '»'}
+              {pinnedOpen ? <ChevronsLeft size={14} aria-hidden /> : <ChevronsRight size={14} aria-hidden />}
             </button>
           </div>
           <nav>
@@ -179,6 +183,7 @@ function HrToolShell() {
                   <div className="nav-group-label">{group.label}</div>
                   {visibleItems.map((item) => {
                     const count = pendingCountFor(item.view, state);
+                    const Icon = item.icon;
                     return (
                       <button
                         key={item.view}
@@ -186,7 +191,7 @@ function HrToolShell() {
                         onClick={() => setView(item.view)}
                         title={collapsed ? item.label : undefined}
                       >
-                        <span className="nav-icon">{item.icon}</span>
+                        <span className="nav-icon"><Icon size={16} aria-hidden /></span>
                         <span className="nav-label">{item.label}</span>
                         {count > 0 && <span className="nav-dot" />}
                       </button>
@@ -200,7 +205,7 @@ function HrToolShell() {
             <label>Logged in as</label>
             <div className="who">{currentUser.name} · {role}</div>
             <button className="logout-btn" onClick={handleLogout} title="Switch user / Log out">
-              <span className="logout-icon">⇄</span>
+              <span className="logout-icon"><ArrowLeftRight size={14} aria-hidden /></span>
               <span className="nav-label">Switch user / Log out</span>
             </button>
           </div>
@@ -249,7 +254,7 @@ function HrToolStyles() {
       .hr-tool-app .nav-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: #E0E7FF; background: transparent; border: none; text-align: left; width: 100%; transition: background .12s; }
       .hr-tool-app .nav-item:hover { background: rgba(255,255,255,0.12); }
       .hr-tool-app .nav-item.active { background: #fff; color: var(--forest); font-weight: 600; }
-      .hr-tool-app .nav-icon { width: 17px; text-align: center; font-size: 13px; opacity: 0.9; flex-shrink: 0; }
+      .hr-tool-app .nav-icon { width: 17px; display: inline-flex; align-items: center; justify-content: center; opacity: 0.9; flex-shrink: 0; }
       .hr-tool-app .nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hr-tool-app .nav-dot { width: 7px; height: 7px; border-radius: 50%; background: #FF4D4D; margin-left: auto; flex-shrink: 0; }
       .hr-tool-app .role-switch { margin-top: auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.18); }
@@ -257,7 +262,7 @@ function HrToolStyles() {
       .hr-tool-app .role-switch .who { font-size: 12.5px; font-weight: 600; color: #fff; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hr-tool-app .logout-btn { width: 100%; margin-top: 9px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); color: #fff; padding: 7px 9px; border-radius: 7px; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 7px; }
       .hr-tool-app .logout-btn:hover { background: rgba(255,255,255,0.2); }
-      .hr-tool-app .logout-icon { flex-shrink: 0; }
+      .hr-tool-app .logout-icon { flex-shrink: 0; display: inline-flex; }
       /* Minimize button (desktop) and narrow viewports (mobile) both collapse to this same
          64px icon rail — one set of rules instead of maintaining two parallel layouts. */
       .hr-tool-app .app.collapsed { grid-template-columns: 64px 1fr; }
@@ -334,6 +339,12 @@ function HrToolStyles() {
       .hr-tool-app .btn.reject { background: transparent; color: var(--red); border-color: var(--red-soft); }
       .hr-tool-app .btn.sm { padding: 5px 10px; font-size: 11.5px; }
       .hr-tool-app .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      /* Buttons/links that carry a Lucide icon lay the icon and label out in a row. */
+      .hr-tool-app .btn:has(> svg) { display: inline-flex; align-items: center; gap: 5px; }
+      .hr-tool-app .btn > svg { flex-shrink: 0; }
+      /* Inline text that leads with (or ends in) a Lucide icon — status labels, links, notes. */
+      .hr-tool-app .ic-text { display: inline-flex; align-items: center; gap: 4px; }
+      .hr-tool-app .ic-text > svg { flex-shrink: 0; }
       /* Keeps grouped action buttons (View / Approve / Reject etc.) on one line instead of
          wrapping individually when a table cell gets tight — a raw text-node space between
          buttons wraps like any other inline content and staggers the row. */
@@ -365,7 +376,7 @@ function HrToolStyles() {
       .hr-tool-app .modal-head h3 { margin: 0; font-size: 16px; }
       .hr-tool-app .modal-body { padding: 18px 22px; }
       .hr-tool-app .modal-foot { padding: 14px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
-      .hr-tool-app .x-close { background: none; border: none; font-size: 18px; color: var(--muted); }
+      .hr-tool-app .x-close { background: none; border: none; font-size: 18px; color: var(--muted); display: inline-flex; align-items: center; padding: 2px; }
       .hr-tool-app .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--forest); color: #EEF2FF; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; flex-shrink: 0; }
       .hr-tool-app .row-name { display: flex; align-items: center; gap: 9px; }
       .hr-tool-app .row-name .meta { font-size: 11.5px; color: var(--muted); }
@@ -388,6 +399,17 @@ function HrToolStyles() {
       .hr-tool-app .cal-cell.off { background: #F1F5F9; color: var(--muted); }
       .hr-tool-app .cal-cell.unrecorded { background: #fff; color: var(--muted); border-style: dashed; }
       .hr-tool-app .cal-cell.blank { border: none; background: transparent; }
+      /* Day-ledger kinds (utils/day-ledger.ts) — the same day classes payroll pays by. */
+      .hr-tool-app .cal-cell.short-leave { background: #FEF3C7; color: #92400E; }
+      .hr-tool-app .cal-cell.unpaid-leave { background: repeating-linear-gradient(135deg, #DBEAFE 0 6px, #FECACA 6px 12px); color: #7F1D1D; }
+      .hr-tool-app .cal-cell.half-leave { background: linear-gradient(135deg, #DBEAFE 50%, #FED7AA 50%); color: #1E3A8A; }
+      .hr-tool-app .cal-cell.settled { background: #F0FDF4; color: #166534; border-style: dashed; }
+      .hr-tool-app .cal-cell.future { background: #fff; color: var(--muted); border-style: dashed; }
+      .hr-tool-app .cal-cell.not-employed { background: repeating-linear-gradient(135deg, #F8FAFC 0 6px, #EEF2F7 6px 12px); color: #94A3B8; }
+      .hr-tool-app .cal-cell .cal-note { font-size: 9.5px; font-weight: 600; margin-top: 3px; opacity: 0.85; line-height: 1.2; }
+      .hr-tool-app .cal-cell .cal-reg { position: absolute; top: 5px; right: 6px; width: 8px; height: 8px; border-radius: 50%; }
+      .hr-tool-app .cal-cell .cal-reg.pending { background: #D97706; }
+      .hr-tool-app .cal-cell .cal-reg.approved { background: #7C3AED; }
       .hr-tool-app .cal-day { font-weight: 700; font-size: 11px; }
       .hr-tool-app .cal-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 10px; }
       .hr-tool-app .cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
@@ -400,7 +422,7 @@ function HrToolStyles() {
       .hr-tool-app .acc-text { min-width: 0; }
       .hr-tool-app .acc-title { display: block; font-size: 13px; font-weight: 700; color: var(--ink); }
       .hr-tool-app .acc-sum { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted); margin-top: 3px; line-height: 1.4; }
-      .hr-tool-app .acc-chev { flex-shrink: 0; font-size: 11px; color: var(--muted); transition: transform .15s; }
+      .hr-tool-app .acc-chev { flex-shrink: 0; display: inline-flex; color: var(--muted); transition: transform .15s; }
       .hr-tool-app .acc.open .acc-chev { transform: rotate(180deg); }
       .hr-tool-app .acc-body { padding: 16px 14px; }
       .hr-tool-app .acc-body > .field:last-child { margin-bottom: 0; }
@@ -431,6 +453,11 @@ function HrToolStyles() {
       .hr-tool-app .cal-stat.off { background: #F1F5F9; border-color: #E2E8F0; color: #475569; }
       .hr-tool-app .cal-stat.regpending { background: var(--amber-soft); border-color: #FDE68A; color: #78350F; }
       .hr-tool-app .cal-stat.regapproved { background: #EDE9FE; border-color: #DDD6FE; color: #5B21B6; }
+      .hr-tool-app .cal-stat.short-leave { background: #FEF3C7; border-color: #FDE68A; color: #92400E; }
+      .hr-tool-app .cal-stat.unpaid { background: #FFF1F2; border-color: #FECDD3; color: #9F1239; }
+      .hr-tool-app .cal-stat.paid { background: #ECFDF5; border-color: #A7F3D0; color: #065F46; }
+      .hr-tool-app .cal-payslip { margin-top: 11px; padding: 9px 11px; border-radius: 8px; background: #fff; border: 1px solid var(--line); font-size: 12px; }
+      .hr-tool-app .cal-payslip strong { font-weight: 700; }
       @media (max-width: 560px) { .hr-tool-app .cal-stats { grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); } }
 
       .hr-tool-app .rule-row { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); gap: 6px 24px; }
@@ -492,7 +519,7 @@ function HrToolStyles() {
       .hr-tool-app .mini-input { width: 70px; padding: 6px 8px; }
       .hr-tool-app .chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
       .hr-tool-app .chip { display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid var(--line); padding: 5px 6px 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-      .hr-tool-app .chip button { background: none; border: none; color: var(--muted); font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 50%; }
+      .hr-tool-app .chip button { background: none; border: none; color: var(--muted); font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 50%; display: inline-flex; align-items: center; }
       .hr-tool-app .chip button:hover { background: var(--red-soft); color: var(--red); }
       .hr-tool-app .add-inline { display: flex; gap: 8px; }
       .hr-tool-app .add-inline input { flex: 1; }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { Check, X } from 'lucide-react';
 import { getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -122,7 +123,7 @@ function PageContentEditor({ pageKey, title = 'Page Content', description, place
             >
               {savingContent ? 'Saving…' : 'Save Content'}
             </button>
-            {contentSaved && <span style={{ color: '#059669', fontSize: '0.8125rem', fontWeight: 600 }}>Saved ✓</span>}
+            {contentSaved && <span style={{ color: '#059669', fontSize: '0.8125rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>Saved <Check size={14} aria-hidden /></span>}
           </div>
         </>
       )}
@@ -310,7 +311,7 @@ function OurPartnersSection() {
                           title="Delete"
                           style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: deletingId === logo.id ? 'not-allowed' : 'pointer', fontSize: '0.75rem', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          ✕
+                          <X size={12} strokeWidth={2.5} aria-hidden />
                         </button>
                       </div>
                     ))}

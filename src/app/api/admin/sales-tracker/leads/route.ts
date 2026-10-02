@@ -47,19 +47,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-export async function DELETE(request: NextRequest) {
-  const auth = await requireAnyRole(request, SALES_TRACKER_ROLES);
-  if (auth instanceof NextResponse) return auth;
-
-  try {
-    await service.deleteAllLeads();
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting all sales leads:', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to delete leads' },
-      { status: 500 }
-    );
-  }
-}

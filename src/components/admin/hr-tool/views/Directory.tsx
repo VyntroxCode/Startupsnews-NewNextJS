@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowRight, Check, ChevronDown, Download, Upload, X } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import HireEmployeeButton from './HireEmployeeButton';
@@ -337,9 +338,9 @@ export default function Directory() {
         </div>
         {admin && (
           <div className="toolbar">
-            <button className="btn sm" onClick={() => exportDirectory('csv')}>⇩ CSV</button>
-            <button className="btn sm" onClick={() => exportDirectory('excel')}>⇩ Excel</button>
-            <button className="btn" onClick={() => setBulkOpen(true)}>⇧ Bulk import (CSV)</button>
+            <button className="btn sm" onClick={() => exportDirectory('csv')}><Download size={13} aria-hidden />CSV</button>
+            <button className="btn sm" onClick={() => exportDirectory('excel')}><Download size={13} aria-hidden />Excel</button>
+            <button className="btn" onClick={() => setBulkOpen(true)}><Upload size={14} aria-hidden />Bulk import (CSV)</button>
             <HireEmployeeButton label="+ Add Employee" className="btn primary" onHired={setProfileId} />
           </div>
         )}
@@ -368,7 +369,7 @@ export default function Directory() {
                 );
               })()}</td>
               <td><StatusBadge status={e.status} /></td>
-              <td style={{ textAlign: 'right' }}><button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); setProfileId(e.id); }}>{admin ? 'View / Edit →' : 'View profile →'}</button></td>
+              <td style={{ textAlign: 'right' }}><button className="btn ghost sm" onClick={(ev) => { ev.stopPropagation(); setProfileId(e.id); }}>{admin ? 'View / Edit' : 'View profile'}<ArrowRight size={13} aria-hidden /></button></td>
             </tr>
           ))}
           {rows.length === 0 && <tr><td colSpan={8}><div className="empty">No employees match this search.</div></td></tr>}
@@ -473,7 +474,7 @@ function Section({ title, summary, defaultOpen = false, children }: {
           <span className="acc-title">{title}</span>
           {summary ? <span className="acc-sum">{summary}</span> : null}
         </span>
-        <span className="acc-chev" aria-hidden="true">▾</span>
+        <span className="acc-chev" aria-hidden="true"><ChevronDown size={14} /></span>
       </button>
       {open && <div className="acc-body">{children}</div>}
     </div>
@@ -579,7 +580,7 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
         // the same as the × in the header, or it looks like Cancel silently "does nothing" and
         // leaves a dead, non-editable form on screen.
         { label: 'Cancel', cls: 'btn', onClick: onClose },
-        { label: saving ? 'Saving…' : savedFlash ? 'Saved ✓' : 'Save changes', cls: 'btn primary', onClick: saveEdit },
+        { label: saving ? 'Saving…' : savedFlash ? <span className="ic-text">Saved<Check size={14} aria-hidden /></span> : 'Save changes', cls: 'btn primary', onClick: saveEdit },
       ]
     : [{ label: 'Close', cls: 'btn', onClick: onClose }];
   // These stay available regardless of edit state (admins now land straight in the form, so
@@ -697,7 +698,8 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
           // employee.leaveBalance snapshot — that field is only ever written once at hire/
           // probation-confirm and never accrues or resets, so it goes stale immediately.
           const myLeave = state.leaveRequests.filter((l) => l.employeeId === employee.id);
-          const balances = computeLeaveBalances(employee.doj, state.rules.leaveTypes, myLeave, todayStr(), state.orgStructure.holidays.map((h) => h.date));
+          const workedDates = state.attendance.filter((a) => a.employeeId === employee.id && a.inMinutes != null).map((a) => a.date);
+          const balances = computeLeaveBalances(employee.doj, state.rules.leaveTypes, myLeave, todayStr(), state.orgStructure.holidays.map((h) => h.date), workedDates);
           return Object.entries(balances).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>);
         })()}
       </div>
@@ -788,8 +790,8 @@ function DocumentViewer({ doc, onClose }: { doc: { name: string; url: string }; 
         <div className="doc-viewer-head">
           <div className="doc-viewer-title">{doc.name}</div>
           <div className="doc-viewer-actions">
-            <a className="btn sm" href={doc.url} target="_blank" rel="noopener noreferrer" download>⇩ Download</a>
-            <button className="btn sm" onClick={onClose} aria-label="Close document preview">✕ Close</button>
+            <a className="btn sm" href={doc.url} target="_blank" rel="noopener noreferrer" download><Download size={13} aria-hidden />Download</a>
+            <button className="btn sm" onClick={onClose} aria-label="Close document preview"><X size={13} aria-hidden />Close</button>
           </div>
         </div>
         <div className="doc-viewer-body">
@@ -805,7 +807,7 @@ function DocumentViewer({ doc, onClose }: { doc: { name: string; url: string }; 
             <div className="doc-viewer-fallback">
               <div style={{ fontWeight: 600, marginBottom: 6 }}>This file type can&apos;t be previewed in the browser.</div>
               <div className="meta" style={{ marginBottom: 12 }}>Download it to open in the right application.</div>
-              <a className="btn primary sm" href={doc.url} target="_blank" rel="noopener noreferrer" download>⇩ Download {doc.name}</a>
+              <a className="btn primary sm" href={doc.url} target="_blank" rel="noopener noreferrer" download><Download size={13} aria-hidden />Download {doc.name}</a>
             </div>
           )}
         </div>

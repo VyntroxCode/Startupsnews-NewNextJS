@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { CircleAlert } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -58,11 +59,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
+            <CircleAlert size={40} color="#dc2626" strokeWidth={2} aria-hidden />
           </div>
           <h3 style={{
             fontSize: '1.5rem',

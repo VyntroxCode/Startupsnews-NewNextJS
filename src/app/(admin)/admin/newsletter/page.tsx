@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ArrowRight, Check, CircleCheck, CircleX, ImageIcon, Plus, Rss, TriangleAlert } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
@@ -275,6 +276,7 @@ export default function NewsletterPage() {
   const [testEmail, setTestEmail] = useState('');
   const [testSending, setTestSending] = useState(false);
   const [testMsg, setTestMsg] = useState('');
+  const [testOk, setTestOk] = useState(false);
 
   /* ── Compose state ── */
   const [subject, setSubject] = useState('');
@@ -557,8 +559,8 @@ export default function NewsletterPage() {
             {feed.enabled ? 'On' : 'Off'}
           </span>
           {feed.last_error && (
-            <span style={{ marginLeft: '0.5rem', color: '#b91c1c', fontSize: '0.75rem' }} title={feed.last_error}>
-              ⚠️ Error
+            <span style={{ marginLeft: '0.5rem', color: '#b91c1c', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 4, verticalAlign: 'middle' }} title={feed.last_error}>
+              <TriangleAlert size={12} aria-hidden />Error
             </span>
           )}
         </span>
@@ -645,7 +647,7 @@ export default function NewsletterPage() {
 
   /* ── Mail Config: test ── */
   const handleTestMail = async () => {
-    if (!testEmail.trim()) { setTestMsg('Enter a test email address.'); return; }
+    if (!testEmail.trim()) { setTestOk(false); setTestMsg('Enter a test email address.'); return; }
     setTestMsg(''); setTestSending(true);
     try {
       const res = await fetch('/api/admin/newsletter/send', {
@@ -653,8 +655,9 @@ export default function NewsletterPage() {
         body: JSON.stringify({ subject: 'Test Email from StartupNews', html: '<p>This is a test email from your newsletter SMTP configuration.</p>', recipientFilter: 'all', testEmail: testEmail.trim() }),
       });
       const d = await res.json();
-      setTestMsg(d.success ? `✓ Test email sent to ${testEmail}` : `✗ ${d.error}`);
-    } catch { setTestMsg('✗ Send failed'); }
+      setTestOk(!!d.success);
+      setTestMsg(d.success ? `Test email sent to ${testEmail}` : (d.error || 'Send failed'));
+    } catch { setTestOk(false); setTestMsg('Send failed'); }
     finally { setTestSending(false); }
   };
 
@@ -1024,8 +1027,8 @@ export default function NewsletterPage() {
               Categories
             </Link>
             {tab === 'rss-feeds' && (
-              <Link href="/admin/rss-feeds/create" style={{ padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', borderRadius: '8px', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
-                + Add RSS Feed
+              <Link href="/admin/rss-feeds/create" style={{ padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', borderRadius: '8px', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', whiteSpace: 'nowrap' as const, display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
+                <Plus size={16} aria-hidden />Add RSS Feed
               </Link>
             )}
           </div>
@@ -1089,7 +1092,7 @@ export default function NewsletterPage() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                                   <div style={{ width: 32, height: 32, borderRadius: 6, background: '#f1f5f9', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     {feed.logo_url ? <img src={feed.logo_url} alt={feed.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : (
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9" /><path d="M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1" /></svg>
+                                      <Rss size={16} color="#94a3b8" aria-hidden />
                                     )}
                                   </div>
                                   <span style={{ fontWeight: 600, color: '#0f172a' }}>{feed.name}</span>
@@ -1141,7 +1144,7 @@ export default function NewsletterPage() {
                                 <div style={{ width: '100%', height: 150, background: '#f1f5f9', overflow: 'hidden', flexShrink: 0 }}>
                                   {item.image_url ? <img src={item.image_url} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
-                                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                                      <ImageIcon size={36} strokeWidth={1.5} aria-hidden />
                                     </div>
                                   )}
                                 </div>
@@ -1305,8 +1308,8 @@ export default function NewsletterPage() {
                             {feed.enabled ? 'On' : 'Off'}
                           </span>
                           {feed.last_error && (
-                            <span style={{ marginLeft: '0.5rem', color: '#b91c1c', fontSize: '0.75rem' }} title={feed.last_error}>
-                              ⚠️
+                            <span style={{ marginLeft: '0.5rem', color: '#b91c1c', fontSize: '0.75rem', display: 'inline-flex', verticalAlign: 'middle' }} title={feed.last_error}>
+                              <TriangleAlert size={14} aria-hidden />
                             </span>
                           )}
                         </td>
@@ -1392,15 +1395,17 @@ export default function NewsletterPage() {
               <>
                 {/* Source badge */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1.5rem' }}>
-                  <span style={{ fontSize: '0.8125rem', padding: '4px 12px', borderRadius: 20, background: config.source === 'db' ? '#dcfce7' : '#fef9c3', color: config.source === 'db' ? '#166534' : '#854d0e', fontWeight: 600 }}>
-                    {config.source === 'db' ? '✓ Using DB config' : '⚠ Using .env fallback — save below to override'}
+                  <span style={{ fontSize: '0.8125rem', padding: '4px 12px', borderRadius: 20, background: config.source === 'db' ? '#dcfce7' : '#fef9c3', color: config.source === 'db' ? '#166534' : '#854d0e', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {config.source === 'db'
+                      ? <><CircleCheck size={14} aria-hidden />Using DB config</>
+                      : <><TriangleAlert size={14} aria-hidden />Using .env fallback — save below to override</>}
                   </span>
                 </div>
 
                 <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: '1.75rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '1.5rem' }}>
                   <h3 style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#0f172a', margin: '0 0 1.25rem' }}>SMTP Settings</h3>
 
-                  {configMsg && <div style={{ background: '#dcfce7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem', fontWeight: 600 }}>✓ {configMsg}</div>}
+                  {configMsg && <div style={{ background: '#dcfce7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'flex-start', gap: 6 }}><CircleCheck size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />{configMsg}</div>}
                   {configError && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem' }}>{configError}</div>}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px', gap: '1rem', marginBottom: '1rem' }}>
@@ -1455,7 +1460,7 @@ export default function NewsletterPage() {
                       {testSending ? 'Sending…' : 'Send Test'}
                     </button>
                   </div>
-                  {testMsg && <p style={{ marginTop: 10, fontSize: '0.875rem', color: testMsg.startsWith('✓') ? '#166534' : '#991b1b', fontWeight: 600 }}>{testMsg}</p>}
+                  {testMsg && <p style={{ marginTop: 10, fontSize: '0.875rem', color: testOk ? '#166534' : '#991b1b', fontWeight: 600, display: 'flex', alignItems: 'flex-start', gap: 6 }}>{testOk ? <CircleCheck size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden /> : <CircleX size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />}{testMsg}</p>}
                 </div>
               </>
             )}
@@ -1488,7 +1493,7 @@ export default function NewsletterPage() {
 
                 {sendResult && (
                   <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 8, padding: '12px 16px', marginBottom: '1rem' }}>
-                    <p style={{ margin: 0, fontWeight: 700, color: '#166534', fontSize: '0.9375rem' }}>✓ Sent to {sendResult.sent} of {sendResult.total} recipients</p>
+                    <p style={{ margin: 0, fontWeight: 700, color: '#166534', fontSize: '0.9375rem', display: 'flex', alignItems: 'flex-start', gap: 6 }}><CircleCheck size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />Sent to {sendResult.sent} of {sendResult.total} recipients</p>
                     {sendResult.errors.length > 0 && <p style={{ margin: '6px 0 0', fontSize: '0.8125rem', color: '#92400e' }}>Errors: {sendResult.errors.join('; ')}</p>}
                   </div>
                 )}
@@ -1543,7 +1548,7 @@ export default function NewsletterPage() {
 
                 {scheduleResult && (
                   <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: '1rem' }}>
-                    <p style={{ margin: 0, fontWeight: 700, color: '#166534', fontSize: '0.875rem' }}>✓ Scheduled (ID #{scheduleResult.id}) — {new Date(scheduleResult.scheduled_at).toLocaleString()}</p>
+                    <p style={{ margin: 0, fontWeight: 700, color: '#166534', fontSize: '0.875rem', display: 'flex', alignItems: 'flex-start', gap: 6 }}><CircleCheck size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />Scheduled (ID #{scheduleResult.id}) — {new Date(scheduleResult.scheduled_at).toLocaleString()}</p>
                   </div>
                 )}
                 {scheduleError && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem' }}>{scheduleError}</div>}
@@ -1553,8 +1558,9 @@ export default function NewsletterPage() {
                     width: '100%', padding: '0.875rem', fontWeight: 700, fontSize: '1rem', border: 'none', borderRadius: 8, cursor: (sending || !subject.trim() || !html.trim()) ? 'not-allowed' : 'pointer',
                     background: (sending || !subject.trim() || !html.trim()) ? '#e2e8f0' : 'linear-gradient(135deg, #e91e63 0%, #f97316 100%)',
                     color: (sending || !subject.trim() || !html.trim()) ? '#94a3b8' : '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   }}>
-                    {sending ? 'Sending…' : recipientMode === 'custom' ? 'Send to Custom List' : `Send Newsletter → ${recipientCount !== null ? recipientCount : '…'} recipients`}
+                    {sending ? 'Sending…' : recipientMode === 'custom' ? 'Send to Custom List' : <>Send Newsletter <ArrowRight size={16} aria-hidden /> {recipientCount !== null ? recipientCount : '…'} recipients</>}
                   </button>
                 ) : (
                   <button onClick={handleSchedule} disabled={scheduling || !subject.trim() || !html.trim() || !scheduleAt} style={{
@@ -1585,7 +1591,7 @@ export default function NewsletterPage() {
                   >
                     <input id="compose-csv-input" type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) { setCustomEmailsFile(f); setCustomEmailsText(''); } }} />
                     {customEmailsFile ? (
-                      <p style={{ margin: 0, fontWeight: 600, color: '#166534', fontSize: '0.875rem' }}>✓ {customEmailsFile.name} — click to change</p>
+                      <p style={{ margin: 0, fontWeight: 600, color: '#166534', fontSize: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><CircleCheck size={16} style={{ flexShrink: 0 }} aria-hidden />{customEmailsFile.name} — click to change</p>
                     ) : (
                       <p style={{ margin: 0, color: '#6366f1', fontWeight: 600, fontSize: '0.875rem' }}>Drop CSV here or click to browse</p>
                     )}
@@ -1612,11 +1618,11 @@ export default function NewsletterPage() {
                 <h4 style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#0f172a', margin: '0 0 0.75rem' }}>Send To</h4>
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                   <button onClick={() => setRecipientMode('subscribers')} style={{ padding: '10px 14px', background: recipientMode === 'subscribers' ? '#ede9fe' : '#f8fafc', color: recipientMode === 'subscribers' ? '#6366f1' : '#475569', border: recipientMode === 'subscribers' ? '1.5px solid #6366f1' : '1.5px solid #e2e8f0', borderRadius: 8, fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', textAlign: 'left' as const }}>
-                    {recipientMode === 'subscribers' && '✓ '}DB Subscribers
+                    {recipientMode === 'subscribers' && <Check size={14} strokeWidth={2.5} style={{ marginRight: 4, verticalAlign: '-2px' }} aria-hidden />}DB Subscribers
                     <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: recipientMode === 'subscribers' ? '#818cf8' : '#94a3b8', marginTop: 2 }}>Filter by category below</span>
                   </button>
                   <button onClick={() => setRecipientMode('custom')} style={{ padding: '10px 14px', background: recipientMode === 'custom' ? '#ede9fe' : '#f8fafc', color: recipientMode === 'custom' ? '#6366f1' : '#475569', border: recipientMode === 'custom' ? '1.5px solid #6366f1' : '1.5px solid #e2e8f0', borderRadius: 8, fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', textAlign: 'left' as const }}>
-                    {recipientMode === 'custom' && '✓ '}Custom List
+                    {recipientMode === 'custom' && <Check size={14} strokeWidth={2.5} style={{ marginRight: 4, verticalAlign: '-2px' }} aria-hidden />}Custom List
                     <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: recipientMode === 'custom' ? '#818cf8' : '#94a3b8', marginTop: 2 }}>Upload CSV or paste emails</span>
                   </button>
                 </div>
@@ -1633,7 +1639,7 @@ export default function NewsletterPage() {
                   <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: '1.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                     <h4 style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#0f172a', margin: '0 0 0.875rem' }}>Filter by Category</h4>
                     <button onClick={() => setRecipientFilter('all')} style={{ width: '100%', padding: '8px 14px', marginBottom: 8, background: recipientFilter === 'all' ? '#ede9fe' : '#f8fafc', color: recipientFilter === 'all' ? '#6366f1' : '#475569', border: recipientFilter === 'all' ? '1.5px solid #6366f1' : '1.5px solid #e2e8f0', borderRadius: 8, fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', textAlign: 'left' as const }}>
-                      {recipientFilter === 'all' && '✓ '}All Subscribers
+                      {recipientFilter === 'all' && <Check size={14} strokeWidth={2.5} style={{ marginRight: 4, verticalAlign: '-2px' }} aria-hidden />}All Subscribers
                     </button>
                     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                       {nlCategories.map(cat => {
@@ -1646,7 +1652,7 @@ export default function NewsletterPage() {
                             display: 'flex', alignItems: 'center', gap: 7,
                           }}>
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: isSelected ? cat.color : '#cbd5e1', flexShrink: 0, display: 'inline-block' }} />
-                            {isSelected && '✓ '}{cat.name}
+                            {isSelected && <Check size={13} strokeWidth={2.5} style={{ flexShrink: 0 }} aria-hidden />}{cat.name}
                           </button>
                         );
                       })}
@@ -1746,7 +1752,7 @@ export default function NewsletterPage() {
                     When enabled, subscribers receive a personalised newsletter every morning at 8 AM in their local timezone. The newsletter category picker will also appear in the sign-up modal for new users.
                   </p>
 
-                  {cronMsg && <div style={{ background: '#dcfce7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem', fontWeight: 600 }}>✓ {cronMsg}</div>}
+                  {cronMsg && <div style={{ background: '#dcfce7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'flex-start', gap: 6 }}><CircleCheck size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />{cronMsg}</div>}
                   {cronError && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: '1rem', fontSize: '0.875rem' }}>{cronError}</div>}
 
                   {/* Enable toggle */}
@@ -1814,8 +1820,9 @@ export default function NewsletterPage() {
 
                   {cronTriggerResult && (
                     <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 8, padding: '12px 16px', marginBottom: '1rem' }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: '#166534', fontSize: '0.9375rem' }}>
-                        ✓ Trigger complete — sent {cronTriggerResult.sent}, skipped {cronTriggerResult.skipped}, errors {cronTriggerResult.errors}, out of {cronTriggerResult.total} total subscribers
+                      <p style={{ margin: 0, fontWeight: 700, color: '#166534', fontSize: '0.9375rem', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                        <CircleCheck size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
+                        Trigger complete — sent {cronTriggerResult.sent}, skipped {cronTriggerResult.skipped}, errors {cronTriggerResult.errors}, out of {cronTriggerResult.total} total subscribers
                       </p>
                     </div>
                   )}

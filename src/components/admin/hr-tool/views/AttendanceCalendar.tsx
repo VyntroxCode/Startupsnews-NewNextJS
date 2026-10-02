@@ -1,159 +1,147 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
 import PunchOutTimeInput from '../../PunchOutTimeInput';
 import { getAuthHeaders } from '@/lib/admin-auth';
-import { ApprovalBadge, attendanceKey, employeeName, isAdmin } from '../utils';
-import { isSunday, shiftMonthKey } from '@/modules/hr-tool/utils/time';
-import { realDayHoursBucket } from '@/modules/hr-tool/utils/lateness';
+import { ApprovalBadge, employeeName, todayStr } from '../utils';
+import { hrApi } from '../api';
+import { payrollMonthKeyForDate, shiftMonthKey } from '@/modules/hr-tool/utils/time';
+import type { EmployeeCycleLedger, LedgerDay, LedgerDayKind } from '@/modules/hr-tool/utils/day-ledger';
 
 const REG_REASONS = ['Forgot to punch out', 'Forgot to punch in', 'System/network issue', 'Worked from a client site'];
 
-function daysInMonth(year: number, monthIndex: number): number { return new Date(year, monthIndex + 1, 0).getDate(); }
 const DOWS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-type DayStatus = 'present' | 'absent' | 'leave' | 'off' | 'half-day' | null;
+/** Plain-words label for each day kind, used in the day popup. */
+const KIND_LABEL: Record<LedgerDayKind, string> = {
+  present: 'Present', 'short-leave': 'Short leave', 'half-day': 'Half day', absent: 'Absent',
+  leave: 'On leave (paid)', 'unpaid-leave': 'On leave — unpaid (no balance left)', 'half-leave': 'Half-day leave',
+  off: 'Week-off / holiday', future: 'Not due yet', 'not-employed': 'Not employed on this date', settled: 'Already paid in an earlier payroll run',
+};
 
-/** Attendance calendar, navigable to any past month (never into the future) — a real record
- * (or an HR override) drives each day's colour; days with neither show as "not recorded"
- * instead of a fabricated status. (The old standalone tool filled every blank day with a
- * deterministic pseudo-random present/absent/leave value seeded off the employee's name
- * length — that's the fake data this component replaces with an honest "not recorded" state.) */
-export default function AttendanceCalendar({ employeeId }: { employeeId: string }) {
+const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+const fmtNum = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+/** Attendance calendar for one employee, one PAY CYCLE at a time (e.g. 26 Aug – 25 Sep) — never
+ * into the future. Every square and every number comes from the server's day ledger
+ * (HrToolService.getEmployeeCycleLedger → utils/day-ledger.ts), the exact code payroll pays by, so
+ * the tiles here are that employee's payslip numbers for the cycle. It re-fetches whenever
+ * attendance, a regularization or a leave changes in the HR tool, so an approval shows up at once. */
+export default function AttendanceCalendar({ employeeId, initialMonth }: { employeeId: string; initialMonth?: string }) {
   const { state } = useHrTool();
-  const [selected, setSelected] = useState<{ dateStr: string } | null>(null);
+  // The selected DATE — its day is read from the latest ledger, so the popup follows a re-fetch.
+  const [selected, setSelected] = useState<string | null>(null);
+  const currentCycle = useMemo(() => payrollMonthKeyForDate(todayStr(), state.rules), [state.rules]);
+  // Opens on the cycle it was asked for (e.g. a past month picked in the overview), else today's.
+  const [monthKey, setMonthKey] = useState(initialMonth && initialMonth <= currentCycle ? initialMonth : currentCycle);
+  const [ledger, setLedger] = useState<EmployeeCycleLedger | null>(null);
+  const [error, setError] = useState('');
+  const canGoNext = monthKey < currentCycle;
+  function goToCycle(delta: number) { setSelected(null); setMonthKey((k) => shiftMonthKey(k, delta)); }
 
-  const realNow = new Date();
-  const realTodayIso = `${realNow.getFullYear()}-${String(realNow.getMonth() + 1).padStart(2, '0')}-${String(realNow.getDate()).padStart(2, '0')}`;
-  const currentMonthKey = realTodayIso.slice(0, 7);
-  const [monthKey, setMonthKey] = useState(currentMonthKey);
-  const [monthKeyYear, monthKeyMonth] = monthKey.split('-').map(Number);
-  const year = monthKeyYear, month = monthKeyMonth - 1;
-  const isCurrentMonth = monthKey === currentMonthKey;
-  const canGoNext = monthKey < currentMonthKey;
-  function goToMonth(delta: number) { setSelected(null); setMonthKey((k) => shiftMonthKey(k, delta)); }
+  useEffect(() => {
+    let live = true;
+    setError('');
+    hrApi.getAttendanceLedger(employeeId, monthKey)
+      .then((res) => { if (!live) return; if (res.success && res.data) setLedger(res.data); else setError(res.error || 'Could not load attendance.'); })
+      .catch(() => { if (live) setError('Could not load attendance.'); });
+    return () => { live = false; };
+  }, [employeeId, monthKey, state.attendance, state.regularizations, state.leaveRequests, state.rules, state.orgStructure.holidays]);
 
-  const totalDays = daysInMonth(year, month);
-  // "Elapsed" days for the summary tile: every day up to and including real-today for the
-  // current month, the whole month for a past month — never day-of-month-number math, which
-  // only meant anything back when this calendar was locked to the real current month.
-  const daysElapsedInMonth = isCurrentMonth ? realNow.getDate() : totalDays;
-  const firstDow = new Date(year, month, 1).getDay();
-  const holidaySet = useMemo(() => new Set(state.orgStructure.holidays.map((h) => h.date)), [state.orgStructure.holidays]);
-  // Nobody can be absent before they joined, so days earlier than the employee's date of joining
-  // are held out of the absent rule (and out of every total) rather than back-dated into
-  // absences the moment a mid-month hire is opened.
-  const doj = useMemo(() => state.employees.find((e) => e.id === employeeId)?.doj || null, [state.employees, employeeId]);
-  function isBeforeJoining(dateStr: string): boolean { return !!doj && dateStr < doj; }
-
-  function getDayStatus(dateStr: string): DayStatus {
-    const override = state.attendanceOverrides[attendanceKey(employeeId, dateStr)];
-    if (override) return override as DayStatus;
-    // A Sunday or a company holiday is a day off regardless of any punch that happens to
-    // exist for it — it shouldn't be judged present/absent just because nobody worked it.
-    if (isSunday(dateStr) || holidaySet.has(dateStr)) return 'off';
-    const real = state.attendance.find((a) => a.employeeId === employeeId && a.date === dateStr);
-    if (real) {
-      // The stored status is stamped 'Present' the instant someone punches in and is never
-      // revisited — so on its own it can't tell "worked a normal day" from "punched in at
-      // 10:07 and never came back". Real hours worked decide instead — a punch-in with no
-      // punch-out is a straight Absent, no matter how recently they punched in or whether the
-      // day is even over yet (see realDayHoursBucket).
-      const bucket = realDayHoursBucket(real.inMinutes ?? null, real.outMinutes ?? null, state.rules);
-      if (bucket === 'full-time' || bucket === 'short-leave') return 'present';
-      if (bucket === 'half-day') return 'half-day';
-      if (bucket === 'absent') return 'absent';
-      const s = real.status.toLowerCase();
-      if (s === 'present' || s === 'absent' || s === 'leave' || s === 'off') return s;
-      return 'present';
+  const regsByDate = useMemo(() => {
+    const map = new Map<string, { pending: boolean; approved: boolean }>();
+    for (const r of state.regularizations) {
+      if (r.employeeId !== employeeId) continue;
+      const cur = map.get(r.date) || { pending: false, approved: false };
+      if (r.status === 'pending') cur.pending = true;
+      else if (r.stage === 'done' && r.status === 'approved') cur.approved = true;
+      map.set(r.date, cur);
     }
-    // No punch-in/punch-out and no HR override on a working day that has already arrived: absent.
-    // (Purely derived — nothing is written to hr_attendance — so the moment a punch or an HR
-    // correction lands for that date it takes over. Future days and pre-joining days stay null.)
-    if (isBeforeJoining(dateStr)) return null;
-    return dateStr <= realTodayIso ? 'absent' : null;
-  }
+    return map;
+  }, [state.regularizations, employeeId]);
 
-  // Walk the month once, building both the visible cells and the numeric summary above them —
-  // the calendar used to render colours with no totals at all, so "how many days was this person
-  // actually present?" meant counting squares by eye.
+  if (error) return <div className="notice bad">{error}</div>;
+  if (!ledger || ledger.month !== monthKey) return <div className="footnote">Loading attendance…</div>;
+
+  const t = ledger.totals;
+  let regPending = 0, regApproved = 0;
   const cells: ReactNode[] = [];
-  const tally = { present: 0, absent: 0, leave: 0, off: 0, halfDay: 0, preJoining: 0, upcoming: 0, regPending: 0, regApproved: 0, workedElapsed: 0 };
+  const firstDow = new Date(ledger.periodFrom + 'T00:00:00').getDay();
   for (let i = 0; i < firstDow; i++) cells.push(<div key={'b' + i} className="cal-cell blank" />);
-  for (let d = 1; d <= totalDays; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const status = getDayStatus(dateStr);
-    const reg = state.regularizations.find((r) => r.employeeId === employeeId && r.date === dateStr);
-    const elapsed = dateStr <= realTodayIso;
-    const preJoining = isBeforeJoining(dateStr);
-
-    if (status === 'off') tally.off++;
-    else if (status === 'present') tally.present++;
-    else if (status === 'absent') tally.absent++;
-    else if (status === 'half-day') tally.halfDay++;
-    else if (status === 'leave') tally.leave++;
-    else if (preJoining) tally.preJoining++;
-    else tally.upcoming++;
-    // "Working days so far" is the honest denominator for an attendance %: it excludes
-    // week-offs/holidays, days before joining, and every day that hasn't happened yet.
-    if (status !== 'off' && elapsed && !preJoining) tally.workedElapsed++;
-    if (reg) { if (reg.stage === 'done' && reg.status === 'approved') tally.regApproved++; else if (reg.status === 'pending') tally.regPending++; }
-
-    let cellClass: string = status || 'unrecorded';
-    if (reg) cellClass = reg.stage === 'done' && reg.status === 'approved' ? 'regapproved' : reg.status === 'pending' ? 'regpending' : cellClass;
+  ledger.days.forEach((day, i) => {
+    const reg = regsByDate.get(day.date);
+    if (reg?.pending) regPending++; else if (reg?.approved) regApproved++;
+    const dom = Number(day.date.slice(8, 10));
+    const label = i === 0 || dom === 1 ? `${dom} ${new Date(day.date + 'T00:00:00').toLocaleDateString('en-IN', { month: 'short' })}` : String(dom);
+    const note = day.kind === 'short-leave' && day.shortLeaveDeducted ? '½ deducted'
+      : day.kind === 'half-leave' ? `½ leave${day.unpaidLeave > 0 ? ' (unpaid)' : ''}`
+      : day.kind === 'unpaid-leave' ? 'unpaid' : null;
     cells.push(
-      <div key={dateStr} className={`cal-cell ${cellClass}`} style={{ cursor: 'pointer' }} onClick={() => setSelected({ dateStr })}>
-        <div className="cal-day">{d}</div>
+      <div key={day.date} className={`cal-cell ${day.kind}`} style={{ cursor: 'pointer' }} onClick={() => setSelected(day.date)}
+        title={`${KIND_LABEL[day.kind]} — pays ${fmtNum(day.pay)} day`}>
+        <div className="cal-day">{label}</div>
+        {note && <div className="cal-note">{note}</div>}
+        {reg && <span className={`cal-reg ${reg.pending ? 'pending' : 'approved'}`} aria-label={reg.pending ? 'Regularization pending' : 'Regularized'} />}
       </div>
     );
-  }
-  const workingDays = totalDays - tally.off - tally.preJoining;
-  const attendancePct = tally.workedElapsed ? Math.round((tally.present / tally.workedElapsed) * 100) : null;
-  const monthLabel = new Date(year, month, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  });
+  // Everything that was judged (worked, paid leave, loss of pay) — week-offs and future days aside.
+  const judged = t.presentDays + t.leaveDays + t.lopDays;
+  const settledDays = ledger.days.filter((d) => d.kind === 'settled').length;
+  const selectedDay = selected ? ledger.days.find((d) => d.date === selected) || null : null;
+  const isCurrent = monthKey === currentCycle;
+  const payslipDiffers = !!ledger.saved && ledger.saved.monthlyGross !== ledger.pay.monthlyGross;
 
   return (
     <>
       <div className="cal-summary">
         <div className="cal-summary-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button type="button" className="btn ghost sm" onClick={() => goToMonth(-1)} aria-label="Previous month">‹</button>
-            <span className="cal-summary-month">{monthLabel}</span>
-            <button type="button" className="btn ghost sm" onClick={() => canGoNext && goToMonth(1)} disabled={!canGoNext} aria-label="Next month" style={{ opacity: canGoNext ? 1 : 0.4, cursor: canGoNext ? 'pointer' : 'not-allowed' }}>›</button>
+            <button type="button" className="btn ghost sm" onClick={() => goToCycle(-1)} aria-label="Previous pay cycle"><ChevronLeft size={14} aria-hidden /></button>
+            <span className="cal-summary-month">{fmtDate(ledger.periodFrom)} – {fmtDate(ledger.periodTo)}</span>
+            <button type="button" className="btn ghost sm" onClick={() => canGoNext && goToCycle(1)} disabled={!canGoNext} aria-label="Next pay cycle" style={{ opacity: canGoNext ? 1 : 0.4, cursor: canGoNext ? 'pointer' : 'not-allowed' }}><ChevronRight size={14} aria-hidden /></button>
           </div>
           <span className="cal-summary-note">
-            {attendancePct === null
-              ? (isCurrentMonth ? 'No working days elapsed yet this month' : 'No working days in this month')
-              : <><strong>{tally.present}</strong> of <strong>{tally.workedElapsed}</strong> working days {isCurrentMonth ? 'so far ' : ''}marked present · <strong>{attendancePct}%</strong> attendance</>}
+            Pay cycle{isCurrent ? ' (in progress)' : ''} · <strong>{fmtNum(t.paidDays)}</strong> of <strong>{t.totalDays}</strong> days paid
+            {t.lopDays > 0 && <> · <strong>{fmtNum(t.lopDays)}</strong> LOP</>}
           </span>
         </div>
-        {tally.workedElapsed > 0 && (
+        {judged > 0 && (
           <div className="cal-summary-bar" role="img"
-            aria-label={`${tally.present} present, ${tally.halfDay} half day, ${tally.absent} absent, ${tally.leave} on leave out of ${tally.workedElapsed} working days so far`}>
-            {([['present', tally.present], ['half-day', tally.halfDay], ['absent', tally.absent], ['leave', tally.leave]] as const)
+            aria-label={`${fmtNum(t.presentDays)} worked, ${fmtNum(t.leaveDays)} paid leave, ${fmtNum(t.lopDays)} loss of pay`}>
+            {([['present', t.presentDays], ['leave', t.leaveDays], ['absent', t.lopDays]] as const)
               .filter(([, n]) => n > 0)
-              .map(([k, n]) => <span key={k} className={`seg ${k}`} style={{ width: `${(n / tally.workedElapsed) * 100}%` }} />)}
+              .map(([k, n]) => <span key={k} className={`seg ${k}`} style={{ width: `${(n / judged) * 100}%` }} />)}
           </div>
         )}
         <div className="cal-stats">
-          <CalStat label="Days in month" value={totalDays} sub={`${daysElapsedInMonth} elapsed`} tone="neutral" />
-          <CalStat label="Working days" value={workingDays} sub={`${tally.workedElapsed} so far`} tone="neutral" />
-          <CalStat label="Present" value={tally.present} tone="present" />
-          <CalStat label="Half day" value={tally.halfDay} tone="half-day" />
-          <CalStat label="Absent" value={tally.absent} tone="absent" />
-          <CalStat label="On leave" value={tally.leave} tone="leave" />
-          <CalStat label="Week-offs" value={tally.off} sub="Sundays + holidays" tone="off" />
-          <CalStat label="Reg. pending" value={tally.regPending} tone="regpending" />
-          <CalStat label="Regularized" value={tally.regApproved} tone="regapproved" />
+          <CalStat label="Days in cycle" value={t.totalDays} sub={`${t.workingDays} working`} tone="neutral" />
+          <CalStat label="Present" value={t.presentDays} sub={t.halfDayDays || t.shortLeaveDeductions ? 'paid worth of days worked' : undefined} tone="present" />
+          <CalStat label="Half day" value={t.halfDayDays} sub="½ day each" tone="half-day" />
+          <CalStat label="Total short leaves" value={t.shortLeaveDays}
+            sub={t.shortLeaveDeductions > 0 ? `${state.rules.shortLeaveMonthlyQuota} free · ${t.shortLeaveDeductions} cost ½ day` : `${state.rules.shortLeaveMonthlyQuota} free per month`} tone="short-leave" />
+          {ledger.leave.map((l) => <LeaveStat key={l.type} leave={l} isCurrent={isCurrent} />)}
+          <CalStat label="Absent / LOP" value={t.lopDays} sub={t.notEmployedDays ? `incl. ${t.notEmployedDays} not employed` : undefined} tone="absent" />
+          <CalStat label="Week-offs" value={t.weekOffDays} sub="Sundays + holidays" tone="off" />
+          <CalStat label="Paid days" value={t.paidDays} sub={t.futureDays ? `${t.futureDays} still to come` : undefined} tone="paid" />
+          <CalStat label="Reg. pending" value={regPending} tone="regpending" />
+          <CalStat label="Regularized" value={regApproved} tone="regapproved" />
+        </div>
+        <div className="cal-payslip">
+          Payslip for this cycle: <strong>{fmtNum(t.paidDays)} paid days</strong> · gross <strong>₹{ledger.pay.monthlyGross.toLocaleString('en-IN')}</strong>
+          {ledger.paidInFnf && !ledger.saved ? ' · salary for this month is paid in the Full & Final, not by payroll'
+            : ledger.saved ? (ledger.locked ? ' · payroll locked' : ' · payroll run — updates automatically until it locks') : isCurrent ? ' · estimate so far' : ' · payroll not run yet'}
+          {payslipDiffers && <> · <strong>saved payslip ₹{ledger.saved!.monthlyGross.toLocaleString('en-IN')}</strong> (locked — the Founder must reopen it to apply changes)</>}
         </div>
         <div className="cal-summary-rule">
-          A working day with no punch-in, or a punch-in with no punch-out, counts as absent. Hours
-          credited toward a full/half/short day still cap at shift end ({state.rules.shiftEndTime}),
-          even if punch-out is clicked later.
-          {tally.upcoming > 0 && ` ${tally.upcoming} working day${tally.upcoming === 1 ? '' : 's'} still to come this month.`}
-          {tally.preJoining > 0 && ` ${tally.preJoining} day${tally.preJoining === 1 ? '' : 's'} before joining excluded.`}
+          These are the same numbers payroll pays by. A working day with no punch-in, or a punch-in with no
+          punch-out, is absent. Hours credited toward a full/half/short day cap at shift end ({state.rules.shiftEndTime}).
+          A day with a punch-in can only take half-day leave.
+          {settledDays > 0 && ` ${settledDays} day${settledDays === 1 ? ' was' : 's were'} already paid in the previous payroll run and count${settledDays === 1 ? 's' : ''} as present.`}
         </div>
       </div>
       <div className="cal-grid">
@@ -162,17 +150,38 @@ export default function AttendanceCalendar({ employeeId }: { employeeId: string 
       </div>
       <div className="cal-legend">
         <span><span className="dot" style={{ background: 'var(--green-soft)', border: '1px solid #14532D' }} />Present</span>
+        <span><span className="dot" style={{ background: '#FEF3C7', border: '1px solid #92400E' }} />Short leave</span>
         <span><span className="dot" style={{ background: '#FED7AA', border: '1px solid #9A3412' }} />Half day</span>
         <span><span className="dot" style={{ background: '#FECACA', border: '1px solid #7F1D1D' }} />Absent</span>
-        <span><span className="dot" style={{ background: '#DBEAFE', border: '1px solid #1E3A8A' }} />On leave</span>
-        <span><span className="dot" style={{ background: '#FDE68A', border: '1px solid #78350F' }} />Regularization pending</span>
-        <span><span className="dot" style={{ background: '#EDE9FE', border: '1px solid #5B21B6' }} />Already regularized</span>
+        <span><span className="dot" style={{ background: '#DBEAFE', border: '1px solid #1E3A8A' }} />Paid leave</span>
+        <span><span className="dot" style={{ background: 'repeating-linear-gradient(135deg, #DBEAFE 0 3px, #FECACA 3px 6px)', border: '1px solid #7F1D1D' }} />Unpaid leave</span>
+        <span><span className="dot" style={{ background: 'linear-gradient(135deg, #DBEAFE 50%, #FED7AA 50%)', border: '1px solid #1E3A8A' }} />Half-day leave</span>
         <span><span className="dot" style={{ background: '#F1F5F9', border: '1px solid var(--muted)' }} />Week-off</span>
-        <span><span className="dot" style={{ background: '#fff', border: '1px solid var(--border-strong, #CBD5E1)' }} />Not due yet</span>
+        <span><span className="dot" style={{ background: '#F0FDF4', border: '1px dashed #166534' }} />Paid in earlier run</span>
+        <span><span className="dot" style={{ background: '#EEF2F7', border: '1px solid #94A3B8' }} />Not employed</span>
+        <span><span className="dot" style={{ background: '#D97706', borderRadius: '50%' }} />Regularization pending</span>
+        <span><span className="dot" style={{ background: '#7C3AED', borderRadius: '50%' }} />Regularized</span>
       </div>
-      <div className="footnote">Click any day for details{isAdmin(state.role) ? ' — HR can also correct a day\'s status directly.' : '.'}</div>
-      {selected && <DayDetailModal employeeId={employeeId} dateStr={selected.dateStr} status={getDayStatus(selected.dateStr)} onClose={() => setSelected(null)} />}
+      <div className="footnote">Click any day for details. A day can only be corrected through a regularization request — HR approves or rejects it.</div>
+      {selectedDay && <DayDetailModal employeeId={employeeId} day={selectedDay} shortLeaveQuota={state.rules.shortLeaveMonthlyQuota} onClose={() => setSelected(null)} />}
     </>
+  );
+}
+
+/** One leave type's card: the balance left today (big number) out of what has been earned this
+ * year, and this cycle's requested days — approved ones split into paid / unpaid exactly as payroll
+ * pays them, plus any still waiting for approval. Spans two tiles. */
+function LeaveStat({ leave: l, isCurrent }: { leave: EmployeeCycleLedger['leave'][number]; isCurrent: boolean }) {
+  return (
+    <div className="cal-stat leave" style={{ gridColumn: 'span 2' }}>
+      <div className="cal-stat-label">{l.type} leave</div>
+      <div className="cal-stat-num">{fmtNum(l.available)} <span style={{ fontSize: 12, fontWeight: 600 }}>available</span></div>
+      <div className="cal-stat-sub">of {fmtNum(l.earnedThisYear)} earned this year</div>
+      <div className="cal-stat-sub" style={{ marginTop: 6, fontWeight: 600 }}>
+        {isCurrent ? 'This month' : 'In this month'}: {fmtNum(l.appliedInCycle)} applied
+        {l.appliedInCycle > 0 && <> — {fmtNum(l.paidInCycle)} paid{l.unpaidInCycle > 0 ? ` · ${fmtNum(l.unpaidInCycle)} unpaid (no balance)` : ''}{l.pendingInCycle > 0 ? ` · ${fmtNum(l.pendingInCycle)} waiting` : ''}</>}
+      </div>
+    </div>
   );
 }
 
@@ -189,10 +198,10 @@ function CalStat({ label, value, sub, tone }: { label: string; value: number; su
   );
 }
 
-function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: string; dateStr: string; status: DayStatus; onClose: () => void }) {
-  const { state, persistAttendanceOverride, decideRegularization, logRuleChange, addRegularizationToState } = useHrTool();
+function DayDetailModal({ employeeId, day, shortLeaveQuota, onClose }: { employeeId: string; day: LedgerDay; shortLeaveQuota: number; onClose: () => void }) {
+  const dateStr = day.date;
+  const { state, decideRegularization, addRegularizationToState } = useHrTool();
   const empName = employeeName(state.employees, employeeId);
-  const [manualStatus, setManualStatus] = useState<DayStatus>(status || 'present');
   const [showRegForm, setShowRegForm] = useState<'in' | 'out' | null>(null);
   const [regTime, setRegTime] = useState('');
   const [regReason, setRegReason] = useState(REG_REASONS[0]);
@@ -204,26 +213,23 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
   const real = state.attendance.find((a) => a.employeeId === employeeId && a.date === dateStr);
   const regIn = state.regularizations.find((r) => r.employeeId === employeeId && r.date === dateStr && r.punchType === 'in');
   const regOut = state.regularizations.find((r) => r.employeeId === employeeId && r.date === dateStr && r.punchType === 'out');
-  // Uses the computed `status` (real hours worked, auto-close applied — see getDayStatus), not
-  // the raw stored real.status, which is always 'Present' from the moment of punch-in and never
-  // revisited — showing it directly here would silently contradict the cell colour above it.
-  const statusLabel = status ? { present: 'Present', absent: 'Absent', leave: 'On leave', off: 'Week-off', 'half-day': 'Half Day' }[status] : 'Not recorded';
+  // The day ledger's verdict — the same one payroll pays by — not the raw stored real.status,
+  // which is always 'Present' from the moment of punch-in and never revisited.
+  const detail = day.kind === 'absent' && day.inMinutes != null && day.outMinutes == null ? ' — no punch-out'
+    : day.kind === 'short-leave' && day.shortLeaveDeducted ? ` — over the free ${shortLeaveQuota} this cycle, half a day deducted`
+    : day.kind === 'half-leave' ? ` — ${fmtNum(day.paidLeave)} paid leave${day.unpaidLeave ? `, ${fmtNum(day.unpaidLeave)} unpaid` : ''}, ${fmtNum(day.worked)} worked`
+    : '';
+  const statusLabel = `${KIND_LABEL[day.kind]}${detail} · pays ${fmtNum(day.pay)} day`;
   const times = real ? { inTime: real.inTime, outTime: real.outTime } : { inTime: '—', outTime: '—' };
 
-  async function saveCorrection() {
-    await persistAttendanceOverride({ employeeId, emp: empName, date: dateStr, status: manualStatus || 'present' });
-    logRuleChange(`Manually set ${empName}'s attendance on ${dateStr} to ${manualStatus}`);
-    setDoneNote('Correction saved.');
-  }
   async function submitRegularization() {
     if (!showRegForm) return;
     const reason = regReason === '__other__' ? regReasonOther.trim() : regReason;
     if (!reason) { alert('Please describe the reason.'); return; }
     const time = regTime.trim();
     if (!time) { alert('Please set the time being regularized.'); return; }
-    // Goes through the server so the SAME rules apply here as on the employee portal: cycle
-    // date limit, per-cycle quota, duplicate check, and the on-time-punch check. This screen used
-    // to build the row itself and save it straight to state, which applied none of them.
+    // Goes through the server so the SAME rules apply here as on the employee portal: time
+    // windows, 5-day window, cycle closing, per-cycle day limit, duplicate and on-time checks.
     const res = await fetch('/api/admin/hr-tool/regularizations', {
       method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ employeeId, date: dateStr, reason, punchType: showRegForm, requestedTime: time }),
@@ -251,6 +257,7 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
           {regIn && (
             <div style={{ marginBottom: 8 }}>
               Punch In ({regIn.requestedTime}): {regIn.reason} — <ApprovalBadge req={regIn} />
+              {regIn.source === 'hr-edit' && <div className="meta">Converted from an old direct HR edit — not counted in the limit.</div>}
               {regIn.rmRemarks && <div className="meta">Manager remarks: {regIn.rmRemarks}</div>}
               {regIn.hrRemarks && <div className="meta">HR remarks: {regIn.hrRemarks}</div>}
               <div style={{ marginTop: 8 }}><ApprovalCell req={regIn} onDecide={(level, decision, remarks) => decideReg(regIn.id, level, decision, remarks)} /></div>
@@ -259,6 +266,7 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
           {regOut && (
             <div>
               Punch Out ({regOut.requestedTime}): {regOut.reason} — <ApprovalBadge req={regOut} />
+              {regOut.source === 'hr-edit' && <div className="meta">Converted from an old direct HR edit — not counted in the limit.</div>}
               {regOut.rmRemarks && <div className="meta">Manager remarks: {regOut.rmRemarks}</div>}
               {regOut.hrRemarks && <div className="meta">HR remarks: {regOut.hrRemarks}</div>}
               <div style={{ marginTop: 8 }}><ApprovalCell req={regOut} onDecide={(level, decision, remarks) => decideReg(regOut.id, level, decision, remarks)} /></div>
@@ -277,7 +285,7 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
           <label className="field-label">{showRegForm === 'out' ? 'Punch Out' : 'Punch In'} time</label>
           {showRegForm === 'out'
             ? <div><PunchOutTimeInput value={regTime} onChange={setRegTime} selectStyle={{ width: 'auto' }} /></div>
-            : <input type="time" value={regTime} onChange={(e) => setRegTime(e.target.value)} />}
+            : <input type="time" min="08:00" max="14:00" value={regTime} onChange={(e) => setRegTime(e.target.value)} />}
           <label className="field-label" style={{ marginTop: 8 }}>Reason</label>
           <select value={regReason} onChange={(e) => setRegReason(e.target.value)}>
             {REG_REASONS.map((r) => <option key={r}>{r}</option>)}
@@ -285,14 +293,6 @@ function DayDetailModal({ employeeId, dateStr, status, onClose }: { employeeId: 
           </select>
           {regReason === '__other__' && <textarea style={{ marginTop: 8 }} placeholder="Describe the reason..." value={regReasonOther} onChange={(e) => setRegReasonOther(e.target.value)} />}
           <button className="btn primary sm" style={{ marginTop: 8 }} onClick={submitRegularization}>Submit</button>
-        </div>
-      )}
-      {isAdmin(state.role) && (
-        <div className="field"><label className="field-label">HR correction</label>
-          <select value={manualStatus || 'present'} onChange={(e) => setManualStatus(e.target.value as DayStatus)}>
-            <option value="present">Present</option><option value="half-day">Half Day</option><option value="absent">Absent</option><option value="leave">On leave</option><option value="off">Week-off</option>
-          </select>
-          <button className="btn sm" style={{ marginTop: 8 }} onClick={saveCorrection}>Save correction</button>
         </div>
       )}
     </ModalShell>

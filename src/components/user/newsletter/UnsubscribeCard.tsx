@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'motion/react';
+import { RiMailCloseLine } from '@remixicon/react';
 
 export default function UnsubscribeCard() {
   const reducedMotion = useReducedMotion();
@@ -11,24 +12,23 @@ export default function UnsubscribeCard() {
       initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: reducedMotion ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-      style={{ background: '#fff8f8', borderRadius: 18, border: '1px solid #fde4e4', padding: '1.125rem' }}
+      className="rounded-3xl border border-rose-100 bg-[#fff8f8] p-5"
     >
-      <p style={{ margin: '0 0 4px', fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>Stop receiving emails?</p>
-      <p style={{ margin: '0 0 12px', fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.5 }}>You can unsubscribe from Morning Signal at any time.</p>
+      <div className="mb-3 flex items-start gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-rose-600 ring-1 ring-rose-100">
+          <RiMailCloseLine size={16} />
+        </span>
+        <div>
+          <p className="m-0 mb-0.5 text-sm font-semibold text-slate-900">Stop receiving emails?</p>
+          <p className="m-0 text-xs leading-normal text-slate-400">You can unsubscribe from Morning Signal at any time.</p>
+        </div>
+      </div>
       <Link
         href="/unsubscribe"
-        className="nl-unsub-link"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 0', borderRadius: 8, background: '#fff', color: '#b42318', border: '1px solid #fecdd3', textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 700 }}
+        className="flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-white py-2.5 text-[13px] font-bold text-rose-700 no-underline transition-colors hover:border-rose-300 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rose-100 active:scale-[0.98]"
       >
         Unsubscribe
       </Link>
-
-      <style jsx>{`
-        .nl-unsub-link { transition: background 0.2s ease, border-color 0.2s ease; }
-        .nl-unsub-link:hover { background: #fff1f1; border-color: #fca5a5; }
-        .nl-unsub-link:active { transform: scale(0.98); }
-        .nl-unsub-link:focus-visible { outline: none; box-shadow: 0 0 0 3px #fee2e2; }
-      `}</style>
     </motion.div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, CircleCheck, MapPin, Timer, TriangleAlert } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
@@ -9,6 +10,7 @@ import PunchOutTimeInput from '../../PunchOutTimeInput';
 import { ApprovalBadge, StatusBadge, arrivalBucket, employeeName, isAdmin, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
 import { hrApi } from '../api';
 import { realDayHoursBucket } from '@/modules/hr-tool/utils/lateness';
+import { payrollMonthKeyForDate, shiftMonthKey } from '@/modules/hr-tool/utils/time';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { getCurrentBrowserLocation, geofenceHintFor, type BrowserLocation } from '@/lib/browser-geolocation';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
@@ -26,7 +28,9 @@ export default function Attendance() {
   const [regTime, setRegTime] = useState('');
   const [regReason, setRegReason] = useState(REG_REASONS[0]);
   const [regReasonOther, setRegReasonOther] = useState('');
+  // Whose calendar is open, and on which pay cycle (null = today's).
   const [calendarEmp, setCalendarEmp] = useState<string | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<string | undefined>(undefined);
 
   const isEmployeeOnly = state.role === 'Employee';
   const scopeFilter = isAdmin(state.role)
@@ -116,20 +120,22 @@ export default function Attendance() {
     <>
       <div className="topbar">
         <div><h1 className="page-title">Attendance</h1><div className="page-sub">{isEmployeeOnly ? 'Your punches and regularization requests.' : "Punches and regularization requests, scoped to your view."}</div></div>
-        <div className="as-role">{state.currentUser ? state.currentUser.name : ''} · {state.role}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="as-role">{state.currentUser ? state.currentUser.name : ''} · {state.role}</div>
+        </div>
       </div>
       {isEmployeeOnly && (
         <div className="toolbar" style={{ justifyContent: 'flex-end', alignItems: 'center', marginBottom: 14, gap: 8 }}>
           <div style={{ color: 'var(--muted)', fontSize: 12.5, marginRight: 'auto' }}>
             Shift: {state.rules.shiftStartTime} – {state.rules.shiftEndTime} ({state.rules.shiftGraceMinutes} min grace) — set by HR
-            {state.rules.geoFencing && <><br />📍 Punch In / Out only within {state.rules.geoFenceRadiusM} m of the office — your browser will ask for your location.</>}
-            {myLateness && <><br /><span style={{ fontWeight: 700, color: myLateness.late ? 'var(--red)' : 'var(--green)' }}>{myLateness.late ? '⚠ ' : '✓ '}{myLateness.text}</span></>}
+            {state.rules.geoFencing && <><br /><span className="ic-text"><MapPin size={13} aria-hidden />Punch In / Out only within {state.rules.geoFenceRadiusM} m of the office — your browser will ask for your location.</span></>}
+            {myLateness && <><br /><span className="ic-text" style={{ fontWeight: 700, color: myLateness.late ? 'var(--red)' : 'var(--green)' }}>{myLateness.late ? <TriangleAlert size={13} aria-hidden /> : <CircleCheck size={13} aria-hidden />}{myLateness.text}</span></>}
           </div>
           <button className="btn primary" disabled={punchedInToday || punching !== null} onClick={() => punch('in')}>
-            {punching === 'in' ? 'Getting location…' : <>⏱ Punch In{punchedInToday && myPunch ? ` — ${myPunch.inTime}` : ''}</>}
+            {punching === 'in' ? 'Getting location…' : <><Timer size={14} aria-hidden />Punch In{punchedInToday && myPunch ? ` — ${myPunch.inTime}` : ''}</>}
           </button>
           <button className="btn primary" disabled={punchedOutToday || punching !== null} onClick={() => punch('out')}>
-            {punching === 'out' ? 'Getting location…' : <>⏱ Punch Out{punchedOutToday && myPunch ? ` — ${myPunch.outTime}` : ''}</>}
+            {punching === 'out' ? 'Getting location…' : <><Timer size={14} aria-hidden />Punch Out{punchedOutToday && myPunch ? ` — ${myPunch.outTime}` : ''}</>}
           </button>
         </div>
       )}
@@ -147,12 +153,12 @@ export default function Attendance() {
               // punch-out is actually clicked. See realDayHoursBucket.
               const dayBucket = realDayHoursBucket(a.inMinutes ?? null, a.outMinutes ?? null, state.rules);
               return (
-                <tr key={a.employeeId || a.emp} onClick={() => setCalendarEmp(a.employeeId)} style={{ cursor: 'pointer' }}>
+                <tr key={a.employeeId || a.emp} onClick={() => { setCalendarMonth(undefined); setCalendarEmp(a.employeeId); }} style={{ cursor: 'pointer' }}>
                   <td>{employeeName(state.employees, a.employeeId, a.emp)}</td>
                   <td>{cred ? <code>{cred.employeeCode}</code> : <span className="meta">—</span>}</td>
                   <td>{cred?.panelRole ? PANEL_ROLE_LABEL[cred.panelRole] : <span className="meta">—</span>}</td>
                   <td>
-                    {dayBucket === 'absent' && <span style={{ fontWeight: 700, color: 'var(--red)' }}>⚠ Absent</span>}
+                    {dayBucket === 'absent' && <span className="ic-text" style={{ fontWeight: 700, color: 'var(--red)' }}><TriangleAlert size={13} aria-hidden />Absent</span>}
                     {dayBucket === 'half-day' && <span style={{ fontWeight: 700, color: 'var(--orange)' }}>Half Day</span>}
                     {dayBucket === 'short-leave' && <span style={{ fontWeight: 700, color: 'var(--orange)' }}>Short Leave</span>}
                     {dayBucket === 'full-time' && <StatusBadge status="active" />}
@@ -163,10 +169,10 @@ export default function Attendance() {
                   <td>
                     {rowBucket === null && <span className="meta">—</span>}
                     {rowBucket === 'on-time' && <span>On time</span>}
-                    {rowBucket === 'grace' && <span style={{ fontWeight: 700, color: 'var(--orange)' }}>⚠ Within grace period</span>}
-                    {rowBucket === 'short-leave' && <span style={{ fontWeight: 700, color: 'var(--orange)' }} title={rowLateness?.text}>⚠ Short Leave</span>}
-                    {rowBucket === 'half-day' && <span style={{ fontWeight: 700, color: 'var(--red)' }} title={rowLateness?.text}>⚠ Half Day</span>}
-                    {rowBucket === 'absent' && <span style={{ fontWeight: 700, color: 'var(--red)' }} title={rowLateness?.text}>⚠ Absent</span>}
+                    {rowBucket === 'grace' && <span className="ic-text" style={{ fontWeight: 700, color: 'var(--orange)' }}><TriangleAlert size={13} aria-hidden />Within grace period</span>}
+                    {rowBucket === 'short-leave' && <span className="ic-text" style={{ fontWeight: 700, color: 'var(--orange)' }} title={rowLateness?.text}><TriangleAlert size={13} aria-hidden />Short Leave</span>}
+                    {rowBucket === 'half-day' && <span className="ic-text" style={{ fontWeight: 700, color: 'var(--red)' }} title={rowLateness?.text}><TriangleAlert size={13} aria-hidden />Half Day</span>}
+                    {rowBucket === 'absent' && <span className="ic-text" style={{ fontWeight: 700, color: 'var(--red)' }} title={rowLateness?.text}><TriangleAlert size={13} aria-hidden />Absent</span>}
                   </td>
                 </tr>
               );
@@ -175,6 +181,7 @@ export default function Attendance() {
           </tbody>
         </table></div></div>
       </section>
+      <MonthlyAttendance scopeFilter={scopeFilter} onOpen={(employeeId, month) => { setCalendarMonth(month); setCalendarEmp(employeeId); }} />
       <section className="block">
         <div className="block-head"><h2>Regularization requests</h2>
           {isEmployeeOnly && (
@@ -184,7 +191,7 @@ export default function Attendance() {
             </div>
           )}
         </div>
-        <div className="meta" style={{ marginBottom: 10 }}>Window to request: within {state.rules.regularizationWindowDays} days of the attendance date. {state.rules.twoLevelApproval.attendance ? 'Manager approves first, then HR.' : 'HR approves directly (manager step off).'}</div>
+        <div className="meta" style={{ marginBottom: 10 }}>Employees can request within {state.rules.regularizationWindowDays} days of the date, up to {state.rules.regularizationMonthlyQuota} days per payroll cycle. HR approves or rejects — attendance can&apos;t be edited directly.</div>
         <div className="card"><div className="table-scroll wrap-table"><table>
           <colgroup>
             <col style={{ width: '13%' }} /><col style={{ width: '9%' }} /><col style={{ width: '9%' }} /><col style={{ width: '10%' }} /><col style={{ width: '27%' }} /><col style={{ width: '13%' }} /><col style={{ width: '19%' }} />
@@ -206,11 +213,11 @@ export default function Attendance() {
           { label: 'Cancel', cls: 'btn', onClick: () => setRegOpen(false) },
           { label: 'Submit', cls: 'btn primary', onClick: submitRegularization },
         ]}>
-          <div className="notice">Requests must be submitted within {state.rules.regularizationWindowDays} days of the attendance date.</div>
+          <div className="notice">Requests must be submitted within {state.rules.regularizationWindowDays} days of the date, up to {state.rules.regularizationMonthlyQuota} days per payroll cycle. Punch In 8:00 AM–2:00 PM, Punch Out 2:00 PM–11:00 PM.</div>
           <div className="field"><label className="field-label">Date</label><input type="date" value={regDate} onChange={(e) => setRegDate(e.target.value)} /></div>
           <div className="field"><label className="field-label">{regPunchType === 'out' ? 'Punch Out' : 'Punch In'} time</label>{regPunchType === 'out'
             ? <div><PunchOutTimeInput value={regTime} onChange={setRegTime} selectStyle={{ width: 'auto' }} /></div>
-            : <input type="time" value={regTime} onChange={(e) => setRegTime(e.target.value)} />}</div>
+            : <input type="time" min="08:00" max="14:00" value={regTime} onChange={(e) => setRegTime(e.target.value)} />}</div>
           <div className="field"><label className="field-label">Reason</label>
             <select value={regReason} onChange={(e) => setRegReason(e.target.value)}>
               {REG_REASONS.map((r) => <option key={r}>{r}</option>)}
@@ -223,9 +230,91 @@ export default function Attendance() {
 
       {calendarEmp && (
         <ModalShell title={`${employeeName(state.employees, calendarEmp)} — Attendance calendar`} onClose={() => setCalendarEmp(null)} actions={[{ label: 'Close', cls: 'btn', onClick: () => setCalendarEmp(null) }]} maxWidth="80vw">
-          <AttendanceCalendar employeeId={calendarEmp} />
+          <AttendanceCalendar key={`${calendarEmp}:${calendarMonth || ''}`} employeeId={calendarEmp} initialMonth={calendarMonth} />
         </ModalShell>
       )}
     </>
+  );
+}
+
+const fmtCycleDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+const fmtDays = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+/** Monthly overview: every employee in view for one pay cycle (26th → 25th), any past cycle
+ * reachable with the arrows. Each row is that employee's day ledger totals — the same numbers
+ * their calendar and payslip show — and clicking it opens their calendar on that cycle. Re-fetches
+ * when attendance, a regularization or a leave changes in the HR tool. */
+function MonthlyAttendance({ scopeFilter, onOpen }: { scopeFilter: (employeeId: string) => boolean; onOpen: (employeeId: string, month: string) => void }) {
+  const { state } = useHrTool();
+  const currentCycle = useMemo(() => payrollMonthKeyForDate(todayStr(), state.rules), [state.rules]);
+  const [month, setMonth] = useState(currentCycle);
+  const [data, setData] = useState<Awaited<ReturnType<typeof hrApi.getAttendanceSummary>>['data'] | null>(null);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    let live = true;
+    hrApi.getAttendanceSummary(month)
+      .then((res) => { if (!live) return; if (res.success && res.data) { setData(res.data); setError(''); } else setError(res.error || 'Could not load attendance.'); })
+      .catch(() => { if (live) setError('Could not load attendance.'); });
+    return () => { live = false; };
+  }, [month, state.attendance, state.regularizations, state.leaveRequests, state.rules, state.orgStructure.holidays]);
+
+  const rows = (data?.month === month ? data.rows : [])
+    .filter((r) => scopeFilter(r.employeeId))
+    .filter((r) => !query.trim() || r.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const canGoNext = month < currentCycle;
+  const hasRun = !!data && data.month === month && data.rows.some((r) => r.savedGross != null);
+
+  return (
+    <section className="block">
+      <div className="block-head">
+        <h2>Monthly attendance</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button type="button" className="btn ghost sm" onClick={() => setMonth((m) => shiftMonthKey(m, -1))} aria-label="Previous pay cycle"><ChevronLeft size={14} aria-hidden /></button>
+          <strong style={{ fontSize: 13 }}>{data?.month === month ? `${fmtCycleDate(data.periodFrom)} – ${fmtCycleDate(data.periodTo)}` : '…'}</strong>
+          <button type="button" className="btn ghost sm" onClick={() => canGoNext && setMonth((m) => shiftMonthKey(m, 1))} disabled={!canGoNext} aria-label="Next pay cycle" style={{ opacity: canGoNext ? 1 : 0.4 }}><ChevronRight size={14} aria-hidden /></button>
+        </div>
+      </div>
+      <div className="meta" style={{ marginBottom: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span>
+          One salary month{month === currentCycle ? ', so far' : ''}. These are the numbers payroll pays by. Click an employee to open their calendar for this month.
+          {data?.month === month && data.locked && ' Payroll for this month is locked — the saved payslips are what was paid.'}
+        </span>
+        <input type="search" placeholder="Search employee…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ maxWidth: 220, marginLeft: 'auto' }} />
+      </div>
+      {error && <div className="notice bad">{error}</div>}
+      <div className="card"><div className="table-scroll"><table>
+        <thead><tr><th>Employee</th><th>Present</th><th>Half day</th><th>Short leave</th><th>Paid leave</th><th>Unpaid leave</th><th>Absent / LOP</th><th>Week off</th><th>Paid days</th>{hasRun && <th>Saved payslip</th>}</tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.employeeId} onClick={() => onOpen(r.employeeId, month)} style={{ cursor: 'pointer' }}>
+              <td>
+                {employeeName(state.employees, r.employeeId, r.name)}
+                {r.paidInFnf && <div className="meta">Salary for this month is paid in the Full &amp; Final</div>}
+              </td>
+              <td>{fmtDays(r.totals.presentDays)}</td>
+              <td>{r.totals.halfDayDays}</td>
+              <td>{r.totals.shortLeaveDays}{r.totals.shortLeaveDeductions > 0 && <span className="meta"> ({r.totals.shortLeaveDeductions} deducted)</span>}</td>
+              <td>{fmtDays(r.totals.leaveDays)}</td>
+              <td>{fmtDays(r.totals.unpaidLeaveDays)}</td>
+              <td style={{ color: r.totals.lopDays > 0 ? 'var(--red)' : undefined, fontWeight: r.totals.lopDays > 0 ? 700 : undefined }}>{fmtDays(r.totals.lopDays)}</td>
+              <td>{r.totals.weekOffDays}</td>
+              <td><strong>{fmtDays(r.totals.paidDays)}</strong> <span className="meta">/ {r.totals.totalDays}{r.totals.futureDays ? ` · ${r.totals.futureDays} to come` : ''}</span></td>
+              {hasRun && (
+                <td>
+                  {r.savedGross == null ? <span className="meta">—</span> : <>₹{r.savedGross.toLocaleString('en-IN')}</>}
+                  {r.savedGross != null && r.savedGross !== r.monthlyGross && (
+                    <div className="meta" style={{ color: '#B45309' }}>today&apos;s records: ₹{r.monthlyGross.toLocaleString('en-IN')}</div>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+          {data?.month === month && rows.length === 0 && <tr><td colSpan={10}><div className="empty">No employees in this salary month.</div></td></tr>}
+          {data?.month !== month && !error && <tr><td colSpan={10}><div className="empty">Loading…</div></td></tr>}
+        </tbody>
+      </table></div></div>
+    </section>
   );
 }

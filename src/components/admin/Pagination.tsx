@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PaginationProps {
   currentPage: number;
@@ -135,9 +136,7 @@ export default function Pagination({
             }
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
+          <ChevronLeft size={16} strokeWidth={2} aria-hidden />
           Previous
         </button>
 
@@ -228,9 +227,7 @@ export default function Pagination({
           }}
         >
           Next
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
+          <ChevronRight size={16} strokeWidth={2} aria-hidden />
         </button>
       </div>
     </div>

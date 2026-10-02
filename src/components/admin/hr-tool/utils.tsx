@@ -69,6 +69,7 @@ export function StatusBadge({ status }: { status: string }) {
 interface ApprovalLike { status: string; stage: string; }
 export function ApprovalBadge({ req }: { req: ApprovalLike }) {
   if (req.status === 'rejected') return <span className="badge rejected">Rejected</span>;
+  if (req.status === 'cancelled') return <span className="badge">Cancelled</span>;
   if (req.stage === 'done' && req.status === 'approved') return <span className="badge approved">Approved</span>;
   if (req.stage === 'rm') return <span className="badge rmpending">Pending — Manager</span>;
   if (req.stage === 'hr') return <span className="badge hrpending">Pending — HR</span>;
@@ -173,8 +174,6 @@ export function applyApprovalDecision<T extends { stage: string; status: string;
   }
   return { ...req, hrRemarks: remarks, status: decision, stage: 'done' };
 }
-
-export function attendanceKey(employeeId: string, date: string): string { return employeeId + '|' + date; }
 
 /** Dynamically loads a CDN script exactly once — used for the Word-document import in the
  * Company Profile template editor (mammoth.js), which isn't an npm dependency here. */

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowUpRight, CircleCheck, FolderOpen, Upload, Wrench } from 'lucide-react';
 import { getAdminUser, getAuthHeaders } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 
@@ -134,8 +135,9 @@ export default function AdminToolsPage() {
           </div>
         )}
         {success && (
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '0.875rem 1.25rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.9rem' }}>
-            ✓ {success}
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '0.875rem 1.25rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CircleCheck size={16} style={{ flexShrink: 0 }} aria-hidden />
+            {success}
           </div>
         )}
 
@@ -194,7 +196,7 @@ export default function AdminToolsPage() {
                 maxWidth: '500px',
               }}
             >
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📂</div>
+              <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><FolderOpen size={32} color="#6366f1" strokeWidth={1.75} aria-hidden /></div>
               <div style={{ fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
                 {fileRef.current?.files?.[0]?.name || 'Click to select or drag & drop'}
               </div>
@@ -217,9 +219,10 @@ export default function AdminToolsPage() {
                   background: uploading ? '#94a3b8' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
                   color: 'white', border: 'none', borderRadius: '8px',
                   fontWeight: 600, fontSize: '0.9375rem', cursor: uploading ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
                 }}
               >
-                {uploading ? 'Uploading…' : '↑ Upload Tool'}
+                {uploading ? 'Uploading…' : <><Upload size={16} aria-hidden />Upload Tool</>}
               </button>
             </div>
           </form>
@@ -246,8 +249,8 @@ export default function AdminToolsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {tools.map(tool => (
                 <div key={tool.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #f0f0ff, #e0e7ff)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.25rem' }}>
-                    🛠️
+                  <div style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #f0f0ff, #e0e7ff)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Wrench size={20} color="#4f46e5" aria-hidden />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#0f172a', marginBottom: '0.2rem' }}>{tool.name}</div>
@@ -273,9 +276,9 @@ export default function AdminToolsPage() {
                   <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                     <button
                       onClick={() => openTool(tool)}
-                      style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', border: 'none', borderRadius: '7px', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', border: 'none', borderRadius: '7px', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                     >
-                      Open ↗
+                      Open <ArrowUpRight size={14} aria-hidden />
                     </button>
                     {isAdmin && (
                       <button

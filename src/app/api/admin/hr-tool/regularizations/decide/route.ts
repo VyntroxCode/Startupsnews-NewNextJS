@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAnyRole } from '@/shared/middleware/auth.middleware';
 import { HR_TOOL_ROLES } from '@/shared/middleware/roles';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
-import { HrToolService } from '@/modules/hr-tool/service/hr-tool.service';
-import { HrToolRepository } from '@/modules/hr-tool/repository/hr-tool.repository';
-
-const hrToolService = new HrToolService(new HrToolRepository());
+import { hrToolService, refreshPayrollForDates } from '../../_lib';
 
 interface Body { id?: string; level?: 'rm' | 'hr'; decision?: 'approved' | 'rejected'; remarks?: string }
 
@@ -27,7 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await hrToolService.decideRegularization(body.id, body.level, body.decision, body.remarks || '');
-    if (!result.ok) return NextResponse.json({ success: false, error: result.error }, { status: 404 });
+    if (!result.ok) return NextResponse.json({ success: false, error: result.error }, { status: result.error === 'Regularization request not found.' ? 404 : 409 });
+    if (result.updated) await refreshPayrollForDates([result.updated.date]);
     return NextResponse.json({ success: true, data: result.updated });
   } catch (error) {
     console.error('Error deciding HR-tool regularization:', error);

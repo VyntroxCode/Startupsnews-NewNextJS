@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronRight, Download } from 'lucide-react';
 import { foundUsText, referredByLabel } from '@/modules/ens-travel-enquiries/domain/sources';
 import { participationLabel } from '@/modules/ens-travel-enquiries/domain/participation';
 import { assignmentStatusLabel, statusFromEns, type AssignableEmployee, type DepartmentOption, type LeadAssignment } from '@/modules/lead-assignments/domain/types';
@@ -40,7 +41,7 @@ export function matchesType(row: UnifiedLeadRow, value: string): boolean {
   return row._source === 'ens' ? value === ENS_ENQUIRY_TYPE_LABEL : row.type === value;
 }
 
-export default function LeadsTable({ rows, employees, departments, assignments, onEdit, onDelete, onDeleteAll, pendingOnly, onClearPendingOnly, filterPageType, onFilterPageTypeChange, jumpToken }: {
+export default function LeadsTable({ rows, employees, departments, assignments, onEdit, onDelete, pendingOnly, onClearPendingOnly, filterPageType, onFilterPageTypeChange, jumpToken }: {
   rows: UnifiedLeadRow[];
   /** For the "assigned to" / "department" filters, and each lead's stored departments and people
    * keyed by assignmentKey (edited in the lead window, shown read-only here). */
@@ -53,7 +54,6 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
    * only) opens it straight into edit mode — nothing in the table itself is editable. */
   onEdit: (row: UnifiedLeadRow, startEditing?: boolean) => void;
   onDelete: (id: string) => void;
-  onDeleteAll: () => void;
   /** Set by the Summary card's "Pending leads" tile. Owned by the page rather than this component
    * so that tile can turn it on from outside; this component turns it back off once the reader is
    * done, via `onClearPendingOnly`. */
@@ -143,7 +143,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
     <div className="card" ref={cardRef}>
       <div className="card-head" onClick={() => setOpen((o) => !o)}>
         <h2>All leads</h2>
-        <span className={`chev${open ? ' open' : ''}`}>&#8250;</span>
+        <span className={`chev${open ? ' open' : ''}`}><ChevronRight size={16} aria-hidden /></span>
       </div>
       <div className={`card-body${open ? '' : ' collapsed'}`}>
         {pendingOnly && (
@@ -158,9 +158,6 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
             <button type="button" className="small" onClick={(e) => { e.stopPropagation(); onFilterPageTypeChange(''); }}>Show all leads</button>
           </div>
         )}
-        <div style={{ marginBottom: 12 }}>
-          <button type="button" className="danger" onClick={onDeleteAll}>🗑 Delete all leads</button>
-        </div>
         <div className="hint" style={{ margin: '0 0 10px' }}>
           Every page&apos;s submissions in one table — Feature Your Startup, Funding Round, Press Release, Sponsor an Event
           and Expand North Star. Click a lead to see all of its details; use Edit to change any of them.
@@ -198,9 +195,9 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
             <input type="text" placeholder="Name, company, email..." value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} />
           </div>
           <div className="export-toolbar">
-            <button type="button" onClick={() => exportLeadsCsv(filteredRows, assignmentFor)}>⬇ CSV</button>
-            <button type="button" disabled={exportBusy === 'excel'} onClick={handleExportExcel}>{exportBusy === 'excel' ? 'Preparing…' : '⬇ Excel'}</button>
-            <button type="button" disabled={exportBusy === 'pdf'} onClick={handleExportPdf}>{exportBusy === 'pdf' ? 'Preparing…' : '⬇ PDF'}</button>
+            <button type="button" onClick={() => exportLeadsCsv(filteredRows, assignmentFor)}><Download size={14} aria-hidden />CSV</button>
+            <button type="button" disabled={exportBusy === 'excel'} onClick={handleExportExcel}>{exportBusy === 'excel' ? 'Preparing…' : <><Download size={14} aria-hidden />Excel</>}</button>
+            <button type="button" disabled={exportBusy === 'pdf'} onClick={handleExportPdf}>{exportBusy === 'pdf' ? 'Preparing…' : <><Download size={14} aria-hidden />PDF</>}</button>
           </div>
         </div>
         <div className="hint" style={{ margin: '-6px 0 10px' }}>Exports contain exactly the leads shown below — every page, including Expand North Star — with your filters and search applied.</div>
@@ -209,7 +206,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
             <thead>
               <tr>
                 <th>Date</th><th>Name</th><th>Company</th><th>Contact</th><th>Email</th>
-                <th>City</th><th>Source</th><th>Assigned</th><th>Current Status</th>
+                <th>City</th><th>Source</th><th>Referred By</th><th>Assigned</th><th>Current Status</th>
                 <th></th>
               </tr>
             </thead>
@@ -225,6 +222,8 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
                     <td>{r.email || DASH}</td>
                     <td>{r.city || DASH}</td>
                     <td>{isLead ? (r.source || DASH) : 'Expand North Star'}</td>
+                    {/* Only Expand North Star enquiries record a referrer; sales leads have no such field. */}
+                    <td>{!isLead && r.referredBy ? referredByLabel(r.referredBy) : DASH}</td>
                     <td>{(() => {
                       const a = assignments[assignmentKey(r._source, r.id)];
                       const summary = assigneeSummary(a);

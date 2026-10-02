@@ -32,8 +32,10 @@ export const INNER_PAGES_ROLES = ['admin', 'editor', 'publisher_admin'] as const
 /** Every admin-panel role — dashboard/stats and other cross-cutting read-only surfaces. */
 export const ALL_ADMIN_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support'] as const;
 
-/** Network Manager (contacts CRM) — super admin only, standalone tool. */
-export const CONTACTS_ROLES = ['admin'] as const;
+/** Directory (contacts CRM) — full access (view, add/edit/delete, bulk, import/export, config).
+ * Super admin and Event Admin. Allow-listed employees get the same through /api/employee/directory,
+ * gated by DIRECTORY_EMPLOYEE_CODES. */
+export const CONTACTS_ROLES = ['admin', 'event_admin'] as const;
 
 /** Sales Tracker — super admin only, standalone tool. */
 export const SALES_TRACKER_ROLES = ['admin'] as const;
@@ -66,3 +68,12 @@ export const IT_TICKETS_UNBLOCK_ROLES: readonly string[] = IT_TICKETS_BLOCK_ROLE
 
 /** IT Tickets — every admin-panel role can raise a ticket and see/comment on their own (helpdesk model). */
 export const IT_TICKETS_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support'] as const;
+
+/** Content Studio (/admin/content-studio) — AI post drafting. The roles that write posts; Event Admin
+ * (Press Release only) and IT Support are left out. Every studio API route calls Claude or fetches
+ * third-party pages on the server, so it is gated even though it stores nothing. */
+export const CONTENT_STUDIO_ROLES = ['admin', 'editor', 'author', 'publisher_admin'] as const;
+
+/** Grants (IncubatX startup dossiers from /incubatx/startup-details) — super admin only: the rows
+ * carry founders' contact details, revenue and company certificates. */
+export const GRANTS_ROLES = ['admin'] as const;

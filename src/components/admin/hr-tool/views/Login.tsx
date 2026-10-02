@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import { addDays, mergeTemplate, nextEmployeeId, todayStr } from '../utils';
 import { emptyKycDocuments } from '../types';
@@ -70,13 +71,13 @@ export default function Login() {
     return (
       <div style={shellStyle}>
         <div className="card pad" style={{ maxWidth: 420, textAlign: 'center' }}>
-          <div style={{ fontSize: 34, marginBottom: 10 }}>✓</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}><Check size={34} aria-hidden /></div>
           <h3 style={{ margin: '0 0 8px' }}>Offer signed, {signedInfo.firstName}!</h3>
           <div className="meta" style={{ marginBottom: 14 }}>
             Your Employee ID is <strong>{signedInfo.id}</strong>. In production this and a password are shared with you directly through the portal — not by email.
             Log in now — you have <strong>7 days</strong> (until {signedInfo.deadline}) to upload your documents for HR review.
           </div>
-          <button className="btn primary" onClick={() => setScreen('login')}>Go to login →</button>
+          <button className="btn primary" onClick={() => setScreen('login')}>Go to login<ArrowRight size={14} aria-hidden /></button>
         </div>
       </div>
     );
@@ -104,11 +105,11 @@ export default function Login() {
                     Annual CTC: ₹{picked.ctc.toLocaleString('en-IN')} · Offer sent {picked.offerSentDate}<br />
                     By signing, you accept the terms of employment. HR will then generate your Employee ID and login — you&apos;ll have <strong>7 days from signing</strong> to upload your onboarding documents.</div>
                 </div>
-                <button className="btn primary" style={{ width: '100%', justifyContent: 'center', marginTop: 6 }} onClick={() => signOffer(picked.id)}>✓ Confirm, looks correct — sign offer letter</button>
+                <button className="btn primary" style={{ width: '100%', justifyContent: 'center', marginTop: 6 }} onClick={() => signOffer(picked.id)}><Check size={14} aria-hidden />Confirm, looks correct — sign offer letter</button>
               </>
             )}
           </div>
-          <div className="footnote" style={{ textAlign: 'center' }}><a href="#" onClick={(e) => { e.preventDefault(); setScreen('login'); }} style={{ color: 'var(--forest)', fontWeight: 600 }}>← Back to login</a></div>
+          <div className="footnote" style={{ textAlign: 'center' }}><a href="#" onClick={(e) => { e.preventDefault(); setScreen('login'); }} className="ic-text" style={{ color: 'var(--forest)', fontWeight: 600 }}><ArrowLeft size={13} aria-hidden />Back to login</a></div>
         </div>
       </div>
     );
@@ -132,11 +133,11 @@ export default function Login() {
             <input type="text" placeholder="Any value works in this preview" defaultValue="••••••••" />
           </div>
           {loginError && <div className="notice" style={{ background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)' }}>{loginError}</div>}
-          <button className="btn primary" style={{ width: '100%', justifyContent: 'center' }} onClick={doLogin}>Log in →</button>
+          <button className="btn primary" style={{ width: '100%', justifyContent: 'center' }} onClick={doLogin}>Log in<ArrowRight size={14} aria-hidden /></button>
         </div>
         <div className="footnote" style={{ textAlign: 'center' }}>
           Start typing an Employee ID to see matching accounts.<br /><br />
-          Received an offer letter? <a href="#" onClick={(e) => { e.preventDefault(); setScreen('sign-offer'); }} style={{ color: 'var(--forest)', fontWeight: 600 }}>Sign it and get your login →</a>
+          Received an offer letter? <a href="#" onClick={(e) => { e.preventDefault(); setScreen('sign-offer'); }} className="ic-text" style={{ color: 'var(--forest)', fontWeight: 600 }}>Sign it and get your login<ArrowRight size={13} aria-hidden /></a>
         </div>
       </div>
     </div>

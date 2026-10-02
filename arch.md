@@ -19,7 +19,7 @@
 | # | Role | Who uses it | Entry point |
 |---|---|---|---|
 | 1 | **Public news & media site** — articles, categories, events, reports, brand stories | Anonymous readers, logged-in readers | `/`, `/[...slug]`, `/news`, `/events`, `/category/*` |
-| 2 | **CMS / admin panel** — publish and manage all of the above | Staff (`admin`, `editor`, `author`, `event_admin`, `publisher_admin`, `it_support`) | `/admin/*` |
+| 2 | **CMS / admin panel** — publish and manage all of the above, plus **Content Studio** (`/admin/content-studio`, since 2026-09-29): AI drafting of posts from trending news, a URL or a topic | Staff (`admin`, `editor`, `author`, `event_admin`, `publisher_admin`, `it_support`) | `/admin/*` |
 | 3 | **Internal business tools** — HR tool, Sales Tracker, Network Manager (CRM), Events Tracker (formerly Partnership Tracker; route still `/admin/partnership-tracker`), IT Tickets, Newsletter | Staff, scoped by role | `/admin/hr-tool`, `/admin/sales-tracker`, `/admin/it-tickets`, … |
 | 4 | **Employee self-service portal** — punch in/out, leave, documents, KYC | Employees (separate credential table) | `/employee/*` |
 
@@ -60,6 +60,8 @@ graph TB
         OAuth["Google / LinkedIn OAuth"]
         Feeds["Third-party RSS feeds"]
         Geo["BigDataCloud<br/>reverse geocode<br/>(called from the browser)"]
+        Claude["Azure OpenAI<br/>(deployment from AZURE_OPENAI_DEPLOYMENT)<br/>(Content Studio)"]
+        GNews["Google News RSS + Trends,<br/>publisher article pages<br/>(Content Studio sources)"]
     end
 
     Reader --> Nginx
@@ -73,6 +75,8 @@ graph TB
     Web --> SMTP
     Web --> Turnstile
     Web --> OAuth
+    Web --> Claude
+    Web --> GNews
     Reader -.lat/lng.-> Geo
     Reader -.images.-> CDN
     CDN -.origin.-> S3
@@ -160,7 +164,7 @@ components).
 | `panel-admins` | Scoped panel accounts (`event_admin`, `publisher_admin`, `it_support`) | `panel_admins` |
 | `public-users` | Reader accounts, Google/LinkedIn sign-in, newsletter prefs | `public_registrations`, `public_registration_founders`, `public_registration_funding_rounds` |
 | `events` | Event listings + regions | `events`, `event_regions` |
-| `partnership-events` | Events Tracker (formerly Partnership Tracker) pipeline, site listing status, Follow Up notes | `partnership_events`, `partnership_event_follow_ups` |
+| `partnership-events` | Events Tracker (formerly Partnership Tracker) pipeline, site listing status, Follow Up notes. Status buckets come from `classifyPartnershipStatus`; `DEFAULT_HIDDEN_STATUSES = ['Expired']` only (since 2026-10-01 a blank/unrecognised status, bucket `Unmapped`, stays visible and is filterable as "No status"; the edit modal's status `<select>` turns red with a hint while blank) | `partnership_events`, `partnership_event_follow_ups` |
 | `event-submission` | Public event submissions | `events` (pending state) |
 | `banners` | Home page banners | `banners` |
 | `brand-stories` | Sponsored long-form + sections | `brand_stories`, `brand_story_sections` |
@@ -177,10 +181,11 @@ components).
 | `feature-startup-submissions` | "Feature your startup" pipeline | `feature_startup_submissions` |
 | `funding-round-submissions` | Funding round submissions | `funding_round_submissions` |
 | `press-release-submissions` | Press release submissions (`/submit-press-release`), mirrored into `sales_leads` | `press_release_submissions` |
-| `lead-followups` | **Since 2026-09-29.** Follow-ups the assigned employees log on Sales Tracker leads from My Leads, plus the read-only lead view they open. `domain/types.ts` (`LeadFollowUp`, `LeadDetail`, `LeadSubmission` sections/fields, `FOLLOW_UP_NOTE_MAX_LENGTH` 2000); `service/lead-details.ts` `buildLeadSubmission` (the page's **original** submission row by the same id — feature/funding/press/sponsor/ens repositories + their `entityTo*` mappers — falling back to the `sales_leads` row for manual leads or a missing original); `service/lead-followups.service.ts` (`getDetailForEmployee`, `addForEmployee`, `getForAdmin`; 404 unless the caller is assigned); `service/http.ts` shared error → response; repository `add` = INSERT follow-up + UPDATE the author's `sales_lead_assignments.status` in one transaction (row lock on the assignment) | `sales_lead_followups` |
+| `lead-followups` | **Since 2026-09-29.** Follow-ups the assigned employees log on Sales Tracker leads from My Leads, plus the read-only lead view they open. `domain/types.ts` (`LeadFollowUp`, `LeadDetail`, `LeadSubmission` sections/fields, `FOLLOW_UP_NOTE_MAX_LENGTH` 2000); `service/lead-details.ts` `buildLeadSubmission` (the page's **original** submission row by the same id — feature/funding/press/sponsor/ens repositories + their `entityTo*` mappers — falling back to the `sales_leads` row for manual leads or a missing original); `service/lead-followups.service.ts` (`getDetailForEmployee`, `addForEmployee`, `getForAdmin`; 404 unless the caller is assigned); `service/http.ts` shared error → response; repository `add` = INSERT follow-up + UPDATE the author's `sales_lead_assignments.status` in one transaction (row lock on the assignment). **Since 2026-09-30** also the admin's messages to the assigned team: `LeadMessage`, `LEAD_MESSAGE_MAX_LENGTH`, `getMessagesForAdmin` / `addMessageForAdmin`, `LeadDetail.messages` (§6.12) | `sales_lead_followups`, `sales_lead_messages` |
 | `sponsor-event-submissions` | Partner / Sponsor an Event submissions (`/sponsor-event`): own Sales Tracker card + mirrored into `sales_leads` | `sponsor_event_submissions` |
 | `ens-travel-enquiries` | Expand North Star travel enquiries (the "Plan your visit" form at the foot of `/expand-north-star`): domain (`participation.ts` options + package inclusions; `sources.ts` Referred-by partners + How-did-you-find-us channels; `lead-status.ts` Confirmed / Follow Up / Not Interested — stored as `confirmed` / `followed-up` / `cancelled` — + conversation note under Confirmed or Follow Up via `leadStatusTakesNote`), repository, service (`normalizeEnquiryInput` shared by the public form and admin edits; `normalizeLeadStatusInput` admin-only). Own Sales Tracker card with editing, lead status and a "Followed Up Leads" tile. **Never written to `sales_leads`** — kept apart from the other pages' leads | `ens_travel_enquiries` |
-| `incubatx-dossier` | IncubatX dossiers | `incubatx_dossiers` |
+| `incubatx-dossier` | IncubatX dossiers (public intake + admin Grants read/status) | `incubatx_dossiers` |
+| `content-studio` | **Since 2026-09-29.** Content Studio, ported from the standalone `adityarana206/ContentStudio` repo (Next 16 app). **Not** a domain/repository/service module: it keeps the original's shape — `components/` (client UI: `shell/`, `source/`, `output/`, `settings/`, `genbar/`, `ui/`), `lib/` (`llm/` Claude client + prompts + 3–4-call pipeline + sanitizer, `feeds/` RSS / Google News stub resolution / Google Trends / article extraction / SSRF-guarded `safeFetch`, `article/` block AST + standalone `.html` export, `state/` reducers + provider, `hooks/`, `data/` templates / author roster / news sources) and `types/`. Stores nothing server-side; authors, custom sources and recent headlines live in the browser's localStorage | — |
 | `newsletter` *(routes + tables, no module folder)* | Newsletter categories, items, schedules | `newsletter_categories`, `newsletter_items`, `newsletter_schedules` |
 | *settings* | Key-value site settings (e.g. footer copyright, hero images) | `site_settings`, `settings`, `admin_tools` |
 
@@ -197,11 +202,13 @@ policy pages (`/privacy-policy`, `/terms-and-conditions`, `/editorial-policy`, `
 lead-gen forms (`/feature-your-startup`, `/submit-funding-round`, `/submit-press-release`, `/submit-event`, `/list-your-event`, `/sponsor-event`, `/contact-us`) ·
 SEO (`/sitemap_index.xml`, `/sitemap.xml`, `/sitemap-news.xml`, `/sitemap-posts-N.xml`, `/sitemap-events.xml`, `/sitemap-static.xml`, `/llms.txt`, `/unsubscribe`)
 
-### Admin (`/admin/*`, 40 pages)
+### Admin (`/admin/*`, 42 pages)
 Dashboard · Posts (list/create/edit) · Categories · Authors · Banners · Events · Brand Stories ·
 Reports · Inner Pages · RSS Feeds · Newsletter (+ categories) · Users · Registered Users ·
-Panel Admins · Contacts · Sales Tracker · Events Tracker (`/admin/partnership-tracker`, renamed from Partnership Tracker) · HR Tool · My Leads (`/admin/my-leads`, Event / Publisher Admin only — `MY_LEADS_PANEL_ROLES`) · Attendance · Leave ·
-Documents · Admin Rules (`/admin/rules-policy`) · IT Tickets · HTML Tools · Login
+Panel Admins · Contacts (**Directory**, `/admin/contacts`; since 2026-09-30 also open to Event Admin — `event_admin` lists it in `ROLE_ALLOWED_PATHS`, and `isPathAllowed` lets a scoped role that explicitly lists an `ADMIN_ONLY_PATHS` path through while editor/author stay out; since 2026-10-01 Event Admin has **full access** like the super admin (`CONTACTS_ROLES = ['admin','event_admin']`); page = thin wrapper over `components/admin/contacts/ContactsDirectory.tsx`, no `readOnly`) · Sales Tracker · Events Tracker (`/admin/partnership-tracker`, renamed from Partnership Tracker) · HR Tool · My Leads (`/admin/my-leads`, Event / Publisher Admin only — `MY_LEADS_PANEL_ROLES`) · Attendance · Leave ·
+Documents · Admin Rules (`/admin/rules-policy`) · IT Tickets · HTML Tools · Login ·
+**Grants** (`/admin/grants`, since 2026-09-30; sidebar item after Registered Users, `Landmark` icon; super admin only — `GRANTS_ROLES = ['admin']` on the API, `/admin/grants` in `ADMIN_ONLY_PATHS`. Reads the single `incubatx_dossiers` table written by `/incubatx/startup-details`; no second table. `components/admin/grants/GrantsPage.tsx` = 5 status cards (All / New=`pending` / Reviewed / Accepted / Rejected, doubling as the filter) + debounced search + 6-column table (Startup+reference, Stage/Sector, Contact, Submitted, Status, ›), 20/page via `Pagination`; row click → `GrantDetailDrawer.tsx` slide-over with every answer, the 5 document links and a status select. APIs: `GET /api/admin/grants?page&limit&search&status` → `{data, counts, pagination}`; `GET /api/admin/grants/:id`; `PATCH /api/admin/grants/:id {status}`. Repository methods `list` / `statusCounts` / `findDetailById` / `updateStatus` convert BigInt counts and money columns with `Number()`, parse the `founders`/`linkedin` JSON (string or array), and rebuild the display mobile as `<dial code> <number>` from `mobile_iso` via `COUNTRY_CODE_OPTIONS` because `mobile_e164` actually holds only the national number (invariant since #244: the dossier schema's `checkPhone` rejects any `phoneCode` without an ISO — `other`/unlisted codes — so every new row has `mobile_iso`; `phoneCodeCustom` is accepted but ignored). `/admin/grants` is in `SELF_REFRESHING_ADMIN_PAGES` so a status PATCH doesn't remount the page and drop filters. Tailwind classes via `@source "./grants"` in `staff-panel-tailwind.css`) ·
+**Content Studio** (`/admin/content-studio`, since 2026-09-29; since 2026-09-30 no sidebar item of its own — reached from a "Content Studio" tab (a `Link`, not an in-place tab) on `/admin/posts`, shown when `isPathAllowed(role, '/admin/content-studio')`, and the sidebar's Posts item highlights on this route via `MenuItem.alsoActive`; `CONTENT_STUDIO_ROLES` = admin, editor, author, publisher_admin — `publisher_admin` has it in `ROLE_ALLOWED_PATHS`, `event_admin` / `it_support` don't. Server page with `dynamic = 'force-dynamic'` that passes only `isConfigured()` + the model name to the client `StudioShell`; the layout drops its 2rem padding here and the shell is `h-[calc(100dvh-60px)]` so only its two panes scroll)
 
 ### Employee (`/employee/*`)
 Punch in/out + attendance, **My Leads** (`/employee/leads` — Sales Tracker leads assigned to this
@@ -210,6 +217,12 @@ contact links and the assignment status; read-only, `components/employee/my-lead
 Tailwind via `staff-panel-tailwind.css`), leave requests, documents upload + window, KYC, **IT Support**
 (`/employee/it-tickets` — raise and track own IT tickets; the shared IT Tickets UI mounted with
 `EMPLOYEE_TICKETS_CONFIG` from `src/lib/employee-it-tickets.ts`).
+**Directory** (`/employee/directory`, since 2026-09-30; **full access** since 2026-10-01 — the contacts
+Directory for the Employee IDs in `DIRECTORY_EMPLOYEE_CODES` (`modules/contacts/domain/directory-access.ts`,
+currently `SNFYI-0029`). Same `ContactsDirectory` component (no `readOnly`) with `apiBase="/api/employee/directory"`
+and the employee token, which every request (list, create, edit, delete, bulk, import, config) goes through;
+the nav item (Lucide `Contact`) is filtered by `canEmployeeUseDirectory`, the route is full-width, and every
+`/api/employee/directory/*` route re-checks the allow-list (`requireDirectoryEmployee`, 403 otherwise).)
 **My Exit** (`/employee/exit`, since 2026-09-28 — submit/withdraw a resignation, status timeline,
 LWD countdown; `components/offboarding/ExitWidget.tsx`, Tailwind via `staff-panel-tailwind.css`). Past
 the last working day an `alumni` login sees only this page: the layout filters the sidebar to it and
@@ -230,10 +243,10 @@ Punch In / Punch Out buttons. A day-details card appears only when a non-today d
 calendar is a compact `grid-cols-7` of square cells on phones. `LeaveWidget` and `MyLeadsPage` show
 card lists below `md` and keep their tables from `md` up.
 
-### API (186 handlers)
+### API (221 handlers)
 | Prefix | Count | Notes |
 |---|---|---|
-| `/api/admin/*` | 123 | JWT-gated, role-checked. `sales-tracker/ens-enquiries` (GET list; `[id]` GET + PATCH edit) serves the Expand North Star card. `sales-tracker/assignments` (GET employees + assignments; PUT assign/unassign) replaced `sales-tracker/team` (deleted 2026-09-24). `my-leads` (GET, `MY_LEADS_PANEL_ROLES`): the caller's assigned leads via their linked HR login; `linked: false` + empty list when there's no link. `my-leads/[source]/[id]` (GET lead view) + `…/follow-ups` (POST `{note, status}`) for the same callers; `sales-tracker/follow-ups` (GET `?source&leadId`, `SALES_TRACKER_ROLES`, read-only). Employee: `GET /api/employee/leads/[source]/[id]`, `POST …/follow-ups`. Biggest groups: `hr-tool` (30), `newsletter` (10), `it-tickets` (8, incl. `export`), `rss-feeds` (7), `contacts` (5) |
+| `/api/admin/*` | 128 | JWT-gated, role-checked. `content-studio/{generate,news,trends,extract,discover}` (5 × POST, `CONTENT_STUDIO_ROLES`; see §6.13). `sales-tracker/ens-enquiries` (GET list; `[id]` GET + PATCH edit) serves the Expand North Star card. `sales-tracker/assignments` (GET employees + assignments; PUT assign/unassign) replaced `sales-tracker/team` (deleted 2026-09-24). `my-leads` (GET, `MY_LEADS_PANEL_ROLES`): the caller's assigned leads via their linked HR login; `linked: false` + empty list when there's no link. `my-leads/[source]/[id]` (GET lead view) + `…/follow-ups` (POST `{note, status}`) for the same callers; `sales-tracker/follow-ups` (GET `?source&leadId`, `SALES_TRACKER_ROLES`, read-only). `sales-tracker/messages` (GET `?source&leadId`; POST `{source, leadId, message}`, `SALES_TRACKER_ROLES`; admin → assigned-team messages, §6.12). Employee: `GET /api/employee/leads/[source]/[id]`, `POST …/follow-ups`. `contacts` (GET/POST, `[id]` PUT/DELETE, `bulk`, `import`, `config` GET/PUT) all accept `CONTACTS_ROLES` (admin, event_admin); handler bodies live in `api/admin/contacts/_handlers.ts`, shared with the employee routes. Employee: `/api/employee/directory` mirrors the same six endpoints (GET/POST, `[id]` PUT/DELETE, `bulk`, `import`, `config` GET/PUT) behind `requireDirectoryEmployee` (employee auth + `DIRECTORY_EMPLOYEE_CODES`); created/updated rows are stamped with the employee's email, else their Employee ID. Biggest groups: `hr-tool` (30), `newsletter` (10), `it-tickets` (8, incl. `export`), `rss-feeds` (7), `contacts` (5) |
 | `/api/employee/*` | 20 | Employee-credential auth (separate middleware). Includes `leads` (GET: my assigned leads, matched on `credential.id`). Includes `it-tickets` (8): list/create, get/update (no delete), comments, attachments, `me`, `presign` |
 | `/api/public-auth/*` | 8 | Reader register/login, Google verify, LinkedIn OAuth, profile, newsletter prefs |
 | `/api/events/*` | 8 | Public event reads + submission |
@@ -497,6 +510,9 @@ row click and **View** → read-only; **Edit** → `onEdit(row, true)`; the inli
 (`StatusSelect.tsx`, which saved on change via `updateLeadField`) became the read-only
 `StatusBadge.tsx`, and `updateLeadField` was removed from `useSalesTrackerData`. **Invariant:** no
 control in the All leads table writes data — every edit goes through the lead window.
+Columns (since 2026-10-01): Date · Name · Company · Contact · Email · City · Source · **Referred By** ·
+Assigned · Current Status · actions. Referred By = `referredByLabel(row.referredBy)` for an ENS row with a
+referrer, "—" otherwise (`sales_leads` has no referrer field; exports already carried a `Referred By` column).
 `EnsEnquiryDetailModal` already had this view → "Edit details" flow.
 
 | Page | Route | Raw table (id prefix) | `sales_leads.type` / `source` |
@@ -893,13 +909,162 @@ flowchart TB
 > fall back to the name only for a row with no `credential_id` whose name nobody else has. No match →
 > "me" routes return `linked:false`, writes return 400 `NO_DIRECTORY_RECORD_ERROR`. `hr_punch_log` and
 > `hr_attendance` are then written with `employee_id` + the `emp` name snapshot. The admin HR-tool
-> write routes (`punch`, `regularizations`, `attendance`, `attendance-overrides`, `punch-log`) require
-> `employeeId` in the body and fill `emp` from `findEmployeeRef`.
+> write routes (`punch`, `POST regularizations`, `regularizations/decide`) require `employeeId` in the
+> body and fill `emp` from `findEmployeeRef`.
 >
+> **HR direct attendance edits — REMOVED** (`agent.md` #1089, arch #241). The calendar's per-day
+> "HR correction", **Bulk mark attendance** (`BulkAttendanceModal.tsx`), and the raw-write routes
+> `POST /api/admin/hr-tool/attendance`, `/punch-log`, `/attendance-overrides(/bulk)` and the whole-list
+> `PUT /regularizations` are deleted; `HrToolService.recordAttendance/recordPunch` are private (only
+> `punchEmployee` and `decideRegularization` write `hr_attendance`). `hr_attendance_overrides` is no
+> longer read by payroll, the calendar or bootstrap (`HrBootstrap.attendanceOverrides` removed); the
+> table stays only for the employee-delete cascade and sample reset. Existing edits were converted by
+> `scripts/migrations/convert-hr-attendance-overrides-to-regularizations.sql`: Present → approved in
+> 10:00 + out 18:30 regularizations, Half-day → 10:00 + 14:30, both written to `hr_attendance` and
+> tagged `hr_regularizations.source = 'hr-edit'`; Absent edits dropped. **HR now only approves or
+> rejects requests.** (Historical: arch #224 added Bulk mark, #225 made payroll honour overrides.)
+>
+> **Regularization rules** (`HrToolService.submitEmployeeRegularization`, shared constants in
+> `utils/regularization-policy.ts`; every surface — employee portal, Publisher/Event Admin,
+> HR-tool Regularize buttons — posts through it):
+> - requested time: punch-in `08:00–14:00`, punch-out `14:00–23:00` (`requestedTimeError`), and out
+>   strictly after in — "in" is the other punch's live (non-rejected) request time if one exists,
+>   else the raw punch;
+> - window: `today ≤ date + hr_rules.regularization_window_days` (5, calendar days), never a future
+>   date; "today" is IST (`todayStr()` now adds +05:30 — the server runs UTC);
+> - cycle: the date's cycle = `payrollPeriodRange(payrollMonthKeyForDate(date))` (same range payroll
+>   uses). A date in an earlier cycle is accepted only until `cycle.to + REG_LATE_FILING_DAYS` (2);
+> - limit: `regularization_monthly_quota` (5) **distinct dates** per the date's cycle —
+>   `countedRegularizationDates`: in + out on one date = 1, `status='rejected'` and `source='hr-edit'`
+>   don't count, pending does. Hard block, no override. `getRegularizationUsage` returns the same
+>   count for the widgets (`usedThisMonth` is now days).
+> - unchanged: duplicate (date, punch type) blocked; punch-in only if not on time; punch-out only
+>   while missing. `PunchOutTimeInput` offers 2–11 PM (11 PM → :00 only).
+
+```mermaid
+flowchart TB
+    EMP(("Employee /<br/>Publisher / HR-tool"))
+    POST["POST …/regularizations<br/>{date, punchType, requestedTime, reason}"]
+    T{"time in window?<br/>in 08–14 · out 14–23"}
+    W{"date ≤ today ≤ date + 5?"}
+    C{"date's cycle open?<br/>(current, or ≤ 2 days after end)"}
+    D{"duplicate / on-time /<br/>out already recorded?"}
+    O{"out after in?"}
+    Q{"distinct days used<br/>in cycle < 5 ?<br/>(or date already counted)"}
+    INS[("INSERT hr_regularizations<br/>status=pending, source=employee")]
+    HR(("HR Head / Founder"))
+    DEC["POST …/regularizations/decide"]
+    ATT[("UPSERT hr_attendance<br/>in/out time")]
+    PAY["computePayrollForMonth<br/>(reads hr_attendance + leave only)"]
+    ERR["409 + reason"]
+
+    EMP --> POST --> T
+    T -->|no| ERR
+    T -->|yes| W -->|no| ERR
+    W -->|yes| C -->|no| ERR
+    C -->|yes| D -->|yes| ERR
+    D -->|no| O -->|no| ERR
+    O -->|yes| Q -->|no| ERR
+    Q -->|yes| INS --> HR --> DEC
+    DEC -->|approved| ATT --> PAY
+    DEC -->|rejected| INS
+```
+
+> **Leave rules** (`agent.md` #1091, arch #242). One allocation function decides every paid/unpaid
+> leave day: `utils/leave-balance.ts` `allocateLeave(doj, leaveTypes, requests, asOf, holidays,
+> workedDates)` — approved + pending requests hold balance (rejected/cancelled don't); each request
+> covers from→to minus Sundays and holidays (no sandwich; Saturdays count); `halfDay` ('first'|'second',
+> single date only) = 0.5; days are paid in date order while the balance accrued by that date (by
+> `asOf` for a future date) lasts, anything more is unpaid; a disabled/unknown type is all unpaid; a
+> full-day leave date with a punch-in (`workedDates`) counts as **half-day leave** (0.5 units — a punched
+> day can only take half a day of leave; arch #245). `computeLeaveBalances` =
+> accrued(today) − paid held this year (never negative). Payroll uses the same function on approved
+> leave over the employee's whole year and pays exactly those days (the old "Σ perMonth per cycle"
+> cap is gone); a half-day leave pays its leave half from balance and its other half only if worked
+> (bucket ≥ half-day). Every create goes through `submitEmployeeLeaveRequest` (employee
+> `/api/employee/leave-requests`, Publisher/Event Admin `/api/admin/leave-requests`, HR tool
+> `POST /api/admin/hr-tool/leave-requests` with `employeeId`): enabled types only (free-text "Other"
+> removed), `from ≥ yesterday` (yesterday only while its cycle is within `REG_LATE_FILING_DAYS`), at
+> least one working day, no overlap with pending/approved, no full-day leave on a punched date. HR
+> decides via `…/leave-requests/decide` and cancels via `…/leave-requests/cancel` (any time); the
+> employee withdraws their own **pending** request at any time and an **approved** one only while
+> `today < from` (arch #245). `decideLeaveRequest` refuses a locked cycle and refuses approving full-day
+> leave when any of its dates now has a punch-in ("only half-day leave is possible"). The whole-list
+> `PUT /api/admin/hr-tool/leave-requests` is deleted. `punchEmployee` refuses punch-in on a pending or
+> approved full-day leave date (`ON_LEAVE`, 409); regularization refuses a date with pending/approved
+> full-day leave. `/attendance/me` returns `leaves` (approved, month) and the calendars show them.
+> Schema: `scripts/migrations/add-hr-leave-half-day-and-decimal-payroll-days.sql` (`half_day`;
+> payroll day columns → DECIMAL(6,1); `working_days_pattern` → all Saturdays working).
+
+> **Payroll cycle, run window and lock** (`agent.md` #1092, arch #243). Cycle = `hr_rules`
+> 26 → '25' (named by its end month: `2026-10` = 26 Sep → 25 Oct). `HrToolService.getPayrollCycleState`
+> is the single gate: `in-progress` while `to ≥ today` (preview only) → `window` for
+> `PAYROLL_RUN_WINDOW_DAYS` (5) after `to` (26th–30th; Feb 26 → 2 Mar) or until a Founder's
+> `reopened_until` → `overdue` past that while not finished (never run, `stale`, or pending) →
+> `locked` (lazily set the first time it's seen past the window with an up-to-date run and nothing
+> pending: `hr_payroll_runs.locked_at`). `canRun` = window/overdue — **pending requests no longer
+> block a run** (arch #246): pay is calculated from current records (pending = not approved), the
+> run's payslips for those employees are provisional (`getPayrollForMonth.pendingByEmployee`, from
+> `findPendingRequestsInRange` — pending regularizations dated in the cycle + pending leave
+> overlapping it, now with `employee_id`), and each later decision rewrites them via
+> **Dev test hook:** `todayStr()` (`hr-tool/utils/time.ts`) returns `NEXT_PUBLIC_HR_TEST_TODAY` when set (YYYY-MM-DD), so a whole cycle can be judged and run ahead of time on dev. It is `NEXT_PUBLIC_` so the browser cycle picks agree with the server, and it is inlined at build, so it needs a rebuild. Never set on live. Test kit: `scripts/hr-payroll-test/` (backup → seed → verify → restore; see arch #252).
+> `refreshRunIfOpen` — triggered by `refreshPayrollForDates` (`api/admin/hr-tool/_lib.ts`) from HR leave decide/cancel, regularization decide, and (since arch #251) the employee and Publisher/Event Admin self-cancel routes (`api/employee/leave-requests/cancel`, `api/admin/leave-requests/cancel`), plus on every Payroll page load. Pending requests still keep the cycle from locking. The Payroll view shows no banner in the `window`/`overdue` phases (heading "Run — updating automatically" / "Not run yet"); only `in-progress` and `locked` keep a notice. Pending requests are decided inline: `findPendingRequestsInRange` now returns `id` + `detail`, and the row's "Provisional · N pending" button expands them with Approve/Reject (regularization → context `decideRegularization(id, 'hr', …)`, leave → `hrApi.decideLeaveRequest`), then a silent `loadPayroll` (arch #251, #253). `stale` = any regularization/leave touching the cycle with `updated_at >
+> hr_payroll_runs.computed_at` (both DB-clock; `computed_at = NOW()` on every run). `runPayroll`
+> refuses unless allowed and records `period_from/period_to`. `reopenPayroll(month, reason)` (route
+> `payroll-runs/reopen`, HR_TOOL_ROLES = Founder) clears `locked_at` and sets `reopened_until =
+> today + 1` with the reason in `hr_payroll_runs.reopen_reason` and the audit log. HR leave
+> cancellation is refused for a date in a locked cycle; regularization approval re-checks
+> `requestedTimeError`. `periodEnded` is now `to < today`. **Settled days:** a cycle counts days up
+> to the latest earlier run's `period_to` as paid present (`settledThrough`) — the changeover (Aug
+> paid 1–31 Aug ⇒ Sep 26 Aug → 25 Sep pays 26–31 Aug). **Short leave:** first
+> `shortLeaveMonthlyQuota` (2) per cycle free, each extra −0.5 day, no carry (`shortLeaveCarryOut`
+> always 0). `payrollCycleToRunKey` = the cycle before today's. The Late-mark switch is gone from
+> Rules (column kept). Schema: `scripts/migrations/hr-payroll-cycle-26-25-window-and-lock.sql`.
+
 > **Payroll** (`computePayrollForMonth`): roster = `{credentialId, name, doj}` per login → Directory row
 > by `credential_id` (unique-name fallback for unlinked rows) → attendance, leave, short-leave carry-over,
 > TDS (`Record<employeeId, number>`) and `hr_payroll_entries` all by `employee_id`. The pay formula is
 > unchanged. `backfillMissingEmployeeIds()` (throttled 60 s) links any row an older build wrote by name.
+
+> **Day ledger — attendance and payroll in sync** (`agent.md` #1098, arch #245). `utils/day-ledger.ts`
+> `buildDayLedger` is the ONLY code that decides what a day of a pay cycle is worth: kinds
+> `not-employed | settled | off | future | present | short-leave | half-day | absent | leave |
+> unpaid-leave | half-leave`, each with `pay`/`worked`/`paidLeave`/`unpaidLeave`, plus `totals`
+> (present, paid + unpaid leave, half/short days and short-leave deductions, week-offs, paid days, LOP).
+> Its logic is the old `computePayrollForMonth` day loop moved as-is (parity-checked on every employee
+> × two cycles). `HrToolService.buildEmployeeLedger` (private) loads the employee's year-to-date
+> punches + all leave, runs `allocateLeave` over approved + pending (pending holds balance, same as
+> the leave screens) and feeds only APPROVED leave to the ledger (`approvedLeaveByDate`).
+> `computePayrollForMonth` sums it (`payFromLedger`: paid days ÷ cycle days × CTC/12, rounded once);
+> `getEmployeeCycleLedger(employeeId, monthKey?)` returns the same days/totals/pay to
+> `GET /api/admin/hr-tool/attendance-ledger` (HR calendar), `GET /api/admin/attendance/ledger` and
+> `GET /api/employee/attendance/ledger` (self-service; days + totals only, no ₹). `getCycleAttendanceSummary(monthKey?)` → `GET /api/admin/hr-tool/attendance-summary` (every employee employed in the cycle: ledger totals, gross, `paidInFnf` notice-held flag, `savedGross` once run) powers the Attendance page's **Monthly attendance** table (any past cycle; a row opens `AttendanceCalendar` with `initialMonth`). A cycle that has a run uses the run's recorded `period_from/period_to` (`cyclePeriodFor` — Aug 2026 = 1–31 Aug). The HR
+> `AttendanceCalendar` now pages by **pay cycle** and renders only the ledger (its own `getDayStatus`
+> is gone); `AttendanceWidget` adds an `AttendanceCycleSummary` card. Legacy rows with a text time and
+> NULL minutes are read via `parseTime12h` in `mapAttendanceRow`, so every reader sees the same punch.
+>
+> **Auto-update until lock.** `refreshRunIfOpen(month, roster)`: for a run, unlocked cycle, recompute
+> with each employee's saved TDS, upsert only changed `hr_payroll_entries`, delete rows no longer in the
+> result, re-stamp `computed_at`, audit-log "Payroll M updated from attendance: …" (skipped while a
+> roster member has no CTC). Called by the leave decide/cancel and regularization decide routes
+> (`refreshPayrollForDates` in `api/admin/hr-tool/_lib.ts`, failures logged only) and by
+> `getPayrollCycleState(month, roster)` from `getPayrollForMonth`, so a cycle is always current before
+> it can lock. `decideRegularization` refuses a locked cycle.
+
+```mermaid
+flowchart LR
+    PUNCH["Punch / approved<br/>regularization"] --> ATT[("hr_attendance")]
+    LV["Leave decide / cancel"] --> LR[("hr_leave_requests")]
+    ATT --> BL["buildEmployeeLedger<br/>(allocateLeave + buildDayLedger)"]
+    LR --> BL
+    BL --> CAL["Attendance calendar<br/>(HR + self-service)"]
+    BL --> PAY["computePayrollForMonth"]
+    PAY --> RF{"run exists and<br/>not locked?"}
+    RF -->|yes| PE[("hr_payroll_entries<br/>auto-updated + audit log")]
+    RF -->|no, preview| VIEW["Payroll page preview"]
+    LV -. "refreshPayrollForDates" .-> RF
+    PUNCH -. "refreshPayrollForDates" .-> RF
+```
 
 ### 6.8 Level 2 — IT ticket lifecycle
 
@@ -1056,8 +1221,10 @@ flowchart TB
   column is read-only ("A, B +N"); filters: assigned to (any person), department.
 - Stored: the employee's `hr_employee_credentials.id`. Shown: their name (joined at read time, so a
   rename or a changed `employee_code` shows up without touching assignments).
-- Deleting a `sales_leads` row (one or all) also deletes its people and departments
-  (`SalesTrackerRepository.deleteLead` / `deleteAllLeads`); the employee query inner-joins the lead
+- Deleting a `sales_leads` row also deletes its people and departments
+  (`SalesTrackerRepository.deleteLead`). There is no bulk "delete all leads" path — the button,
+  `DELETE /api/admin/sales-tracker/leads` and `deleteAllLeads` were removed (#259) so the whole
+  table can't be wiped by one click; leads are deleted one at a time. The employee query inner-joins the lead
   tables anyway, so an orphan never shows.
 - A lead whose assignee has since left keeps the assignment; `AssigneeSelect` lists that person as
   "(no longer active)" until someone reassigns it.
@@ -1142,7 +1309,16 @@ flowchart TB
 - **Payroll ↔ offboarding:** `computePayrollForMonth` reads `findExitDates` (days after the LWD are
   not-employed: unpaid, never week-off or future-paid; LWD before the cycle ⇒ no row) and
   `findFnfSettledEmployeeIds(month)` (approved/paid F&F with that `salaryMonth` ⇒ skipped, reported in
-  `fnfSettledEmployees`). Both return empty when the offboarding tables don't exist.
+  `fnfSettledEmployees`). **Notice hold (2026-09-30):** `findNoticeStartDates()` (cases `accepted`/`exited`/
+  `completed` → `resignation_date`); for cycle M, anyone whose `payrollMonthKeyForDate(resignation_date) <= M`
+  is skipped and listed in `noticeHeldEmployees` (Payroll shows an info notice). `includeFnfSettled` also
+  bypasses the hold (the F&F pricing itself). `buildFnfAutoLines` prices every cycle from the notice cycle to
+  the LWD cycle (max 14): the LWD cycle keeps key `salary` (`fnf.salaryMonth`), earlier ones are
+  `salary:<YYYY-MM>`; a cycle with an `hr_payroll_entries` row (run before acceptance) is ₹0. `approveFnf`
+  refuses when any non-overridden salary line > 0 has a payroll entry for its month. Pending exits hold
+  nothing; a cancel/reinstate releases the hold, but a cycle already run while held needs a payroll re-run
+  (upsert adds the missing row). Carry-in short leave for a held cycle is 0 (the previous cycle has no
+  entry). All offboarding queries return empty when the tables don't exist.
 - **Letters & completion (phase 4):** `issueLetter` merges the template (`utils/letters.ts`, unknown tag ⇒
   409) into a text snapshot on the case; PDFs are generated server-side from that snapshot on every
   download (HR route, employee route with `allowAlumni`) — never uploaded anywhere. Gates: `exited` + no
@@ -1172,19 +1348,23 @@ flowchart TB
     A[("sales_lead_assignments<br/>per-person status")]
     F[("sales_lead_followups<br/>created_at = DB time")]
     ADM(("Admin"))
-    ST["Sales Tracker lead window<br/>FollowUpsPanel.tsx (read-only)"]
+    ST["Sales Tracker lead window<br/>FollowUpsPanel.tsx (read-only)<br/>+ LeadMessagesPanel.tsx"]
     AG["GET /api/admin/sales-tracker/follow-ups"]
+    AMG["GET / POST /api/admin/sales-tracker/messages<br/>POST only if lead has ≥1 assignee"]
+    MSG[("sales_lead_messages<br/>admin → assigned team<br/>created_at = DB time")]
 
     EMP --> ML -->|row click| DR
     DR --> GET --> SVC
     DR --> POST --> SVC
     SVC -->|no| E404["404"]
     SVC -->|yes, read| SUB
+    SVC -->|yes, read| MSG
     SVC -->|yes, write| TX["one transaction:<br/>INSERT follow-up + UPDATE author's status"]
     TX --> F
     TX --> A
     ADM --> ST --> AG --> F
     AG --> A
+    ST -->|Save: lead → assignment → message| AMG --> MSG
 ```
 
 - The employee can only **read** the lead (no endpoint writes lead fields for them) and **add**
@@ -1220,10 +1400,91 @@ flowchart TB
   `components/admin/staff-panel-tailwind.css` (the per-feature `my-leads-tailwind.css` was merged
   into it outside this change). The admin All leads Assigned
   cell shows "N follow-ups" (`LeadAssignment.followUpCount` from `GET …/assignments`).
+- **Pending-leads alarm (since 2026-10-01, v109)** — `components/employee/PendingLeadsAlarm.tsx`,
+  mounted once in `app/employee/layout.tsx` (not for alumni), so it runs on every `/employee/*` page.
+  Polls every 30 s; at **11:00 and 16:00 IST** (`SLOTS`) it calls `GET /api/employee/leads` and, if
+  ≥1 lead has shared status `pending` (`ASSIGNMENT_STATUS_PENDING` — status only, not `stageOf`),
+  plays the Events Tracker ringtone (same mixkit URL as `partnership-tracker`'s `BELL_RINGTONE_URL`)
+  and shows a toast linking to My Leads. Each slot rings once per IST day: rung slots stored in
+  `localStorage["emp_leads_alarm_rung:<employeeCode>"]` = `"<YYYY-MM-DD>|11:0,16:0"`, written only
+  after a successful fetch (network error → retried next poll). A slot missed because no tab was
+  open fires once on the next poll after its time. Client-only — no server job, no push; the
+  browser may block audio until the user has interacted with the page (toast still shows).
+  Not on `/admin/my-leads` (Event / Publisher Admins) or the admin Sales Tracker.
 - Deleting a `sales_leads` row deletes its follow-ups; offboarding handover keeps them (author name is
   a snapshot) and resets the new person's status to `pending` as before.
 - `/api/admin/my-leads` is in the admin layout's `isSpecialPath`, so a follow-up POST from
   `/admin/my-leads` doesn't remount the page.
+- **Admin → employee messages (since 2026-09-30).** `LeadMessagesPanel.tsx` sits under
+  Departments / Assigned to in both lead windows (`LeadFormModal`, `EnsEnquiryDetailModal`), so it
+  covers every lead in the Sales Tracker whatever page it came from. In edit mode the "New message"
+  textarea (max `LEAD_MESSAGE_MAX_LENGTH` 2000) shows **only when the draft has ≥1 department AND
+  ≥1 person**; otherwise a hint. It's a controlled draft sent on the window's Save, **after** the
+  lead and assignment saves (`page.tsx handleSave` / `EnsEnquiryDetailModal.save`), because
+  `LeadFollowUpsService.addMessageForAdmin` refuses a lead with no assignees (400) or that doesn't
+  exist (404). One message goes to everyone on the lead (no per-person messages); rows are
+  append-only history (`sales_lead_messages`, author = `auth.user.name || email` snapshot), never
+  edited or deleted from the UI. Employees read them in `LeadDetail.messages` (newest first), shown
+  as an amber "Message from admin" card at the top of `LeadDetailDrawer`; they answer through
+  follow-ups (no reply endpoint). Deleting a `sales_leads` row deletes its messages. Migration:
+  `scripts/migrations/add-sales-lead-messages.sql` (applied 2026-09-30).
+- Follow-up statuses saved before the unification (`contacted` / `interested` / `closed`) that the
+  unify migration hasn't renamed are read through `LEGACY_FOLLOW_UP_STATUSES` in
+  `lead-followups.service.ts` (same mapping as the migration) instead of falling back to Pending.
+
+### 6.13 Level 2 — Content Studio (source → AI draft)
+
+```mermaid
+flowchart TB
+    ED(("Editor / Author /<br/>Publisher Admin"))
+    UI["/admin/content-studio<br/>StudioShell (client)<br/>SourcePane · GenerateBar · ReaderPane"]
+    LS[("browser localStorage<br/>authors, custom sources,<br/>recent headlines")]
+    GUARD{"requireAnyRole<br/>CONTENT_STUDIO_ROLES"}
+    NEWS["POST …/content-studio/news<br/>GN search + section feeds<br/>+ custom sources"]
+    TR["POST …/trends<br/>Google Trends 'Trending now'"]
+    EX["POST …/extract<br/>article full text"]
+    DI["POST …/discover<br/>find a site's RSS feed"]
+    SF["safeFetch<br/>SSRF guard, re-checked per redirect"]
+    WEB["Google News / Trends /<br/>publisher pages"]
+    GEN["POST …/generate<br/>SSE: step events + 15s ': ping'"]
+    PIPE["runPipeline<br/>3–4 sequential LLM calls<br/>body · byline · FAQs · SEO + JSON-LD"]
+    CL["Azure OpenAI<br/>Chat Completions (streamed)<br/>AZURE_OPENAI_* (server only)"]
+    OUT["ReaderPane<br/>block AST preview, highlights,<br/>author-input cards, Full HTML tab,<br/>.html download, Move to post"]
+    SS[("sessionStorage<br/>content_studio_post_handoff")]
+    PC["/admin/posts/create?from=content-studio<br/>prefill title/slug/excerpt/meta +<br/>editor importHtml (Upload-HTML conversion)"]
+
+    ED --> UI
+    UI <--> LS
+    UI --> GUARD
+    GUARD -->|403 otherwise| X["denied"]
+    GUARD --> NEWS & TR & EX & DI & GEN
+    NEWS & EX & DI --> SF --> WEB
+    TR --> WEB
+    GEN --> PIPE --> CL
+    PIPE -->|sanitised HTML + metadata| GEN -->|done event| OUT
+    OUT -->|Move to post| SS --> PC
+```
+
+- **Nothing is written to `zox_db`.** The draft exists only in client state; the editor copies the
+  HTML, downloads the standalone `.html`, or clicks **Move to post** and saves it in Posts as usual.
+- **Move to post** (since 2026-09-29): `ReaderPane` writes `{title, excerpt, metaDescription, html}`
+  to sessionStorage via `lib/article/postHandoff.ts` (`html` = the same `buildFullHtml` document as
+  Copy full HTML / Download) and `router.push`es `/admin/posts/create?from=content-studio`. The create
+  page takes (reads + clears) it on mount, prefills title, slug, excerpt (subheadline, else meta
+  description) and meta description, skips the restore-draft banner, and passes `html` to
+  `RichTextEditor`'s new `importHtml` prop, which runs it once through the editor's own
+  `sanitizeHtmlForPaste` + `extractContentCss` — the exact Upload HTML path. The `<h1>` headline stays
+  in the body, as with a manual upload.
+- **The key never leaves the server.** `lib/llm/azureOpenAI.ts` imports `server-only`; the page passes the
+  client only a boolean and the model name.
+- **Every studio POST is in the layout's `isSpecialPath`** (`/api/admin/content-studio`), otherwise
+  the blanket remount 150 ms after each POST would throw the generated article away (§9 #13).
+- **SSE through nginx:** `generate` sends `X-Accel-Buffering: no` so steps arrive live, and an SSE
+  comment every 15 s so a long LLM call doesn't hit nginx's 60 s idle read timeout.
+- Model output is sanitised to the prompt's closed tag set (`lib/llm/postprocess.ts`) and parsed into
+  `ArticleBlock[]` (`lib/article/blocks.ts`) that React renders; only inline HTML inside a block is
+  injected. `blocks.ts` types cheerio through `cheerio/slim` because the host's `@types/cheerio@0.22`
+  ambiently shadows cheerio 1.x's own types.
 
 ## 7. Cross-cutting concerns
 
@@ -1294,16 +1555,22 @@ carousel title (`BannerCarousel.tsx`), the post category tag (`FullArticle.tsx`)
    `src/app/isolated-tailwind.css` for the public marketing routes (`/about-us`,
    `/advertise-with-us`, `/careers`, `/contact-us`, `/ecosystem-partners`) plus the reader
    dashboard home and sidebar (`src/components/user/DashboardHome.tsx` and
-   `src/components/user/UserDashboardLayout.tsx`, sheet imported by `src/app/dashboard/layout.tsx`;
+   `src/components/user/UserDashboardLayout.tsx`, plus, since 2026-09-30, the "Complete your profile"
+   modal `src/components/user/CompleteProfileWizard.tsx`, whose former `<style>` block was replaced by
+   utilities and whose three entrance keyframes live in the same `@theme` as `--animate-cpw-*`;
+   sheet imported by `src/app/dashboard/layout.tsx`;
    their shared `--color-db-*` tokens live in the same `@theme`, as does `--font-db`, which
    points at the `--font-schibsted` variable that `next/font/google` (Schibsted Grotesk) sets on a
    wrapper `<div>` in `src/app/dashboard/layout.tsx`; the dashboard uses the `font-db` utility, not
-   `"Garnett"`, which has no `@font-face` anywhere and so only ever rendered as Helvetica/Arial), and
+   `"Garnett"`, which has no `@font-face` anywhere and so only ever rendered as Helvetica/Arial; the
+   sidebar alone uses `font-db-nav`, which since 2026-09-30 is Inter via the `--font-db-inter` variable
+   that `localFont(src/fonts/inter-latin-var.woff2)` sets on the same wrapper `<div>`), and
    `src/components/admin/staff-panel-tailwind.css`, the **single** sheet for every staff panel. It is
    imported only by `src/app/employee/layout.tsx` and `src/app/(admin)/layout.tsx`, and it `@source`s the
    employee frame, the self-service widgets (`AttendanceWidget`, `LeaveWidget`, `KycDocumentsWidget`,
    `ProfileProgressStrip`, `PunchOutTimeInput`), Admin Rules (`PolicySummaryWidget`), My Leads,
-   offboarding (`ExitWidget`, HR tool `Offboarding`/`Payroll`/`HrPhoneField`) and IT Tickets. Since
+   offboarding (`ExitWidget`, HR tool `Offboarding`/`Payroll`/`HrPhoneField`), IT Tickets and (since 2026-09-29) the whole
+   `src/modules/content-studio` directory. Since
    2026-09-29 it replaces the four former per-feature sheets (`it-tickets-tailwind.css`,
    `rules-policy-tailwind.css`, `my-leads-tailwind.css`, `offboarding-tailwind.css`) and the
    import-only route layouts that loaded them. Reason: every scoped sheet emits its own unlayered copy
@@ -1320,10 +1587,41 @@ carousel title (`BannerCarousel.tsx`), the post category tag (`FullArticle.tsx`)
    padding overflowed every form control — and the admin Inter font stack, inherited by all
    descendants. Its `ui.ts` tokens deliberately mirror `.sales-tracker-page`
    (40px inputs, 38px buttons, `#6366F1` primary, 14px cards, 16px modals with a grey footer).
+   **Content Studio** adds its pink palette to the same sheet's `@theme`, every token namespaced
+   `cs-` (`bg-cs-surface`, `text-cs-ink`, `font-cs-sans`, `text-cs-meta`, `shadow-cs-card`,
+   `animate-cs-spin-fast`…) so no existing utility changes meaning (the unprefixed originals would
+   have redefined `font-sans` for every staff panel; a compiled before/after diff of the sheet showed
+   only added rules and variables). Fonts: `--font-cs-serif` / `--font-cs-sans` read the
+   `--font-fraunces` / `--font-jakarta` variables from `next/font/local` in
+   `modules/content-studio/components/shell/fonts.ts`, applied on the page root and on each portaled
+   modal root. The plain-CSS `.content-studio-scope` block at the end of the sheet is the part of
+   Preflight the studio was built against (border-box, form-control reset, heading/link/img resets),
+   every selector wrapped in `:where()` so it stays at (0,0,1) and any utility beats it. The article
+   preview's former `.art-body` descendant CSS is now Tailwind classes on the React-owned blocks plus
+   `[&_a]:` / `[&_mark]:` variants for the injected inline HTML.
 3. **Per-page scoped blocks** in `globals.css` (e.g. everything under `.fys-page`).
 4. **Component-imported sheets** — a `.css` file imported by the component it styles, so the rules ship with it and stay out of `globals.css`: `components/partner-logos-marquee.css`, `components/delegation-strip.css`, `components/expand-north-star/expand-north-star.css`. Next still emits these globally, so every rule is namespaced by the component's own class prefix (`.pl-`, `.sn-ds`, `.ens-`).
 
 `postcss.config.mjs` must keep `@tailwindcss/postcss` **before** `postcss-import`.
+
+**Icons in the admin panel (since 2026-09-29): Lucide (`lucide-react`) by default, Remix Icon
+(`@remixicon/react`) only where Lucide has no match** — currently just `RiGoogleFill` on
+Registered Users (Lucide 1.x ships no brand icons). No hand-drawn `<svg>` icon components and no
+emoji/symbol characters as icons. Both libraries are React components, so there is no icon font or
+extra stylesheet. In Tailwind-enabled files (anything `@source`d in `staff-panel-tailwind.css`)
+icons are sized with classes (`size-4 shrink-0`, `aria-hidden` when decorative); in the inline-style
+admin pages they take `size` / `color` / `strokeWidth` props. `AdminSidebar` `MenuItem.icon` is typed
+`LucideIcon`; IT Tickets' `TicketIcons.tsx` keeps its exported names but each wraps a Lucide icon;
+`RichTextEditorClient` imports `Underline/Subscript/Superscript/Link/Image` as `*Icon` because the TipTap
+extensions own the plain names. Status messages render a tone icon instead of a leading ✓/⚠/✕:
+Content Studio `toast(message, tone?)` (`success|warning|error|info` → CircleCheck / TriangleAlert /
+CircleX / Info), IT Tickets `Toast` maps its existing `ToastKind`, newsletter's test-email result keeps
+a `testOk` flag next to `testMsg`. The non-Tailwind HR tool and Sales Tracker stylesheets gained small
+alignment rules (`.btn:has(> svg)`, `.ic-text`, inline-flex on `.nav-icon`, `.x-close`, `.lock-hint`,
+chevrons; the ENS inclusions ✓ moved from CSS `::before` to a `Check` icon). Kept as `<svg>` because they
+are not icons: the IT Tickets pie chart, the Events Tracker year-on-year chart, the Content Studio GEO
+score ring and the four-colour Google "G" logo on Registered Users. Kept as text: arrows inside
+sentences, the emoji in the Events Tracker WhatsApp daily-report text, PDF/Excel/LLM-prompt content.
 
 ### 7.6 Operational guards
 
@@ -1343,6 +1641,7 @@ build), `minimumIdle` capped at 5 so idle connections are actually returned, `ti
 | Cron process | PM2 `startupgpt-dev-cron` — `tsx --env-file=.env cron/index.ts` |
 | DB | MariaDB `zox_db` @ `127.0.0.1:3306` |
 | Redis | `redis://127.0.0.1:6382` |
+| Azure OpenAI (since 2026-09-30, replaced Anthropic) | `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION` in `.env` (server only, never `NEXT_PUBLIC_`). Needed by Content Studio's generate route only; `isConfigured()` needs key + endpoint + deployment, otherwise the studio loads and fetches news but shows "Not configured" and generation fails with a clear error. Client: `modules/content-studio/lib/llm/azureOpenAI.ts` — plain `fetch` to `{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=…` with `api-key` header, `max_completion_tokens: 32000`, `stream: true` (SSE deltas concatenated, avoids undici's 300s timeout). No SDK; `@anthropic-ai/sdk` is no longer imported by the studio |
 | Logs | `./logs/nextjs.log`, `./logs/cron.log` |
 | Deploy | `./deploy.sh` — lockfile cancels in-flight deploy → `npm ci` → `rm -rf .next` → `npm run build` → `pm2 restart` both apps |
 
@@ -1547,6 +1846,33 @@ on re-run) so a retry is harmless.
     list (admin-only or employee-only) or read `sales_lead_assignments.status`; convert between
     `sales_leads.status` labels and ENS codes only with the helpers in
     `lead-assignments/domain/types.ts`.
+26. **Content Studio's Anthropic key and outbound fetches stay server-side and gated.** Every
+    `/api/admin/content-studio/*` route calls `requireAnyRole(request, CONTENT_STUDIO_ROLES)` first —
+    they spend Anthropic credit or fetch arbitrary third-party URLs for the caller. Never read
+    `ANTHROPIC_API_KEY` outside `modules/content-studio/lib/llm/claude.ts` (which imports
+    `server-only`), and route every user-supplied URL through `lib/feeds/safeFetch.ts`.
+27. **Admin-panel icons come only from `lucide-react` (default) or `@remixicon/react` (when Lucide has no
+    match).** Never add a hand-drawn `<svg>` icon, an icon font, or an emoji/symbol glyph as an icon under
+    `src/app/(admin)`, `src/components/admin` or `src/modules/content-studio`. Charts, logos and text that
+    is content (messages sent out, exports, prompts) are not icons. For a success/warning/error message,
+    pass a tone to the toast/banner rather than prefixing ✓ / ⚠ / ✕ to the string (§7.5).
+28. **A day's attendance changes only through a real punch or an approved regularization.** No route may
+    write `hr_attendance`/`hr_punch_log` directly from an HR screen, and payroll reads only
+    `hr_attendance` + approved leave. Every regularization — whoever files it — goes through
+    `HrToolService.submitEmployeeRegularization`, whose limit counts **distinct dates** in the date's own
+    payroll cycle (§6.7). Don't reintroduce whole-list PUTs for approval tables that carry pay impact.
+29. **Leave is paid only by `allocateLeave`.** Payroll, the leave screens and the Full & Final all take
+    the paid/unpaid split and the balance from `utils/leave-balance.ts`; never re-derive "paid leave"
+    with a separate cap or counter. Leave requests are created only via `submitEmployeeLeaveRequest`
+    and changed only by `decideLeaveRequest` / `cancelLeaveRequest` (single-row writes).
+30. **`getPayrollCycleState` is the only gate for running payroll.** Never let a run through outside the
+    window/overdue phases or into a locked cycle. A run may happen with requests pending (they count as
+    not approved and those payslips are provisional), but a cycle must never lock while any request for
+    it is pending or its run is out of date; anything that changes a request must bump its `updated_at`.
+31. **`utils/day-ledger.ts` is the only day classifier for pay.** Payroll and every attendance calendar
+    read `buildDayLedger` output (via `HrToolService.buildEmployeeLedger`); never add a screen that
+    decides present/absent/leave/LOP on its own. Anything that changes a run, unlocked cycle's inputs
+    must end in `refreshRunIfOpen` (decision routes call `refreshPayrollForDates`).
 
 ## 10. Architecture Change Log
 
@@ -1797,3 +2123,47 @@ Every change to this system appends a row here. `Impact` drives what else gets u
 | 218 | 2026-09-29 | minor | `/events`: the "Other Cities" heading is hidden when it's a country's only section (§5) | `app/events/page.tsx` render: `onlyOtherCities` = the country's cities map has exactly one key and that key is `OTHER_CITIES_SECTION`. In that case `EventsCarousel` gets `title={null}`. Grouping (`groupByCountry`) and `orderByVisitorLocation` are unchanged. | — |
 | 219 | 2026-09-29 | minor | Admin list pages keep their filters after create / edit / delete (§9 #13) | `src/app/(admin)/layout.tsx`: new `SELF_REFRESHING_ADMIN_PAGES` set + `pathnameRef`; the patched `fetch` still clears the admin cache and dispatches `admin:data-updated`, but skips the 150 ms `router.refresh()` + `contentRefreshKey` remount while the admin is on `/admin/{posts,partnership-tracker,newsletter,sales-tracker,it-tickets,hr-tool,tools,reports,brand-stories,inner-pages,contacts}` — that remount wiped every filter/search/sort/page/tab. All writes on those pages already reload or patch their own rows (checked per handler). `hooks/useAdminData.ts`: optional `persistKey` restores page / limit / search / filters from sessionStorage (skips the mount-time search → page 1 reset); used by posts (`admin:posts:list`), events (`admin:events:list`) and banners (`admin:banners:list`), so a round trip to `/admin/posts/edit/[id]` etc. comes back filtered. New `lib/admin-return-to.ts`: reports and brand-stories list pages remember their `?section=` view and their create/edit pages `router.push` back to it after saving. Newsletter RSS category filter persisted in sessionStorage (`admin:newsletter:rssCategory`). tsc clean on touched files; not built. | — |
 | 220 | 2026-09-29 | medium | Posts: drafts save with no mandatory fields (§5 Admin, API) | `posts/create/page.tsx` + `posts/edit/[id]/page.tsx`: `isDraft = formData.status === 'draft'` turns off the HTML `required` attributes, the asterisks and the client checks (category, author, content ≥10, excerpt ≥10); the create button reads "Save Draft". `POST /api/admin/posts`: when status is draft (or missing), a blank title → "Untitled draft", a blank slug → `draft-<ms>-<rand6>`, a missing excerpt/content → '', a missing category → `categories ORDER BY (slug='uncategorized') DESC, id` (dev: 2 `tech`), and a missing author → `users ORDER BY (role='author' AND is_default_author=1) DESC, (role='author') DESC, id` (dev: 38). A users row is used because `posts.author_id` is an FK to `users` and event/publisher admins live in `panel_admins`. The excerpt/content presence check applies to non-drafts only. `PUT /api/admin/posts/[id]`: a blank title/slug or a NaN categoryId/authorId is skipped (the stored value is kept) instead of writing ''/NaN into NOT NULL / UNIQUE / FK columns. The service's `canPublishPost` gate is unchanged. Fallback SELECTs checked read-only on dev `zox_db`; tsc + eslint clean; not built. | v85 |
+| 221 | 2026-09-29 | major | Content Studio — AI post drafting in the admin panel (§1, §2, §4, §5, §6.13, §7.5, §8, §9 #26) | Ported `github.com/adityarana206/ContentStudio` (commit `bca75d2`) into `src/modules/content-studio/` (imports rewritten to `@/modules/content-studio/*`). Page `src/app/(admin)/admin/content-studio/page.tsx`; API `src/app/api/admin/content-studio/{generate,news,trends,extract,discover}/route.ts`, each the original handler behind `requireAnyRole(CONTENT_STUDIO_ROLES)` (new in `roles.ts`: admin, editor, author, publisher_admin). Client hooks call those routes with `getAuthHeaders()`. `generate` also gets `X-Accel-Buffering: no` and a 15 s SSE keep-alive for nginx. Admin wiring: sidebar item "Content Studio" under Posts (`AdminSidebar.tsx`), `/admin/content-studio` in `publisher_admin`'s allowed paths, `/api/admin/content-studio` in the layout's `isSpecialPath`, zero content padding on the route. Styling: theme tokens renamed to `cs-*` and added to `staff-panel-tailwind.css` with an `@source` for the module, `.content-studio-scope` `:where()` reset, `.art-body` CSS replaced by Tailwind classes, `scroll-thin`/`clamp-*` utilities replaced by arbitrary variants / `line-clamp-*`. Fonts self-hosted (`src/fonts/fraunces-latin-var.woff2`, `fraunces-italic-latin-var.woff2`, `plus-jakarta-sans-latin-var.woff2`) instead of the original's `next/font/google` (§9 #20). `blocks.ts` types cheerio via `cheerio/slim` (host `@types/cheerio@0.22` shadows 1.x types). New deps: `@anthropic-ai/sdk`, `fast-xml-parser`, `sanitize-html`, `clsx`, `tailwind-merge`, `server-only`, dev `@types/sanitize-html`. `ANTHROPIC_API_KEY` is not yet in `.env`. tsc clean (whole project); eslint clean on new files; sheet compiled and diffed; not built. | v86 |
+| 222 | 2026-09-29 | medium | Admin panel icons: Lucide + Remix only (§7.5, §9 #27) | New deps `lucide-react` ^1.48 and `@remixicon/react` ^4.9. Converted 80+ files under `src/app/(admin)/admin/**`, `src/components/admin/**` (sidebar, header, search, pagination, error boundary, image upload, rich-text editor toolbar/bubble menu, attendance widget, events tabs, HR tool nav + views, Sales Tracker, IT Tickets) and `src/modules/content-studio/**`: every hand-drawn icon SVG and emoji/symbol icon → Lucide (one Remix: `RiGoogleFill`). Status messages now carry a tone and render CircleCheck / TriangleAlert / CircleX / Info (Content Studio `toast(message, tone?)`, 21 call sites; IT Tickets `Toast` per `ToastKind`; newsletter `testOk`; hard-coded ✓/⚠ lines in newsletter, tools, inner-pages, events tracker, post create/edit). `ModalShell` `ModalAction.label` → `ReactNode`; `EmptyState.icon` (studio) → `LucideIcon`; HR tool + Sales Tracker stylesheets got alignment rules. Emoji removed from `<option>` text. Kept: 3 charts + Google logo `<svg>`s, prose arrows, WhatsApp report emoji. Checks: tsc 0 errors project-wide; eslint on the 63 changed tracked admin files 7 errors / 38 warnings before and after (all pre-existing), content-studio clean; staff sheet compiles and emits every icon size class. Not built. | v87 |
+| 223 | 2026-09-29 | medium | Content Studio: "Move to post" button (§6.13) | `modules/content-studio/components/output/ReaderPane.tsx`: new action-bar button (Lucide `FilePlus2`) after Copy article text. New `modules/content-studio/lib/article/postHandoff.ts` (`savePostHandoff` / `takePostHandoff`, sessionStorage key `content_studio_post_handoff`, `POST_HANDOFF_QUERY`). `posts/create/page.tsx`: on mount with `?from=content-studio`, prefills title/slug/excerpt/metaDescription and sets `importHtml`; otherwise offers the saved draft as before. `RichTextEditor` + `RichTextEditorClient`: optional `importHtml` prop, imported once per string (ref guard) via `sanitizeHtmlForPaste` + `extractContentCss`, then `onChange`. tsc clean on touched files; not built. | v88 |
+| 224 | 2026-09-29 | medium | HR tool: bulk mark attendance (§6.7) | New `POST /api/admin/hr-tool/attendance-overrides/bulk` (HR_TOOL_ROLES; validates status set, date format, ≤62 dates, ≤5000 rows, ids exist; skips dates before `doj`). `HrToolRepository.upsertAttendanceOverrides` (single transaction); `HrToolService.recordAttendanceOverrides` + `listEmployees`. Client: `hrApi.recordAttendanceOverridesBulk` (apiRaw), `HrToolContext.persistAttendanceOverridesBulk` (server first, state on success), new `views/BulkAttendanceModal.tsx` (date range, status, skip Sundays/holidays, team filter + search, select-all), "Bulk mark attendance" button in `views/Attendance.tsx` topbar for `isAdmin`. Audit-log line via `logRuleChange`. tsc + eslint clean; not built | v89 |
+| 225 | 2026-09-29 | medium | HR Payroll honours HR attendance corrections (§6.7) | `HrToolRepository.findAttendanceOverridesForEmployeeInRange`; `computePayrollForMonth` builds `overrideByDate` and applies it per day ahead of week-off/future/punch logic (present 1, half-day 0.5, leave → leaveDays capped, off → week-off, absent → LOP); exited employees with only overrides in the cycle are no longer skipped. Frozen (already-run) months need Recompute. Trigger: HR bulk-marked Kapil Suri's month but Payroll still docked LOP. tsc + eslint clean; not built | v90 |
+| 226 | 2026-09-30 | minor | Expand North Star partners strip (§6) | `media.ts` `ENS_REFERRAL_LOGOS["eritonxt"]` → S3/CDN key `startupnews-in/uploads/2026/09/expand-north-star/partner-eritonxt.png` (margin-trimmed 2234×733 PNG); `referralPartnerLogos.ts` gains `{ slug: "eritonxt", name: "EritoNxt" }` — marquee only, not in `REFERRED_BY_OPTIONS`. Local `public/images/expand-north/EritoNxt-Logo.png` deleted, folder kept via `.gitkeep`. | — |
+| 227 | 2026-09-30 | medium | `/dashboard` member sidebar restyled after the Octaraa reference, pink instead of blue; 3 new locked items (§7.5) | `UserDashboardLayout.tsx`: rail width 84/272 → 88/300 (hover-to-open unchanged, logo stays in the masthead); rows `18px` Inter, `rounded-lg px-4 py-3 gap-4`, 24px icons, active = `bg-db-pink/10 text-db-pink font-medium` (3px left bar removed); `NAV_GROUPS` gains `Handouts` / `Incubators` / `Grants` (`href:'#'`, `locked:true`, lucide `ClipboardList`/`Building2`/`HandCoins`) after Brand Stories — no routes exist for them. Bottom: "Complete your profile" card (`bg-db-pink/5` + border, progress bar, solid "Complete Profile" button opening `CompleteProfileWizard`, × dismiss stored in `sessionStorage.profile_card_dismissed`); standalone Logout link replaced by a user card (2-letter initials avatar, name, email, `ChevronDown`) whose popover (`userMenuRef`, closes on outside click / Esc / rail collapse) holds Profile (`/dashboard/settings`) and Logout. `--font-db-nav` → `var(--font-db-inter), "Inter", …`; `dashboard/layout.tsx` loads Inter locally. | v91 |
+| 228 | 2026-09-30 | minor | `/dashboard` member sidebar — larger nav text and icons (follow-up to #227, §7.5) | `UserDashboardLayout.tsx`: nav + locked row labels `text-[18px]` → `text-[20px]`; row icons `[&>svg]:size-6` → `size-[26px]` (expanded and collapsed). User card, profile card and menu unchanged. | — |
+| 224 | 2026-09-30 | minor | `.env`: `ANTHROPIC_API_KEY` entry added, value empty (§8) | Only env var read by Content Studio (`lib/llm/claude.ts` `apiKey()`; `isConfigured()` = `Boolean(key)`, so an empty value still shows "Not configured"). Commented, empty line appended to the git-ignored `.env`. Needs the real key plus an app restart. | — |
+| 229 | 2026-09-30 | medium | Admin **Grants** section for IncubatX dossiers (§5 Admin, §4) | New sidebar item `/admin/grants` (super admin only: `GRANTS_ROLES`, `ADMIN_ONLY_PATHS`). Page `app/(admin)/admin/grants/page.tsx` → `components/admin/grants/{GrantsPage,GrantDetailDrawer,constants}.tsx`. APIs `app/api/admin/grants/route.ts` (list + status counts) and `[id]/route.ts` (GET detail, PATCH status). `IncubatxDossierRepository` gains `list`, `statusCounts`, `findDetailById`, `updateStatus`; domain gains `DOSSIER_STATUSES`, `isDossierStatus`, `DossierListItem`, `DossierDetail`, `DossierListQuery`, `DossierStatusCounts`. Reads/writes the existing `incubatx_dossiers` table only (no schema change). Display mobile rebuilt from `mobile_iso` (dial code not stored). tsc + eslint clean; SQL checked against the live table (0 rows); not built (standing rule). | v92 |
+| 230 | 2026-09-30 | medium | `CompleteProfileWizard.tsx` redesigned and moved to Tailwind (§7.5) | Whole `<style>`/`cpw-*` CSS and inline styles replaced by utilities (`@source` added to `isolated-tailwind.css`; `--animate-cpw-fade/modal/step` + keyframes added to its `@theme`). Modal is now a flex column: fixed header (title, "Step N of M · subtitle", stepper where done steps are clickable pink checks), scrolling body, fixed footer (Back + Continue / Save & finish). Basic info grouped Personal details / Location / Online presence: Name; **Email (read-only, from `profile-status` `user.email`, never sent on save)** \| Phone; Country (`CustomSelect`, skinned via arbitrary `[&_.custom-select-*]` variants) \| City; LinkedIn \| Website; Bio with 0/300 counter. Inputs are boxed (`h-12 rounded-xl`, icon-prefixed). Step 4 selects use a `Select` helper, radios became `Choice` pill toggles, founders/funding use `RepeaterCard`. Review step: profile summary card (initials, name, category chip, location/email/phone, bio) + `ReviewCard`s (Basic details, Sectors, Category & details, Founders, Funding history), each with **Edit** jumping to its step via `goTo`; empty basics show "Not added". Save payload unchanged. Only inline styles left: CMS-driven sector chip colours. | v93 |
+| 231 | 2026-09-30 | minor | Content Studio moved under Posts (§5 Admin) | `AdminSidebar.tsx`: Content Studio menu item removed; new `MenuItem.alsoActive` keeps Posts highlighted on `/admin/content-studio`. `admin/posts/page.tsx`: "Content Studio" tab (Sparkles icon, `Link` to `/admin/content-studio`) after Posts/Industry/Authors, gated by `isPathAllowed`. Route, role gates and API unchanged. | — |
+| 232 | 2026-09-30 | major | Content Studio LLM provider: Anthropic → Azure OpenAI (§8, §2 context DFD, §6.13) | `lib/llm/claude.ts` deleted, replaced by `lib/llm/azureOpenAI.ts` (same exports `callLLM` / `isConfigured` / `modelName`; `pipeline.ts` and the page import it). Reads `AZURE_OPENAI_*` from `.env`; streamed Chat Completions via `fetch`. Status row in `Chrome.tsx` now "Azure OpenAI · {deployment}"; error hints in `Chrome.tsx` / `ReaderPane.tsx` point at the Azure vars. `.env` comment updated. Verified with a live streamed call to the deployment. | v94 |
+| 233 | 2026-09-30 | medium | Profile completion reweighted; wizard phone gets a country-code box; Organization/Role moved to Basic info; Title Case labels | `api/public-auth/profile-status/route.ts`: `CATEGORY_REQUIRED_FIELDS` / `STARTUP_REQUIRED_FIELDS` / count-based % replaced by `COMPLETION_WEIGHTS` (sum 100, same for every category): phone 15, linkedin_url 15, bio 15, name 10, country+city 10 (**only when both are set**), website 10, category 10, g_organization 5, g_role 5, email 5. `missing` = unmet keys heaviest-first; `complete` = none missing. Category step-4 fields no longer affect %. `CompleteProfileWizard.tsx`: `PhoneInput` = searchable `CustomSelect` of `COUNTRY_CODE_OPTIONS` ("IN +91") + digits-only input capped at `PHONE_RULES[code].maxLen`, validated by `PHONE_RULES[code].pattern` (same data as `ui/PhoneField` on /feature-your-startup, /submit-funding-round); error on blur, blocks Continue/Save. `splitPhone` reads both `"+91 98765…"` and legacy `"+9198765…"` (longest dial-code prefix wins, so +1876 beats +1); saves as `"+CODE DIGITS"`. Empty number follows the picked country's code (`codeForCountry`). New "Work" section on Basic info writes `g_organization` / `g_role` for **every** category (columns already in `PROFILE_FIELD_KEYS`); generic categories' step 4 now shows a "No Extra Details Needed" note; review shows Organization/Role under Basic Details and excludes `g_*` from Category & Details. All labels, section titles, `FIELD_LABELS` and `STEP_LABELS` in Title Case. `DashboardHome.tsx` `FIELD_LABELS` + name/email/bio/g_organization. | v95 |
+| 234 | 2026-09-30 | medium | Registration categories consolidated (`src/constants/registrationCategories.ts`) | `lawyer` + `cacs` → **`professional`** ("Professionals"), `vc` + `pe` → **`vcpe`** ("VC / PE Firm"), `banker` removed. DB check before the change: no `public_registrations` row used any of the five old values (124 null, other 3, student/media/startup/investor 1 each), so no migration. `CompleteProfileWizard.tsx`: `CATEGORY_PREFIX` values are now `string[]` (professional = `['l_','cs_']`, reusing the old Lawyer/CA-CS columns: `l_firm`, `cs_membership_number` (Bar Council / ICAI / ICSI), `l_practice_areas` ("Practice Areas / Services"), `l_jurisdiction`, `l_years_experience`); `vcpe` joins `INTEREST_CATEGORIES` (investor `i_*` fields); lawyer/cacs/banker step-4 branches and the `BANKING_VERTICALS` import dropped. Admin registered-users filter and Settings label read the same constant, so they follow automatically; the `bk_*`/`cs_firm`/`cs_services`/`cs_years_experience` columns stay in the table, unused by the UI. | v96 |
+| 235 | 2026-09-30 | minor | `/dashboard` text line-height (§7.5) | Legacy `styles/style.css` `body { line-height: 100% }` resolves to a fixed 16px that inherits unscaled, collapsing any >16px text without its own `line-height` (e.g. `ProfileHeader` h1, `CompleteProfileWizard` h2). `app/dashboard/layout.tsx` wrapper gains `leading-normal` (unitless 1.5); `@source` added for `dashboard/layout.tsx` and `components/user/profile/ProfileHeader.tsx` (now Tailwind, `leading-[1.15]` h1); wizard h2 `leading-tight`, subtitle `leading-snug`. **Invariant:** dashboard text inherits 1.5, so any new large heading there should still set its own tighter leading. | — |
+| 236 | 2026-09-30 | minor | `CompleteProfileWizard.tsx` phone field + Esc to close | Bug: `PhoneInput`'s `[&_.custom-select-wrap]:w-[124px]` tied with `SELECT_SKIN`'s `w-full` (same specificity) and lost, so the code picker filled the column and pushed the number box out; being a searchable combobox it also accepted letters. Now the code picker is a fixed `w-[112px]` wrapper around a **non-searchable** `CustomSelect` (button "IN +91 ▾", `CODE_SKIN` uses `button.custom-select-btn` variants to out-rank the combobox skin), list `min-w-[260px]`, India pinned first. Number input gets a keydown digit guard on top of the paste-stripping onChange. Esc closes the wizard (same as ×, `dismiss()`), via a **capture-phase** document listener that skips when any `.custom-select-list.open` exists and while saving, so one Esc closes an open dropdown only. | — |
+| 236 | 2026-09-30 | minor | Expand North Star Referred By label + partners strip link (§6) | `ens-travel-enquiries/domain/sources.ts` `REFERRED_BY_OPTIONS`: `startup-report-in` label "Startupreport.in" → "Startupreporter.in" (slug unchanged, no migration). `expand-north-star/referralPartnerLogos.ts`: `eritonxt` gains `linkUrl: "https://www.linkedin.com/company/eritonxt/about/"`, rendered by `PartnerLogoTile` as `target="_blank" rel="noopener noreferrer"`. | — |
+| 237 | 2026-09-30 | medium | Admin → assigned-team lead messages (§6.12, §4 `lead-followups`, §5 API) | New table `sales_lead_messages` (`scripts/migrations/add-sales-lead-messages.sql`, applied 2026-09-30). `lead-followups`: `LeadMessage` / `LeadMessageEntity` / `LEAD_MESSAGE_MAX_LENGTH` (2000); repository `findMessagesForLead`, `countAssignees`, `addMessage`; service `getMessagesForAdmin`, `addMessageForAdmin` (400 if empty / too long / lead has no assignees, 404 if the lead is gone), `LeadDetail.messages`. New `api/admin/sales-tracker/messages/route.ts` (GET + POST, `SALES_TRACKER_ROLES`). New `components/admin/sales-tracker/LeadMessagesPanel.tsx` in `LeadFormModal` (below Assigned to; `onSave` gains `message`, sent by `page.tsx handleSave` after lead + assignment) and `EnsEnquiryDetailModal` (edit + view; sent in `save()` after `onAssign`, `messagesVersion` refreshes history; message counts toward `dirty`). Textarea only when draft has ≥1 department AND ≥1 assignee. `LeadDetailDrawer` shows an amber "Message from admin" card first. `SalesTrackerRepository.deleteLead`/`deleteAllLeads` also clear `sales_lead_messages`. Follow-up fix: `LEGACY_FOLLOW_UP_STATUSES` maps un-migrated `contacted`/`interested`/`closed` (live DB still had one `interested` row, shown as Pending). | v97 |
+| 238 | 2026-09-30 | medium | Notice-period salary held for the F&F (§6.11) | `HrToolRepository.findNoticeStartDates`; `computePayrollForMonth` skips employees with an accepted/exited/completed exit from the payroll cycle containing `resignation_date` (new `PayrollPreview.noticeHeldEmployees`, notice in `Payroll.tsx`, `api.ts` type). `HrOffboardingService.buildFnfAutoLines` now emits one salary line per cycle from notice cycle to LWD cycle (`salary` for the LWD cycle, `salary:<month>` for held ones, ₹0 when that cycle's payroll entry exists; `FNF_MAX_SALARY_CYCLES` 14); `approveFnf` payroll-ran check covers every salary line. No schema change. | v98 |
+| 239 | 2026-09-30 | medium | Directory (contacts) view-only for Event Admin + employee SNFYI-0029 (§5, §7.1) | `roles.ts` `CONTACTS_VIEW_ROLES = ['admin','event_admin']` on `GET /api/admin/contacts` and `GET …/config` only; writes unchanged on `CONTACTS_ROLES`. `admin-role-access.ts`: `/admin/contacts` added to `event_admin`; `isPathAllowed` lets an explicitly listed scoped role past `ADMIN_ONLY_PATHS` (editor/author still blocked). Page body moved to `components/admin/contacts/ContactsDirectory.tsx` (props `readOnly`, `apiBase`, `getHeaders`); `readOnly` hides header actions (Import/Export/Add/Delete all), Admin & Config tab, checkboxes + bulk bar (incl. Download selected), row Edit/Delete, card Edit/Delete, and shows a "View only" badge. Employee: `modules/contacts/domain/directory-access.ts` (`DIRECTORY_VIEWER_EMPLOYEE_CODES`, `canEmployeeViewDirectory`), `api/employee/directory/{_lib,route,config/route}.ts`, `app/employee/directory/page.tsx`, nav item in `employee/layout.tsx`. SNFYI-0029 has no linked panel admin, so it uses the employee portal. **Limit:** the view still receives the full list as JSON, so a viewer could copy what they can see; the UI offers no export/download. | v99 |
+| 240 | 2026-09-30 | minor | Ops: `zox_db` restored from S3 backup | Dropped and recreated `zox_db` on `zox-mariadb` (utf8mb4_unicode_ci, `zox_user` granted ALL), imported `db-backups/zox_db_20260930_120001.sql.gz` (71 tables). Pre-restore safety dump at `/root/db-safety-backups/zox_db_pre_restore_20260930.sql.gz`. No schema/code change. | — |
+| 241 | 2026-09-30 | major | HR regularization rules; HR direct attendance edits removed (§6.7, §9 #28) | `utils/regularization-policy.ts` (new: time windows 08–14 / 14–23, `regularizationDeadline`, `countedRegularizationDates`, `REG_LATE_FILING_DAYS=2`). `submitEmployeeRegularization` rewritten: time windows, out-after-in, 5-calendar-day window (`regularization_window_days`, now enforced), date's own cycle via `payrollPeriodRange`, earlier cycle only ≤ 2 days after it ends, limit = distinct dates (in+out = 1, rejected + `hr-edit` excluded), hard block. `getRegularizationUsage` counts days. `todayStr()` → IST. Removed: calendar HR correction, `BulkAttendanceModal.tsx`, routes `hr-tool/attendance`, `punch-log`, `attendance-overrides(/bulk)`, `PUT hr-tool/regularizations`, repo `findAttendanceOverrides*`/`upsertAttendanceOverride(s)`/`replaceRegularizations`, context `persistAttendance*`/`persistPunch`/`persistRegularizations`, `HrBootstrap.attendanceOverrides`; payroll no longer reads overrides. New column `hr_regularizations.source`. **Schema/data:** `scripts/migrations/convert-hr-attendance-overrides-to-regularizations.sql` — applied to dev `zox_db` 2026-09-30 (agent #1090; 53 hr-edit rows, overrides emptied); **production not yet** (must run before the new code goes live). UI: widget shows 'X of 5 days used this payroll cycle · request by DATE', punch-in input 08:00–14:00, `PunchOutTimeInput` 2–11 PM. | v100 |
+| 242 | 2026-09-30 | major | HR leave rules (§6.7, §9 #29) | `utils/leave-balance.ts` rewritten around `allocateLeave` (pending holds, date-order paid-while-balance-lasts, half-day 0.5, no sandwich, disabled type unpaid, worked full-day dates excluded); `computeLeaveBalances` = accrued − paid held, floor 0. Service: `getLeaveOverviewForEmployee` (requests + `paidDays/unpaidDays`, balances, doj, holidays), `submitEmployeeLeaveRequest` rewritten (enabled types only, yesterday onward, half-day, working-day check, overlap, no full-day on punched date, returns split), new `decideLeaveRequest`, `cancelLeaveRequest`, private `fullDayLeaveOn` (punch-in → `ON_LEAVE`; regularization refused). Payroll pays leave via `allocateLeave` over the year (cap removed; half-day leave handling). Routes: `hr-tool/leave-requests` PUT → POST (+ `/decide`, `/cancel`); new `employee/leave-requests/cancel`, `admin/leave-requests/cancel`; GETs return overview; `/attendance/me` returns `leaves`. Repo: `half_day` mapped/inserted, `findLeaveRequestById`, `updateLeaveRequestStatus`, overlap = pending/approved, `replaceLeaveRequests` removed; payroll day columns read with `Number()`. UI: `LeaveWidget` (no Other, duration, yesterday min, live split preview, split per row, Cancel until start, 'available' balance), HR `Leave.tsx` (server apply/decide/cancel, Paid/unpaid column, half-day), `ApprovalBadge` Cancelled, both calendars show approved leave, `PolicySummaryWidget` Leave section. **Schema:** `scripts/migrations/add-hr-leave-half-day-and-decimal-payroll-days.sql` — **not yet applied**. | v101 |
+| 243 | 2026-10-01 | major | HR payroll: 26→25 cycle, run window, lock, short-leave rule (§6.7, §9 #30) | Service: `PayrollCycleState` + `getPayrollCycleState` (phases in-progress/window/overdue/locked, lazy lock, stale, pending, canRun), `isDateInLockedCycle`, `runPayroll` gated by it and records period, `reopenPayroll` (2 days, reason → audit), `getPayrollForMonth` returns `cycle`; `computePayrollForMonth`: `periodEnded = to < today`, `settledThrough` days paid, short leave 2 free then −0.5 each, carry-over removed; `decideRegularization` refuses non-pending and out-of-window times; HR leave cancel refused in a locked cycle. Repo: run period/computed/locked/reopen columns, `lockPayrollRun`, `reopenPayrollRun`, `findPendingRequestsInRange`, `hasRequestChangesSinceRun`. Route `POST hr-tool/payroll-runs/reopen`. `payrollCycleToRunKey` = previous cycle. UI: Payroll status panel, pending list, settled note, Founder reopen, 'Re-run Payroll'; Rules: Late-mark toggle removed, short-leave copy; PolicySummary short-leave copy; decide errors shown. **Schema/data:** `scripts/migrations/hr-payroll-cycle-26-25-window-and-lock.sql` (run columns; `updated_at` on hr_regularizations + hr_leave_requests; Aug run period 1–31 Aug + locked; Sep run + entries deleted for recalculation; hr_rules 26/'25') — **not yet applied**. | v102 |
+| 244 | 2026-10-01 | minor | IncubatX dossier: listed dial codes only; Part-Time blur (§5 Grants) | `lib/validation/incubatx-dossier.ts` `checkPhone`: a `phoneCode` with no ISO in `COUNTRY_CODE_OPTIONS` (`other`, hand-typed/unlisted codes) now fails with "Pick your country code from the list." on `mobile`; the 6–15-digit fallback is gone. Reason: only `mobile_iso` is stored, so an unlisted code was saved with no dial code (reachable only via direct API posts — the public `PhoneField` hides "Other"). `phoneCodeCustom` still accepted, ignored. `FinancialsTeamStep` Part-Time blur now validates `partTimeCount` then `fullTimeCount` (was only `fullTimeCount`, so Part-Time's own errors never showed on blur). tsc clean; tsx check: `+999`/`other` rejected. Not built (standing rule). | — |
+| 245 | 2026-10-01 | medium | HR attendance ↔ payroll sync: shared day ledger, auto-update until lock, leave/punch rules (§6.7, §9 #29–31) | New `utils/day-ledger.ts` (`buildDayLedger`, `approvedLeaveByDate`, `payFromLedger`, `EmployeeCycleLedger`); `computePayrollForMonth` day loop replaced by private `buildEmployeeLedger` (allocation over approved + pending, approved-only days); `getEmployeeCycleLedger`, `refreshRunIfOpen`, `refreshRunsForDates`; `getPayrollCycleState(month, roster?)` refreshes before lock; `getPayrollForMonth` returns `computedAt`. `allocateLeave`: punched full-day date = 0.5 units. `decideLeaveRequest`: locked-cycle + punched-date refusal; `decideRegularization`: locked-cycle refusal; `punchEmployee`: refuses on pending or approved full-day leave; `cancelLeaveRequest`: employee may withdraw own pending leave any time. Repo: `parseTime12h` fallback in `mapAttendanceRow`, `deletePayrollEntry`, `touchPayrollRunComputedAt`, `computedAt` on runs. Routes: new `hr-tool/attendance-ledger`, `attendance/ledger`, `employee/attendance/ledger`; decide/cancel routes call `refreshPayrollForDates`. UI: `AttendanceCalendar` rewritten (pay-cycle pages, ledger tiles incl. Unpaid leave / Paid days, payslip line), new `AttendanceCycleSummary` in `AttendanceWidget`, Payroll "Kept in sync" note, `LeaveWidget` cancel rule. DB (this server): `hr-payroll-cycle-26-25-window-and-lock.sql` applied + override conversion re-run, backup `/root/db-safety-backups/hr_pre_payroll_lock_20261001.sql`. | v103 |
+| 246 | 2026-10-01 | medium | HR payroll: run on current records while requests are pending; provisional payslips; Payroll page self-refresh (§6.7, §9 #30) | Service: `runPayroll` no longer refuses pending requests; `getPayrollCycleState.canRun` = window/overdue (lock still needs zero pending + not stale); `pendingRequests` items carry `employeeId`; `getPayrollForMonth` returns `pendingByEmployee`. Repo: `findPendingRequestsInRange` selects `employee_id`. UI: `Payroll.tsx` "Provisional · N pending" badge per row (Lucide `Clock`), pending notice reworded, run tooltip, silent reload when `state.attendance/regularizations/leaveRequests` change (unsaved TDS kept); `payslipPdf.ts` optional `provisionalNote` printed under the month; `api.ts` types. Verified with 11 scenario checks on test rows (cleaned up). | v104 |
+| 247 | 2026-10-01 | medium | HR Attendance page: monthly overview for any past pay cycle (§6.7) | Service `getCycleAttendanceSummary` + helper `cyclePeriodFor` (run-recorded period wins; also used by `getEmployeeCycleLedger`); route `GET /api/admin/hr-tool/attendance-summary`; `hrApi.getAttendanceSummary`. `Attendance.tsx`: new `MonthlyAttendance` section (cycle arrows, search, Present/Half/Short/Paid leave/Unpaid leave/LOP/Week off/Paid days, "Saved payslip" column with "today's records" when they differ, Full & Final note), rows open the calendar on that cycle; `AttendanceCalendar` `initialMonth` prop. Verified: overview == payroll for Sep/Oct (0 mismatches); Aug shows 1–31 Aug with saved figures alongside. | v105 |
+| 248 | 2026-10-01 | minor | HR attendance calendar: leave-type card + short-leave card wording (§6.7) | `EmployeeCycleLedger.leave[]` (per enabled type: `available` = `computeLeaveBalances` today, `earnedThisYear` = `monthsAccruedThisYear × perMonth`, and the cycle's `appliedInCycle` split from the payroll allocation into `paidInCycle`/`unpaidInCycle` for approved + `pendingInCycle`); built in `getEmployeeCycleLedger` from `buildEmployeeLedger`, which now also returns `leaveRequests`/`allocation`/`workedDates`; self-service ledger routes pass `leave` through. `AttendanceCalendar`: `LeaveStat` (2-tile card) replaces the Paid/Unpaid leave tiles; "Total short leaves" card shows the free quota and how many cost ½ day. Verified figures equal the Leave screen balance. | — |
+| 249 | 2026-10-01 | minor | Offboarding exit window: leaver's attendance calendar (§6.11) | `Offboarding.tsx` `ExitAttendance` (decided cases): "View attendance calendar" renders `AttendanceCalendar` inline, opening on the run whose recorded period covers the LWD (else `payrollMonthKeyForDate(LWD or today)`). `EmployeeCycleLedger.paidInFnf` (notice-held rule, computed in `getEmployeeCycleLedger`; the summary now reads it from the ledger); the calendar's payslip line says the month is paid in the Full & Final. Verified on Priyansh (LWD 31 Aug): opens on Aug (1–31 Aug, saved ₹12,419); Sep = 6 settled + 25 not employed, flagged F&F. | — |
+| 250 | 2026-10-01 | minor | Events Tracker: blank-status events no longer hidden; red warning on blank status | `partnership-events.utils.ts`: `DEFAULT_HIDDEN_STATUSES` `[Unmapped,Expired]` → `[Expired]`, so `Unmapped` (blank/unrecognised `partnership_status`) rows show in the default table and count in "All Active events" (tracker card + `/api/admin/stats` via `countActivePartnershipEvents`). `partnership-tracker/page.tsx`: Event Statuses filter gains `<option value="Unmapped">No status</option>`; the edit modal Partnership Status `<select>` keeps the "—" option but gets `!border-red-500 ring-1 ring-red-500` + `aria-invalid` and a red `pt-hint` while blank. This is a warning only; save is not blocked. Root cause: Startup Business Summit 2026 was published on live with a blank status and disappeared from the table. tsc clean for the touched files. | — |
+| 251 | 2026-10-01 | minor | HR Payroll: overdue/pending notices neutral; employee self-cancel refreshes payroll (§6 payroll) | `views/Payroll.tsx`: the `overdue` heading is now "Run — updating automatically" (already run) or "Not run yet"; the cycle notice and the "N requests awaiting a decision" list use `notice info` instead of the red `#FECACA/#FEF2F2` styling, with shorter copy. Behaviour checked: HR decide/cancel routes already call `refreshPayrollForDates` → `refreshRunIfOpen` (recompute + upsert saved payslips + audit log), and `getPayrollForMonth` refreshes on load. Gap closed: `api/employee/leave-requests/cancel` and `api/admin/leave-requests/cancel` now call `refreshPayrollForDates` too. tsc clean for the touched files. | — |
+| 252 | 2026-10-01 | minor | HR payroll: dev-only test date + October test kit (§6 payroll) | `hr-tool/utils/time.ts` `todayStr()` returns `process.env.NEXT_PUBLIC_HR_TEST_TODAY` when it is a YYYY-MM-DD date (unset = real IST day; inlined at build). New `scripts/hr-payroll-test/`: `_shared.ts` (cycle 2026-10, 9 scenarios, `assertDevDb` refuses any DB_HOST except localhost), `backup.ts` (copies `hr_attendance`, `hr_attendance_overrides`, `hr_punch_log`, `hr_leave_requests`, `hr_regularizations`, `hr_payroll_runs`, `hr_payroll_entries`, `hr_audit_log`, `hr_employees` into `zz_hrtest_bak_*`; refuses if a backup exists), `seed.ts` (deletes the scenario employees in-cycle attendance/regularizations and leave fully inside the cycle; keeps boundary-spanning leave; writes rows via `HrToolRepository.upsertAttendance`/`insertLeaveRequest`/`insertRegularization`; ids `TEST-*`), `verify.ts` (read-only `computePayrollForMonth` vs expected LOP, gross formula, 30/7 day check), `restore.ts` (delete + copy back; no FKs or triggers on these tables; count check; drops the backups). Dev run 2026-10-01: backup done, seeded, verify all 9 ✓. | — |
+| 253 | 2026-10-01 | medium | HR Payroll: decide pending requests from the payroll row; banners removed (§6 payroll) | `hr-tool.repository.ts` `findPendingRequestsInRange` returns `id` and `detail` (regularization: requested time + reason; leave: type, half day, remarks); the `PayrollCycleState.pendingRequests` type is updated in the service and in `components/admin/hr-tool/api.ts`. `views/Payroll.tsx`: the window/overdue notice, the "Kept in sync" line and the pending-requests box are removed, so only `in-progress`/`locked` notices remain. "Provisional · N pending" is now a button that toggles an extra row with the employee's pending requests and Approve/Reject buttons (`decidePending` → context `decideRegularization(id,'hr')` or `hrApi.decideLeaveRequest` + `upsertLeaveRequestInState`, then `loadPayroll(undefined, true)`). Server errors (e.g. full-day leave on a punched day) are shown via alert. tsc + eslint clean. | v106 |
+| 254 | 2026-10-01 | major | Directory (contacts): full access for Event Admin + employee SNFYI-0029 (§5, §7.1) | Permission change. `roles.ts`: `CONTACTS_VIEW_ROLES` removed; `CONTACTS_ROLES = ['admin','event_admin']` on every `/api/admin/contacts*` method. New `api/admin/contacts/_handlers.ts` holds the list/create/update/delete/bulk/import/config handlers (moved verbatim from the routes); admin routes are now auth + handler call. Employee: new `api/employee/directory/{[id],bulk,import}/route.ts`, POST on `route.ts`, PUT on `config/route.ts`; `_lib.ts` `requireDirectoryViewer` → `requireDirectoryEmployee` + `directoryActor` (email, else Employee ID). `directory-access.ts`: `DIRECTORY_VIEWER_EMPLOYEE_CODES` → `DIRECTORY_EMPLOYEE_CODES`, `canEmployeeViewDirectory` → `canEmployeeUseDirectory` (layout + page updated). `ContactsDirectory.tsx`: `api()` moved inside the component and uses `getHeaders` + `apiBase` for every write; `ImportContactsModal` takes an `upload` prop. Admin and employee pages no longer pass `readOnly` (prop kept, unused). `tsc` + eslint clean. Not built/restarted. | v107 |
+| 255 | 2026-10-01 | minor | Sales Tracker — All leads table gains a Referred By column (`LeadsTable.tsx`, §6.6) | New column after Source: Expand North Star rows show `referredByLabel(referredBy)`, every other row (and ENS rows with no referrer) shows "—". Column only by user's choice — no `sales_leads` field added, so Feature Your Startup / Press Release / manual leads have no referrer to show. Search and CSV/Excel/PDF exports already covered Referred By; unchanged. `tsc` + eslint clean. Not built. | — |
+| 256 | 2026-10-01 | medium | `/dashboard/newsletter`: category selection restored, reverting row 168 (`src/app/dashboard/newsletter/page.tsx`, `src/components/user/newsletter/{NewsletterCard,CategoryCard,HowItWorksCard,NewsletterHeader,SelectionProgress}.tsx`) | User reported they couldn't select categories. Files restored from `9a8c97e^`: page loads saved slugs via `GET /api/public-auth/newsletter-preferences` (Bearer `pub_auth_token`), `toggleCat` caps at 3, Save POSTs `{categories}` (API enforces 1–3), then writes `newsletter_category_slugs` back to `pub_auth_user` in localStorage and dispatches `pub-auth-changed`. `CategoryCard` is a `role="checkbox"` button again; `SelectionProgress.tsx` re-added. Kept the row-168 full-width wrapper (`maxWidth: 1800`). Categories list still all categories (row 169). | v108 |
+| 257 | 2026-10-01 | medium | Employee panel: pending-leads alarm at 11:00 / 16:00 IST (`src/components/employee/PendingLeadsAlarm.tsx` new, `src/app/employee/layout.tsx`, `staff-panel-tailwind.css` @source; §6.12) | Mirrors the Events Tracker daily-report bell. Rings once per slot per day on any `/employee/*` page when the employee has ≥1 assigned lead with status Pending; toast links to My Leads. Slots in per-employee localStorage, recorded only after a successful `GET /api/employee/leads`. Client-side only. | v109 |
+| 258 | 2026-10-01 | medium | Member dashboard data loading + profile-status hardening (`src/components/user/DashboardHome.tsx`, `src/components/user/UserDashboardLayout.tsx`, `src/app/api/public-auth/profile-status/route.ts`, `src/modules/public-users/repository/public-users.repository.ts`, `public-auth/{login,google-verify,linkedin/callback}`; §6) | Root cause of live "0% / blank Member Since / 0 this week": on any profile-status failure DashboardHome set a hardcoded fallback and never called weekly-highlights / nearby-events. Now: (1) weekly-highlights + nearby-events always run after profile-status settles, city = profile city else cached `pub_auth_user.city`; (2) failure → `profileFailed` flag, cached name/email/city/created_at, ring shows "—" + "couldn't load" copy; (3) weekly failure → `weekly=null`, `weeklySettled=true`, summary drops the this-week sentence instead of printing 0; (4) Member Since shows "—" when unknown; (5) layout: profile-status 401 (30-day JWT expired) → `clearSession()` + `router.replace('/')`; (6) profile-status wrapped in try/catch → JSON 500 + console.error; (7) `ensureTable()` → `setupSchema()` with try/finally `conn.release()` (was leaked on throw), memoised once per process via `schemaReady` (cleared on failure); (8) login/google/linkedin user payloads now include `created_at` (login also `city`). WhatsApp tile → `WHATSAPP_COMMUNITY_URL` (chat.whatsapp.com invite). `tsc` clean; eslint: only pre-existing set-state-in-effect errors in the layout. Not built. | v110 |
+| 259 | 2026-10-01 | minor | Sales Tracker: "Delete all leads" removed end to end (`components/admin/sales-tracker/{LeadsTable.tsx,useSalesTrackerData.ts,api.ts}`, `app/(admin)/admin/sales-tracker/page.tsx`, `app/api/admin/sales-tracker/leads/route.ts`, `modules/sales-tracker/{service,repository}`; §6.10) | Button + `onDeleteAll` prop, hook `deleteAllLeads`, client `apiDeleteAllLeads`, the `DELETE` handler on `/api/admin/sales-tracker/leads` (now GET + POST only), and `SalesTrackerService/Repository.deleteAllLeads` deleted, so no UI or API path can wipe `sales_leads` in bulk. Per-row delete unchanged. `tsc` clean. Not built. | — |
+| 259 | 2026-10-01 | medium | Member dashboard: location prompt (`src/components/user/LocationPrompt.tsx` new, `DashboardHome.tsx`, `CompleteProfileWizard.tsx` exports `SELECT_SKIN`, `isolated-tailwind.css` @source; §6) | Red card rendered between the welcome card and the KPI row when `profile` loaded (not `profileFailed`) and `user.city` or `user.country` is empty. Country = `CustomSelect` over `COUNTRIES` (wizard's `SELECT_SKIN`), City = text input; both required. Save → `POST /api/public-auth/update-profile` `{country, city}` with Bearer `pub_auth_token` (repo `updateProfile` only writes defined fields, so nothing else is touched), then patches `pub_auth_user` in localStorage + dispatches `pub-auth-changed`. `onSaved` updates `profile.user`, sets `nearbyEvents=null` and re-runs `loadCityData(city)` — now a `useCallback` hoisted out of the mount effect (effect deps `[loadCityData]`). `ProfileUser` / `CachedUser` gain `country`. `tsc` + eslint clean. Not built. | v111 |
+| 257 | 2026-10-01 | medium | `/dashboard/newsletter` redesign: Tailwind + Remix icons; Press Release excluded (`src/app/dashboard/newsletter/page.tsx`, `src/components/user/newsletter/*`) | All newsletter components rewritten from inline styles / `<style jsx>` to Tailwind utilities; hand-drawn SVGs replaced by `@remixicon/react`. `icons.tsx` is now a slug → Remix icon map (`categoryIcon(slug)`, fallback `RiHashtag`). `isMobile`/`stackRail` resize listeners removed in favour of `sm:` and `min-[900px]:grid-cols-[1fr_320px]`. Page-local `isPressRelease()` (`/press[\s_-]*release/i` on name and slug) filters the `/api/newsletter/categories` result and the saved slugs from `GET /api/public-auth/newsletter-preferences`, so Press Release can't be shown or re-saved; the API itself is unchanged (wizard, Settings and admin still get it). Unused `newsletter/SectionDivider.tsx` deleted (profile keeps its own copy). Selection logic from row 256 unchanged. | v109 |
+| 258 | 2026-10-01 | minor | `/dashboard/newsletter` responsive fix: newsletter files added to the isolated Tailwind sheet (`src/app/isolated-tailwind.css`) | Root cause of the "not responsive" report after row 257: the dashboard uses `isolated-tailwind.css` (`source(none)` + explicit `@source` list), and neither `dashboard/newsletter/page.tsx` nor `components/user/newsletter/` was listed, so most utilities were never generated on the live build (no grid, no right rail, black `currentColor` borders, an unhidden 160px mail icon, an invisible Save button). Added `@source "./dashboard/newsletter/page.tsx"` and `@source "../components/user/newsletter"`. **Invariant: any new dashboard component that uses Tailwind must be added to that `@source` list.** No Preflight on this sheet, so the Clear/Save/Retry buttons now set `border-0`/`bg-transparent`/`font-[inherit]` explicitly. Rail breakpoint `min-[900px]` → `lg:grid-cols-[minmax(0,1fr)_320px]`; category grid `1 → sm:2 → xl:3 → 2xl:4` columns; names `line-clamp-2` instead of `truncate`. `icons.tsx` gained the dev/prod slugs (`ai-deeptech`, `ev-mobility`, `funding-tracker`, `spacetech`, `web3-blockchain`, plus `business`, `consumer-d2c`, `saas-enterprise`). Verified by compiling the sheet with `@tailwindcss/postcss` and screenshotting dev with the compiled CSS injected (390 / 820 / 1440 px). | — |

@@ -19,6 +19,9 @@ so one file covers every weight in its range.
 | space-grotesk-latin-var.woff2 | Space Grotesk | 300–700 | `src/app/(admin)/admin/partnership-tracker/page.tsx` |
 | inter-latin-var.woff2 | Inter | 100–900 | `src/app/(admin)/admin/partnership-tracker/page.tsx` |
 | jetbrains-mono-latin-var.woff2 | JetBrains Mono | 100–800 | `src/app/(admin)/admin/partnership-tracker/page.tsx` |
+| fraunces-latin-var.woff2 | Fraunces (roman; opsz, SOFT, WONK axes) | 100–900 | `src/modules/content-studio/components/shell/fonts.ts` |
+| fraunces-italic-latin-var.woff2 | Fraunces (italic; opsz, SOFT, WONK axes) | 100–900 | `src/modules/content-studio/components/shell/fonts.ts` |
+| plus-jakarta-sans-latin-var.woff2 | Plus Jakarta Sans | 200–800 | `src/modules/content-studio/components/shell/fonts.ts` |
 
 To add a font: download the Latin variable woff2 from
 `https://fonts.googleapis.com/css2?family=<Name>:wght@<min>..<max>` (Chrome

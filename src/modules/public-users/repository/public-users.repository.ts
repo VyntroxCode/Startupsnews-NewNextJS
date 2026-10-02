@@ -16,134 +16,150 @@ const PROFILE_FIELD_KEYS: (keyof RegistrationProfileFields)[] = [
   'g_organization', 'g_role',
 ];
 
-async function ensureTable() {
+async function setupSchema() {
   const pool = await getDbConnection();
   const conn = await pool.getConnection();
-  await conn.query(`
-    CREATE TABLE IF NOT EXISTS public_registrations (
-      id            INT AUTO_INCREMENT PRIMARY KEY,
-      name          VARCHAR(255) NOT NULL,
-      email         VARCHAR(255) NOT NULL UNIQUE,
-      phone         VARCHAR(50),
-      country       VARCHAR(100),
-      city          VARCHAR(100),
-      linkedin_url  VARCHAR(500),
-      password_hash VARCHAR(255),
-      google_id     VARCHAR(255),
-      linkedin_id   VARCHAR(255),
-      auth_provider ENUM('email','google','linkedin') NOT NULL DEFAULT 'email',
-      is_active     TINYINT(1) NOT NULL DEFAULT 1,
-      created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      last_login    DATETIME,
-      INDEX idx_email (email),
-      INDEX idx_google_id (google_id),
-      INDEX idx_linkedin_id (linkedin_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  `);
-  // Add new columns to existing tables (safe no-op if already present)
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS city VARCHAR(100)`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS linkedin_url VARCHAR(500)`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS linkedin_id VARCHAR(255)`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS newsletter_category_slugs VARCHAR(500) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS last_newsletter_sent_date DATE NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS newsletter_unsubscribed TINYINT(1) NOT NULL DEFAULT 0`);
-
-  // Registration-profile columns (category + per-category detail)
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS category VARCHAR(32) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS other_category VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS website VARCHAR(500) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bio VARCHAR(300) NULL DEFAULT NULL`);
-  // startup
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_name VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_founded INT NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_entity VARCHAR(32) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_stage VARCHAR(32) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_dpiit ENUM('yes','no') NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_dpiit_number VARCHAR(100) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_team_size VARCHAR(16) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_revenue_status VARCHAR(32) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_pitch VARCHAR(140) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_raising ENUM('yes','planning','no') NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_amount_seeking VARCHAR(100) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_crunchbase VARCHAR(500) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_tracxn VARCHAR(500) NULL DEFAULT NULL`);
-  // investor / vc / pe / familyoffice
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_firm VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_type VARCHAR(64) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_check_size VARCHAR(32) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_stage_focus VARCHAR(32) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_sector_focus VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_geo_focus VARCHAR(255) NULL DEFAULT NULL`);
-  // accelerator / incubator
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_program_name VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_duration VARCHAR(100) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_sector_focus VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_equity_taken DECIMAL(5,2) NULL DEFAULT NULL`);
-  // creator / media
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_platforms VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_niche VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_mediakit VARCHAR(500) NULL DEFAULT NULL`);
-  // lawyer
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_firm VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_practice_areas VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_jurisdiction VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_years_experience INT NULL DEFAULT NULL`);
-  // CA/CS
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_firm VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_membership_number VARCHAR(100) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_services VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_years_experience INT NULL DEFAULT NULL`);
-  // investment banker
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_firm VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_years_experience INT NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_deal_types VARCHAR(255) NULL DEFAULT NULL`);
-  // banker
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_bank_name VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_years_experience INT NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_vertical VARCHAR(32) NULL DEFAULT NULL`);
-  // generic (govt / consultant / coworking / university / student / other)
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS g_organization VARCHAR(255) NULL DEFAULT NULL`);
-  await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS g_role VARCHAR(255) NULL DEFAULT NULL`);
-
-  // Safe way to modify ENUM if not already updated (try-catch because syntax can be tricky if it exists, but MODIFY is usually fine)
   try {
-    await conn.query(`ALTER TABLE public_registrations MODIFY COLUMN auth_provider ENUM('email', 'google', 'linkedin') NOT NULL DEFAULT 'email'`);
-  } catch (err) {
-    // Ignore enum update error if it already has the values
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS public_registrations (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        name          VARCHAR(255) NOT NULL,
+        email         VARCHAR(255) NOT NULL UNIQUE,
+        phone         VARCHAR(50),
+        country       VARCHAR(100),
+        city          VARCHAR(100),
+        linkedin_url  VARCHAR(500),
+        password_hash VARCHAR(255),
+        google_id     VARCHAR(255),
+        linkedin_id   VARCHAR(255),
+        auth_provider ENUM('email','google','linkedin') NOT NULL DEFAULT 'email',
+        is_active     TINYINT(1) NOT NULL DEFAULT 1,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        last_login    DATETIME,
+        INDEX idx_email (email),
+        INDEX idx_google_id (google_id),
+        INDEX idx_linkedin_id (linkedin_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    // Add new columns to existing tables (safe no-op if already present)
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS city VARCHAR(100)`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS linkedin_url VARCHAR(500)`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS linkedin_id VARCHAR(255)`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS newsletter_category_slugs VARCHAR(500) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS last_newsletter_sent_date DATE NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS newsletter_unsubscribed TINYINT(1) NOT NULL DEFAULT 0`);
+
+    // Registration-profile columns (category + per-category detail)
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS category VARCHAR(32) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS other_category VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS website VARCHAR(500) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bio VARCHAR(300) NULL DEFAULT NULL`);
+    // startup
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_name VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_founded INT NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_entity VARCHAR(32) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_stage VARCHAR(32) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_dpiit ENUM('yes','no') NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_dpiit_number VARCHAR(100) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_team_size VARCHAR(16) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_revenue_status VARCHAR(32) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_pitch VARCHAR(140) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_raising ENUM('yes','planning','no') NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_amount_seeking VARCHAR(100) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_crunchbase VARCHAR(500) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS s_tracxn VARCHAR(500) NULL DEFAULT NULL`);
+    // investor / vc / pe / familyoffice
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_firm VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_type VARCHAR(64) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_check_size VARCHAR(32) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_stage_focus VARCHAR(32) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_sector_focus VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS i_geo_focus VARCHAR(255) NULL DEFAULT NULL`);
+    // accelerator / incubator
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_program_name VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_duration VARCHAR(100) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_sector_focus VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS a_equity_taken DECIMAL(5,2) NULL DEFAULT NULL`);
+    // creator / media
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_platforms VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_niche VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS c_mediakit VARCHAR(500) NULL DEFAULT NULL`);
+    // lawyer
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_firm VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_practice_areas VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_jurisdiction VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS l_years_experience INT NULL DEFAULT NULL`);
+    // CA/CS
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_firm VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_membership_number VARCHAR(100) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_services VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS cs_years_experience INT NULL DEFAULT NULL`);
+    // investment banker
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_firm VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_years_experience INT NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS ib_deal_types VARCHAR(255) NULL DEFAULT NULL`);
+    // banker
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_bank_name VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_years_experience INT NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS bk_vertical VARCHAR(32) NULL DEFAULT NULL`);
+    // generic (govt / consultant / coworking / university / student / other)
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS g_organization VARCHAR(255) NULL DEFAULT NULL`);
+    await conn.query(`ALTER TABLE public_registrations ADD COLUMN IF NOT EXISTS g_role VARCHAR(255) NULL DEFAULT NULL`);
+
+    // Safe way to modify ENUM if not already updated (try-catch because syntax can be tricky if it exists, but MODIFY is usually fine)
+    try {
+      await conn.query(`ALTER TABLE public_registrations MODIFY COLUMN auth_provider ENUM('email', 'google', 'linkedin') NOT NULL DEFAULT 'email'`);
+    } catch (err) {
+      // Ignore enum update error if it already has the values
+    }
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS public_registration_founders (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        pub_user_id   INT NOT NULL,
+        name          VARCHAR(255),
+        role          VARCHAR(255),
+        linkedin_url  VARCHAR(500),
+        sort_order    INT NOT NULL DEFAULT 0,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_pub_user_id (pub_user_id),
+        CONSTRAINT fk_founders_pub_user FOREIGN KEY (pub_user_id) REFERENCES public_registrations(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS public_registration_funding_rounds (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        pub_user_id   INT NOT NULL,
+        round_type    VARCHAR(32),
+        amount        VARCHAR(100),
+        lead_investor VARCHAR(255),
+        round_date    VARCHAR(7),
+        sort_order    INT NOT NULL DEFAULT 0,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_pub_user_id (pub_user_id),
+        CONSTRAINT fk_rounds_pub_user FOREIGN KEY (pub_user_id) REFERENCES public_registrations(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } finally {
+    // Released even when an ALTER throws — before, one failure leaked a pool connection.
+    conn.release();
   }
+}
 
-  await conn.query(`
-    CREATE TABLE IF NOT EXISTS public_registration_founders (
-      id            INT AUTO_INCREMENT PRIMARY KEY,
-      pub_user_id   INT NOT NULL,
-      name          VARCHAR(255),
-      role          VARCHAR(255),
-      linkedin_url  VARCHAR(500),
-      sort_order    INT NOT NULL DEFAULT 0,
-      created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_pub_user_id (pub_user_id),
-      CONSTRAINT fk_founders_pub_user FOREIGN KEY (pub_user_id) REFERENCES public_registrations(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  `);
-
-  await conn.query(`
-    CREATE TABLE IF NOT EXISTS public_registration_funding_rounds (
-      id            INT AUTO_INCREMENT PRIMARY KEY,
-      pub_user_id   INT NOT NULL,
-      round_type    VARCHAR(32),
-      amount        VARCHAR(100),
-      lead_investor VARCHAR(255),
-      round_date    VARCHAR(7),
-      sort_order    INT NOT NULL DEFAULT 0,
-      created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_pub_user_id (pub_user_id),
-      CONSTRAINT fk_rounds_pub_user FOREIGN KEY (pub_user_id) REFERENCES public_registrations(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  `);
-
-  conn.release();
+// The ~60 schema statements above used to run on every request. Run them once per process;
+// on failure the promise is cleared so the next request retries instead of caching the error.
+let schemaReady: Promise<void> | null = null;
+function ensureTable(): Promise<void> {
+  if (!schemaReady) {
+    schemaReady = setupSchema().catch((err) => {
+      schemaReady = null;
+      throw err;
+    });
+  }
+  return schemaReady;
 }
 
 export async function findAll(page = 1, limit = 20): Promise<{ rows: PublicUserEntity[]; total: number }> {

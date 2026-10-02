@@ -1,17 +1,18 @@
 /** Client-side path scoping for the Event Admin / Publisher Admin panels (mirrors the API guards). */
 
 // Only the super admin can manage other admin-panel accounts, or use the standalone Network
-// Manager (contacts CRM), HR tool, or Sales tracker — matches HR_TOOL_ROLES/SALES_TRACKER_ROLES
+// Manager (contacts CRM), HR tool, Sales tracker or Grants — matches HR_TOOL_ROLES/SALES_TRACKER_ROLES/GRANTS_ROLES
 // in shared/middleware/roles.ts, which already gate their APIs to 'admin' only.
-const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts', '/admin/hr-tool', '/admin/sales-tracker'];
+const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts', '/admin/hr-tool', '/admin/sales-tracker', '/admin/grants'];
 
 export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   admin: 'all',
   editor: 'all',
   author: 'all',
   // Event Admin's post access is scoped server-side to the Press Release category only (see posts API routes).
-  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/partnership-tracker', '/admin/banners', '/admin/tools', '/admin/posts', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit'],
-  publisher_admin: ['/admin', '/admin/posts', '/admin/tools', '/admin/reports', '/admin/brand-stories', '/admin/inner-pages', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit'],
+  // '/admin/contacts' (Directory) — Event Admin has full access, same as the super admin (CONTACTS_ROLES).
+  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/partnership-tracker', '/admin/banners', '/admin/tools', '/admin/posts', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit', '/admin/contacts'],
+  publisher_admin: ['/admin', '/admin/posts', '/admin/content-studio', '/admin/tools', '/admin/reports', '/admin/brand-stories', '/admin/inner-pages', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit'],
   // IT Support is a standalone tool role, like Event Admin/Publisher Admin — scoped to the IT Tickets queue only.
   it_support: ['/admin', '/admin/it-tickets'],
 };
@@ -26,9 +27,13 @@ function matchesPrefix(prefixes: string[], pathname: string): boolean {
 }
 
 export function isPathAllowed(role: string, pathname: string): boolean {
-  if (matchesPrefix(ADMIN_ONLY_PATHS, pathname)) return role === 'admin';
-
   const allowed = ROLE_ALLOWED_PATHS[role];
+  // An admin-only path is still closed to the 'all' roles (editor/author), but a scoped role that
+  // lists it explicitly gets in (Event Admin → Directory).
+  if (matchesPrefix(ADMIN_ONLY_PATHS, pathname)) {
+    return role === 'admin' || (Array.isArray(allowed) && matchesPrefix(allowed, pathname));
+  }
+
   if (!allowed || allowed === 'all') return true;
   return matchesPrefix(allowed, pathname);
 }

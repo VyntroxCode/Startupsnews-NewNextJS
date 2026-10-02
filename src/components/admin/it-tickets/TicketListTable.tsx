@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import Avatar from './Avatar';
 import { PRIORITY_LABELS } from './constants';
 import StatusLozenge from './StatusLozenge';
@@ -73,7 +74,9 @@ export default function TicketListTable({
                 >
                   <span className="inline-flex items-center gap-1">
                     {c.label}
-                    {active && <span aria-hidden className="text-indigo-600">{sort.dir === 'asc' ? '↑' : '↓'}</span>}
+                    {active && (sort.dir === 'asc'
+                      ? <ArrowUp className="size-3.5 shrink-0 text-indigo-600" aria-hidden />
+                      : <ArrowDown className="size-3.5 shrink-0 text-indigo-600" aria-hidden />)}
                   </span>
                 </th>
               );

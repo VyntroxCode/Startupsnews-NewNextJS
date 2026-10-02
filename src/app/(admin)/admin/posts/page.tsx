@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { Calendar, CircleAlert, Download, ExternalLink, File, FileText, Plus, Rss, Sparkles, Star, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { getAdminUser, getAuthHeaders } from '@/lib/admin-auth';
 import { isPathAllowed } from '@/lib/admin-role-access';
@@ -80,6 +81,7 @@ export default function PostsPage() {
   const role = getAdminUser()?.role || '';
   const canIndustry = isPathAllowed(role, '/admin/categories');
   const canAuthors = isPathAllowed(role, '/admin/authors');
+  const canStudio = isPathAllowed(role, '/admin/content-studio');
   const tabs = useMemo(() => ([
     { id: 'posts' as Tab, label: 'Posts' },
     ...(canIndustry ? [{ id: 'industry' as Tab, label: 'Industry' }] : []),
@@ -509,10 +511,7 @@ export default function PostsPage() {
                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
+                <Plus size={18} strokeWidth={2.5} aria-hidden />
                 Create New Post
               </Link>
               <button
@@ -541,11 +540,7 @@ export default function PostsPage() {
                   (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
+                <Download size={18} strokeWidth={2.5} aria-hidden />
                 Export CSV
               </button>
             </div>
@@ -567,10 +562,7 @@ export default function PostsPage() {
                 boxShadow: '0 4px 12px rgba(237, 137, 54, 0.3)',
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
+              <Plus size={18} strokeWidth={2.5} aria-hidden />
               Create Industry
             </Link>
           )}
@@ -591,7 +583,8 @@ export default function PostsPage() {
                 boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
               }}
             >
-              + Add Author
+              <Plus size={18} strokeWidth={2.5} aria-hidden />
+              Add Author
             </Link>
           )}
         </div>
@@ -608,6 +601,18 @@ export default function PostsPage() {
               {t.label}
             </button>
           ))}
+          {/* Content Studio is a full-height app on its own route, so this tab navigates there
+              rather than switching in place. */}
+          {canStudio && (
+            <Link href="/admin/content-studio" style={{
+              padding: '0.75rem 1.5rem', borderBottom: '2px solid transparent', marginBottom: '-2px',
+              fontWeight: 500, color: '#64748b', fontSize: '0.9375rem', textDecoration: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+            }}>
+              <Sparkles size={16} aria-hidden />
+              Content Studio
+            </Link>
+          )}
         </div>
 
         {/* ══════════════════════════════════════
@@ -672,12 +677,7 @@ export default function PostsPage() {
               {/* Scheduled date/time range picker */}
               {filters.status === 'scheduled' && (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" style={{ flexShrink: 0 }}>
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
+                  <Calendar size={16} color="#3b82f6" style={{ flexShrink: 0 }} aria-hidden />
                   <input
                     type="datetime-local"
                     value={String(filters.scheduledFrom ?? '')}
@@ -800,12 +800,7 @@ export default function PostsPage() {
 
               {/* Published date range filter */}
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" style={{ flexShrink: 0 }}>
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
+                <Calendar size={15} color="#6366f1" style={{ flexShrink: 0 }} aria-hidden />
                 <input
                   type="date"
                   value={String(filters.dateFrom ?? '')}
@@ -850,10 +845,12 @@ export default function PostsPage() {
                       fontSize: '0.8125rem',
                       cursor: 'pointer',
                       fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
                     }}
                     title="Clear date filter"
                   >
-                    ✕
+                    <X size={14} aria-hidden />
                   </button>
                 )}
               </div>
@@ -955,11 +952,7 @@ export default function PostsPage() {
                 flexWrap: 'wrap',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
+                  <CircleAlert size={20} style={{ flexShrink: 0 }} aria-hidden />
                   <span>{error}</span>
                 </div>
                 <button
@@ -1002,10 +995,7 @@ export default function PostsPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                  </svg>
+                  <File size={40} color="#64748b" aria-hidden />
                 </div>
                 <h3 style={{ color: '#0f172a', fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>
                   No posts found
@@ -1038,10 +1028,7 @@ export default function PostsPage() {
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
+                  <Plus size={18} strokeWidth={2.5} aria-hidden />
                   Create Your First Post
                 </Link>
               </div>
@@ -1232,9 +1219,7 @@ export default function PostsPage() {
                                   color: '#78350f',
                                   marginTop: '0.5rem',
                                 }}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                  </svg>
+                                  <Star size={12} fill="currentColor" aria-hidden />
                                   Featured
                                 </span>
                               )}
@@ -1263,20 +1248,12 @@ export default function PostsPage() {
                                 }}>
                                   {post.source === 'rss' ? (
                                     <>
-                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '0.25rem' }}>
-                                        <path d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z"/>
-                                      </svg>
+                                      <Rss size={10} strokeWidth={2.5} style={{ marginRight: '0.25rem' }} aria-hidden />
                                       RSS
                                     </>
                                   ) : (
                                     <>
-                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.25rem' }}>
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                        <polyline points="14 2 14 8 20 8"></polyline>
-                                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                                        <polyline points="10 9 9 9 8 9"></polyline>
-                                      </svg>
+                                      <FileText size={10} style={{ marginRight: '0.25rem' }} aria-hidden />
                                       Manual
                                     </>
                                   )}
@@ -1365,11 +1342,7 @@ export default function PostsPage() {
                                     e.currentTarget.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.2)';
                                   }}
                                 >
-                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                    <polyline points="15 3 21 3 21 9"></polyline>
-                                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                                  </svg>
+                                  <ExternalLink size={11} strokeWidth={2.5} aria-hidden />
                                   View
                                 </a>
                                 <Link

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Calendar, CircleAlert, FileText, LayoutDashboard, Tags, Ticket, Users } from 'lucide-react';
 import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import AttendanceWidget from '@/components/admin/AttendanceWidget';
@@ -217,11 +218,7 @@ export default function AdminDashboard() {
         alignItems: 'center',
         gap: '0.75rem',
       }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
+        <CircleAlert size={24} strokeWidth={2} style={{ flexShrink: 0 }} aria-hidden />
         <div>
           <strong>Error loading dashboard</strong>
           <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>{error}</p>
@@ -230,63 +227,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const DashboardIcon = ({ color }: { color: string }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-      <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-      <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-      <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-    </svg>
-  );
-
-  const PostsIcon = ({ color }: { color: string }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-      <polyline points="14 2 14 8 20 8"></polyline>
-      <line x1="16" y1="13" x2="8" y2="13"></line>
-      <line x1="16" y1="17" x2="8" y2="17"></line>
-    </svg>
-  );
-
-  const EventsIcon = ({ color }: { color: string }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-      <line x1="16" y1="2" x2="16" y2="6"></line>
-      <line x1="8" y1="2" x2="8" y2="6"></line>
-      <line x1="3" y1="10" x2="21" y2="10"></line>
-    </svg>
-  );
-
-  const CategoriesIcon = ({ color }: { color: string }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 7h16M4 12h16M4 17h16"></path>
-    </svg>
-  );
-
-  const TicketIcon = ({ color }: { color: string }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"></path>
-      <line x1="10" y1="7" x2="10" y2="17" strokeDasharray="2 2"></line>
-    </svg>
-  );
-
-  const AuthorsIcon = ({ color }: { color: string }) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-      <circle cx="9" cy="7" r="4"></circle>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-    </svg>
-  );
-
-  // Globe icon — only user was the retired Event Regions card; kept for an easy restore.
-  // const RegionsIcon = ({ color }: { color: string }) => (
-  //   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-  //     <circle cx="12" cy="12" r="10"></circle>
-  //     <line x1="2" y1="12" x2="22" y2="12"></line>
-  //     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-  //   </svg>
-  // );
+  // The retired Event Regions card used a globe — restore it with Lucide's `Globe` icon.
 
   const statCards = isItSupport
     ? [
@@ -295,7 +236,7 @@ export default function AdminDashboard() {
           value: stats?.itTicketsOpen || 0,
           href: '/admin/it-tickets',
           gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-          icon: TicketIcon,
+          icon: Ticket,
         },
       ]
     : isEventAdmin
@@ -305,7 +246,7 @@ export default function AdminDashboard() {
           value: stats?.partnershipEventsActive || 0,
           href: '/admin/partnership-tracker',
           gradient: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
-          icon: EventsIcon,
+          icon: Calendar,
         },
         // Event Regions card retired along with the Event Regions admin tab — the count came
         // from the legacy `event_regions` table and the card linked to a tab that no longer
@@ -318,21 +259,21 @@ export default function AdminDashboard() {
           value: stats?.posts || 0,
           href: '/admin/posts',
           gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          icon: PostsIcon,
+          icon: FileText,
         },
         {
           title: 'Industry',
           value: stats?.categories || 0,
           href: '/admin/posts?tab=industry',
           gradient: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
-          icon: CategoriesIcon,
+          icon: Tags,
         },
         {
           title: 'Authors',
           value: stats?.authors || 0,
           href: '/admin/posts?tab=authors',
           gradient: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-          icon: AuthorsIcon,
+          icon: Users,
         },
       ]
     : [
@@ -341,28 +282,28 @@ export default function AdminDashboard() {
           value: stats?.posts || 0,
           href: '/admin/posts',
           gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          icon: PostsIcon,
+          icon: FileText,
         },
         {
           title: 'Events',
           value: stats?.partnershipEventsActive || 0,
           href: '/admin/partnership-tracker',
           gradient: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
-          icon: EventsIcon,
+          icon: Calendar,
         },
         {
           title: 'Categories',
           value: stats?.categories || 0,
           href: '/admin/posts?tab=industry',
           gradient: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
-          icon: CategoriesIcon,
+          icon: Tags,
         },
         {
           title: 'Users',
           value: stats?.users || 0,
           href: '/admin/users',
           gradient: 'linear-gradient(135deg, #9f7aea 0%, #805ad5 100%)',
-          icon: DashboardIcon,
+          icon: LayoutDashboard,
         },
       ];
 
@@ -439,7 +380,7 @@ export default function AdminDashboard() {
                     justifyContent: 'center',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                   }}>
-                    <IconComponent color="white" />
+                    <IconComponent size={24} color="white" strokeWidth={2} aria-hidden />
                   </div>
                   <div style={{
                     width: '8px',

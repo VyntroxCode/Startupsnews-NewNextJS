@@ -155,8 +155,12 @@ export function dedupKey(e: { eventName: string; city?: string | null; country?:
    ============================================================ */
 
 /** Buckets excluded from the tracker's default table view AND from every "active" count —
- * they need a deliberate, manual look rather than sitting in the everyday list. */
-export const DEFAULT_HIDDEN_STATUSES = ['Unmapped', 'Expired'];
+ * they need a deliberate, manual look rather than sitting in the everyday list.
+ * 'Unmapped' (blank or unrecognised status) used to be hidden too, but a published event saved
+ * with a blank status then vanished from the tracker with no way back to it in the UI (Startup
+ * Business Summit 2026, agent.md #1106) — it now stays visible, and the edit modal flags the
+ * blank status in red. */
+export const DEFAULT_HIDDEN_STATUSES = ['Expired'];
 
 /**
  * `siteStatus` is the record's own persisted public status ('draft'/'upcoming'/'completed'),
@@ -213,7 +217,7 @@ export function isPartnershipEventDateExpired(
 
 /**
  * The tracker's "All Active events" headline number: every partnership event except the
- * Expired/Unmapped buckets. Counting by bucket (rather than a flat `length`) is what keeps this
+ * Expired bucket. Counting by bucket (rather than a flat `length`) is what keeps this
  * number in agreement with the per-status cards and the default table rows — a flat total folded
  * expired events into the headline but into none of the cards beneath it.
  */

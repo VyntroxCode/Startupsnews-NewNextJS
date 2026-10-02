@@ -1,6 +1,6 @@
 export type {
   HrTeam, HrHoliday, HrOrgStructure, HrDocRef, HrSignedDoc, HrCtcSplit, HrCtcBreakdown, HrEmployee,
-  HrOnboardingAssets, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
+  HrOnboardingAssets, HrOnboarding, HrAttendanceRecord, HrPunch,
   HrApprovalBase, HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask,
   HrPayrollRun, HrPayrollEntry, HrTemplate, HrRules, HrLeaveTypeConfig, HrAuditLogEntry, HrBootstrap, HrCompanyProfile,
 } from '@/modules/hr-tool/domain/types';

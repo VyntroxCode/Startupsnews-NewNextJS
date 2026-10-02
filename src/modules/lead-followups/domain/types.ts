@@ -23,6 +23,19 @@ export interface LeadFollowUp {
   mine: boolean;
 }
 
+/** Longest admin message accepted. */
+export const LEAD_MESSAGE_MAX_LENGTH = 2000;
+
+/** What an admin told the people assigned to a lead, from the Sales Tracker lead window (table:
+ * sales_lead_messages, see scripts/migrations/add-sales-lead-messages.sql). One message goes to
+ * everyone on the lead; they're kept as a history and never edited. `createdAt` is the database's. */
+export interface LeadMessage {
+  id: number;
+  authorName: string;
+  message: string;
+  createdAt: string;
+}
+
 /** How a detail value is shown: plain text, multi-line text, or as a link / image. */
 export type LeadDetailFieldKind = 'text' | 'long' | 'email' | 'phone' | 'url' | 'image' | 'list';
 
@@ -62,6 +75,8 @@ export interface LeadDetail {
   assignees: Assignee[];
   /** Newest first. */
   followUps: LeadFollowUp[];
+  /** The admin's messages to the assigned team, newest first. */
+  messages: LeadMessage[];
   /** The lead's one shared status (the admin sees and edits the same value). */
   leadStatus: AssignmentStatus;
   assignedAt: string;
@@ -72,6 +87,15 @@ export interface LeadDetail {
 export interface LeadFollowUpsView {
   assignees: Assignee[];
   followUps: LeadFollowUp[];
+}
+
+export interface LeadMessageEntity {
+  id: number;
+  lead_source: string;
+  lead_id: string;
+  author_name: string;
+  message: string;
+  created_at: string | Date;
 }
 
 export interface LeadFollowUpEntity {

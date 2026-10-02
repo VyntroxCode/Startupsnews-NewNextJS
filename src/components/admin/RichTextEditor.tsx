@@ -59,6 +59,7 @@ export interface RichTextEditorProps {
   onChange: (value: string) => void;
   placeholder?: string;
   minHeight?: number;
+  importHtml?: string;
 }
 
 export default function RichTextEditor({
@@ -66,6 +67,7 @@ export default function RichTextEditor({
   onChange,
   placeholder,
   minHeight = 200,
+  importHtml,
 }: RichTextEditorProps) {
   return (
     <RichTextEditorClient
@@ -73,6 +75,7 @@ export default function RichTextEditor({
       onChange={onChange}
       placeholder={placeholder}
       minHeight={minHeight}
+      importHtml={importHtml}
     />
   );
 }

@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { Bell, ChartColumn, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, Circle, CircleCheck, CircleX, ClipboardList, Info, Link, LoaderCircle, Plus, TriangleAlert, Volume2, X } from 'lucide-react';
 import localFont from 'next/font/local';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders, getAdminUser } from '@/lib/admin-auth';
@@ -1045,7 +1046,7 @@ export default function PartnershipTrackerPage() {
     // Partnership Done/Only Listed but has no live page yet, or the reverse).
     let listedLive = 0, listedClaimed = 0;
     // "All Active events" counts only what the other cards and the default table actually show —
-    // i.e. everything except the DEFAULT_HIDDEN_STATUSES buckets (Expired/Unmapped). It used to
+    // i.e. everything except the DEFAULT_HIDDEN_STATUSES buckets (Expired). It used to
     // be a flat events.length, which contradicted its own "Active" label: expired events were
     // silently folded into the headline number but into none of the per-status cards, so the
     // total never matched the cards beneath it (152 against 13+70+16=99) and never matched the
@@ -1119,9 +1120,9 @@ export default function PartnershipTrackerPage() {
     const q = deferredSearch.trim().toLowerCase();
     if (q) list = list.filter((e) => e.eventName.toLowerCase().includes(q) || e.organiser.toLowerCase().includes(q) || e.poc.toLowerCase().includes(q));
 
-    // The default "all" view excludes Unmapped/Expired so they don't clutter the everyday list —
+    // The default "all" view excludes Expired so it doesn't clutter the everyday list —
     // Expired is still explicitly selectable from this same dropdown for a deliberate manual
-    // check; Unmapped isn't offered there at all (not a real status, just "couldn't classify").
+    // check. Unmapped (blank/unrecognised status) stays visible and has its own "No status" option.
     // No card drill-down needs an exemption here any more: divertedFromCard only ever claims rows
     // in the Draft bucket, which isn't hidden — so a card can't promise rows this clause then
     // takes away.
@@ -1725,7 +1726,9 @@ export default function PartnershipTrackerPage() {
             />
             {importLog.length > 0 && (
               <div className="pt-popover-wrap" ref={importPanelRef}>
-                <button className="btn btn-sm" onClick={() => setImportPanelOpen((o) => !o)}>ℹ Import details</button>
+                <button className="btn btn-sm" onClick={() => setImportPanelOpen((o) => !o)}>
+                  <Info size={14} aria-hidden />Import details
+                </button>
                 {importPanelOpen && (
                   <div className="pt-popover-panel">
                     {importLog.map((log, i) => (
@@ -1738,10 +1741,10 @@ export default function PartnershipTrackerPage() {
                           {log.unparseableDates ? <> · <span className="pt-warn">{log.unparseableDates} date value(s) couldn&apos;t be read</span> and were left blank</> : null}
                         </div>
                         {log.sheetsRead.map((r) => (
-                          <div key={r.name} className="pt-import-line">✓ <strong>{r.name}</strong> — {r.rows} row(s)</div>
+                          <div key={r.name} className="pt-import-line" style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}><CircleCheck size={13} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden /><span><strong>{r.name}</strong> — {r.rows} row(s)</span></div>
                         ))}
                         {log.sheetsSkipped.map((s) => (
-                          <div key={s.name} className="pt-import-line pt-warn">✕ <strong>{s.name}</strong> — {s.reason}</div>
+                          <div key={s.name} className="pt-import-line pt-warn" style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}><CircleX size={13} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden /><span><strong>{s.name}</strong> — {s.reason}</span></div>
                         ))}
                       </div>
                     ))}
@@ -1750,7 +1753,7 @@ export default function PartnershipTrackerPage() {
               </div>
             )}
             <div className="pt-popover-wrap" ref={sheetLinkRef}>
-              <button className="btn btn-sm" onClick={() => setSheetLinkOpen((o) => !o)}>🔗 Load from link</button>
+              <button className="btn btn-sm" onClick={() => setSheetLinkOpen((o) => !o)}><Link size={14} aria-hidden />Load from link</button>
               {sheetLinkOpen && (
                 <div className="pt-popover-panel pt-sheetlink-panel">
                   <input
@@ -1771,15 +1774,15 @@ export default function PartnershipTrackerPage() {
               )}
             </div>
             <button className="btn" disabled={busy} onClick={() => fileInputRef.current?.click()}>
-              {busy ? (<span className="pt-btn-loading"><svg className="pt-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg>Uploading…</span>) : 'Upload / merge Excel'}
+              {busy ? (<span className="pt-btn-loading"><LoaderCircle className="pt-spinner" size={14} aria-hidden />Uploading…</span>) : 'Upload / merge Excel'}
             </button>
             <button className="btn btn-green" onClick={() => downloadEventsExcel(filtered, `events-tracker-${new Date().toISOString().slice(0, 10)}.xlsx`)}>Download Excel</button>
-            <button className="btn btn-accent" onClick={openAddModal}>+ Add event</button>
-            <button className="btn btn-sm" onClick={openDailyReportModal}>📋 Daily Report</button>
+            <button className="btn btn-accent" onClick={openAddModal}><Plus size={15} aria-hidden />Add event</button>
+            <button className="btn btn-sm" onClick={openDailyReportModal}><ClipboardList size={14} aria-hidden />Daily Report</button>
             <button className="btn btn-sm pt-bell-btn" title="Daily report reminder" onClick={openDailyReportModal}>
-              🔔{bellDue && <span className="pt-bell-dot" />}
+              <Bell size={15} aria-hidden />{bellDue && <span className="pt-bell-dot" />}
             </button>
-            <button className="btn btn-sm" title="Preview the reminder ringtone" onClick={playBellSound}>🔊</button>
+            <button className="btn btn-sm" title="Preview the reminder ringtone" onClick={playBellSound}><Volume2 size={15} aria-hidden /></button>
             <audio ref={audioRef} preload="auto" src={BELL_RINGTONE_URL} style={{ display: 'none' }} />
           </div>
         </div>
@@ -1830,8 +1833,8 @@ export default function PartnershipTrackerPage() {
 
             {(momData.keys.length > 0 || yoyData.years.length > 0) && (
               <div className="pt-chart-toggle" onClick={() => setChartsExpanded((v) => !v)}>
-                <span>📊 Graphs — month on month &amp; year on year</span>
-                <span className="pt-chart-toggle-arrow">{chartsExpanded ? '▾' : '▸'}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><ChartColumn size={15} aria-hidden />Graphs — month on month &amp; year on year</span>
+                <span className="pt-chart-toggle-arrow" style={{ display: 'inline-flex' }}>{chartsExpanded ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}</span>
               </div>
             )}
 
@@ -1930,6 +1933,7 @@ export default function PartnershipTrackerPage() {
                 <option value="Draft">Draft</option>
                 <option value="Cancelled">Cancelled</option>
                 <option value="Expired">Expired</option>
+                <option value="Unmapped">No status</option>
               </select>
               <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); resetToPage1(); }}>
                 <option value="all">All Active Events</option>
@@ -1949,7 +1953,7 @@ export default function PartnershipTrackerPage() {
               {monthFilter && (
                 <span className="pt-month-chip">
                   Showing: <strong>{monthLabel(monthFilter)}</strong>
-                  <span className="pt-chip-x" onClick={() => setMonthFilter(null)}>✕</span>
+                  <span className="pt-chip-x" onClick={() => setMonthFilter(null)} style={{ display: 'inline-flex', verticalAlign: 'middle' }}><X size={13} aria-hidden /></span>
                 </span>
               )}
               <span className="pt-count-note">{filtered.length.toLocaleString()} of {events.length.toLocaleString()} events</span>
@@ -1979,11 +1983,11 @@ export default function PartnershipTrackerPage() {
                           }}
                         />
                       </th>
-                      <th className="pt-sticky" onClick={() => toggleSort('eventName')}>Event{sortKey === 'eventName' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th onClick={() => toggleSort('city')}>City{sortKey === 'city' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th onClick={() => toggleSort('country')}>Country{sortKey === 'country' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th onClick={() => toggleSort('eventStartDate')}>Start date{sortKey === 'eventStartDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
-                      <th onClick={() => toggleSort('eventEndDate')}>End date{sortKey === 'eventEndDate' && <span className="pt-sort-arrow">{sortDir === 1 ? ' ▲' : ' ▼'}</span>}</th>
+                      <th className="pt-sticky" onClick={() => toggleSort('eventName')}>Event{sortKey === 'eventName' && <span className="pt-sort-arrow" style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 3 }}>{sortDir === 1 ? <ChevronUp size={12} strokeWidth={2.5} aria-hidden /> : <ChevronDown size={12} strokeWidth={2.5} aria-hidden />}</span>}</th>
+                      <th onClick={() => toggleSort('city')}>City{sortKey === 'city' && <span className="pt-sort-arrow" style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 3 }}>{sortDir === 1 ? <ChevronUp size={12} strokeWidth={2.5} aria-hidden /> : <ChevronDown size={12} strokeWidth={2.5} aria-hidden />}</span>}</th>
+                      <th onClick={() => toggleSort('country')}>Country{sortKey === 'country' && <span className="pt-sort-arrow" style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 3 }}>{sortDir === 1 ? <ChevronUp size={12} strokeWidth={2.5} aria-hidden /> : <ChevronDown size={12} strokeWidth={2.5} aria-hidden />}</span>}</th>
+                      <th onClick={() => toggleSort('eventStartDate')}>Start date{sortKey === 'eventStartDate' && <span className="pt-sort-arrow" style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 3 }}>{sortDir === 1 ? <ChevronUp size={12} strokeWidth={2.5} aria-hidden /> : <ChevronDown size={12} strokeWidth={2.5} aria-hidden />}</span>}</th>
+                      <th onClick={() => toggleSort('eventEndDate')}>End date{sortKey === 'eventEndDate' && <span className="pt-sort-arrow" style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 3 }}>{sortDir === 1 ? <ChevronUp size={12} strokeWidth={2.5} aria-hidden /> : <ChevronDown size={12} strokeWidth={2.5} aria-hidden />}</span>}</th>
                       <th>Type</th>
                       <th>Status</th>
                       <th>View</th>
@@ -2035,7 +2039,7 @@ export default function PartnershipTrackerPage() {
                           <td className="pt-mono pt-col-date">
                             {fmtMonthDay(e.eventEndDate)}
                             <div className="pt-cell-sub">{fmtYear(e.eventEndDate)}{endTime ? ` · ${endTime}` : ''}</div>
-                            {d.dateOrderSuspect && <span className="pt-badge" style={{ color: '#C22B44' }} title="End date is before start date">⚠ order</span>}
+                            {d.dateOrderSuspect && <span className="pt-badge" style={{ color: '#C22B44' }} title="End date is before start date"><TriangleAlert size={11} aria-hidden />order</span>}
                           </td>
                           <td className="pt-col-type">
                             {d.partnershipTypeResolved
@@ -2062,10 +2066,10 @@ export default function PartnershipTrackerPage() {
               {filtered.length > 0 && (
                 <div className="pt-pagination">
                   <span className="pt-page-info">Page {clampedPage} of {totalPages}</span>
-                  <button disabled={clampedPage <= 1} onClick={() => setPage(1)}>« First</button>
-                  <button disabled={clampedPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹ Prev</button>
-                  <button disabled={clampedPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next ›</button>
-                  <button disabled={clampedPage >= totalPages} onClick={() => setPage(totalPages)}>Last »</button>
+                  <button disabled={clampedPage <= 1} onClick={() => setPage(1)} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><ChevronsLeft size={14} aria-hidden />First</button>
+                  <button disabled={clampedPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}><ChevronLeft size={14} aria-hidden />Prev</button>
+                  <button disabled={clampedPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>Next<ChevronRight size={14} aria-hidden /></button>
+                  <button disabled={clampedPage >= totalPages} onClick={() => setPage(totalPages)} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>Last<ChevronsRight size={14} aria-hidden /></button>
                 </div>
               )}
             </div>
@@ -2100,7 +2104,7 @@ export default function PartnershipTrackerPage() {
           <div className="pt-modal">
             <div className="pt-modal-header">
               <h2>{editingId ? 'Edit event' : 'Add event'}</h2>
-              <button className="pt-modal-close" onClick={requestCloseModal}>✕</button>
+              <button className="pt-modal-close" onClick={requestCloseModal} style={{ display: 'inline-flex', alignItems: 'center' }} title="Close"><X size={18} aria-hidden /></button>
             </div>
             <div className="pt-modal-body">
               <div className="pt-form-grid pt-form-grid-3">
@@ -2108,6 +2112,11 @@ export default function PartnershipTrackerPage() {
                   <label>Partnership Status</label>
                   <select
                     value={draft.partnershipStatus}
+                    // Kept selectable, but flagged red: a published event saved with no status
+                    // lands in the "Unmapped" bucket (classifyPartnershipStatus), which is easy to
+                    // lose track of — Startup Business Summit 2026 went missing that way.
+                    className={draft.partnershipStatus ? undefined : '!border-red-500 ring-1 ring-red-500'}
+                    aria-invalid={!draft.partnershipStatus}
                     onChange={(e) => {
                       const nextStatus = e.target.value;
                       const closed = classifyStatus(nextStatus) === 'Cancelled';
@@ -2127,6 +2136,7 @@ export default function PartnershipTrackerPage() {
                     )}
                     {STATUS_EDIT_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
+                  {!draft.partnershipStatus && <div className="pt-hint !text-red-600">No status selected — pick one so this event is tracked correctly.</div>}
                 </div>
                 <div className="pt-fg">
                   <label>Event Type</label>
@@ -2280,7 +2290,7 @@ export default function PartnershipTrackerPage() {
                       }}
                     >
                       {COUNTRY_CODE_OPTIONS.map((c) => (
-                        <option key={c.code} value={c.code}>{c.code === 'other' ? '🌐 Other' : `${c.emoji} ${c.code}`}</option>
+                        <option key={c.code} value={c.code}>{c.code === 'other' ? 'Other' : `${c.emoji} ${c.code}`}</option>
                       ))}
                     </select>
                     {phoneCode === 'other' && (
@@ -2370,10 +2380,10 @@ export default function PartnershipTrackerPage() {
                   <input placeholder="Designation" value={sp.designation} onChange={(e) => { const next = [...draft.speakers]; next[i] = { ...next[i], designation: e.target.value }; setDraft({ ...draft, speakers: next }); }} />
                   <input placeholder="Company" value={sp.company} onChange={(e) => { const next = [...draft.speakers]; next[i] = { ...next[i], company: e.target.value }; setDraft({ ...draft, speakers: next }); }} />
                   <input placeholder="Others" value={sp.others} onChange={(e) => { const next = [...draft.speakers]; next[i] = { ...next[i], others: e.target.value }; setDraft({ ...draft, speakers: next }); }} />
-                  <button type="button" className="pt-rm" onClick={() => setDraft({ ...draft, speakers: draft.speakers.filter((_, idx) => idx !== i) })}>✕</button>
+                  <button type="button" className="pt-rm" onClick={() => setDraft({ ...draft, speakers: draft.speakers.filter((_, idx) => idx !== i) })} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={14} aria-hidden /></button>
                 </div>
               ))}
-              <span className="pt-add-line" onClick={() => setDraft({ ...draft, speakers: [...draft.speakers, emptySpeaker()] })}>+ Add speaker/guest</span>
+              <span className="pt-add-line" onClick={() => setDraft({ ...draft, speakers: [...draft.speakers, emptySpeaker()] })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Plus size={11} strokeWidth={2.5} aria-hidden />Add speaker/guest</span>
 
               <div className="pt-section-title" style={{ marginTop: 18 }}>7. Event poster (event page listing){requiredToPublish && ' *'}</div>
               <div className="pt-hint" style={{ marginBottom: 6 }}>{POSTER_SPEC}</div>
@@ -2459,11 +2469,11 @@ export default function PartnershipTrackerPage() {
                       <div style={{ flex: 1 }}>
                         <ImageUpload value={c.image} onChange={(v) => { const next = [...draft.socialCreatives]; next[i] = { ...next[i], image: v }; setDraft({ ...draft, socialCreatives: next }); }} label={`${SOCIAL_CREATIVE_PLATFORM_LABELS[platform] || platform} image`} exactDimensions={IMAGE_SPECS.social} />
                       </div>
-                      <button type="button" className="pt-rm" onClick={() => setDraft({ ...draft, socialCreatives: draft.socialCreatives.filter((_, idx) => idx !== i) })}>✕</button>
+                      <button type="button" className="pt-rm" onClick={() => setDraft({ ...draft, socialCreatives: draft.socialCreatives.filter((_, idx) => idx !== i) })} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={14} aria-hidden /></button>
                     </div>
                   ))}
                   {platform !== 'other' && (
-                    <span className="pt-add-line" onClick={() => setDraft({ ...draft, socialCreatives: [...draft.socialCreatives, { platform, image: '' }] })}>+ Add image</span>
+                    <span className="pt-add-line" onClick={() => setDraft({ ...draft, socialCreatives: [...draft.socialCreatives, { platform, image: '' }] })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Plus size={11} strokeWidth={2.5} aria-hidden />Add image</span>
                   )}
                 </div>
               ))}
@@ -2544,8 +2554,8 @@ export default function PartnershipTrackerPage() {
             </div>
             <div className="pt-modal-footer">
               {modalDirty && (
-                <span className={`pt-dirty-note${editingId ? '' : ' pt-dirty-note-lead'}`}>
-                  ● Unsaved changes
+                <span className={`pt-dirty-note${editingId ? '' : ' pt-dirty-note-lead'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Circle size={7} fill="currentColor" aria-hidden />Unsaved changes
                 </span>
               )}
               {editingId && (
@@ -2564,7 +2574,7 @@ export default function PartnershipTrackerPage() {
             {closeWarning && (
               <div className="pt-confirm-layer" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                 <div className="pt-confirm" role="alertdialog" aria-modal="true" aria-labelledby="pt-confirm-title">
-                  <h3 id="pt-confirm-title">⚠ Unsaved changes</h3>
+                  <h3 id="pt-confirm-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TriangleAlert size={16} color="#B26B00" aria-hidden />Unsaved changes</h3>
                   <p>
                     Your changes to <strong>{draft.eventName.trim() || 'this event'}</strong> haven&apos;t been saved yet.{' '}
                     {canSaveOnClose
@@ -2597,7 +2607,7 @@ export default function PartnershipTrackerPage() {
           <div className="pt-modal" style={{ width: 560 }}>
             <div className="pt-modal-header">
               <h2>Daily Report</h2>
-              <button className="pt-modal-close" onClick={() => setDailyReportOpen(false)}>✕</button>
+              <button className="pt-modal-close" onClick={() => setDailyReportOpen(false)} style={{ display: 'inline-flex', alignItems: 'center' }} title="Close"><X size={18} aria-hidden /></button>
             </div>
             <div className="pt-modal-body">
               <div className="pt-form-grid">

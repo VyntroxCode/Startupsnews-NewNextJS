@@ -1,6 +1,6 @@
 import { getDbConnection, query, queryOne } from '@/shared/database/connection';
 import { type AssignmentStatus, ensCodeFor, type LeadSource, SALES_LEAD_STATUS_LABELS, ASSIGNMENT_STATUS_OPTIONS } from '@/modules/lead-assignments/domain/types';
-import type { LeadFollowUpEntity } from '../domain/types';
+import type { LeadFollowUpEntity, LeadMessageEntity } from '../domain/types';
 
 /** Table: sales_lead_followups (scripts/migrations/add-sales-lead-followups.sql). A follow-up also
  * sets the lead's one shared status — sales_leads.status (as its label) or
@@ -13,6 +13,34 @@ export class LeadFollowUpsRepository {
         WHERE lead_source = ? AND lead_id = ?
         ORDER BY created_at DESC, id DESC`,
       [source, leadId]
+    );
+  }
+
+  /** The admin's messages to the lead's team (sales_lead_messages), newest first. */
+  async findMessagesForLead(source: LeadSource, leadId: string): Promise<LeadMessageEntity[]> {
+    return query<LeadMessageEntity>(
+      `SELECT id, lead_source, lead_id, author_name, message, created_at
+         FROM sales_lead_messages
+        WHERE lead_source = ? AND lead_id = ?
+        ORDER BY created_at DESC, id DESC`,
+      [source, leadId]
+    );
+  }
+
+  /** How many people are on the lead now. */
+  async countAssignees(source: LeadSource, leadId: string): Promise<number> {
+    const row = await queryOne<{ n: number }>(
+      'SELECT COUNT(*) AS n FROM sales_lead_assignments WHERE lead_source = ? AND lead_id = ?',
+      [source, leadId]
+    );
+    return Number(row?.n ?? 0);
+  }
+
+  /** `created_at` is left to the database. */
+  async addMessage(source: LeadSource, leadId: string, authorName: string, message: string): Promise<void> {
+    await query(
+      'INSERT INTO sales_lead_messages (lead_source, lead_id, author_name, message) VALUES (?, ?, ?, ?)',
+      [source, leadId, authorName, message]
     );
   }
 

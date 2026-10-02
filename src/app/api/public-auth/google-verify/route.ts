@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       data: {
         token,
         isNew,
-        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, city: user.city, linkedin_url: user.linkedin_url, newsletter_category_slugs: user.newsletter_category_slugs ?? null },
+        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, city: user.city, linkedin_url: user.linkedin_url, newsletter_category_slugs: user.newsletter_category_slugs ?? null, created_at: user.created_at },
       },
     });
   } catch (err) {

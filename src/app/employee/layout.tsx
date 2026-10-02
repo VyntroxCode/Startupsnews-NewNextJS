@@ -3,9 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import type { ComponentType } from 'react';
+import { Contact } from 'lucide-react';
 import { getEmployeeUser, clearEmployeeSession, getEmployeeAuthHeaders, setEmployeeSession, getEmployeeToken, type EmployeeUser } from '@/lib/employee-auth';
 import ProfileProgressStrip from '@/components/admin/ProfileProgressStrip';
+import PendingLeadsAlarm from '@/components/employee/PendingLeadsAlarm';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { canEmployeeUseDirectory } from '@/modules/contacts/domain/directory-access';
 // Scoped Tailwind utilities for the employee frame and its self-service widgets — see that file's header.
 import '@/components/admin/staff-panel-tailwind.css';
 
@@ -86,16 +90,19 @@ function ExitIcon({ size = 20, color = 'currentColor' }: { size?: number; color?
 }
 
 const EXIT_HREF = '/employee/exit';
+const DIRECTORY_HREF = '/employee/directory';
 
 // Written as a list so future employee-facing sections slot in the same way without
 // restructuring the sidebar.
-const NAV_ITEMS: { href: string; label: string; icon: typeof AttendanceIcon }[] = [
+const NAV_ITEMS: { href: string; label: string; icon: ComponentType<{ size?: number; color?: string }> }[] = [
   { href: '/employee/attendance', label: 'Attendance', icon: AttendanceIcon },
   { href: '/employee/leads', label: 'My Leads', icon: LeadsIcon },
   { href: '/employee/leave', label: 'Leave', icon: LeaveIcon },
   { href: '/employee/documents', label: 'Documents', icon: DocumentsIcon },
   { href: '/employee/rules-policy', label: 'Admin Rules', icon: RulesPolicyIcon },
   { href: '/employee/it-tickets', label: 'IT Support', icon: TicketIcon },
+  // Contacts Directory (full access) — shown only to the Employee IDs in DIRECTORY_EMPLOYEE_CODES.
+  { href: DIRECTORY_HREF, label: 'Directory', icon: Contact },
   { href: EXIT_HREF, label: 'My Exit', icon: ExitIcon },
 ];
 /** Past the last working day (offboarding "alumni"), the login is read-only: My Exit is all that's left. */
@@ -271,10 +278,12 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   }
 
   // IT Support's board (five columns) and ticket table, and My Leads' KPI row and eight-column lead
-  // table, need more than the 1100px reading width the other employee pages use, so those routes
-  // get the full content width.
-  const wideContent = pathname.startsWith('/employee/it-tickets') || pathname.startsWith('/employee/leads');
-  const items = alumni ? ALUMNI_NAV_ITEMS : NAV_ITEMS;
+  // table, and the Directory's contacts table, need more than the 1100px reading width the other
+  // employee pages use, so those routes get the full content width.
+  const wideContent = pathname.startsWith('/employee/it-tickets') || pathname.startsWith('/employee/leads') || pathname.startsWith(DIRECTORY_HREF);
+  const items = alumni
+    ? ALUMNI_NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.href !== DIRECTORY_HREF || canEmployeeUseDirectory(user.employeeCode));
   const currentLabel = items.find((item) => isActivePath(pathname, item.href))?.label || 'Employee';
   const bottomTabs = alumni ? [] : NAV_ITEMS.filter((item) => BOTTOM_TABS.includes(item.href));
   const moreActive = !alumni && !bottomTabs.some((item) => isActivePath(pathname, item.href));
@@ -322,6 +331,8 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
         {!alumni && <ProfileProgressStrip apiBase="/api/employee/documents" getHeaders={getEmployeeAuthHeaders} documentsHref="/employee/documents" />}
         {children}
       </main>
+      {/* 11 AM / 4 PM IST ringtone + toast while any assigned lead is still Pending. */}
+      {!alumni && <PendingLeadsAlarm employeeCode={user.employeeCode} />}
 
       {/* Phone: bottom tab bar — daily pages one tap away, "More" opens the drawer. */}
       {bottomTabs.length > 0 && (

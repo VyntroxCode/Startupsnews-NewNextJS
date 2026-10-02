@@ -1,5 +1,6 @@
 'use client';
 
+import { UserRound } from 'lucide-react';
 import { avatarColor, initials } from './utils';
 
 type AvatarSize = 'xs' | 'sm' | 'md';
@@ -30,10 +31,7 @@ export default function Avatar({ name, size = 'sm', title, className = '' }: Ava
         role="img"
         className={`inline-flex flex-shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-400 ${SIZES[size]} ${className}`}
       >
-        <svg width="60%" height="60%" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-          <circle cx="8" cy="5.5" r="3" />
-          <path d="M2.5 14a5.5 5.5 0 0 1 11 0z" />
-        </svg>
+        <UserRound className="size-[60%]" aria-hidden />
       </span>
     );
   }

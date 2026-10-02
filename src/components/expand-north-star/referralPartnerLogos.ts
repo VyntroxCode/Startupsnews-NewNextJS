@@ -17,11 +17,11 @@ import { ENS_REFERRAL_LOGOS } from "./media";
  * — the marquee only cares about `imageUrl`/`linkUrl`, and a colored-background logo sits fine
  * inside the shared tile's white card + `object-fit: contain`.
  *
- * Only 10 of the 12 REFERRED_BY_OPTIONS have a supplied logo — TSFP Ventures and Startupreport.in
+ * Only 10 of the 12 REFERRED_BY_OPTIONS have a supplied logo — TSFP Ventures and Startupreporter.in
  * do not, and are left out of the strip rather than shown with a placeholder. Add their file to
  * `media.ts`'s `ENS_REFERRAL_LOGOS` and a row here once artwork exists.
  *
- * `angel-bay` and `indicorn-angels` link out to the partners' own sites (`linkUrl`, opened in a
+ * `angel-bay`, `indicorn-angels` and (2026-09-30) `eritonxt` (its LinkedIn page) link out to the partners' own sites (`linkUrl`, opened in a
  * new tab by `PartnerLogoTile`) on request 2026-09-19; every other logo here still links nowhere,
  * same as the plain-logo entries on /our-partners, until asked for. */
 interface ReferralPartnerLogo {
@@ -44,12 +44,14 @@ const REFERRAL_PARTNER_LOGOS: ReferralPartnerLogo[] = [
   { slug: "meet-day-ai", name: "meetday.ai" },
   { slug: "hbf-direct", name: "HBF Direct" },
   { slug: "indicorn-angels", name: "Indicorn Angels", linkUrl: "https://indicornangels.com/" },
+  // Added 2026-09-30. Strip-only: not in sources.ts's REFERRED_BY_OPTIONS, so not on the form.
+  { slug: "eritonxt", name: "EritoNxt", linkUrl: "https://www.linkedin.com/company/eritonxt/about/" },
 ];
 
 /** `PartnerLogosMarquee`-shaped list — `id`/`section`/`sortOrder` are only there to satisfy the
  * shared `PartnerLogo` type; the marquee itself only reads `imageUrl` and `linkUrl`. A slug with
  * no matching `ENS_REFERRAL_LOGOS` entry is dropped rather than rendered with a broken image, the
- * same "no artwork, no tile" rule TSFP Ventures and Startupreport.in follow. */
+ * same "no artwork, no tile" rule TSFP Ventures and Startupreporter.in follow. */
 export const REFERRAL_PARTNER_LOGOS_FOR_MARQUEE: PartnerLogo[] = REFERRAL_PARTNER_LOGOS.map((logo, index) => ({
   id: index + 1,
   section: "referral",

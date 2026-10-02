@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { FolderOpen, Plus } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 
@@ -148,9 +149,10 @@ export default function NewsletterCategoriesPage() {
               background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
               color: 'white', border: 'none', borderRadius: '8px',
               fontWeight: 600, fontSize: '0.9375rem', cursor: 'pointer', whiteSpace: 'nowrap',
+              display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
             }}
           >
-            + New Category
+            <Plus size={16} aria-hidden />New Category
           </button>
         </div>
 
@@ -293,7 +295,7 @@ export default function NewsletterCategoriesPage() {
           <p style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading…</p>
         ) : categories.length === 0 ? (
           <div style={{ padding: '3rem', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🗂️</div>
+            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}><FolderOpen size={40} color="#94a3b8" strokeWidth={1.5} aria-hidden /></div>
             <p style={{ fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>No categories yet</p>
             <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>
               Create categories like "Funding Rounds", "AI Tools", "Product Launches" to label newsletter content.

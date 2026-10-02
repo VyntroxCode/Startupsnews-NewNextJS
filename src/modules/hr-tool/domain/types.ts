@@ -113,7 +113,6 @@ export interface HrAttendanceRecord {
   inMinutes?: number | null; outMinutes?: number | null;
   inGeo?: HrPunchGeo | null; outGeo?: HrPunchGeo | null;
 }
-export interface HrAttendanceOverride { employeeId: string; emp: string; date: string; status: string; }
 export interface HrPunch {
   employeeId: string; emp: string; date: string; inTime: string | null; inMinutes: number | null; outTime: string | null; outMinutes: number | null;
   inGeo?: HrPunchGeo | null; outGeo?: HrPunchGeo | null;
@@ -129,21 +128,39 @@ export interface HrApprovalBase {
   hrRemarks: string;
 }
 export type HrRegularizationPunchType = 'in' | 'out';
-export interface HrRegularization extends HrApprovalBase { date: string; reason: string; punchType: HrRegularizationPunchType; requestedTime: string | null; }
+export interface HrRegularization extends HrApprovalBase {
+  date: string; reason: string; punchType: HrRegularizationPunchType; requestedTime: string | null;
+  /** 'employee' for a real request. 'hr-edit' marks a record converted from an old direct HR
+   * attendance edit (that feature was removed) — kept for history, never counted in the limit. */
+  source?: 'employee' | 'hr-edit';
+}
 /** Legacy HrLeaveRequest.type for Work From Home — DISCONTINUED. Employees can no longer apply for
  * it (submitEmployeeLeaveRequest rejects it). Kept only to recognise historical rows: past approved
  * WFH days remain in hr_attendance as full shifts (status 'WFH'), and payroll skips these requests
  * so those days aren't also counted as leave. See scripts/migrations/retire-wfh-leave-type.sql. */
 export const WFH_LEAVE_TYPE = 'WFH';
 
-export interface HrLeaveRequest extends HrApprovalBase { type: string; from: string; to: string; remarks: string; }
+/** status: 'pending' | 'approved' | 'rejected' | 'cancelled'. `halfDay` is set only on a
+ * single-date request taking half the day (0.5 of the balance) — see utils/leave-balance.ts. */
+export interface HrLeaveRequest extends HrApprovalBase { type: string; from: string; to: string; remarks: string; halfDay?: 'first' | 'second' | null; }
 export interface HrExpense extends HrApprovalBase { category: string; amount: number; }
 
 export interface HrTicket { id: string; employeeId: string; emp: string; category: string; status: string; note: string; }
 
 export interface HrComplianceTask { task: string; due: string; status: string; }
 
-export interface HrPayrollRun { month: string; status: string; runAt?: string | null; runBy?: string | null; }
+export interface HrPayrollRun {
+  month: string; status: string; runAt?: string | null; runBy?: string | null;
+  /** The dates this run actually covered — a later cycle treats days up to periodTo as already
+   * settled (the 1st→last to 26th→25th changeover relies on it). */
+  periodFrom?: string | null; periodTo?: string | null;
+  /** Set when the cycle locks (window over, last run up to date, nothing pending). */
+  lockedAt?: string | null;
+  /** Founder reopened a locked cycle until this date (inclusive), with a reason. */
+  reopenedUntil?: string | null; reopenReason?: string | null;
+  /** When the saved payslips were last computed or verified up to date (DB clock). */
+  computedAt?: string | null;
+}
 
 /** One employee's computed payroll for one month — either a live preview (not yet run) or the
  * frozen record from the last "Run Payroll" (see HrToolService.computePayrollForMonth/runPayroll). */
@@ -204,11 +221,12 @@ export interface HrRules {
   /** Hours after shift start marking the end of the Half Day punch-in window — a punch-in
    * later than shiftStart + this many hours counts as Absent for the day. */
   halfDayThresholdHours: number;
+  /** Calendar days after the attendance date during which a regularization may still be filed
+   * (enforced — see HrToolService.submitEmployeeRegularization). */
   regularizationWindowDays: number;
   regularizationOverride: boolean;
-  /** How many regularization requests an employee may submit per calendar month — separate
-   * from regularizationWindowDays (which governs how many days after the attendance date a
-   * request may still be filed at all). */
+  /** How many DAYS per payroll cycle an employee may regularize (punch-in + punch-out on the same
+   * date is one day; approved and pending count, rejected doesn't). A hard limit — no override. */
   regularizationMonthlyQuota: number;
   /** Hours after shift start marking the end of the Short Leave punch-in window (grace period
    * ends, Short Leave begins; this many hours after shift start, Half Day begins). */
@@ -259,7 +277,6 @@ export interface HrBootstrap {
   employees: HrEmployee[];
   onboarding: HrOnboarding[];
   attendance: HrAttendanceRecord[];
-  attendanceOverrides: HrAttendanceOverride[];
   punchLog: HrPunch[];
   regularizations: HrRegularization[];
   leaveRequests: HrLeaveRequest[];

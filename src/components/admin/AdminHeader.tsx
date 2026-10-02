@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { clearAdminSession, AdminUser } from '@/lib/admin-auth';
+import { Menu, X } from 'lucide-react';
 
 interface AdminHeaderProps {
   user: AdminUser | null;
@@ -73,30 +74,11 @@ export default function AdminHeader({ user, sidebarOpen, onToggleSidebar }: Admi
           }}
           aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{
-              color: '#475569',
-              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-          >
-            {sidebarOpen ? (
-              <>
-                <path d="M18 6L6 18M6 6l12 12" />
-              </>
-            ) : (
-              <>
-                <path d="M3 12h18M3 6h18M3 18h18" />
-              </>
-            )}
-          </svg>
+          {sidebarOpen ? (
+            <X size={20} strokeWidth={2.5} color="#475569" aria-hidden />
+          ) : (
+            <Menu size={20} strokeWidth={2.5} color="#475569" aria-hidden />
+          )}
         </button>
         <div>
           <h1

@@ -69,7 +69,8 @@ function FieldValue({ field }: { field: LeadDetailField }) {
 
 /** The lead window on My Leads: a slide-over from the right (full width on phones).
  *
- * Top to bottom: who the lead is with quick Call / WhatsApp / Email actions; everything the visitor
+ * Top to bottom: who the lead is with quick Call / WhatsApp / Email actions; the admin's messages to
+ * the assigned team (from the Sales Tracker lead window), if any, newest first; everything the visitor
  * submitted on the page, read-only; the people on the lead with their statuses; the add-follow-up
  * form (status + message — the date is stamped by the server and can't be set here); and every
  * follow-up logged on the lead, newest first, by anyone assigned to it.
@@ -187,6 +188,30 @@ export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, 
 
           {detail && sub && (
             <div className="flex flex-col gap-5">
+              {detail.messages.length > 0 && (
+                <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="m-0 text-base font-bold text-slate-900">Message from admin</h3>
+                    <span className="text-xs text-slate-500">For everyone assigned to this lead</span>
+                  </div>
+                  <ol className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
+                    {detail.messages.map((m, i) => (
+                      <li key={m.id} className={`rounded-lg border bg-white px-4 py-3 ${i === 0 ? 'border-amber-300' : 'border-amber-100'}`}>
+                        <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                          {m.authorName || 'Admin'}
+                          <span className="text-xs font-normal text-slate-400">{when(m.createdAt)}</span>
+                          {i === 0 && detail.messages.length > 1 && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Latest</span>
+                          )}
+                        </div>
+                        <p className="m-0 mt-1.5 whitespace-pre-line text-sm text-slate-700">{m.message}</p>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="m-0 mt-2 text-xs text-slate-500">Reply by adding a follow-up below. The admin sees every follow-up.</p>
+                </section>
+              )}
+
               <section>
                 <div className="mb-2 flex items-baseline justify-between gap-3">
                   <h3 className="m-0 text-sm font-bold uppercase tracking-wide text-slate-500">Submitted details</h3>

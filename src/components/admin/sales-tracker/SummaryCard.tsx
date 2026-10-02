@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import BarChart from './BarChart';
 import { isOpenStatusLabel, STATUSES, TYPES } from './constants';
 import type { SalesLead } from './types';
@@ -42,14 +43,14 @@ export default function SummaryCard({ leads, ensPendingCount, loaded, onPendingL
           <button type="button" className="metric metric-btn" onClick={onPendingLeadsClick}>
             <div className="num">{totals.pending}</div>
             <div className="lbl">Pending leads</div>
-            <div className="metric-cta">View in All leads <span className="chev">&#8250;</span></div>
+            <div className="metric-cta">View in All leads <span className="chev"><ChevronRight size={13} aria-hidden /></span></div>
           </button>
         </div>
         {!loaded && <div className="hint" style={{ marginTop: 10 }}>Loading…</div>}
       </div>
       <div className="card-head" style={{ borderTop: '1px solid var(--border)' }} onClick={() => setSummaryOpen((o) => !o)}>
         <h2>Breakdown table and charts</h2>
-        <span className={`chev${summaryOpen ? ' open' : ''}`}>&#8250;</span>
+        <span className={`chev${summaryOpen ? ' open' : ''}`}><ChevronRight size={16} aria-hidden /></span>
       </div>
       <div className={`card-body${summaryOpen ? '' : ' collapsed'}`}>
         <div style={{ overflowX: 'auto' }}>

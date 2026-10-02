@@ -20,3 +20,14 @@ export async function getPayrollRoster(): Promise<PayrollRosterEntry[]> {
     .filter((c) => c.isActive)
     .map((c) => ({ credentialId: c.id, name: c.name, doj: new Date(c.createdAt).toISOString().slice(0, 10) }));
 }
+
+/** After a leave or regularization decision: brings any already-run, unlocked payroll cycle
+ * covering these dates up to date (HrToolService.refreshRunsForDates). A failure here is logged,
+ * never surfaced — the decision itself is saved, and the Payroll page re-checks on load anyway. */
+export async function refreshPayrollForDates(dates: string[]): Promise<void> {
+  try {
+    await hrToolService.refreshRunsForDates(dates, await getPayrollRoster());
+  } catch (error) {
+    console.error('Payroll auto-update after a decision failed:', error);
+  }
+}

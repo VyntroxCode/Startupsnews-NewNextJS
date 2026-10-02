@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, CircleCheck, CircleX, X } from 'lucide-react';
 import { getAuthHeaders, getAdminToken, withAdminToken, getAdminUser } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { clearFormDraft, loadFormDraft, useFormDraftAutosave } from '@/lib/formDraftStorage';
+import { POST_HANDOFF_QUERY, takePostHandoff } from '@/modules/content-studio/lib/article/postHandoff';
 
 interface Category {
   id: number;
@@ -75,6 +77,7 @@ export default function CreatePostPage() {
     scheduledAt: '',
   });
   const [restorableDraft, setRestorableDraft] = useState<{ savedAt: number; data: CreatePostFormData } | null>(null);
+  const [importHtml, setImportHtml] = useState<string | undefined>(undefined);
 
   const isDraft = formData.status === 'draft';
   const completionRatio = completionRatioOf(formData);
@@ -83,7 +86,20 @@ export default function CreatePostPage() {
   useEffect(() => {
     fetchCategories();
     fetchAuthors();
-    setRestorableDraft(loadFormDraft<CreatePostFormData>(DRAFT_KEY));
+    // Arrived via Content Studio's "Move to post": prefill instead of offering the old draft.
+    const handoff = window.location.search.includes(POST_HANDOFF_QUERY) ? takePostHandoff() : null;
+    if (handoff) {
+      setFormData((prev) => ({
+        ...prev,
+        title: handoff.title,
+        slug: generateSlug(handoff.title),
+        excerpt: handoff.excerpt,
+        metaDescription: handoff.metaDescription,
+      }));
+      setImportHtml(handoff.html);
+    } else {
+      setRestorableDraft(loadFormDraft<CreatePostFormData>(DRAFT_KEY));
+    }
   }, []);
 
   function restoreDraft() {
@@ -375,10 +391,12 @@ export default function CreatePostPage() {
             textDecoration: 'none',
             fontSize: '0.875rem',
             marginBottom: '1rem',
-            display: 'inline-block',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem',
           }}
         >
-          ← Back to Posts
+          <ArrowLeft size={14} aria-hidden />Back to Posts
         </Link>
         <h1 style={{
           fontSize: '2.25rem',
@@ -578,9 +596,13 @@ export default function CreatePostPage() {
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
             Content{isDraft ? '' : ' *'} {(() => {
               const plainText = formData.content.replace(/<[^>]*>/g, '').trim();
-              const status = plainText.length < 10 ? '❌ Too short' : '✅ Valid';
-              const color = plainText.length < 10 ? '#e53e3e' : '#22543d';
-              return <span style={{ color, fontSize: '0.875em', fontWeight: 'normal' }}>({status} - {plainText.length} characters)</span>;
+              const tooShort = plainText.length < 10;
+              const color = tooShort ? '#e53e3e' : '#22543d';
+              return (
+                <span style={{ color, fontSize: '0.875em', fontWeight: 'normal', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  ({tooShort ? <CircleX size={13} aria-hidden /> : <CircleCheck size={13} aria-hidden />}{tooShort ? 'Too short' : 'Valid'} - {plainText.length} characters)
+                </span>
+              );
             })()}
           </label>
           <RichTextEditor
@@ -588,6 +610,7 @@ export default function CreatePostPage() {
             onChange={(content) => setFormData((prev) => ({ ...prev, content }))}
             placeholder="Write your news article content..."
             minHeight={280}
+            importHtml={importHtml}
           />
         </div>
 
@@ -614,7 +637,7 @@ export default function CreatePostPage() {
                   width: 24, height: 24, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                ×
+                <X size={14} strokeWidth={2.5} aria-hidden />
               </button>
             </div>
           )}

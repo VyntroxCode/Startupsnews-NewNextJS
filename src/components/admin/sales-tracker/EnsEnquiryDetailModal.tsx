@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ArrowUpRight, Check, X } from 'lucide-react';
 import type { EnsTravelEnquiry, EnsTravelEnquiryAdminInput } from '@/modules/ens-travel-enquiries/domain/types';
 import {
   CONVERSATION_NOTE_MAX_LENGTH,
@@ -37,6 +38,8 @@ import {
 } from '@/modules/lead-assignments/domain/types';
 import FollowUpsPanel from './FollowUpsPanel';
 import LeadAssignmentFields from './LeadAssignmentFields';
+import LeadMessagesPanel from './LeadMessagesPanel';
+import { salesTrackerApi } from './api';
 import { updateEnsEnquiry } from './ensEnquiriesApi';
 import { formatSubmittedOn, whatsappLink } from './sponsorEventFormat';
 
@@ -81,7 +84,8 @@ export function participationBadge(value: string): { label: string; tone: 'deleg
  * own record of the conversation — a Lead status (Confirmed / Follow Up / Not Interested, or none yet)
  * and, under Confirmed or Follow Up, a note on what the conversation led to — and who works it:
  * Departments + Assigned to (LeadAssignmentFields), saved through the Sales Tracker's assignments
- * endpoint (`onAssign`) right after the enquiry itself. Saving stamps "Last updated" and
+ * endpoint (`onAssign`) right after the enquiry itself — then, once both are filled, an optional
+ * "Message for assigned employees" (LeadMessagesPanel) sent last. Saving stamps "Last updated" and
  * switches back to the view showing the saved record. */
 export default function EnsEnquiryDetailModal({ enquiry, employees, departments, assignment, onAssign, onClose, onSaved }: {
   enquiry: EnsTravelEnquiry;
@@ -97,11 +101,16 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<EnsTravelEnquiryAdminInput>(() => toInput(enquiry));
   const [assignmentDraft, setAssignmentDraft] = useState<LeadAssignmentDraft>(() => assignmentToDraft(assignment));
+  const [messageDraft, setMessageDraft] = useState('');
+  // Bumped after a save so LeadMessagesPanel re-reads the history.
+  const [messagesVersion, setMessagesVersion] = useState(0);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
+  const canMessage = assignmentDraft.departments.length > 0 && assignmentDraft.assignees.length > 0;
+  const newMessage = canMessage ? messageDraft.trim() : '';
   const assignmentDirty = !sameAssignmentDraft(assignmentDraft, assignmentToDraft(assignment));
-  const dirty = editing && (JSON.stringify(draft) !== JSON.stringify(toInput(current)) || assignmentDirty);
+  const dirty = editing && (JSON.stringify(draft) !== JSON.stringify(toInput(current)) || assignmentDirty || !!newMessage);
 
   function requestClose() {
     if (dirty && !window.confirm('Discard your unsaved changes?')) return;
@@ -119,6 +128,7 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
   function startEdit() {
     setDraft(toInput(current));
     setAssignmentDraft(assignmentToDraft(assignment));
+    setMessageDraft('');
     setMsg(null);
     setEditing(true);
   }
@@ -149,6 +159,17 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
           return;
         }
       }
+      // After the assignment: the message needs the people stored first.
+      if (newMessage) {
+        try {
+          await salesTrackerApi.addMessage('ens', current.id, newMessage);
+          setMessageDraft('');
+          setMessagesVersion((v) => v + 1);
+        } catch (err) {
+          setMsg({ kind: 'err', text: `Details saved, but the message wasn't: ${err instanceof Error ? err.message : 'try again'}` });
+          return;
+        }
+      }
       setEditing(false);
       setMsg({ kind: 'ok', text: `Changes saved · last updated ${formatSubmittedOn(saved.updatedAt ?? undefined)}` });
     } catch (err) {
@@ -171,7 +192,7 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
       <div className="modal-box ee-modal" role="dialog" aria-modal="true" aria-labelledby="ee-modal-title" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal-head">
           <h2 id="ee-modal-title">{editing ? `Edit enquiry — ${e.name}` : e.name}</h2>
-          <button type="button" className="modal-close" aria-label="Close" onClick={requestClose}>×</button>
+          <button type="button" className="modal-close" aria-label="Close" onClick={requestClose}><X size={20} aria-hidden /></button>
         </div>
 
         <div className="modal-body">
@@ -207,7 +228,7 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
                   <dd>
                     <a href={`tel:${e.contact.replace(/\s+/g, '')}`}>{e.contact}</a>
                     {' · '}
-                    <a href={whatsappLink(e.contact)} target="_blank" rel="noopener noreferrer">WhatsApp ↗</a>
+                    <a href={whatsappLink(e.contact)} target="_blank" rel="noopener noreferrer" className="ic-text">WhatsApp<ArrowUpRight size={12} aria-hidden /></a>
                   </dd>
                 </dl>
               </section>
@@ -234,7 +255,7 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
                     <p className="ee-package-sub">{pack === 'delegate' ? 'Delegation' : 'Booth / POD'} inclusions</p>
                     <ul className="ee-inclusions">
                       {PACKAGE_INCLUSIONS[pack].map((item) => (
-                        <li key={item.text} className={item.highlight ? 'is-highlight' : undefined}>{item.text}</li>
+                        <li key={item.text} className={item.highlight ? 'is-highlight' : undefined}><Check size={14} strokeWidth={3} aria-hidden />{item.text}</li>
                       ))}
                     </ul>
                   </>
@@ -301,6 +322,17 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
                   <p className="ee-panel-note">Nobody is assigned yet. Use Edit details to pick departments or people.</p>
                 )}
               </section>
+
+              <LeadMessagesPanel
+                idPrefix="ee"
+                source="ens"
+                leadId={e.id}
+                editing={false}
+                canWrite={false}
+                value=""
+                onChange={() => {}}
+                refreshKey={messagesVersion}
+              />
 
               <FollowUpsPanel source="ens" leadId={e.id} />
             </div>
@@ -391,6 +423,16 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
                 assignment={assignment}
                 value={assignmentDraft}
                 onChange={setAssignmentDraft}
+              />
+              <LeadMessagesPanel
+                idPrefix="ee"
+                source="ens"
+                leadId={e.id}
+                editing
+                canWrite={canMessage}
+                value={messageDraft}
+                onChange={setMessageDraft}
+                refreshKey={messagesVersion}
               />
 
               <div className="ee-form-divider">Conversation</div>

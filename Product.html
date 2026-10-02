@@ -116,8 +116,8 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v85</span>
-    <span class="badge">Released 2026-09-29</span>
+    <span class="badge v">Version v111</span>
+    <span class="badge">Released 2026-10-01</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
     <span class="badge">Next.js 16 · React 19 · MariaDB</span>
@@ -664,8 +664,23 @@ flowchart LR
     S --> K["Lead moves into<br/>the Followed up card"]
     S --> A["Admin opens the lead<br/>in the Sales Tracker"]
     A --> P["Employee follow-ups panel:<br/>who, when, status, message"]
+    A -->|"writes a message<br/>(once departments + people are picked)"| MS[("Message for assigned employees<br/>(kept as a history)")]
+    MS -->|"shown at the top<br/>of the lead window"| V
     </pre>
-    <figcaption>Employees can read a lead and add follow-ups, but can never change what the visitor submitted. Everyone on the lead sees the same history.</figcaption>
+    <figcaption>Employees can read a lead and add follow-ups, but can never change what the visitor submitted. Everyone on the lead sees the same history. The admin's messages tell the team what to do; the team answers with follow-ups.</figcaption>
+  </figure>
+  <h3>Drafting a post with Content Studio (arch.md §6.13)</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    ED(("Editor")) --> P["Picks a source:<br/>trending story, web link<br/>or a typed topic"]
+    P --> CS["Content Studio<br/>(admin panel)"]
+    CS -->|"fetches the story text"| WEB["News sites and<br/>Google News / Trends"]
+    CS -->|"asks for a draft"| AI["Claude (AI)<br/>writes in 3–4 steps"]
+    AI --> D["Draft on screen:<br/>article, byline, FAQs,<br/>SEO title and description"]
+    D -->|"copy or download .html"| POST["Posts → New post<br/>(editor reviews and publishes)"]
+    </pre>
+    <figcaption>Content Studio only prepares the draft. Nothing is published or saved to the site until an editor pastes it into Posts and publishes it the usual way.</figcaption>
   </figure>
 </section>
 
@@ -830,6 +845,33 @@ flowchart LR
       <tr><td><strong>v83</strong></td><td>2026-09-29</td><td>Medium</td><td>My Leads: a "Lead Status" card sums up every assigned lead by status (Pending, Followed up, Confirmed, Not interested) and opens the full list</td></tr>
       <tr><td><strong>v84</strong></td><td>2026-09-29</td><td>Medium</td><td>My Leads: Lead Status card moved to the end, and a Lead Status filter on the lead list that works together with the cards</td></tr>
       <tr><td><strong>v85</strong></td><td>2026-09-29</td><td>Medium</td><td>Posts: a draft can be saved with no fields filled in; the full checks only apply when the post is published or scheduled</td></tr>
+      <tr><td><strong>v86</strong></td><td>2026-09-29</td><td>Major</td><td>Content Studio: a new admin screen that writes a ready-to-publish article draft with AI (Claude) from a trending story, a web link or a topic</td></tr>
+      <tr><td><strong>v87</strong></td><td>2026-09-29</td><td>Medium</td><td>Admin panel: every icon now comes from one consistent icon set (Lucide, with Remix Icon for the rare gap), and success / warning / error messages show a matching icon</td></tr>
+      <tr><td><strong>v88</strong></td><td>2026-09-29</td><td>Medium</td><td>Content Studio: new "Move to post" button opens a new post already filled with the generated article</td></tr>
+      <tr><td><strong>v89</strong></td><td>2026-09-29</td><td>Medium</td><td>HR tool: HR can mark attendance for many employees and many days in one go</td></tr>
+      <tr><td><strong>v90</strong></td><td>2026-09-29</td><td>Medium</td><td>Payroll now uses HR's attendance corrections, including bulk marks</td></tr>
+      <tr><td><strong>v91</strong></td><td>2026-09-30</td><td>Medium</td><td>Member dashboard: new-look sidebar (bigger, cleaner, profile card and account menu at the bottom) plus three "coming soon" items: Handouts, Incubators and Grants</td></tr>
+      <tr><td><strong>v92</strong></td><td>2026-09-30</td><td>Medium</td><td>Admin panel: new <strong>Grants</strong> section listing every IncubatX Startup Details submission, with a full-details window and a status for each</td></tr>
+      <tr><td><strong>v93</strong></td><td>2026-09-30</td><td>Medium</td><td>Member dashboard: the <strong>Complete your profile</strong> window is redesigned, with fields paired on rows (Email + Phone, Country + City) and a new summary-style Review screen</td></tr>
+      <tr><td><strong>v94</strong></td><td>2026-09-30</td><td>Major</td><td>Admin panel: <strong>Content Studio</strong> now writes its AI drafts with the company's own <strong>Azure OpenAI</strong> account instead of Claude, and is opened from a tab on the <strong>Posts</strong> page instead of its own sidebar item</td></tr>
+      <tr><td><strong>v95</strong></td><td>2026-09-30</td><td>Medium</td><td>Member profile: phone number with a country-code box and proper checks, a new fixed scoring for "profile % complete", Organization and Role asked of everyone, and neater field names</td></tr>
+      <tr><td><strong>v96</strong></td><td>2026-09-30</td><td>Medium</td><td>Member profile categories tidied: Lawyer and CA / CS become <strong>Professionals</strong>, VC Firm and PE Firm become <strong>VC / PE Firm</strong>, and Banker is removed</td></tr>
+      <tr><td><strong>v97</strong></td><td>2026-09-30</td><td>Medium</td><td>Sales Tracker: a <strong>Message for assigned employees</strong> box on every lead. The admin tells the assigned people what to do, and they see it at the top of the lead in My Leads</td></tr>
+      <tr><td><strong>v98</strong></td><td>2026-09-30</td><td>Medium</td><td>HR tool: once an exit is accepted, the employee's salary from the month their notice starts is <strong>held and paid in the Full &amp; Final</strong>, not in monthly payroll</td></tr>
+      <tr><td><strong>v99</strong></td><td>2026-09-30</td><td>Medium</td><td><strong>Directory</strong> (contacts database) can now be viewed, but not changed or downloaded, by the <strong>Event Admin</strong> and by employee <strong>SNFYI-0029</strong></td></tr>
+      <tr><td><strong>v100</strong></td><td>2026-09-30</td><td>Major</td><td>HR tool: fixed <strong>regularisation rules</strong> — 5 days per salary month, request within 5 days, sensible times only. HR can no longer change attendance directly; HR only approves or rejects requests</td></tr>
+      <tr><td><strong>v101</strong></td><td>2026-09-30</td><td>Major</td><td>HR tool: fixed <strong>leave rules</strong> — balance is checked, extra days are clearly unpaid, saved-up leave is paid, half-day leave, apply for today/yesterday, cancel before it starts, no "Other" type</td></tr>
+      <tr><td><strong>v102</strong></td><td>2026-10-01</td><td>Major</td><td>HR tool: salary month is now <strong>26th → 25th</strong>; Run Payroll opens only on the 26th–30th and then <strong>locks</strong>; it can't run while requests are pending; new short-leave rule (2 free, then half a day each); September recalculated as 26 Aug → 25 Sep</td></tr>
+      <tr><td><strong>v103</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool: attendance and payroll now always show the <strong>same numbers</strong>. The attendance calendar follows the salary month (26th → 25th) and shows paid and unpaid leave; payroll already run updates by itself after any approval until the month locks; a day someone punched in on can only be half-day leave; employees can withdraw a leave request that isn't approved yet</td></tr>
+      <tr><td><strong>v104</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool: payroll can be run even while leave or regularisation requests are still waiting. It uses the current attendance, marks those people's payslips <strong>Provisional</strong>, and updates them by itself as each request is approved or rejected. The month locks only once nothing is waiting</td></tr>
+      <tr><td><strong>v105</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool → Attendance: new <strong>Monthly attendance</strong> table — every employee's days for any past salary month, with a click-through to their calendar for that month</td></tr>
+      <tr><td><strong>v106</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool → Payroll: approve or reject an employee's waiting requests straight from their payroll row; the payroll notice boxes are gone</td></tr>
+      <tr><td><strong>v111</strong></td><td>2026-10-01</td><td>Medium</td><td>Reader dashboard: a red "Tell us where you're based" card asks for country and city when either is missing</td></tr>
+      <tr><td><strong>v110</strong></td><td>2026-10-01</td><td>Medium</td><td>Reader dashboard: no more fake "0%" or "0 reports this week" when the profile fails to load; old logins are asked to sign in again; WhatsApp tile opens the community group</td></tr>
+      <tr><td><strong>v109</strong></td><td>2026-10-01</td><td>Medium</td><td>Employee panel: an alarm rings at 11 AM and 4 PM if the employee still has even one Pending lead</td></tr>
+      <tr><td><strong>v109</strong></td><td>2026-10-01</td><td>Medium</td><td>Reader dashboard Newsletter page redesigned with icons; Press Release no longer offered as a newsletter category</td></tr>
+      <tr><td><strong>v108</strong></td><td>2026-10-01</td><td>Medium</td><td>Reader dashboard Newsletter page: readers can pick their newsletter categories again (1 to 3), then Save or Clear</td></tr>
+      <tr><td><strong>v107</strong></td><td>2026-10-01</td><td>Major</td><td>Directory (contacts): the Events Admin account and employee SNFYI-0029 (Rishabh Prajapati) now have full access, the same as the super admin, instead of view only</td></tr>
       <tr><td><strong>v81</strong></td><td>2026-09-29</td><td>Medium</td><td>Employee panel works properly on phones: a menu button and bottom tabs instead of a fixed sidebar, a big Punch In / Punch Out card for today, and card lists instead of wide tables</td></tr>
     </tbody>
   </table>
@@ -4105,6 +4147,857 @@ PHONE                                   +--------------------+
   </div>
 </section>
 
+<section id="v106">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v106</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> Before, the Payroll page showed two text boxes: one about the run window, and one listing every waiting request. To decide a request, HR had to go to the Attendance or Leave page. Now both boxes are gone, and each employee's <strong>"Provisional · N pending"</strong> mark can be clicked. It opens that employee's waiting requests right under their row, each with Approve and Reject buttons.</p>
+    <table>
+      <thead><tr><th>Action</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Click "Provisional · N pending"</td><td>Shows that employee's waiting requests: leave or regularization, the date, the time asked for or the leave type, and the reason.</td></tr>
+        <tr><td>Approve</td><td>The request is approved, and that employee's figures (present days, lost pay, gross, net pay) update straight away. If payroll was already run, the saved payslip updates too.</td></tr>
+        <tr><td>Reject</td><td>The request is rejected. A rejected regularization changes nothing in pay; a rejected leave day stays unpaid.</td></tr>
+        <tr><td>Approval not allowed</td><td>For example, a full-day leave on a day the employee punched in. A message explains why, and nothing changes.</td></tr>
+        <tr><td>Last request decided</td><td>The "Provisional" mark disappears from the row.</td></tr>
+        <tr><td>Still shown</td><td>The "Live preview" note while a month is still running, and the "Locked" note with the Founder's Reopen button.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Payroll &amp; Salary Slips → October (26 Sep – 25 Oct)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Rishabh Prajapati · <em>Provisional · 2 pending ▾</em> · LOP 2 · ₹37,333</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Regularization · 2026-10-15 (punch out) — Punch out at 18:30 — Forgot to punch out</div><div class="wf-box brand">[Approve]</div><div class="wf-box">[Reject]</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Regularization · 2026-10-21 (punch out)</div><div class="wf-box brand">[Approve]</div><div class="wf-box">[Reject]</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Kapil Suri · LOP 0 · ₹1,00,000</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v111">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v111</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> Events near you and the "dropped in your city this week" line only work when we know where a reader is. If a reader's profile has no city or no country, the dashboard now shows a red card right under the welcome box asking for both. They pick a country, type a city and press Save. The card goes away straight after, and the events and weekly line change to that city without reloading the page.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Who sees it?</td><td>Any signed-in reader whose profile is missing a city or a country</td></tr>
+        <tr><td>Message</td><td>"Tell us where you're based. Add your country and city so we can show you startup and tech events happening near you, along with local funding news picked for you."</td></tr>
+        <tr><td>Fields</td><td>Country (searchable list) and City (typed), both required</td></tr>
+        <tr><td>Where is it saved?</td><td>On the reader's profile, the same place the Complete Profile form saves it</td></tr>
+        <tr><td>After saving</td><td>Card disappears; Events Near You and the weekly line update to the new city</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">/dashboard · under the welcome card</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">⚠ Tell us where you're based: add your country and city for events near you</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Country ▾</div><div class="wf-box">📍 City</div><div class="wf-box brand">Save location</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v110">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v110</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> On the live site some readers saw a dashboard that said "Your profile is 0% complete", an empty Member Since tile, and "0 new funding reports dropped this week. Add your city…" even when they had a city and there were real numbers. All of this came from one problem: when the reader's profile failed to load (most often because their login was more than 30 days old), the page filled in zeros and skipped loading the weekly numbers and nearby events altogether. Now the page uses real data, or says plainly that it couldn't load, and old logins are sent back to sign in.</p>
+    <table>
+      <thead><tr><th>On the dashboard</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Login older than 30 days</td><td>Dashboard opened but everything personal was blank</td><td>Reader is signed out and asked to log in again</td></tr>
+        <tr><td>Profile ring when the profile can't load</td><td>"0% complete. A couple of fields are still outstanding."</td><td>"—" and "We couldn't load your profile right now."</td></tr>
+        <tr><td>"This week" line</td><td>Always "0" if the profile failed</td><td>Real weekly numbers, using the reader's city (from the profile, or from their saved login). If the numbers can't load, that sentence is left out instead of saying 0</td></tr>
+        <tr><td>Events Near You</td><td>Empty if the profile failed</td><td>Always loads</td></tr>
+        <tr><td>Member Since</td><td>Blank</td><td>Month and year, or "—" if unknown</td></tr>
+        <tr><td>WhatsApp Community tile</td><td>Opened the MENA WhatsApp channel</td><td>Opens the StartupNews.fyi WhatsApp community group</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">/dashboard · KPI row</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Reports Unlocked 32 / 32</div><div class="wf-box">Saved Events 0</div><div class="wf-box brand">WhatsApp Community → join group</div><div class="wf-box">Member Since Sep 2026</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v109">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v109</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> The Events Tracker already rings a bell at 6 PM so the daily report isn't forgotten. The Employee panel now has the same kind of alarm for sales leads. At 11 AM and again at 4 PM, if an employee has even one assigned lead whose status is still Pending, the same ringtone plays and a small box appears with a link to My Leads. If nothing is pending, it stays quiet.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Who hears it?</td><td>Each employee, for their own assigned leads only</td></tr>
+        <tr><td>When?</td><td>11:00 AM and 4:00 PM (India time), once each per day</td></tr>
+        <tr><td>What counts as pending?</td><td>A lead whose status is still "Pending". Moving it to Follow Up, Confirmed or Not Interested stops it counting</td></tr>
+        <tr><td>Where does it ring?</td><td>On any Employee panel page that is open (Attendance, Leave, My Leads and the rest)</td></tr>
+        <tr><td>Panel not open at 11 AM?</td><td>It rings once as soon as the employee opens the panel later that day</td></tr>
+        <tr><td>Admin Sales Tracker</td><td>No alarm there (no change)</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Employee panel · any page · 11:00 AM</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">… page content …</div></div>
+        <div class="wf-row" style="margin-top:4px;justify-content:flex-end"><div class="wf-box brand">🔔 You have 2 pending leads · Open My Leads · ✕</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v109">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v109</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> The Newsletter page in the reader dashboard has a new look, and <strong>Press Release</strong> is no longer one of the categories a reader can pick. Picking still works the same way as in v108: up to 3 categories, then Save.</p>
+    <table>
+      <thead><tr><th>Part of the page</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Top banner</td><td>Soft pink panel with the "Morning Signal" tag, the title, a short line and an "Arrives daily at 8 AM" chip</td></tr>
+        <tr><td>Category cards</td><td>Each category has its own icon (a robot for AI, a leaf for Climate, a card for Fintech, and so on) and a round tick on the right</td></tr>
+        <tr><td>Counter</td><td>"x of 3 selected" with three small bars that fill in pink</td></tr>
+        <tr><td>Bottom row</td><td>Clear button, the names of the picked categories, and Save Preferences</td></tr>
+        <tr><td>Side cards</td><td>"How it works" and "Unsubscribe", each with an icon</td></tr>
+        <tr><td>Press Release</td><td>Hidden from the list, and dropped from a reader's saved picks the next time they save</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Dashboard → Newsletter</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">✦ Morning Signal — Your Newsletter Preferences · ⏱ Arrives daily at 8 AM</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">🏷 Your Interests</div><div class="wf-box">▬▬ ▪ 2 of 3 selected</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">🤖 AI &amp; Deeptech ✓</div><div class="wf-box brand">💳 Fintech ✓</div><div class="wf-box">🍃 Climate &amp; Energy ○</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">[Clear] AI &amp; Deeptech · Fintech</div><div class="wf-box brand">[Save Preferences]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v108">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v108</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> Since v57, the Newsletter page in the reader dashboard only listed every category, and readers could not pick any. Picking is back: a reader taps up to 3 categories and presses Save, and their Morning Signal email is built from those topics. Categories they saved before show as already ticked. This undoes v57. The full list of categories from v58 stays.</p>
+    <table>
+      <thead><tr><th>On the page</th><th>v57 to v107</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Category cards</td><td>Plain list, can't be tapped</td><td>Tap to tick or untick</td></tr>
+        <tr><td>Limit</td><td>—</td><td>1 to 3 categories; other cards fade out once 3 are picked</td></tr>
+        <tr><td>Buttons</td><td>None</td><td>Save and Clear, plus an "x of 3 selected" counter</td></tr>
+        <tr><td>Saved choices</td><td>Not shown</td><td>Load as ticked when the page opens</td></tr>
+        <tr><td>Unsubscribe card</td><td>Shown</td><td>Shown (no change)</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Dashboard → Newsletter</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Newsletter Categories · 2 of 3 selected</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">✓ Fintech</div><div class="wf-box brand">✓ AI</div><div class="wf-box">EV</div><div class="wf-box">SaaS</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">[Clear]</div><div class="wf-box brand">[Save preferences]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v107">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v107</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> Since v99, two people could only look at the Directory (the contacts database of founders, investors, sponsors, venues and media): whoever logs in to the admin panel as <strong>Events</strong> (Event Admin), and employee <strong>SNFYI-0029, Rishabh Prajapati</strong>, through the employee portal. Both now have full access, the same as the super admin. The "View only" badge is gone for them.</p>
+    <table>
+      <thead><tr><th>Who</th><th>Where they open it</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Super admin</td><td>Admin panel → Directory</td><td>Full access</td><td>Full access (no change)</td></tr>
+        <tr><td>Event Admin (Events account)</td><td>Admin panel → Directory</td><td>View only</td><td>Full access</td></tr>
+        <tr><td>Employee SNFYI-0029</td><td>Employee portal → Directory</td><td>View only</td><td>Full access</td></tr>
+        <tr><td>Publisher Admin, IT Support, editors, authors, other employees</td><td>—</td><td>No access</td><td>No access (no change)</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Full access means</th></tr></thead>
+      <tbody>
+        <tr><td>Add, edit and delete a contact</td></tr>
+        <tr><td>Select rows, then bulk set city or country, add a tag, delete, or download the selection</td></tr>
+        <tr><td>Import contacts from a spreadsheet, and export the whole list</td></tr>
+        <tr><td>The Admin &amp; Config tab: manage the lists of types, cities, countries and tags</td></tr>
+      </tbody>
+    </table>
+    <p>Contacts that the employee adds or edits are recorded under their email address, or under their Employee ID if no email is on file. To give another employee the same access, add their Employee ID to the Directory list in the code.</p>
+    <div class="wf">
+      <div class="wf-bar">Employee portal → Directory (SNFYI-0029)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Directory — Contacts database</div><div class="wf-box">[Import]</div><div class="wf-box">[Export]</div><div class="wf-box brand">[+ Add contact]</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">[Contacts]</div><div class="wf-box">[Admin &amp; Config]</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">☐ Name · Company · City · Country · Type</div><div class="wf-box">[Edit]</div><div class="wf-box">[Delete]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v105">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v105</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> Before, HR could only open an employee's attendance calendar by clicking them in the "Today" list, which only shows people who punched in today. So there was no way to look up anyone else, or to look back at an earlier month. The Attendance page now has a <strong>Monthly attendance</strong> table.</p>
+    <table>
+      <thead><tr><th>Part</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>Month arrows</td><td>Go back to any earlier salary month (26th → 25th). August 2026 shows 1–31 Aug, the dates it was actually paid for.</td></tr>
+        <tr><td>One row per employee</td><td>Present, half day, short leave, paid leave, unpaid leave, absent / lost pay, week-offs and paid days. These are the same numbers payroll pays by.</td></tr>
+        <tr><td>Click a row</td><td>Opens that employee's calendar on that same month.</td></tr>
+        <tr><td>Saved payslip</td><td>For a month already run, shows the amount on the saved payslip. If today's records would give a different amount (for example August, paid under the old rules), both are shown. Paid history is never changed.</td></tr>
+        <tr><td>Leavers</td><td>Someone whose salary for the month is paid in their Full &amp; Final shows a note saying so.</td></tr>
+        <tr><td>Search</td><td>Find an employee by name.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Attendance</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Today — 1 October 2026 (people who punched in today)</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">Monthly attendance · ‹ 26 Aug 2026 – 25 Sep 2026 › · [Search employee]</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Yash Goswami · Present 27 · Paid leave 1 · Lost pay 0 · Paid days 31 / 31</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Priyansh Raj · Salary for this month is paid in the Full &amp; Final</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Regularization requests</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v104">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v104</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> Before, payroll could not be run at all while any employee's request was still waiting for HR, so one undecided request could hold up everyone's salary. Now payroll is worked out from the attendance as it stands, and it keeps itself up to date as HR decides each request.</p>
+    <table>
+      <thead><tr><th>Situation</th><th>What happens now</th></tr></thead>
+      <tbody>
+        <tr><td>Requests still waiting when payroll is run</td><td>Payroll runs. A waiting request counts as <strong>not approved</strong> for now: a waiting regularisation changes nothing yet, and a waiting leave day is unpaid for now.</td></tr>
+        <tr><td>Employees with waiting requests</td><td>Their row shows <strong>"Provisional · N pending"</strong>, and their payslip PDF says "PROVISIONAL" under the month.</td></tr>
+        <tr><td>HR approves a request</td><td>Attendance changes, and the saved payslip, the PDF and the attendance calendar all update by themselves.</td></tr>
+        <tr><td>HR rejects a request</td><td>Nothing changes in pay, and the "Provisional" mark goes away.</td></tr>
+        <tr><td>Payroll page left open while HR decides elsewhere in the HR tool</td><td>The page refreshes by itself. Any TDS typed but not yet saved is kept.</td></tr>
+        <tr><td>Locking the month</td><td>Only once <strong>no request is waiting</strong> and the run window is over. Until then the month stays open (shown in red as overdue), so late decisions still reach the payslips.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Payroll &amp; Salary Slips → September (26 Aug – 25 Sep)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box" style="border-color:#FECACA">5 requests still pending. Payroll is calculated from current attendance; figures update automatically when HR decides. The month locks only after every request is decided.</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Bhawna Panchal · <em>Provisional · 2 pending</em> · ₹22,742</div><div class="wf-box">Yash Goswami · ₹35,000</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">[Run Payroll] (works even with requests waiting)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v103">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v103</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> The attendance calendar and payroll used to count days separately, so they could disagree. For example, one employee's calendar showed 24 present days and 2 leave days, while her payroll row showed 22 present days and 3 days of lost pay. Now both use one shared day-by-day count, so the calendar shows exactly what the payslip pays.</p>
+    <table>
+      <thead><tr><th>Situation</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Which days the calendar shows</td><td>1st to the last day of the month</td><td>The salary month, <strong>26th to 25th</strong>, the same as payroll</td></tr>
+        <tr><td>Leave beyond the employee's balance</td><td>Calendar: "On leave". Payroll: unpaid</td><td>Both show it as <strong>unpaid leave</strong></td></tr>
+        <tr><td>A third short leave in the month</td><td>Calendar: "Present". Payroll: half a day deducted</td><td>Both show "½ deducted"</td></tr>
+        <tr><td>HR approves a fix or leave after payroll was run</td><td>Saved payslips stayed old until someone noticed</td><td>Saved payslips <strong>update by themselves</strong> until the month locks. Each change is written to the audit log</td></tr>
+        <tr><td>Approved full-day leave on a day the person punched in</td><td>The leave was silently ignored and the unworked half was unpaid</td><td>It counts as <strong>half-day leave</strong>: half worked, half leave. New cases are blocked: HR can't approve full-day leave on a punched day</td></tr>
+        <tr><td>Punching in while full-day leave is waiting for approval</td><td>Allowed, which caused the clash above</td><td>Blocked. The employee withdraws the request first</td></tr>
+        <tr><td>Withdrawing leave that isn't approved yet</td><td>Only before the leave date</td><td><strong>Any time</strong> while it's waiting. Approved leave still only before it starts (HR after that)</td></tr>
+        <tr><td>Running payroll while requests are waiting</td><td>Was possible in the old version (September was run with 5 waiting)</td><td>Blocked until every request is approved or rejected</td></tr>
+      </tbody>
+    </table>
+    <p>The <strong>attendance calendar</strong> (HR view) now shows these boxes: present, half day, short leave, paid leave, <strong>unpaid leave</strong>, absent / lost pay, week-offs and <strong>paid days</strong>. Under them is one line with that month's payslip. Employees see the same day counts on their own attendance page, without salary amounts.</p>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Attendance → Bhavika Arora</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">‹ 26 Aug 2026 – 25 Sep 2026 › · 25 of 31 days paid · 6 lost pay</div></div>
+        <div class="wf-row" style="margin-top:4px">
+          <div class="wf-box">Present 21</div><div class="wf-box">Half day 0</div><div class="wf-box">Paid leave 0.5</div><div class="wf-box">Unpaid leave 0</div><div class="wf-box">Lost pay 6</div><div class="wf-box">Paid days 25</div>
+        </div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">Payslip for this salary month: 25 paid days · gross ₹20,968 · same as the Payroll page</div></div>
+      </div>
+    </div>
+    <pre class="mermaid">
+flowchart LR
+    A["Punch in / out<br/>or approved fix"] --> C["One shared<br/>day-by-day count"]
+    B["Leave approved,<br/>rejected or cancelled"] --> C
+    C --> D["Attendance calendar"]
+    C --> E["Payroll &amp; payslips"]
+    E --> F{"Month locked?"}
+    F -->|no| G["Saved payslips update<br/>by themselves"]
+    F -->|yes| H["No changes<br/>(Founder can reopen)"]
+    </pre>
+  </div>
+</section>
+
+<section id="v102">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v102</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-01</span>
+    </div>
+    <p><strong>What changed.</strong> Payroll now follows a fixed monthly routine. Before, it could be run before the month had even ended (September was run at 10:44 PM on its last day), it never noticed changes made after a run, and requests still waiting for approval were silently counted as absent.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works now</th></tr></thead>
+      <tbody>
+        <tr><td>Salary month</td><td><strong>26th to 25th.</strong> October's salary covers 26 Sep – 25 Oct.</td></tr>
+        <tr><td>Last requests</td><td>Employees can still send regularisation or leave requests for the month that just ended on the 26th and 27th.</td></tr>
+        <tr><td>Run Payroll</td><td>Works only from the <strong>26th to the 30th</strong> (in February, 26 Feb – 2 Mar). It can be re-run as many times as needed, and each run shows fresh amounts.</td></tr>
+        <tr><td>Waiting requests</td><td>Run Payroll is blocked until every request for that month is approved or rejected. The page lists them.</td></tr>
+        <tr><td>Changed after a run</td><td>The page shows "Out of date — run payroll again".</td></tr>
+        <tr><td>After the 30th</td><td>Once payroll has been run and nothing is waiting, the month is <strong>locked</strong>, and nothing in it can change. If it isn't finished, it stays open with a red warning until it is.</td></tr>
+        <tr><td>Fixing a locked month</td><td>Only the Founder can reopen it, for 2 days, and must give a reason. The reason is saved in the audit log.</td></tr>
+        <tr><td>Short leave (worked 7.5–8.25 hours)</td><td>The first 2 in a salary month are free. Each one after that costs half a day's pay, and nothing carries over.</td></tr>
+        <tr><td>Late-mark switch</td><td>Removed from the Rules page, because it never did anything.</td></tr>
+        <tr><td>Founders</td><td>Same rules as everyone. Days without punches are deducted.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Changeover.</strong> August (1–31 Aug) stays as it was paid and is locked. September is recalculated as <strong>26 Aug – 25 Sep</strong>. Because 26–31 Aug were already paid in August, they count as paid days here, and nobody is charged for them twice. People who joined after 26 Aug are still not paid for the days before they joined. From October, every month runs 26th to 25th.</p>
+    <table>
+      <thead><tr><th>Date (October example)</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>26 Sep – 25 Oct</td><td>Attendance for October's salary. HR can watch a live preview at any time.</td></tr>
+        <tr><td>26 – 27 Oct</td><td>Last chance for employees to request fixes or leave for 26 Sep – 25 Oct.</td></tr>
+        <tr><td>26 – 30 Oct</td><td>HR decides every request, then runs (and re-runs) payroll.</td></tr>
+        <tr><td>31 Oct onward</td><td>Locked. Attendance from 26 Oct belongs to November's salary.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Payroll &amp; Salary Slips</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Run window open — October 2026 · 26 Sep 2026 – 25 Oct 2026</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Run Payroll is open until 30 Oct. Approve or reject every request, then run.</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box" style="border-color:#FECACA">2 requests still pending — Bhawna · Regularization · 5 Sep · …</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">[Run Payroll] (greyed out until nothing is pending)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v101">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v101</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> Leave now follows one clear set of rules, and the system checks them from every screen: the employee panel, the Publisher/Event Admin panel and HR Management. Before, the leave balance was shown but never checked, HR Management's "Apply for leave" had no checks at all, and payroll paid at most one leave day a month even when someone had saved up more.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works now</th></tr></thead>
+      <tbody>
+        <tr><td>Leave types</td><td>Only the types HR has switched on (right now Casual, 1 a month). "Other (please specify)" is gone.</td></tr>
+        <tr><td>Balance</td><td>1 Casual is added in the joining month and on the 1st of every month. Unused balance is lost on 1 January.</td></tr>
+        <tr><td>More than your balance</td><td>Allowed, but the extra days are <strong>unpaid</strong>. The form shows "1 paid + 1 unpaid" before you submit, and HR sees the same on the request.</td></tr>
+        <tr><td>Waiting requests</td><td>A waiting request holds the days, so they can't be used twice. Rejecting or cancelling it gives them back.</td></tr>
+        <tr><td>Saved-up leave</td><td>Paid in full. If you saved 3 days and take 2 in one month, both are paid.</td></tr>
+        <tr><td>Half-day leave</td><td>First half or second half of a single day. It uses half a day of balance, and you work the other half.</td></tr>
+        <tr><td>When you can apply</td><td>Today, yesterday or any future date.</td></tr>
+        <tr><td>A day you punched in</td><td>Full-day leave isn't possible for it. Use half-day leave or regularisation. You also can't punch in on a day of approved full-day leave; ask HR to cancel the leave first.</td></tr>
+        <tr><td>Cancelling</td><td>The employee can cancel until the leave starts. After that, only HR can.</td></tr>
+        <tr><td>Sundays and holidays</td><td>Not counted inside a leave (Saturday + Monday = 2 days).</td></tr>
+        <tr><td>Saturdays</td><td>All Saturdays are working days. The rule text now says so (it used to say "alternate Saturdays off", which was never applied).</td></tr>
+        <tr><td>Calendar</td><td>Approved leave days now show as "On leave" instead of absent.</td></tr>
+        <tr><td>Payslip</td><td>Half days show correctly (16.5, not rounded to 17).</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Example.</strong> Bhavika joined on 1 Sep, so she had 1 Casual day. Her 2 approved days (25 and 26 Sep) now show clearly as <strong>1 paid + 1 unpaid</strong>, and her balance shows 0, not −1.</p>
+    <div class="wf">
+      <div class="wf-bar">Employee panel → Leave → Apply for Leave</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Casual: 1 available</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Leave type [Casual ▾] · Duration [Full day(s) ▾ / Half day — first / second]</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">From [today] To [tomorrow] · Reason…</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">1 paid + 1 unpaid — not enough balance, the extra day is deducted from salary</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">My requests: Casual · 25–26 Sep · 1 paid + 1 unpaid · Approved · [Cancel] (until it starts)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v100">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v100</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> Regularisation (asking to fix a missed or wrong punch) now follows one clear set of rules, and the rules are checked by the system every time, from every screen. HR can <strong>no longer change a day's attendance directly</strong> (the "HR correction" on the calendar and "Bulk mark attendance" are gone). Every fix now starts as a request from the employee, and HR only <strong>approves or rejects</strong> it.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works now</th></tr></thead>
+      <tbody>
+        <tr><td>Limit</td><td><strong>5 days per salary month.</strong> Fixing punch-in and punch-out on the same day counts as one day.</td></tr>
+        <tr><td>What counts</td><td>Approved and waiting requests count. A rejected request gives the day back.</td></tr>
+        <tr><td>After 5 days</td><td>No more requests that salary month. There are no exceptions.</td></tr>
+        <tr><td>How late you can ask</td><td>Within <strong>5 days</strong> of the date (for 24 Sep, the last day is 29 Sep). Days from last salary month can be asked about only for 2 days after it ends, so HR can decide everything before payroll.</td></tr>
+        <tr><td>Allowed times</td><td>Punch-in <strong>8:00 AM – 2:00 PM</strong>. Punch-out <strong>2:00 PM – 11:00 PM</strong>, and punch-out must be after punch-in.</td></tr>
+        <tr><td>Why 2:00 PM for punch-in?</td><td>A half day needs 4.5 hours before the shift ends at 6:30 PM, so anyone arriving after 2:00 PM is Absent anyway. For a planned late arrival, apply for leave in advance.</td></tr>
+        <tr><td>What the employee sees</td><td>"3 of 5 days used this payroll cycle · request by 29 Sep" next to the Regularize buttons, and a clear message when a day can no longer be fixed.</td></tr>
+        <tr><td>Old HR corrections</td><td>The 31 direct HR edits made in August and September were turned into approved requests marked "converted from HR edit". Pay stays the same, and they don't use up anyone's 5 days.</td></tr>
+        <tr><td>Dates</td><td>The system now uses India time for "today". Before, a punch between midnight and 5:30 AM landed on the previous day.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>How a fix flows now</strong></p>
+    <table>
+      <thead><tr><th>Step</th><th>Who</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Ask</td><td>Employee</td><td>Picks the day, Punch In or Punch Out, the time and a reason.</td></tr>
+        <tr><td>Check</td><td>System</td><td>Checks the time window, the 5-day window, the salary month, that the day really needs fixing, and the 5-day limit. If any check fails, it says why.</td></tr>
+        <tr><td>Decide</td><td>HR Head / Founder</td><td>Approves or rejects.</td></tr>
+        <tr><td>Result</td><td>System</td><td>If approved, the day's punch time is corrected, and payroll uses it.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Employee panel → Attendance → a day</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">24 Sep · In 10:40 am · Out — · Absent</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">[Regularize Punch In] [Regularize Punch Out]</div><div class="wf-box">3 of 5 days used this payroll cycle · request by 29 Sep</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Punch Out time (2:00 PM – 11:00 PM): [6 ▾] : [30 ▾] PM · Reason… · [Submit]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v99">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v99</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> The <strong>Directory</strong> (the contacts database of founders, investors, sponsors, venues and media) was only open to the super admin. Two more people can now open it to <strong>look things up</strong>: the <strong>Event Admin</strong>, from the admin panel, and the employee with ID <strong>SNFYI-0029</strong>, from the employee panel. They can read everything but cannot change or download anything.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where do they find it?</td><td>A <strong>Directory</strong> item in the side menu. Event Admin sees it in the admin panel. SNFYI-0029 sees it in the employee panel. No other employee sees it.</td></tr>
+        <tr><td>What can they do?</td><td>See the counts at the top, search, filter by city, country, type and tag, sort, move between pages, and click a name to open the full contact card. Emails, phone numbers (with the WhatsApp button) and LinkedIn links work as usual.</td></tr>
+        <tr><td>What can't they do?</td><td>Import, Export Excel, Add contact, Delete all, tick rows, bulk-edit, Download selected, Edit or Delete a contact, or open Admin &amp; Config. None of these buttons are shown to them.</td></tr>
+        <tr><td>What if someone tries anyway?</td><td>The server refuses any change that does not come from the super admin, so hiding the buttons is not the only protection.</td></tr>
+        <tr><td>How is it marked?</td><td>A yellow <strong>View only</strong> label next to the page's subtitle.</td></tr>
+        <tr><td>Anything to know?</td><td>Anyone who can see a contact on screen can still copy it by hand. The page just offers no way to download the list.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Directory — view only (Event Admin / SNFYI-0029)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Directory · Contacts database … <span style="background:#fef3c7;color:#b45309;border-radius:10px;padding:0 6px">View only</span></div><div class="wf-box">(no Import / Export / Add / Delete buttons)</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Total · Cities · Investors · Sponsors · Startups · Companies</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">[Search…] [All cities ▾] [All countries ▾] [All types ▾] [All tags ▾] Clear</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">Name · Company · Type · City · Country · Tags · Email · Phone (no tick boxes, no Edit / Delete)</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Click a name → contact card with only a Close button</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v98">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v98</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> When an employee resigns (or HR ends their job with notice) and HR accepts it, their salary is no longer paid month by month during the notice. From the salary month in which the notice starts, the salary is held and paid together in the <strong>Full &amp; Final</strong> (F&amp;F) settlement after they leave. This works the same whether the salary month runs from the 26th to the 25th or from the 1st to the end of the month.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>When does the hold start?</td><td>Only after HR <strong>accepts</strong> the resignation. While it is still pending, payroll pays as usual.</td></tr>
+        <tr><td>Which months are held?</td><td>The whole salary month the notice starts in, and every month after it up to the last working day.</td></tr>
+        <tr><td>What does the Payroll page show?</td><td>The employee is left out of that month's run, with a note: "On notice — this cycle's salary is held and paid in their Full &amp; Final".</td></tr>
+        <tr><td>What does the F&amp;F show?</td><td>One salary line per month, e.g. "Salary 26 Sep – 25 Oct (30 paid days, held during notice)" and "Salary 26 Oct – 9 Nov (15 paid days)". Absent days and unpaid leave are deducted as usual.</td></tr>
+        <tr><td>What if payroll for that month was already run before HR accepted?</td><td>That month was already paid, so its F&amp;F line shows ₹0. Nothing is paid twice.</td></tr>
+        <tr><td>What if HR cancels the exit?</td><td>The hold stops. If a month was already run while the salary was held, HR re-runs that month's payroll to pay it.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Example.</strong> Salary ₹50,000 a month, resignation on 10 Oct, 30-day notice, last working day 9 Nov, full attendance.</p>
+    <table>
+      <thead><tr><th>Salary month</th><th>Monthly payroll</th><th>Full &amp; Final</th></tr></thead>
+      <tbody>
+        <tr><td>26 Sep – 25 Oct</td><td>₹0 (held)</td><td>₹50,000</td></tr>
+        <tr><td>26 Oct – 9 Nov</td><td>—</td><td>₹24,194 (15 of 31 days)</td></tr>
+        <tr><td>If the salary month is 1st – end of month</td><td>October ₹0 (held)</td><td>₹50,000 for October + ₹15,000 for 1–9 Nov</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Offboarding → Full &amp; Final</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">Salary 26 Sep – 25 Oct (30 paid days, held during notice) · + ₹50,000</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">Salary 26 Oct – 9 Nov (15 paid days) · + ₹24,194</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Leave encashment · Expenses · Recoveries (as before)</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Net payable · [Save] [Approve]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v97">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v97</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> When the admin assigns a lead in the Sales Tracker, they can now write a message to the people they assigned, such as "Call them before Friday and share the delegation deck". The message box is on every lead in the Sales Tracker, whichever page the lead came from.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>When does the message box appear?</td><td>While editing a lead, once at least one <strong>Department</strong> and one person under <strong>Assigned to</strong> are picked. Before that, a short note explains what to pick first.</td></tr>
+        <tr><td>Who gets the message?</td><td>Everyone assigned to the lead sees the same message.</td></tr>
+        <tr><td>When is it sent?</td><td>When the admin clicks Save / Update. Writing a message is optional.</td></tr>
+        <tr><td>What if the admin writes again later?</td><td>The new message is added on top. Earlier messages stay underneath with who wrote them and when, so nothing is lost.</td></tr>
+        <tr><td>Where does the employee see it?</td><td>In <strong>My Leads</strong>, at the top of the lead window, in a highlighted "Message from admin" box. The newest message is marked "Latest".</td></tr>
+        <tr><td>Can the employee reply?</td><td>They reply by adding a <strong>follow-up</strong>, as before. The admin sees every follow-up in the lead's "Employee follow-ups" panel.</td></tr>
+      </tbody>
+    </table>
+    <p>Also fixed: one older follow-up was showing as "Pending" in the admin panel even though the employee had marked it "Interested". It now shows as "Follow Up", which is what "Interested" became when the statuses were simplified.</p>
+    <div class="wf">
+      <div class="wf-bar">Sales Tracker → Edit lead</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Departments: [Events ×] [Tech ×]</div><div class="wf-box">Assigned to: [Bhawna Panchal ×] [Yash Goswami ×]</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box brand">MESSAGE FOR ASSIGNED EMPLOYEES — New message: "Call them before Friday and share the delegation deck"</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Earlier message · Admin · 29 Sep 2026, 14:05 — "Please qualify the budget first"</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Lead status: Follow Up ▾</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">My Leads → lead window (employee)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">MESSAGE FROM ADMIN · Latest — "Call them before Friday and share the delegation deck"</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Submitted details (view only)</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Add a follow-up: status + message → [Save follow-up]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v96">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v96</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> The "Which best describes you?" step of <em>Complete your profile</em> had near-duplicate choices. It is now shorter. No existing member had picked any of the changed options, so nobody's profile is affected.</p>
+    <table>
+      <thead><tr><th>Before</th><th>Now</th><th>Questions on the Details step</th></tr></thead>
+      <tbody>
+        <tr><td>Lawyer, CA / CS</td><td><strong>Professionals</strong></td><td>Firm Name, Membership No. (Bar Council, ICAI or ICSI), Practice Areas / Services, Jurisdictions Qualified In, Years of Experience</td></tr>
+        <tr><td>VC Firm, PE Firm</td><td><strong>VC / PE Firm</strong></td><td>Same as Investor: firm or fund name, investor type, check size, stage, sector and geography focus</td></tr>
+        <tr><td>Banker</td><td>Removed</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <p>The admin <em>Registered Users</em> category filter shows the same new list.</p>
+    <div class="wf">
+      <div class="wf-bar">Complete your profile → Category</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Startup</div><div class="wf-box">Investor</div><div class="wf-box">Accelerator</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Incubator</div><div class="wf-box">Content Creator</div><div class="wf-box brand">Professionals</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Investment Banker</div><div class="wf-box brand">VC / PE Firm</div><div class="wf-box">Family Office</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Govt / Policy</div><div class="wf-box">Media / Journalist</div><div class="wf-box">Consultant / Advisor</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Co-working Space</div><div class="wf-box">University</div><div class="wf-box">Student</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Other</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v95">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v95</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> Three improvements to the <em>Complete your profile</em> window and the "profile % complete" bar shown on the member dashboard and Settings page.</p>
+    <table>
+      <thead><tr><th>Change</th><th>What the member sees</th></tr></thead>
+      <tbody>
+        <tr><td>Phone number</td><td>The phone field now has a <strong>country-code box</strong> (e.g. "IN +91") next to the number, exactly like the Feature Your Startup and Funding Round forms. Only digits can be typed, the length is limited to what that country uses, and a wrong number shows a clear message. Picking a country fills in its code if no number has been typed yet.</td></tr>
+        <tr><td>Organization and Role</td><td>Asked of every member in a new <strong>Work</strong> section on the first screen (before, only a few categories were asked). Categories that used to be asked for them on the Details step now see a short "No extra details needed" note there instead.</td></tr>
+        <tr><td>Field names</td><td>All labels use capitalised words, e.g. "Full Name", "LinkedIn Profile", "Short Bio", "Founded Year", "Years of Experience".</td></tr>
+      </tbody>
+    </table>
+    <p><strong>How "profile % complete" is worked out now.</strong> The same for every member, adding up to 100%:</p>
+    <table>
+      <thead><tr><th>Field</th><th>Worth</th></tr></thead>
+      <tbody>
+        <tr><td>Phone / WhatsApp</td><td>15%</td></tr>
+        <tr><td>LinkedIn Profile</td><td>15%</td></tr>
+        <tr><td>Short Bio</td><td>15%</td></tr>
+        <tr><td>Full Name</td><td>10%</td></tr>
+        <tr><td>Country + City (only when both are filled)</td><td>10%</td></tr>
+        <tr><td>Website</td><td>10%</td></tr>
+        <tr><td>Category (what best describes you)</td><td>10%</td></tr>
+        <tr><td>Organization</td><td>5%</td></tr>
+        <tr><td>Role</td><td>5%</td></tr>
+        <tr><td>Email (always filled from sign-up)</td><td>5%</td></tr>
+      </tbody>
+    </table>
+    <p>The extra category questions on the Details step (startup stage, check size, and so on) are still saved and shown, but no longer change the percentage.</p>
+    <div class="wf">
+      <div class="wf-bar">Complete your profile → Basic Info</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">PERSONAL DETAILS — Full Name *</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">✉ Email 🔒</div><div class="wf-box">[IN +91 ▾] [98765 43210] Phone / WhatsApp *</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">WORK — Organization</div><div class="wf-box">Role</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">LOCATION — Country *</div><div class="wf-box">City</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">ONLINE PRESENCE — LinkedIn Profile</div><div class="wf-box">Website</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Short Bio … 0/300</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v94">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v94</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> Content Studio (the admin tool that drafts posts with AI from trending news, a link or a topic) now uses the company's own <strong>Azure OpenAI</strong> account to write drafts. Before, it was set up for Claude, but no Claude key was ever added, so drafting did not work. It also moved: it no longer has its own line in the admin sidebar and is opened from the Posts page instead.</p>
+    <table>
+      <thead><tr><th>Part</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>AI service that writes the drafts</td><td>Claude (no key set, so "Not configured")</td><td>Azure OpenAI, using the model set up in the company's Azure account</td></tr>
+        <tr><td>Where the settings live</td><td>One Claude key on the server</td><td>Four Azure settings on the server: key, address, model name, API version. Staff browsers never see them.</td></tr>
+        <tr><td>Red status bar at the top of the studio</td><td>"Claude · model name"</td><td>"Azure OpenAI · model name", plus a note that the key stays on the server</td></tr>
+        <tr><td>How to open it</td><td>Its own "Content Studio" sidebar item</td><td>Posts → <strong>Content Studio</strong> tab (next to Posts, Industry, Authors). The Posts item in the sidebar stays highlighted while you work in it.</td></tr>
+        <tr><td>Who can use it</td><td colspan="2">Unchanged: Super Admin, Editor, Author, Publisher Admin</td></tr>
+        <tr><td>What it does</td><td colspan="2">Unchanged: pick a source → generate → edit → send to a new post</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin → Posts</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box solid">Posts</div><div class="wf-box">Industry</div><div class="wf-box">Authors</div><div class="wf-box brand">✦ Content Studio</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">Studio status bar: Azure OpenAI · model name — key is set on the server</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v93">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v93</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> The <em>Complete your profile</em> window (opened from the member dashboard and from Settings) looked long and loose: every field sat on its own line and the last step was a plain list. It now looks tidier and is quicker to fill in. What gets saved is exactly the same as before.</p>
+    <table>
+      <thead><tr><th>Part</th><th>What it looks like now</th></tr></thead>
+      <tbody>
+        <tr><td>Top of the window</td><td>Title, "Step 1 of 5" with a one-line hint, and a progress bar. Finished steps turn into pink ticks you can click to go back.</td></tr>
+        <tr><td>Basic info</td><td>Grouped under three small headings: <strong>Personal details</strong> (Name; Email and Phone side by side), <strong>Location</strong> (Country and City side by side) and <strong>Online presence</strong> (LinkedIn and Website side by side, then the bio).</td></tr>
+        <tr><td>Email</td><td>Shown for reference with a small lock. It is the sign-in email, so it cannot be changed here.</td></tr>
+        <tr><td>Fields</td><td>Boxed fields with small icons (phone, pin, globe, LinkedIn). The bio shows how many of its 300 characters are used.</td></tr>
+        <tr><td>Details step</td><td>Dropdowns match the other fields; Yes/No questions are tap-to-pick buttons; founders and funding rounds sit in their own cards with a bin icon to remove.</td></tr>
+        <tr><td>Buttons</td><td>Always visible at the bottom: <strong>Back</strong> and <strong>Continue</strong> (or <strong>Save &amp; finish</strong> on the last step).</td></tr>
+        <tr><td>Review step</td><td>Starts with a profile card (initials, name, role badge, city, email, phone and bio), then one card per section: Basic details, Sectors, Category &amp; details, Founders, Funding history. Each card has an <strong>Edit</strong> link that jumps straight back to that step. Anything left empty shows "Not added".</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Complete your profile → Basic info</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box solid">① Basic info</div><div class="wf-box">2</div><div class="wf-box">3</div><div class="wf-box">4</div><div class="wf-box">5</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">PERSONAL DETAILS — Full name *</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">✉ Email 🔒</div><div class="wf-box">☎ Phone / WhatsApp *</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">LOCATION — Country * ▾</div><div class="wf-box">📍 City</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">ONLINE PRESENCE — LinkedIn</div><div class="wf-box">🌐 Website</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Short bio … 0/300</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">← Back</div><div class="wf-box brand">Continue →</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Complete your profile → Review</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">(YG) Yash Goswami · 🚀 Startup · Delhi, India · email · phone — bio</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">Basic details [Edit] — Name · Email · Phone · Country · City · LinkedIn · Website</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Category &amp; details [Edit] — You are a · Startup name · Stage · …</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Founders [Edit] · Funding history [Edit]</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">← Back</div><div class="wf-box brand">Save &amp; finish ✓</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v92">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v92</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> Startups fill in the IncubatX <em>Startup Details</em> form (<code>/incubatx/startup-details</code>) so we can apply for grants on their behalf. Until now their answers were saved but nobody in the team could see them in the admin panel. There is now a <strong>Grants</strong> item in the admin sidebar that lists every submission.</p>
+    <table>
+      <thead><tr><th>Part</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>Who can see it</td><td>Only the main admin. The dossiers hold founders' phone numbers, revenue and company certificates.</td></tr>
+        <tr><td>Summary cards</td><td>All submissions, New, Reviewed, Accepted and Rejected, each with a count. Clicking a card shows only those submissions.</td></tr>
+        <tr><td>Table</td><td>Just the key columns: Startup (with its reference number, like IX-2026-0001), Stage and Sector, Contact (email and mobile), Submitted date and Status. Newest first, 20 per page.</td></tr>
+        <tr><td>Search</td><td>Finds submissions by startup name, email, founder name, sector, mobile or reference.</td></tr>
+        <tr><td>Full details</td><td>Clicking any row opens a panel from the right with every answer: startup and founders, positioning, market and model, financials and team, and all five uploaded documents with an <strong>Open</strong> button.</td></tr>
+        <tr><td>Status</td><td>Every new submission starts as <strong>New</strong>. In the details panel the admin can change it to Reviewed, Accepted or Rejected, and the table and counts update straight away.</td></tr>
+        <tr><td>Data</td><td>Uses the same single table the form already saves to. Nothing is copied anywhere else.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin → Grants</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">All 12</div><div class="wf-box">New 5</div><div class="wf-box">Reviewed 4</div><div class="wf-box">Accepted 2</div><div class="wf-box">Rejected 1</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">🔍 Search startup, email, founder, reference…</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box solid">Startup · Stage / Sector · Contact · Submitted · Status · ›</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">(AC) Acme Labs IX-2026-0001 · MVP / Fintech · founder@acme.in +91 98… · 30 Sep 2026 · New · ›</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">Click a row → panel: Startup &amp; founders · Positioning · Market &amp; model · Financials &amp; team · Documents [Open] · Status ▾</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v91">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v91</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-30</span>
+    </div>
+    <p><strong>What changed.</strong> The sidebar members see on their dashboard has a new look, modelled on another product's sidebar we liked, but in StartupNews pink instead of blue. It still opens when you point at it and folds back to icons when you move away.</p>
+    <table>
+      <thead><tr><th>Part</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Menu items</td><td>Smaller text, thin pink line next to the current page</td><td>Larger text and icons with more space between them. The current page sits in a soft pink rounded box.</td></tr>
+        <tr><td>New items</td><td>—</td><td><strong>Handouts</strong>, <strong>Incubators</strong> and <strong>Grants</strong>, shown greyed out with a lock. They can't be opened yet.</td></tr>
+        <tr><td>Profile reminder</td><td>A small "Profile complete" line</td><td>A pink card that says "Complete your profile", with a progress bar and a <strong>Complete Profile</strong> button. The × hides it until the member's next visit.</td></tr>
+        <tr><td>Bottom of the sidebar</td><td>A plain "Logout" link</td><td>The member's initials, name and email. Clicking it opens a small menu with <strong>Profile</strong> and <strong>Logout</strong>.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Member sidebar (opened)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">▦ Dashboard</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">Reports</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">Brand Stories 🔒 · Handouts 🔒 · Incubators 🔒 · Grants 🔒</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">Newsletter · Profile</div></div>
+        <div class="wf-row" style="margin-top:14px"><div class="wf-box solid">Complete your profile ×  ▬▬▬──── 43%  [ Complete Profile ]</div></div>
+        <div class="wf-row" style="margin-top:8px"><div class="wf-box">(YG) Name · email ▾ → Profile / Logout</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v90">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v90</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> When HR corrected someone's attendance, whether one day from the calendar or many at once with Bulk mark, the calendar changed but Payroll didn't. Payroll only looked at punches, so a day HR marked Present could still be cut from pay. Payroll now uses HR's correction for that day.</p>
+    <table>
+      <thead><tr><th>HR marked the day as</th><th>Payroll treats it as</th></tr></thead>
+      <tbody>
+        <tr><td>Present</td><td>A full paid working day</td></tr>
+        <tr><td>Half Day</td><td>Half a paid day</td></tr>
+        <tr><td>On leave</td><td>Leave (paid up to the monthly leave allowance)</td></tr>
+        <tr><td>Week-off</td><td>A paid day off</td></tr>
+        <tr><td>Absent</td><td>Loss of pay</td></tr>
+      </tbody>
+    </table>
+    <p>Days before joining or after an employee's last day are still unpaid. If a month's payroll has already been run, it stays as it was until HR clicks <strong>Recompute &amp; Run Payroll</strong>.</p>
+  </div>
+</section>
+
+<section id="v89">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v89</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> HR could only fix attendance one person and one day at a time, from the calendar. The Attendance screen now has a <strong>Bulk mark attendance</strong> button (HR Head and Founder only). HR picks the people, the dates and the status, and everything is saved in one go.</p>
+    <table>
+      <thead><tr><th>Choice</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>From / To</td><td>The dates to mark, up to 62 days at once</td></tr>
+        <tr><td>Status</td><td>Present, Half Day, Absent, On leave or Week-off</td></tr>
+        <tr><td>Skip Sundays and company holidays</td><td>On by default, so only working days are marked</td></tr>
+        <tr><td>Employees</td><td>Tick people one by one, search by name, filter by team, or "select all". People who have left are not listed.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Bulk mark attendance</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">From · To (date range)</div><div class="wf-box">Status: Present ▾</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">☑ Skip Sundays and company holidays — "2 day(s) will be marked"</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">Search employee…</div><div class="wf-box">All teams ▾</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box solid">☑ select all · ☑ Employee A (Editorial) · ☐ Employee B (Sales) …</div></div>
+        <div class="wf-row" style="margin-top:10px"><div class="wf-box">Close</div><div class="wf-box brand">Mark 1 × 2</div></div>
+      </div>
+    </div>
+    <p>This works exactly like the calendar's "HR correction": the chosen status replaces what the punches say for those days. Days before a person's joining date are skipped. As before, these corrections show on the HR calendar but do not yet change Payroll or what the employee sees in their own portal.</p>
+  </div>
+</section>
+
+<section id="v88">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v88</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> Getting a Content Studio article into a post used to mean copying the HTML, opening a new post and pasting it in. There is now a <strong>Move to post</strong> button next to the copy buttons. One click opens a new post with the article already filled in.</p>
+    <table>
+      <thead><tr><th>Post field</th><th>Filled with</th></tr></thead>
+      <tbody>
+        <tr><td>Title and link (slug)</td><td>The article headline</td></tr>
+        <tr><td>Excerpt</td><td>The sub-headline (or the meta description if there is none)</td></tr>
+        <tr><td>Meta description</td><td>The SEO meta description</td></tr>
+        <tr><td>Content</td><td>The same HTML as "Copy full HTML", brought in exactly as the editor's "Upload HTML" button would</td></tr>
+      </tbody>
+    </table>
+    <p>Category, author and featured image are still chosen by hand, and nothing is saved until the editor clicks Save Draft or Publish.</p>
+  </div>
+</section>
+
 <!-- ───────────────────────── 11 ───────────────────────── -->
 
 <!-- ───────────────────────── 11 ───────────────────────── -->
@@ -4128,6 +5021,74 @@ PHONE                                   +--------------------+
       </tbody>
     </table>
     <p>On the edit page, clearing the title, slug, category or author on a draft keeps what was saved before rather than blanking it. Switching the status to <strong>Published</strong> or <strong>Scheduled</strong> brings every check back: category, author, at least 10 characters of content and excerpt, and a date for scheduled posts. Drafts never appear on the public site.</p>
+  </div>
+</section>
+
+<section id="v86">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v86</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> The admin panel has a new screen, <strong>Content Studio</strong>, listed in the sidebar just under Posts. It writes a complete article draft with AI (Anthropic's Claude) so an editor starts from a finished first version instead of a blank page. It was built as a separate tool and has now been moved inside the admin panel, behind the normal admin login.</p>
+    <table>
+      <thead><tr><th>Step</th><th>What the editor does</th><th>What the studio does</th></tr></thead>
+      <tbody>
+        <tr><td>1. Pick a source</td><td>Chooses a trending story, pastes a link to an article, or types a topic</td><td>Pulls today's stories from Google News and Google Trends (plus any sites the editor added), or reads the full text of the linked article</td></tr>
+        <tr><td>2. Set the style</td><td>Picks an article template and the staff author whose voice it should be written in</td><td>Remembers the author list and extra sources in this browser</td></tr>
+        <tr><td>3. Generate</td><td>Clicks <strong>Generate + Fact-Check</strong></td><td>Writes the draft in 3–4 steps and ticks each one off as it finishes (it can take a minute or more)</td></tr>
+        <tr><td>4. Review</td><td>Reads the draft, highlights passages, fills in the yellow "add your own input" boxes</td><td>Shows the article, byline, 6 FAQs, SEO title and description, and the search-engine data block</td></tr>
+        <tr><td>5. Use it</td><td>Copies the HTML or downloads the .html file, then creates the post in Posts</td><td>Nothing is saved to the website by the studio itself</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Who can open it</th><th>Can use Content Studio?</th></tr></thead>
+      <tbody>
+        <tr><td>Admin, Editor, Author</td><td>Yes</td></tr>
+        <tr><td>Publisher Admin</td><td>Yes</td></tr>
+        <tr><td>Event Admin, IT Support</td><td>No (not in their sidebar, and blocked if they try the address)</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">+--------------------------------------------------------------------------+
+| * Content Studio                                                         |
+| Claude - claude-opus-5-5                            v claude-opus-5-5    |
+| Settings: Author [ Editorial Team v]  Template [ News v]  Length [ v]    |
+| [URL Import] [Topic] [News]      Selected: Startup raises $20M...        |
+|                                     [ Generate + Fact-Check ]            |
++--------------------------+-----------------------------------------------+
+| Last 24h v   (Refresh)   | [Article preview] [SEO data] [Schema JSON-LD] |
+| o Startup raises $20M... | [Full HTML]                                   |
+| o AI chip maker IPO ...  |   Headline of the generated article           |
+| o Govt policy on ...     |   By Jane Doe                                 |
+|                          |   Body paragraphs ...                         |
+|                          |   [ Key takeaways ]                           |
+|                          |   [ Add your own input here ]                 |
++--------------------------+-----------------------------------------------+</div>
+    <p><strong>Good to know.</strong> The AI key is kept on the server and never reaches the browser. Until the key is added to the server settings, the studio still loads and lists news, but shows "Not configured" and cannot generate. Every draft is a starting point: an editor should check facts, quotes and figures before publishing.</p>
+  </div>
+</section>
+
+<section id="v87">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v87</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-09-29</span>
+    </div>
+    <p><strong>What changed.</strong> The admin panel used a mix of hand-drawn icons, emoji (📅 🗑 ⚠) and typed symbols (✓ ✕ ←) that looked different from screen to screen. All of them now come from one icon set, <strong>Lucide</strong>, so every screen shares the same line weight and style. Where Lucide has no suitable icon, <strong>Remix Icon</strong> is used instead (today that's only the Google logo on the Registered Users page). Nothing moved and no button changed what it does.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Sidebar and header</td><td>Hand-drawn icons</td><td>Lucide icons (Content Studio shows a sparkle)</td></tr>
+        <tr><td>Post editor toolbar</td><td>Letters and symbols (B, I, ¶, ❝, 🔗, 🖼)</td><td>Standard editor icons (bold, italic, heading, quote, link, image…)</td></tr>
+        <tr><td>Lists and forms</td><td>"← Back", "+ Add", ✎, 🗑, ▲/▼ sort arrows</td><td>Arrow, plus, pencil, bin and chevron icons</td></tr>
+        <tr><td>Messages ("Saved", "Failed", warnings)</td><td>A ✓, ⚠ or ✕ typed in front of the text</td><td>A green tick, amber warning or red cross icon beside the text</td></tr>
+        <tr><td>HR tool, Sales Tracker, IT Tickets, Content Studio</td><td>Their own mix of symbols and drawings</td><td>The same Lucide icons as everywhere else</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Left as they were:</strong> charts (IT Tickets pie chart, Events Tracker year-on-year chart, the Content Studio score ring), the Google logo, arrows inside sentences, and the emoji in the Events Tracker daily report that is sent to WhatsApp.</p>
+    <p><strong>Going forward:</strong> new admin screens use only these two icon sets.</p>
   </div>
 </section>
 

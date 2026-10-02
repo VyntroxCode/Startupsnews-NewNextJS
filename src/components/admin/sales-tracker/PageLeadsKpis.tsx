@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { isOpenStatusLabel, PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS } from './constants';
 import { matchesType } from './LeadsTable';
 import type { UnifiedLeadRow } from './types';
@@ -50,7 +51,7 @@ export default function PageLeadsKpis({ rows, active, onSelect }: {
                 <div className="num">{total}</div>
                 <div className="lbl">{PAGE_LEAD_LABELS[type] || type}</div>
                 {open > 0 && <div className="metric-open">{open} not closed</div>}
-                <div className="metric-cta">{isActive ? 'Showing in All leads · clear' : 'View in All leads'} <span className="chev">&#8250;</span></div>
+                <div className="metric-cta">{isActive ? 'Showing in All leads · clear' : 'View in All leads'} <span className="chev"><ChevronRight size={13} aria-hidden /></span></div>
               </button>
             );
           })}

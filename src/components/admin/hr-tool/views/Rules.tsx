@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type Dispatch, type SetStateAction } from 'react';
+import { ArrowUpRight, TriangleAlert, X } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell from '../ModalShell';
 import { computeCtcBreakdown } from '../utils';
@@ -339,7 +340,7 @@ export default function Rules() {
   const ATTENDANCE_KEYS: (keyof HrRules)[] = ['shiftStartTime', 'shiftEndTime', 'regularizationMonthlyQuota', 'shortLeaveMonthlyQuota', 'halfDayMinWorkedHours', 'shortLeaveMinWorkedHours', 'fullDayMinWorkedHours'];
   const APPROVAL_KEYS: (keyof HrRules)[] = ['twoLevelApproval'];
   const LEAVE_TYPES_KEYS: (keyof HrRules)[] = ['leaveTypes'];
-  const OTHER_RULES_KEYS: (keyof HrRules)[] = ['lateMarkPenalty', 'geoFencing', 'geoFenceLat', 'geoFenceLng', 'geoFenceRadiusM', 'selfieCheckin', 'pfEsi', 'optionalHolidayChoice', 'assetChecklist'];
+  const OTHER_RULES_KEYS: (keyof HrRules)[] = ['geoFencing', 'geoFenceLat', 'geoFenceLng', 'geoFenceRadiusM', 'selfieCheckin', 'pfEsi', 'optionalHolidayChoice', 'assetChecklist'];
   function validateGeoFence(): string | null {
     if (!ruleDraft.geoFencing) return null;
     if (!Number.isFinite(ruleDraft.geoFenceLat) || !Number.isFinite(ruleDraft.geoFenceLng)) return 'Geo-fencing is on but the office latitude/longitude is not a valid coordinate.';
@@ -562,7 +563,7 @@ export default function Rules() {
         <div className="block-head"><h2>Designations</h2></div>
         <div className="card pad">
           <div className="rule-desc" style={{ marginBottom: 10 }}>This list feeds the Designation dropdown everywhere — offer letters, onboarding, directory, and Assigning IDs.</div>
-          <div className="chip-list">{designationsDraft.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeDesignation(d)} title="Remove">×</button></span>)}</div>
+          <div className="chip-list">{designationsDraft.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeDesignation(d)} title="Remove" aria-label="Remove"><X size={13} aria-hidden /></button></span>)}</div>
           <div className="add-inline">
             <input type="text" placeholder="e.g. Growth Marketer" value={newDesig} onChange={(e) => setNewDesig(e.target.value)} />
             <button className="btn sm" onClick={addDesignation}>+ Add designation</button>
@@ -582,7 +583,7 @@ export default function Rules() {
       <section className="block">
         <div className="block-head"><h2>Expense categories</h2></div>
         <div className="card pad">
-          <div className="chip-list">{expenseCategoriesDraft.map((c) => <span className="chip" key={c}>{c} <button onClick={() => removeExpenseCategory(c)} title="Remove">×</button></span>)}</div>
+          <div className="chip-list">{expenseCategoriesDraft.map((c) => <span className="chip" key={c}>{c} <button onClick={() => removeExpenseCategory(c)} title="Remove" aria-label="Remove"><X size={13} aria-hidden /></button></span>)}</div>
           <div className="add-inline">
             <input type="text" placeholder="e.g. Events" value={newExpCat} onChange={(e) => setNewExpCat(e.target.value)} />
             <button className="btn sm" onClick={addExpenseCategory}>+ Add category</button>
@@ -603,7 +604,7 @@ export default function Rules() {
         <div className="block-head"><h2>Required onboarding documents</h2></div>
         <div className="card pad">
           <div className="rule-desc" style={{ marginBottom: 10 }}>This checklist is what every new hire is asked to upload, and what shows up in every employee&apos;s My Documents.</div>
-          <div className="chip-list">{requiredDocumentsDraft.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeRequiredDoc(d)} title="Remove">×</button></span>)}</div>
+          <div className="chip-list">{requiredDocumentsDraft.map((d) => <span className="chip" key={d}>{d} <button onClick={() => removeRequiredDoc(d)} title="Remove" aria-label="Remove"><X size={13} aria-hidden /></button></span>)}</div>
           <div className="add-inline">
             <input type="text" placeholder="e.g. PF Nomination Form" value={newReqDoc} onChange={(e) => setNewReqDoc(e.target.value)} />
             <button className="btn sm" onClick={addRequiredDoc}>+ Add document type</button>
@@ -747,7 +748,7 @@ export default function Rules() {
             <div className="rule-inputs"><strong>{FIXED_GRACE_MINUTES} min</strong></div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Regularization limit per payroll cycle</div><div className="rule-desc">How many regularization requests an employee may submit per payroll cycle (26th → 25th). Dates are limited to that same cycle — earlier cycles are already paid out and can no longer be corrected. Whole numbers up to 8.</div></div>
+            <div><div className="rule-name">Regularization limit per payroll cycle</div><div className="rule-desc">How many DAYS an employee may regularize per payroll cycle — punch-in and punch-out on the same day count once, approved and pending count, rejected don't. A hard limit: nobody can go past it. Requests must be made within the regularization window (days after the date), and a finished cycle takes requests only for 2 more days. Whole numbers up to 8.</div></div>
             <div className="rule-inputs">
               <input
                 className="mini-input" type="number" min={0} max={REGULARIZATION_MAX} step={1}
@@ -759,7 +760,7 @@ export default function Rules() {
             </div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Short leave — monthly quota</div><div className="rule-desc">How many Short Leaves an employee may take per calendar month. Shown to employees, publisher admins, and event admins on their Admin Rules page. Whole numbers up to 5.</div></div>
+            <div><div className="rule-name">Short leave — free per payroll cycle</div><div className="rule-desc">How many Short Leave days (worked between the Short Leave and Full day hours) are free each payroll cycle. Every Short Leave day after that costs half a day&apos;s pay; nothing carries over. Whole numbers up to 5.</div></div>
             <div className="rule-inputs">
               <input
                 className="mini-input" type="number" min={0} max={SHORT_LEAVE_MAX} step={1}
@@ -860,7 +861,6 @@ export default function Rules() {
       <section className="block">
         <div className="block-head"><h2>Other configurable rules</h2></div>
         <div className="card pad">
-          <div className="rule-row"><div><div className="rule-name">Late-mark penalty</div><div className="rule-desc">Deduct leave for repeated late marks.</div></div><Toggle checked={ruleDraft.lateMarkPenalty} onChange={(v) => setDraftRule('lateMarkPenalty', v)} /></div>
           <div className="rule-row">
             <div>
               <div className="rule-name">Geo-fencing</div>
@@ -875,7 +875,7 @@ export default function Rules() {
                   <div className="rule-name">Office location</div>
                   <div className="rule-desc">
                     Decimal degrees (Google Maps → right-click the office → copy the coordinates). StartupNews.fyi, Jhandewalan: 28.644533, 77.2003635.{' '}
-                    <a href={`https://maps.google.com/?q=${ruleDraft.geoFenceLat},${ruleDraft.geoFenceLng}`} target="_blank" rel="noreferrer">Check on map ↗</a>
+                    <a href={`https://maps.google.com/?q=${ruleDraft.geoFenceLat},${ruleDraft.geoFenceLng}`} target="_blank" rel="noreferrer" className="ic-text">Check on map<ArrowUpRight size={12} aria-hidden /></a>
                   </div>
                 </div>
                 <div className="rule-inputs">
@@ -937,7 +937,7 @@ export default function Rules() {
           <div className="block-head"><h2>Sample data</h2></div>
           <div className="card pad" style={{ borderColor: '#FECACA' }}>
             <div className="rule-desc" style={{ marginBottom: 10 }}>Wipes every sample employee, onboarding record, attendance/leave/expense entry, and ticket — so you can start entering real data. Your Teams, Designations, Rules, and Templates are kept. Your own login is kept so you don&apos;t get locked out. This can&apos;t be undone.</div>
-            <button className="btn reject" onClick={handleResetSampleData}>⚠ Delete all sample data</button>
+            <button className="btn reject" onClick={handleResetSampleData}><TriangleAlert size={14} aria-hidden />Delete all sample data</button>
           </div>
         </section>
       )}

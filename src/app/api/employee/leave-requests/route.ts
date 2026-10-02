@@ -4,12 +4,13 @@ import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { NO_DIRECTORY_RECORD_ERROR } from '@/modules/hr-tool/service/hr-tool.service';
 import { hrToolService } from './_lib';
 
-interface LeaveRequestBody { type?: string; from?: string; to?: string; reason?: string; }
+interface LeaveRequestBody { type?: string; from?: string; to?: string; reason?: string; halfDay?: string | null; }
 
-/** GET /api/employee/leave-requests — the caller's own leave requests + the admin-configured
- * leave types, for the employee-facing Leave widget.
- * POST /api/employee/leave-requests — { type, from, to, reason }. Only future dates (from
- * tomorrow onward) are eligible — see HrToolService.submitEmployeeLeaveRequest. */
+/** GET /api/employee/leave-requests — the caller's own leave requests (each with its paid/unpaid
+ * split), balances, the enabled leave types, and the join date + holiday dates the form needs to
+ * preview a new request's split.
+ * POST /api/employee/leave-requests — { type, from, to, reason, halfDay? }. Today, yesterday or
+ * later — see HrToolService.submitEmployeeLeaveRequest for every rule. */
 export async function GET(request: NextRequest) {
   const auth = await requireEmployeeAuth(request);
   if (auth instanceof NextResponse) return auth;
@@ -20,11 +21,8 @@ export async function GET(request: NextRequest) {
     if (!employee) {
       return NextResponse.json({ success: true, data: { leaveRequests: [], leaveTypes: policy.leaveTypes, leaveBalance: {} } });
     }
-    const [leaveRequests, leaveBalance] = await Promise.all([
-      hrToolService.getLeaveRequestsForEmployee(employee.id),
-      hrToolService.getLeaveBalancesForEmployee(employee.id),
-    ]);
-    return NextResponse.json({ success: true, data: { leaveRequests, leaveTypes: policy.leaveTypes, leaveBalance } });
+    const overview = await hrToolService.getLeaveOverviewForEmployee(employee.id);
+    return NextResponse.json({ success: true, data: { ...overview, leaveTypes: policy.leaveTypes } });
   } catch (error) {
     console.error('Error fetching employee leave requests:', error);
     return NextResponse.json(
@@ -48,11 +46,11 @@ export async function POST(request: NextRequest) {
     const employee = await hrToolService.resolveEmployeeForCredential(auth.credential.id, auth.credential.name);
     if (!employee) return NextResponse.json({ success: false, error: NO_DIRECTORY_RECORD_ERROR }, { status: 400 });
 
-    const result = await hrToolService.submitEmployeeLeaveRequest(employee, body.type, body.from, body.to, body.reason);
+    const result = await hrToolService.submitEmployeeLeaveRequest(employee, body.type, body.from, body.to, body.reason, body.halfDay);
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: 409 });
     }
-    return NextResponse.json({ success: true, data: {} });
+    return NextResponse.json({ success: true, data: { paidDays: result.paidDays, unpaidDays: result.unpaidDays } });
   } catch (error) {
     console.error('Error submitting employee leave request:', error);
     return NextResponse.json(
