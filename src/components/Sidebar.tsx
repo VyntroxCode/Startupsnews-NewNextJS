@@ -9,7 +9,6 @@ import Link from "next/link";
 
 const SIDEBAR_CATEGORIES = [
   { label: "AI & Deeptech", href: "/ai-deeptech" },
-  { label: "Business", href: "/business" },
   { label: "eCommerce", href: "/ecommerce" },
   { label: "EV & Mobility", href: "/ev-mobility" },
   { label: "Fintech", href: "/fintech" },
@@ -17,7 +16,6 @@ const SIDEBAR_CATEGORIES = [
   { label: "Gaming", href: "/gaming" },
   { label: "Healthtech", href: "/healthtech" },
   { label: "Robotics", href: "/robotics" },
-  { label: "SaaS & Enterprise", href: "/saas-enterprise" },
   { label: "Social Media", href: "/social-media" },
   { label: "Tech", href: "/tech" },
   { label: "Web3 & Blockchain", href: "/web3-blockchain" },

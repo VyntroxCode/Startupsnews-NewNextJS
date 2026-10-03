@@ -49,7 +49,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const categories = await categoriesService.getAllCategories(filters);
+    // Admin always lists industries alphabetically (sort_order only drives the public site).
+    const categories = (await categoriesService.getAllCategories(filters)).sort((a, b) =>
+      a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+    );
     const total = categories.length;
     const pagedCategories = categories.slice(offset, offset + limit);
 

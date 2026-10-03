@@ -29,7 +29,6 @@ export const siteConfig = {
     { label: "FUNDING TRACKER", href: "/funding-tracker" },
     { label: "EVENTS", href: "/events" },
     { label: "Entertainment", href: "/entertainment" },
-    { label: "Business", href: "/business" },
     { label: "Tech", href: "/tech" },
     { label: "Privacy Policy", href: "/privacy-policy" },
     { label: "Terms and Conditions", href: "/terms-and-conditions" },
@@ -54,7 +53,6 @@ export const siteConfig = {
       label: "SECTORS",
       children: [
         { label: "AI & Deeptech", href: "/ai-deeptech" },
-        { label: "Business", href: "/business" },
         { label: "Climate & Energy", href: "/climate-energy" },
         { label: "Consumer & D2C", href: "/consumer-d2c" },
         { label: "Cybersecurity", href: "/cybersecurity" },
@@ -65,7 +63,6 @@ export const siteConfig = {
         { label: "Gaming", href: "/gaming" },
         { label: "Healthtech", href: "/healthtech" },
         { label: "Robotics", href: "/robotics" },
-        { label: "SaaS & Enterprise", href: "/saas-enterprise" },
         { label: "Social Media", href: "/social-media" },
         { label: "Tech", href: "/tech" },
         { label: "Web3 & Blockchain", href: "/web3-blockchain" },
