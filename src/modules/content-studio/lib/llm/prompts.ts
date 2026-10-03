@@ -77,8 +77,8 @@ export function buildPromptArticle({
   // Per-template HTML structure rules
   const layoutRules =
     templateId === "conversational"
-      ? `LAYOUT RULE: Start with <div class="key-takeaways"><ul> (3-4 plain-English bullets). Then flowing paragraphs. Then MAX 2 <h2> tags, each phrased as a question a reader would actually search. No <div class="data-callout"> unless one standout figure genuinely needs its own visual beat.`
-      : `LAYOUT RULE: Start with <div class="key-takeaways"><ul> (3-4 self-contained bullets). Then the lead paragraph and nut graf. Then body paragraphs. MAX 2 <h2> tags, and none at all if the piece runs under ~700 words. Embed exactly ONE <div class="data-callout"> mid-article around the single most important figure.`;
+      ? `LAYOUT RULE: Start with <div class="key-takeaways"><ul> (3-4 plain-English bullets). Then flowing paragraphs. Then MAX 2 <h2> tags, each phrased as a question a reader would actually search. Never use a <div class="data-callout"> or any standalone figure box; keep every number inside a normal paragraph.`
+      : `LAYOUT RULE: Start with <div class="key-takeaways"><ul> (3-4 self-contained bullets). Then the lead paragraph and nut graf. Then body paragraphs. MAX 2 <h2> tags, and none at all if the piece runs under ~700 words. Never use a <div class="data-callout"> or any standalone figure box; keep every number inside a normal paragraph.`;
 
   const pubStyle = tmplStyle
     ? `\nPUBLICATION STYLE GUIDE — follow every instruction exactly:\n${tmplStyle}\n`
@@ -144,7 +144,7 @@ UNIVERSAL RULES:
 
 OUTPUT FORMAT:
 Return ONLY the article body as clean HTML.
-Allowed tags: <p>, <h2>, <ul>, <li>, <div class="key-takeaways">, <div class="data-callout">, <p data-author-input="true">
+Allowed tags: <p>, <h2>, <ul>, <li>, <div class="key-takeaways">, <p data-author-input="true">
 No blockquote, no cite, no span, no strong, no em, no inline styles, no wrapper divs.
 Start directly with the first tag as defined by the layout rule above.`;
 }

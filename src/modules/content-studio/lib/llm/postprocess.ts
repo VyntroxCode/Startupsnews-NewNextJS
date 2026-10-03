@@ -94,6 +94,9 @@ export function sanitizeBody(html: string): string {
       a: ["href", "rel", "target"],
     },
     allowedSchemes: ["http", "https", "mailto"],
+    // Data callouts are no longer part of the layout; drop any the model still emits.
+    exclusiveFilter: (frame) =>
+      frame.tag === "div" && /\bdata-callout\b/.test(frame.attribs.class || ""),
   });
 }
 

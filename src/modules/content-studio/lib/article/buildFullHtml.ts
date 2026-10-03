@@ -86,9 +86,19 @@ function jsonLd(obj: Record<string, unknown>): string {
   return JSON.stringify(obj, null, 2).replace(/<\//g, "<\\/");
 }
 
-export function buildFullHtml(d: GeneratedData): string {
+/**
+ * `forPost` (Move to post): leave out the <h1> headline and the "Source:" footer,
+ * since the post already has its own title field and shouldn't credit the source,
+ * and move filled author input to just before the FAQ.
+ */
+export function buildFullHtml(d: GeneratedData, opts: { forPost?: boolean } = {}): string {
+  const { forPost = false } = opts;
   // Strip unfilled author-input placeholders so they never ship.
-  const bodyOut = serializeBlocks(d.blocks, { dropEmptyAuthorInputs: true });
+  // In a post, the editor's own input sits at the end of the body, just before the FAQ.
+  const bodyOut = serializeBlocks(d.blocks, {
+    dropEmptyAuthorInputs: true,
+    authorInputsLast: forPost,
+  });
 
   const schema = buildArticleSchema(d);
   const faqSchema = buildFaqSchema(d);
@@ -139,16 +149,20 @@ ${EXPORT_CSS}
 </head>
 <body>
 <article>
-<h1>${escapeHtml(d.headline || "")}</h1>
+${forPost ? "" : `<h1>${escapeHtml(d.headline || "")}</h1>`}
 ${d.subheadline ? `<p class="deck">${escapeHtml(d.subheadline)}</p>` : ""}
 ${byline}
 ${bodyOut}
 ${faqHTML ? `<section class="faq-section" itemscope itemtype="https://schema.org/FAQPage"><h2>Frequently asked questions</h2>${faqHTML}</section>` : ""}
-<div class="source-footer"><strong>Source:</strong> <a href="${escapeAttr(
-    d._article.link,
-  )}" target="_blank" rel="noopener">${escapeHtml(d._article.feedName)} — ${escapeHtml(
-    d._article.title,
-  )}</a></div>
+${
+  forPost
+    ? ""
+    : `<div class="source-footer"><strong>Source:</strong> <a href="${escapeAttr(
+        d._article.link,
+      )}" target="_blank" rel="noopener">${escapeHtml(d._article.feedName)} — ${escapeHtml(
+        d._article.title,
+      )}</a></div>`
+}
 </article>
 </body>
 </html>`;

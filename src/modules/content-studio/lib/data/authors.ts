@@ -32,7 +32,7 @@ export const DEFAULT_AUTHORS: Author[] = [
       "Seasoned operator lens; bridges narrative and execution; sharp, measured, analytical; draws on cross-industry leadership; reads market movements over hype.",
     patternRef: "Inc42 narrative business-journalism pattern",
     structure:
-      'Open with a dense factual paragraph naming the company, what it does, and the business decision or move at the centre of the story. Blend any real founder/executive reasoning from the source with concrete data points (funding, revenue, market size) rather than abstract claims. Use one to two subheadings to break out strategic sections such as "Why It Matters" or "What Is Next." Place one or two data-callout style figures mid-article, not at the end. Close by setting the move inside the broader category trend, naming two or three comparable companies for context. Confident, operator-to-operator tone — reads market moves, not hype.',
+      'Open with a dense factual paragraph naming the company, what it does, and the business decision or move at the centre of the story. Blend any real founder/executive reasoning from the source with concrete data points (funding, revenue, market size) rather than abstract claims. Use one to two subheadings to break out strategic sections such as "Why It Matters" or "What Is Next." Keep standout figures inside normal paragraphs, never in a separate callout box. Close by setting the move inside the broader category trend, naming two or three comparable companies for context. Confident, operator-to-operator tone — reads market moves, not hype.',
     inferred: true,
   },
   {

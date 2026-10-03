@@ -112,14 +112,26 @@ export function parseBodyHtml(html: string): ArticleBlock[] {
  *
  * `dropEmptyAuthorInputs` mirrors the strip at content-studio-v17.html:2222 —
  * an unfilled placeholder must never ship.
+ *
+ * `authorInputsLast` moves every author-input block to the end of the body
+ * (Move to post puts the editor's own input right before the FAQ).
  */
 export function serializeBlocks(
   blocks: ArticleBlock[],
-  { dropEmptyAuthorInputs = false }: { dropEmptyAuthorInputs?: boolean } = {},
+  {
+    dropEmptyAuthorInputs = false,
+    authorInputsLast = false,
+  }: { dropEmptyAuthorInputs?: boolean; authorInputsLast?: boolean } = {},
 ): string {
   const out: string[] = [];
+  const ordered = authorInputsLast
+    ? [
+        ...blocks.filter((b) => b.kind !== "authorInput"),
+        ...blocks.filter((b) => b.kind === "authorInput"),
+      ]
+    : blocks;
 
-  for (const b of blocks) {
+  for (const b of ordered) {
     switch (b.kind) {
       case "p":
         out.push(`<p>${b.html}</p>`);

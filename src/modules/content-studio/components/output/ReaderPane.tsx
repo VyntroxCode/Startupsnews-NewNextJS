@@ -256,7 +256,8 @@ export function ReaderPane() {
       title: live.headline,
       excerpt: live.subheadline || live.meta_description,
       metaDescription: live.meta_description,
-      html: fullHtml,
+      // The post has its own title field and no source footer.
+      html: buildFullHtml(live, { forPost: true }),
     });
     if (!saved) {
       toast("Could not hand off to the post editor", "error");

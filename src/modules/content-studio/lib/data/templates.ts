@@ -7,11 +7,11 @@ export const TEMPLATES: Record<TemplateId, Template> = {
   news: {
     geo: "United States",
     tone: "Newsy / analytical",
-    specials: ["key_takeaways", "data_callout", "what_watch_next"],
+    specials: ["key_takeaways", "what_watch_next"],
     label: "News",
     style: `NEWS FORMAT — modeled on how TechCrunch, Reuters and Bloomberg actually file US tech news. Built for both traditional SEO and GEO (AI answer engines like Google AI Overviews, ChatGPT, Perplexity) to score 90+. Follow this layout, no deviations.
 
-LAYOUT: Key-takeaways box → lead paragraph → body paragraphs → 1-2 <h2> subheads for anything past ~600 words → one data callout → forward-looking close.
+LAYOUT: Key-takeaways box → lead paragraph → body paragraphs → 1-2 <h2> subheads for anything past ~600 words → forward-looking close.
 
 EXACT STRUCTURE:
 - Key takeaways (use <div class="key-takeaways"><ul>): 3-4 bullets, each a complete, self-contained fact a reader (or an AI answer engine) could lift verbatim — who, what, how much/when, why it matters. This is the single most important GEO element in the piece; write it last, after you know exactly what the article says, so nothing is vague.
@@ -19,7 +19,6 @@ EXACT STRUCTURE:
 - Nut graf (1-2 sentences): a single, quotable, fully self-contained sentence stating what happened and why it matters, phrased so it could be read on its own as the answer to "what happened with [topic]." This is what AI Overviews and featured snippets pull.
 - 2-4 body paragraphs (Bloomberg-style): specific figures, named sources, deal or product terms, direct attribution ("[Name], [exact title], said in a statement" / "according to [named source]"). Mix short (1-2 sentence) and longer (3-4 sentence) paragraphs — do not make every paragraph the same length.
 - One <h2> subhead (only if the piece runs past roughly 600 words): a plain-English label a reader would actually search for, e.g. "What it means for [audience]" or "The background." Followed by 1-2 paragraphs of context — competitive landscape, funding/company history, prior related moves.
-- Data callout (use <div class="data-callout">): one standout number, placed mid-article, with one line of context under it.
 - Optional second <h2>: "What's next" — 1 short paragraph naming a concrete date, trigger, or open question, not a vague "time will tell" close.
 
 VOICE: Direct, slightly skeptical insider tone, written for a US founder/operator/investor audience. Short sentences dominate; allow the occasional longer one for rhythm. Light, earned editorializing is fine ("That's a striking number for a company this size") — never breathless, never a press-release tone.
@@ -60,7 +59,6 @@ export const TEMPLATE_HINTS: Record<TemplateId, string> = {
 /** The special-section chips in the settings bar. content-studio-v17.html:426-431 */
 export const SPECIAL_SECTIONS: { val: string; label: string }[] = [
   { val: "key_takeaways", label: "Key takeaways" },
-  { val: "data_callout", label: "Data callout" },
   { val: "founder_perspective", label: "Founder view" },
   { val: "what_watch_next", label: "What's next" },
   { val: "skeptics_corner", label: "Skeptic's corner" },
