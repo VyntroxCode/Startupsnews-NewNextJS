@@ -48,6 +48,8 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
 @source "../components/user/profile/ProfileHeader.tsx";
 @source "./dashboard/newsletter/page.tsx";
 @source "../components/user/newsletter";
+@source "./dashboard/funding";
+@source "../components/user/funding";
 @source "../components/EventsLocationBar.tsx";
 @source "../components/expand-north-star/DelegationBenefits.tsx";
 @source "../components/expand-north-star/SectionNav.tsx";
@@ -116,6 +118,40 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   --color-ens-slate: #5A6070;
   /* The page's own magenta (expand-north-star.css --ens-pink), for SectionNav. */
   --color-ens-pink: #E4157C;
+
+  /* Funding intelligence (/dashboard/funding/*) — the funding-platform preview's palette, copied
+     1:1 so the pages match the approved design. Fonts are NOT theme tokens: the next/font variables
+     (--font-fi-space, --font-fi-plex, --font-db-inter) are defined on layout divs, not :root, so a
+     token at :root would resolve empty. Components use font-(family-name:--font-fi-space) etc. */
+  --color-fi-primary: #E01552;
+  --color-fi-primary-dark: #A80F3E;
+  --color-fi-primary-light: #FDEBF1;
+  --color-fi-primary-soft: #FBE0E9;
+  --color-fi-gold: #D98E2B;
+  --color-fi-gold-light: #FBF1E1;
+  --color-fi-gold-ink: #8A5D14;
+  --color-fi-gold-line: #F0DDB2;
+  --color-fi-ai: #6D28D9;
+  --color-fi-ai-dark: #5217A8;
+  --color-fi-ai-light: #F1EBFC;
+  --color-fi-ink: #15131A;
+  --color-fi-ink-soft: #5A5763;
+  --color-fi-ink-faint: #9C99A6;
+  --color-fi-line: #EBE8ED;
+  --color-fi-bg: #FAF9FB;
+  --color-fi-surface: #FFFFFF;
+  --color-fi-green: #0E9D57;
+  --color-fi-green-light: #E7F8EF;
+  --color-fi-red: #D6293E;
+  --color-fi-red-light: #FCE9EB;
+  --color-fi-violet: #5B4FE0;
+  --shadow-fi: 0 1px 2px rgba(21, 19, 26, 0.04), 0 8px 24px rgba(21, 19, 26, 0.05);
+  /* Market pulse ticker — the track holds two copies of the items and slides by half its width. */
+  --animate-fi-ticker: fi-ticker 32s linear infinite;
+  @keyframes fi-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  /* AI assistant "thinking" dots. */
+  --animate-fi-dot: fi-dot 1s ease-in-out infinite;
+  @keyframes fi-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 
   /* CompleteProfileWizard entrance motion — Tailwind ships no fade/slide-in keyframes, so the
      three the modal uses are declared here as animate-* tokens. */

@@ -30,7 +30,7 @@ export const BRAND_STORIES_ROLES = ['admin', 'editor', 'publisher_admin'] as con
 export const INNER_PAGES_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 
 /** Every admin-panel role — dashboard/stats and other cross-cutting read-only surfaces. */
-export const ALL_ADMIN_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support'] as const;
+export const ALL_ADMIN_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support', 'financial_analyst'] as const;
 
 /** Directory (contacts CRM) — full access (view, add/edit/delete, bulk, import/export, config).
  * Super admin and Event Admin. Allow-listed employees get the same through /api/employee/directory,
@@ -67,7 +67,7 @@ export const IT_TICKETS_BLOCK_ROLES = ['admin'] as const;
 export const IT_TICKETS_UNBLOCK_ROLES: readonly string[] = IT_TICKETS_BLOCK_ROLES;
 
 /** IT Tickets — every admin-panel role can raise a ticket and see/comment on their own (helpdesk model). */
-export const IT_TICKETS_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support'] as const;
+export const IT_TICKETS_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support', 'financial_analyst'] as const;
 
 /** Content Studio (/admin/content-studio) — AI post drafting. The roles that write posts; Event Admin
  * (Press Release only) and IT Support are left out. Every studio API route calls Claude or fetches
@@ -77,3 +77,7 @@ export const CONTENT_STUDIO_ROLES = ['admin', 'editor', 'author', 'publisher_adm
 /** Grants (IncubatX startup dossiers from /incubatx/startup-details) — super admin only: the rows
  * carry founders' contact details, revenue and company certificates. */
 export const GRANTS_ROLES = ['admin'] as const;
+
+/** Funding Data (/admin/funding-data) — funding-round dataset shown on the reader dashboard's Funding page.
+ * Financial Analyst is a standalone tool role scoped to this section; the super admin has full access. */
+export const FUNDING_ROLES = ['admin', 'financial_analyst'] as const;

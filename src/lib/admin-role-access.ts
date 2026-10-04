@@ -3,7 +3,8 @@
 // Only the super admin can manage other admin-panel accounts, or use the standalone Network
 // Manager (contacts CRM), HR tool, Sales tracker or Grants — matches HR_TOOL_ROLES/SALES_TRACKER_ROLES/GRANTS_ROLES
 // in shared/middleware/roles.ts, which already gate their APIs to 'admin' only.
-const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts', '/admin/hr-tool', '/admin/sales-tracker', '/admin/grants'];
+// Funding Data is admin-only too, except for the Financial Analyst, who lists it explicitly below (FUNDING_ROLES).
+const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts', '/admin/hr-tool', '/admin/sales-tracker', '/admin/grants', '/admin/funding-data'];
 
 export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   admin: 'all',
@@ -15,6 +16,8 @@ export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   publisher_admin: ['/admin', '/admin/posts', '/admin/content-studio', '/admin/tools', '/admin/reports', '/admin/brand-stories', '/admin/inner-pages', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit'],
   // IT Support is a standalone tool role, like Event Admin/Publisher Admin — scoped to the IT Tickets queue only.
   it_support: ['/admin', '/admin/it-tickets'],
+  // Financial Analyst is a standalone tool role — the funding dataset (Funding Data) plus the IT helpdesk.
+  financial_analyst: ['/admin', '/admin/funding-data', '/admin/it-tickets'],
 };
 
 function matchesPrefix(prefixes: string[], pathname: string): boolean {

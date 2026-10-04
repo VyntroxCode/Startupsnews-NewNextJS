@@ -16,6 +16,8 @@ const ROLE_LABELS: Record<string, string> = {
   author: 'Author',
   event_admin: 'Event Admin',
   publisher_admin: 'Publisher Admin',
+  it_support: 'IT Support',
+  financial_analyst: 'Financial Analyst',
 };
 
 export default function AdminHeader({ user, sidebarOpen, onToggleSidebar }: AdminHeaderProps) {

@@ -81,6 +81,10 @@
 @source "./grants";
 @source "../../app/(admin)/admin/grants/page.tsx";
 
+/* Funding Data (/admin/funding-data) — manual entry, Excel upload, records, upload history. */
+@source "./funding-data";
+@source "../../app/(admin)/admin/funding-data/page.tsx";
+
 /* Content Studio theme — the pink palette ported 1:1 from the standalone app. Every token is
    namespaced `cs-` (bg-cs-surface, text-cs-ink, font-cs-sans…) so it cannot change what an
    existing utility such as `font-sans` means on the other staff panels sharing this sheet. */

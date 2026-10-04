@@ -10,6 +10,7 @@ import { PanelAdminsRepository } from '@/modules/panel-admins/repository/panel-a
 import { PartnershipEventsRepository } from '@/modules/partnership-events/repository/partnership-events.repository';
 import { entityToPartnershipEvent, countActivePartnershipEvents } from '@/modules/partnership-events/utils/partnership-events.utils';
 import { ItTicketsRepository } from '@/modules/it-tickets/repository/it-tickets.repository';
+import { getFundingSummary } from '@/modules/funding-deals/service/funding-deals.service';
 
 export const maxDuration = 30;
 
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
       panelAdmins,
       partnershipEventEntities,
       itTicketsOpen,
+      funding,
     ] = await Promise.all([
       postsRepository.count({}),
       eventsRepository.count({}),
@@ -54,6 +56,12 @@ export async function GET(request: NextRequest) {
       panelAdminsRepository.findAll(),
       partnershipEventsRepository.findAll(),
       itTicketsRepository.countOpen(),
+      // Funding Data card (Financial Analyst). Tolerates the funding tables not existing yet so the
+      // rest of the dashboard still loads before the migration is applied.
+      getFundingSummary().catch((err) => {
+        console.error('[admin/stats] funding summary unavailable:', err instanceof Error ? err.message : err);
+        return { deals: 0, capital: 0, lastUploadAt: null };
+      }),
     ]);
 
     const realUsers = allUsers.filter((u) => !u.email.toLowerCase().endsWith(SYNTHETIC_AUTHOR_EMAIL_SUFFIX));
@@ -83,6 +91,9 @@ export async function GET(request: NextRequest) {
         eventRegions: eventRegions.length,
         authors: authorsCount,
         itTicketsOpen,
+        fundingDeals: funding.deals,
+        fundingCapital: funding.capital,
+        fundingLastUploadAt: funding.lastUploadAt,
       },
     });
   } catch (error) {

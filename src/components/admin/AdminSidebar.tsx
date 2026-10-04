@@ -23,6 +23,7 @@ import {
   Ticket,
   UserPlus,
   Users,
+  TrendingUp,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
@@ -77,6 +78,7 @@ const menuItems: MenuItem[] = [
   { href: '/admin/registered-users', label: 'Registered Users', icon: UserPlus },
   // IncubatX startup dossiers submitted on /incubatx/startup-details.
   { href: '/admin/grants', label: 'Grants', icon: Landmark },
+  { href: '/admin/funding-data', label: 'Funding Data', icon: TrendingUp },
   { href: '/admin/contacts', label: 'Directory', icon: Contact },
   { href: '/admin/users', label: 'Users', icon: Users },
 ];
