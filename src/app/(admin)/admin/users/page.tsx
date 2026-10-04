@@ -618,8 +618,8 @@ export default function UsersPage() {
             apiBase="/api/admin/panel-admins"
             entityLabel="Panel Admin"
             subtitle="Manage Event Admin (Events section), Publisher Admin (Content section), and IT Support (IT Tickets queue) accounts"
-            roleOptions={['event_admin', 'publisher_admin', 'it_support']}
-            roleLabels={{ event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support' }}
+            roleOptions={['event_admin', 'publisher_admin', 'it_support', 'financial_analyst']}
+            roleLabels={{ event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support', financial_analyst: 'Financial Analyst' }}
             defaultRole="event_admin"
             deleteConfirmMessage="Are you sure you want to delete this panel admin account? This cannot be undone."
           />

@@ -17,7 +17,7 @@ import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 
 const REG_REASONS = ['Forgot to punch out', 'Forgot to punch in', 'System/network issue', 'Worked from a client site'];
-const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support' };
+const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support', financial_analyst: 'Financial Analyst' };
 
 export default function Attendance() {
   const { state, applyServerPunch, decideRegularization, addRegularizationToState } = useHrTool();

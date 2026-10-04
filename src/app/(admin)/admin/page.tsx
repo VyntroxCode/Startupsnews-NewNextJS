@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, CircleAlert, FileText, LayoutDashboard, Tags, Ticket, Users } from 'lucide-react';
+import { Calendar, CircleAlert, DollarSign, FileText, LayoutDashboard, Tags, Ticket, TrendingUp, Upload, Users } from 'lucide-react';
+import { formatUsdMn } from '@/modules/funding-deals/utils/format';
 import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import AttendanceWidget from '@/components/admin/AttendanceWidget';
@@ -22,6 +23,11 @@ interface DashboardStats {
   partnershipEventsActive: number;
   /** Tickets not yet resolved/closed — powers the IT Support role's dashboard card. */
   itTicketsOpen: number;
+  /** Funding Data — powers the Financial Analyst role's dashboard cards. */
+  fundingDeals: number;
+  /** USD millions across disclosed deals. */
+  fundingCapital: number;
+  fundingLastUploadAt: string | null;
 }
 
 export default function AdminDashboard() {
@@ -29,10 +35,11 @@ export default function AdminDashboard() {
   const isEventAdmin = role === 'event_admin';
   const isPublisherAdmin = role === 'publisher_admin';
   const isItSupport = role === 'it_support';
-  // Every standalone-tool panel-admin role (Event Admin, Publisher Admin, IT Support) shares the
+  const isFinancialAnalyst = role === 'financial_analyst';
+  // Every standalone-tool panel-admin role (Event Admin, Publisher Admin, IT Support, Financial Analyst) shares the
   // same scoped dashboard: its own stat card(s), the HR attendance widgets, and none of the
   // content-admin-only sections (Footer Settings, Hero Images) below.
-  const isScopedRole = isEventAdmin || isPublisherAdmin || isItSupport;
+  const isScopedRole = isEventAdmin || isPublisherAdmin || isItSupport || isFinancialAnalyst;
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -229,7 +236,31 @@ export default function AdminDashboard() {
 
   // The retired Event Regions card used a globe — restore it with Lucide's `Globe` icon.
 
-  const statCards = isItSupport
+  const statCards = isFinancialAnalyst
+    ? [
+        {
+          title: 'Funding Deals',
+          value: stats?.fundingDeals || 0,
+          href: '/admin/funding-data',
+          gradient: 'linear-gradient(135deg, #E01552 0%, #A80F3E 100%)',
+          icon: TrendingUp,
+        },
+        {
+          title: 'Capital Tracked',
+          value: formatUsdMn(stats?.fundingCapital || 0),
+          href: '/admin/funding-data?tab=records',
+          gradient: 'linear-gradient(135deg, #D98E2B 0%, #B5711A 100%)',
+          icon: DollarSign,
+        },
+        {
+          title: 'Last Upload',
+          value: stats?.fundingLastUploadAt ? stats.fundingLastUploadAt.slice(0, 10) : '—',
+          href: '/admin/funding-data?tab=history',
+          gradient: 'linear-gradient(135deg, #6D28D9 0%, #5217A8 100%)',
+          icon: Upload,
+        },
+      ]
+    : isItSupport
     ? [
         {
           title: 'Open IT Tickets',

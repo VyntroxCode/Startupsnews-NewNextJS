@@ -220,7 +220,10 @@ export default function AdminLayout({
                             // Content Studio's POSTs are all reads (news fetch, extract, generate)
                             // and its drafts live only in client state — a remount would throw away
                             // the article it just generated.
-                            requestUrl.includes('/api/admin/content-studio');
+                            requestUrl.includes('/api/admin/content-studio') ||
+                            // Funding Data keeps its own tab state (an in-progress Excel preview) and
+                            // refreshes its own lists after each write.
+                            requestUrl.includes('/api/admin/funding-deals');
 
       if (response.ok && method !== 'GET' && requestUrl.includes('/api/admin/') && !isSpecialPath) {
         // Clear the cache directly here, not just via the event below — the event only reaches a

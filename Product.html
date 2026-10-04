@@ -116,7 +116,7 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v111</span>
+    <span class="badge v">Version v122</span>
     <span class="badge">Released 2026-10-01</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
@@ -682,6 +682,19 @@ flowchart LR
     </pre>
     <figcaption>Content Studio only prepares the draft. Nothing is published or saved to the site until an editor pastes it into Posts and publishes it the usual way.</figcaption>
   </figure>
+  <h3>Funding data: from an analyst's Excel file to the reader's Funding page (arch.md §6.14)</h3>
+  <figure class="diagram">
+    <pre class="mermaid">
+flowchart LR
+    FA(("Financial Analyst<br/>or Admin")) -->|"types a deal or<br/>uploads Excel / CSV"| FD["Admin → Funding Data<br/>(checks every row first)"]
+    FD -->|"new deals only —<br/>repeats are skipped"| DB[("Funding deals list")]
+    FD -->|"one entry per file,<br/>can be undone"| H[("Upload history")]
+    DB --> FP["Reader dashboard →<br/>Funding page"]
+    R(("Logged-in reader")) -->|"filters, country,<br/>week / month / year"| FP
+    FP -->|"charts, totals, deal table,<br/>Excel download"| R
+    </pre>
+    <figcaption>Readers only ever see what the Financial Analyst or Admin has saved. A wrong upload can be removed in one click from Upload History.</figcaption>
+  </figure>
 </section>
 
 <!-- ───────────────────────── 8 ───────────────────────── -->
@@ -866,6 +879,8 @@ flowchart LR
       <tr><td><strong>v104</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool: payroll can be run even while leave or regularisation requests are still waiting. It uses the current attendance, marks those people's payslips <strong>Provisional</strong>, and updates them by itself as each request is approved or rejected. The month locks only once nothing is waiting</td></tr>
       <tr><td><strong>v105</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool → Attendance: new <strong>Monthly attendance</strong> table — every employee's days for any past salary month, with a click-through to their calendar for that month</td></tr>
       <tr><td><strong>v106</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool → Payroll: approve or reject an employee's waiting requests straight from their payroll row; the payroll notice boxes are gone</td></tr>
+      <tr><td><strong>v121</strong></td><td>2026-10-04</td><td>Major</td><td>New <strong>Funding</strong> page on the reader dashboard (yearly overview chart, filters, totals, top sectors/stages/cities/investors, all deals, Excel download), fed by a new admin role, <strong>Financial Analyst</strong>, who adds deals by hand or uploads Excel files in Admin → <strong>Funding Data</strong>.</td></tr>
+      <tr><td><strong>v122</strong></td><td>2026-10-04</td><td>Major</td><td>Funding grows into five pages (<strong>Dashboard, All Deals, Market Analysis, Search, AI Assistant</strong>) with the same charts and look as the approved design preview: 12-month outlook, six market-analysis views, a search page, and an admin <strong>AI Data Sources</strong> tab (layout only for now).</td></tr>
       <tr><td><strong>v111</strong></td><td>2026-10-01</td><td>Medium</td><td>Reader dashboard: a red "Tell us where you're based" card asks for country and city when either is missing</td></tr>
       <tr><td><strong>v110</strong></td><td>2026-10-01</td><td>Medium</td><td>Reader dashboard: no more fake "0%" or "0 reports this week" when the profile fails to load; old logins are asked to sign in again; WhatsApp tile opens the community group</td></tr>
       <tr><td><strong>v109</strong></td><td>2026-10-01</td><td>Medium</td><td>Employee panel: an alarm rings at 11 AM and 4 PM if the employee still has even one Pending lead</td></tr>
@@ -4175,6 +4190,128 @@ PHONE                                   +--------------------+
         <div class="wf-row" style="margin-top:4px"><div class="wf-box">Kapil Suri · LOP 0 · ₹1,00,000</div></div>
       </div>
     </div>
+<section id="v122">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v122</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-04</span>
+    </div>
+    <p><strong>What changed.</strong> The reader <strong>Funding</strong> area now matches the approved design preview screen for screen: same charts, same colours, same type. It is split into five pages, reached from a tab row at the top of the Funding area. Everything is drawn from the deals the Financial Analyst uploads.</p>
+
+    <table>
+      <thead><tr><th>Page</th><th>What the reader sees</th></tr></thead>
+      <tbody>
+        <tr><td>Dashboard</td><td>Sponsor slots, a "Market pulse" strip, the year's overview card with India / USA / All and week / month / year, the filter bar, six headline numbers, money by sector, stage, city and top investors, and a <strong>12-month outlook</strong>: a forecast chart plus four plain read-outs (e.g. "Clean Tech leads with $12 Bn across 437 deals").</td></tr>
+        <tr><td>All Deals</td><td>Every deal in a table, 50 per page, with its own filters and an Excel download.</td></tr>
+        <tr><td>Market Analysis</td><td>Three headline numbers for the last 12 months, then tabs: <em>Overview</em> (money per month, and how money flowed from each round stage into sectors), <em>Time series</em> (money over time split by round size), <em>By location</em> (country ranking and a round-size map), <em>By growth</em> (fastest-growing countries between two years), <em>Cumulative race</em> (how fast each year adds up), <em>Head to head</em> (two countries side by side). <em>Investors</em> and <em>Operating</em> are marked as coming later, as in the preview.</td></tr>
+        <tr><td>Search</td><td>One box that searches startup, sector and investor names, plus quick filters for sector, city, country, stage and investor.</td></tr>
+        <tr><td>AI Assistant</td><td>The assistant screen from the design, marked <em>Coming soon</em>. If a reader asks something, it says plainly that it isn&apos;t live yet and points to All Deals for Excel downloads.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Is the forecast made by AI?</td><td>No. It is a straight trend line through the monthly totals, so it is labelled <em>Trend-based</em>. It changes whenever the filters change, and is marked "not investment advice".</td></tr>
+        <tr><td>Are the "Market pulse" numbers live?</td><td>No. Live prices need a paid data feed, so the strip shows sample values and is clearly tagged <strong>SAMPLE</strong>.</td></tr>
+        <tr><td>Who are the sponsors?</td><td>None yet. The three sponsor cards say "Your brand here" and link to Advertise with us.</td></tr>
+        <tr><td>What changed for the Financial Analyst?</td><td>Bulk Upload now also has <strong>Export all</strong> and <strong>Export this year</strong> buttons. A new <strong>AI Data Sources</strong> tab shows where news feeds for the future assistant will be managed; it is switched off until the assistant is built.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf">
+      <div class="wf-bar">Reader dashboard → Funding (tab row)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">Dashboard</div><div class="wf-box">All Deals</div><div class="wf-box">Market Analysis</div><div class="wf-box">Search</div><div class="wf-box">✨ AI Assistant</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Funding → Market Analysis</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Capital in view $26 Bn · last 12 months</div><div class="wf-box">Rounds 1,083</div><div class="wf-box">Mean check $24 Mn</div></div>
+        <div class="wf-row"><div class="wf-box brand">Overview</div><div class="wf-box">Time series</div><div class="wf-box">By location</div><div class="wf-box">By growth</div><div class="wf-box">Cumulative race</div><div class="wf-box">Head to head</div><div class="wf-box">Investors</div><div class="wf-box">Operating</div></div>
+        <div class="wf-row"><div class="wf-box">Bar chart: money raised per month</div></div>
+        <div class="wf-row"><div class="wf-box">Flow chart: Seed / Series A / … → Clean Tech / Fintech / …</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Funding → Dashboard → 12-month outlook</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Projected monthly funding [Trend-based] — solid line = actual, dashed = projection</div><div class="wf-box">Signals &amp; read-outs: ↑ monthly swing · → leading sector · ↑ most active investor · → average round</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v121">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v121</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-04</span>
+    </div>
+    <p><strong>What changed.</strong> StartupNews.fyi now has its own <strong>funding-round database</strong>. A new team role, <strong>Financial Analyst</strong>, fills it from the admin panel: by typing a deal in a form, or by uploading Excel/CSV files. Every logged-in reader gets a new <strong>Funding</strong> page on their dashboard that turns this data into charts, totals and a searchable list of deals. This is the first part ("core") of the funding-intelligence product shown in the design preview. Market analysis tabs, forecasts, the AI assistant, the market ticker and sponsored slots come later.</p>
+
+    <table>
+      <thead><tr><th>Who</th><th>What they can do</th></tr></thead>
+      <tbody>
+        <tr><td>Financial Analyst (new role)</td><td>Logs in to the admin panel and sees only: the dashboard home (with three cards: total deals, capital tracked, last upload), <strong>Funding Data</strong>, and IT Tickets for help. Can add, edit, delete, upload and undo uploads.</td></tr>
+        <tr><td>Admin</td><td>Everything the Financial Analyst can do, plus creating Financial Analyst accounts in Admin → Users (role "Financial Analyst").</td></tr>
+        <tr><td>Editors, authors, other staff</td><td>No access to Funding Data.</td></tr>
+        <tr><td>Logged-in readers</td><td>See the new <strong>Funding</strong> item in their dashboard sidebar (right under Reports). Read-only, plus an Excel download of whatever they have filtered.</td></tr>
+        <tr><td>Visitors who are not logged in</td><td>Cannot see the funding data.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Admin → Funding Data tab</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>Bulk Upload</td><td>Drop one or more .xlsx, .xls or .csv files. Column names are recognised automatically (for example "Company" or "Startup Name", "Amount" or "Round Size"). Before anything is saved, the screen shows which columns were understood, the first 5 rows, and which rows will be skipped and why (for example "Date is missing"). A <strong>Sample template</strong> button downloads a ready-made file with the right headings.</td></tr>
+        <tr><td>Manual Entry</td><td>A form for a single deal. Only <strong>Date</strong> and <strong>Startup name</strong> are required. Under the amount box it shows how the amount will be saved (e.g. "₹50 Cr" → "Saved as $6 Mn").</td></tr>
+        <tr><td>Manage Records</td><td>All deals, newest first, 50 per page, with search and filters. Edit or delete any deal, and export the filtered list to Excel.</td></tr>
+        <tr><td>Upload History</td><td>Every uploaded file with its counts (rows, added, duplicates, rejected). <strong>Undo</strong> removes everything that file added.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What if the same deal is uploaded twice?</td><td>A deal with the same date, startup and round stage is skipped automatically, never added twice. The upload summary says how many were skipped.</td></tr>
+        <tr><td>What currencies are understood?</td><td>Dollar amounts ("$93 Mn", "$1.2 Bn", "$500K") and rupee amounts ("₹50 Cr", "80 Lakh"). Everything is stored in US dollars; rupees are converted at one fixed rate (₹83 = $1). "Undisclosed" or a blank amount is kept as undisclosed.</td></tr>
+        <tr><td>What date formats are understood?</td><td>Excel dates, 2026-03-12, 12/03/2026 (day first), 12 Mar 2026, March 12, 2026, and Mar 2026 (taken as the 1st).</td></tr>
+        <tr><td>What does "Most active investor" count?</td><td>A deal counts for every investor listed on it. The lead investor is always included in the list.</td></tr>
+        <tr><td>Which country does the reader see first?</td><td>India for readers in India's time zone, USA for US time zones, otherwise all countries. They can switch with one click.</td></tr>
+        <tr><td>Can a reader see who uploaded a deal?</td><td>No. Readers see only the deal details.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="wf">
+      <div class="wf-bar">Admin → Funding Data → Bulk Upload</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">Bulk Upload</div><div class="wf-box">Manual Entry</div><div class="wf-box">Manage Records</div><div class="wf-box">Upload History</div></div>
+        <div class="wf-row"><div class="wf-box">⬆ Click to upload or drag files here (.xlsx, .xls, .csv)</div><div class="wf-box">[ Sample template ]</div></div>
+        <div class="wf-row"><div class="wf-box">deals-march.xlsx · 412 rows · 405 ready · Company → Startup Name ✓ · Amount → Round Size ✓</div></div>
+        <div class="wf-row"><div class="wf-box">⚠ 7 rows will be skipped · Row 18: Date is missing …</div></div>
+        <div class="wf-row"><div class="wf-box brand">[ Import 405 deals from 1 file ]</div></div>
+      </div>
+    </div>
+
+    <div class="wf">
+      <div class="wf-bar">Reader dashboard → Funding</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">2026 Funding Overview · Total funding tracked $4.2 Bn · 1,180 deals this year</div></div>
+        <div class="wf-row"><div class="wf-box brand">🌍 All</div><div class="wf-box">🇮🇳 India</div><div class="wf-box">🇺🇸 USA</div><div class="wf-box">Week · <b>Month</b> · Year</div></div>
+        <div class="wf-row"><div class="wf-box">Chart: bars = number of deals, line = money raised</div></div>
+        <div class="wf-row"><div class="wf-box">Filters: search · sector · stage · city · country · investor · from · to · Reset to this year</div></div>
+        <div class="wf-row"><div class="wf-box brand">Funding in view</div><div class="wf-box">Total deals</div><div class="wf-box">Avg. round</div><div class="wf-box">Active sectors</div><div class="wf-box">Leading sector</div><div class="wf-box">Top investor</div></div>
+        <div class="wf-row"><div class="wf-box">By sector</div><div class="wf-box">By round stage</div><div class="wf-box">By city</div><div class="wf-box">Top investors</div></div>
+        <div class="wf-row"><div class="wf-box">All deals table (50 per page) · [ Download filtered deals (.xlsx) ]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
   </div>
 </section>
 

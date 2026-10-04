@@ -6,7 +6,7 @@ import { getAuthHeaders } from '@/lib/admin-auth';
 import type { HrEmployeeCredential, LinkedPanelAdminSummary } from '@/modules/hr-credentials/domain/types';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 
-export const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support' };
+export const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support', financial_analyst: 'Financial Analyst' };
 
 export const EMPLOYEE_CODE_PREFIX = 'SNFYI-';
 
