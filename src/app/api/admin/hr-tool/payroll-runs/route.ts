@@ -11,10 +11,9 @@ interface RunPayrollBody extends Pick<HrPayrollRun, 'month'> {
 }
 
 /** POST /api/admin/hr-tool/payroll-runs — { month: 'YYYY-MM', tds?: Record<employeeId, number> }.
- * Computes and freezes real Net Pay for every active employee that month (see
- * HrToolService.runPayroll); refuses if the payroll period hasn't fully elapsed yet. Calling it
- * again for an already-run month recomputes and overwrites — that's the "recompute" mechanism,
- * no separate endpoint. */
+ * Run Payroll: computes Net Pay for every active employee that month and saves it as a DRAFT
+ * (HrToolService.runPayroll). Refused while the cycle is still running or the month is frozen.
+ * Calling it again recomputes and overwrites — that's how a draft picks up later changes. */
 export async function POST(request: NextRequest) {
   const auth = await requireAnyRole(request, HR_TOOL_ROLES);
   if (auth instanceof NextResponse) return auth;

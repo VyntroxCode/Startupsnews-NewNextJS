@@ -10,17 +10,16 @@ import { formatSubmittedOn } from './sponsorEventFormat';
  * EnsEnquiryDetailModal): the admin's instructions to the people on the lead, which every assigned
  * employee reads at the top of the lead in My Leads.
  *
- * - While editing, the message box shows only once the lead has at least one department AND one
+ * - The message box shows only once the lead has at least one department AND one
  *   person (`canWrite`). The text is a controlled draft — the window's own Save sends it, after the
  *   assignment, and clears it.
  * - Below it, every message sent so far, newest first, with who wrote it and when (the server's
  *   timestamp). Messages are never edited; a new one is added instead. Fetched on open and again
  *   whenever `refreshKey` changes (the window bumps it after a save). A new lead has no history. */
-export default function LeadMessagesPanel({ source, leadId, editing, canWrite, value, onChange, refreshKey = 0, idPrefix }: {
+export default function LeadMessagesPanel({ source, leadId, canWrite, value, onChange, refreshKey = 0, idPrefix }: {
   source: LeadSource;
   /** Empty for a lead that isn't saved yet. */
   leadId: string;
-  editing: boolean;
   canWrite: boolean;
   value: string;
   onChange: (next: string) => void;
@@ -46,7 +45,7 @@ export default function LeadMessagesPanel({ source, leadId, editing, canWrite, v
         <span>Everyone assigned sees this on the lead in My Leads</span>
       </header>
 
-      {editing && (canWrite ? (
+      {canWrite ? (
         <div className="field" style={{ marginBottom: 12 }}>
           <label htmlFor={`${idPrefix}-lead-message`}>New message</label>
           <textarea
@@ -60,14 +59,17 @@ export default function LeadMessagesPanel({ source, leadId, editing, canWrite, v
         </div>
       ) : (
         <p className="ee-panel-note" style={{ marginTop: 0, marginBottom: 12 }}>Pick a department and at least one person under Assigned to, then you can write them a message here.</p>
-      ))}
+      )}
 
       {error ? (
-        <div className="msg err">{error}</div>
+        <div className="msg err">Couldn&apos;t load the messages for this lead ({error}). Close and reopen the lead to try again.</div>
       ) : !messages ? (
         <p className="hint">Loading messages…</p>
       ) : messages.length === 0 ? (
-        !editing && <p className="ee-panel-note">No messages sent yet. Use {source === 'lead' ? 'Edit lead' : 'Edit details'} to write one to the assigned people.</p>
+        <p className="ee-panel-note" style={{ marginTop: 0 }}>
+          <strong>No messages on this lead yet.</strong>{' '}
+          Messages you send will be listed here.
+        </p>
       ) : (
         <ol className="fu-list">
           {messages.map((m) => (

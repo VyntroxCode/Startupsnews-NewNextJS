@@ -6,32 +6,39 @@ import LeadFormModal from '@/components/admin/sales-tracker/LeadFormModal';
 import LeadsTable from '@/components/admin/sales-tracker/LeadsTable';
 import SalesTrackerStyles from '@/components/admin/sales-tracker/SalesTrackerStyles';
 import EnsEnquiryDetailModal from '@/components/admin/sales-tracker/EnsEnquiryDetailModal';
-import SummaryCard from '@/components/admin/sales-tracker/SummaryCard';
+import LeadsOverview, { type LeadsFilter } from '@/components/admin/sales-tracker/LeadsOverview';
 import PageLeadsKpis from '@/components/admin/sales-tracker/PageLeadsKpis';
 import { assignmentKey, useSalesTrackerData } from '@/components/admin/sales-tracker/useSalesTrackerData';
 import { emptyLead } from '@/components/admin/sales-tracker/utils';
+import { PAGE_LEAD_FILTER_OPTIONS } from '@/components/admin/sales-tracker/constants';
 import { salesTrackerApi } from '@/components/admin/sales-tracker/api';
 import type { SalesLead, UnifiedLeadRow } from '@/components/admin/sales-tracker/types';
 import { assignmentToDraft, type LeadAssignmentDraft, sameAssignmentDraft } from '@/modules/lead-assignments/domain/types';
 
 export default function SalesTrackerPage() {
   const {
-    leads, ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
+    ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
     saveLead, deleteLead, assignLead, applyEnsEnquiryUpdate,
   } = useSalesTrackerData();
   const [activeLead, setActiveLead] = useState<SalesLead | null>(null);
-  // Whether LeadFormModal opens unlocked. Existing leads open read-only (row click / View) unless
-  // the table's Edit button was used; a brand-new lead always opens editable.
-  const [leadStartEditing, setLeadStartEditing] = useState(false);
+  // Both lead windows open straight into edit mode; saving an existing lead asks for confirmation.
   const [activeEnsId, setActiveEnsId] = useState<string | null>(null);
-  // Set by the Summary card's "Pending leads" tile, read by LeadsTable to filter down to just
-  // those and cleared from there once the reader is done looking — see LeadsTable's own
-  // pendingOnly handling for why the filter lives as a prop rather than inside either card.
-  const [pendingOnly, setPendingOnly] = useState(false);
-  // "Filter: page leads" in All leads, lifted here so the Leads by page tiles can drive it.
-  // jumpToken is bumped on a tile click so LeadsTable opens and scrolls into view.
+  // All leads' "Filter: type" / "Filter: page leads" / "Filter: status", lifted here so a click in
+  // Leads overview can drive them. jumpToken is bumped on that click so LeadsTable opens and
+  // scrolls into view.
+  const [typeFilter, setTypeFilter] = useState('');
   const [pageFilter, setPageFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [jumpToken, setJumpToken] = useState(0);
+
+  // An overview lead type is either a page type (its own dropdown in All leads) or a team-picked one.
+  function showInAllLeads({ type, status }: LeadsFilter) {
+    const isPage = PAGE_LEAD_FILTER_OPTIONS.includes(type);
+    setTypeFilter(isPage ? '' : type);
+    setPageFilter(isPage ? type : '');
+    setStatusFilter(status);
+    setJumpToken((n) => n + 1);
+  }
 
   // The lead is saved first (a new lead needs its row before it can be assigned), then its
   // departments and people, only if they changed, then the admin's message to them (it needs the
@@ -54,8 +61,8 @@ export default function SalesTrackerPage() {
   // enquiries — see useSalesTrackerData's `rows`. A click opens whichever modal actually owns that
   // row's data: LeadFormModal saves through the generic lead upsert, EnsEnquiryDetailModal through
   // its own PATCH endpoint. Neither reads or writes the other's table.
-  function handleRowEdit(row: UnifiedLeadRow, startEditing = false) {
-    if (row._source === 'lead') { setLeadStartEditing(startEditing); setActiveLead(row); }
+  function handleRowEdit(row: UnifiedLeadRow) {
+    if (row._source === 'lead') setActiveLead(row);
     else setActiveEnsId(row.id);
   }
 
@@ -69,15 +76,22 @@ export default function SalesTrackerPage() {
             <h1>Sales Tracker</h1>
             <div className="sub">Shared across your team · saved automatically{!loaded ? ' · loading…' : ''}</div>
           </div>
-          <button type="button" className="primary" onClick={() => { setLeadStartEditing(true); setActiveLead(emptyLead()); }}>+ Add new lead</button>
+          <button type="button" className="primary" onClick={() => setActiveLead(emptyLead())}>+ Add new lead</button>
         </div>
 
-        <SummaryCard leads={leads} ensPendingCount={ensEnquiries.filter((e) => !e.leadStatus).length} loaded={loaded} onPendingLeadsClick={() => setPendingOnly(true)} />
+        <LeadsOverview
+          rows={rows}
+          loaded={loaded}
+          active={{ type: pageFilter || typeFilter, status: statusFilter }}
+          onSelect={showInAllLeads}
+        />
 
+        {/* Leads by page tiles: a click shows just that page's leads in All leads; clicking the
+            active tile again clears that filter. */}
         <PageLeadsKpis
           rows={rows}
           active={pageFilter}
-          onSelect={(value) => { setPageFilter(value); if (value) setJumpToken((n) => n + 1); }}
+          onSelect={(value) => (value ? showInAllLeads({ type: value, status: '' }) : setPageFilter(''))}
         />
 
         {/* Sponsor Event submissions and Expand North Star enquiries used to get their own
@@ -89,7 +103,6 @@ export default function SalesTrackerPage() {
         {activeLead && (
           <LeadFormModal
             lead={activeLead}
-            startEditing={leadStartEditing}
             employees={employees}
             departments={departments}
             assignment={activeLead.id ? assignments[assignmentKey('lead', activeLead.id)] : undefined}
@@ -116,10 +129,12 @@ export default function SalesTrackerPage() {
           assignments={assignments}
           onEdit={handleRowEdit}
           onDelete={deleteLead}
-          pendingOnly={pendingOnly}
-          onClearPendingOnly={() => setPendingOnly(false)}
+          filterType={typeFilter}
+          onFilterTypeChange={setTypeFilter}
           filterPageType={pageFilter}
           onFilterPageTypeChange={setPageFilter}
+          filterStatus={statusFilter}
+          onFilterStatusChange={setStatusFilter}
           jumpToken={jumpToken}
         />
 

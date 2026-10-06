@@ -142,8 +142,8 @@ export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, 
   const pageLabel = PAGE_LEAD_LABELS[lead.page] || (lead.source === 'lead' ? 'Added manually' : lead.page);
 
   return (
-    <div className="fixed inset-0 z-[1000] flex justify-end" role="dialog" aria-modal="true" aria-labelledby="lead-drawer-title">
-      <div className="absolute inset-0 bg-slate-900/40" onClick={onClose} aria-hidden="true" />
+    <div className="fixed top-0 right-0 bottom-0 left-0 z-[1000] flex justify-end" role="dialog" aria-modal="true" aria-labelledby="lead-drawer-title">
+      <div className="absolute top-0 right-0 bottom-0 left-0 bg-slate-900/40" onClick={onClose} aria-hidden="true" />
       <div className="relative flex h-full w-full max-w-2xl flex-col bg-slate-50 shadow-2xl">
         {/* Header */}
         <div className="border-b border-slate-200 bg-white px-6 py-5">

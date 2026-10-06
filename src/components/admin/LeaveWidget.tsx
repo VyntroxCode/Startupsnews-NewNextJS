@@ -19,6 +19,16 @@ interface LeaveMeData {
   /** Inputs for previewing a new request's paid/unpaid split before it's sent. */
   doj?: string;
   holidays?: string[];
+  /** Punch-in dates this year and the absence-cover cut-off — so the preview counts absences
+   * already paid from Casual, exactly as the server does. */
+  workedDates?: string[];
+  absenceCoverThrough?: string;
+  /** Dates HR set a status on — never covered from Casual automatically. */
+  absenceCoverSkip?: string[];
+  /** Punched dates that still cost pay → days covered from Casual (half days, absences…). */
+  absenceCoverShortfall?: Record<string, number>;
+  /** Day of the month leave is credited (leaveCreditDay) — the preview counts credits with it. */
+  creditDay?: number;
 }
 const HALF_LABEL: Record<string, string> = { first: 'first half', second: 'second half' };
 
@@ -27,7 +37,7 @@ const HALF_LABEL: Record<string, string> = { first: 'first half', second: 'secon
 const WFH_TYPE = 'WFH';
 const typeLabel = (t: string) => (t === WFH_TYPE ? 'Work From Home' : t);
 
-const cardClass = 'mt-4 rounded-xl border border-solid border-black/5 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm box-border sm:p-6 md:mt-6 md:p-8';
+const cardClass = 'mt-4 rounded-xl border border-solid border-black/5 bg-linear-to-br from-white to-slate-50 p-4 shadow-sm box-border sm:p-6 md:mt-6 md:p-8';
 const thClass = 'border-b border-solid border-slate-200 px-3.5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500';
 const tdClass = 'border-b border-solid border-slate-100 px-3.5 py-3 align-top text-slate-900';
 const labelClass = 'mb-1.5 block text-[0.8rem] font-semibold text-slate-600';
@@ -78,11 +88,6 @@ function localTodayStr(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-function addDaysStr(dateStr: string, days: number): string {
-  const d = new Date(dateStr + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 interface LeaveWidgetProps {
   /** Base path for GET (own requests + leave types) and POST (submit). Defaults to the
@@ -92,8 +97,8 @@ interface LeaveWidgetProps {
 }
 
 /** Self-service "Apply for Leave" — own request history (with each request's paid/unpaid split
- * and a Cancel button — any time while pending, until it starts once approved) plus a form to submit a new one for today, yesterday or
- * later, full or half day. Every rule is enforced by HrToolService.submitEmployeeLeaveRequest;
+ * and a Cancel button — any time while pending, until it starts once approved) plus a form to submit a new one for any date — past,
+ * today or future (not in a frozen payroll month) — full or half day. Every rule is enforced by HrToolService.submitEmployeeLeaveRequest;
  * the form only previews the split with the same allocateLeave payroll pays by. Same apiBase/getHeaders prop-injection pattern as
  * AttendanceWidget/DocumentsWidget — used as-is on both the plain-employee and Publisher/Event
  * Admin surfaces. */
@@ -105,7 +110,6 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
   const [applyOpen, setApplyOpen] = useState(false);
   const [type, setType] = useState('');
   const today = localTodayStr();
-  const yesterday = addDaysStr(today, -1);
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [halfDay, setHalfDay] = useState<'' | 'first' | 'second'>('');
@@ -192,7 +196,8 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
     if (!applyOpen || !type || !from || (!halfDay && to < from)) return null;
     const draft = { id: 'L-9999999999999', type, from, to: halfDay ? from : to, status: 'pending', halfDay: halfDay || null };
     const others = (data?.leaveRequests || []).map((r) => ({ id: r.id, type: r.type, from: r.from, to: r.to, status: r.status, halfDay: r.halfDay || null }));
-    return allocateLeave(data?.doj || '', data?.leaveTypes || {}, [...others, draft], today, data?.holidays || []).get(draft.id) || null;
+    const cover = data?.absenceCoverThrough ? { through: data.absenceCoverThrough, skip: data.absenceCoverSkip || [], shortfall: data.absenceCoverShortfall || {} } : undefined;
+    return allocateLeave(data?.doj || '', data?.leaveTypes || {}, data?.creditDay ?? 1, [...others, draft], today, data?.holidays || [], data?.workedDates || [], cover).get(draft.id) || null;
   })();
 
   if (loading) return <div className={`${cardClass} text-slate-500`}>Loading leave requests…</div>;
@@ -263,7 +268,7 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>{halfDay ? 'Date' : 'From'}</label>
-                <input type="date" value={from} min={yesterday} onChange={(e) => { setFrom(e.target.value); if (halfDay || to < e.target.value) setTo(e.target.value); }} className={inputClass} />
+                <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); if (halfDay || to < e.target.value) setTo(e.target.value); }} className={inputClass} />
               </div>
               {!halfDay && (
                 <div>
@@ -283,7 +288,7 @@ export default function LeaveWidget({ apiBase = '/api/admin/leave-requests', get
               <label className={labelClass}>Reason</label>
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Reason for leave…" className={`${inputClass} resize-y font-[inherit]`} />
             </div>
-            <div className="text-xs leading-relaxed text-slate-400">You can apply for today, yesterday or a future date. Sundays and holidays inside the leave aren&apos;t counted. Full-day leave isn&apos;t possible on a day you punched in — use half-day leave or Regularization.</div>
+            <div className="text-xs leading-relaxed text-slate-400">You can apply for any date — past, today or future — except in a month whose payroll is already final. Your Casual leave is used only through an approved leave request: a day you miss without one counts as absent (loss of pay). Sundays and holidays inside the leave aren&apos;t counted. Full-day leave isn&apos;t possible on a day you punched in — use half-day leave or Regularization.</div>
             {submitError && (
               <div className="rounded-lg border border-solid border-red-300 bg-red-50 px-3.5 py-2.5 text-[0.8rem] text-red-800">{submitError}</div>
             )}

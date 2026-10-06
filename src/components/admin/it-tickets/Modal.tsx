@@ -49,7 +49,7 @@ export default function Modal({ onClose, size = 'md', labelledBy, className = ''
 
   return (
     <div
-      className="fixed inset-0 z-[1200] flex items-start justify-center overflow-y-auto bg-slate-900/55 px-4 py-12 backdrop-blur-[2px] max-sm:px-2.5 max-sm:py-4"
+      className="fixed top-0 right-0 bottom-0 left-0 z-[1200] flex items-start justify-center overflow-y-auto bg-slate-900/55 px-4 py-12 backdrop-blur-[2px] max-sm:px-2.5 max-sm:py-4"
       onMouseDown={(e) => { pressedOnBackdrop.current = e.target === e.currentTarget; }}
       onMouseUp={(e) => {
         if (pressedOnBackdrop.current && e.target === e.currentTarget) onClose();

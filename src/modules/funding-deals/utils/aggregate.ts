@@ -3,7 +3,7 @@
  * Every breakdown carries both $ total (USD Mn, undisclosed counted as 0) and deal count.
  */
 
-import type { AggRow, FundingKpis, TimeBucket } from '../domain/types';
+import type { AggRow, FundingKpis, InvestorRow, SizeBandRow, StageSectorMatrix, TimeBucket } from '../domain/types';
 
 /** Bucket sizes: the pinned card uses week/month/year; Market Analysis also uses quarter. */
 export type Granularity = 'week' | 'month' | 'quarter' | 'year';
@@ -16,7 +16,13 @@ export interface AggDeal {
   country: string;
   amount: number | null;
   investors: string;
+  /** Only filled by the overview query (Market Analysis doesn't need them). */
+  startupName?: string;
+  leadInvestor?: string;
+  businessModel?: string;
 }
+
+const splitNames = (s: string | undefined) => (s || '').split(',').map((x) => x.trim()).filter(Boolean);
 
 export function sumBy<T extends { amount: number | null }>(rows: T[], keyFn: (r: T) => string): AggRow[] {
   const map = new Map<string, AggRow>();
@@ -31,23 +37,64 @@ export function sumBy<T extends { amount: number | null }>(rows: T[], keyFn: (r:
 }
 
 /** Splits the comma-separated investor list; a deal counts once for each investor on it. */
-export function investorAgg(rows: AggDeal[]): AggRow[] {
-  const map = new Map<string, AggRow>();
+export function investorAgg(rows: AggDeal[]): InvestorRow[] {
+  const map = new Map<string, InvestorRow>();
   for (const r of rows) {
-    const names = new Set(
-      r.investors.split(',').map((s) => s.trim()).filter(Boolean),
-    );
+    const names = new Set(splitNames(r.investors));
+    const leads = new Set(splitNames(r.leadInvestor));
     for (const key of names) {
-      const e = map.get(key) ?? { key, total: 0, count: 0 };
+      const e = map.get(key) ?? { key, total: 0, count: 0, leads: 0 };
       e.total += r.amount ?? 0;
       e.count += 1;
+      if (leads.has(key)) e.leads += 1;
       map.set(key, e);
     }
   }
   return [...map.values()].map(roundRow);
 }
 
-function roundRow(r: AggRow): AggRow {
+/**
+ * Round stage × sector cross-tab. The top `topStages` / `topSectors` by $ keep their name, the rest
+ * fold into "Other", so every deal lands in exactly one cell and the cells sum to the overall total.
+ */
+export function stageSectorMatrix(rows: AggDeal[], topStages = 8, topSectors = 8): StageSectorMatrix {
+  const pick = (list: AggRow[], n: number) => {
+    const keep = list.slice(0, n).map((r) => r.key);
+    return { keep: new Set(keep), order: list.length > n ? [...keep, 'Other'] : keep };
+  };
+  const st = pick(sumBy(rows, (r) => r.roundStage), topStages);
+  const se = pick(sumBy(rows, (r) => r.sector), topSectors);
+  const map = new Map<string, { stage: string; sector: string; total: number; count: number }>();
+  for (const r of rows) {
+    const stage = st.keep.has(r.roundStage || 'Unspecified') ? r.roundStage || 'Unspecified' : 'Other';
+    const sector = se.keep.has(r.sector || 'Unspecified') ? r.sector || 'Unspecified' : 'Other';
+    const key = `${stage}\u0000${sector}`;
+    const e = map.get(key) ?? { stage, sector, total: 0, count: 0 };
+    e.total += r.amount ?? 0;
+    e.count += 1;
+    map.set(key, e);
+  }
+  return {
+    stages: st.order,
+    sectors: se.order,
+    cells: [...map.values()].map((c) => ({ ...c, total: Math.round(c.total * 10) / 10 })).sort((a, b) => b.total - a.total),
+  };
+}
+
+/** Deals per round-size band (all five bands, in size order; undisclosed amounts are left out). */
+export function sizeBandAgg(rows: { amount: number | null }[]): SizeBandRow[] {
+  const out: SizeBandRow[] = ROUND_BANDS.map((b) => ({ key: b.key, label: b.label, range: b.range, total: 0, count: 0 }));
+  for (const r of rows) {
+    const band = bandFor(r.amount);
+    if (!band) continue;
+    const e = out.find((o) => o.key === band.key)!;
+    e.total += r.amount ?? 0;
+    e.count += 1;
+  }
+  return out.map((o) => ({ ...o, total: Math.round(o.total * 10) / 10 }));
+}
+
+function roundRow<T extends AggRow>(r: T): T {
   return { ...r, total: Math.round(r.total * 10) / 10 };
 }
 

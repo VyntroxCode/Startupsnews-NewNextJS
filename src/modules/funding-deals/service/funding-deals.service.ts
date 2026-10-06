@@ -9,7 +9,7 @@ import type {
   TrendRange,
 } from '../domain/types';
 import { FundingDealsRepository, isDuplicateKeyError, type FundingDealWrite } from '../repository/funding-deals.repository';
-import { computeKpis, investorAgg, sumBy, timeBuckets, type Granularity } from '../utils/aggregate';
+import { computeKpis, investorAgg, sizeBandAgg, stageSectorMatrix, sumBy, timeBuckets, type Granularity } from '../utils/aggregate';
 import { computeForecast, generateSignals } from '../utils/forecast';
 import {
   marketCumulative,
@@ -98,6 +98,14 @@ function todayIso(): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+/** YYYY-MM-DD moved by whole years; 29 Feb becomes 28 Feb in a non-leap year. */
+function shiftYear(iso: string, years: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const ny = y + years;
+  const last = new Date(Date.UTC(ny, m, 0)).getUTCDate();
+  return `${ny}-${pad2(m)}-${pad2(Math.min(d, last))}`;
+}
+
 /**
  * Everything the reader Funding page shows above the deals table.
  * `pinned` is the "{year} Funding Overview" card — current calendar year, filtered only by the
@@ -113,10 +121,16 @@ export async function getFundingOverview(
   const yearStart = `${year}-01-01`;
   const countryFilter = pinnedCountry && pinnedCountry !== 'all' ? pinnedCountry : undefined;
 
-  const [filtered, pinnedYear, pinnedAllYears] = await Promise.all([
+  // Same window one year earlier, for the dashboard's year-on-year chips. Only when a window is set.
+  const previousFilters = filters.from && filters.to
+    ? { ...filters, from: shiftYear(filters.from, -1), to: shiftYear(filters.to, -1) }
+    : null;
+
+  const [filtered, pinnedYear, pinnedAllYears, previous] = await Promise.all([
     repo.findForAggregation(filters),
     repo.findForAggregation({ country: countryFilter, from: yearStart, to: today }),
     range === 'year' ? repo.findForAggregation({ country: countryFilter, to: today }) : Promise.resolve(null),
+    previousFilters ? repo.findForAggregation(previousFilters) : Promise.resolve(null),
   ]);
 
   const trend = range === 'year'
@@ -133,10 +147,15 @@ export async function getFundingOverview(
       trend,
     },
     kpis: computeKpis(filtered),
-    bySector: sumBy(filtered, (r) => r.sector).slice(0, 8),
-    byStage: sumBy(filtered, (r) => r.roundStage).slice(0, 8),
-    byCity: sumBy(filtered, (r) => r.city).slice(0, 8),
+    previousKpis: previous ? computeKpis(previous) : null,
+    bySector: sumBy(filtered, (r) => r.sector),
+    byStage: sumBy(filtered, (r) => r.roundStage),
+    byCity: sumBy(filtered, (r) => r.city),
     topInvestors: investorAgg(filtered).sort((a, b) => b.total - a.total || b.count - a.count).slice(0, 10),
+    stageSector: stageSectorMatrix(filtered),
+    bySizeBand: sizeBandAgg(filtered),
+    byBusinessModel: sumBy(filtered, (r) => r.businessModel ?? ''),
+    topCompanies: sumBy(filtered, (r) => r.startupName ?? '').slice(0, 10),
     forecast: computeForecast(filtered),
     signals: generateSignals(filtered),
   };

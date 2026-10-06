@@ -1,7 +1,7 @@
 import { getDbConnection, query, queryOne } from '@/shared/database/connection';
 import { parseJsonColumn } from '@/modules/hr-tool/repository/shared';
 import {
-  DEFAULT_OFFBOARDING_SETTINGS,
+  DEFAULT_OFFBOARDING_SETTINGS, LWD_CHOICES, NOTICE_DAYS, type LwdChoice,
   type ClearanceCategory, type ClearanceStatus, type OffboardingAccessMode, type OffboardingCase, type OffboardingClearanceItem,
   type OffboardingExitType, type OffboardingFnf, type OffboardingInitiator, type OffboardingLetters, type OffboardingSettings,
   type OffboardingStatus, type TerminationMode,
@@ -14,6 +14,8 @@ interface OffboardingRow {
   personal_email: string | null; handover_notes: string | null; rehire_eligible: number | null;
   decided_by: string | null; decided_at: string | null; decision_note: string | null; fnf: unknown; letters: unknown;
   created_at: string; updated_at: string;
+  /** add-hr-offboarding-lwd-choice.sql — undefined until that migration runs. */
+  lwd_choice?: string | null; agreed_lwd?: string | null;
 }
 interface ClearanceRow {
   id: number; offboarding_id: number; category: string; item: string; status: string; note: string | null;
@@ -29,6 +31,8 @@ function caseFromRow(r: OffboardingRow): OffboardingCase {
     exitType: r.exit_type as OffboardingExitType, initiatedBy: r.initiated_by as OffboardingInitiator, status: r.status as OffboardingStatus,
     resignationDate: r.resignation_date, reasonCategory: r.reason_category, reasonText: r.reason_text, requestedLwd: r.requested_lwd,
     noticeDays: Number(r.notice_days) || 0, noticeWaivedDays: Number(r.notice_waived_days) || 0, approvedLwd: r.approved_lwd,
+    lwdChoice: (LWD_CHOICES as readonly string[]).includes(r.lwd_choice || '') ? (r.lwd_choice as LwdChoice) : null,
+    agreedLwd: r.agreed_lwd ?? null,
     terminationMode: (r.termination_mode as TerminationMode | null) ?? null,
     accessMode: r.access_mode === 'blocked' ? 'blocked' : 'alumni',
     personalEmail: r.personal_email, handoverNotes: r.handover_notes,
@@ -76,11 +80,11 @@ const PATCHABLE: Record<string, string> = {
   status: 'status', noticeDays: 'notice_days', noticeWaivedDays: 'notice_waived_days', approvedLwd: 'approved_lwd',
   accessMode: 'access_mode', personalEmail: 'personal_email', handoverNotes: 'handover_notes', rehireEligible: 'rehire_eligible',
   decidedBy: 'decided_by', decidedAt: 'decided_at', decisionNote: 'decision_note', terminationMode: 'termination_mode',
-  fnf: 'fnf', letters: 'letters',
+  fnf: 'fnf', letters: 'letters', lwdChoice: 'lwd_choice', agreedLwd: 'agreed_lwd',
 };
 export type OffboardingPatch = Partial<Pick<OffboardingCase,
   'status' | 'noticeDays' | 'noticeWaivedDays' | 'approvedLwd' | 'accessMode' | 'personalEmail' | 'handoverNotes' | 'rehireEligible' |
-  'decidedBy' | 'decidedAt' | 'decisionNote' | 'terminationMode' | 'fnf' | 'letters'>>;
+  'decidedBy' | 'decidedAt' | 'decisionNote' | 'terminationMode' | 'fnf' | 'letters' | 'lwdChoice' | 'agreedLwd'>>;
 
 export class HrOffboardingRepository {
   async findAll(): Promise<OffboardingCase[]> {
@@ -311,8 +315,6 @@ export class HrOffboardingRepository {
     if (!r) return DEFAULT_OFFBOARDING_SETTINGS;
     const checklist = parseJsonColumn<Partial<OffboardingSettings['checklist']> | null>(r.checklist, null);
     return {
-      noticeDaysProbation: Number(r.notice_days_probation) || 0,
-      noticeDaysConfirmed: Number(r.notice_days_confirmed) || 0,
       checklist: { ...DEFAULT_OFFBOARDING_SETTINGS.checklist, ...(checklist || {}) },
       encashableLeaveTypes: parseJsonColumn<string[]>(r.encashable_leave_types, DEFAULT_OFFBOARDING_SETTINGS.encashableLeaveTypes),
     };
@@ -323,7 +325,8 @@ export class HrOffboardingRepository {
        VALUES (1, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE notice_days_probation = VALUES(notice_days_probation), notice_days_confirmed = VALUES(notice_days_confirmed),
         checklist = VALUES(checklist), encashable_leave_types = VALUES(encashable_leave_types), updated_by = VALUES(updated_by)`,
-      [s.noticeDaysProbation, s.noticeDaysConfirmed, JSON.stringify(s.checklist), JSON.stringify(s.encashableLeaveTypes), actor]
+      // The notice columns are no longer read (NOTICE_DAYS is fixed); kept in step for anyone looking at the table.
+      [NOTICE_DAYS, NOTICE_DAYS, JSON.stringify(s.checklist), JSON.stringify(s.encashableLeaveTypes), actor]
     );
   }
 }

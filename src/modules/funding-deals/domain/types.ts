@@ -108,6 +108,34 @@ export interface FundingKpis {
   topInvestor: AggRow | null;
 }
 
+/** An investor's participation. `total` credits the full round to every investor on it, so these
+ * overlap and must never be summed. `leads` = deals where they are (one of) the lead investors. */
+export interface InvestorRow extends AggRow {
+  leads: number;
+}
+
+/** One round-stage × sector cell; each deal has exactly one of each, so cells sum to the totals. */
+export interface StageSectorCell {
+  stage: string;
+  sector: string;
+  total: number;
+  count: number;
+}
+
+export interface StageSectorMatrix {
+  /** Top stages by $, then "Other" when more exist. */
+  stages: string[];
+  /** Top sectors by $, then "Other" when more exist. */
+  sectors: string[];
+  cells: StageSectorCell[];
+}
+
+/** A round-size band (ROUND_BANDS) with its deal count and $. */
+export interface SizeBandRow extends AggRow {
+  label: string;
+  range: string;
+}
+
 export interface FundingOverview {
   pinned: {
     year: number;
@@ -118,10 +146,17 @@ export interface FundingOverview {
     trend: TimeBucket[];
   };
   kpis: FundingKpis;
+  /** Same window one year earlier (same country); null when no date window is set. */
+  previousKpis: FundingKpis | null;
+  /** Every sector / stage / city, sorted by $ (largest first). */
   bySector: AggRow[];
   byStage: AggRow[];
   byCity: AggRow[];
-  topInvestors: AggRow[];
+  topInvestors: InvestorRow[];
+  stageSector: StageSectorMatrix;
+  bySizeBand: SizeBandRow[];
+  byBusinessModel: AggRow[];
+  topCompanies: AggRow[];
   forecast: FundingForecast;
   signals: FundingSignal[];
 }

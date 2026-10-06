@@ -2,15 +2,17 @@ import { HrToolRepository } from '../repository/hr-tool.repository';
 import {
   HrBootstrap, HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrPunch, HrPunchGeo,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrPayrollEntry, HrRules, HrAuditLogEntry, HrCompanyProfile,
-  HrLeaveTypeConfig, HrEmployeeRef, WFH_LEAVE_TYPE,
+  HrLeaveTypeConfig, HrEmployeeRef, HrPayrollRun, WFH_LEAVE_TYPE,
+  HrAttendanceOverride, HrAttendanceOverrideStatus, ATTENDANCE_OVERRIDE_STATUSES, ATTENDANCE_OVERRIDE_LABEL,
 } from '../domain/types';
-import { todayStr, nowTimeStr, nowMinutesSinceMidnight, nowMysqlDatetime, payrollPeriodRange, payrollMonthKeyForDate, addDaysUTC, daysUntil } from '../utils/time';
+import { todayStr, nowTimeStr, isSunday, nowMinutesSinceMidnight, nowMysqlDatetime, payrollPeriodRange, payrollMonthKeyForDate, addDaysUTC, daysUntil } from '../utils/time';
 import { latenessBucket, hhmmToMinutes, formatTime12h } from '../utils/lateness';
 import { evaluateGeofence, GeofenceCode, PunchLocationInput } from '../utils/geofence';
-import { computeLeaveBalances, allocateLeave, leaveDayUnits, monthsAccruedThisYear, type LeaveAllocation } from '../utils/leave-balance';
+import { computeLeaveBalances, allocateLeave, leaveDayUnits, creditsAccruedThisYear, leaveCreditDay, absenceCoverThrough, punchedShortfall, ABSENCE_COVER_ID, type LeaveAllocation } from '../utils/leave-balance';
 import { buildDayLedger, approvedLeaveByDate, payFromLedger, DayLedger, EmployeeCycleLedger } from '../utils/day-ledger';
 export type { EmployeeCycleLedger } from '../utils/day-ledger';
-import { requestedTimeError, regularizationDeadline, countedRegularizationDates, REG_LATE_FILING_DAYS } from '../utils/regularization-policy';
+import { buildPayslipData, payslipMonthLabel, type PayslipData } from '../utils/payslip-data';
+import { requestedTimeError, regularizationDeadline, countedRegularizationDates, REG_LATE_FILING_DAYS, DEFAULT_PUNCH_WINDOWS, fmtWindowTime, inWindow, type PunchWindows } from '../utils/regularization-policy';
 import { HrKycDocuments, getKycSlotDef, mergeKycDocuments, validateKycField, computeKycProgress } from '../domain/kyc';
 
 export interface PayrollPreview {
@@ -35,28 +37,45 @@ export interface PayrollPreview {
   settledThrough?: string | null;
 }
 
-/** Where a payroll cycle stands — see HrToolService.getPayrollCycleState. */
+/** Where a payroll cycle stands and what the Payroll page may do with it — see
+ * HrToolService.getPayrollCycleState. Run Payroll saves a draft; Reverse discards that draft (the
+ * month goes back to "not run"); Freeze makes it final and publishes the payslips — permanently. */
 export interface PayrollCycleState {
-  /** 'in-progress' until the cycle ends · 'window' while Run Payroll is open (5 days after the end,
-   * or a Founder reopening) · 'overdue' past the window but not finished (never run, out of date,
-   * or requests still pending) · 'locked' once finished — nothing in it can change. */
-  phase: 'in-progress' | 'window' | 'overdue' | 'locked';
+  /** 'in-progress' until the cycle ends · 'window' the 5 days after it (26th–30th) · 'overdue'
+   * past the window and not frozen yet (still runnable/freezable, shown in red) · 'frozen' final. */
+  phase: 'in-progress' | 'window' | 'overdue' | 'frozen';
   windowFrom: string;
   windowTo: string;
-  /** Requests waiting for a decision that touch this cycle. They don't block Run Payroll (pay is
-   * calculated from current records, pending = not approved) but the cycle can't lock until none remain. */
+  /** Requests waiting for a decision that touch this cycle. They count as not approved in the
+   * figures, and Freeze is blocked until none remain. */
   pendingRequests: { kind: 'regularization' | 'leave'; id: string; employeeId: string; emp: string; dates: string; detail: string }[];
-  /** A request in this cycle changed after the last run — re-run needed. */
+  /** A draft exists (Run Payroll was clicked) — frozen months always have one. */
+  alreadyRun: boolean;
+  /** The saved draft no longer matches what the records say today (a decision, attendance, CTC,
+   * holiday or F&F changed since the last Run) — Run Payroll again before freezing. */
   stale: boolean;
-  lockedAt: string | null;
-  reopenedUntil: string | null;
+  frozenAt: string | null;
+  frozenBy: string | null;
+  reversedAt: string | null;
+  reversedBy: string | null;
+  reverseReason: string | null;
   canRun: boolean;
+  canFreeze: boolean;
+  /** Why Freeze is disabled, in plain words — empty when canFreeze. */
+  freezeBlockers: string[];
+  /** A draft exists that Reverse can discard (or, only with FROZEN_PAYROLL_REVERSIBLE, the latest frozen month). */
+  canReverse: boolean;
+  /** Why Reverse is disabled on a frozen month — null otherwise. */
+  reverseBlocker: string | null;
 }
 
 /** Days after a cycle ends during which Run Payroll is open (the 26th–30th for a 25th end). */
 export const PAYROLL_RUN_WINDOW_DAYS = 5;
-/** How long a Founder's reopening of a locked cycle lasts, counting today. */
-export const PAYROLL_REOPEN_DAYS = 2;
+
+/** A frozen month is final: Reverse only discards an unfrozen draft. Flipping this to true is the
+ * one code change that brings back reversing the latest frozen month (reason required, payslips
+ * withdrawn) — the server path for it is kept below, unused while this is false. */
+export const FROZEN_PAYROLL_REVERSIBLE = false;
 
 /** computePayrollForMonth options — used by the offboarding Full & Final to price one leaver's final cycles. */
 export interface PayrollComputeOptions {
@@ -72,6 +91,10 @@ export interface PayrollComputeOptions {
  * the hr-credentials module (see getBootstrap's comment), so the caller (API route) builds this
  * list and passes it in, rather than HrToolService reaching into hr_employee_credentials itself. */
 export interface PayrollRosterEntry { credentialId: number; name: string; doj: string; }
+
+/** Employee ID login (hr_employee_credentials.id) → its Employee Code, for payslips. Includes
+ * inactive logins so a leaver's frozen payslip still shows their code. */
+export type EmployeeCodeMap = Map<number, string>;
 
 /** Inputs shared by every employee's ledger in one cycle. */
 interface LedgerContext {
@@ -106,7 +129,7 @@ function samePayslip(a: HrPayrollEntry, b: HrPayrollEntry): boolean {
 export const NO_DIRECTORY_RECORD_ERROR =
   'No Directory record is linked to this Employee ID yet. Ask HR to open HR Management → Directory, which links it automatically.';
 
-export type PunchErrorCode = 'ALREADY_PUNCHED' | 'ON_LEAVE' | GeofenceCode;
+export type PunchErrorCode = 'ALREADY_PUNCHED' | 'ON_LEAVE' | 'OUTSIDE_PUNCH_WINDOW' | GeofenceCode;
 
 export interface PunchResult {
   ok: boolean;
@@ -124,6 +147,7 @@ const DEFAULT_RULES: HrRules = {
   shiftStartTime: '10:00',
   shiftEndTime: '18:35',
   shiftGraceMinutes: 15,
+  ...DEFAULT_PUNCH_WINDOWS,
   halfDayThresholdHours: 5.5,
   regularizationWindowDays: 5,
   regularizationOverride: false,
@@ -168,7 +192,7 @@ export class HrToolService {
     await this.repository.backfillMissingEmployeeIds();
     const [
       teams, designations, expenseCategories, requiredDocuments, holidays,
-      employees, onboarding, attendance, punchLog,
+      employees, onboarding, attendance, attendanceOverrides, punchLog,
       regularizations, leaveRequests, expenses, tickets, compliance, payrollRuns, templates, rules, auditLog,
       companyProfile,
     ] = await Promise.all([
@@ -180,6 +204,7 @@ export class HrToolService {
       this.repository.findEmployees(),
       this.repository.findOnboarding(),
       this.repository.findAttendance(),
+      this.repository.findAttendanceOverrides(),
       this.repository.findPunchLog(),
       this.repository.findRegularizations(),
       this.repository.findLeaveRequests(),
@@ -199,6 +224,7 @@ export class HrToolService {
       employees,
       onboarding,
       attendance,
+      attendanceOverrides,
       punchLog,
       regularizations,
       leaveRequests,
@@ -230,11 +256,14 @@ export class HrToolService {
     /** Geofence on/off + radius only — the office coordinates themselves aren't needed by any
      * employee-facing surface (the browser sends its own position; the server does the math). */
     geoFencing: boolean; geoFenceRadiusM: number;
+    /** Punch In / Punch Out clock windows — also the times a regularization may request. */
+    punchWindows: PunchWindows;
   }> {
     const rules = await this.repository.findRules();
     const source = rules || DEFAULT_RULES;
     return {
       shiftStartTime: source.shiftStartTime, shiftEndTime: source.shiftEndTime, shiftGraceMinutes: source.shiftGraceMinutes,
+      punchWindows: { punchInFrom: source.punchInFrom, punchInTo: source.punchInTo, punchOutFrom: source.punchOutFrom, punchOutTo: source.punchOutTo },
       regularizationWindowDays: source.regularizationWindowDays, regularizationMonthlyQuota: source.regularizationMonthlyQuota,
       shortLeaveMaxHours: source.shortLeaveMaxHours, shortLeaveMonthlyQuota: source.shortLeaveMonthlyQuota,
       halfDayThresholdHours: source.halfDayThresholdHours,
@@ -260,28 +289,54 @@ export class HrToolService {
     leaveBalance: Record<string, number>;
     doj: string;
     holidays: string[];
+    /** Dates this year with a punch-in — a form's preview needs them for the absence cover. */
+    workedDates: string[];
+    /** Last date that counts as an absence for the automatic Casual cover (absenceCoverThrough). */
+    absenceCoverThrough: string;
+    /** Dates HR set a status on — never covered from Casual automatically. */
+    absenceCoverSkip: string[];
+    /** Punched dates that still cost pay → days covered from Casual (punchedShortfall). */
+    absenceCoverShortfall: Record<string, number>;
+    /** leaveCreditDay(rules) — a form's preview needs it to count credits the same way. */
+    creditDay: number;
   }> {
     const today = todayStr();
-    const [employee, rules, requests, holidays, attendance] = await Promise.all([
+    const [employee, rules, requests, holidays, attendance, exitDates, overrides] = await Promise.all([
       this.repository.findEmployeeById(employeeId),
       this.repository.findRules(),
       this.repository.findLeaveRequestsForEmployee(employeeId),
       this.repository.findHolidays(),
       this.repository.findAttendanceForEmployeeInRange(employeeId, `${today.slice(0, 4)}-01-01`, today),
+      this.repository.findExitDates(today),
+      this.repository.findAttendanceOverridesForEmployeeInRange(employeeId, `${today.slice(0, 4)}-01-01`, today),
     ]);
     const source = rules || DEFAULT_RULES;
     const doj = employee?.doj || '';
     const holidayDates = holidays.map((h) => h.date);
     const workedDates = attendance.filter((a) => a.inMinutes != null).map((a) => a.date);
-    const allocation = allocateLeave(doj, source.leaveTypes, requests, today, holidayDates, workedDates);
+    // Absences (and what half days / deducted short leaves cost) are paid from Casual
+    // automatically — up to yesterday, or a leaver's last day.
+    const through = absenceCoverThrough(today, exitDates.get(employeeId) ?? null);
+    const absenceCover = {
+      through, skip: overrides.map((o) => o.date),
+      shortfall: punchedShortfall({ doj, attendance, overrides, requests, holidayDates, rules: source, through }),
+    };
+    const creditDay = leaveCreditDay(source);
+    const allocation = allocateLeave(doj, source.leaveTypes, creditDay, requests, today, holidayDates, workedDates, absenceCover);
     return {
       leaveRequests: requests.map((r) => ({ ...r, paidDays: allocation.get(r.id)?.paid ?? 0, unpaidDays: allocation.get(r.id)?.unpaid ?? 0 })),
-      leaveBalance: computeLeaveBalances(doj, source.leaveTypes, requests, today, holidayDates, workedDates),
+      leaveBalance: computeLeaveBalances(doj, source.leaveTypes, creditDay, requests, today, holidayDates, workedDates, absenceCover),
       doj,
       holidays: holidayDates,
+      workedDates,
+      absenceCoverThrough: absenceCover.through,
+      absenceCoverSkip: absenceCover.skip,
+      absenceCoverShortfall: absenceCover.shortfall,
+      creditDay,
     };
   }
   getRegularizationsForEmployee(employeeId: string) { return this.repository.findRegularizationsForEmployee(employeeId); }
+  getAttendanceOverridesForEmployeeInRange(employeeId: string, from: string, to: string) { return this.repository.findAttendanceOverridesForEmployeeInRange(employeeId, from, to); }
   /** Start and end of the payroll cycle a date falls in — the same range payroll computes over
    * (payrollPeriodRange), so the regularization limit and payroll can never disagree about where
    * a cycle begins and ends. */
@@ -300,17 +355,50 @@ export class HrToolService {
     return { used: countedRegularizationDates(regs, from, to).size, quota: rules.regularizationMonthlyQuota, from, to, windowDays: rules.regularizationWindowDays };
   }
 
+  /** Recent past days the employee punched in on but never punched out, for which a punch-out
+   * regularization can still be filed — the same date checks submitEmployeeRegularization applies
+   * (window, closed cycle, frozen month, HR-set day, existing punch-out request, full-day leave).
+   * The attendance widget shows these on the Today card, since the calendar alone hid them. */
+  async getMissedPunchOuts(employeeId: string): Promise<string[]> {
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    const today = todayStr();
+    const from = addDaysUTC(today, -Math.max(0, Number(rules.regularizationWindowDays) || 0));
+    const to = addDaysUTC(today, -1);
+    if (to < from) return [];
+    const [attendance, overrides, regs] = await Promise.all([
+      this.repository.findAttendanceForEmployeeInRange(employeeId, from, to),
+      this.repository.findAttendanceOverridesForEmployeeInRange(employeeId, from, to),
+      this.repository.findRegularizationsForEmployeeInRange(employeeId, from, to),
+    ]);
+    const currentCycle = this.cycleRangeForDate(today, rules);
+    const out: string[] = [];
+    for (const a of attendance) {
+      if (a.inMinutes == null || (a.outTime && a.outTime !== '—')) continue;
+      if (today > regularizationDeadline(a.date, rules.regularizationWindowDays)) continue;
+      const cycle = this.cycleRangeForDate(a.date, rules);
+      if (cycle.to < currentCycle.from && today > addDaysUTC(cycle.to, REG_LATE_FILING_DAYS)) continue;
+      if (overrides.some((o) => o.date === a.date)) continue;
+      if (regs.some((r) => r.date === a.date && r.punchType === 'out')) continue;
+      if (await this.frozenMonthLabelFor([a.date])) continue;
+      if (await this.fullDayLeaveOn(employeeId, a.date, ['pending', 'approved'])) continue;
+      out.push(a.date);
+    }
+    return out.sort();
+  }
+
   /**
    * The ONLY way a day's punch can be corrected (HR's direct calendar edits and Bulk mark were
    * removed — HR now approves or rejects these requests and nothing else). Used by the employee
    * portal, the Publisher/Event Admin panel and HR Management's own Regularize buttons, so every
    * surface gets identical, server-side rules:
-   *  - requested time: punch-in 08:00–14:00, punch-out 14:00–23:00, and out after in;
+   *  - requested time: inside the punch windows in hr_rules (default in 09:00–15:00, out
+   *    15:00–23:59 — the same windows as a real punch), and out after in;
    *  - window: within `regularizationWindowDays` calendar days of the date, never a future date;
    *  - cycle: a date in the previous payroll cycle only until REG_LATE_FILING_DAYS after it ended;
    *  - limit: `regularizationMonthlyQuota` DAYS per cycle — in + out on one date is one day,
-   *    approved and pending count, rejected doesn't. A hard limit, no override.
-   * Punch-in is only eligible when it wasn't on time; punch-out only while it's missing.
+   *    approved, pending and rejected all count. A hard limit, no override.
+   * Punch-in is only eligible when it wasn't on time; punch-out only while it's missing — today
+   * included, for a time not later than now.
    */
   async submitEmployeeRegularization(
     employee: HrEmployeeRef, date: string, reason: string, punchType: HrRegularization['punchType'], requestedTime: string
@@ -320,14 +408,19 @@ export class HrToolService {
     const trimmedTime = (requestedTime || '').trim();
     if (!trimmedTime) return { ok: false, error: 'The time you are requesting is required.' };
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(trimmedTime)) return { ok: false, error: 'Please enter a valid time.' };
-    const timeError = requestedTimeError(punchType, trimmedTime);
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    const timeError = requestedTimeError(punchType, trimmedTime, rules);
     if (timeError) return { ok: false, error: timeError };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return { ok: false, error: 'Please choose a valid date.' };
 
     const today = todayStr();
     if (date > today) return { ok: false, error: 'You can only regularize a date that has already arrived.' };
-
-    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    // Today's punch-out may be regularized too (since 2026-10-06), but only for a time already passed.
+    if (punchType === 'out' && date === today && hhmmToMinutes(trimmedTime) > nowMinutesSinceMidnight()) {
+      return { ok: false, error: `Today's punch-out can't be later than the current time (${formatTime12h(nowMinutesSinceMidnight())}).` };
+    }
+    const frozenLabel = await this.frozenMonthLabelFor([date]);
+    if (frozenLabel) return { ok: false, error: `Payroll for ${frozenLabel} is already final, so attendance on this date can't be changed. Contact HR.` };
 
     const deadline = regularizationDeadline(date, rules.regularizationWindowDays);
     if (today > deadline) {
@@ -344,6 +437,9 @@ export class HrToolService {
         return { ok: false, error: `The ${cycle.from} → ${cycle.to} payroll cycle is closed for new requests (last day was ${lastFilingDay}).` };
       }
     }
+
+    const [hrSet] = await this.repository.findAttendanceOverridesForEmployeeInRange(employee.id, date, date);
+    if (hrSet) return { ok: false, error: `HR has already set your attendance for this day (${ATTENDANCE_OVERRIDE_LABEL[hrSet.status] || hrSet.status}). Contact HR if it needs changing.` };
 
     const existing = await this.repository.findRegularizationByEmployeeDateAndType(employee.id, date, punchType);
     if (existing) return { ok: false, error: `A ${punchType === 'in' ? 'punch-in' : 'punch-out'} regularization request already exists for this date.` };
@@ -383,9 +479,10 @@ export class HrToolService {
 
     // Limit is counted in DAYS over the date's own cycle: a second request for a date that
     // already has one (the other punch type) doesn't use another day.
+    const limitError = `Regularization limit reached — ${rules.regularizationMonthlyQuota} days already used in the ${cycle.from} → ${cycle.to} payroll cycle.`;
     const usedDates = countedRegularizationDates(cycleRegs, cycle.from, cycle.to);
     if (!usedDates.has(date) && usedDates.size >= rules.regularizationMonthlyQuota) {
-      return { ok: false, error: `Regularization limit reached — ${rules.regularizationMonthlyQuota} days already used in the ${cycle.from} → ${cycle.to} payroll cycle.` };
+      return { ok: false, error: limitError };
     }
 
     // Single approval step: HR Head when the module's toggle is on, Founder/admin when it's off.
@@ -393,10 +490,15 @@ export class HrToolService {
     // Returned so callers that keep their own copy of the list (the HR tool's client state) can
     // insert exactly the row that was written, instead of rebuilding an approximation of it.
     const created: HrRegularization = {
-      id: 'R-' + Date.now() + '-' + punchType, employeeId: employee.id, emp: employee.name, date, punchType, reason: trimmedReason, requestedTime: trimmedTime,
+      // Random suffix: two requests in the same millisecond must not share an id.
+      id: 'R-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + '-' + punchType, employeeId: employee.id, emp: employee.name, date, punchType, reason: trimmedReason, requestedTime: trimmedTime,
       stage, status: 'pending', rmRemarks: '', hrRemarks: '', source: 'employee',
     };
-    await this.repository.insertRegularization(created);
+    // The check above is repeated inside one locked transaction, so two requests sent at the same
+    // moment can't both slip under the limit (or both create the same date + punch).
+    const inserted = await this.repository.insertRegularizationWithinLimit(created, cycle.from, cycle.to, rules.regularizationMonthlyQuota);
+    if (inserted === 'limit') return { ok: false, error: limitError };
+    if (inserted === 'duplicate') return { ok: false, error: `A ${punchType === 'in' ? 'punch-in' : 'punch-out'} regularization request already exists for this date.` };
     return { ok: true, created };
   }
 
@@ -406,7 +508,8 @@ export class HrToolService {
    * The ONLY way a leave request is created — employee portal, Publisher/Event Admin, and HR
    * Management's "+ Apply for leave" all post through here, so every surface gets the same rules:
    *  - type must be one HR has switched on (no free-text "Other"; Work From Home is discontinued);
-   *  - from today or yesterday onward (yesterday only while its payroll cycle is still open);
+   *  - any date — past, today or future — except one in a frozen payroll month, or a day HR set a
+   *    status on;
    *  - half-day only on a single date; the range must include at least one working day;
    *  - no overlap with a pending/approved request;
    *  - full-day leave is refused for a date that already has a punch-in (use half-day leave or
@@ -435,15 +538,10 @@ export class HrToolService {
     if (halfDay && !half) return { ok: false, error: 'Half-day must be the first or second half.' };
     if (half && from !== to) return { ok: false, error: 'Half-day leave is for a single date — set From and To to the same day.' };
 
+    // Any date — past, today or future (since 2026-10-06) — except a month whose payroll is frozen.
     const today = todayStr();
-    const yesterday = addDaysUTC(today, -1);
-    if (from < yesterday) return { ok: false, error: 'Leave can be applied for today, yesterday or a future date.' };
-    // Yesterday may belong to the payroll cycle that just ended — open only for its last few days.
-    const cycle = this.cycleRangeForDate(from, rules);
-    const currentCycle = this.cycleRangeForDate(today, rules);
-    if (cycle.to < currentCycle.from && today > addDaysUTC(cycle.to, REG_LATE_FILING_DAYS)) {
-      return { ok: false, error: `The ${cycle.from} → ${cycle.to} payroll cycle is closed for new requests.` };
-    }
+    const frozenLabel = await this.frozenMonthLabelFor([from, to]);
+    if (frozenLabel) return { ok: false, error: `Payroll for ${frozenLabel} is already final, so leave can't be applied on these dates. Contact HR.` };
 
     const holidays = await this.repository.findHolidays();
     const holidayDates = holidays.map((h) => h.date);
@@ -453,6 +551,8 @@ export class HrToolService {
 
     const overlapping = await this.repository.findOverlappingLeaveRequestForEmployee(employee.id, from, to);
     if (overlapping) return { ok: false, error: 'You already have a leave request covering part of this date range.' };
+    const hrSet = (await this.repository.findAttendanceOverridesForEmployeeInRange(employee.id, from, to))[0];
+    if (hrSet) return { ok: false, error: `HR has already set your attendance for ${hrSet.date} (${ATTENDANCE_OVERRIDE_LABEL[hrSet.status] || hrSet.status}), so leave can't be applied on that day. Contact HR.` };
 
     if (!half && from <= today) {
       const punched = (await this.repository.findAttendanceForEmployeeInRange(employee.id, from, to < today ? to : today))
@@ -468,11 +568,18 @@ export class HrToolService {
       stage: 'hr', status: 'pending', rmRemarks: '', hrRemarks: '', halfDay: half,
     };
     await this.repository.insertLeaveRequest(created);
-    const [employeeRow, all] = await Promise.all([
+    const [employeeRow, all, yearAttendance, yearOverrides] = await Promise.all([
       this.repository.findEmployeeById(employee.id),
       this.repository.findLeaveRequestsForEmployee(employee.id),
+      this.repository.findAttendanceForEmployeeInRange(employee.id, `${today.slice(0, 4)}-01-01`, today),
+      this.repository.findAttendanceOverridesForEmployeeInRange(employee.id, `${today.slice(0, 4)}-01-01`, today),
     ]);
-    const split = allocateLeave(employeeRow?.doj || '', rules.leaveTypes, all, today, holidayDates).get(created.id);
+    const worked = yearAttendance.filter((a) => a.inMinutes != null).map((a) => a.date);
+    // Same split the leave screens and payroll show — including absences covered from Casual.
+    const through = absenceCoverThrough(today);
+    const shortfall = punchedShortfall({ doj: employeeRow?.doj || '', attendance: yearAttendance, overrides: yearOverrides, requests: all, holidayDates, rules, through });
+    const split = allocateLeave(employeeRow?.doj || '', rules.leaveTypes, leaveCreditDay(rules), all, today, holidayDates, worked,
+      { through, skip: yearOverrides.map((o) => o.date), shortfall }).get(created.id);
     return { ok: true, created, paidDays: split?.paid ?? 0, unpaidDays: split?.unpaid ?? 0 };
   }
 
@@ -481,9 +588,8 @@ export class HrToolService {
     const req = await this.repository.findLeaveRequestById(id);
     if (!req) return { ok: false, error: 'Leave request not found.' };
     if (req.status !== 'pending') return { ok: false, error: `This request is already ${req.status}.` };
-    if (await this.isDateInLockedCycle(req.from) || await this.isDateInLockedCycle(req.to)) {
-      return { ok: false, error: 'This leave falls in a payroll cycle that is locked — the Founder must reopen it first.' };
-    }
+    const frozenLabel = await this.frozenMonthLabelFor([req.from, req.to]);
+    if (frozenLabel) return { ok: false, error: `Payroll for ${frozenLabel} is frozen and final — this leave can no longer change.` };
     // A day someone punched in on can only be half a day of leave — they came in. Full-day leave
     // can't be approved over a punch (they may have punched in while the request was pending).
     if (decision === 'approved' && !(req.halfDay && req.from === req.to)) {
@@ -510,9 +616,8 @@ export class HrToolService {
       if (req.employeeId !== by.employeeId) return { ok: false, error: 'Leave request not found.' };
       if (req.status === 'approved' && todayStr() >= req.from) return { ok: false, error: 'This approved leave has already started — only HR can cancel it now.' };
     }
-    if (await this.isDateInLockedCycle(req.from) || await this.isDateInLockedCycle(req.to)) {
-      return { ok: false, error: 'This leave falls in a payroll cycle that is locked — the Founder must reopen it first.' };
-    }
+    const frozenLabel = await this.frozenMonthLabelFor([req.from, req.to]);
+    if (frozenLabel) return { ok: false, error: `Payroll for ${frozenLabel} is frozen and final — this leave can no longer change.` };
     const note = (remarks || '').trim() || (by.kind === 'employee' ? 'Cancelled by the employee.' : 'Cancelled by HR.');
     const updated: HrLeaveRequest = { ...req, status: 'cancelled', stage: 'done', hrRemarks: note };
     await this.repository.updateLeaveRequestStatus(updated);
@@ -754,6 +859,30 @@ export class HrToolService {
     if (type === 'out' && todaysPunch?.outTime) {
       return { ok: false, error: 'Already punched out today.', code: 'ALREADY_PUNCHED' };
     }
+    // A punch-in after the day's punch-out would only ever count 0 hours.
+    if (type === 'in' && todaysPunch?.outTime) {
+      return { ok: false, error: 'You have already punched out today, so you can\'t punch in again. If this is a mistake, request a regularization.', code: 'ALREADY_PUNCHED' };
+    }
+
+    // Clock windows (hr_rules, IST): Punch In only inside punchInFrom–punchInTo; Punch Out up to
+    // punchOutTo, and before punchOutFrom only after a punch-in today (early leave — hours worked
+    // still decide Half day / Absent). Later than 6:30 pm is fine: pay clamps to shift end.
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    const nowMinutes = nowMinutesSinceMidnight();
+    if (type === 'in' && !inWindow(nowMinutes, rules.punchInFrom, rules.punchInTo)) {
+      return {
+        ok: false, code: 'OUTSIDE_PUNCH_WINDOW',
+        error: nowMinutes < hhmmToMinutes(rules.punchInFrom)
+          ? `Punch In opens at ${fmtWindowTime(rules.punchInFrom)}.`
+          : `Punch In closed at ${fmtWindowTime(rules.punchInTo)} — it can't be done after that. Apply for leave or contact HR.`,
+      };
+    }
+    if (type === 'out' && nowMinutes > hhmmToMinutes(rules.punchOutTo)) {
+      return { ok: false, code: 'OUTSIDE_PUNCH_WINDOW', error: `Punch Out closed at ${fmtWindowTime(rules.punchOutTo)} for today.` };
+    }
+    if (type === 'out' && !todaysPunch?.inTime && nowMinutes < hhmmToMinutes(rules.punchOutFrom)) {
+      return { ok: false, code: 'OUTSIDE_PUNCH_WINDOW', error: `You haven't punched in today. Punch Out opens at ${fmtWindowTime(rules.punchOutFrom)}.` };
+    }
     // Pending counts too: punching in under a pending full-day request would leave HR approving
     // a full day of leave on a worked day.
     const leaveToday = type === 'in' ? await this.fullDayLeaveOn(employee.id, today, ['pending', 'approved']) : null;
@@ -769,7 +898,6 @@ export class HrToolService {
     // Geofence (server-enforced; the client only supplies coordinates). When the rule is off the
     // supplied location is ignored entirely and nothing is stored — no GPS collection without a
     // policy that needs it.
-    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
     let geo: HrPunchGeo | null = null;
     let geoResult: PunchResult['geo'];
     if (rules.geoFencing) {
@@ -790,8 +918,8 @@ export class HrToolService {
         inGeo: geo, outGeo: todaysPunch?.outGeo ?? null,
       });
     } else {
-      // Punch-out is always clickable, any time of day — no cutoff at shift end. Credited hours
-      // still clamp to the shift window regardless of when it's actually clicked (see
+      // Punch-out is accepted until punchOutTo (checked above), with no cutoff at shift end.
+      // Credited hours clamp to the shift window regardless of when it's actually clicked (see
       // creditedMinutes), so punching out at 22:00 is recorded as 22:00 but only ever pays out
       // up to shift end — the clock time isn't blocked, only what it's worth.
       if (!todaysPunch?.inTime) note = 'No punch-in recorded today.';
@@ -837,12 +965,11 @@ export class HrToolService {
     if (reg.status !== 'pending') return { ok: false, error: `This request is already ${reg.status}.` };
     // Requests filed before the time windows existed can still hold nonsense times (a 22:00
     // punch-in); approving one would write that into attendance and payroll.
-    const badTime = decision === 'approved' && reg.requestedTime ? requestedTimeError(reg.punchType, reg.requestedTime) : null;
-    if (badTime) return { ok: false, error: `${badTime} Reject this request and ask the employee to file a new one.` };
-    if (await this.isDateInLockedCycle(reg.date)) {
-      return { ok: false, error: 'This date falls in a payroll cycle that is locked — the Founder must reopen it first.' };
-    }
     const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    const badTime = decision === 'approved' && reg.requestedTime ? requestedTimeError(reg.punchType, reg.requestedTime, rules) : null;
+    if (badTime) return { ok: false, error: `${badTime} Reject this request and ask the employee to file a new one.` };
+    const frozenLabel = await this.frozenMonthLabelFor([reg.date]);
+    if (frozenLabel) return { ok: false, error: `Payroll for ${frozenLabel} is frozen and final — this request can no longer be decided.` };
 
     let updated: HrRegularization;
     if (level === 'rm') {
@@ -875,10 +1002,127 @@ export class HrToolService {
 
     return { ok: true, updated };
   }
+
+  /**
+   * HR (HR Head / Founder) sets one day's status directly — Present, Short leave, Half day,
+   * Absent, Unpaid leave or a paid Week-off. The day ledger reads it before punches and leave, so
+   * payroll, the HR calendar and the employee's own calendar all follow at once; the real punch
+   * times on hr_attendance are left as they were. Refused for future days, Sundays/holidays, days
+   * outside employment, days already paid by an earlier run, frozen months and dates with a
+   * pending/approved leave request (cancel or reject it first). A pending regularization on the
+   * date is closed ('cancelled' — not counted in the employee's limit). If this cycle's payroll
+   * has been run as a draft, that employee's draft payslip is recomputed straight away.
+   */
+  async setAttendanceOverride(
+    employeeId: string, date: string, status: string, reason: string, actor: string, roster: PayrollRosterEntry[]
+  ): Promise<{ ok: boolean; error?: string; override?: HrAttendanceOverride; closedRegularizations?: HrRegularization[]; draftUpdated?: boolean }> {
+    if (!(ATTENDANCE_OVERRIDE_STATUSES as readonly string[]).includes(status)) return { ok: false, error: 'Choose a valid status.' };
+    const trimmedReason = (reason || '').trim();
+    if (!trimmedReason) return { ok: false, error: 'A reason is required.' };
+    const check = await this.checkOverrideDate(employeeId, date);
+    if (!check.ok) return { ok: false, error: check.error };
+    const { emp, rules } = check;
+
+    const leave = (await this.repository.findLeaveRequestsForEmployee(employeeId))
+      .find((l) => (l.status === 'approved' || l.status === 'pending') && l.from <= date && l.to >= date);
+    if (leave) {
+      return { ok: false, error: `${emp.name} has a ${leave.status} ${leave.type} leave request on this date. ${leave.status === 'pending' ? 'Reject' : 'Cancel'} it in Leave first, then set the day.` };
+    }
+
+    const [previous] = await this.repository.findAttendanceOverridesForEmployeeInRange(employeeId, date, date);
+    const override: HrAttendanceOverride = {
+      employeeId, emp: emp.name, date, status: status as HrAttendanceOverrideStatus, reason: trimmedReason, setBy: actor, setAt: nowMysqlDatetime(),
+    };
+    await this.repository.upsertAttendanceOverride(override);
+
+    const label = ATTENDANCE_OVERRIDE_LABEL[override.status];
+    const closedRegularizations: HrRegularization[] = [];
+    for (const r of await this.repository.findRegularizationsForEmployee(employeeId)) {
+      if (r.date !== date || r.status !== 'pending') continue;
+      const closed: HrRegularization = { ...r, status: 'cancelled', stage: 'done', hrRemarks: `Closed — HR set this day to ${label} directly.` };
+      await this.repository.updateRegularization(closed);
+      closedRegularizations.push(closed);
+    }
+
+    await this.repository.appendAuditLog({
+      ts: nowMysqlDatetime(), who: actor,
+      change: `Set attendance for ${emp.name} on ${date}: ${previous ? ATTENDANCE_OVERRIDE_LABEL[previous.status] || previous.status : 'from punches'} → ${label}. Reason: ${trimmedReason}`,
+    });
+    const draftUpdated = await this.refreshDraftPayslip(employeeId, payrollMonthKeyForDate(date, rules), roster);
+    return { ok: true, override, closedRegularizations, draftUpdated };
+  }
+
+  /** Removes an HR-set status — the day goes back to being judged from punches and leave. */
+  async clearAttendanceOverride(employeeId: string, date: string, actor: string, roster: PayrollRosterEntry[]): Promise<{ ok: boolean; error?: string; draftUpdated?: boolean }> {
+    const [existing] = await this.repository.findAttendanceOverridesForEmployeeInRange(employeeId, date, date);
+    if (!existing) return { ok: false, error: 'HR has not set a status on this day.' };
+    const frozenLabel = await this.frozenMonthLabelFor([date]);
+    if (frozenLabel) return { ok: false, error: `Payroll for ${frozenLabel} is frozen and final — this day can no longer change.` };
+    await this.repository.deleteAttendanceOverride(employeeId, date);
+    await this.repository.appendAuditLog({
+      ts: nowMysqlDatetime(), who: actor,
+      change: `Removed HR attendance status for ${existing.emp} on ${date} (was ${ATTENDANCE_OVERRIDE_LABEL[existing.status] || existing.status}) — back to punches`,
+    });
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    const draftUpdated = await this.refreshDraftPayslip(employeeId, payrollMonthKeyForDate(date, rules), roster);
+    return { ok: true, draftUpdated };
+  }
+
+  /** Whether HR may set a status on this employee's date — see setAttendanceOverride. */
+  private async checkOverrideDate(employeeId: string, date: string): Promise<{ ok: true; emp: HrEmployee; rules: HrRules } | { ok: false; error: string }> {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return { ok: false, error: 'A valid date is required.' };
+    const today = todayStr();
+    const [emp, rules, holidays, exitDates, runs] = await Promise.all([
+      this.repository.findEmployeeById(employeeId),
+      this.repository.findRules(),
+      this.repository.findHolidays(),
+      this.repository.findExitDates(today),
+      this.repository.findPayrollRuns(),
+    ]);
+    if (!emp) return { ok: false, error: 'Employee not found.' };
+    const r = rules || DEFAULT_RULES;
+    if (date > today) return { ok: false, error: "A future day can't be set — only past days and today." };
+    if (emp.doj && date < emp.doj) return { ok: false, error: `${emp.name} joined on ${emp.doj} — this day is before joining.` };
+    const lastDay = exitDates.get(employeeId);
+    if (lastDay && date > lastDay) return { ok: false, error: `${emp.name}'s last working day was ${lastDay}.` };
+    if (isSunday(date)) return { ok: false, error: 'This is a Sunday — already a paid week-off.' };
+    const holiday = holidays.find((h) => h.date === date);
+    if (holiday) return { ok: false, error: `This is a company holiday (${holiday.name}) — already a paid week-off.` };
+    const frozenLabel = await this.frozenMonthLabelFor([date]);
+    if (frozenLabel) return { ok: false, error: `Payroll for ${frozenLabel} is frozen and final — this day can no longer change.` };
+    const monthKey = payrollMonthKeyForDate(date, r);
+    const settled = settledThroughFor(runs, monthKey, cyclePeriodFor(runs, monthKey, r).from);
+    if (settled && date <= settled) return { ok: false, error: 'This day was already paid in an earlier payroll run and cannot be changed.' };
+    return { ok: true, emp, rules: r };
+  }
+
+  /** After an HR-set status changes, recomputes that one employee's DRAFT payslip for the cycle
+   * (keeping the TDS typed into it) so the saved draft matches the calendar. Nothing happens when
+   * payroll hasn't been run for the cycle (the live preview already follows) or it's frozen. */
+  private async refreshDraftPayslip(employeeId: string, monthKey: string, roster: PayrollRosterEntry[]): Promise<boolean> {
+    const run = (await this.repository.findPayrollRuns()).find((r) => r.month === monthKey && r.status === 'run');
+    if (!run || run.frozenAt) return false;
+    const saved = await this.repository.findPayrollEntryForEmployee(monthKey, employeeId);
+    const preview = await this.computePayrollForMonth(monthKey, roster, { [employeeId]: saved?.tds ?? 0 }, { onlyEmployeeId: employeeId });
+    const entry = preview.entries.find((e) => e.employeeId === employeeId);
+    if (entry) await this.repository.upsertPayrollEntry(monthKey, entry);
+    else if (saved) await this.repository.deletePayrollEntry(monthKey, employeeId);
+    return true;
+  }
+
   saveExpenses(items: HrExpense[]) { return this.repository.replaceExpenses(items); }
   saveTickets(items: HrTicket[]) { return this.repository.replaceTickets(items); }
   saveTemplate(name: string, content: string) { return this.repository.upsertTemplate(name, content); }
-  saveRules(rules: HrRules) { return this.repository.saveRules(rules); }
+  /** Saves hr_rules. Punch windows missing from an older client fall back to the defaults; bad
+   * ones are refused (the route turns the thrown message into a 400). */
+  saveRules(rules: HrRules) {
+    const next: HrRules = { ...DEFAULT_PUNCH_WINDOWS, ...rules };
+    const { punchInFrom, punchInTo, punchOutFrom, punchOutTo } = next;
+    if (![punchInFrom, punchInTo, punchOutFrom, punchOutTo].every((t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t || ''))) throw new Error('Punch window times must be valid HH:MM times.');
+    if (punchInFrom >= punchInTo || punchOutFrom >= punchOutTo) throw new Error('Each punch window must open before it closes.');
+    if (punchOutFrom < '12:00') throw new Error('The Punch Out window must open at 12:00 PM or later.');
+    return this.repository.saveRules(next);
+  }
   saveCompanyProfile(profile: HrCompanyProfile, actor?: string) { return this.repository.saveCompanyProfile(profile, actor); }
   appendAuditLog(entry: HrAuditLogEntry) { return this.repository.appendAuditLog(entry); }
 
@@ -904,8 +1148,8 @@ export class HrToolService {
    * period has ended (to < today) — callers overwrite it with the cycle state. Its "don't judge
    * days that haven't happened yet" handling (evalTo/futureDays) matters only for a live preview
    * of a cycle still in progress. Days already settled by an earlier run (`settledThrough`) are
-   * paid as present. Short leave: the first `shortLeaveMonthlyQuota` per cycle are free, each
-   * extra one costs half a day, nothing carries over.
+   * paid as present. Short leave: the first `shortLeaveMonthlyQuota` are free, then every 3rd one
+   * after them costs half a day (2 → 5th, 8th, 11th…; `isShortLeaveDeducted`); nothing carries over.
    *
    * `roster` (see PayrollRosterEntry) is the real Employee-ID roster. Each login is matched to its
    * Directory record by credential id, and from there EVERYTHING — CTC, joining date, attendance,
@@ -1009,8 +1253,9 @@ export class HrToolService {
       entries.push({
         // leaveDays reports PAID leave, so the columns reconcile:
         // total = present + weekOff + paidLeave + LOP. Unpaid leave is inside lopDays.
+        // absentDays is only the no-show days (a part of LOP), never LOP itself.
         employeeId: emp.id, emp: emp.name, totalDays: t.totalDays, weekOffDays: t.weekOffDays, workingDays: t.workingDays,
-        presentDays: t.presentDays, leaveDays: t.leaveDays, absentDays: t.lopDays,
+        presentDays: t.presentDays, leaveDays: t.leaveDays, absentDays: t.absentDays,
         shortLeaveDays: t.shortLeaveDays, shortLeaveCarryOut: 0, halfDayDays: t.halfDayDays, lopDays: t.lopDays, monthlyGross, tds, netPay,
       });
     }
@@ -1026,23 +1271,35 @@ export class HrToolService {
    * hr_attendance as full shifts and are paid as worked days. */
   private async buildEmployeeLedger(employeeId: string, doj: string, ctx: LedgerContext): Promise<DayLedger & {
     attendanceInCycle: number; leaveRequests: HrLeaveRequest[]; allocation: Map<string, LeaveAllocation>; workedDates: string[];
+    absenceCover: { through: string; skip: string[]; shortfall: Record<string, number> };
   }> {
-    const [yearAttendance, leaves] = await Promise.all([
-      this.repository.findAttendanceForEmployeeInRange(employeeId, `${ctx.from.slice(0, 4)}-01-01`, ctx.to),
+    // Punches through today (not just the cycle end): absences after this cycle use Casual balance
+    // too, and they must be known to split the balance the same way every screen does.
+    const yearTo = ctx.to > ctx.today ? ctx.to : ctx.today;
+    const [yearAttendance, leaves, yearOverrides] = await Promise.all([
+      this.repository.findAttendanceForEmployeeInRange(employeeId, `${ctx.from.slice(0, 4)}-01-01`, yearTo),
       this.repository.findLeaveRequestsForEmployee(employeeId),
+      this.repository.findAttendanceOverridesForEmployeeInRange(employeeId, `${ctx.from.slice(0, 4)}-01-01`, yearTo),
     ]);
-    const attendance = yearAttendance.filter((a) => a.date >= ctx.clippedFrom);
+    const attendance = yearAttendance.filter((a) => a.date >= ctx.clippedFrom && a.date <= ctx.to);
     const leave = leaves.filter((l) => l.type !== WFH_LEAVE_TYPE);
     const workedDates = yearAttendance.filter((a) => a.inMinutes != null).map((a) => a.date);
-    const allocation = allocateLeave(doj, ctx.rules.leaveTypes, leave, ctx.today, ctx.holidays, workedDates);
+    // A day HR set a status on is decided by that status — never paid from Casual automatically.
+    const through = absenceCoverThrough(ctx.today, ctx.lastDay);
+    const absenceCover = {
+      through, skip: yearOverrides.map((o) => o.date),
+      shortfall: punchedShortfall({ doj, attendance: yearAttendance, overrides: yearOverrides, requests: leave, holidayDates: ctx.holidays, rules: ctx.rules, through }),
+    };
+    const allocation = allocateLeave(doj, ctx.rules.leaveTypes, leaveCreditDay(ctx.rules), leave, ctx.today, ctx.holidays, workedDates, absenceCover);
     const approvedIds = new Set(leave.filter((l) => l.status === 'approved').map((l) => l.id));
     const ledger = buildDayLedger({
       from: ctx.from, to: ctx.to, evalTo: ctx.evalTo, clippedFrom: ctx.clippedFrom, lastDay: ctx.lastDay,
       settledThrough: ctx.settledThrough, holidays: ctx.holidays, rules: ctx.rules,
       attendanceByDate: new Map(attendance.map((a) => [a.date, a])),
       leaveByDate: approvedLeaveByDate(allocation, approvedIds),
+      overrideByDate: new Map(yearOverrides.filter((o) => o.date >= ctx.from && o.date <= ctx.to).map((o) => [o.date, o.status])),
     });
-    return { ...ledger, attendanceInCycle: attendance.length, leaveRequests: leave, allocation, workedDates };
+    return { ...ledger, attendanceInCycle: attendance.length, leaveRequests: leave, allocation, workedDates, absenceCover };
   }
 
   /** The attendance calendar's data for one employee and one pay cycle — built exactly as
@@ -1081,7 +1338,8 @@ export class HrToolService {
     // shows), earned this year, and this cycle's requested days split by the same allocation
     // payroll pays by — approved into paid/unpaid, pending shown separately.
     const holidayDates = holidays.map((h) => h.date);
-    const balances = computeLeaveBalances(doj, rules.leaveTypes, ledger.leaveRequests, today, holidayDates, ledger.workedDates);
+    const balances = computeLeaveBalances(doj, rules.leaveTypes, leaveCreditDay(rules), ledger.leaveRequests, today, holidayDates, ledger.workedDates, ledger.absenceCover);
+    const cover = ledger.allocation.get(ABSENCE_COVER_ID);
     const leave: EmployeeCycleLedger['leave'] = Object.entries(rules.leaveTypes)
       .filter(([, cfg]) => cfg.enabled)
       .map(([type, cfg]) => {
@@ -1096,18 +1354,21 @@ export class HrToolService {
             else if (r.status === 'pending') pending += d.units;
           }
         }
+        // Absences in this cycle paid from this type's balance automatically.
+        const auto = cover?.type === type ? cover.days.filter((d) => d.date >= from && d.date <= to).reduce((n, d) => n + d.paid, 0) : 0;
         const round = (n: number) => Math.round(n * 100) / 100;
         return {
           type, available: balances[type] ?? 0,
-          earnedThisYear: round(monthsAccruedThisYear(doj, today) * (Number(cfg.perMonth) || 0)),
+          earnedThisYear: round(creditsAccruedThisYear(doj, today, leaveCreditDay(rules)) * (Number(cfg.perMonth) || 0)),
           appliedInCycle: round(paid + unpaid + pending), paidInCycle: round(paid), unpaidInCycle: round(unpaid), pendingInCycle: round(pending),
+          autoInCycle: round(auto),
         };
       });
     return {
       month: monthKey, periodFrom: from, periodTo: to, doj, days: ledger.days, totals: ledger.totals, leave,
       pay: { ...payFromLedger(emp.ctc ?? 0, ledger.totals, tds), tds },
       saved: savedEntry ? { monthlyGross: savedEntry.monthlyGross, netPay: savedEntry.netPay } : null,
-      locked: !!run?.lockedAt,
+      locked: !!run?.frozenAt,
       paidInFnf,
     };
   }
@@ -1144,109 +1405,98 @@ export class HrToolService {
     }
     rows.sort((a, b) => a.name.localeCompare(b.name));
     const run = runs.find((r) => r.month === key && r.status === 'run');
-    return { month: key, periodFrom: from, periodTo: to, rows, locked: !!run?.lockedAt };
+    return { month: key, periodFrom: from, periodTo: to, rows, locked: !!run?.frozenAt };
+  }
+
+  /** Months that have been frozen, newest first. */
+  private frozenMonths(runs: HrPayrollRun[]): string[] {
+    return runs.filter((r) => r.status === 'run' && r.frozenAt).map((r) => r.month).sort().reverse();
   }
 
   /**
-   * Keeps an already-run cycle in step with attendance until it locks: recomputes it (keeping the
-   * TDS saved per employee) and rewrites only the payslips that changed — an approved
-   * regularization, an approved/rejected/cancelled leave, a holiday or CTC edit all flow straight
-   * into the saved payslips and PDFs. A locked cycle, or one never run, is left alone. Skipped
-   * while anyone on the roster has no CTC (that would save a ₹0 payslip). computed_at is
-   * re-stamped even when nothing changed, recording that the run was verified up to date.
-   */
-  async refreshRunIfOpen(monthKey: string, roster: PayrollRosterEntry[]): Promise<{ refreshed: boolean; changed: string[] }> {
-    const run = (await this.repository.findPayrollRuns()).find((r) => r.month === monthKey && r.status === 'run');
-    if (!run || run.lockedAt) return { refreshed: false, changed: [] };
-    const saved = await this.repository.findPayrollEntriesForMonth(monthKey);
-    const tdsByEmp = Object.fromEntries(saved.map((e) => [e.employeeId, e.tds]));
-    const live = await this.computePayrollForMonth(monthKey, roster, tdsByEmp);
-    if (live.missingCtcEmployees.length > 0) return { refreshed: false, changed: [] };
-
-    const savedById = new Map(saved.map((e) => [e.employeeId, e]));
-    const changed: string[] = [];
-    for (const entry of live.entries) {
-      const before = savedById.get(entry.employeeId);
-      savedById.delete(entry.employeeId);
-      if (before && samePayslip(before, entry)) continue;
-      await this.repository.upsertPayrollEntry(monthKey, entry);
-      changed.push(before ? `${entry.emp} ₹${before.netPay}→₹${entry.netPay}` : `${entry.emp} added (₹${entry.netPay})`);
-    }
-    for (const gone of savedById.values()) {
-      await this.repository.deletePayrollEntry(monthKey, gone.employeeId);
-      changed.push(`${gone.emp} removed`);
-    }
-    await this.repository.touchPayrollRunComputedAt(monthKey);
-    if (changed.length > 0) {
-      await this.repository.appendAuditLog({ ts: nowMysqlDatetime(), who: 'System (payroll auto-update)', change: `Payroll ${monthKey} updated from attendance: ${changed.join('; ')}` });
-    }
-    return { refreshed: true, changed };
-  }
-
-  /** refreshRunIfOpen for every cycle the given dates fall in — called after a leave or
-   * regularization decision so the saved payslips follow it immediately. */
-  async refreshRunsForDates(dates: string[], roster: PayrollRosterEntry[]): Promise<void> {
-    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
-    const months = new Set(dates.filter(Boolean).map((d) => payrollMonthKeyForDate(d, rules)));
-    for (const m of months) await this.refreshRunIfOpen(m, roster);
-  }
-
-  /**
-   * Where a cycle stands and whether Run Payroll may act on it:
+   * Where a cycle stands and what the Payroll page may do with it:
    *  - in-progress: the cycle hasn't ended (to ≥ today) — preview only;
-   *  - window: the PAYROLL_RUN_WINDOW_DAYS after it ends (26th–30th), or a Founder reopening;
-   *  - overdue: past the window but not finished — never run, out of date (a request changed after
-   *    the last run), or requests still pending. Stays runnable, shown in red, until finished;
-   *  - locked: finished. Locking happens here, lazily, the first time a cycle is seen past its
-   *    window with an up-to-date run and nothing pending.
-   * canRun = window or overdue. Pending requests do NOT block a run — payroll is calculated from
-   * the current records (a pending request counts as not approved) and the saved payslips follow
-   * each later decision (refreshRunIfOpen) — but they DO keep the cycle from locking.
-   * With a `roster`, an already-run, unlocked cycle is first brought up to date
-   * (refreshRunIfOpen), so whatever locks is always the current attendance.
+   *  - window: the PAYROLL_RUN_WINDOW_DAYS after it ends (26th–30th);
+   *  - overdue: past the window and not frozen — still runnable and freezable, shown in red;
+   *  - frozen: final and permanent. Nothing dated in it can change (see FROZEN_PAYROLL_REVERSIBLE).
+   * Run Payroll saves a draft and never updates by itself. Freeze needs a draft that still matches
+   * today's records (`stale` — checked by recomputing, so a decision, attendance, CTC, holiday or
+   * F&F change all count), no pending requests, every CTC set, and every earlier drafted month
+   * frozen (months freeze in order). Reverse discards a draft; a frozen month can't be reversed.
+   * Without a `roster`, `stale` and the CTC check are skipped (callers that only need the phase).
    */
-  async getPayrollCycleState(monthKey: string, roster?: PayrollRosterEntry[]): Promise<PayrollCycleState> {
-    if (roster) await this.refreshRunIfOpen(monthKey, roster);
+  async getPayrollCycleState(monthKey: string, roster?: PayrollRosterEntry[]): Promise<PayrollCycleState & { missingCtcEmployees: string[] }> {
     const rules = (await this.repository.findRules()) || DEFAULT_RULES;
-    const { from, to } = payrollPeriodRange(monthKey, rules);
+    const runs = await this.repository.findPayrollRuns();
+    const { from, to } = cyclePeriodFor(runs, monthKey, rules);
     const today = todayStr();
     const windowFrom = addDaysUTC(to, 1);
     const windowTo = addDaysUTC(to, PAYROLL_RUN_WINDOW_DAYS);
-    const [runs, pendingRequests] = await Promise.all([
-      this.repository.findPayrollRuns(),
-      this.repository.findPendingRequestsInRange(from, to),
-    ]);
+    const pendingRequests = await this.repository.findPendingRequestsInRange(from, to);
     const run = runs.find((r) => r.month === monthKey && r.status === 'run') || null;
-    const stale = run ? await this.repository.hasRequestChangesSinceRun(monthKey, from, to) : false;
-    const reopened = !!run?.reopenedUntil && today <= run.reopenedUntil;
-    const effectiveEnd = reopened && run!.reopenedUntil! > windowTo ? run!.reopenedUntil! : windowTo;
-    let lockedAt = run?.lockedAt || null;
-    if (!lockedAt && run && !stale && pendingRequests.length === 0 && today > effectiveEnd) {
-      await this.repository.lockPayrollRun(monthKey);
-      lockedAt = nowMysqlDatetime();
-    }
+    const frozenAt = run?.frozenAt || null;
+
     let phase: PayrollCycleState['phase'];
-    if (to >= today) phase = 'in-progress';
-    else if (lockedAt) phase = 'locked';
-    else if (today <= effectiveEnd) phase = 'window';
+    if (frozenAt) phase = 'frozen';
+    else if (to >= today) phase = 'in-progress';
+    else if (today <= windowTo) phase = 'window';
     else phase = 'overdue';
+
+    let stale = false;
+    let missingCtcEmployees: string[] = [];
+    if (roster && run && !frozenAt && phase !== 'in-progress') {
+      const saved = await this.repository.findPayrollEntriesForMonth(monthKey);
+      const live = await this.computePayrollForMonth(monthKey, roster, Object.fromEntries(saved.map((e) => [e.employeeId, e.tds])));
+      missingCtcEmployees = live.missingCtcEmployees;
+      const savedById = new Map(saved.map((e) => [e.employeeId, e]));
+      stale = live.entries.length !== saved.length
+        || live.entries.some((e) => { const before = savedById.get(e.employeeId); return !before || !samePayslip(before, e); });
+    }
+
     const canRun = phase === 'window' || phase === 'overdue';
-    return { phase, windowFrom, windowTo, pendingRequests, stale, lockedAt, reopenedUntil: reopened ? run!.reopenedUntil! : null, canRun };
+    const freezeBlockers: string[] = [];
+    if (phase === 'in-progress') freezeBlockers.push(`This cycle is still running — it ends on ${to}.`);
+    else if (phase !== 'frozen') {
+      if (!run) freezeBlockers.push('Run Payroll first.');
+      if (pendingRequests.length > 0) freezeBlockers.push(`${pendingRequests.length} request(s) still pending — approve or reject them in Attendance / Leave, then Run Payroll again.`);
+      if (missingCtcEmployees.length > 0) freezeBlockers.push(`CTC is not set for: ${missingCtcEmployees.join(', ')}.`);
+      else if (stale) freezeBlockers.push('Attendance or salary data changed since the last Run — click Run Payroll again.');
+      const earlierDraft = runs.filter((r) => r.status === 'run' && !r.frozenAt && r.month < monthKey).map((r) => r.month).sort()[0];
+      if (earlierDraft) freezeBlockers.push(`Freeze ${payslipMonthLabel(earlierDraft)} first — months are frozen in order.`);
+    }
+    const canFreeze = canRun && freezeBlockers.length === 0;
+
+    const latestFrozen = this.frozenMonths(runs)[0];
+    let reverseBlocker: string | null = null;
+    if (frozenAt && !FROZEN_PAYROLL_REVERSIBLE) reverseBlocker = 'Frozen payroll is final — it cannot be reversed.';
+    else if (frozenAt && latestFrozen !== monthKey) reverseBlocker = `Only the latest frozen month (${payslipMonthLabel(latestFrozen)}) can be reversed.`;
+
+    return {
+      phase, windowFrom, windowTo, pendingRequests, alreadyRun: !!run, stale,
+      frozenAt, frozenBy: run?.frozenBy || null,
+      reversedAt: run?.reversedAt || null, reversedBy: run?.reversedBy || null, reverseReason: run?.reverseReason || null,
+      canRun, canFreeze, freezeBlockers, canReverse: !!run && !reverseBlocker, reverseBlocker, missingCtcEmployees,
+    };
   }
 
-  /** True when `date` falls in a payroll cycle that's locked — nothing dated there may change. */
-  async isDateInLockedCycle(date: string): Promise<boolean> {
+  /** The frozen month `date` falls in, as a label ("October 2026"), or null. Nothing dated in a
+   * frozen month may change — request decisions, cancellations and new requests are refused. */
+  async frozenMonthLabelFor(dates: string[]): Promise<string | null> {
     const rules = (await this.repository.findRules()) || DEFAULT_RULES;
-    const state = await this.getPayrollCycleState(payrollMonthKeyForDate(date, rules));
-    return state.phase === 'locked';
+    const frozen = new Set(this.frozenMonths(await this.repository.findPayrollRuns()));
+    for (const d of dates) {
+      if (!d) continue;
+      const key = payrollMonthKeyForDate(d, rules);
+      if (frozen.has(key)) return payslipMonthLabel(key);
+    }
+    return null;
   }
 
-  /** Saves a month's payroll: computes it from the current records and persists one
-   * hr_payroll_entries row per employee. Refused while the cycle is still running or locked, or
-   * while anyone on the roster has no CTC. Pending requests don't block it: they count as not
-   * approved, those payslips are provisional (getPayrollForMonth's pendingByEmployee), and each
-   * later decision updates them via refreshRunIfOpen until the cycle locks. Re-running simply
-   * recomputes and overwrites. `tdsByEmp` carries what the admin typed into the TDS column. */
+  /** Saves a month's payroll as a draft: computes it from the current records and persists one
+   * hr_payroll_entries row per employee (dropping anyone no longer in it). Refused while the cycle
+   * is still running or frozen, or while anyone on the roster has no CTC. Pending requests count as
+   * not approved. The draft never updates by itself — after any change, Run again. `tdsByEmp`
+   * carries what the admin typed into the TDS column. */
   async runPayroll(
     monthKey: string, roster: PayrollRosterEntry[], actor?: string, tdsByEmp?: Record<string, number>
   ): Promise<{ ok: boolean; error?: string; entries?: HrPayrollEntry[] }> {
@@ -1254,50 +1504,120 @@ export class HrToolService {
     if (state.phase === 'in-progress') {
       return { ok: false, error: `This cycle is still running — Run Payroll opens on ${state.windowFrom}.` };
     }
-    if (state.phase === 'locked') {
-      return { ok: false, error: 'This cycle is locked. Only the Founder can reopen it, with a reason.' };
+    if (state.phase === 'frozen') {
+      return { ok: false, error: 'This month is frozen — its payroll is final and cannot be run again.' };
     }
     const preview = await this.computePayrollForMonth(monthKey, roster, tdsByEmp);
     if (preview.missingCtcEmployees.length > 0) {
       return { ok: false, error: `CTC is not set for: ${preview.missingCtcEmployees.join(', ')}. Set their Annual CTC in Directory before running payroll.` };
     }
+    const keep = new Set(preview.entries.map((e) => e.employeeId));
+    const saved = await this.repository.findPayrollEntriesForMonth(monthKey);
+    await Promise.all(saved.filter((e) => !keep.has(e.employeeId)).map((e) => this.repository.deletePayrollEntry(monthKey, e.employeeId)));
     await Promise.all(preview.entries.map((e) => this.repository.upsertPayrollEntry(monthKey, e)));
     await this.repository.upsertPayrollRun({
       month: monthKey, status: 'run', runAt: nowMysqlDatetime(), runBy: actor || null, periodFrom: preview.periodFrom, periodTo: preview.periodTo,
     });
+    await this.repository.appendAuditLog({ ts: nowMysqlDatetime(), who: actor || 'HR', change: `Ran payroll ${monthKey} (${preview.entries.length} employees)` });
     return { ok: true, entries: preview.entries };
   }
 
-  /** Founder-only escape hatch: reopens a locked cycle for PAYROLL_REOPEN_DAYS (today + 1) so a
-   * mistake can be corrected and payroll re-run. The reason is mandatory and goes to the audit log. */
-  async reopenPayroll(monthKey: string, reason: string, actor: string): Promise<{ ok: boolean; error?: string; reopenedUntil?: string }> {
-    const trimmed = (reason || '').trim();
-    if (!trimmed) return { ok: false, error: 'A reason is required to reopen a locked payroll cycle.' };
-    const state = await this.getPayrollCycleState(monthKey);
-    if (state.phase !== 'locked') return { ok: false, error: 'Only a locked cycle can be reopened.' };
-    const until = addDaysUTC(todayStr(), PAYROLL_REOPEN_DAYS - 1);
-    await this.repository.reopenPayrollRun(monthKey, until, trimmed);
-    await this.repository.appendAuditLog({ ts: nowMysqlDatetime(), who: actor, change: `Reopened payroll ${monthKey} until ${until}: ${trimmed}` });
-    return { ok: true, reopenedUntil: until };
+  /** Makes a drafted month final: re-checks every Freeze blocker server-side, marks it frozen
+   * (conditional update — a double click can't freeze twice) and snapshots each payslip so later
+   * CTC/designation edits never change a published slip. */
+  async freezePayroll(monthKey: string, roster: PayrollRosterEntry[], codes: EmployeeCodeMap, actor: string): Promise<{ ok: boolean; error?: string }> {
+    const state = await this.getPayrollCycleState(monthKey, roster);
+    if (state.phase === 'frozen') return { ok: false, error: 'This month is already frozen.' };
+    if (!state.canFreeze) return { ok: false, error: state.freezeBlockers.join(' ') || 'This month cannot be frozen yet.' };
+    if (!(await this.repository.freezePayrollRun(monthKey, actor))) return { ok: false, error: 'This month is already frozen.' };
+    await this.ensurePayslipSnapshots(monthKey, codes);
+    const count = (await this.repository.findPayrollEntriesForMonth(monthKey)).length;
+    await this.repository.appendAuditLog({ ts: nowMysqlDatetime(), who: actor, change: `Froze payroll ${monthKey} — ${count} payslips published` });
+    return { ok: true };
   }
 
-  /** The saved entries if this month has already been run, otherwise a live preview — same
-   * response shape either way — plus the cycle's state (phase, window, pending, stale, lock) and
-   * `pendingByEmployee` (undecided requests per employee: their figures are provisional). */
-  async getPayrollForMonth(monthKey: string, roster: PayrollRosterEntry[]): Promise<PayrollPreview & { alreadyRun: boolean; cycle: PayrollCycleState; computedAt: string | null; pendingByEmployee: Record<string, number> }> {
+  /** Reverse. On a draft (run, not frozen): discards it — saved entries deleted, the month back to
+   * "not run", so the next Run Payroll reads attendance afresh; no payslip exists meanwhile. On a
+   * frozen month: refused — payroll is final (FROZEN_PAYROLL_REVERSIBLE). With that flag on, the
+   * latest frozen month goes back to a draft and its payslips are withdrawn; reason mandatory. */
+  async reversePayroll(monthKey: string, reason: string, actor: string): Promise<{ ok: boolean; error?: string }> {
+    const state = await this.getPayrollCycleState(monthKey);
+    if (!state.canReverse) {
+      return { ok: false, error: state.reverseBlocker || (state.alreadyRun ? 'This month cannot be reversed.' : 'Payroll has not been run for this month.') };
+    }
+    if (state.phase !== 'frozen') {
+      if (!(await this.repository.discardPayrollDraft(monthKey, actor))) return { ok: false, error: 'This month is no longer a draft — refresh the page.' };
+      await this.repository.appendAuditLog({ ts: nowMysqlDatetime(), who: actor, change: `Reversed payroll ${monthKey} (draft discarded)` });
+      return { ok: true };
+    }
+    const trimmed = (reason || '').trim();
+    if (!trimmed) return { ok: false, error: 'A reason is required to reverse a frozen payroll.' };
+    if (!(await this.repository.reversePayrollRun(monthKey, actor, trimmed))) return { ok: false, error: 'This month is not frozen any more.' };
+    await this.repository.appendAuditLog({ ts: nowMysqlDatetime(), who: actor, change: `Reversed payroll ${monthKey}: ${trimmed}` });
+    return { ok: true };
+  }
+
+  /** Writes the payslip snapshot for every entry of a frozen month that doesn't have one yet —
+   * right after Freeze, and lazily for months frozen by the migration. */
+  async ensurePayslipSnapshots(monthKey: string, codes: EmployeeCodeMap): Promise<void> {
+    const runs = await this.repository.findPayrollRuns();
+    const run = runs.find((r) => r.month === monthKey && r.status === 'run');
+    if (!run?.frozenAt) return;
+    const entries = await this.repository.findPayrollEntriesForMonth(monthKey);
+    const missing = entries.filter((e) => !e.payslip);
+    if (missing.length === 0) return;
+    const [employees, rules] = await Promise.all([this.repository.findEmployees(), this.repository.findRules()]);
+    const byId = new Map(employees.map((e) => [e.id, e]));
+    const { to } = cyclePeriodFor(runs, monthKey, rules || DEFAULT_RULES);
+    for (const e of missing) {
+      const employee = byId.get(e.employeeId);
+      if (!employee) continue;
+      const payslip = buildPayslipData({
+        entry: e, employee, defaultSplit: (rules || DEFAULT_RULES).ctcSplit, monthKey, periodTo: to,
+        employeeCode: employee.credentialId != null ? codes.get(Number(employee.credentialId)) : null,
+      });
+      await this.repository.savePayslipSnapshot(monthKey, e.employeeId, payslip);
+    }
+  }
+
+  /** One employee's published payslips (frozen months only), newest first. */
+  async getEmployeePayslips(employeeId: string, codes: EmployeeCodeMap): Promise<{ month: string; periodFrom: string; periodTo: string; netPay: number; payslip: PayslipData }[]> {
+    const rules = (await this.repository.findRules()) || DEFAULT_RULES;
+    const runs = await this.repository.findPayrollRuns();
+    const out: { month: string; periodFrom: string; periodTo: string; netPay: number; payslip: PayslipData }[] = [];
+    for (const month of this.frozenMonths(runs)) {
+      let entry = await this.repository.findPayrollEntryForEmployee(month, employeeId);
+      if (!entry) continue;
+      if (!entry.payslip) {
+        await this.ensurePayslipSnapshots(month, codes);
+        entry = await this.repository.findPayrollEntryForEmployee(month, employeeId);
+      }
+      if (!entry?.payslip) continue;
+      const { from, to } = cyclePeriodFor(runs, month, rules);
+      out.push({ month, periodFrom: from, periodTo: to, netPay: entry.payslip.netPay, payslip: entry.payslip });
+    }
+    return out;
+  }
+
+  /** The saved draft/frozen entries if this month has been run, otherwise a live preview — same
+   * response shape either way — plus the cycle's state and `pendingByEmployee` (undecided requests
+   * per employee: those figures count them as not approved). A frozen month's entries carry their
+   * payslip snapshots. */
+  async getPayrollForMonth(monthKey: string, roster: PayrollRosterEntry[], codes: EmployeeCodeMap): Promise<PayrollPreview & { alreadyRun: boolean; cycle: PayrollCycleState; computedAt: string | null; pendingByEmployee: Record<string, number> }> {
     await this.repository.backfillMissingEmployeeIds();
-    // Brings a run-but-unlocked cycle up to date with attendance before anything is shown.
-    const cycle = await this.getPayrollCycleState(monthKey, roster);
+    const { missingCtcEmployees: _missing, ...cycle } = await this.getPayrollCycleState(monthKey, roster);
+    void _missing;
     const pendingByEmployee: Record<string, number> = {};
     for (const p of cycle.pendingRequests) pendingByEmployee[p.employeeId] = (pendingByEmployee[p.employeeId] || 0) + 1;
+    if (cycle.phase === 'frozen') await this.ensurePayslipSnapshots(monthKey, codes);
     const runs = await this.repository.findPayrollRuns();
-    const run = runs.find((r) => r.month === monthKey);
-    if (run?.status === 'run') {
+    const run = runs.find((r) => r.month === monthKey && r.status === 'run');
+    if (run) {
       const [entries, rules] = await Promise.all([
         this.repository.findPayrollEntriesForMonth(monthKey),
         this.repository.findRules(),
       ]);
-      const { from, to } = payrollPeriodRange(monthKey, rules || DEFAULT_RULES);
+      const { from, to } = cyclePeriodFor(runs, monthKey, rules || DEFAULT_RULES);
       return { month: monthKey, periodFrom: from, periodTo: to, periodEnded: to < todayStr(), canRun: cycle.canRun, entries, missingCtcEmployees: [], fnfSettledEmployees: [], noticeHeldEmployees: [], alreadyRun: true, cycle, computedAt: run.computedAt || null, pendingByEmployee };
     }
     const preview = await this.computePayrollForMonth(monthKey, roster);

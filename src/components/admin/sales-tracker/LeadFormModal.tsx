@@ -11,14 +11,38 @@ import { canonicalCountryName, cityOptionsForCountry } from '@/modules/partnersh
 import { composeCountryCity, composePhone, resolveCity, resolveCountry } from '@/components/lead-forms/shared/compose';
 import { createInitialLeadFormData, type LeadFormData } from '@/components/lead-forms/shared/types';
 import { validatePhone } from '@/components/lead-forms/shared/validation';
-import { type AssignableEmployee, assignmentToDraft, type DepartmentOption, type LeadAssignment, type LeadAssignmentDraft } from '@/modules/lead-assignments/domain/types';
+import { type AssignableEmployee, assignmentToDraft, type DepartmentOption, type LeadAssignment, type LeadAssignmentDraft, sameAssignmentDraft } from '@/modules/lead-assignments/domain/types';
 import FollowUpsPanel from './FollowUpsPanel';
 import LeadAssignmentFields from './LeadAssignmentFields';
 import LeadMessagesPanel from './LeadMessagesPanel';
+import SaveConfirmDialog from './SaveConfirmDialog';
 import { PAGE_LEAD_LABELS, PAGE_LEAD_TYPES, STATUSES, TYPES } from './constants';
 import type { SalesLead } from './types';
 
 const KNOWN_CODES = COUNTRY_CODE_OPTIONS.map((c) => c.code).filter((c) => c !== 'other');
+
+/** Field labels for the save warning, in form order. Contact/country/city are compared separately
+ * (they live in `loc` until save). */
+const FIELD_LABELS: Partial<Record<keyof SalesLead, string>> = {
+  name: 'Name',
+  company: 'Company name',
+  email: 'Email ID',
+  source: 'Source of lead',
+  type: 'Type of lead',
+  otherType: 'Specify type',
+  status: 'Status',
+  nextFollowUpDate: 'Next follow-up date',
+  lastConnectDate: 'Last connect date',
+  lastCallDiscussion: 'Last call discussion',
+  query: 'Query description',
+  eventTitle: 'Event title',
+  eventSlug: 'Event URL / slug',
+  eventDate: 'Event date',
+  eventTime: 'Event time',
+  externalUrl: 'External URL',
+  posterUrl: 'Poster URL',
+  description: 'Event description',
+};
 
 function formatDateTime(value?: string): string {
   if (!value) return '—';
@@ -92,15 +116,12 @@ function toLocationFormData(lead: SalesLead, promotedCities: Record<string, stri
  * to `onSave` next to the lead. So is the new "Message for assigned employees" (LeadMessagesPanel,
  * sales_lead_messages), offered only once both are filled.
  *
- * An existing lead opens READ-ONLY: every control sits inside a disabled <fieldset>, and the phone
- * and country/city pickers (whose searchable dropdown doesn't honour a fieldset) are swapped for
- * plain read-only text. Nothing changes until the admin clicks "Edit lead"; Cancel then throws the
- * edits away and returns to the read-only view. Form data arriving from the public pages can no
- * longer be altered by a stray click. A new lead (Add new lead) opens straight into edit mode. */
-export default function LeadFormModal({ lead, startEditing = false, employees, departments, assignment, promotedCities, onClose, onSave }: {
+ * Every lead opens straight into edit mode (no "Edit lead" step). For an existing lead, "Save
+ * changes" first shows SaveConfirmDialog listing what changed, so data arriving from the public
+ * pages isn't overwritten by a stray edit; a new lead (Add new lead) saves without the warning.
+ * Closing with unsaved edits asks before throwing them away. */
+export default function LeadFormModal({ lead, employees, departments, assignment, promotedCities, onClose, onSave }: {
   lead: SalesLead;
-  /** Open an existing lead already unlocked — the All leads table's Edit button. */
-  startEditing?: boolean;
   employees: AssignableEmployee[];
   departments: DepartmentOption[];
   /** The lead's stored departments and people, if any. */
@@ -123,11 +144,31 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
   const [contactError, setContactError] = useState('');
   const [formMsg, setFormMsg] = useState<{ kind: 'err'; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const isNew = !lead.id;
-  const [editing, setEditing] = useState(isNew || startEditing);
+
+  const originalLoc = toLocationFormData(lead, promotedCities);
+  const changes = [
+    ...(Object.keys(FIELD_LABELS) as (keyof SalesLead)[])
+      .filter((k) => draft[k] !== lead[k])
+      .map((k) => FIELD_LABELS[k] as string),
+    ...(loc.phone !== originalLoc.phone ? ['Contact no.'] : []),
+    ...(resolveCountry(loc) !== resolveCountry(originalLoc) ? ['Country'] : []),
+    ...(resolveCity(loc) !== resolveCity(originalLoc) ? ['City'] : []),
+    ...(!sameAssignmentDraft(assignmentDraft, assignmentToDraft(assignment)) ? ['Departments / Assigned to'] : []),
+    ...(canMessage && messageDraft.trim() ? ['New message for assigned employees'] : []),
+  ];
+  const dirty = changes.length > 0;
+
+  function requestClose() {
+    // Escape while the save warning is up only dismisses the warning.
+    if (confirmOpen) { if (!saving) setConfirmOpen(false); return; }
+    if (dirty && !window.confirm('Discard your unsaved changes?')) return;
+    onClose();
+  }
   // Mounted only while this modal is open (parent renders it conditionally), so the listener
   // can just always be live.
-  useEscapeKey(onClose);
+  useEscapeKey(requestClose);
 
   // Which fields belong to this lead. A lead mirrored in from a public page only carries what that
   // page's form collects (see each module's to-sales-lead.ts), so everything else is shown but
@@ -160,28 +201,19 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
     setContactError(validatePhone(locRef.current));
   }
 
-  /** Back to the read-only view with the lead exactly as it was opened — or, for a new lead that
-   * has nothing to go back to, close the window. */
-  function cancelEdit() {
-    if (isNew) { onClose(); return; }
-    const original = toLocationFormData(lead, promotedCities);
-    locRef.current = original;
-    setLoc(original);
-    setDraft(lead);
-    setAssignmentDraft(assignmentToDraft(assignment));
-    setMessageDraft('');
-    setNameInvalid(false);
-    setContactError('');
-    setFormMsg(null);
-    setEditing(false);
-  }
-
-  async function handleSave() {
+  /** Validates, then saves a new lead straight away or asks before overwriting an existing one. */
+  function requestSave() {
     if (!draft.name.trim()) { setNameInvalid(true); setFormMsg({ kind: 'err', text: 'Name is required.' }); return; }
     setNameInvalid(false);
     const err = validatePhone(locRef.current);
     if (err) { setContactError(err); setFormMsg({ kind: 'err', text: 'Please enter a valid contact number.' }); return; }
     setContactError('');
+    setFormMsg(null);
+    if (isNew) void handleSave();
+    else setConfirmOpen(true);
+  }
+
+  async function handleSave() {
     const l = locRef.current;
     const toSave: SalesLead = {
       ...draft,
@@ -198,21 +230,22 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
       setFormMsg({ kind: 'err', text: err instanceof Error && err.message ? err.message : 'Could not save the lead. Try again.' });
     } finally {
       setSaving(false);
+      setConfirmOpen(false);
     }
   }
 
   return (
-    <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <>
+    <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) requestClose(); }}>
       <div className="modal-box">
         <div className="modal-head">
-          <h2>{isNew ? 'Add lead' : editing ? 'Edit lead' : 'Lead details'}</h2>
-          <button type="button" className="modal-close" aria-label="Close" onClick={onClose}><X size={20} aria-hidden /></button>
+          <h2>{isNew ? 'Add lead' : 'Lead details'}</h2>
+          <button type="button" className="modal-close" aria-label="Close" onClick={requestClose}><X size={20} aria-hidden /></button>
         </div>
         <div className="modal-body">
-          {!editing && (
-            <div className="hint" style={{ marginBottom: 10 }}><Lock size={12} aria-hidden style={{ verticalAlign: -2, marginRight: 4 }} />Read-only. Click <strong>Edit lead</strong> to change any detail.</div>
+          {!isNew && (
+            <div className="hint" style={{ marginBottom: 10 }}>Edit any detail below, then click <strong>Save changes</strong>. You&apos;ll be asked to confirm before anything is saved.</div>
           )}
-          <fieldset disabled={!editing} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="row">
             {/* Arrival date — the day the lead came in (today for a new manual lead). Locked: the server
                 also refuses to overwrite it on update (see SalesTrackerRepository.upsertLead). */}
@@ -234,7 +267,6 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
                 number input to an absurd width. min-width still gives the country-code picker +
                 number room to lay out without wrapping oddly. */}
             <div style={{ flex: '0 1 360px', minWidth: 300 }}>
-              {editing ? (
               <PhoneField
                 allowOtherCode
                 id="lead-contact"
@@ -248,14 +280,10 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
                 onChangeNumber={(v) => updateLoc({ phoneNumber: v }, true)}
                 onBlurValidate={blurValidateContact}
               />
-              ) : (
-                <div className="field"><label>Contact no.</label><input type="text" value={loc.phone} placeholder="—" disabled readOnly /></div>
-              )}
             </div>
             <div className="field"><label>Email ID</label><input type="email" placeholder="name@company.com" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></div>
           </div>
           <div className="row">
-            {editing ? (
             <CountryCityFields
               country={loc.country}
               countryOther={loc.countryOther}
@@ -270,12 +298,6 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
               onBlurCountry={() => {}}
               onBlurCity={() => {}}
             />
-            ) : (
-              <>
-                <div className="field"><label>Country</label><input type="text" value={resolveCountry(loc)} placeholder="—" disabled readOnly /></div>
-                <div className="field"><label>City</label><input type="text" value={resolveCity(loc)} placeholder="—" disabled readOnly /></div>
-              </>
-            )}
           </div>
           <div className="row">
             <div className="field"><label>Source of lead {lock.sourceType && lockNote(`Set by the ${pageLabel} page`)}</label><input type="text" placeholder="IG handle, WhatsApp, email link..." value={draft.source} disabled={lock.sourceType} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></div>
@@ -306,7 +328,6 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
             idPrefix="lead"
             source="lead"
             leadId={lead.id}
-            editing={editing}
             canWrite={canMessage}
             value={messageDraft}
             onChange={setMessageDraft}
@@ -357,25 +378,19 @@ export default function LeadFormModal({ lead, startEditing = false, employees, d
               </div>
             </>
           )}
-          </fieldset>
-          {/* Outside the fieldset: read-only either way, and its content isn't part of this form. */}
+          {/* Read-only; its content isn't part of this form. */}
           {!isNew && <FollowUpsPanel source="lead" leadId={lead.id} />}
           {formMsg && <div className={`msg ${formMsg.kind}`}>{formMsg.text}</div>}
         </div>
         <div className="modal-actions">
-          {editing ? (
-            <>
-              <button type="button" disabled={saving} onClick={cancelEdit}>Cancel</button>
-              <button type="button" className="primary" disabled={saving} onClick={handleSave}>{saving ? 'Saving…' : isNew ? 'Save lead' : 'Update lead'}</button>
-            </>
-          ) : (
-            <>
-              <button type="button" onClick={onClose}>Close</button>
-              <button type="button" className="primary" onClick={() => setEditing(true)}>Edit lead</button>
-            </>
-          )}
+          <button type="button" disabled={saving} onClick={requestClose}>{isNew ? 'Cancel' : 'Close'}</button>
+          <button type="button" className="primary" disabled={saving || (!isNew && !dirty)} onClick={requestSave}>{saving ? 'Saving…' : isNew ? 'Save lead' : 'Save changes'}</button>
         </div>
       </div>
     </div>
+    {confirmOpen && (
+      <SaveConfirmDialog changes={changes} saving={saving} onCancel={() => setConfirmOpen(false)} onConfirm={() => void handleSave()} />
+    )}
+    </>
   );
 }

@@ -211,13 +211,14 @@ export async function emailExists(email: string): Promise<boolean> {
   return user !== null;
 }
 
-export async function create(data: { name: string; email: string; phone?: string; country?: string; password: string }): Promise<void> {
+export async function create(data: { name: string; email: string; phone?: string; country?: string; city?: string; timezone?: string; password: string }): Promise<PublicUserEntity> {
   await ensureTable();
   const hash = await bcrypt.hash(data.password, 12);
   await query(
-    'INSERT INTO public_registrations (name, email, phone, country, password_hash, auth_provider) VALUES (?, ?, ?, ?, ?, ?)',
-    [data.name, data.email, data.phone || null, data.country || null, hash, 'email']
+    'INSERT INTO public_registrations (name, email, phone, country, city, timezone, password_hash, auth_provider, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+    [data.name, data.email, data.phone || null, data.country || null, data.city || null, data.timezone || null, hash, 'email']
   );
+  return (await findByEmail(data.email))!;
 }
 
 export async function upsertGoogleUser(data: { googleId: string; name: string; email: string; country?: string; city?: string; timezone?: string }): Promise<{ user: PublicUserEntity; isNew: boolean }> {

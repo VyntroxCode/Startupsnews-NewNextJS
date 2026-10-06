@@ -15,12 +15,23 @@
  *    punch-in — a punched day can only take half a day of leave) + the other half worked if
  *    they worked at least a half day's hours;
  *  - leave / unpaid-leave: no punch, approved leave — paid as far as the balance covered it;
+ *  - a day HR set directly (overrideByDate, `hrSet: true`) takes that status instead of its hours
+ *    or leave: present / short-leave / half-day / absent like a punched day, 'off' a paid week-off,
+ *    'unpaid-leave' a full day of loss of pay;
  *  - present / short-leave / half-day / absent: decided by hours worked (realDayHoursBucket).
- *    Short leaves past the cycle's free quota cost half a day each, in date order.
+ *    Short leaves (in date order): the first `quota` are fully paid, then every 3rd one after
+ *    them costs half a day — quota 2 → the 5th, 8th, 11th, 14th… are deducted (isShortLeaveDeducted).
+ *  - [only while leave-balance.ts AUTO_ABSENCE_COVER is on — off since 2026-10-06, so every such
+ *    day is absent / loss of pay unless an approved leave request covers it]
+ *    what a punched day costs (absent 1, half day ½, deducted short leave ½) is paid from Casual
+ *    automatically while the balance lasts (`autoLeave`): an absent day becomes 'leave', a half day
+ *    'half-leave', a deducted short leave keeps its kind. Such days don't count in absentDays /
+ *    halfDayDays / shortLeaveDeductions, which hold only what is still loss of pay.
  */
 import { eachDateInRange, isSunday } from './time';
 import { realDayHoursBucket, ShiftSettings } from './lateness';
 import type { LeaveAllocation } from './leave-balance';
+import type { HrAttendanceOverrideStatus } from '../domain/types';
 
 export type LedgerDayKind =
   | 'not-employed' | 'settled' | 'off' | 'future'
@@ -37,10 +48,15 @@ export interface LedgerDay {
   /** Leave days on this date covered by the balance, and the part beyond it. */
   paidLeave: number;
   unpaidLeave: number;
-  /** A short leave beyond the free quota — half a day deducted. */
+  /** A short leave that closes a block of quota+1 — half a day deducted. */
   shortLeaveDeducted?: boolean;
+  /** Paid from the Casual balance automatically (no leave request): an absence, or the unworked
+   * half of a half day / deducted short leave. */
+  autoLeave?: boolean;
   inMinutes?: number | null;
   outMinutes?: number | null;
+  /** HR set this day's status directly (hr_attendance_overrides) — it, not the punches, decided it. */
+  hrSet?: boolean;
 }
 
 export interface LedgerTotals {
@@ -55,9 +71,13 @@ export interface LedgerTotals {
   leaveDays: number;
   /** Leave taken beyond the balance (inside lopDays). */
   unpaidLeaveDays: number;
+  /** Working days with no show: no punch and no leave, or too few hours / no punch-out. Whole
+   * days only — unpaid leave, half days and short-leave deductions are LOP but not absences. */
+  absentDays: number;
+  /** Half days still costing half a day (not paid from Casual automatically). */
   halfDayDays: number;
   shortLeaveDays: number;
-  /** Short leaves past the free quota, each costing half a day. */
+  /** Short leaves that closed a block of quota+1 and still cost half a day (not paid from Casual). */
   shortLeaveDeductions: number;
   notEmployedDays: number;
   futureDays: number;
@@ -84,7 +104,9 @@ export interface DayLedgerInput {
   rules: ShiftSettings & { shiftEndTime: string; shortLeaveMonthlyQuota: number };
   attendanceByDate: Map<string, { inMinutes?: number | null; outMinutes?: number | null }>;
   /** Approved leave per date — see approvedLeaveByDate. */
-  leaveByDate: Map<string, { units: number; paid: number }>;
+  leaveByDate: Map<string, { units: number; paid: number; auto?: boolean }>;
+  /** Day statuses HR set directly — checked before leave and punches (see HrAttendanceOverride). */
+  overrideByDate?: Map<string, HrAttendanceOverrideStatus>;
 }
 
 /** One employee's pay cycle, day by day — what the attendance calendar renders. Built by the same
@@ -98,7 +120,9 @@ export interface EmployeeCycleLedger {
   totals: LedgerTotals;
   /** Per enabled leave type: balance left today, earned this year, and this cycle's requested
    * days — approved split into paid/unpaid (same allocation payroll pays by) plus pending. */
-  leave: { type: string; available: number; earnedThisYear: number; appliedInCycle: number; paidInCycle: number; unpaidInCycle: number; pendingInCycle: number }[];
+  leave: { type: string; available: number; earnedThisYear: number; appliedInCycle: number; paidInCycle: number; unpaidInCycle: number; pendingInCycle: number;
+    /** Absences in this cycle paid from this type automatically (no request). */
+    autoInCycle: number }[];
   /** Gross/net from these totals (TDS = the saved run's, else 0). */
   pay: { monthlyGross: number; netPay: number; tds: number };
   /** The saved payslip when this cycle has been run (auto-updated until the cycle locks). */
@@ -110,26 +134,58 @@ export interface EmployeeCycleLedger {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Folds an allocateLeave result into per-date leave, counting only the APPROVED requests — the
- * allocation itself runs over approved + pending (pending holds balance, exactly as every leave
- * screen shows it) so a paid/unpaid split never differs between the screen and the payslip. */
-export function approvedLeaveByDate(allocation: Map<string, LeaveAllocation>, approvedIds: Set<string>): Map<string, { units: number; paid: number }> {
-  const out = new Map<string, { units: number; paid: number }>();
+/** The hours bucket an HR-set status stands in for ('off' / 'unpaid-leave' are handled apart). */
+const HR_STATUS_BUCKET: Partial<Record<HrAttendanceOverrideStatus, ReturnType<typeof realDayHoursBucket>>> = {
+  present: 'full-time', 'short-leave': 'short-leave', 'half-day': 'half-day', absent: 'absent',
+};
+
+/** Folds an allocateLeave result into per-date leave, counting only the APPROVED requests (and
+ * the automatic absence cover) — the allocation itself runs over approved + pending (pending holds
+ * balance, exactly as every leave screen shows it) so a paid/unpaid split never differs between
+ * the screen and the payslip. */
+export function approvedLeaveByDate(allocation: Map<string, LeaveAllocation>, approvedIds: Set<string>): Map<string, { units: number; paid: number; auto?: boolean }> {
+  const out = new Map<string, { units: number; paid: number; auto?: boolean }>();
   allocation.forEach((alloc, id) => {
-    if (!approvedIds.has(id)) return;
+    if (!approvedIds.has(id) && !alloc.auto) return;
     for (const d of alloc.days) {
       const prev = out.get(d.date);
-      out.set(d.date, { units: (prev?.units || 0) + d.units, paid: (prev?.paid || 0) + d.paid });
+      out.set(d.date, { units: (prev?.units || 0) + d.units, paid: (prev?.paid || 0) + d.paid, ...(alloc.auto ? { auto: true } : {}) });
     }
   });
   return out;
 }
 
+/** After the free short leaves, every this-many-th one costs half a day. */
+export const SHORT_LEAVE_DEDUCT_EVERY = 3;
+
+/** Whether the `n`th short leave of a cycle (1-based, date order) costs half a day: the first
+ * `freeCount` are fully paid, then every SHORT_LEAVE_DEDUCT_EVERY-th after them — free 2 → 5, 8, 11… */
+export function isShortLeaveDeducted(n: number, freeCount: number): boolean {
+  return n > freeCount && (n - freeCount) % SHORT_LEAVE_DEDUCT_EVERY === 0;
+}
+
+/** Positions of the first few deducted short leaves, for display: free 2 → "5th, 8th, 11th". */
+export function shortLeaveDeductedPositions(freeCount: number, count = 3): number[] {
+  return Array.from({ length: count }, (_, i) => freeCount + SHORT_LEAVE_DEDUCT_EVERY * (i + 1));
+}
+
+/** Short-leave rule in plain words — "First 2 fully paid, then every 3rd costs ½ day (5th, 8th, 11th…)". */
+export function shortLeaveRuleText(freeCount: number): string {
+  const ord = (n: number) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] || 'th'}`;
+  const first = freeCount > 0 ? `First ${freeCount} fully paid, then every` : 'Every';
+  return `${first} ${ord(SHORT_LEAVE_DEDUCT_EVERY)} costs ½ day (${shortLeaveDeductedPositions(freeCount).map(ord).join(', ')}…)`;
+}
+
+/** Short-leave rule for a small tile — "First 2 free". */
+export function shortLeaveRuleShort(freeCount: number): string {
+  return freeCount > 0 ? `First ${freeCount} free` : 'No free short leaves';
+}
+
 export function buildDayLedger(input: DayLedgerInput): DayLedger {
-  const { from, to, evalTo, clippedFrom, lastDay, settledThrough, holidays, rules, attendanceByDate, leaveByDate } = input;
+  const { from, to, evalTo, clippedFrom, lastDay, settledThrough, holidays, rules, attendanceByDate, leaveByDate, overrideByDate } = input;
   const freeShortLeave = Math.max(0, Number(rules.shortLeaveMonthlyQuota) || 0);
   const days: LedgerDay[] = [];
-  let weekOffDays = 0, futureDays = 0, notEmployedDays = 0, halfDayDays = 0, shortLeaveDays = 0, shortLeaveDeductions = 0;
+  let weekOffDays = 0, futureDays = 0, notEmployedDays = 0, halfDayDays = 0, shortLeaveDays = 0, shortLeaveDeductions = 0, absentDays = 0;
   let workedValue = 0, leaveDays = 0, unpaidLeaveDays = 0;
 
   for (const date of eachDateInRange(from, to)) {
@@ -139,14 +195,16 @@ export function buildDayLedger(input: DayLedgerInput): DayLedger {
       days.push({ date, kind: 'not-employed', pay: 0, worked: 0, paidLeave: 0, unpaidLeave: 0 });
       continue;
     }
-    if (settledThrough && date <= settledThrough) {
-      workedValue += 1;
-      days.push({ date, kind: 'settled', pay: 1, worked: 1, paidLeave: 0, unpaidLeave: 0 });
-      continue;
-    }
+    // Tested before settled so a Sunday/holiday inside the already-paid stretch still counts as a
+    // week-off, not a present day (pay is the same either way).
     if (isSunday(date) || holidays.has(date)) {
       weekOffDays++;
       days.push({ date, kind: 'off', pay: 1, worked: 0, paidLeave: 0, unpaidLeave: 0 });
+      continue;
+    }
+    if (settledThrough && date <= settledThrough) {
+      workedValue += 1;
+      days.push({ date, kind: 'settled', pay: 1, worked: 1, paidLeave: 0, unpaidLeave: 0 });
       continue;
     }
     if (date > evalTo) {
@@ -156,11 +214,29 @@ export function buildDayLedger(input: DayLedgerInput): DayLedger {
     }
     const att = attendanceByDate.get(date);
     const inMinutes = att?.inMinutes ?? null, outMinutes = att?.outMinutes ?? null;
-    const bucket = realDayHoursBucket(inMinutes, outMinutes, rules);
-    const leave = leaveByDate.get(date);
-    const base = { date, inMinutes, outMinutes };
+    // A day HR set directly: its status replaces the hours bucket, and leave is ignored (the
+    // service refuses an override on a date with leave). Short leave still counts toward the
+    // free quota like a punched one.
+    const hrStatus = overrideByDate?.get(date);
+    const bucket = hrStatus ? HR_STATUS_BUCKET[hrStatus] ?? null : realDayHoursBucket(inMinutes, outMinutes, rules);
+    const leave = hrStatus ? undefined : leaveByDate.get(date);
+    // Casual paid automatically for a punched day that still costs pay (absent / half day /
+    // deducted short leave) — see punchedShortfall. No-punch absences go through `leave` below.
+    const cover = leave?.auto && bucket !== null ? leave : undefined;
+    const base = hrStatus ? { date, inMinutes, outMinutes, hrSet: true } : { date, inMinutes, outMinutes };
 
-    if (leave && leave.units < 1) {
+    if (hrStatus === 'off') {
+      weekOffDays++;
+      days.push({ ...base, kind: 'off', pay: 1, worked: 0, paidLeave: 0, unpaidLeave: 0 });
+      continue;
+    }
+    if (hrStatus === 'unpaid-leave') {
+      unpaidLeaveDays += 1;
+      days.push({ ...base, kind: 'unpaid-leave', pay: 0, worked: 0, paidLeave: 0, unpaidLeave: 1 });
+      continue;
+    }
+
+    if (leave && !leave.auto && leave.units < 1) {
       // Half a day of leave: that half is paid if the balance covered it; the other half is paid
       // only if they actually worked it (at least a half day's hours).
       const worked = bucket === 'half-day' || bucket === 'short-leave' || bucket === 'full-time' ? 0.5 : 0;
@@ -169,20 +245,30 @@ export function buildDayLedger(input: DayLedgerInput): DayLedger {
       days.push({ ...base, kind: 'half-leave', pay: round2(worked + paid), worked, paidLeave: paid, unpaidLeave: unpaid });
       continue;
     }
-    if (bucket === null) {
+    if (bucket === null || (bucket === 'absent' && cover)) {
       if (leave) {
-        // Never punched in — full-day leave covers the paid part; the rest is loss of pay.
+        // Never punched in (or punched in but absent, paid from Casual automatically) — full-day
+        // leave covers the paid part; the rest is loss of pay.
         const paid = round2(leave.paid), unpaid = round2(leave.units - leave.paid);
         leaveDays += paid; unpaidLeaveDays += unpaid;
-        days.push({ ...base, kind: paid > 0 ? 'leave' : 'unpaid-leave', pay: paid, worked: 0, paidLeave: paid, unpaidLeave: unpaid });
+        days.push({ ...base, kind: paid > 0 ? 'leave' : 'unpaid-leave', pay: paid, worked: 0, paidLeave: paid, unpaidLeave: unpaid, ...(leave.auto ? { autoLeave: true } : {}) });
       } else {
+        absentDays++;
         days.push({ ...base, kind: 'absent', pay: 0, worked: 0, paidLeave: 0, unpaidLeave: 0 });
       }
       continue;
     }
     if (bucket === 'absent') {
       // Came in but worked too little to count (or never punched out).
+      absentDays++;
       days.push({ ...base, kind: 'absent', pay: 0, worked: 0, paidLeave: 0, unpaidLeave: 0 });
+      continue;
+    }
+    if (bucket === 'half-day' && cover) {
+      // Worked half; the other half paid from Casual automatically.
+      const paid = round2(cover.paid), unpaid = round2(cover.units - cover.paid);
+      workedValue += 0.5; leaveDays += paid; unpaidLeaveDays += unpaid;
+      days.push({ ...base, kind: 'half-leave', pay: round2(0.5 + paid), worked: 0.5, paidLeave: paid, unpaidLeave: unpaid, autoLeave: true });
       continue;
     }
     if (bucket === 'half-day') {
@@ -192,12 +278,19 @@ export function buildDayLedger(input: DayLedgerInput): DayLedger {
     }
     if (bucket === 'short-leave') {
       shortLeaveDays++;
-      // The first `shortLeaveMonthlyQuota` short leaves of the cycle are free; each later one
-      // costs half a day. Nothing carries into the next cycle.
-      const deducted = shortLeaveDays > freeShortLeave;
-      if (deducted) shortLeaveDeductions++;
+      // The first `shortLeaveMonthlyQuota` are fully paid, then every 3rd one after them costs
+      // half a day (quota 2 → 5th, 8th, 11th… deducted). Nothing carries into the next cycle.
+      const deducted = isShortLeaveDeducted(shortLeaveDays, freeShortLeave);
       const worked = deducted ? 0.5 : 1;
       workedValue += worked;
+      if (deducted && cover) {
+        // The deducted half is paid from Casual automatically — not loss of pay.
+        const paid = round2(cover.paid), unpaid = round2(cover.units - cover.paid);
+        leaveDays += paid; unpaidLeaveDays += unpaid;
+        days.push({ ...base, kind: 'short-leave', pay: round2(worked + paid), worked, paidLeave: paid, unpaidLeave: unpaid, shortLeaveDeducted: true, autoLeave: true });
+        continue;
+      }
+      if (deducted) shortLeaveDeductions++;
       days.push({ ...base, kind: 'short-leave', pay: worked, worked, paidLeave: 0, unpaidLeave: 0, shortLeaveDeducted: deducted });
       continue;
     }
@@ -213,10 +306,24 @@ export function buildDayLedger(input: DayLedgerInput): DayLedger {
     days,
     totals: {
       totalDays, weekOffDays, workingDays: totalDays - weekOffDays, presentDays, leaveDays: paidLeave,
-      unpaidLeaveDays: round2(unpaidLeaveDays), halfDayDays, shortLeaveDays, shortLeaveDeductions,
+      unpaidLeaveDays: round2(unpaidLeaveDays), absentDays, halfDayDays, shortLeaveDays, shortLeaveDeductions,
       notEmployedDays, futureDays, paidDays: round2(paidDays), lopDays: round2(totalDays - paidDays),
     },
   };
+}
+
+/** What a cycle's loss of pay is made of, in plain words — e.g. "3 absent · ½ half day · ½ short
+ * leave". Only non-zero parts; empty when there's no LOP. Shown under the LOP tile so it reads next
+ * to the separate Absent tile, the same split as payroll's Absent / LOP columns. */
+export function lopBreakdown(t: Pick<LedgerTotals, 'absentDays' | 'halfDayDays' | 'shortLeaveDeductions' | 'unpaidLeaveDays' | 'notEmployedDays'>): string {
+  const n = (v: number) => (v === 0.5 ? '½' : Number.isInteger(v) ? String(v) : v.toFixed(1));
+  return [
+    t.absentDays > 0 && `${n(t.absentDays)} absent`,
+    t.halfDayDays > 0 && `${n(t.halfDayDays * 0.5)} half day`,
+    t.shortLeaveDeductions > 0 && `${n(t.shortLeaveDeductions * 0.5)} short leave`,
+    t.unpaidLeaveDays > 0 && `${n(t.unpaidLeaveDays)} unpaid leave`,
+    t.notEmployedDays > 0 && `${n(t.notEmployedDays)} before joining / after leaving`,
+  ].filter(Boolean).join(' · ');
 }
 
 /** Gross for a cycle: paid days ÷ calendar days in the cycle × monthly salary (CTC ÷ 12),

@@ -29,6 +29,8 @@ export const REFERRED_BY_OPTIONS = [
   { value: 'meet-day-ai', label: 'meetday.ai' },
   { value: 'hbf-direct', label: 'HBF Direct' },
   { value: 'indicorn-angels', label: 'Indicornangels' },
+  // Added 2026-10-02; slug matches its logo key in expand-north-star/media.ts.
+  { value: 'ellenox', label: 'Ellenox' },
 ] as const satisfies readonly { value: string; label: string }[];
 
 export type ReferredByValue = (typeof REFERRED_BY_OPTIONS)[number]['value'];

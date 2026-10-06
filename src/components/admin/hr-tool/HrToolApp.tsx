@@ -315,6 +315,22 @@ function HrToolStyles() {
       .hr-tool-app td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
       .hr-tool-app tr:last-child td { border-bottom: none; }
       .hr-tool-app tr:hover td { background: #F1F5F9; }
+      .hr-tool-app .leave-table { table-layout: fixed; min-width: 980px; }
+      .hr-tool-app .leave-table th { background: #F8FAFC; border-bottom: 2px solid var(--line); padding: 11px 14px; }
+      .hr-tool-app .leave-table th + th, .hr-tool-app .leave-table td + td { border-left: 1px solid var(--line); }
+      .hr-tool-app .leave-table td { padding: 12px 14px; vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
+      .hr-tool-app .leave-table tbody tr:nth-child(even) td { background: #FAFBFD; }
+      .hr-tool-app .leave-table tbody tr:hover td { background: #F1F5F9; }
+      .hr-tool-app .leave-table .who { font-weight: 600; color: var(--text, #0F172A); }
+      .hr-tool-app .leave-table .dates { white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .hr-tool-app .leave-table .meta { margin-top: 3px; }
+      .hr-tool-app .leave-table .reason { line-height: 1.45; }
+      .hr-tool-app .leave-table .col-action { text-align: right; white-space: nowrap; overflow-wrap: normal; }
+      .hr-tool-app .leave-table .col-action .action-row { display: inline-flex; gap: 6px; }
+      .hr-tool-app .pay-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+      .hr-tool-app .pay-chip { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+      .hr-tool-app .pay-chip.paid { background: var(--green-soft); color: #166534; }
+      .hr-tool-app .pay-chip.unpaid { background: #FEE2E2; color: #991B1B; }
       .hr-tool-app .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
       .hr-tool-app .badge.active { background: var(--green-soft); color: var(--green); }
       .hr-tool-app .badge.probation { background: var(--amber-soft); color: #92400E; }
@@ -383,6 +399,7 @@ function HrToolStyles() {
       .hr-tool-app .meta { font-size: 11.5px; color: var(--muted); }
       .hr-tool-app .notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; background: var(--amber-soft); border: 1px solid #FDE68A; border-radius: 8px; font-size: 12.5px; color: #92400E; margin-bottom: 16px; }
       .hr-tool-app .notice.info { background: var(--blue-soft); border-color: #BFDBFE; color: var(--blue); }
+      .hr-tool-app .notice.bad { background: #FEF2F2; border-color: #FECACA; color: #991B1B; }
       .hr-tool-app .notice.good { background: var(--green-soft); border-color: #BBF7D0; color: var(--green); }
       .hr-tool-app .progress-track { height: 6px; background: #E2E8F0; border-radius: 6px; overflow: hidden; }
       .hr-tool-app .progress-fill { height: 100%; background: var(--amber); }
@@ -407,6 +424,8 @@ function HrToolStyles() {
       .hr-tool-app .cal-cell.future { background: #fff; color: var(--muted); border-style: dashed; }
       .hr-tool-app .cal-cell.not-employed { background: repeating-linear-gradient(135deg, #F8FAFC 0 6px, #EEF2F7 6px 12px); color: #94A3B8; }
       .hr-tool-app .cal-cell .cal-note { font-size: 9.5px; font-weight: 600; margin-top: 3px; opacity: 0.85; line-height: 1.2; }
+      .hr-tool-app .cal-cell.hr-set { box-shadow: inset 0 0 0 2px #0F766E; }
+      .hr-tool-app .cal-cell .cal-time { font-size: 10px; font-weight: 500; margin-top: 3px; line-height: 1.3; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hr-tool-app .cal-cell .cal-reg { position: absolute; top: 5px; right: 6px; width: 8px; height: 8px; border-radius: 50%; }
       .hr-tool-app .cal-cell .cal-reg.pending { background: #D97706; }
       .hr-tool-app .cal-cell .cal-reg.approved { background: #7C3AED; }
@@ -440,8 +459,11 @@ function HrToolStyles() {
       .hr-tool-app .cal-summary-bar .seg.leave { background: var(--blue); }
       .hr-tool-app .cal-summary-bar .seg.unrecorded { background: #CBD5E1; }
       .hr-tool-app .cal-summary-rule { font-size: 11px; color: var(--muted); margin-top: 11px; line-height: 1.45; }
-      .hr-tool-app .cal-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 8px; margin-top: 12px; }
-      .hr-tool-app .cal-stat { border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 9px 11px; }
+      .hr-tool-app .cal-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+      .hr-tool-app .cal-stat.wide { grid-column: span 2; }
+      @media (max-width: 1100px) { .hr-tool-app .cal-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+      @media (max-width: 760px) { .hr-tool-app .cal-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+      .hr-tool-app .cal-stat { border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 11px 12px; min-height: 92px; display: flex; flex-direction: column; min-width: 0; }
       .hr-tool-app .cal-stat-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.25; opacity: 0.75; }
       .hr-tool-app .cal-stat-num { font-size: 21px; font-weight: 700; line-height: 1; margin-top: 7px; }
       .hr-tool-app .cal-stat-sub { font-size: 10.5px; line-height: 1.2; margin-top: 5px; opacity: 0.72; }
@@ -458,7 +480,7 @@ function HrToolStyles() {
       .hr-tool-app .cal-stat.paid { background: #ECFDF5; border-color: #A7F3D0; color: #065F46; }
       .hr-tool-app .cal-payslip { margin-top: 11px; padding: 9px 11px; border-radius: 8px; background: #fff; border: 1px solid var(--line); font-size: 12px; }
       .hr-tool-app .cal-payslip strong { font-weight: 700; }
-      @media (max-width: 560px) { .hr-tool-app .cal-stats { grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); } }
+      @media (max-width: 560px) { .hr-tool-app .cal-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
       .hr-tool-app .rule-row { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); gap: 6px 24px; }
       .hr-tool-app .rule-row:last-child { border-bottom: none; }

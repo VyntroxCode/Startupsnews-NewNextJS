@@ -11,6 +11,8 @@ import type { HrHoliday, HrLeaveTypeConfig, HrRules, HrTeam } from '../types';
  * nothing to whoever is approving the change. */
 const RULE_LABELS: Partial<Record<keyof HrRules, string>> = {
   shiftStartTime: 'Shift start time', shiftEndTime: 'Shift end time', shiftGraceMinutes: 'Grace period (min)',
+  punchInFrom: 'Punch In window — opens', punchInTo: 'Punch In window — closes',
+  punchOutFrom: 'Punch Out window — opens', punchOutTo: 'Punch Out window — closes',
   halfDayThresholdHours: 'Half day — punch-in cutoff', regularizationWindowDays: 'Regularization window (days)',
   regularizationOverride: 'Admin override past window', regularizationMonthlyQuota: 'Regularization limit per payroll cycle',
   shortLeaveMaxHours: 'Short leave — punch-in cutoff', shortLeaveMonthlyQuota: 'Short leave — monthly quota',
@@ -337,10 +339,20 @@ export default function Rules() {
   // list (changedRuleLabels, above) always reflects everything actually being saved, not just
   // the section the button was clicked from. Each section's OWN button only controls whether
   // it's enabled (via its own scoped dirty check) and what "Discard" resets.
-  const ATTENDANCE_KEYS: (keyof HrRules)[] = ['shiftStartTime', 'shiftEndTime', 'regularizationMonthlyQuota', 'shortLeaveMonthlyQuota', 'halfDayMinWorkedHours', 'shortLeaveMinWorkedHours', 'fullDayMinWorkedHours'];
+  const ATTENDANCE_KEYS: (keyof HrRules)[] = ['shiftStartTime', 'shiftEndTime', 'punchInFrom', 'punchInTo', 'punchOutFrom', 'punchOutTo', 'regularizationMonthlyQuota', 'shortLeaveMonthlyQuota', 'halfDayMinWorkedHours', 'shortLeaveMinWorkedHours', 'fullDayMinWorkedHours'];
   const APPROVAL_KEYS: (keyof HrRules)[] = ['twoLevelApproval'];
   const LEAVE_TYPES_KEYS: (keyof HrRules)[] = ['leaveTypes'];
   const OTHER_RULES_KEYS: (keyof HrRules)[] = ['geoFencing', 'geoFenceLat', 'geoFenceLng', 'geoFenceRadiusM', 'selfieCheckin', 'pfEsi', 'optionalHolidayChoice', 'assetChecklist'];
+  /** Punch windows must be real ranges, and Punch Out must stay in the afternoon (its picker shows
+   * a fixed "PM"). */
+  function validatePunchWindows(): string | null {
+    const { punchInFrom, punchInTo, punchOutFrom, punchOutTo } = ruleDraft;
+    if (![punchInFrom, punchInTo, punchOutFrom, punchOutTo].every((t) => /^\d{2}:\d{2}$/.test(t || ''))) return 'Set all four punch window times.';
+    if (punchInFrom >= punchInTo) return 'Punch In window: the opening time must be before the closing time.';
+    if (punchOutFrom >= punchOutTo) return 'Punch Out window: the opening time must be before the closing time.';
+    if (punchOutFrom < '12:00') return 'Punch Out window must open at 12:00 PM or later.';
+    return null;
+  }
   function validateGeoFence(): string | null {
     if (!ruleDraft.geoFencing) return null;
     if (!Number.isFinite(ruleDraft.geoFenceLat) || !Number.isFinite(ruleDraft.geoFenceLng)) return 'Geo-fencing is on but the office latitude/longitude is not a valid coordinate.';
@@ -744,11 +756,21 @@ export default function Rules() {
             </div>
           </div>
           <div className="rule-row">
+            <div><div className="rule-name">Punch windows</div><div className="rule-desc">When the Punch In and Punch Out buttons work (India time). Punch In only inside its window. Punch Out until its closing time — before its opening time only for someone who punched in that day (leaving early). No punch-out by the closing time means the day is Absent. Regularization requests must ask for a time inside the same windows.</div></div>
+            <div className="rule-inputs" style={{ flexWrap: 'wrap' }}>
+              In <input type="time" value={ruleDraft.punchInFrom} onChange={(e) => setDraftRule('punchInFrom', e.target.value)} style={{ width: 120 }} />
+              to <input type="time" value={ruleDraft.punchInTo} onChange={(e) => setDraftRule('punchInTo', e.target.value)} style={{ width: 120 }} />
+              <span style={{ width: '100%' }} />
+              Out <input type="time" min="12:00" value={ruleDraft.punchOutFrom} onChange={(e) => setDraftRule('punchOutFrom', e.target.value)} style={{ width: 120 }} />
+              to <input type="time" min="12:00" value={ruleDraft.punchOutTo} onChange={(e) => setDraftRule('punchOutTo', e.target.value)} style={{ width: 120 }} />
+            </div>
+          </div>
+          <div className="rule-row">
             <div><div className="rule-name">Grace period</div><div className="rule-desc">Minutes after shift start before a punch-in counts as late. Fixed company-wide — not admin-editable.</div></div>
             <div className="rule-inputs"><strong>{FIXED_GRACE_MINUTES} min</strong></div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Regularization limit per payroll cycle</div><div className="rule-desc">How many DAYS an employee may regularize per payroll cycle — punch-in and punch-out on the same day count once, approved and pending count, rejected don't. A hard limit: nobody can go past it. Requests must be made within the regularization window (days after the date), and a finished cycle takes requests only for 2 more days. Whole numbers up to 8.</div></div>
+            <div><div className="rule-name">Regularization limit per payroll cycle</div><div className="rule-desc">How many DAYS an employee may regularize per payroll cycle — punch-in and punch-out on the same day count once, approved, pending and rejected all count. A hard limit: nobody can go past it. Requests must be made within the regularization window (days after the date), and a finished cycle takes requests only for 2 more days. Whole numbers up to 8.</div></div>
             <div className="rule-inputs">
               <input
                 className="mini-input" type="number" min={0} max={REGULARIZATION_MAX} step={1}
@@ -760,7 +782,7 @@ export default function Rules() {
             </div>
           </div>
           <div className="rule-row">
-            <div><div className="rule-name">Short leave — free per payroll cycle</div><div className="rule-desc">How many Short Leave days (worked between the Short Leave and Full day hours) are free each payroll cycle. Every Short Leave day after that costs half a day&apos;s pay; nothing carries over. Whole numbers up to 5.</div></div>
+            <div><div className="rule-name">Short leave — fully paid per payroll cycle</div><div className="rule-desc">How many Short Leave days (worked between the Short Leave and Full day hours) are fully paid first. After them, every 3rd Short Leave costs half a day&apos;s pay — e.g. 2 means the first two are paid, then the 5th, 8th, 11th, 14th… Short Leave in a payroll cycle costs half a day. The count restarts each payroll cycle; nothing carries over. Whole numbers up to 5.</div></div>
             <div className="rule-inputs">
               <input
                 className="mini-input" type="number" min={0} max={SHORT_LEAVE_MAX} step={1}
@@ -793,6 +815,7 @@ export default function Rules() {
             saving={savingRules}
             onDiscard={() => discardSection(ATTENDANCE_KEYS)}
             onSave={commitRuleEdits}
+            validate={validatePunchWindows}
             title="Apply rule changes?"
             notice="Takes effect immediately for every employee."
             changeLines={changedRuleLabels}
@@ -824,10 +847,10 @@ export default function Rules() {
       <section className="block">
         <div className="block-head"><h2>Leave types</h2></div>
         <div className="card pad">
-          <div className="rule-desc" style={{ marginBottom: 8 }}>Switch a type off and it disappears everywhere. The number is how many days an employee accrues each month while that type is on. Add your own type below if you need one beyond these.</div>
+          <div className="rule-desc" style={{ marginBottom: 8 }}>Switch a type off and it disappears everywhere. The number is how many days an employee is credited each time a payroll cycle ends (on the cycle&apos;s first day, e.g. the 26th) while that type is on. A new joiner gets the first credit when their joining cycle ends. Unused leave lapses at the end of the leave year (the December cycle). Leave is used only through an approved leave request — a missed day without one is absent (loss of pay). Add your own type below if you need one beyond these.</div>
           {Object.entries(ruleDraft.leaveTypes).map(([type, cfg]) => (
             <div className="rule-row" key={type}>
-              <div><div className="rule-name">{type}</div><div className="rule-desc">{cfg.enabled ? `${cfg.perMonth} day${cfg.perMonth === 1 ? '' : 's'} accrued per month.` : 'Switched off — hidden from leave applications and balances.'}</div></div>
+              <div><div className="rule-name">{type}</div><div className="rule-desc">{cfg.enabled ? `${cfg.perMonth} day${cfg.perMonth === 1 ? '' : 's'} credited per payroll cycle.` : 'Switched off — hidden from leave applications and balances.'}</div></div>
               <div className="rule-inputs">
                 <input
                   className="mini-input" type="number" min={0} step={0.5}

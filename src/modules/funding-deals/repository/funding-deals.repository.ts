@@ -148,7 +148,7 @@ export class FundingDealsRepository {
   async findForAggregation(filters: FundingFilters): Promise<AggDeal[]> {
     const { where, params } = buildWhere(filters);
     const rows = await query<DbRow>(
-      `SELECT deal_date, sector, round_stage, city, country, amount_usd_mn, investors FROM funding_deals ${where}`,
+      `SELECT deal_date, startup_name, sector, business_model, round_stage, city, country, amount_usd_mn, lead_investor, investors FROM funding_deals ${where}`,
       params,
     );
     return rows.map((r) => ({
@@ -159,6 +159,9 @@ export class FundingDealsRepository {
       country: str(r.country),
       amount: r.amount_usd_mn === null || r.amount_usd_mn === undefined ? null : num(r.amount_usd_mn),
       investors: str(r.investors),
+      startupName: str(r.startup_name),
+      leadInvestor: str(r.lead_investor),
+      businessModel: str(r.business_model),
     }));
   }
 

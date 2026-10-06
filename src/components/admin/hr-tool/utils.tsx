@@ -1,21 +1,10 @@
 import * as XLSX from 'xlsx';
-import type { HrCtcBreakdown, HrCtcSplit, HrEmployee, HrOnboarding, HrRole, HrRules } from './types';
+import type { HrEmployee, HrOnboarding, HrRole, HrRules } from './types';
 
-/** Basic/HRA/Convenience/Special Allowance for one month, from a CTC Structure config (see
- * HrCtcSplit) and an employee's annual CTC. Basic is a % of monthly salary; HRA is a % of
- * BASIC (not of salary directly); Convenience is either a flat ₹/month amount or a % of
- * monthly salary; Special Allowance is always whatever's left, never its own stored
- * percentage, so the four always add up to exactly one month's salary. */
-export function computeCtcBreakdown(annualCtc: number, split: HrCtcSplit): HrCtcBreakdown {
-  const monthlySalary = annualCtc / 12;
-  const basic = Math.round((monthlySalary * split.basicPct) / 100);
-  const hra = Math.round((basic * split.hraPctOfBasic) / 100);
-  const convenience = split.convenienceType === 'amount'
-    ? Math.round(split.convenienceValue)
-    : Math.round((monthlySalary * split.convenienceValue) / 100);
-  const specialAllowance = Math.round(monthlySalary - basic - hra - convenience);
-  return { basic, hra, convenience, specialAllowance };
-}
+import { computeCtcBreakdown } from '@/modules/hr-tool/utils/payslip-data';
+
+/** Basic/HRA/Convenience/Special Allowance for one month — see modules/hr-tool/utils/payslip-data.ts. */
+export { computeCtcBreakdown };
 
 /* ---------------------------------------------------------
    Dates — always the real current date. (The old standalone tool used a
@@ -355,14 +344,16 @@ ${COMPANY.email}
 `;
 }
 
-/** Opening leave balance for a new/confirmed employee: one month's accrual for each ENABLED
- * leave type. Replaces the `{ Casual: 6, Sick: 6, Earned: 10 }` literal that was copy-pasted in
+/** Opening leave balance for a new/confirmed employee: 0 for each ENABLED leave type — nothing is
+ * credited at joining; the first credit lands when the joining pay cycle ends (leave-balance.ts
+ * creditsAccruedThisYear). This stored snapshot isn't read for balances — every screen computes
+ * them live. Replaces the `{ Casual: 6, Sick: 6, Earned: 10 }` literal that was copy-pasted in
  * four places — that handed every new hire Sick and Earned balances regardless of what the admin
  * had actually configured under Rules → Leave types. */
 export function initialLeaveBalance(rules: HrRules): Record<string, number> {
   const out: Record<string, number> = {};
   for (const [name, cfg] of Object.entries(rules.leaveTypes)) {
-    if (cfg.enabled) out[name] = cfg.perMonth;
+    if (cfg.enabled) out[name] = 0;
   }
   return out;
 }

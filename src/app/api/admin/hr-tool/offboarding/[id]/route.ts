@@ -16,6 +16,7 @@ interface CaseActionBody extends DecideInput, ClearanceInput, Omit<FnfInput, 'li
   handoverNotes?: string;
   rehireEligible?: boolean | null;
   toCredentialId?: number | null;
+  actualLwd?: string;
 }
 
 async function caseId(params: RouteParams['params']): Promise<number | null> {
@@ -39,11 +40,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 /**
  * POST /api/admin/hr-tool/offboarding/[id] — one action on one case:
- *   { action: 'decide', decision: 'accept' | 'reject', approvedLwd?, noticeDays?, noticeWaivedDays?, accessMode?, note? }
+ *   { action: 'decide', decision: 'accept' | 'reject', lwdChoice?: 'requested' | 'system' | 'custom', customLwd?, accessMode?, note? }
  *   { action: 'cancel', note? }                   — revert an accepted exit before the LWD
  *   { action: 'reinstate', note }                 — undo an exit that already took effect
  *   { action: 'access', accessMode }              — 'alumni' | 'blocked' after the LWD
- *   { action: 'exit-now' }                        — end the notice today
+ *   { action: 'exit-now' }                        — end the notice today (company's choice, nothing recovered)
+ *   { action: 'left-early', actualLwd, note }     — resignation only; F&F pays no earnings, recovers 1 month's salary
  *   { action: 'handover', handoverNotes }
  *   { action: 'rehire', rehireEligible }          — true | false | null
  *   { action: 'clearance-update', itemId, status, note?, deductionAmount? }
@@ -79,6 +81,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       case 'reinstate': return resultResponse(await hrOffboardingService.reinstate(id, body.note, actor));
       case 'access': return resultResponse(await hrOffboardingService.setAccess(id, body.accessMode, actor));
       case 'exit-now': return resultResponse(await hrOffboardingService.exitNow(id, actor));
+      case 'left-early': return resultResponse(await hrOffboardingService.markLeftEarly(id, body, actor));
       case 'handover': return resultResponse(await hrOffboardingService.setHandoverNotes(id, body.handoverNotes, actor));
       case 'rehire': return resultResponse(await hrOffboardingService.setRehireEligible(id, body.rehireEligible, actor));
       case 'clearance-update': return resultResponse(await hrOffboardingService.updateClearanceItem(id, body, actor));

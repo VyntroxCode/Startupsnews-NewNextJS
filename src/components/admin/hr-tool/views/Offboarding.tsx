@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, X } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import ModalShell, { type ModalAction } from '../ModalShell';
@@ -11,15 +11,17 @@ import { addDays, initials, todayStr } from '../utils';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import type { HrEmployee } from '../types';
 import {
-  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, DEDUCTIBLE_CATEGORIES, RESIGNATION_REASONS, clearanceProgress,
-  type ClearanceCategory, type ClearanceProgress, type ClearanceStatus, type LeadHandoverTarget, type OffboardingCase,
+  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, DEDUCTIBLE_CATEGORIES, NOTICE_DAYS, RESIGNATION_REASONS, clearanceProgress, leftEarlyDays, systemLwd,
+  type ClearanceCategory, type LwdChoice, type ClearanceProgress, type ClearanceStatus, type LeadHandoverTarget, type OffboardingCase,
   type OffboardingCaseDetail, type OffboardingClearanceItem, type OffboardingFnf, type OffboardingSettings, type OffboardingStatus,
 } from '@/modules/hr-offboarding/domain/types';
 
 /*
  * Offboarding — HR's side of an exit. The employee resigns from their portal (My Exit), or HR
  * starts one here (termination, or a resignation handed in offline). One-level approval: HR/Founder
- * accepts and fixes the last working day (LWD). After the LWD the server flips the case to
+ * accepts with one of three dates — the employee's requested date, the system date (resignation day
+ * + NOTICE_DAYS) or HR's own — which becomes the last working day (LWD). If the employee then stops
+ * before it, HR records "left early": F&F pays nothing and recovers a month's salary. After the LWD the server flips the case to
  * `exited`, mirrors hr_employees.status and switches the login to read-only alumni (or blocked).
  * All state lives in hr_offboarding — see HrOffboardingService.
  */
@@ -58,9 +60,11 @@ function daysBetween(from: string, to: string): number {
 function hasLeft(c: OffboardingCase, today: string): boolean {
   return c.status === 'exited' || c.status === 'completed' || (c.status === 'accepted' && !!c.approvedLwd && c.approvedLwd < today);
 }
-function noticeDaysFor(e: HrEmployee | undefined, s: OffboardingSettings): number {
-  return e?.status === 'probation' ? s.noticeDaysProbation : s.noticeDaysConfirmed;
-}
+const CHOICE_LABEL: Record<LwdChoice, string> = {
+  requested: 'Requested date approved',
+  system: 'System date kept',
+  custom: 'Date set by HR',
+};
 
 function ErrorNote({ text }: { text: string | null }) {
   if (!text) return null;
@@ -179,7 +183,7 @@ export default function Offboarding() {
       </div>
 
       {openCase && data && (
-        <CaseModal caseId={openCase.id} employee={empById.get(openCase.employeeId)} settings={data.settings}
+        <CaseModal caseId={openCase.id} employee={empById.get(openCase.employeeId)}
           history={cases.filter((x) => x.employeeId === openCase.employeeId && x.id !== openCase.id)}
           onClose={() => setOpenId(null)} onChanged={onOpenCaseChanged} />
       )}
@@ -211,7 +215,7 @@ function CaseTable({ rows, empById, clearanceByCase, today, onOpen, empty }: {
               <td>{c.exitType === 'termination' ? `Termination${c.terminationMode === 'immediate' ? ' (immediate)' : ''}` : 'Resignation'}</td>
               <td>{fmt(c.resignationDate)}</td>
               <td>{fmt(lwd)}{c.status === 'pending' && lwd ? <div className="meta">requested</div> : null}{left !== null && left >= 0 ? <div className="meta">{left === 0 ? 'today' : `in ${left} day${left === 1 ? '' : 's'}`}</div> : null}</td>
-              <td>{c.noticeDays}d{c.noticeWaivedDays ? <div className="meta">{c.noticeWaivedDays}d waived</div> : null}</td>
+              <td>{c.noticeDays}d{leftEarlyDays(c) > 0 ? <div className="meta text-red-700">left {leftEarlyDays(c)}d early</div> : c.lwdChoice ? <div className="meta">{CHOICE_LABEL[c.lwdChoice]}</div> : null}</td>
               <td>{cl && cl.total ? <span className={`badge ${cl.pending === 0 ? 'approved' : 'pending'}`}>{cl.cleared}/{cl.total}</span> : <span className="meta">—</span>}</td>
               <td><CaseBadge status={c.status} /></td>
               <td className="text-right"><button className="btn sm" onClick={(e) => { e.stopPropagation(); onOpen(c.id); }}>{c.status === 'pending' ? 'Review' : 'Open'}</button></td>
@@ -274,6 +278,17 @@ function EmployeeSummary({ c, employee }: { c: OffboardingCase; employee: HrEmpl
   );
 }
 
+/** One last-working-day date as a small card; `final` marks HR's decided date. */
+function DateTile({ label, value, sub, final }: { label: string; value: string; sub?: string; final?: boolean }) {
+  return (
+    <div className={`rounded-lg border px-4 py-3 ${final ? 'border-indigo-200 bg-indigo-50' : 'border-slate-200 bg-slate-50'}`}>
+      <div className="text-[11.5px] font-semibold text-slate-500">{label}</div>
+      <div className="mt-1 text-[15px] font-semibold text-slate-900">{value}</div>
+      {sub && <div className="mt-0.5 text-xs text-slate-500">{sub}</div>}
+    </div>
+  );
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h4 className="mb-2 mt-5 border-t border-slate-200 pt-4 text-sm font-bold uppercase tracking-wide text-slate-500">{children}</h4>;
 }
@@ -286,8 +301,8 @@ type ActionResult<T> = { ok: true; data: T } | { ok: false };
  * at a time (`busy`) — a double-click can't send an action twice, and the server's compare-and-set
  * turns a stale screen into a "refresh" message instead of an overwrite.
  */
-function CaseModal({ caseId, employee, settings, history, onClose, onChanged }: {
-  caseId: number; employee: HrEmployee | undefined; settings: OffboardingSettings; history: OffboardingCase[];
+function CaseModal({ caseId, employee, history, onClose, onChanged }: {
+  caseId: number; employee: HrEmployee | undefined; history: OffboardingCase[];
   onClose: () => void; onChanged: (c: OffboardingCase | null, employeeStatus?: string) => void;
 }) {
   const [detail, setDetail] = useState<OffboardingCaseDetail | null>(null);
@@ -326,7 +341,7 @@ function CaseModal({ caseId, employee, settings, history, onClose, onChanged }: 
 
   if (!detail) {
     return (
-      <ModalShell title="Exit" onClose={onClose} actions={[{ label: 'Close', cls: 'btn ghost', onClick: onClose }]} maxWidth={860}>
+      <ModalShell title="Exit" onClose={onClose} actions={[{ label: 'Close', cls: 'btn ghost', onClick: onClose }]} maxWidth={1120}>
         {error ? <ErrorNote text={error} /> : <div className="empty">Loading…</div>}
       </ModalShell>
     );
@@ -335,36 +350,52 @@ function CaseModal({ caseId, employee, settings, history, onClose, onChanged }: 
   // included) after almost every action, which scrolled it back to the top, wiped every half-typed
   // field and threw away result messages such as "letter emailed to …". CaseModalBody re-seeds
   // its own case-level fields when the case changes instead.
-  return <CaseModalBody detail={detail} employee={employee} settings={settings}
+  return <CaseModalBody detail={detail} employee={employee}
     history={history} error={error} busy={busy} run={run} onClose={onClose} onChanged={onChanged} />;
 }
 
-function CaseModalBody({ detail, employee, settings, history, error, busy, run, onClose, onChanged }: {
-  detail: OffboardingCaseDetail; employee: HrEmployee | undefined; settings: OffboardingSettings; history: OffboardingCase[]; error: string | null; busy: boolean;
+function CaseModalBody({ detail, employee, history, error, busy, run, onClose, onChanged }: {
+  detail: OffboardingCaseDetail; employee: HrEmployee | undefined; history: OffboardingCase[]; error: string | null; busy: boolean;
   run: <T>(body: Record<string, unknown>, confirmText?: string) => Promise<ActionResult<T>>;
   onClose: () => void; onChanged: (c: OffboardingCase | null, employeeStatus?: string) => void;
 }) {
   const c = detail.case;
   const today = todayStr();
-  const [lwd, setLwd] = useState(c.approvedLwd || c.requestedLwd || addDays(c.resignationDate, c.noticeDays));
-  const [noticeDays, setNoticeDays] = useState(String(c.noticeDays));
-  const [waived, setWaived] = useState(String(c.noticeWaivedDays || 0));
+  const sysLwd = systemLwd(c);
+  const [lwdChoice, setLwdChoice] = useState<LwdChoice>(c.requestedLwd ? 'requested' : 'system');
+  const [customLwd, setCustomLwd] = useState(sysLwd < today ? today : sysLwd);
   const [accessMode, setAccessMode] = useState(c.accessMode);
   const [note, setNote] = useState('');
+  const [leftOpen, setLeftOpen] = useState(false);
+  const [leftOn, setLeftOn] = useState(today);
+  const [leftNote, setLeftNote] = useState('');
   // After an action the server returns the case with a new updatedAt: take its saved values back
   // into these fields (render-time adjustment, like Rules' useSyncedDraft) and clear the note.
   const [seededAt, setSeededAt] = useState(c.updatedAt);
   if (seededAt !== c.updatedAt) {
     setSeededAt(c.updatedAt);
-    setLwd(c.approvedLwd || c.requestedLwd || addDays(c.resignationDate, c.noticeDays));
-    setNoticeDays(String(c.noticeDays));
-    setWaived(String(c.noticeWaivedDays || 0));
+    setLwdChoice(c.requestedLwd ? 'requested' : 'system');
+    setCustomLwd(sysLwd < today ? today : sysLwd);
     setAccessMode(c.accessMode);
     setNote('');
+    setLeftOpen(false);
+    setLeftNote('');
   }
   const left = hasLeft(c, today);
   const workable = c.status === 'accepted' || c.status === 'exited';
   const pendingItems = detail.clearance.filter((i) => i.status === 'pending').length;
+  const chosenLwd = lwdChoice === 'requested' ? c.requestedLwd : lwdChoice === 'system' ? sysLwd : customLwd;
+  // Measured against the date HR agreed (kept in agreedLwd once "left early" was recorded before).
+  const agreedLwd = c.agreedLwd || c.approvedLwd;
+  const canMarkLeftEarly = c.exitType === 'resignation' && !!agreedLwd
+    && (c.status === 'accepted' || (c.status === 'exited' && (!c.fnf || c.fnf.status === 'draft')));
+  const leftDays = agreedLwd && leftOn && leftOn < agreedLwd ? daysBetween(leftOn, agreedLwd) : 0;
+  // The "left early" form sits at the bottom of the window, next to the action buttons — bring it
+  // into view when it opens so HR sees the click did something.
+  const leftFormRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (leftOpen) leftFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [leftOpen]);
 
   async function act(body: Record<string, unknown>, confirmText?: string, close = false) {
     const res = await run<OffboardingCase & { restoredStatus?: string }>(body, confirmText);
@@ -378,12 +409,12 @@ function CaseModalBody({ detail, employee, settings, history, error, busy, run, 
     actions.push({ label: 'Reject', cls: 'btn reject', onClick: () => act({ action: 'decide', decision: 'reject', note }, `Reject ${c.emp}'s resignation?`) });
     actions.push({
       label: busy ? 'Saving…' : 'Accept resignation', cls: 'btn approve',
-      onClick: () => act({ action: 'decide', decision: 'accept', approvedLwd: lwd, noticeDays: Number(noticeDays) || 0, noticeWaivedDays: Number(waived) || 0, accessMode, note },
-        `Accept ${c.emp}'s resignation with last working day ${fmt(lwd)}?`),
+      onClick: () => act({ action: 'decide', decision: 'accept', lwdChoice, customLwd: lwdChoice === 'custom' ? customLwd : undefined, accessMode, note },
+        `Accept ${c.emp}'s resignation with last working day ${fmt(chosenLwd)}?`),
     });
   } else if (c.status === 'accepted' && !left) {
     actions.push({ label: 'Cancel exit', cls: 'btn', onClick: () => act({ action: 'cancel', note }, `Cancel ${c.emp}'s exit? They stay on as an employee.`) });
-    actions.push({ label: 'End notice today', cls: 'btn reject', onClick: () => act({ action: 'exit-now' }, `End ${c.emp}'s notice today? Their portal access switches to ${c.accessMode === 'blocked' ? 'blocked' : 'read-only'} right away.`) });
+    actions.push({ label: 'End notice today', cls: 'btn reject', onClick: () => act({ action: 'exit-now' }, `End ${c.emp}'s notice today? Nothing is recovered from them. Their portal access switches to ${c.accessMode === 'blocked' ? 'blocked' : 'read-only'} right away.`) });
   } else if (c.status === 'exited' && (!c.fnf || c.fnf.status === 'draft')) {
     // Not once the F&F is approved/paid — the server refuses it then (see HrOffboardingService.reinstate).
     actions.push({
@@ -393,28 +424,43 @@ function CaseModalBody({ detail, employee, settings, history, error, busy, run, 
       },
     });
   }
+  // The employee stopped before the agreed day on their own — unlike "End notice today", F&F recovers it.
+  if (canMarkLeftEarly && !leftOpen) {
+    actions.push({ label: 'Employee left early', cls: 'btn reject', onClick: () => setLeftOpen(true) });
+  }
   if (isDecided(c.status) && accessMode !== c.accessMode) {
     actions.push({ label: 'Save access', cls: 'btn primary', onClick: () => act({ action: 'access', accessMode }) });
   }
   actions.push({ label: 'Close', cls: 'btn ghost', onClick: onClose });
 
   return (
-    <ModalShell title={`${c.emp} — ${c.exitType === 'termination' ? 'Termination' : 'Resignation'}`} onClose={onClose} actions={actions} maxWidth={860}>
+    <ModalShell title={`${c.emp} — ${c.exitType === 'termination' ? 'Termination' : 'Resignation'}`} onClose={onClose} actions={actions} maxWidth={1120}>
       <ErrorNote text={error} />
       <EmployeeSummary c={c} employee={employee} />
 
       <SectionTitle>{c.initiatedBy === 'employee' ? "Employee's submission" : 'Exit details'}</SectionTitle>
-      <div className="field-grid-2">
+      <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2 lg:grid-cols-4">
         <Info label={c.initiatedBy === 'employee' ? 'Submitted by the employee' : 'Recorded by HR'} value={dateTime(c.createdAt)} />
         <Info label="Exit type" value={c.exitType === 'termination' ? `Termination${c.terminationMode === 'immediate' ? ' — immediate' : c.terminationMode === 'with_notice' ? ' — after notice' : ''}` : 'Resignation'} />
         <Info label="Reason" value={c.reasonCategory} />
-        <Info label="Preferred last working day" value={c.requestedLwd ? fmt(c.requestedLwd) : c.initiatedBy === 'employee' ? 'Not specified' : '—'} />
+        {c.exitType === 'termination' && <Info label="Notice" value={`${NOTICE_DAYS} days`} />}
         <PersonalEmailField c={c} busy={busy} run={run} />
-        <Info label="Notice by policy" value={`${noticeDaysFor(employee, settings)} days (${employee?.status === 'probation' ? 'on probation' : 'confirmed'})`} />
       </div>
-      <TextBlock label={c.initiatedBy === 'employee' ? 'Message from the employee' : 'Details'} text={c.reasonText} empty="No message added." />
+      {/* The three last-working-day dates side by side, so HR compares them at a glance. */}
+      {c.exitType === 'resignation' && (
+        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <DateTile label="Resignation date (system)" value={fmt(sysLwd)} sub={`${NOTICE_DAYS} days from ${fmt(c.resignationDate)}`} />
+          <DateTile label="Requested date (by employee)" value={c.requestedLwd ? fmt(c.requestedLwd) : c.initiatedBy === 'employee' ? 'Not requested' : '—'} />
+          <DateTile label="Admin approval date" final
+            value={c.status === 'pending' ? 'Not decided yet' : agreedLwd ? fmt(agreedLwd) : '—'}
+            sub={c.status !== 'pending' && c.lwdChoice ? CHOICE_LABEL[c.lwdChoice] : undefined} />
+        </div>
+      )}
       {/* Once decided, handover notes live (editable) in the Handover section below. */}
-      {!isDecided(c.status) && <TextBlock label="Handover notes" text={c.handoverNotes} empty="No handover notes yet." />}
+      <div className={`grid grid-cols-1 gap-x-6 ${isDecided(c.status) ? '' : 'md:grid-cols-2'}`}>
+        <TextBlock label={c.initiatedBy === 'employee' ? 'Message from the employee' : 'Details'} text={c.reasonText} empty="No message added." />
+        {!isDecided(c.status) && <TextBlock label="Handover notes" text={c.handoverNotes} empty="No handover notes yet." />}
+      </div>
       {c.decisionNote && c.status !== 'pending' && <TextBlock label="HR note" text={c.decisionNote} />}
       {history.length > 0 && (
         <div className="field">
@@ -435,14 +481,28 @@ function CaseModalBody({ detail, employee, settings, history, error, busy, run, 
         <>
           <SectionTitle>Your decision</SectionTitle>
           <div className="notice info">
-            {c.requestedLwd
-              ? `They asked for ${fmt(c.requestedLwd)} as their last day — pre-filled below. Change it if needed, then accept or reject.`
-              : `No preferred date given — the last day below follows the ${noticeDaysFor(employee, settings)}-day notice. Change it if needed, then accept or reject.`}
+            Pick the final last working day. Salary in F&amp;F is paid up to the date you choose — nothing is deducted for an earlier date you approve.
+          </div>
+          <div className="field">
+            <label className="field-label">Final last working day *</label>
+            <div className="flex flex-col gap-2">
+              <label className={`flex items-center gap-2 text-[13px] ${c.requestedLwd ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+                <input type="radio" name="lwd-choice" disabled={!c.requestedLwd} checked={lwdChoice === 'requested'} onChange={() => setLwdChoice('requested')} />
+                Approve requested date{c.requestedLwd ? ` — ${fmt(c.requestedLwd)}` : ' (employee did not request one)'}
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-[13px]">
+                <input type="radio" name="lwd-choice" checked={lwdChoice === 'system'} onChange={() => setLwdChoice('system')} />
+                Keep system date — {fmt(sysLwd)} ({NOTICE_DAYS} days&apos; notice){sysLwd < today ? ' · already passed' : ''}
+              </label>
+              <label className="flex cursor-pointer flex-wrap items-center gap-2 text-[13px]">
+                <input type="radio" name="lwd-choice" checked={lwdChoice === 'custom'} onChange={() => setLwdChoice('custom')} />
+                Pick another date
+                {lwdChoice === 'custom' && <input type="date" min={today} value={customLwd} onChange={(e) => setCustomLwd(e.target.value)} className="!w-auto" />}
+              </label>
+            </div>
+            <div className="meta mt-2">Final last working day: <strong>{fmt(chosenLwd)}</strong></div>
           </div>
           <div className="field-grid-2">
-            <div className="field"><label className="field-label">Last working day *</label><input type="date" min={today} value={lwd} onChange={(e) => setLwd(e.target.value)} /></div>
-            <div className="field"><label className="field-label">Notice period (days)</label><input type="number" min={0} max={180} value={noticeDays} onChange={(e) => setNoticeDays(e.target.value)} /></div>
-            <div className="field"><label className="field-label">Notice days waived</label><input type="number" min={0} max={Number(noticeDays) || 0} value={waived} onChange={(e) => setWaived(e.target.value)} /></div>
             <AccessSelect value={accessMode} onChange={setAccessMode} />
           </div>
           <div className="field"><label className="field-label">Note to employee (required to reject)</label><textarea rows={2} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} /></div>
@@ -451,9 +511,11 @@ function CaseModalBody({ detail, employee, settings, history, error, busy, run, 
 
       {isDecided(c.status) && (
         <>
-          <div className="field-grid-2">
-            <Info label="Last working day" value={fmt(c.approvedLwd)} />
-            <Info label="Notice" value={`${c.noticeDays} days${c.noticeWaivedDays ? ` · ${c.noticeWaivedDays} waived` : ''}`} />
+          <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2 lg:grid-cols-4">
+            <Info label={leftEarlyDays(c) > 0 ? 'Actually left on' : 'Last working day'} value={fmt(c.approvedLwd)} />
+            {leftEarlyDays(c) > 0
+              ? <Info label="Left early" value={`${leftEarlyDays(c)} day${leftEarlyDays(c) === 1 ? '' : 's'} before the agreed ${fmt(c.agreedLwd)} — no F&F earnings, 1 month's salary recovered`} />
+              : <Info label="Notice" value={`${c.noticeDays} days`} />}
             <Info label="Decided by" value={c.decidedBy ? `${c.decidedBy}${c.decidedAt ? ' · ' + fmt(c.decidedAt) : ''}` : null} />
             <AccessSelect value={accessMode} onChange={setAccessMode} />
             {(c.status === 'exited' || c.status === 'completed') && (
@@ -492,6 +554,33 @@ function CaseModalBody({ detail, employee, settings, history, error, busy, run, 
             </div>
           )}
           {c.status === 'completed' && <div className="notice good mt-4">Exit completed — this case is closed and locked.</div>}
+          {leftOpen && canMarkLeftEarly && agreedLwd && (
+            <div ref={leftFormRef} className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="mb-2 text-[13px] font-semibold text-red-800">Employee left before the agreed last day ({fmt(agreedLwd)})</div>
+              {/* Repeated here: the one at the top of the window is out of view down at this form. */}
+              <ErrorNote text={error} />
+              <div className="field-grid-2">
+                <div className="field">
+                  <label className="field-label">Day they actually last worked *</label>
+                  {/* HR sets this by hand: any day before the agreed last day. */}
+                  <input type="date" max={addDays(agreedLwd, -1)} value={leftOn} onChange={(e) => setLeftOn(e.target.value)} />
+                </div>
+                <div className="field">
+                  <label className="field-label">Recovered in F&amp;F</label>
+                  <div className="pt-2 text-[13px]">{leftDays > 0 ? `1 month's salary (Annual CTC ÷ 12). No salary, leave or expenses paid.` : 'Pick a day before the agreed date'}</div>
+                </div>
+              </div>
+              <div className="field"><label className="field-label">Note *</label><textarea rows={2} maxLength={1000} value={leftNote} onChange={(e) => setLeftNote(e.target.value)} placeholder="e.g. Stopped coming from 24 Oct, not reachable" /></div>
+              <div className="flex justify-end gap-2">
+                <button className="btn ghost" disabled={busy} onClick={() => setLeftOpen(false)}>Cancel</button>
+                <button className="btn reject" disabled={busy || leftDays <= 0 || !leftNote.trim()}
+                  onClick={() => act({ action: 'left-early', actualLwd: leftOn, note: leftNote.trim() },
+                    `Record that ${c.emp} last worked on ${fmt(leftOn)}? Their F&F will pay no salary, leave or expenses, and 1 month's salary will be recovered.`)}>
+                  Record left early
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </ModalShell>
@@ -639,7 +728,7 @@ function ClearanceRow({ item, editable, busy, run }: {
           <div className="w-8 text-right">
             {item.status !== 'done' && !item.deductionAmount && (
               <button className="btn sm ghost" disabled={busy} title="Remove from this exit's checklist" aria-label="Remove from this exit's checklist"
-                onClick={() => run({ action: 'clearance-remove', itemId: item.id }, `Remove "${item.item}" from this checklist?`)}><X className="size-3.5 shrink-0" aria-hidden /></button>
+                onClick={() => run({ action: 'clearance-remove', itemId: item.id })}><X className="size-3.5 shrink-0" aria-hidden /></button>
             )}
           </div>
         </>
@@ -1050,7 +1139,7 @@ export function StartExitModal({ employees, settings, openCases, preselectId, on
   const openIds = new Set((openCases || []).filter((c) => c.status === 'pending' || c.status === 'accepted').map((c) => c.employeeId));
   const eligible = employees.filter((e) => e.status !== 'exited' && e.sysRole !== 'Founder' && (!openIds.has(e.id) || e.id === preselectId));
   const employee = employees.find((e) => e.id === employeeId);
-  const noticeDays = s ? noticeDaysFor(employee, s) : 0;
+  const noticeDays = NOTICE_DAYS;
   const immediate = exitType === 'termination' && terminationMode === 'immediate';
   const effectiveLwd = immediate ? today : (lwd || addDays(today, noticeDays));
   const reasons: readonly string[] = exitType === 'termination' ? TERMINATION_REASONS : RESIGNATION_REASONS;
@@ -1113,7 +1202,7 @@ export function StartExitModal({ employees, settings, openCases, preselectId, on
           {immediate
             ? <div>Today ({fmt(today)})</div>
             : <input type="date" min={today} value={effectiveLwd} onChange={(e) => setLwd(e.target.value)} />}
-          {!immediate && employee && <div className="meta mt-1">Policy notice: {noticeDays} days ({employee.status === 'probation' ? 'probation' : 'confirmed'})</div>}
+          {!immediate && <div className="meta mt-1">Notice: {noticeDays} days for everyone — {fmt(addDays(today, noticeDays))} if it starts today</div>}
         </div>
         <div className="field">
           <label className="field-label">Reason *</label>
@@ -1133,8 +1222,6 @@ export function StartExitModal({ employees, settings, openCases, preselectId, on
 
 function SettingsPanel({ settings, onSaved }: { settings: OffboardingSettings; onSaved: (s: OffboardingSettings) => void }) {
   const { logRuleChange } = useHrTool();
-  const [probation, setProbation] = useState(String(settings.noticeDaysProbation));
-  const [confirmed, setConfirmed] = useState(String(settings.noticeDaysConfirmed));
   const [checklist, setChecklist] = useState<Record<ClearanceCategory, string>>(() => ({
     asset: settings.checklist.asset.join('\n'), handover: settings.checklist.handover.join('\n'),
     finance: settings.checklist.finance.join('\n'), access: settings.checklist.access.join('\n'),
@@ -1148,12 +1235,11 @@ function SettingsPanel({ settings, onSaved }: { settings: OffboardingSettings; o
     const lines = (v: string) => v.split('\n').map((x) => x.trim()).filter(Boolean);
     try {
       const res = await hrApi.offboardingSaveSettings({
-        noticeDaysProbation: Number(probation) || 0, noticeDaysConfirmed: Number(confirmed) || 0,
         checklist: { asset: lines(checklist.asset), handover: lines(checklist.handover), finance: lines(checklist.finance), access: lines(checklist.access) },
       });
       if (!res.success || !res.data) { setMsg({ ok: false, text: res.error || 'Could not save settings.' }); return; }
       onSaved(res.data);
-      logRuleChange(`Offboarding settings: notice ${res.data.noticeDaysProbation}d probation / ${res.data.noticeDaysConfirmed}d confirmed`);
+      logRuleChange('Offboarding settings: clearance checklist updated');
       setMsg({ ok: true, text: 'Saved.' });
     } catch {
       setMsg({ ok: false, text: 'Could not save settings.' });
@@ -1164,11 +1250,8 @@ function SettingsPanel({ settings, onSaved }: { settings: OffboardingSettings; o
 
   return (
     <div className="card pad">
-      <h3 className="mb-3 mt-0">Notice period</h3>
-      <div className="field-grid-2">
-        <div className="field"><label className="field-label">On probation (days)</label><input type="number" min={0} max={180} value={probation} onChange={(e) => setProbation(e.target.value)} /></div>
-        <div className="field"><label className="field-label">Confirmed employees (days)</label><input type="number" min={0} max={180} value={confirmed} onChange={(e) => setConfirmed(e.target.value)} /></div>
-      </div>
+      <h3 className="mb-1 mt-0">Notice period</h3>
+      <div className="meta mb-3">{NOTICE_DAYS} days for every employee (probation or confirmed), counted from the day they resign. Fixed by policy.</div>
       <h3 className="mb-1 mt-6">Default clearance checklist</h3>
       <div className="meta mb-3">One item per line. Copied onto each exit when it is accepted; changes here don&apos;t touch exits already in progress.</div>
       <div className="field-grid-2">

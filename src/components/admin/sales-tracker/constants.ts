@@ -26,10 +26,10 @@ export const PAGE_LEAD_TYPES = ['Feature Page Leads', 'Funding Round Page Leads'
  * EnsEnquiryDetailModal and saves through its own endpoint, not the generic lead editor. */
 export const ENS_ENQUIRY_TYPE_LABEL = 'Expand North Star Enquiry';
 /** Every "where did this lead come from" page, in display order — the "Filter: page leads"
- * dropdown in LeadsTable and the clickable tiles in PageLeadsKpis both read this one list. */
+ * dropdown in LeadsTable and the Leads overview type rows and the clickable tiles in PageLeadsKpis all read this one list. */
 export const PAGE_LEAD_FILTER_OPTIONS: readonly string[] = [...PAGE_LEAD_TYPES, ENS_ENQUIRY_TYPE_LABEL];
 
-/** Short tile titles for PageLeadsKpis — the public page each lead type comes from. */
+/** Short names for the Leads by page tiles (PageLeadsKpis), the Leads overview and the All leads banner — the public page each lead type comes from. */
 export const PAGE_LEAD_LABELS: Record<string, string> = {
   'Feature Page Leads': 'Feature Your Startup',
   'Funding Round Page Leads': 'Funding Round',

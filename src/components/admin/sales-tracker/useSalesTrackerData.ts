@@ -90,7 +90,7 @@ export function useSalesTrackerData() {
   }
 
   return {
-    leads, ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
+    ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
     saveLead, deleteLead, assignLead, applyEnsEnquiryUpdate,
   };
 }

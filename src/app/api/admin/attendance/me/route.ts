@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { month, from, to } = monthRange(request.nextUrl.searchParams.get('month'));
-    const [punch, calendar, policy, regularizations, regUsage, allHolidays, allLeave] = await Promise.all([
+    const [punch, calendar, policy, regularizations, regUsage, allHolidays, allLeave, hrOverrides, missedPunchOuts] = await Promise.all([
       hrToolService.getPunchByEmployee(employee.id),
       hrToolService.getAttendanceForEmployeeInRange(employee.id, from, to),
       hrToolService.getPolicySummary(),
@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
       hrToolService.getRegularizationUsage(employee.id),
       hrToolService.getHolidays(),
       hrToolService.getLeaveRequestsForEmployee(employee.id),
+      hrToolService.getAttendanceOverridesForEmployeeInRange(employee.id, from, to),
+      hrToolService.getMissedPunchOuts(employee.id),
     ]);
     // Same admin Holiday calendar shown in the Employee Panel's attendance widget — this route
     // feeds the same shared <AttendanceWidget> for the Publisher/Event Admin's own attendance tab.
@@ -59,11 +61,17 @@ export async function GET(request: NextRequest) {
           fullDayMinWorkedHours: policy.fullDayMinWorkedHours,
         },
         regularizations,
+        // Recent days with a punch-in but no punch-out that can still be regularized (any month).
+        missedPunchOuts,
+        // Days HR set a status on directly — the status (not the punches) decides them, and pay.
+        hrOverrides: hrOverrides.map((o) => ({ date: o.date, status: o.status, reason: o.reason })),
         // Approved leave overlapping this month, so the calendar can mark leave days.
         leaves: allLeave
           .filter((l) => l.status === 'approved' && l.type !== 'WFH' && l.from <= to && l.to >= from)
           .map((l) => ({ from: l.from, to: l.to, type: l.type, halfDay: l.halfDay || null })),
         regularizationPolicy: { windowDays: policy.regularizationWindowDays, monthlyQuota: regUsage.quota, usedThisMonth: regUsage.used, cycleFrom: regUsage.from, cycleTo: regUsage.to },
+        // Punch In / Punch Out clock windows (also the times a regularization may request).
+        punchWindows: policy.punchWindows,
         // Tells the widget whether to ask the browser for location before punching.
         geofence: {
           enabled: policy.geoFencing, radiusM: policy.geoFenceRadiusM,

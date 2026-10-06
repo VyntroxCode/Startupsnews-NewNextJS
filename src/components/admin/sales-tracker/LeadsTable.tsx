@@ -4,12 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, Download } from 'lucide-react';
 import { foundUsText, referredByLabel } from '@/modules/ens-travel-enquiries/domain/sources';
 import { participationLabel } from '@/modules/ens-travel-enquiries/domain/participation';
-import { assignmentStatusLabel, statusFromEns, type AssignableEmployee, type DepartmentOption, type LeadAssignment } from '@/modules/lead-assignments/domain/types';
+import type { AssignableEmployee, DepartmentOption, LeadAssignment } from '@/modules/lead-assignments/domain/types';
 import StatusBadge from './StatusBadge';
-import { ENS_ENQUIRY_TYPE_LABEL, PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS, STATUSES, TYPES } from './constants';
+import { PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS, STATUSES, TYPES } from './constants';
 import { exportLeadsCsv, exportLeadsExcel, exportLeadsPdf } from './exports';
 import type { UnifiedLeadRow } from './types';
 import { assignmentKey } from './useSalesTrackerData';
+import { matchesType, statusLabelOf } from './utils';
 
 const DASH = <span className="hint">—</span>;
 
@@ -23,25 +24,7 @@ function assigneeSummary(a: LeadAssignment | undefined): { text: string; full: s
   return { text: names.slice(0, 2).join(', ') + (names.length > 2 ? ` +${names.length - 2}` : ''), full: names.join(', ') };
 }
 
-/** Status Pending — for a sales lead and an Expand North Star enquiry alike. The same rule
- * SummaryCard's "Pending leads" tile counts by. (Before the shared four statuses, 2026-09-29, this
- * meant "never edited since it arrived".) */
-function isPending(row: UnifiedLeadRow): boolean {
-  return statusLabelOf(row) === 'Pending';
-}
-
-/** The row's status as one of the four shared labels — an Expand North Star enquiry keeps its own
- * codes in lead_status, so it's converted; a sales lead already stores the label. */
-function statusLabelOf(row: UnifiedLeadRow): string {
-  return row._source === 'ens' ? assignmentStatusLabel(statusFromEns(row.leadStatus)) : row.status;
-}
-
-export function matchesType(row: UnifiedLeadRow, value: string): boolean {
-  if (!value) return true;
-  return row._source === 'ens' ? value === ENS_ENQUIRY_TYPE_LABEL : row.type === value;
-}
-
-export default function LeadsTable({ rows, employees, departments, assignments, onEdit, onDelete, pendingOnly, onClearPendingOnly, filterPageType, onFilterPageTypeChange, jumpToken }: {
+export default function LeadsTable({ rows, employees, departments, assignments, onEdit, onDelete, filterType, onFilterTypeChange, filterPageType, onFilterPageTypeChange, filterStatus, onFilterStatusChange, jumpToken }: {
   rows: UnifiedLeadRow[];
   /** For the "assigned to" / "department" filters, and each lead's stored departments and people
    * keyed by assignmentKey (edited in the lead window, shown read-only here). */
@@ -50,57 +33,44 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
   assignments: Record<string, LeadAssignment>;
   /** Opens the right modal for the row's source — LeadFormModal for a sales_leads row,
    * EnsEnquiryDetailModal for an Expand North Star enquiry. The page component decides which,
-   * from `row._source`. Row click and View open it read-only; the Edit button (sales_leads rows
-   * only) opens it straight into edit mode — nothing in the table itself is editable. */
-  onEdit: (row: UnifiedLeadRow, startEditing?: boolean) => void;
+   * from `row._source`. Row click and the Edit button both open it straight into edit mode —
+   * nothing in the table itself is editable. */
+  onEdit: (row: UnifiedLeadRow) => void;
   onDelete: (id: string) => void;
-  /** Set by the Summary card's "Pending leads" tile. Owned by the page rather than this component
-   * so that tile can turn it on from outside; this component turns it back off once the reader is
-   * done, via `onClearPendingOnly`. */
-  pendingOnly: boolean;
-  onClearPendingOnly: () => void;
-  /** "Filter: page leads" value — owned by the page so the Leads by page tiles (PageLeadsKpis)
-   * can set it from outside; the dropdown below edits the same state. '' = all. */
+  /** "Filter: type", "Filter: page leads" and "Filter: status" values — owned by the page so a
+   * click in Leads overview can set them from outside; the dropdowns below edit the same state.
+   * '' = all. */
+  filterType: string;
+  onFilterTypeChange: (value: string) => void;
   filterPageType: string;
   onFilterPageTypeChange: (value: string) => void;
-  /** Bumped by a Leads by page tile click — opens this card and scrolls it into view. */
+  filterStatus: string;
+  onFilterStatusChange: (value: string) => void;
+  /** Bumped by a Leads overview click — opens this card and scrolls it into view. */
   jumpToken: number;
 }) {
   const [open, setOpen] = useState(false);
-  const [filterType, setFilterType] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
   const [filterAssigned, setFilterAssigned] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [exportBusy, setExportBusy] = useState<'excel' | 'pdf' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Jumping in from the Pending leads tile should open the (possibly collapsed) card and bring it
-  // into view — the tile can be clicked from well above this section on a long page.
-  useEffect(() => {
-    if (!pendingOnly) return;
-    setOpen(true);
-    cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [pendingOnly]);
   useEffect(() => {
     if (!jumpToken) return;
-    // A Leads by page tile means "show me exactly this page's leads" — drop every other filter so
-    // the table shows the same number of rows the tile counted.
-    setFilterType('');
-    setFilterStatus('');
+    // A Leads overview click means "show me exactly these leads" — the page has already set the
+    // type/status filters; drop the rest so the table shows the same number of rows it counted.
+    // The card may be collapsed and well below the overview, so open it and bring it into view.
     setFilterAssigned('');
     setFilterDepartment('');
     setFilterSearch('');
-    onClearPendingOnly();
     setOpen(true);
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpToken]);
 
   const filteredRows = useMemo(() => {
     const q = filterSearch.toLowerCase();
     return rows.filter((r) => {
-      if (pendingOnly && !isPending(r)) return false;
       if (!matchesType(r, filterType)) return false;
       if (!matchesType(r, filterPageType)) return false;
       if (filterStatus && statusLabelOf(r) !== filterStatus) return false;
@@ -124,7 +94,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
       const db = b._source === 'lead' ? b.date : b.createdAt.slice(0, 10);
       return (db || '').localeCompare(da || '');
     });
-  }, [rows, assignments, pendingOnly, filterType, filterPageType, filterStatus, filterAssigned, filterDepartment, filterSearch]);
+  }, [rows, assignments, filterType, filterPageType, filterStatus, filterAssigned, filterDepartment, filterSearch]);
 
   // CSV / Excel / PDF export exactly the rows on screen — filteredRows, in the table's order, sales
   // leads and Expand North Star enquiries alike (see utils.leadExportRow for the shared columns).
@@ -146,16 +116,10 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
         <span className={`chev${open ? ' open' : ''}`}><ChevronRight size={16} aria-hidden /></span>
       </div>
       <div className={`card-body${open ? '' : ' collapsed'}`}>
-        {pendingOnly && (
+        {(filterType || filterPageType || filterStatus) && (
           <div className="pending-banner">
-            Showing Pending leads only — nobody has followed them up yet.
-            <button type="button" className="small" onClick={(e) => { e.stopPropagation(); onClearPendingOnly(); }}>Show all leads</button>
-          </div>
-        )}
-        {filterPageType && (
-          <div className="pending-banner">
-            Showing {PAGE_LEAD_LABELS[filterPageType] || filterPageType} leads only.
-            <button type="button" className="small" onClick={(e) => { e.stopPropagation(); onFilterPageTypeChange(''); }}>Show all leads</button>
+            Showing {[filterPageType && (PAGE_LEAD_LABELS[filterPageType] || filterPageType), filterType, filterStatus].filter(Boolean).join(' · ')} leads only.
+            <button type="button" className="small" onClick={(e) => { e.stopPropagation(); onFilterTypeChange(''); onFilterPageTypeChange(''); onFilterStatusChange(''); }}>Show all leads</button>
           </div>
         )}
         <div className="hint" style={{ margin: '0 0 10px' }}>
@@ -164,7 +128,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
         </div>
         <div className="toolbar">
           <div className="field" style={{ maxWidth: 180 }}><label>Filter: type</label>
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <select value={filterType} onChange={(e) => onFilterTypeChange(e.target.value)}>
               <option value="">All types</option>{TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
@@ -174,7 +138,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
             </select>
           </div>
           <div className="field" style={{ maxWidth: 180 }}><label>Filter: status</label>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <select value={filterStatus} onChange={(e) => onFilterStatusChange(e.target.value)}>
               <option value="">All statuses</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
@@ -239,12 +203,11 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
                     <td>
                       {isLead ? (
                         <>
-                          <button className="small" onClick={(e) => { e.stopPropagation(); onEdit(r); }}>View</button>
-                          <button className="small" onClick={(e) => { e.stopPropagation(); onEdit(r, true); }}>Edit</button>
+                          <button className="small" onClick={(e) => { e.stopPropagation(); onEdit(r); }}>Edit</button>
                           <button className="small danger" onClick={(e) => { e.stopPropagation(); onDelete(r.id); }}>Delete</button>
                         </>
                       ) : (
-                        <button className="small" onClick={(e) => { e.stopPropagation(); onEdit(r); }}>View</button>
+                        <button className="small" onClick={(e) => { e.stopPropagation(); onEdit(r); }}>Edit</button>
                       )}
                     </td>
                   </tr>

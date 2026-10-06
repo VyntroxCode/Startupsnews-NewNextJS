@@ -3,9 +3,10 @@ import type { BrowserLocation } from '@/lib/browser-geolocation';
 import type {
   HrBootstrap, HrTeam, HrEmployee, HrOnboarding, HrRegularization, HrLeaveRequest, HrExpense,
   HrTicket, HrRules, HrPayrollEntry, HrAuditLogEntry,
-  HrCompanyProfile,
+  HrCompanyProfile, HrAttendanceOverride,
 } from './types';
 import type { EmployeeCycleLedger } from '@/modules/hr-tool/utils/day-ledger';
+import type { PayrollCycleState } from '@/modules/hr-tool/service/hr-tool.service';
 import type { OffboardingCase, OffboardingCaseDetail, OffboardingClearanceItem, OffboardingSettings } from '@/modules/hr-offboarding/domain/types';
 
 const API_BASE = '/api/admin/hr-tool';
@@ -47,13 +48,8 @@ export interface PayrollApiResult {
   /** Days up to this date were already paid by an earlier run (changeover). */
   settledThrough?: string | null;
   /** Where the cycle stands — see HrToolService.getPayrollCycleState. */
-  cycle?: {
-    phase: 'in-progress' | 'window' | 'overdue' | 'locked';
-    windowFrom: string; windowTo: string;
-    pendingRequests: { kind: 'regularization' | 'leave'; id: string; employeeId: string; emp: string; dates: string; detail: string }[];
-    stale: boolean; lockedAt: string | null; reopenedUntil: string | null; canRun: boolean;
-  };
-  /** When the saved payslips were last computed or verified against attendance (run months). */
+  cycle?: PayrollCycleState;
+  /** When the saved draft was last computed (run months). */
   computedAt?: string | null;
   /** Undecided requests per employee in this cycle — their figures are provisional. */
   pendingByEmployee?: Record<string, number>;
@@ -101,6 +97,11 @@ export const hrApi = {
    * punch surface. apiRaw, not apiPost — the geofence refusal message must reach the user. */
   punch: (employeeId: string, type: 'in' | 'out', location?: BrowserLocation) =>
     apiRaw<PunchApiResult>('/punch', { method: 'POST', body: JSON.stringify({ employeeId, type, location }) }),
+  /** HR sets / removes one day's status directly (payroll follows; a draft payslip is recomputed). */
+  setAttendanceOverride: (v: { employeeId: string; date: string; status: string; reason: string }) =>
+    apiRaw<{ override: HrAttendanceOverride; closedRegularizations: HrRegularization[]; draftUpdated: boolean }>('/attendance-overrides', { method: 'POST', body: JSON.stringify(v) }),
+  clearAttendanceOverride: (employeeId: string, date: string) =>
+    apiRaw<{ draftUpdated: boolean }>('/attendance-overrides', { method: 'DELETE', body: JSON.stringify({ employeeId, date }) }),
   /** One employee's pay cycle day by day — the same ledger payroll pays by. */
   getAttendanceLedger: (employeeId: string, month: string) =>
     apiRaw<EmployeeCycleLedger>(`/attendance-ledger?employeeId=${encodeURIComponent(employeeId)}&month=${encodeURIComponent(month)}`),
@@ -109,8 +110,10 @@ export const hrApi = {
     apiRaw<{ month: string; periodFrom: string; periodTo: string; rows: { employeeId: string; name: string; totals: EmployeeCycleLedger['totals']; monthlyGross: number; paidInFnf: boolean; savedGross: number | null }[]; locked: boolean }>(
       '/attendance-summary?month=' + encodeURIComponent(month)),
   getPayroll: (month: string) => apiRaw<PayrollApiResult>('/payroll?month=' + encodeURIComponent(month)),
-  reopenPayroll: (month: string, reason: string) =>
-    apiRaw<{ reopenedUntil: string }>('/payroll-runs/reopen', { method: 'POST', body: JSON.stringify({ month, reason }) }),
+  freezePayroll: (month: string) =>
+    apiRaw<null>('/payroll-runs/freeze', { method: 'POST', body: JSON.stringify({ month }) }),
+  reversePayroll: (month: string, reason: string) =>
+    apiRaw<null>('/payroll-runs/reverse', { method: 'POST', body: JSON.stringify({ month, reason }) }),
   runPayroll: (month: string, tds?: Record<string, number>) =>
     apiRaw<{ entries: HrPayrollEntry[] }>('/payroll-runs', { method: 'POST', body: JSON.stringify({ month, tds }) }),
   saveTemplate: (name: string, content: string) => apiPut('/templates/' + encodeURIComponent(name), { content }),

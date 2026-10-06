@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import { COMPANY, amountToIndianWords } from './utils';
+import type { PayslipData } from '@/modules/hr-tool/utils/payslip-data';
 
 const PAGE_W = 595.28; // A4 @ 72dpi
 const PAGE_H = 841.89;
@@ -11,33 +12,7 @@ const GREEN_BG = rgb(0.90, 0.97, 0.94);
 const GREEN_TEXT = rgb(0.13, 0.45, 0.31);
 const ROW_BG = rgb(0.97, 0.97, 0.98);
 
-/** Everything the payslip needs, already computed by the caller (Payroll.tsx) from
- * PayrollApiResult + HrEmployee + HrEmployeeCredential + HrRules — this module only renders.
- * PAN is deliberately not part of this shape yet (no PAN field exists on HrEmployee today);
- * Income Tax mirrors the admin-entered TDS for the run, Provident Fund is always 0 for now —
- * there's no PF configuration anywhere in the HR module yet to compute a real figure from. */
-export interface PayslipData {
-  employeeName: string;
-  employeeCode: string;
-  designation: string;
-  monthLabel: string;
-  payDateLabel: string;
-  dojLabel: string;
-  paidDays: number;
-  lopDays: number;
-  basic: number;
-  hra: number;
-  convenience: number;
-  specialAllowance: number;
-  grossEarnings: number;
-  incomeTax: number;
-  providentFund: number;
-  totalDeductions: number;
-  netPay: number;
-  /** Set while the employee still has undecided leave/regularization requests in this cycle —
-   * printed under the month so a slip downloaded early is never mistaken for the final figure. */
-  provisionalNote?: string;
-}
+export type { PayslipData };
 
 export function fmtRs(n: number): string { return 'Rs. ' + Math.round(n).toLocaleString('en-IN'); }
 

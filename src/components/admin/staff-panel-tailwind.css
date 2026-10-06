@@ -1,5 +1,5 @@
 /* The ONE scoped Tailwind sheet for the staff panels: everything under /employee/* and the admin
-   shell /admin/*. Imported by exactly two files, src/app/employee/layout.tsx and
+   shell /admin/*. Imported by exactly two files, src/app/employee/EmployeeShell.tsx and
    src/app/(admin)/layout.tsx. Do not add another Tailwind sheet on those routes, and do not
    import this one from a route-level layout.
 
@@ -17,16 +17,28 @@
    margin:0; padding:0; border:0 }`), and `source(none)` + @source so class detection stays
    limited to these files. Any new staff-panel file that uses Tailwind classes must get an @source
    line here; class names must be literal strings. No Preflight also means no global border-box:
-   pair w-full + padding with `box-border` (or sit inside `.it-tickets-scope`). */
+   pair w-full + padding with `box-border` (or sit inside `.it-tickets-scope`).
+
+   Old phone browsers (Chromium < 111, common as Android OEM default browsers): the palette is
+   overridden with hex (staff-panel-palette.css) because oklch() colours are dropped there. Also
+   avoid in shell-critical markup: `inset-*` (emits logical `inset`/`inset-block`, Chrome 87+;
+   use top-0/right-0/bottom-0/left-0), `translate-*` for show/hide (the `translate` property is
+   Chrome 104+; mount/unmount instead), and legacy `bg-gradient-to-*` (no fallback for the
+   `in oklab` interpolation; `bg-linear-to-*` has one). */
 @import "tailwindcss/theme.css" source(none);
+@import "./staff-panel-palette.css";
 @import "tailwindcss/utilities.css" source(none);
 
 /* Employee frame + self-service widgets (Attendance / Leave / KYC Documents / profile strip) */
 @source "../../app/employee/layout.tsx";
+@source "../../app/employee/EmployeeShell.tsx";
+@source "../../app/employee/directory/page.tsx";
 @source "../../app/employee/attendance/page.tsx";
 @source "../../app/employee/leave/page.tsx";
+@source "../../app/employee/payslips/page.tsx";
 @source "../../app/employee/documents/page.tsx";
 @source "./AttendanceWidget.tsx";
+@source "./AttendanceCycleSummary.tsx";
 @source "./LeaveWidget.tsx";
 @source "./KycDocumentsWidget.tsx";
 @source "./ProfileProgressStrip.tsx";
@@ -84,6 +96,9 @@
 /* Funding Data (/admin/funding-data) — manual entry, Excel upload, records, upload history. */
 @source "./funding-data";
 @source "../../app/(admin)/admin/funding-data/page.tsx";
+/* Sales Tracker (/admin/sales-tracker) — Leads overview card + save-confirm dialog content; the rest of the page is styled-jsx. */
+@source "./sales-tracker/LeadsOverview.tsx";
+@source "./sales-tracker/SaveConfirmDialog.tsx";
 
 /* Content Studio theme — the pink palette ported 1:1 from the standalone app. Every token is
    namespaced `cs-` (bg-cs-surface, text-cs-ink, font-cs-sans…) so it cannot change what an

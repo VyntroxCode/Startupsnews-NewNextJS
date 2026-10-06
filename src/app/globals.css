@@ -2120,7 +2120,8 @@ img.mvp-big-img {
 }
 
 .event-detail-container {
-  max-width: 900px;
+  /* 1200px since 2026-10-06: the page is two columns (content + 360px details box) from lg up. */
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 20px;
@@ -2400,7 +2401,11 @@ img.mvp-big-img {
   padding-left: 1.6em;
   margin: 0.5em 0;
 }
-.event-detail-description li { margin: 0.2em 0; }
+/* style.css resets every ul/ol to list-style: none — restore markers for editor content */
+.event-detail-description ul { list-style: disc outside; }
+.event-detail-description ol { list-style: decimal outside; }
+.event-detail-description ul ul { list-style-type: circle; }
+.event-detail-description li { margin: 0.2em 0; display: list-item; }
 
 .event-detail-description blockquote {
   border-left: 4px solid #e91e63;

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { getAuthHeaders } from '@/lib/admin-auth';
+import { shortLeaveDeductedPositions } from '@/modules/hr-tool/utils/day-ledger';
+import { DEFAULT_PUNCH_WINDOWS, fmtWindowTime, type PunchWindows } from '@/modules/hr-tool/utils/regularization-policy';
 
 interface PolicyData {
   shiftStartTime: string;
@@ -16,6 +18,7 @@ interface PolicyData {
   geoFencing?: boolean;
   geoFenceRadiusM?: number;
   leaveTypes?: Record<string, { enabled: boolean; perMonth: number }>;
+  punchWindows?: PunchWindows;
 }
 
 /** "HH:MM" -> minutes since midnight. */
@@ -117,13 +120,14 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
   }
 
   const shiftStart = toMinutes(policy.shiftStartTime);
+  const windows = policy.punchWindows || DEFAULT_PUNCH_WINDOWS;
   const shiftEnd = toMinutes(policy.shiftEndTime);
   const shiftHours = Math.max(0, shiftEnd - shiftStart) / 60;
   const halfMin = Number(policy.halfDayMinWorkedHours) || 0;
   const shortMin = Number(policy.shortLeaveMinWorkedHours) || 0;
   const fullMin = Number(policy.fullDayMinWorkedHours) || 0;
 
-  const shortLeavePay = `Paid as a full day for the first ${policy.shortLeaveMonthlyQuota} Short Leave days in a payroll cycle. Each one after that costs half a day's pay. Nothing carries into the next cycle.`;
+  const shortLeavePay = `The first ${policy.shortLeaveMonthlyQuota} Short Leave days in a payroll cycle are paid as full days. After that, every 3rd Short Leave costs half a day's pay (Short Leave no. ${shortLeaveDeductedPositions(policy.shortLeaveMonthlyQuota).join(', ')}…). The count restarts each payroll cycle; nothing carries over.`;
   const bands: Band[] = ([
     { tone: 'full', status: 'Full day', from: fullMin, to: null, pay: 'Full day’s pay.' },
     { tone: 'short', status: 'Short Leave', from: shortMin, to: fullMin, pay: shortLeavePay },
@@ -174,7 +178,17 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
           <StatCard
             label="Regularization limit"
             value={`${policy.regularizationMonthlyQuota} days / cycle`}
-            hint="Days you may regularize per payroll cycle. Fixing punch-in and punch-out on the same day counts once; a rejected request frees its day. Punch-in 8 AM–2 PM, punch-out 2 PM–11 PM."
+            hint="Days you may regularize per payroll cycle. Fixing punch-in and punch-out on the same day counts once; rejected requests count too. Request times must be inside the punch windows."
+          />
+          <StatCard
+            label="Punch In window"
+            value={`${fmtWindowTime(windows.punchInFrom)} – ${fmtWindowTime(windows.punchInTo)}`}
+            hint="Punch In works only between these times. After it closes, you can't punch in that day."
+          />
+          <StatCard
+            label="Punch Out window"
+            value={`Until ${fmtWindowTime(windows.punchOutTo)}`}
+            hint={`Any time after you punch in, up to ${fmtWindowTime(windows.punchOutTo)} (from ${fmtWindowTime(windows.punchOutFrom)} if you didn't punch in). No punch-out by then = Absent. Pay counts only up to shift end.`}
           />
         </div>
       </section>
@@ -244,7 +258,7 @@ export default function PolicySummaryWidget({ apiBase = '/api/admin/attendance',
         <h3 className="text-lg font-semibold text-slate-900">Leave</h3>
         <ul className="mt-3 flex flex-col gap-2 text-sm leading-snug text-slate-600">
           {[
-            `Leave types: ${Object.entries(policy.leaveTypes || {}).filter(([, c]) => c.enabled).map(([k, c]) => `${k} (${c.perMonth} per month)`).join(', ') || 'none switched on yet'}. Credited in your joining month and on the 1st of every month; unused balance lapses on 1 January.`,
+            `Leave types: ${Object.entries(policy.leaveTypes || {}).filter(([, c]) => c.enabled).map(([k, c]) => `${k} (${c.perMonth} per month)`).join(', ') || 'none switched on yet'}. Credited each time a payroll cycle ends (your first credit when your joining cycle ends); unused balance lapses when the December cycle ends. Leave is used only through an approved leave request — a day missed without one is absent (loss of pay).`,
             'Apply for today, yesterday or any future date — full day, or the first or second half of a day (half a day of balance).',
             'Days beyond your balance are still granted but unpaid. The form shows how many days are paid and unpaid before you submit.',
             'A pending request holds your balance; rejecting or cancelling it gives the days back. You can cancel your own leave until it starts — after that, ask HR.',

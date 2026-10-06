@@ -113,6 +113,20 @@ export interface HrAttendanceRecord {
   inMinutes?: number | null; outMinutes?: number | null;
   inGeo?: HrPunchGeo | null; outGeo?: HrPunchGeo | null;
 }
+/** A day's status set directly by HR (HR Head / Founder) from the attendance calendar. It wins
+ * over the punches for pay — the day ledger reads it before judging hours — while the real punch
+ * times stay on hr_attendance untouched. Only past days / today, working days, inside employment,
+ * outside settled stretches and frozen months, and never on a date with a leave request. */
+export const ATTENDANCE_OVERRIDE_STATUSES = ['present', 'short-leave', 'half-day', 'absent', 'unpaid-leave', 'off'] as const;
+export type HrAttendanceOverrideStatus = typeof ATTENDANCE_OVERRIDE_STATUSES[number];
+export const ATTENDANCE_OVERRIDE_LABEL: Record<HrAttendanceOverrideStatus, string> = {
+  present: 'Present', 'short-leave': 'Short leave', 'half-day': 'Half day', absent: 'Absent',
+  'unpaid-leave': 'Unpaid leave (LOP)', off: 'Week-off / Holiday (paid)',
+};
+export interface HrAttendanceOverride {
+  employeeId: string; emp: string; date: string; status: HrAttendanceOverrideStatus;
+  reason: string; setBy: string | null; setAt: string | null;
+}
 export interface HrPunch {
   employeeId: string; emp: string; date: string; inTime: string | null; inMinutes: number | null; outTime: string | null; outMinutes: number | null;
   inGeo?: HrPunchGeo | null; outGeo?: HrPunchGeo | null;
@@ -147,6 +161,8 @@ export interface HrExpense extends HrApprovalBase { category: string; amount: nu
 
 export interface HrTicket { id: string; employeeId: string; emp: string; category: string; status: string; note: string; }
 
+import type { PayslipData } from '../utils/payslip-data';
+
 export interface HrComplianceTask { task: string; due: string; status: string; }
 
 export interface HrPayrollRun {
@@ -154,10 +170,12 @@ export interface HrPayrollRun {
   /** The dates this run actually covered — a later cycle treats days up to periodTo as already
    * settled (the 1st→last to 26th→25th changeover relies on it). */
   periodFrom?: string | null; periodTo?: string | null;
-  /** Set when the cycle locks (window over, last run up to date, nothing pending). */
-  lockedAt?: string | null;
-  /** Founder reopened a locked cycle until this date (inclusive), with a reason. */
-  reopenedUntil?: string | null; reopenReason?: string | null;
+  /** Set by Freeze — the month is final: its payslips are published to employees and nothing
+   * dated in it can change — permanently. Null for a draft (run, not frozen). */
+  frozenAt?: string | null; frozenBy?: string | null;
+  /** The last Reverse of this month — a discarded draft (status back to 'not_run', no reason), or
+   * a reversed frozen month from before freezes became final (with its reason). */
+  reversedAt?: string | null; reversedBy?: string | null; reverseReason?: string | null;
   /** When the saved payslips were last computed or verified up to date (DB clock). */
   computedAt?: string | null;
 }
@@ -183,10 +201,9 @@ export interface HrPayrollEntry {
   /** Approved-leave days within the period — counted separately from presentDays so "worked"
    * and "on leave" are never conflated into one number. */
   leaveDays: number;
-  /** Every working day that's neither Present nor Leave nor Week Off — i.e. Short Leave, Half
-   * Day, and fully-Absent days combined, a whole-day count for the "Absent Days" display column.
-   * Distinct from lopDays, which is the fractional pay-impact those same days actually cost
-   * (a Half Day here counts as 1 whole absent day but only 0.5 lopDays). */
+  /** Working days the employee didn't show up — no punch and no leave, or too few hours / no
+   * punch-out (day-ledger `absent` days). The "Absent Days" column. Only part of lopDays: leave
+   * beyond the balance, half days and short-leave deductions are LOP but not absences. */
   absentDays: number;
   /** Punch-ins that landed in the Short Leave window that month — the raw count for THIS
    * cycle only (not counting whatever carried in from last month). Internal bookkeeping for the
@@ -209,6 +226,8 @@ export interface HrPayrollEntry {
   /** Tax deducted at source — placeholder (always 0) until a calculation rule is defined. */
   tds: number;
   netPay: number;
+  /** The final payslip, snapshotted at Freeze (see utils/payslip-data.ts). Null on a draft. */
+  payslip?: PayslipData | null;
 }
 
 export interface HrTemplate { name: string; content: string; }
@@ -218,6 +237,13 @@ export interface HrRules {
   shiftStartTime: string;
   shiftEndTime: string;
   shiftGraceMinutes: number;
+  /** Clock windows ("HH:MM", IST, inclusive) for Punch In / Punch Out — and for the time a
+   * regularization may request (see utils/regularization-policy.ts PunchWindows). Punch-out
+   * before punchOutFrom is allowed only after a punch-in that day (early leave). */
+  punchInFrom: string;
+  punchInTo: string;
+  punchOutFrom: string;
+  punchOutTo: string;
   /** Hours after shift start marking the end of the Half Day punch-in window — a punch-in
    * later than shiftStart + this many hours counts as Absent for the day. */
   halfDayThresholdHours: number;
@@ -226,7 +252,7 @@ export interface HrRules {
   regularizationWindowDays: number;
   regularizationOverride: boolean;
   /** How many DAYS per payroll cycle an employee may regularize (punch-in + punch-out on the same
-   * date is one day; approved and pending count, rejected doesn't). A hard limit — no override. */
+   * date is one day; approved, pending and rejected all count). A hard limit — no override. */
   regularizationMonthlyQuota: number;
   /** Hours after shift start marking the end of the Short Leave punch-in window (grace period
    * ends, Short Leave begins; this many hours after shift start, Half Day begins). */
@@ -277,6 +303,8 @@ export interface HrBootstrap {
   employees: HrEmployee[];
   onboarding: HrOnboarding[];
   attendance: HrAttendanceRecord[];
+  /** Days whose status HR set directly — see HrAttendanceOverride. */
+  attendanceOverrides: HrAttendanceOverride[];
   punchLog: HrPunch[];
   regularizations: HrRegularization[];
   leaveRequests: HrLeaveRequest[];

@@ -50,7 +50,12 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
 @source "../components/user/newsletter";
 @source "./dashboard/funding";
 @source "../components/user/funding";
+@source "./login/page.tsx";
+@source "../components/auth";
 @source "../components/EventsLocationBar.tsx";
+@source "../components/EventsCountryStrip.tsx";
+@source "../components/EventsByCountryList.tsx";
+@source "./startup-events";
 @source "../components/expand-north-star/DelegationBenefits.tsx";
 @source "../components/expand-north-star/SectionNav.tsx";
 
@@ -161,4 +166,12 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   @keyframes cpw-fade { from { opacity: 0; } to { opacity: 1; } }
   @keyframes cpw-modal { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes cpw-step { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* /events "Explore by Country" rows (EventsCountryStrip.tsx) — each track holds two copies of
+     its circles and slides by half its width. Row 1 travels left → right, row 2 right → left.
+     The duration here is a fallback; the component sets it from the number of circles. */
+  --animate-ec-marquee-ltr: ec-marquee-ltr 30s linear infinite;
+  --animate-ec-marquee-rtl: ec-marquee-rtl 30s linear infinite;
+  @keyframes ec-marquee-ltr { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+  @keyframes ec-marquee-rtl { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 }

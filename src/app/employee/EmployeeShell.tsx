@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { ComponentType } from 'react';
-import { Contact } from 'lucide-react';
+import { Contact, ReceiptText } from 'lucide-react';
 import { getEmployeeUser, clearEmployeeSession, getEmployeeAuthHeaders, setEmployeeSession, getEmployeeToken, type EmployeeUser } from '@/lib/employee-auth';
 import ProfileProgressStrip from '@/components/admin/ProfileProgressStrip';
 import PendingLeadsAlarm from '@/components/employee/PendingLeadsAlarm';
@@ -98,6 +98,7 @@ const NAV_ITEMS: { href: string; label: string; icon: ComponentType<{ size?: num
   { href: '/employee/attendance', label: 'Attendance', icon: AttendanceIcon },
   { href: '/employee/leads', label: 'My Leads', icon: LeadsIcon },
   { href: '/employee/leave', label: 'Leave', icon: LeaveIcon },
+  { href: '/employee/payslips', label: 'My Payslips', icon: ReceiptText },
   { href: '/employee/documents', label: 'Documents', icon: DocumentsIcon },
   { href: '/employee/rules-policy', label: 'Admin Rules', icon: RulesPolicyIcon },
   { href: '/employee/it-tickets', label: 'IT Support', icon: TicketIcon },
@@ -153,7 +154,7 @@ function SidebarContent({ user, items, pathname, onLogout, onClose }: {
   return (
     <>
       <div className="mb-5 flex items-center gap-3 border-b border-slate-200/70 px-2 pb-5 pt-1">
-        <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-indigo-500 to-indigo-600 text-base font-bold text-white">
+        <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-linear-to-br from-indigo-500 to-indigo-600 text-base font-bold text-white">
           {user.name.charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
@@ -172,22 +173,25 @@ function SidebarContent({ user, items, pathname, onLogout, onClose }: {
         )}
       </div>
 
-      <nav className="flex-1">
+      {/* min-h-0 + overflow: a long menu scrolls between the pinned profile header and Logout. */}
+      <nav className="min-h-0 flex-1 overflow-y-auto">
         <div className="mb-2 px-3 text-[0.68rem] font-bold uppercase tracking-[0.06em] text-slate-400">Menu</div>
         {items.map((item) => {
           const isActive = isActivePath(pathname, item.href);
           const Icon = item.icon;
+          // visited: variants — style.css's `a:visited { color: #E62E69 }` outranks a plain text-* class
+          // and turned every visited menu link pink.
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`mb-1 flex min-h-11 items-center gap-3 rounded-lg border-l-[3px] px-3.5 py-3 text-[0.9rem] no-underline ${
+              className={`mb-1 box-border flex min-h-11 items-center gap-3 rounded-lg border-l-[3px] px-3.5 py-2.5 text-[0.9rem] no-underline ${
                 isActive
-                  ? 'border-indigo-500 bg-indigo-500/10 font-semibold text-indigo-500'
-                  : 'border-transparent font-medium text-slate-600 hover:bg-slate-100'
+                  ? 'border-indigo-500 bg-indigo-500/10 font-semibold text-indigo-600 visited:text-indigo-600'
+                  : 'border-transparent font-medium text-slate-700 visited:text-slate-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <Icon color={isActive ? '#6366f1' : '#94a3b8'} />
+              <Icon color={isActive ? '#4f46e5' : '#64748b'} />
               {item.label}
             </Link>
           );
@@ -197,7 +201,7 @@ function SidebarContent({ user, items, pathname, onLogout, onClose }: {
       <button
         type="button"
         onClick={onLogout}
-        className="mt-4 min-h-11 cursor-pointer rounded-lg border border-solid border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50"
+        className="mt-4 min-h-11 shrink-0 cursor-pointer rounded-lg border border-solid border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50"
       >
         Logout
       </button>
@@ -280,7 +284,7 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
   // IT Support's board (five columns) and ticket table, and My Leads' KPI row and eight-column lead
   // table, and the Directory's contacts table, need more than the 1100px reading width the other
   // employee pages use, so those routes get the full content width.
-  const wideContent = pathname.startsWith('/employee/it-tickets') || pathname.startsWith('/employee/leads') || pathname.startsWith(DIRECTORY_HREF);
+  const wideContent = pathname.startsWith('/employee/it-tickets') || pathname.startsWith('/employee/leads') || pathname.startsWith('/employee/exit') || pathname.startsWith(DIRECTORY_HREF);
   const items = alumni
     ? ALUMNI_NAV_ITEMS
     : NAV_ITEMS.filter((item) => item.href !== DIRECTORY_HREF || canEmployeeUseDirectory(user.employeeCode));
@@ -291,7 +295,7 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-slate-50 md:flex">
       {/* Desktop: fixed-width sidebar column, sticky so the menu stays put while the page scrolls. */}
-      <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col overflow-y-auto border-r border-solid border-slate-200/70 bg-gradient-to-b from-white to-slate-50 px-4 py-6 shadow-[2px_0_8px_rgba(0,0,0,0.02)] box-border md:flex">
+      <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col overflow-y-auto border-r border-solid border-slate-200/70 bg-linear-to-b from-white to-slate-50 px-4 py-6 shadow-[2px_0_8px_rgba(0,0,0,0.02)] box-border md:flex">
         <SidebarContent user={user} items={items} pathname={pathname} onLogout={handleLogout} />
       </aside>
 
@@ -307,24 +311,32 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
           <MenuIcon />
         </button>
         <div className="min-w-0 flex-1 truncate text-base font-bold text-slate-900">{currentLabel}</div>
-        <div className="mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-sm font-bold text-white">
+        <div className="mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-indigo-600 text-sm font-bold text-white">
           {user.name.charAt(0).toUpperCase()}
         </div>
       </header>
 
-      {/* Phone: slide-in drawer with the full menu (backdrop tap / Esc / navigation closes it). */}
-      <div
-        className={`fixed inset-0 z-[1002] bg-slate-900/50 transition-opacity duration-200 md:hidden ${drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-        onClick={() => setDrawerOpen(false)}
-        aria-hidden="true"
-      />
-      <aside
-        className={`fixed inset-y-0 left-0 z-[1003] flex w-[288px] max-w-[86vw] flex-col overflow-y-auto bg-white px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 shadow-2xl box-border transition-transform duration-200 ease-out md:hidden ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        aria-hidden={!drawerOpen}
-        aria-label="Menu"
-      >
-        <SidebarContent user={user} items={items} pathname={pathname} onLogout={handleLogout} onClose={() => setDrawerOpen(false)} />
-      </aside>
+      {/* Phone: drawer with the full menu (backdrop tap / Esc / navigation closes it). Mounted only
+          while open rather than slid off-screen with translate-*: older Android browsers ignore the
+          `translate` property, which left the "closed" drawer sitting over the page. Physical
+          top/bottom/left/right for the same reason (`inset-*` emits logical properties). */}
+      {drawerOpen && (
+        <>
+          <div
+            className="fixed top-0 right-0 bottom-0 left-0 z-[1002] bg-slate-900/50 md:hidden"
+            onClick={() => setDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            className="fixed top-0 bottom-0 left-0 z-[1003] flex h-full w-[288px] max-w-[86vw] flex-col overflow-hidden bg-white px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 shadow-2xl box-border md:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+          >
+            <SidebarContent user={user} items={items} pathname={pathname} onLogout={handleLogout} onClose={() => setDrawerOpen(false)} />
+          </aside>
+        </>
+      )}
 
       {/* min-w-0 lets a wide table scroll inside <main> instead of stretching the whole page. */}
       <main className={`min-w-0 flex-1 px-4 pt-4 box-border md:px-10 md:pb-8 md:pt-8 ${bottomTabs.length ? 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]' : 'pb-8'} ${wideContent ? '' : 'md:max-w-[1100px]'}`}>
@@ -336,7 +348,7 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
 
       {/* Phone: bottom tab bar — daily pages one tap away, "More" opens the drawer. */}
       {bottomTabs.length > 0 && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-solid border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Quick navigation">
+        <nav className="fixed right-0 bottom-0 left-0 z-40 grid grid-cols-4 border-t border-solid border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Quick navigation">
           {bottomTabs.map((item) => {
             const isActive = isActivePath(pathname, item.href);
             const Icon = item.icon;
@@ -344,7 +356,7 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex h-16 flex-col items-center justify-center gap-1 text-[0.7rem] no-underline ${isActive ? 'font-semibold text-indigo-600' : 'font-medium text-slate-500'}`}
+                className={`flex h-16 flex-col items-center justify-center gap-1 text-[0.7rem] no-underline ${isActive ? 'font-semibold text-indigo-600 visited:text-indigo-600' : 'font-medium text-slate-500 visited:text-slate-500'}`}
               >
                 <Icon size={22} color={isActive ? '#4f46e5' : '#94a3b8'} />
                 {item.label}

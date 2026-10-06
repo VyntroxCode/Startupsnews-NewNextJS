@@ -1,14 +1,15 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Clock, Download } from 'lucide-react';
+import { Download, Lock, RefreshCw, Undo2 } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import AttendanceCalendar from './AttendanceCalendar';
-import { StatusBadge, employeeName, exportCSV, exportExcel, salaryPeriodLabel, monthKeyToLabel, computeCtcBreakdown } from '../utils';
+import { employeeName, exportCSV, exportExcel, salaryPeriodLabel, monthKeyToLabel } from '../utils';
 import { payrollCycleToRunKey, currentPayrollMonthKey, payrollPeriodRange } from '@/modules/hr-tool/utils/time';
 import { hrApi, type PayrollApiResult } from '../api';
 import type { HrPayrollEntry, HrPayrollRun } from '../types';
 import { generatePayslipPdf, generatePayslipZip, singlePayslipFilename, triggerBlobDownload, triggerPdfDownload, type PayslipData } from '../payslipPdf';
+import { buildPayslipData as buildSlip } from '@/modules/hr-tool/utils/payslip-data';
 
 function fmtShortDate(ymd: string): string {
   if (!ymd) return '—';
@@ -28,20 +29,19 @@ function fmtDateTime(v: string | null | undefined): string {
 }
 
 export default function Payroll() {
-  const { state, runPayrollForMonth, decideRegularization, upsertLeaveRequestInState } = useHrTool();
+  const { state, runPayrollForMonth, patchPayrollRunInState } = useHrTool();
   const [payroll, setPayroll] = useState<PayrollApiResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState('');
-  const [reopenOpen, setReopenOpen] = useState(false);
-  const [reopenReason, setReopenReason] = useState('');
-  // Employee whose pending requests are expanded under their payroll row, and the request being decided.
-  const [openPendingFor, setOpenPendingFor] = useState<string | null>(null);
-  const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [freezing, setFreezing] = useState(false);
+  const [reverseOpen, setReverseOpen] = useState(false);
+  const [reverseReason, setReverseReason] = useState('');
+  const [reversing, setReversing] = useState(false);
   // TDS is admin-entered per employee, not computed — seeded from whatever the server returns
-  // (0 for a live/unrun preview, the frozen amount once a month has been run) and editable
-  // locally before "Run Payroll" actually persists it. Keyed by employee id.
+  // (0 for a live/unrun preview, the saved amount once a month has been run) and editable
+  // locally before "Run Payroll" saves it. Read-only once the month is frozen. Keyed by employee id.
   const [tdsInputs, setTdsInputs] = useState<Record<string, string>>({});
 
   // Two cycles are reachable from this page. `runnableMonth` is the most recently ENDED one —
@@ -99,8 +99,8 @@ export default function Payroll() {
   }, [month]);
 
   // HR decided a request (or attendance changed) somewhere else in the HR tool while this page is
-  // open: reload quietly. The server recalculates — and for a run, unlocked month rewrites the
-  // saved payslips — on every load, so the table follows attendance without a manual refresh.
+  // open: reload quietly so the "changed since the last Run" warning is current.
+  // A saved draft never changes by itself — only Run Payroll rewrites it.
   const syncKey = useMemo(() => ({}), [state.attendance, state.regularizations, state.leaveRequests]); // eslint-disable-line react-hooks/exhaustive-deps
   const [firstSyncKey] = useState(syncKey);
   useEffect(() => {
@@ -110,9 +110,6 @@ export default function Payroll() {
     return () => { signal.cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncKey]);
-
-  // Undecided requests per employee for the month shown — their figures are provisional.
-  const pendingByEmployee: Record<string, number> = payroll?.pendingByEmployee || {};
 
   // Payroll entries are keyed by employee id — two employees may share a name.
   const employeeById = useMemo(() => new Map(state.employees.map((e) => [e.id, e])), [state.employees]);
@@ -127,46 +124,19 @@ export default function Payroll() {
     return Math.round(e.monthlyGross - liveTds(e.employeeId, e.tds));
   }
 
-  /** Builds the payslip's Basic/HRA/Conveyance/Special Allowance + totals from the same CTC
-   * Structure (org default or per-employee override) Directory/Rules already use — prorated by
-   * the same paying-days ratio computePayrollForMonth applied to get monthlyGross, so the four
-   * earning lines always add up to exactly Gross Earnings. PAN is left out (no such field exists
-   * on an employee yet); Income Tax mirrors the admin-entered TDS for the run; Provident Fund is
-   * always 0 for now — there's no PF configuration anywhere in the HR module yet to derive one from.
-   */
-  function buildPayslipData(e: HrPayrollEntry, tds: number, netPay: number, monthKey: string, periodTo: string, pendingCount = 0): PayslipData | null {
+  /** The payslip for one entry: a frozen month's stored snapshot as-is (final), otherwise built
+   * from today's Directory data and marked DRAFT so it's never mistaken for the final slip. */
+  function buildPayslipData(e: HrPayrollEntry, tds: number, netPay: number, monthKey: string, periodTo: string): PayslipData | null {
+    if (e.payslip) return e.payslip;
     const employee = employeeById.get(e.employeeId);
     if (!employee) return null;
     const cred = employee.credentialId
       ? state.employeeCredentials.find((c) => c.id === employee.credentialId)
       : undefined;
-    const split = employee.ctcSplitOverride || state.rules.ctcSplit;
-    const breakdown = computeCtcBreakdown(employee.ctc, split);
-    const monthlySalary = Math.round(employee.ctc / 12);
-    const ratio = monthlySalary > 0 ? e.monthlyGross / monthlySalary : 0;
-    const basic = Math.round(breakdown.basic * ratio);
-    const hra = Math.round(breakdown.hra * ratio);
-    const convenience = Math.round(breakdown.convenience * ratio);
-    // Special Allowance is the remainder, not its own prorated figure — guarantees the four
-    // earning lines sum to exactly e.monthlyGross regardless of rounding on the other three.
-    const specialAllowance = e.monthlyGross - basic - hra - convenience;
-    return {
-      employeeName: employee.name,
-      employeeCode: cred?.employeeCode || '—',
-      designation: employee.designation,
-      monthLabel: monthKeyToLabel(monthKey),
-      payDateLabel: fmtShortDate(periodTo),
-      dojLabel: fmtShortDate(employee.doj),
-      paidDays: e.totalDays - e.lopDays,
-      lopDays: e.lopDays,
-      basic, hra, convenience, specialAllowance,
-      grossEarnings: e.monthlyGross,
-      incomeTax: tds,
-      providentFund: 0,
-      totalDeductions: tds,
-      netPay,
-      provisionalNote: pendingCount > 0 ? `PROVISIONAL - ${pendingCount} request(s) pending; updates when decided` : undefined,
-    };
+    return buildSlip({
+      entry: e, employee, defaultSplit: state.rules.ctcSplit, employeeCode: cred?.employeeCode, monthKey, periodTo, tds, netPay,
+      provisionalNote: 'DRAFT - not final until payroll is frozen',
+    });
   }
 
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -176,7 +146,7 @@ export default function Payroll() {
     if (!entry) return;
     setPdfBusy(true);
     try {
-      const data = buildPayslipData(entry, entry.tds, entry.netPay, month, payroll?.periodTo || '', pendingByEmployee[entry.employeeId]);
+      const data = buildPayslipData(entry, entry.tds, entry.netPay, month, payroll?.periodTo || '');
       if (!data) return;
       const bytes = await generatePayslipPdf(data);
       triggerPdfDownload(bytes, singlePayslipFilename(data, month));
@@ -189,7 +159,7 @@ export default function Payroll() {
     setPdfBusy(true);
     try {
       const list = entries
-        .map((e) => buildPayslipData(e, liveTds(e.employeeId, e.tds), liveNetPay(e), month, payroll?.periodTo || '', pendingByEmployee[e.employeeId]))
+        .map((e) => buildPayslipData(e, liveTds(e.employeeId, e.tds), liveNetPay(e), month, payroll?.periodTo || ''))
         .filter((d): d is PayslipData => d !== null);
       if (!list.length) return;
       // One PDF per employee, zipped — not one combined PDF (each payslip goes to a different person).
@@ -206,7 +176,7 @@ export default function Payroll() {
     if (!payroll || rowBusyId) return;
     setRowBusyId(e.employeeId);
     try {
-      const data = buildPayslipData(e, liveTds(e.employeeId, e.tds), liveNetPay(e), month, payroll.periodTo || '', pendingByEmployee[e.employeeId]);
+      const data = buildPayslipData(e, liveTds(e.employeeId, e.tds), liveNetPay(e), month, payroll.periodTo || '');
       if (!data) { alert('This employee has no Directory record, so no payslip can be made.'); return; }
       triggerPdfDownload(await generatePayslipPdf(data), singlePayslipFilename(data, month));
     } catch {
@@ -228,7 +198,8 @@ export default function Payroll() {
   // Past runs (see state.payrollRuns), newest first — each row's per-employee detail (who got
   // paid, their ID, their Net Pay) is fetched on demand when expanded rather than for every
   // run up front, since a company can accumulate a lot of these over time.
-  const sortedRuns = useMemo(() => [...state.payrollRuns].sort((a, b) => b.month.localeCompare(a.month)), [state.payrollRuns]);
+  // A reversed (discarded) draft goes back to status 'not_run' — it has no payslips to list.
+  const sortedRuns = useMemo(() => state.payrollRuns.filter((r) => r.status === 'run').sort((a, b) => b.month.localeCompare(a.month)), [state.payrollRuns]);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [historyCache, setHistoryCache] = useState<Record<string, PayrollApiResult>>({});
   const [historyLoadingMonth, setHistoryLoadingMonth] = useState<string | null>(null);
@@ -250,7 +221,7 @@ export default function Payroll() {
     setHistoryBusyKey(run.month);
     try {
       const list = data.entries
-        .map((e) => buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo, data.pendingByEmployee?.[e.employeeId]))
+        .map((e) => buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo))
         .filter((d): d is PayslipData => d !== null);
       if (!list.length) return;
       triggerBlobDownload(await generatePayslipZip(list, run.month), `payslips_${run.month}.zip`);
@@ -266,7 +237,7 @@ export default function Payroll() {
     const key = run.month + ':' + e.employeeId;
     setHistoryBusyKey(key);
     try {
-      const slip = buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo, data.pendingByEmployee?.[e.employeeId]);
+      const slip = buildPayslipData(e, e.tds, e.netPay, run.month, data.periodTo);
       if (!slip) return;
       const bytes = await generatePayslipPdf(slip);
       triggerPdfDownload(bytes, singlePayslipFilename(slip, run.month));
@@ -291,29 +262,58 @@ export default function Payroll() {
     setRunning(false);
   }
 
-  /** Approve/reject a pending request straight from its payroll row. The server re-calculates the
-   * cycle on every decision (refreshPayrollForDates), so a silent reload shows the new figures. */
-  async function decidePending(req: { kind: 'regularization' | 'leave'; id: string }, decision: 'approved' | 'rejected') {
-    setDecidingId(req.id);
-    if (req.kind === 'regularization') {
-      await decideRegularization(req.id, 'hr', decision, '');
+  /** Freeze: final. The server re-checks every blocker; on success the month's payslips are
+   * published to employees. */
+  async function handleFreeze() {
+    if (!window.confirm(`Freeze payroll for ${monthKeyToLabel(month)}?\n\nFreezing is permanent: payslips are published to employees, and this month's payroll can never be reversed or changed — nothing dated in it can change either.`)) return;
+    setFreezing(true);
+    setRunError('');
+    const res = await hrApi.freezePayroll(month);
+    if (res.success) {
+      patchPayrollRunInState(month, { frozenAt: new Date().toISOString(), frozenBy: state.currentUser?.name || null });
+      setHistoryCache((c) => { const next = { ...c }; delete next[month]; return next; });
+      await loadPayroll(undefined, true);
     } else {
-      const res = await hrApi.decideLeaveRequest(req.id, decision, '');
-      if (!res.success || !res.data) alert(res.error || 'Could not save the decision.');
-      else upsertLeaveRequestInState(res.data);
+      setRunError(res.error || 'Could not freeze payroll.');
     }
-    await loadPayroll(undefined, true);
-    setDecidingId(null);
+    setFreezing(false);
   }
 
-  async function handleReopen() {
-    const reason = reopenReason.trim();
-    if (!reason) { alert('Please give a reason — it is saved in the audit log.'); return; }
-    const res = await hrApi.reopenPayroll(month, reason);
-    if (!res.success) { alert(res.error || 'Could not reopen this cycle.'); return; }
-    setReopenOpen(false);
-    setReopenReason('');
-    await loadPayroll(undefined, true);
+  /** Reverse on a draft: discards it — the month goes back to "not run" and the next Run Payroll
+   * reads attendance afresh. Frozen months are final and never offer this. */
+  async function handleDiscardDraft() {
+    if (!window.confirm(`Reverse payroll for ${monthKeyToLabel(month)}?\n\nThe saved draft is discarded and no payslip exists until you Run Payroll again (it recalculates from current attendance) and Freeze.`)) return;
+    setReversing(true);
+    setRunError('');
+    const res = await hrApi.reversePayroll(month, '');
+    if (res.success) {
+      patchPayrollRunInState(month, { status: 'not_run', periodFrom: null, periodTo: null, reversedAt: new Date().toISOString(), reversedBy: state.currentUser?.name || null, reverseReason: null });
+      setHistoryCache((c) => { const next = { ...c }; delete next[month]; return next; });
+      await loadPayroll(undefined, true);
+    } else {
+      setRunError(res.error || 'Could not reverse payroll.');
+    }
+    setReversing(false);
+  }
+
+  /** Reverse on a frozen month — only offered when the server allows it (FROZEN_PAYROLL_REVERSIBLE,
+   * off: frozen payroll is final). Back to a draft, payslips withdrawn, reason required. */
+  async function handleReverse() {
+    const reason = reverseReason.trim();
+    if (!reason) { setRunError('Please give a reason — it is saved in the audit log.'); return; }
+    setReversing(true);
+    setRunError('');
+    const res = await hrApi.reversePayroll(month, reason);
+    if (res.success) {
+      patchPayrollRunInState(month, { frozenAt: null, frozenBy: null, reversedAt: new Date().toISOString(), reverseReason: reason });
+      setHistoryCache((c) => { const next = { ...c }; delete next[month]; return next; });
+      setReverseOpen(false);
+      setReverseReason('');
+      await loadPayroll(undefined, true);
+    } else {
+      setRunError(res.error || 'Could not reverse payroll.');
+    }
+    setReversing(false);
   }
 
   function exportPayroll(fmt: 'csv' | 'excel') {
@@ -332,11 +332,12 @@ export default function Payroll() {
 
   if (state.role === 'Employee') {
     const me = state.currentUser!;
-    const myEntry = payroll?.entries.find((e) => e.employeeId === me.id);
+    // Employees only ever see a FROZEN month's payslip — a draft is not final.
+    const myEntry = payroll?.cycle?.phase === 'frozen' ? payroll.entries.find((e) => e.employeeId === me.id) : undefined;
     return (
       <>
         <div className="topbar">
-          <div><h1 className="page-title">My Payslips</h1><div className="page-sub">Your attendance-adjusted salary for the cycle.</div></div>
+          <div><h1 className="page-title">My Payslips</h1><div className="page-sub">Your final salary slip, available once HR freezes the month&apos;s payroll.</div></div>
           <div className="as-role">{me.name} · {state.role}</div>
         </div>
         <div className="card"><div className="table-scroll"><table><thead><tr><th>Month</th><th>Total Days</th><th>Present Days</th><th>Absent Days</th><th>Week Off</th><th>Leaves</th><th>LOP Days</th><th>Gross</th><th>TDS</th><th>Net Pay</th><th></th></tr></thead>
@@ -348,13 +349,13 @@ export default function Payroll() {
                 <td>₹{myEntry.monthlyGross.toLocaleString('en-IN')}</td><td>₹{myEntry.tds.toLocaleString('en-IN')}</td>
                 <td>₹{myEntry.netPay.toLocaleString('en-IN')}</td>
                 <td style={{ textAlign: 'right' }}>
-                  <button className="btn ghost sm" disabled={!payroll?.alreadyRun || pdfBusy} onClick={handleDownloadMyPayslip}>
+                  <button className="btn ghost sm" disabled={pdfBusy} onClick={handleDownloadMyPayslip}>
                     {pdfBusy ? 'Generating…' : 'Download PDF'}
                   </button>
                 </td>
               </tr>
             ) : (
-              <tr><td colSpan={11}><div className="empty">{loading ? 'Loading…' : 'No payroll data for you yet this cycle.'}</div></td></tr>
+              <tr><td colSpan={11}><div className="empty">{loading ? 'Loading…' : `Payslip for ${monthKeyToLabel(month)} is not generated yet.`}</div></td></tr>
             )}
           </tbody>
         </table></div></div>
@@ -372,15 +373,19 @@ export default function Payroll() {
   const alreadyRun = payroll?.alreadyRun ?? false;
   const missingCtc = payroll?.missingCtcEmployees || [];
   const cycle = payroll?.cycle;
-  const pending = cycle?.pendingRequests || [];
+  const frozen = cycle?.phase === 'frozen';
+  // TDS typed but not saved by a Run yet — Freeze must wait, or the typed amount would be lost.
+  const tdsDirty = alreadyRun && !frozen && entries.some((e) => liveTds(e.employeeId, e.tds) !== e.tds);
+  const freezeBlockers = [...(cycle?.freezeBlockers || []), ...(tdsDirty ? ['TDS was changed — click Run Payroll to save it.'] : [])];
+  const canFreeze = !!cycle?.canFreeze && !tdsDirty;
+  // Payroll stays separate from request approval: the "N request(s) still pending" blocker still
+  // stops Freeze (server-side), but isn't shown here — HR decides requests in Attendance / Leave.
+  const shownBlockers = freezeBlockers.filter((b) => !/request\(s\) still pending/.test(b));
   const heading = !cycle ? 'Payroll'
     : cycle.phase === 'in-progress' ? 'Cycle in progress'
-    : cycle.phase === 'locked' ? 'Locked'
-    // Past the run window but not locked yet. Not shown as an error: once run, the saved payslips
-    // follow every leave/regularization decision on their own (refreshRunIfOpen) and the cycle
-    // locks by itself when nothing is pending.
-    : cycle.phase === 'overdue' ? (alreadyRun ? 'Run — updating automatically' : 'Not run yet')
-    : alreadyRun ? 'Run window open — already run' : 'Run window open';
+    : frozen ? 'Frozen'
+    : cycle.phase === 'overdue' ? 'Not frozen — overdue'
+    : alreadyRun ? 'Draft saved — run window open' : 'Run window open';
 
   return (
     <>
@@ -394,29 +399,49 @@ export default function Payroll() {
             <h2>{heading} — {monthKeyToLabel(month)}</h2>
             <div className="meta">{cycleRangeLabel(month)}</div>
           </div>
-          {hasLiveCycle && (
-            <div className="toolbar">
-              <button
-                className={'btn sm' + (month === runnableMonth ? ' primary' : '')}
-                onClick={() => setMonth(runnableMonth)}
-              >
-                Ready to run · {monthKeyToLabel(runnableMonth)}
-              </button>
-              <button
-                className={'btn sm' + (month === liveMonth ? ' primary' : '')}
-                onClick={() => setMonth(liveMonth)}
-              >
-                In progress · {monthKeyToLabel(liveMonth)}
-              </button>
-            </div>
-          )}
+          <div className="toolbar">
+            {hasLiveCycle && (
+              <>
+                <button
+                  className={'btn sm' + (month === runnableMonth ? ' primary' : '')}
+                  onClick={() => setMonth(runnableMonth)}
+                >
+                  Ready to run · {monthKeyToLabel(runnableMonth)}
+                </button>
+                <button
+                  className={'btn sm' + (month === liveMonth ? ' primary' : '')}
+                  onClick={() => setMonth(liveMonth)}
+                >
+                  In progress · {monthKeyToLabel(liveMonth)}
+                </button>
+                <span className="mx-1 h-6 w-px self-center bg-slate-200" aria-hidden />
+              </>
+            )}
+            <button className="btn sm" onClick={() => exportPayroll('csv')} disabled={loading || entries.length === 0}><Download className="size-3.5 shrink-0" aria-hidden />CSV</button>
+            <button className="btn sm" onClick={() => exportPayroll('excel')} disabled={loading || entries.length === 0}><Download className="size-3.5 shrink-0" aria-hidden />Excel</button>
+            <button className="btn sm" disabled={loading || !alreadyRun || entries.length === 0 || pdfBusy} onClick={handleDownloadAllPayslips}>
+              {pdfBusy ? 'Generating…' : <><Download className="size-3.5 shrink-0" aria-hidden />All payslips (ZIP)</>}
+            </button>
+          </div>
         </div>
-        {/* Run window / overdue need no banner — pending requests are decided from each row's
-            "Provisional" link below, and the figures follow every decision automatically. */}
-        {!loading && cycle && (cycle.phase === 'in-progress' || cycle.phase === 'locked') && (
+        {!loading && cycle?.phase === 'in-progress' && (
           <div className="notice info" style={{ marginBottom: 12 }}>
-            {cycle.phase === 'in-progress' && <>Live preview — the cycle ends on {fmtShortDate(payroll?.periodTo || '')}. Run Payroll opens {fmtShortDate(cycle.windowFrom)} – {fmtShortDate(cycle.windowTo)}.</>}
-            {cycle.phase === 'locked' && <>Locked{cycle.lockedAt ? ` on ${fmtDateTime(cycle.lockedAt)}` : ''}. Nothing in this cycle can change.{state.role === 'Founder' && <> <button className="btn sm" style={{ marginLeft: 8 }} onClick={() => setReopenOpen(true)}>Reopen (Founder)</button></>}</>}
+            Live preview — the cycle ends on {fmtShortDate(payroll?.periodTo || '')}. Run Payroll opens {fmtShortDate(cycle.windowFrom)} – {fmtShortDate(cycle.windowTo)}.
+          </div>
+        )}
+        {!loading && cycle && frozen && (
+          <div className="notice info" style={{ marginBottom: 12, borderColor: '#A7F3D0', background: '#ECFDF5' }}>
+            Frozen on {fmtDateTime(cycle.frozenAt)}{cycle.frozenBy ? ` by ${cycle.frozenBy}` : ''}. These are the final payslips — employees can download them from My Payslips. This month&apos;s payroll is permanent and nothing dated in it can change.
+          </div>
+        )}
+        {!loading && cycle?.phase === 'overdue' && (
+          <div className="notice" style={{ marginBottom: 12, borderColor: '#FECACA', background: '#FEF2F2' }}>
+            The run window ended on {fmtShortDate(cycle.windowTo)} and this month is not frozen yet. Employees can&apos;t download their payslips until it is.
+          </div>
+        )}
+        {!loading && cycle && !frozen && !alreadyRun && cycle.reversedAt && (
+          <div className="notice info" style={{ marginBottom: 12 }}>
+            Payroll reversed on {fmtDateTime(cycle.reversedAt)}{cycle.reversedBy ? ` by ${cycle.reversedBy}` : ''}{cycle.reverseReason ? ` — “${cycle.reverseReason}”` : ''}. No payslip exists for this month — Run Payroll to recalculate from current attendance, then Freeze.
           </div>
         )}
         {!loading && payroll?.settledThrough && (
@@ -424,12 +449,15 @@ export default function Payroll() {
             {fmtShortDate(payroll.periodFrom)} – {fmtShortDate(payroll.settledThrough)} were already paid in the previous payroll, so those days count as paid here.
           </div>
         )}
-        {reopenOpen && (
+        {reverseOpen && (
           <div className="notice" style={{ marginBottom: 12 }}>
-            <div className="field"><label className="field-label">Why reopen this locked cycle? (saved in the audit log)</label>
-              <textarea value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} placeholder="e.g. Wrong TDS entered for one employee" />
+            <div className="field"><label className="field-label">Why reverse {monthKeyToLabel(month)}? Employees&apos; payslips for this month are withdrawn until it is frozen again. (Saved in the audit log.)</label>
+              <textarea value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} placeholder="e.g. Wrong TDS entered for one employee" />
             </div>
-            <div className="toolbar"><button className="btn primary sm" onClick={handleReopen}>Reopen for 2 days</button><button className="btn sm" onClick={() => setReopenOpen(false)}>Cancel</button></div>
+            <div className="toolbar">
+              <button className="btn primary sm" disabled={reversing || !reverseReason.trim()} onClick={handleReverse}>{reversing ? 'Reversing…' : 'Reverse payroll'}</button>
+              <button className="btn sm" onClick={() => { setReverseOpen(false); setReverseReason(''); }}>Cancel</button>
+            </div>
           </div>
         )}
         {loading && <div className="empty">Loading…</div>}
@@ -440,22 +468,9 @@ export default function Payroll() {
               <tbody>
                 {entries.map((e) => {
                   const ctc = employeeById.get(e.employeeId)?.ctc ?? 0;
-                  const rowPending = pending.filter((p) => p.employeeId === e.employeeId);
-                  const pendingOpen = openPendingFor === e.employeeId && rowPending.length > 0;
                   return (
-                    <Fragment key={e.employeeId || e.emp}>
-                    <tr>
-                      <td>
-                        {employeeName(state.employees, e.employeeId, e.emp)}
-                        {pendingByEmployee[e.employeeId] > 0 && (
-                          <button type="button" className="meta" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#B45309', background: 'none', border: 0, padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
-                            title="Calculated from current attendance — click to approve or reject the pending requests"
-                            aria-expanded={pendingOpen}
-                            onClick={() => setOpenPendingFor(pendingOpen ? null : e.employeeId)}>
-                            <Clock className="size-3.5 shrink-0" aria-hidden />Provisional · {pendingByEmployee[e.employeeId]} pending
-                          </button>
-                        )}
-                      </td>
+                    <tr key={e.employeeId || e.emp}>
+                      <td>{employeeName(state.employees, e.employeeId, e.emp)}</td>
                       <td>
                         {ctc > 0 ? '₹' + Math.round(ctc / 12).toLocaleString('en-IN') : <span className="meta">Not set — set from Directory</span>}
                       </td>
@@ -469,6 +484,7 @@ export default function Payroll() {
                             type="number"
                             min={0}
                             value={tdsInputs[e.employeeId] ?? String(e.tds)}
+                            disabled={frozen}
                             onChange={(ev) => setTdsInputs((prev) => ({ ...prev, [e.employeeId]: ev.target.value }))}
                             style={{ width: 90 }}
                           />
@@ -477,33 +493,12 @@ export default function Payroll() {
                       <td>₹{liveNetPay(e).toLocaleString('en-IN')}</td>
                       <td>
                         <button className="btn ghost sm" disabled={!alreadyRun || rowBusyId === e.employeeId}
-                          title={alreadyRun ? `Download ${employeeName(state.employees, e.employeeId, e.emp)}'s payslip` : 'Payslips are available once payroll is run'}
+                          title={!alreadyRun ? 'Payslips are available once payroll is run' : frozen ? `Download ${employeeName(state.employees, e.employeeId, e.emp)}'s final payslip` : 'Draft payslip — final once payroll is frozen'}
                           onClick={() => handleDownloadRowPayslip(e)}>
                           {rowBusyId === e.employeeId ? '…' : <><Download className="size-3.5 shrink-0" aria-hidden />PDF</>}
                         </button>
                       </td>
                     </tr>
-                    {pendingOpen && (
-                      <tr>
-                        <td colSpan={12} style={{ background: 'var(--surface-2, #FFFBEB)' }}>
-                          {rowPending.map((p) => (
-                            <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '6px 0' }}>
-                              <div>
-                                <strong>{p.kind === 'leave' ? 'Leave' : 'Regularization'}</strong> · {p.dates}
-                                {p.detail && <div className="meta">{p.detail}</div>}
-                              </div>
-                              <div className="toolbar">
-                                <button className="btn primary sm" disabled={decidingId !== null} onClick={() => decidePending(p, 'approved')}>
-                                  {decidingId === p.id ? '…' : 'Approve'}
-                                </button>
-                                <button className="btn sm" disabled={decidingId !== null} onClick={() => decidePending(p, 'rejected')}>Reject</button>
-                              </div>
-                            </div>
-                          ))}
-                        </td>
-                      </tr>
-                    )}
-                    </Fragment>
                   );
                 })}
                 {entries.length === 0 && <tr><td colSpan={12}><div className="empty">No active employees to run payroll for yet.</div></td></tr>}
@@ -525,42 +520,76 @@ export default function Payroll() {
                 On notice — this cycle&apos;s salary is held and paid in their Full &amp; Final: {payroll!.noticeHeldEmployees!.join(', ')}.
               </div>
             )}
+            {!loading && cycle && !frozen && cycle.phase !== 'in-progress' && shownBlockers.length > 0 && (
+              <div className="notice mt-3" style={{ borderColor: '#FDE68A', background: '#FFFBEB' }}>
+                <strong>Freeze is not available yet:</strong>
+                <ul style={{ margin: '6px 0 0 18px', listStyle: 'disc' }}>
+                  {shownBlockers.map((b) => <li key={b}>{b}</li>)}
+                </ul>
+              </div>
+            )}
             {runError && <div className="notice" style={{ borderColor: '#FECACA', marginTop: 12 }}>{runError}</div>}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
               <div className="meta">
                 Total payout: <strong>₹{totalPayout.toLocaleString('en-IN')}</strong>
-                {cycle?.phase === 'locked'
-                  ? ' · locked'
+                {frozen
+                  ? ' · frozen (final)'
                   : alreadyRun
-                    ? ' · as of the last run'
+                    ? ' · draft, as of the last run'
                     : payroll?.periodEnded
                       ? ' · cycle ended, not run yet'
                       : ` · live preview — days not yet reached are not counted as absent`}
               </div>
               <div className="toolbar">
-                <button className="btn sm" onClick={() => exportPayroll('csv')} disabled={entries.length === 0}><Download className="size-3.5 shrink-0" aria-hidden />CSV</button>
-                <button className="btn sm" onClick={() => exportPayroll('excel')} disabled={entries.length === 0}><Download className="size-3.5 shrink-0" aria-hidden />Excel</button>
-                <button className="btn sm" disabled={!alreadyRun || entries.length === 0 || pdfBusy} onClick={handleDownloadAllPayslips}>
-                  {pdfBusy ? 'Generating…' : <><Download className="size-3.5 shrink-0" aria-hidden />All payslips (ZIP)</>}
-                </button>
-                <button
-                  className="btn primary"
-                  disabled={!(payroll?.canRun ?? false) || entries.length === 0 || running || missingCtc.length > 0}
-                  title={
-                    missingCtc.length > 0
-                      ? `Set CTC for: ${missingCtc.join(', ')}`
-                      : cycle?.phase === 'in-progress'
-                        ? `This cycle is still running — Run Payroll opens on ${fmtShortDate(cycle.windowFrom)}.`
-                        : cycle?.phase === 'locked'
-                          ? 'This cycle is locked.'
-                          : pending.length > 0
-                            ? `${pending.length} request(s) still pending — those payslips are provisional and update when decided.`
-                            : undefined
-                  }
-                  onClick={handleRunPayroll}
-                >
-                  {running ? 'Running…' : alreadyRun ? 'Re-run Payroll' : 'Run Payroll'}
-                </button>
+                {frozen ? (
+                  cycle?.canReverse ? (
+                    <button
+                      className="btn"
+                      disabled={reverseOpen}
+                      title="Withdraw these payslips and turn the month back into a draft"
+                      onClick={() => { setRunError(''); setReverseOpen(true); }}
+                    >
+                      <Undo2 className="size-3.5 shrink-0" aria-hidden />Reverse
+                    </button>
+                  ) : (
+                    <span className="meta"><Lock className="size-3.5 shrink-0 inline" aria-hidden /> Final — cannot be reversed</span>
+                  )
+                ) : (
+                  <>
+                    {alreadyRun && (
+                      <button
+                        className="btn"
+                        disabled={!cycle?.canReverse || running || freezing || reversing}
+                        title="Discard this draft — no payslip until you Run Payroll again and Freeze"
+                        onClick={handleDiscardDraft}
+                      >
+                        <Undo2 className="size-3.5 shrink-0" aria-hidden />{reversing ? 'Reversing…' : 'Reverse'}
+                      </button>
+                    )}
+                    <button
+                      className="btn"
+                      disabled={!(payroll?.canRun ?? false) || entries.length === 0 || running || freezing || reversing || missingCtc.length > 0}
+                      title={
+                        missingCtc.length > 0
+                          ? `Set CTC for: ${missingCtc.join(', ')}`
+                          : cycle?.phase === 'in-progress'
+                            ? `This cycle is still running — Run Payroll opens on ${fmtShortDate(cycle.windowFrom)}.`
+                            : 'Recalculate from attendance and save as a draft (pending requests count as not approved)'
+                      }
+                      onClick={handleRunPayroll}
+                    >
+                      <RefreshCw className="size-3.5 shrink-0" aria-hidden />{running ? 'Running…' : alreadyRun ? 'Run Payroll again' : 'Run Payroll'}
+                    </button>
+                    <button
+                      className="btn primary"
+                      disabled={!canFreeze || running || freezing || reversing}
+                      title={canFreeze ? 'Make this month final and publish payslips to employees' : shownBlockers.join(' ') || 'Not ready to freeze yet'}
+                      onClick={handleFreeze}
+                    >
+                      <Lock className="size-3.5 shrink-0" aria-hidden />{freezing ? 'Freezing…' : 'Freeze'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </>
@@ -584,7 +613,7 @@ export default function Payroll() {
                         <td>{monthKeyToLabel(run.month)}</td>
                         <td>{fmtDateTime(run.runAt)}</td>
                         <td>{run.runBy || '—'}</td>
-                        <td><StatusBadge status="approved" /></td>
+                        <td>{run.frozenAt ? <span className="badge approved">Frozen</span> : <span className="badge pending">Draft</span>}</td>
                         <td style={{ textAlign: 'right' }}>
                           <span className="action-row">
                             <button className="btn ghost sm" onClick={() => toggleHistoryRow(run.month)}>

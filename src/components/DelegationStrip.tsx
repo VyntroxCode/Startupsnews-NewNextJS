@@ -37,7 +37,7 @@ function Group() {
             12<sup>th</sup>&nbsp;Startup Delegation to Dubai
             <span className="sn-ds-dot">•</span>
             <span className="sn-ds-date">
-              6<sup>th</sup>&nbsp;–&nbsp;11<sup>th</sup>&nbsp;Dec 2026
+              7<sup>th</sup>&nbsp;–&nbsp;12<sup>th</sup>&nbsp;Dec 2026
             </span>
           </span>
           <Sparkle />
@@ -63,7 +63,7 @@ export function DelegationStrip() {
   return (
     <div className="sn-ds" role="region" aria-label="Delegation announcement">
       <p className="sn-ds-sr">
-        12th Startup Delegation to Dubai, 6th – 11th December 2026.
+        12th Startup Delegation to Dubai, 7th – 12th December 2026.
       </p>
       <div className="sn-ds-viewport">
         <div className="sn-ds-track" aria-hidden="true">

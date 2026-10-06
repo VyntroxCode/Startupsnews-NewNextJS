@@ -1,10 +1,11 @@
 export type {
   HrTeam, HrHoliday, HrOrgStructure, HrDocRef, HrSignedDoc, HrCtcSplit, HrCtcBreakdown, HrEmployee,
-  HrOnboardingAssets, HrOnboarding, HrAttendanceRecord, HrPunch,
+  HrOnboardingAssets, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrAttendanceOverrideStatus, HrPunch,
   HrApprovalBase, HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask,
   HrPayrollRun, HrPayrollEntry, HrTemplate, HrRules, HrLeaveTypeConfig, HrAuditLogEntry, HrBootstrap, HrCompanyProfile,
 } from '@/modules/hr-tool/domain/types';
 
+export { ATTENDANCE_OVERRIDE_STATUSES, ATTENDANCE_OVERRIDE_LABEL } from '@/modules/hr-tool/domain/types';
 export type { HrKycDocuments, KycSlotDef, KycSectionDef } from '@/modules/hr-tool/domain/kyc';
 export { KYC_SECTIONS, KYC_SLOTS, emptyKycDocuments, computeKycProgress } from '@/modules/hr-tool/domain/kyc';
 

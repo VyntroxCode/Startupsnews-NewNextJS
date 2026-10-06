@@ -1,6 +1,12 @@
+'use client';
+
+import dynamic from 'next/dynamic';
 import type { FundingForecast, FundingSignal } from '@/modules/funding-deals/domain/types';
-import ForecastChart from './charts/ForecastChart';
+import { useReducedMotion } from './dashboard/media';
+import { ChartSkeleton } from './dashboard/parts';
 import { cardCls } from './ui';
+
+const ForecastLine = dynamic(() => import('./dashboard/charts/SmallCharts').then((m) => m.ForecastLine), { ssr: false, loading: () => <ChartSkeleton height="100%" /> });
 
 const ICON: Record<FundingSignal['dir'], { cls: string; glyph: string }> = {
   up: { cls: 'bg-fi-green-light text-fi-green', glyph: '↑' },
@@ -8,8 +14,9 @@ const ICON: Record<FundingSignal['dir'], { cls: string; glyph: string }> = {
   flat: { cls: 'bg-fi-gold-light text-fi-gold', glyph: '→' },
 };
 
-/** Preview .predict-grid: "Projected monthly funding" (forecast chart) + "Signals & read-outs". */
+/** "Projected monthly funding" (Recharts forecast line) + "Signals & read-outs". Supporting tier. */
 export default function OutlookCards({ forecast, signals }: { forecast: FundingForecast | null; signals: FundingSignal[] }) {
+  const reduced = useReducedMotion();
   return (
     <div className="mt-4 grid grid-cols-1 items-stretch gap-3.5 lg:grid-cols-[1.4fr_1fr]">
       <div className={`${cardCls} p-[18px]`}>
@@ -18,7 +25,11 @@ export default function OutlookCards({ forecast, signals }: { forecast: FundingF
           <span className="ml-1.5 inline-flex items-center gap-[5px] rounded-[20px] bg-fi-ai-light px-2 py-[3px] align-middle text-[10px] font-bold text-fi-ai-dark">Trend-based</span>
         </h3>
         <div className="mb-3 text-[11.5px] text-fi-ink-faint">{forecast?.method ?? '—'}</div>
-        {forecast ? <ForecastChart forecast={forecast} /> : <div className="h-[270px] animate-pulse rounded-lg bg-fi-bg" />}
+        {!forecast ? (
+          <ChartSkeleton height={270} />
+        ) : forecast.historyValues.length ? (
+          <div className="h-[240px] sm:h-[270px]" aria-hidden><ForecastLine forecast={forecast} reduced={reduced} /></div>
+        ) : null}
       </div>
       <div className={`${cardCls} p-[18px]`}>
         <h3 className="m-0 mb-1 font-(family-name:--font-fi-space) text-[14px] font-bold text-fi-ink">Signals &amp; read-outs</h3>

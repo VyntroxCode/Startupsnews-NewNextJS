@@ -2,11 +2,12 @@ import Link from "next/link";
 import { getEventsByRegion } from "@/lib/data-adapter";
 import { EventsSearchBar } from "@/components/EventsSearchBar";
 import type { StartupEvent } from "@/modules/events/domain/types";
-import { OTHER_CITIES_SECTION, citySectionQualifies } from "@/modules/partnership-events/domain/country-city-data";
+import { OTHER_CITIES_SECTION, citySectionQualifies, isoForCountry } from "@/modules/partnership-events/domain/country-city-data";
 import { eventDateSortKey } from "@/modules/partnership-events/utils/public-event.utils";
 import { NON_GEOGRAPHIC_REGIONS, resolveCountry } from "@/modules/events/utils/region-country.utils";
 import { COHORT_PARTNERSHIP_TYPE } from "@/modules/partnership-events/domain/types";
 import { EventsByCountryList } from "@/components/EventsByCountryList";
+import { EventsCountryStrip, type CountryCircle } from "@/components/EventsCountryStrip";
 
 import type { Metadata } from "next";
 
@@ -95,6 +96,33 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
   return Object.fromEntries(orderedEntries);
 }
 
+/** Public folder of the round (1x1) flag SVGs, keyed by lower-case ISO alpha-2 (`in.svg`). Only the
+ * countries that had events on 2026-10-06 are uploaded so far; a missing file falls back to the
+ * country's initials inside the circle (EventsCountryStrip). */
+const FLAG_BASE_URL = [
+  (process.env.S3_IMAGE_BASE_URL || "https://startupnews-media-2026.s3.us-east-1.amazonaws.com").replace(/\/$/, ""),
+  (process.env.S3_UPLOAD_PREFIX || "startupnews-in").replace(/^\/|\/$/g, ""),
+  "flags/1x1",
+].join("/");
+
+/** Every country for the "Explore by Country" strip, A–Z in one row (busy and quiet countries
+ * used to sit in two rows — merged on 2026-10-06). Cohort and non-place labels ("Online") get no
+ * circle. */
+function buildCountryCircles(eventsByRegion: Record<string, StartupEvent[]>): CountryCircle[] {
+  const countries = new Set<string>();
+  for (const [region, events] of Object.entries(eventsByRegion)) {
+    if (!events || events.length === 0) continue;
+    if (region === COHORT_PARTNERSHIP_TYPE || NON_GEOGRAPHIC_REGIONS.has(region)) continue;
+    const country = resolveCountry(region, events);
+    if (NON_GEOGRAPHIC_REGIONS.has(country)) continue;
+    countries.add(country);
+  }
+  return [...countries].sort((a, b) => a.localeCompare(b)).map((name) => {
+    const iso = isoForCountry(name);
+    return { name, iso, flagUrl: iso ? `${FLAG_BASE_URL}/${iso}.svg` : "" };
+  });
+}
+
 export const revalidate = 60;
 
 export const metadata: Metadata = {
@@ -122,6 +150,7 @@ export default async function EventsPage() {
   // Rendered A–Z here so the page stays ISR-cached; EventsByCountryList lifts the visitor's own
   // city/country to the top in the browser once it knows their location.
   const eventsByCountry = groupByCountry(eventsByRegion);
+  const countryCircles = buildCountryCircles(eventsByRegion);
   // Deduped by slug (falling back to id) — a handful of legacy/duplicate rows can otherwise
   // appear twice in the flat region map, which would show the same card twice in search results.
   const allEvents = Array.from(
@@ -145,6 +174,7 @@ export default async function EventsPage() {
               Events
             </span>
           </nav>
+          <EventsCountryStrip countries={countryCircles} />
           <div className="mvp-main-blog-out left relative event-by-country-out">
             <div className="mvp-main-blog-in event-by-country-in">
               <div className="mvp-main-blog-body left relative event-by-country-body">

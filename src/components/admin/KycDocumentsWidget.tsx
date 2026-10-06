@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { KYC_SECTIONS, validateKycField, type HrKycDocuments, type HrKycSlotValue, type KycSlotDef } from '@/modules/hr-tool/domain/kyc';
 
-const cardClass = 'mt-4 rounded-xl border border-solid border-black/5 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm box-border sm:p-6 md:mt-6 md:p-8';
+const cardClass = 'mt-4 rounded-xl border border-solid border-black/5 bg-linear-to-br from-white to-slate-50 p-4 shadow-sm box-border sm:p-6 md:mt-6 md:p-8';
 const inputClass = 'box-border min-h-11 w-full rounded-lg border border-solid border-slate-200 bg-white px-3 py-2 text-base sm:text-sm';
 const labelClass = 'mb-1 block text-xs font-semibold text-slate-600';
 /** A slot with 2–3 text fields sits side by side from `sm` up and stacks on phones. */

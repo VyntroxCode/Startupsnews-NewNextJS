@@ -116,7 +116,7 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v122</span>
+    <span class="badge v">Version v142</span>
     <span class="badge">Released 2026-10-01</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
@@ -633,10 +633,11 @@ flowchart LR
   <figure class="diagram">
     <pre class="mermaid">
 flowchart LR
-    E(("Employee")) --> R["Resigns from<br/>My Exit"]
+    E(("Employee")) --> R["Resigns from My Exit:<br/>system date = today + 30<br/>+ optional requested date"]
     HR(("HR / Founder")) --> T["Starts an exit<br/>(resignation or termination)"]
     R --> W["Waiting for HR"]
-    W -->|HR accepts, sets last day| N["Serving notice"]
+    W -->|"HR accepts: requested date,<br/>system date or own date"| N["Serving notice"]
+    N -->|"employee stops before the agreed day:<br/>HR records 'left early'"| X
     W -->|employee withdraws or HR rejects| C["Closed"]
     T --> N
     N -->|HR cancels| C
@@ -651,7 +652,7 @@ flowchart LR
     X --> CL
     X -->|HR reinstates, with a reason| B["Back to work"]
     </pre>
-    <figcaption>The exit record decides what the person can still open. Nobody has to remember to switch the login off: the day after the last working day, the system does it.</figcaption>
+    <figcaption>The exit record decides what the person can still open. Nobody has to remember to switch the login off: the day after the last working day, the system does it. Salary is paid up to the date HR accepted. Only days missed by leaving early without approval are recovered in the Full &amp; Final.</figcaption>
   </figure>
   <h3>Following up a lead (arch.md §6.12)</h3>
   <figure class="diagram">
@@ -690,8 +691,8 @@ flowchart LR
     FD -->|"new deals only —<br/>repeats are skipped"| DB[("Funding deals list")]
     FD -->|"one entry per file,<br/>can be undone"| H[("Upload history")]
     DB --> FP["Reader dashboard →<br/>Funding page"]
-    R(("Logged-in reader")) -->|"filters, country,<br/>week / month / year"| FP
-    FP -->|"charts, totals, deal table,<br/>Excel download"| R
+    R(("Logged-in reader")) -->|"country,<br/>week / month / year"| FP
+    FP -->|"totals, trend, sector map, money flow,<br/>cities, investors, deal table, Excel"| R
     </pre>
     <figcaption>Readers only ever see what the Financial Analyst or Admin has saved. A wrong upload can be removed in one click from Upload History.</figcaption>
   </figure>
@@ -879,8 +880,37 @@ flowchart LR
       <tr><td><strong>v104</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool: payroll can be run even while leave or regularisation requests are still waiting. It uses the current attendance, marks those people's payslips <strong>Provisional</strong>, and updates them by itself as each request is approved or rejected. The month locks only once nothing is waiting</td></tr>
       <tr><td><strong>v105</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool → Attendance: new <strong>Monthly attendance</strong> table — every employee's days for any past salary month, with a click-through to their calendar for that month</td></tr>
       <tr><td><strong>v106</strong></td><td>2026-10-01</td><td>Medium</td><td>HR tool → Payroll: approve or reject an employee's waiting requests straight from their payroll row; the payroll notice boxes are gone</td></tr>
+      <tr><td><strong>v112</strong></td><td>2026-10-02</td><td>Major</td><td>HR tool → Payroll: three buttons — <strong>Run Payroll</strong> (draft), <strong>Freeze</strong> (final, payslips published) and <strong>Reverse</strong> (undo the latest freeze). Employees get a new <strong>My Payslips</strong> page to download frozen payslips</td></tr>
+      <tr><td><strong>v117</strong></td><td>2026-10-03</td><td>Medium</td><td>HR tool → Leave: a day with no punch-in and no leave request is now paid from the employee&apos;s Casual leave automatically while the balance lasts; only the days beyond the balance are LOP. The Casual leave card shows what is left, the total for the year and how much was used this month</td></tr>
+      <tr><td><strong>v118</strong></td><td>2026-10-03</td><td>Medium</td><td>HR tool → Offboarding: every resignation has a fixed <strong>30-day system date</strong>, the employee can request a different date, and HR accepts one of three dates. Salary is paid up to the chosen date with no deduction; only an employee who <strong>leaves before the agreed date</strong> without approval has the missed days recovered in the Full &amp; Final</td></tr>
+      <tr><td><strong>v119</strong></td><td>2026-10-03</td><td>Medium</td><td>HR tool → Attendance calendar: HR Head / Founder can again <strong>set a day&apos;s status</strong> (Present, Short leave, Half day, Absent, Unpaid leave, Week-off) with a reason. A <strong>warning popup</strong> explains the pay impact first; payroll, the HR calendar and the employee&apos;s calendar all follow the change at once</td></tr>
+      <tr><td><strong>v120</strong></td><td>2026-10-04</td><td>Medium</td><td>Sign-in popup: new <strong>Sign up with Email</strong> button. Readers can create an account with name, email, mobile number and password, or sign in with email and password, without using Google.</td></tr>
       <tr><td><strong>v121</strong></td><td>2026-10-04</td><td>Major</td><td>New <strong>Funding</strong> page on the reader dashboard (yearly overview chart, filters, totals, top sectors/stages/cities/investors, all deals, Excel download), fed by a new admin role, <strong>Financial Analyst</strong>, who adds deals by hand or uploads Excel files in Admin → <strong>Funding Data</strong>.</td></tr>
       <tr><td><strong>v122</strong></td><td>2026-10-04</td><td>Major</td><td>Funding grows into five pages (<strong>Dashboard, All Deals, Market Analysis, Search, AI Assistant</strong>) with the same charts and look as the approved design preview: 12-month outlook, six market-analysis views, a search page, and an admin <strong>AI Data Sources</strong> tab (layout only for now).</td></tr>
+      <tr><td><strong>v123</strong></td><td>2026-10-04</td><td>Medium</td><td>Sign-in popup: the email option becomes a <strong>Login / Sign up</strong> button that opens a new full-screen <strong>login page</strong> with every option (Google, create account, sign in). After signing in, readers land on the homepage and see the welcome popup.</td></tr>
+      <tr><td><strong>v124</strong></td><td>2026-10-04</td><td>Medium</td><td>HR tool → pay: <strong>half days</strong>, days with <strong>no punch-out / too few hours</strong>, and the <strong>½ day cut for every 3rd short leave</strong> are now paid from the employee's <strong>Casual leave</strong> automatically while they have balance, the same way full absences already were. Loss of pay only when Casual runs out.</td></tr>
+      <tr><td><strong>v125</strong></td><td>2026-10-04</td><td>Medium</td><td>Sign-in popup now has <strong>one button</strong>, <strong>Login / Sign up</strong>, with new wording; Google sign-in moved to the login page. The login page got a new light look with an animation on the right.</td></tr>
+      <tr><td><strong>v126</strong></td><td>2026-10-05</td><td>Medium</td><td>HR tool → Attendance: <strong>Regularization requests</strong> are now shown <strong>one pay cycle at a time</strong>, opening on the current cycle, with arrows to see earlier cycles. A note warns when requests are still pending in another cycle.</td></tr>
+      <tr><td><strong>v127</strong></td><td>2026-10-05</td><td>Medium</td><td>HR tool → Attendance: <strong>Punch In</strong> works only from <strong>9:00 AM to 3:00 PM</strong>, and <strong>Punch Out</strong> until <strong>11:59 PM</strong>. No punching in after punching out. Correction requests use the same times. HR can change the times on the Rules page.</td></tr>
+      <tr><td><strong>v131</strong></td><td>2026-10-05</td><td>Medium</td><td>Employee portal → Attendance: the <strong>pay cycle</strong> tiles now look and read exactly like HR's attendance calendar — same tiles, same order, same colours — plus Casual leave balance, regularization counts and a payslip line (no salary amounts).</td></tr>
+      <tr><td><strong>v132</strong></td><td>2026-10-06</td><td>Medium</td><td>HR tool → Payroll: <strong>Freeze is now permanent</strong>. A frozen month can never be reversed or changed. <strong>Reverse</strong> now works only on a payroll that was run but not frozen yet: it throws the draft away so the next Run Payroll reads attendance afresh.</td></tr>
+      <tr><td><strong>v133</strong></td><td>2026-10-06</td><td>Medium</td><td>HR tool → pay: <strong>short leaves</strong> now cost half a day on the <strong>5th, 8th, 11th, 14th…</strong> in a pay cycle (first 2 fully paid, then every 3rd). Before it was the 3rd, 6th, 9th…</td></tr>
+      <tr><td><strong>v134</strong></td><td>2026-10-06</td><td>Medium</td><td>HR tool → leave: Casual leave is used <strong>only when the employee applies and HR approves</strong>. A missed day without leave is absent and loss of pay, even with balance. Leave can be applied for <strong>any date</strong> (past, today or future), except in a frozen month. Casual is credited <strong>each time a pay cycle ends</strong> (on the 26th), not when the employee joins.</td></tr>
+      <tr><td><strong>v135</strong></td><td>2026-10-06</td><td>Medium</td><td>HR tool → leave: <strong>everyone's Casual balance starts again at 0</strong> on 6 Oct 2026. The first Casual is credited on <strong>26 Oct 2026</strong>. Leave applied before this change keeps the pay it already had.</td></tr>
+      <tr><td><strong>v136</strong></td><td>2026-10-06</td><td>Medium</td><td>Attendance: forgot to punch out? The Today card now shows a reminder for each recent day without a punch-out, with a <strong>Regularize Punch Out</strong> button. Punch-out can also be regularized for <strong>today</strong> (for a time that has already passed).</td></tr>
+      <tr><td><strong>v137</strong></td><td>2026-10-06</td><td>Medium</td><td>HR tool → Offboarding: a resigning employee who leaves before the accepted last day gets <strong>no salary, leave or expenses</strong> in the Full &amp; Final and owes a flat <strong>1 month's salary</strong> (HR can adjust with a note)</td></tr>
+      <tr><td><strong>v138</strong></td><td>2026-10-06</td><td>Medium</td><td>Events page: new <strong>Explore by Country</strong> strip of round flag circles below the breadcrumb. Click a flag to jump to that country's events. Busy countries (a city with 3+ events) slide left → right, and "Other Countries" slide right → left.</td></tr>
+      <tr><td><strong>v139</strong></td><td>2026-10-06</td><td>Medium</td><td>Event page: banner on the left, with a <strong>details box</strong> on the right (title, date, time, venue, organiser, price and the Get Access Now button) that stays in view while you scroll. The description now sits under an "About" heading.</td></tr>
+      <tr><td><strong>v140</strong></td><td>2026-10-06</td><td>Medium</td><td>Event page: a <strong>Similar Events</strong> row of 3 cards at the bottom, from the same city first, then the same country, then any upcoming event.</td></tr>
+      <tr><td><strong>v141</strong></td><td>2026-10-06</td><td>Major</td><td>Reader dashboard → Funding: rebuilt as a guided story. A big <strong>total funding</strong> figure with year-on-year change, then the trend, a <strong>sector map</strong>, round stages, a <strong>money-flow chart</strong> from round stage to sector, a city chart, investors and companies, and the outlook. Hovering a sector or stage lights it up in every chart. Every number comes from the funding database.</td></tr>
+      <tr><td><strong>v142</strong></td><td>2026-10-06</td><td>Medium</td><td>Reader dashboard → <strong>Funding</strong> is locked: the menu item shows a lock and does not open, and a direct link shows a "Funding is locked" message.</td></tr>
+      <tr><td><strong>v130</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the <strong>Leads by page</strong> tiles (one per website page) are back, exactly as before, just below the new Leads overview.</td></tr>
+      <tr><td><strong>v129</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the old <strong>Summary</strong> and <strong>Leads by page</strong> boxes are replaced by one <strong>Leads overview</strong> that counts every lead — every website page, Expand North Star and leads added by the team — by type and by status, with charts. Click any number to see those leads.</td></tr>
+      <tr><td><strong>v128</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: clicking any lead now opens it <strong>ready to edit</strong> — no more "Edit lead" button. Pressing <strong>Save changes</strong> shows a warning listing what you changed, and nothing is saved until you confirm.</td></tr>
+      <tr><td><strong>v116</strong></td><td>2026-10-03</td><td>Medium</td><td>HR tool → Regularization limit: rejected requests now use up a day of the 5-day limit too. Before, a rejected request gave the day back</td></tr>
+      <tr><td><strong>v115</strong></td><td>2026-10-03</td><td>Medium</td><td>HR tool → Attendance calendar: the "Reg. pending" and "Regularized" tiles count only requests the employee applied for (old HR corrections are left out) and show how much of the limit is used. Clicking either tile lists every request in the cycle</td></tr>
+      <tr><td><strong>v114</strong></td><td>2026-10-03</td><td>Medium</td><td>HR tool → Short leave: counted in sets of 3 — two are free, the third costs half a day, then the count starts again (3rd, 6th, 9th… cost half a day). Before, every short leave after the second cost half a day</td></tr>
+      <tr><td><strong>v113</strong></td><td>2026-10-02</td><td>Medium</td><td>HR tool → Payroll: no more "pending requests" messages or links on the Payroll page (requests are handled only in Attendance / Leave). The CSV, Excel and All payslips (ZIP) buttons moved to the top, next to the month buttons</td></tr>
       <tr><td><strong>v111</strong></td><td>2026-10-01</td><td>Medium</td><td>Reader dashboard: a red "Tell us where you're based" card asks for country and city when either is missing</td></tr>
       <tr><td><strong>v110</strong></td><td>2026-10-01</td><td>Medium</td><td>Reader dashboard: no more fake "0%" or "0 reports this week" when the profile fails to load; old logins are asked to sign in again; WhatsApp tile opens the community group</td></tr>
       <tr><td><strong>v109</strong></td><td>2026-10-01</td><td>Medium</td><td>Employee panel: an alarm rings at 11 AM and 4 PM if the employee still has even one Pending lead</td></tr>
@@ -4190,6 +4220,723 @@ PHONE                                   +--------------------+
         <div class="wf-row" style="margin-top:4px"><div class="wf-box">Kapil Suri · LOP 0 · ₹1,00,000</div></div>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="v136">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v136</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> An employee who forgot to punch out found no way to fix it. The <strong>Regularize Punch Out</strong> button only appeared after clicking that exact day on the calendar, and never for today. Now it is easy to find, and it works for today too.</p>
+    <table>
+      <thead><tr><th>Situation</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Forgot to punch out on an earlier day</td><td>Hidden until you clicked that day on the calendar</td><td>A yellow reminder on the Today card lists the day with a <strong>Regularize Punch Out</strong> button. One click opens the form for that day.</td></tr>
+        <tr><td>Need to fix today's punch-out</td><td>Not possible</td><td>Possible, for a time that has already passed (e.g. you left at 6:30 PM and noticed at 8 PM).</td></tr>
+      </tbody>
+    </table>
+    <p>The same rules as before apply: the request must be made within the regularization window, it counts toward the monthly limit, and HR approves or rejects it.</p>
+    <div class="wf">
+      <div class="wf-bar">Attendance — Today card</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Today · Tuesday, 6 October 2026 · Punch In 10:05 am · Punch Out —</div></div>
+        <div class="wf-row"><div class="wf-box">⚠ No punch-out recorded — the day counts as Absent until a regularization is approved.</div></div>
+        <div class="wf-row"><div class="wf-box">Monday, 5 October 2026</div><div class="wf-box brand">[Regularize Punch Out]</div></div>
+        <div class="wf-row"><div class="wf-box">[Regularize Punch In]</div><div class="wf-box brand">[Regularize Punch Out] (today)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v137">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v137</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> When someone resigns and then stops coming before the last working day HR accepted, the Full &amp; Final settlement now follows one simple rule. They are paid nothing, and they owe one month's salary, no matter how many days they worked or missed.</p>
+    <table>
+      <thead><tr><th>Part of the settlement</th><th>Before</th><th>Now (after HR clicks "Employee left early")</th></tr></thead>
+      <tbody>
+        <tr><td>Salary held during the notice period</td><td>Paid up to the day they actually left</td><td>₹0, forfeited</td></tr>
+        <tr><td>Leave encashment</td><td>Paid</td><td>₹0, forfeited</td></tr>
+        <tr><td>Approved expense claims</td><td>Paid</td><td>₹0, forfeited</td></tr>
+        <tr><td>Recovery from the employee</td><td>Missed days × daily salary (e.g. 10 days = ⅓ month)</td><td>A flat <strong>1 month's salary</strong> (Annual CTC ÷ 12)</td></tr>
+        <tr><td>Checklist recoveries (unreturned laptop, unpaid advance…)</td><td>Deducted</td><td>Still deducted</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Example.</strong> Annual CTC ₹6,00,000, agreed last day 2 Nov, stopped coming on 23 Oct. Settlement: salary ₹0, leave ₹0, expenses ₹0, recovery ₹50,000. The employee owes ₹50,000. HR records the recovery reference when marking it settled.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Who applies it?</td><td>HR, by clicking "Employee left early" and entering the day they last worked and a note. Nothing is detected automatically.</td></tr>
+        <tr><td>Who does it apply to?</td><td>Resignations only. Terminations are not affected.</td></tr>
+        <tr><td>Can HR change the amounts?</td><td>Yes. HR can edit any line on the draft settlement, for example lower the recovery or pay out the expenses, with a note saying why.</td></tr>
+        <tr><td>Does choosing an earlier date cost the employee?</td><td>No. Any date HR accepts, and HR's own "Exit now", cost nothing. Only leaving before the accepted date without approval does.</td></tr>
+        <tr><td>Is the employee told?</td><td>Yes. The acceptance email, the My Exit page and the "left early" email all state the rule.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Offboarding → Employee left early</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Day they actually last worked: [ 23 Oct 2026 ]</div><div class="wf-box">Recovered in F&amp;F: 1 month's salary (Annual CTC ÷ 12). No salary, leave or expenses paid.</div></div>
+        <div class="wf-row"><div class="wf-box">Note: [ Stopped coming from 24 Oct, not reachable ]</div></div>
+        <div class="wf-row"><div class="wf-box">[ Cancel ]</div><div class="wf-box brand">[ Record left early ]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v138">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v138</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> The Events page has a new <strong>Explore by Country</strong> strip just below the "Home / Events" breadcrumb. Each country with events gets a round flag with its name underneath. Click a flag and the page scrolls smoothly to that country's events.</p>
+    <table>
+      <thead><tr><th>Row</th><th>Which countries</th><th>How it moves</th></tr></thead>
+      <tbody>
+        <tr><td>Top row</td><td>Countries where at least one city has <strong>3 or more</strong> events (today: India, Singapore, South Africa, UAE)</td><td>Slides left → right</td></tr>
+        <tr><td>"Other Countries" row</td><td>Every other country with events (today: China, Japan, Kenya, Morocco, Netherlands, Philippines, Saudi Arabia, Spain, Thailand, Türkiye, USA)</td><td>Slides right → left</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Does anyone have to maintain it?</td><td>No. A country moves between the rows on its own as events are added or end.</td></tr>
+        <tr><td>Order?</td><td>A to Z in both rows.</td></tr>
+        <tr><td>Can I stop it moving?</td><td>Yes. It pauses while the mouse is over it or a finger is on it. Visitors who have turned on "reduce motion" on their device see a still row they can swipe. A row with only a few flags that fit on screen just sits still in the middle.</td></tr>
+        <tr><td>Online and Cohort events?</td><td>No flag for these. Their sections still appear at the end of the page as before.</td></tr>
+        <tr><td>Where do the flags come from?</td><td>Our own image storage. Only the 15 countries that have events today are uploaded. If a new country appears before its flag is added, its circle shows the country's two-letter code instead.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/events</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Home / Events</div></div>
+        <div class="wf-row"><div class="wf-box brand">Explore by Country</div></div>
+        <div class="wf-row"><div class="wf-box">( 🇮🇳 ) India</div><div class="wf-box">( 🇸🇬 ) Singapore</div><div class="wf-box">( 🇿🇦 ) South Africa</div><div class="wf-box">( 🇦🇪 ) UAE   →</div></div>
+        <div class="wf-row"><div class="wf-box">Other Countries</div></div>
+        <div class="wf-row"><div class="wf-box">←   ( 🇨🇳 ) China</div><div class="wf-box">( 🇯🇵 ) Japan</div><div class="wf-box">( 🇰🇪 ) Kenya</div><div class="wf-box">( 🇲🇦 ) Morocco …</div></div>
+        <div class="wf-row"><div class="wf-box">Events  [ Search events… ]</div></div>
+        <div class="wf-row"><div class="wf-box">India → Bengaluru · Delhi NCR · … (unchanged)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v139">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v139</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> On a single event's page, the date, time and venue used to appear only at the very bottom, after the full description. Now they sit in a box beside the banner, so a visitor sees the key facts and the button straight away.</p>
+    <table>
+      <thead><tr><th>Part</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Layout (computer)</td><td>One narrow column: banner, title, description, then details</td><td>Two columns: banner and "About" on the left, a details box on the right</td></tr>
+        <tr><td>Details box</td><td>—</td><td>Event name, date, time, venue (opens Google Maps), organiser and ticket price when known, and a big <strong>Get Access Now</strong> button. It stays in view while the visitor scrolls the description.</td></tr>
+        <tr><td>Date / Time / Venue</td><td>At the bottom, after the description</td><td>In the details box</td></tr>
+        <tr><td>Phone</td><td>Same single column</td><td>Banner, then the details box, then "About"</td></tr>
+        <tr><td>Speakers and "More Events"</td><td>Under the description</td><td>Unchanged, under the description</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/startup-events/&lt;event&gt;</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Home / Events / CIMP AutoEcosystems Expo</div></div>
+        <div class="wf-row"><div class="wf-box">[ Event banner ]</div><div class="wf-box">CIMP AutoEcosystems Expo<br>📅 12 Mar – 15 Mar 2027<br>🕘 9:00 AM – 6:00 PM<br>📍 Shenzhen World Exhibition Center<br><span class="brand">[ Get Access Now ]</span></div></div>
+        <div class="wf-row"><div class="wf-box">About<br>The global automotive industry is undergoing…<br>Key Speakers / Guests · More Events →</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v140">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v140</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> Below an event's details there is now a <strong>Similar Events</strong> row with 3 cards, so a visitor can move on to the next relevant event without going back to the Events page.</p>
+    <table>
+      <thead><tr><th>Step</th><th>Which events fill the 3 spots</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Other upcoming events in the <strong>same city</strong>, soonest first</td></tr>
+        <tr><td>2</td><td>Spots still free → upcoming events in the <strong>same country</strong>, other cities, soonest first</td></tr>
+        <tr><td>3</td><td>Spots still free → <strong>any</strong> other upcoming event, soonest first</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Example (today's events)</th><th>Shows</th></tr></thead>
+      <tbody>
+        <tr><td>A Delhi event</td><td>3 more Delhi NCR events</td></tr>
+        <tr><td>An Abu Dhabi event</td><td>1 more Abu Dhabi event + 2 Dubai events</td></tr>
+        <tr><td>A Nairobi event (no other Kenya events)</td><td>3 of the soonest events anywhere</td></tr>
+      </tbody>
+    </table>
+    <p>The event you're looking at never appears in its own list, and ended events never appear. The cards look the same as on the Events page. If there are no other upcoming events at all, the row is hidden.</p>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/startup-events/&lt;event&gt; (bottom)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">… About · Key Speakers · More Events →</div></div>
+        <div class="wf-row"><div class="wf-box brand">Similar Events</div></div>
+        <div class="wf-row"><div class="wf-box">[ card ]<br>Event 1</div><div class="wf-box">[ card ]<br>Event 2</div><div class="wf-box">[ card ]<br>Event 3</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v141">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v141</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> The reader's <strong>Funding</strong> dashboard is rebuilt to read like a short report, top to bottom. The figures are the same live numbers as before: they come from the deals the Financial Analyst uploads, and nothing is typed into the page.</p>
+    <table>
+      <thead><tr><th>Part of the page</th><th>What it answers</th><th>How it looks</th></tr></thead>
+      <tbody>
+        <tr><td>Overview</td><td>How much money this year, and is it up or down on last year?</td><td>One large total with a green/red change badge, then deals, average round, active sectors, leading sector and most active investor</td></tr>
+        <tr><td>Funding over time</td><td>Is money rising, and is it more deals or bigger rounds?</td><td>Pink area for money, light bars for deals; switch week / month / year</td></tr>
+        <tr><td>Capital by sector</td><td>Which sectors get the money?</td><td>A map of tiles sized by money, plus a top-8 list</td></tr>
+        <tr><td>Capital by round stage</td><td>Which rounds carry the money, and how big are cheques?</td><td>Bars per stage, plus a small chart of deals by round size</td></tr>
+        <tr><td>From round stage to sector</td><td>Where does each stage's money go?</td><td>A flow chart (the centrepiece) and a sector × stage grid under it</td></tr>
+        <tr><td>Cities</td><td>Which cities do many deals, and which do big ones?</td><td>Bubbles: further right = more deals, higher = bigger rounds, bigger = more money; plus a top-8 list</td></tr>
+        <tr><td>Investors and companies</td><td>Who invests most, and who raised most?</td><td>Investor table, top 10 companies, business-model donut</td></tr>
+        <tr><td>12-month outlook</td><td>Where is the trend heading?</td><td>Same straight-line projection and read-outs as before</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can I follow one sector across the charts?</td><td>Yes. Hover (or tap) a sector or a round stage and it lights up in the sector map, the list, the flow chart, the grid and the stage bars.</td></tr>
+        <tr><td>Why can't investor amounts be added up?</td><td>A round's full amount is counted for every investor in it, so two investors in the same round both show it. The table says so under it.</td></tr>
+        <tr><td>What does "Other" mean in the flow chart?</td><td>Sectors and stages outside the top 8, grouped together so the totals still add up.</td></tr>
+        <tr><td>What if a country has no deals (e.g. USA today)?</td><td>The page says there are no deals yet. It shows no zero-filled charts.</td></tr>
+        <tr><td>What do I see while it loads?</td><td>Grey placeholders, never "$0".</td></tr>
+        <tr><td>On a phone?</td><td>Lists come before their charts. The grid becomes a short list per sector. Only the flow chart scrolls sideways.</td></tr>
+        <tr><td>Anything removed?</td><td>No. The sponsor cards, the sample market ticker and the other Funding tabs are unchanged.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/dashboard/funding</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">2026 funding, India · [All] [India] [USA]</div><div class="wf-box brand">$21.29 Bn · −6% vs 2025</div></div>
+        <div class="wf-row"><div class="wf-box">Deals</div><div class="wf-box">Avg. round</div><div class="wf-box">Sectors</div><div class="wf-box">Leading sector</div><div class="wf-box">Top investor</div></div>
+        <div class="wf-row"><div class="wf-box">Funding over time (area + bars)</div></div>
+        <div class="wf-row"><div class="wf-box">Sector map (tiles)</div><div class="wf-box">Top sectors list</div></div>
+        <div class="wf-row"><div class="wf-box">Stage bars</div><div class="wf-box">Round sizes</div></div>
+        <div class="wf-row"><div class="wf-box brand">Money flow: round stage → sector</div></div>
+        <div class="wf-row"><div class="wf-box">Sector × stage grid</div></div>
+        <div class="wf-row"><div class="wf-box">City bubbles</div><div class="wf-box">City leaderboard</div></div>
+        <div class="wf-row"><div class="wf-box">Top investors*</div><div class="wf-box">Top companies · Business models</div></div>
+        <div class="wf-row"><div class="wf-box">12-month outlook · Signals</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v142">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v142</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> The <strong>Funding</strong> section of the reader dashboard is locked for now, the same way Brand Stories, Handouts, Incubators and Grants are. Nothing is deleted. The pages and the data are still there and can be switched back on in one step.</p>
+    <table>
+      <thead><tr><th>Where</th><th>What the reader sees</th></tr></thead>
+      <tbody>
+        <tr><td>Dashboard menu</td><td>"Funding" is greyed out with a lock icon. Clicking it does nothing.</td></tr>
+        <tr><td>Direct link or bookmark (any /dashboard/funding page)</td><td>A "Funding is locked" message with a <strong>Back to Dashboard</strong> button. No charts or deals load.</td></tr>
+        <tr><td>Admin › Funding Data</td><td>Unchanged. The Financial Analyst can still upload and manage deals.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/dashboard/funding</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">🔒 Funding is locked</div></div>
+        <div class="wf-row"><div class="wf-box">This section isn't open for browsing yet. Check back soon.</div></div>
+        <div class="wf-row"><div class="wf-box brand">Back to Dashboard</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v135">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v135</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> Casual leave earned before October no longer counts. Every employee's balance is 0 from 6 Oct 2026. The first Casual arrives on 26 Oct, when the October cycle (26 Sep → 25 Oct) ends. After that the normal rule applies: +1 every time a cycle ends.</p>
+    <table>
+      <thead><tr><th>Date</th><th>Casual balance (no leave taken)</th></tr></thead>
+      <tbody>
+        <tr><td>6 Oct – 25 Oct 2026</td><td>0</td></tr>
+        <tr><td>26 Oct 2026</td><td>1</td></tr>
+        <tr><td>26 Nov 2026</td><td>2</td></tr>
+        <tr><td>26 Dec 2026</td><td>1 (new leave year starts; the old one lapses)</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What about leave applied before this change?</td><td>It keeps exactly the paid / unpaid split it had, and it doesn't use up the new balance.</td></tr>
+        <tr><td>What about leave applied now for a date before 26 Oct?</td><td>It is unpaid, because there's no Casual yet.</td></tr>
+        <tr><td>Leave applied now for a date after 26 Oct?</td><td>The form shows it as unpaid today, because balance is judged as of today. Once the 26 Oct credit lands it is paid, as long as the balance covers it.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v134">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v134</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> Three leave rules changed. Casual leave no longer covers a missed day by itself: the employee must apply and HR must approve. Leave can be applied for any date. Casual is earned when a pay cycle is completed, not on the day someone joins.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Missed day, no leave applied</td><td>Paid from Casual automatically while there was balance (also half days and the ½-day short leaves)</td><td><strong>Absent, loss of pay</strong>, even with Casual left. To use Casual, apply for leave. Once HR approves, the day is paid.</td></tr>
+        <tr><td>Which dates you can apply for</td><td>Today, yesterday or later</td><td><strong>Any date</strong>: past, today or future. Still not allowed: a month whose payroll is frozen, a day HR already set, full-day leave on a day you punched in (half-day is fine), or a date another request already covers.</td></tr>
+        <tr><td>When Casual is credited</td><td>In the joining month, then on the 1st of every month</td><td><strong>When a pay cycle ends</strong>, on the 26th. A new joiner gets the first one when their joining cycle ends (joins 10 Oct → 26 Oct).</td></tr>
+        <tr><td>When unused Casual lapses</td><td>1 January</td><td><strong>26 December</strong> (end of the December cycle). The Casual credited on 26 Dec is the first of the new year, so each year has 12.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Does a pending request pay the day?</td><td>No. It holds the balance, but the day counts as absent until HR approves it.</td></tr>
+        <tr><td>Which months change?</td><td>The current cycle and any payroll that is run but not frozen. Days that were paid from Casual automatically now show as absent, and that Casual goes back into the balance. Employees can apply for leave on those days. Frozen months never change.</td></tr>
+        <tr><td>Do existing employees lose Casual?</td><td>No. They get the same number per year, credited on the 26th instead of the 1st.</td></tr>
+        <tr><td>Can a new joiner take paid leave before their first credit?</td><td>They can apply. Until a credit arrives the days are unpaid.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Employee portal → Apply for Leave</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Type: Casual</div><div class="wf-box">From: any date</div><div class="wf-box">To</div><div class="wf-box">Half day ▾</div></div>
+        <div class="wf-row"><div class="wf-box">"You can apply for any date — past, today or future — except in a month whose payroll is already final. A day you miss without approved leave counts as absent (loss of pay)."</div></div>
+        <div class="wf-row"><div class="wf-box">Preview: 2 days · 2 paid from Casual</div><div class="wf-box brand">[Submit]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v133">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v133</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> A short leave is a day where someone worked fewer hours than a full day but more than a half day. Before, the 3rd, 6th and 9th short leave in a pay cycle each cost half a day. Now the first 2 are fully paid, and after that <strong>every 3rd one</strong> costs half a day. So the first half day happens on the <strong>5th</strong> short leave, then the 8th, 11th, 14th, 17th and so on.</p>
+    <table>
+      <thead><tr><th>Short leave in the cycle</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th></tr></thead>
+      <tbody>
+        <tr><td>Before</td><td>paid</td><td>paid</td><td>½ day</td><td>paid</td><td>paid</td><td>½ day</td><td>paid</td><td>paid</td><td>½ day</td><td>paid</td><td>paid</td></tr>
+        <tr><td>Now</td><td>paid</td><td>paid</td><td>paid</td><td>paid</td><td>½ day</td><td>paid</td><td>paid</td><td>½ day</td><td>paid</td><td>paid</td><td>½ day</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Does the count carry into the next pay cycle?</td><td>No. It starts again from zero every cycle (26th → 25th).</td></tr>
+        <tr><td>Is the half day still taken from Casual leave first?</td><td>Yes, the same as before, while the employee has Casual balance.</td></tr>
+        <tr><td>Which months change?</td><td>The current cycle and any payroll that is run but not frozen. A draft must be run again before Freeze. Frozen months never change.</td></tr>
+        <tr><td>Can HR change it?</td><td>The Rules page setting "Short leave — fully paid per payroll cycle" is still the number of free ones at the start (2). The "every 3rd" after that is fixed.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Attendance calendar — Short leaves tile (HR and employee)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Short leaves 5</div><div class="wf-box">First 2 fully paid, then every 3rd costs ½ day (5th, 8th, 11th…) · 1 deducted</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v132">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v132</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-06</span>
+    </div>
+    <p><strong>What changed.</strong> Before, HR could press <strong>Reverse</strong> on a frozen month and change a salary that employees had already received a payslip for. Now <strong>Freeze is final</strong>: once a month is frozen, nobody can reverse or change it. Reverse moves to the step before that. If HR has pressed Run Payroll but not frozen yet, Reverse throws the draft away and the month starts again from scratch.</p>
+    <table>
+      <thead><tr><th>Button</th><th>What it does now</th><th>When you can use it</th></tr></thead>
+      <tbody>
+        <tr><td>Run Payroll</td><td>Works out everyone's salary from attendance and saves it as a draft. Employees can't see it yet.</td><td>After the cycle ends, until the month is frozen</td></tr>
+        <tr><td>Reverse</td><td>Throws the draft away. No payslip exists for that month. The next Run Payroll reads attendance again from the start.</td><td>Only on a draft (run, not frozen). It asks you to confirm, and no reason is needed. It is saved in the audit log.</td></tr>
+        <tr><td>Freeze</td><td>Makes the month final and publishes payslips to employees.</td><td>When nothing is pending and the draft is up to date. A warning says it is permanent before it goes ahead.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can a frozen month be undone?</td><td>No. The page shows "Final — cannot be reversed". Leave, regularizations and attendance dated in that month can't change either.</td></tr>
+        <tr><td>What if a frozen payslip had a mistake?</td><td>It stays as it is. Fix it in a later month's payroll. Turning frozen reversal back on is possible, but a developer has to make a code change.</td></tr>
+        <tr><td>What do employees see after a draft is reversed?</td><td>Nothing changes for them. Employees only ever see frozen payslips.</td></tr>
+        <tr><td>Do reversed drafts show in Payslip history?</td><td>No. History only lists months that currently have a payroll run.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Payroll — draft month</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Total payout ₹3,79,550 · draft, as of the last run</div><div class="wf-box">↶ Reverse</div><div class="wf-box">⟳ Run Payroll again</div><div class="wf-box brand">🔒 Freeze</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Payroll — frozen month</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Frozen on 30 Oct 2026 by HR. These are the final payslips. This month&apos;s payroll is permanent.</div></div>
+        <div class="wf-row"><div class="wf-box">Total payout ₹3,79,550 · frozen (final)</div><div class="wf-box">🔒 Final — cannot be reversed</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v131">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v131</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-05</span>
+    </div>
+    <p><strong>What changed.</strong> Employees saw their pay cycle numbers in a different set of tiles from the ones HR sees, so the two did not match at a glance. The employee's <strong>Pay cycle</strong> card on the Attendance page now uses HR's layout tile for tile. Salary amounts still stay on the payslip only.</p>
+    <table>
+      <thead><tr><th>Tile</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr><td>Days in cycle</td><td>All days in the cycle, and how many are working days.</td></tr>
+        <tr><td>Present · Half day · Short leaves · Absent</td><td>How each worked or missed day was counted. Short leaves show the rule (e.g. "2 fully paid, every 3rd costs ½ day").</td></tr>
+        <tr><td>LOP days</td><td>Days of pay lost, with what they were made of.</td></tr>
+        <tr><td>Week-offs · Paid days</td><td>Sundays and holidays; total days paid (and how many are still to come).</td></tr>
+        <tr><td>Casual leave</td><td>Balance available today, and how much this cycle used, including leave taken automatically for absences.</td></tr>
+        <tr><td>Reg. pending · Regularizations</td><td>Correction requests still waiting, and how many were applied, approved, and used out of the limit.</td></tr>
+      </tbody>
+    </table>
+    <p>Above the tiles: "26 of 30 days paid · 4 LOP" and a coloured bar (green worked, blue paid leave, red loss of pay). Below: "Payslip for this cycle: 26 paid days · payroll run as a draft".</p>
+    <div class="wf">
+      <div class="wf-bar">Employee portal — Attendance — Pay cycle</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">‹</div><div class="wf-box">Pay cycle 26 Sep – 25 Oct (in progress) · 26 of 30 days paid · 4 LOP</div><div class="wf-box">›</div></div>
+        <div class="wf-row"><div class="wf-box">Days in cycle 30</div><div class="wf-box">Present 17</div><div class="wf-box">Half day 0</div><div class="wf-box">Short leaves 0</div><div class="wf-box">Absent 1</div><div class="wf-box">LOP days 4</div></div>
+        <div class="wf-row"><div class="wf-box">Week-offs 7</div><div class="wf-box">Paid days 26</div><div class="wf-box brand">Casual leave 0 available</div><div class="wf-box">Reg. pending 0</div><div class="wf-box">Regularizations 0 applied</div></div>
+        <div class="wf-row"><div class="wf-box">Payslip for this cycle: 26 paid days · payroll run as a draft</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v130">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v130</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-05</span>
+    </div>
+    <p><strong>What changed.</strong> In v129 the <strong>Leads by page</strong> tiles were removed along with the old Summary. They are back, working exactly as before, and sit just below <strong>Leads overview</strong>.</p>
+    <table>
+      <thead><tr><th>Tile</th><th>Shows</th><th>Click</th></tr></thead>
+      <tbody>
+        <tr><td>Feature Your Startup · Funding Round · Press Release · Sponsor an Event · Expand North Star</td><td>How many leads came from that page. The tile turns red with "N not closed" while any of its leads is still Pending or Follow Up.</td><td>Shows only that page's leads in All leads. Click the same tile again to clear.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Sales Tracker</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Leads overview (tiles, table, chart)</div></div>
+        <div class="wf-row"><div class="wf-box">Feature Your Startup 1</div><div class="wf-box">Funding Round 0</div><div class="wf-box">Press Release 1</div><div class="wf-box">Sponsor an Event 0</div><div class="wf-box brand">Expand North Star 6 · 6 not closed</div></div>
+        <div class="wf-row"><div class="wf-box">All leads</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v129">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v129</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-05</span>
+    </div>
+    <p><strong>What changed.</strong> The Sales Tracker had two boxes at the top. <strong>Summary</strong> only broke leads down by the five types a team member picks by hand, so leads from website forms were in the total but in no row (for example, rows added up to 2 while the total said 5), and Expand North Star enquiries were counted only in "Pending leads". <strong>Leads by page</strong> showed the website pages separately. Both are replaced by one box, <strong>Leads overview</strong>, where every lead is counted once and every row and column adds up.</p>
+    <table>
+      <thead><tr><th>Part</th><th>What it shows</th><th>Click it to…</th></tr></thead>
+      <tbody>
+        <tr><td>Status tiles</td><td>All leads, Pending, Follow Up, Confirmed, Not Interested — each with its share of all leads</td><td>See those leads in All leads</td></tr>
+        <tr><td>Status bar</td><td>One coloured bar splitting all leads by status (amber, blue, green, red)</td><td>—</td></tr>
+        <tr><td>Leads by type and status (table)</td><td>One row per lead type in two groups — <em>From website pages</em>: Feature Your Startup, Funding Round, Press Release, Sponsor an Event, Expand North Star; <em>Added by the team</em>: Social Media, Events, PR-National, PR-International, Others — and a column per status plus Total</td><td>Any number: see exactly those leads (e.g. Press Release · Follow Up)</td></tr>
+        <tr><td>Leads by type (chart)</td><td>A bar per lead type, its length = number of leads, coloured by status</td><td>See all leads of that type</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Is it live?</td><td>Yes — counted from the real leads every time the page loads.</td></tr>
+        <tr><td>Does a number match the list it opens?</td><td>Yes. Clicking sets the All leads filters (type and status), clears the other filters, and scrolls to the list. A banner shows what is filtered with a <em>Show all leads</em> button.</td></tr>
+        <tr><td>What happened to "Pending leads"?</td><td>It is now the Pending tile, and it counts the same leads as everywhere else.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Sales Tracker → Leads overview</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">All leads 9</div><div class="wf-box">Pending 6</div><div class="wf-box">Follow Up 3</div><div class="wf-box">Confirmed 0</div><div class="wf-box">Not Interested 0</div></div>
+        <div class="wf-row"><div class="wf-box">▬▬▬▬▬▬ amber ▬▬▬ blue (status split)</div></div>
+        <div class="wf-row"><div class="wf-box">Table: From website pages — Feature Your Startup · Funding Round · Press Release · Sponsor an Event · Expand North Star / Added by the team — Social Media … Others / Total</div><div class="wf-box">Chart: one coloured bar per lead type</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v128">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v128</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-05</span>
+    </div>
+    <p><strong>What changed.</strong> Before, a lead opened in the Sales Tracker was locked ("Read-only") and you had to click <strong>Edit lead</strong> before changing anything. Now every lead — any type, from any row — opens ready to edit. To stop accidental changes, saving shows a warning first.</p>
+    <table>
+      <thead><tr><th>Step</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Click a lead row (or its button)</td><td>Opens locked; rows had separate <em>View</em> and <em>Edit</em> buttons</td><td>Opens ready to edit; one <em>Edit</em> button per row</td></tr>
+        <tr><td>Change a detail</td><td>Only after clicking <em>Edit lead</em></td><td>Straight away</td></tr>
+        <tr><td>Save</td><td><em>Update lead</em> saved at once</td><td><em>Save changes</em> opens a warning: "Save changes to this lead?" with the list of changed fields. <em>Yes, save changes</em> saves; <em>Go back</em> keeps editing.</td></tr>
+        <tr><td>Close with unsaved edits</td><td>Closed (or asked, on Expand North Star leads)</td><td>Always asks "Discard your unsaved changes?"</td></tr>
+        <tr><td>Fields that stay locked</td><td colspan="2">Arrival date, Last updated, and Source / Type of lead on leads that came from a website page — unchanged.</td></tr>
+        <tr><td>Add new lead</td><td colspan="2">Saves directly, no warning (nothing is being overwritten).</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Save warning</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">⚠ Save changes to this lead? — You're changing: Email ID · Status · Departments / Assigned to</div></div>
+        <div class="wf-row"><div class="wf-box">[ Go back ]</div><div class="wf-box brand">[ Yes, save changes ]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v127">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v127</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-05</span>
+    </div>
+    <p><strong>What changed.</strong> Before, employees could press Punch In and Punch Out at any hour of the day. Now each button works only during set hours (India time). The times are the same for everyone and HR can change them on <strong>Rules &amp; Org Structure → Punch windows</strong>. How a day is paid has not changed.</p>
+    <table>
+      <thead><tr><th>Action</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Punch In</td><td>Any time, once a day</td><td>Only <strong>9:00 AM – 3:00 PM</strong>, once a day. After 3:00 PM the button refuses: "Punch In closed at 3:00 PM".</td></tr>
+        <tr><td>Punch Out (after punching in)</td><td>Any time</td><td>Any time after punching in, up to <strong>11:59 PM</strong>. Leaving early (for example at 1:00 PM) is allowed; the hours worked decide Half day or Absent.</td></tr>
+        <tr><td>Punch Out (without punching in)</td><td>Any time</td><td>Only <strong>3:00 PM – 11:59 PM</strong>.</td></tr>
+        <tr><td>Punch In after Punch Out</td><td>Allowed (counted as 0 hours)</td><td>Not allowed. A mistake is fixed with a correction (regularization) request.</td></tr>
+        <tr><td>Correction request times</td><td>In 8:00 AM – 2:00 PM, Out 2:00 PM – 11:00 PM</td><td>In 9:00 AM – 3:00 PM, Out 3:00 PM – 11:59 PM (same as the buttons)</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Someone punches out at 9:00 PM. What is paid?</td><td>The record shows 9:00 PM, but pay counts only up to the end of the shift (6:30 PM). Same as before.</td></tr>
+        <tr><td>Someone forgets to punch out.</td><td>The day is Absent. They can file a Punch Out correction within the usual 5 days.</td></tr>
+        <tr><td>Does the system punch people out automatically?</td><td>No. The employee must punch out themselves.</td></tr>
+        <tr><td>Where do employees see the times?</td><td>Under the Punch buttons, and on their Rules &amp; Policy page.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Employee attendance card</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">[ Punch In ]</div><div class="wf-box">[ Punch Out ]</div></div>
+        <div class="wf-row"><div class="wf-box">Punch In 9:00 AM – 3:00 PM · Punch Out until 11:59 PM (from 3:00 PM if you haven't punched in)</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Rules &amp; Org Structure → Attendance &amp; leave window rules</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Punch windows</div><div class="wf-box">In [09:00] to [15:00] · Out [15:00] to [23:59]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v126">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v126</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-05</span>
+    </div>
+    <p><strong>What changed.</strong> On the HR tool's Attendance page, the <strong>Regularization requests</strong> table used to list every request ever made, from every month, in one long list. It now shows <strong>one pay cycle at a time</strong> (26th to 25th), the same way the Monthly attendance table does. It always opens on the <strong>current</strong> pay cycle. Arrows move to earlier cycles, and a "Current cycle" button jumps back. Newest dates are shown first.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Which requests show</td><td>All requests from all months, mixed together</td><td>Only requests for dates in the chosen pay cycle</td></tr>
+        <tr><td>When the page opens</td><td>Everything</td><td>The current pay cycle</td></tr>
+        <tr><td>Older cycles</td><td>Scroll through the long list</td><td>‹ › arrows next to the heading; "Current cycle" button to come back</td></tr>
+        <tr><td>Order</td><td>Mixed</td><td>Newest date first</td></tr>
+        <tr><td>Pending requests in another cycle</td><td>Somewhere in the list</td><td>An amber note: "N pending requests in other pay cycles — use the arrows to find them."</td></tr>
+        <tr><td>Nothing in the cycle</td><td>"Nothing here."</td><td>"No regularization requests in this pay cycle."</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Which cycle does a request belong to?</td><td>The cycle of the date being corrected, not the date it was filed.</td></tr>
+        <tr><td>Did any rules change?</td><td>No. Limits, time windows and approvals are the same. Only the list view changed.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Attendance → Regularization requests</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Regularization requests</div><div class="wf-box">‹ 26 Sept 2026 – 25 Oct 2026 › [ Current cycle ]</div></div>
+        <div class="wf-row"><div class="wf-box">Rules line · Showing the current pay cycle. · 2 pending requests in other pay cycles</div></div>
+        <div class="wf-row"><div class="wf-box">Employee · Date · Type · Requested time · Reason · Status · Action (newest first)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v125">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v125</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-04</span>
+    </div>
+    <p><strong>What changed.</strong> The sign-in popup had two buttons (Google, and Login / Sign up). It now has <strong>one</strong>: a pink <strong>Login / Sign up</strong> button that opens the login page. Google sign-in, email sign-up and email sign-in are all on that page. The popup's wording is new. The login page itself was redesigned: a light page with the logo, a headline and the sign-in card on the left, and an animated illustration on the right (computer only).</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Popup heading</td><td>Sign-In/Up for Free</td><td>Stay ahead of the startup story</td></tr>
+        <tr><td>Popup text</td><td>Unlock unlimited access to News, Articles, Special Reports, Curated Newsletters built for You &amp; Your Business.</td><td>Unlimited news, special reports and curated newsletters on startups and funding. Free with one account.</td></tr>
+        <tr><td>Popup buttons</td><td>Sign In/Up with Google · or · Login / Sign up</td><td>Login / Sign up (one pink button)</td></tr>
+        <tr><td>Login page</td><td>Pink panel on the left, white card on the right</td><td>Light page: logo, "Know what's next", sign-in card (Sign up / Log in tabs, Continue with Google, email form), and an animation panel on the right</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can readers still use Google?</td><td>Yes, one click on the login page: "Continue with Google".</td></tr>
+        <tr><td>What happens after signing in?</td><td>Same as before: the homepage, with the welcome popup.</td></tr>
+        <tr><td>Do phones see the animation?</td><td>No. On phones and tablets the page shows only the logo, headline and card.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Sign-in popup (bottom of a news page)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Stay ahead of the startup story · Unlimited news, special reports and curated newsletters…</div></div>
+        <div class="wf-row"><div class="wf-box brand">[ Login / Sign up → ]</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">/login (computer)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">StartupNews logo<br/>Know what's next<br/>( Sign up ) ( Log in )<br/>[ G Continue with Google ]<br/>— or —<br/>[ Full name ] [ Email ] [ IN +91 ▾ | Mobile ] [ Password 👁 ]<br/>[ Continue with email ]<br/>[ ← Back to StartupNews ]</div><div class="wf-box brand">Animated illustration</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v124">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v124</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-04</span>
+    </div>
+    <p><strong>What changed.</strong> Before, Casual leave was used automatically only when someone did not come in at all. If they came in but left early (a half day), forgot to punch out, or took a 3rd short leave, the missing part was cut from salary as loss of pay (LOP), even when they still had Casual leave left. Now those days use Casual leave first, exactly like full absences. LOP happens only when the Casual balance is used up.</p>
+    <table>
+      <thead><tr><th>Situation</th><th>Casual leave used</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Did not come in, no leave applied</td><td>1 day</td><td>Paid from Casual</td><td>Paid from Casual (no change)</td></tr>
+        <tr><td>Half day (left early)</td><td>½ day</td><td>½ day LOP</td><td>Paid from Casual</td></tr>
+        <tr><td>Punched in but no punch-out, or too few hours</td><td>1 day</td><td>1 day LOP</td><td>Paid from Casual</td></tr>
+        <tr><td>3rd short leave in a pay cycle (1st and 2nd are free)</td><td>½ day</td><td>½ day LOP</td><td>Paid from Casual</td></tr>
+        <tr><td>No Casual leave left</td><td>—</td><td>LOP</td><td>LOP (no change)</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Example?</td><td>Abhishek had 3 half days and 3 Casual leaves. Before: 1.5 days LOP, ₹9,500 instead of ₹10,000. Now: 1.5 Casual used, 0 LOP, full ₹10,000.</td></tr>
+        <tr><td>What if the employee gets a regularization approved for that day?</td><td>The day becomes a normal present day, and the Casual leave comes back to their balance.</td></tr>
+        <tr><td>What if they applied for leave themselves for that day?</td><td>Their own request is used. Nothing extra is taken.</td></tr>
+        <tr><td>What if HR set the day's status by hand?</td><td>HR's status decides the day. Casual is not used automatically.</td></tr>
+        <tr><td>Which days does this apply to?</td><td>From 26 Sept 2026 (the first pay cycle not yet frozen), up to yesterday. Today is decided tomorrow.</td></tr>
+        <tr><td>Where can I see it?</td><td>Attendance calendar: the day shows "½ auto casual". The Casual card says how much was used automatically. The Half day / Absent / LOP tiles count only days that still cost pay.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Attendance calendar: Abhishek Upadhyay, 26 Sept – 25 Oct</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Half day: 0</div><div class="wf-box">LOP days: 0</div><div class="wf-box">Paid days: 30</div><div class="wf-box brand">Casual leave: 1.5 available · This month: 1.5 used (1.5 automatic, for absences / half days)</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">30 Sept · In 10:00 am · Out 03:00 pm · ½ auto casual</div><div class="wf-box">9 Oct · In 10:00 am · Out 03:00 pm · ½ auto casual</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v123">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v123</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-04</span>
+    </div>
+    <p><strong>What changed.</strong> The sign-in popup that slides up on news pages used to hold the whole email form inside it. Now the popup keeps the quick <strong>Sign In/Up with Google</strong> button, and its second button is <strong>Login / Sign up</strong>. That button opens a new full-screen login page (in the same tab) with every way to join or sign in. After a successful sign-in or sign-up, the reader is taken to the <strong>homepage</strong>, where the usual "Welcome to StartupNews" popup appears.</p>
+    <table>
+      <thead><tr><th>Where</th><th>What the reader sees</th></tr></thead>
+      <tbody>
+        <tr><td>Popup (news pages, header "Sign in")</td><td>Heading and text as before, then two buttons: <em>Sign In/Up with Google</em> and <em>Login / Sign up</em>.</td></tr>
+        <tr><td>Login page — computer</td><td>Left half: pink brand panel with the logo, "Sign-In/Up for Free" and four benefits. Right half: a card with <em>Continue with Google</em>, then <em>Create account</em> / <em>Sign in</em> tabs and the email form.</td></tr>
+        <tr><td>Login page — phone</td><td>Logo and "Back to StartupNews" at the top, then the same card full width.</td></tr>
+        <tr><td>After success</td><td>Homepage, with the welcome popup ("My Reports" / "Read news" buttons as before).</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Do the account rules change?</td><td>No. Same fields (name, email, mobile with country code, password of 6+ characters), same checks and the same accounts as before.</td></tr>
+        <tr><td>What if someone already signed in opens the login page?</td><td>They are sent straight to the homepage.</td></tr>
+        <tr><td>Can I link straight to the Sign in tab?</td><td>Yes: <code>/login?tab=signin</code>. Plain <code>/login</code> opens Create account.</td></tr>
+        <tr><td>Does the login page show the site menu or the popup?</td><td>No. It is a clean full-screen page with a "Back to StartupNews" link.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Sign-in popup (bottom of a news page)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Sign-In/Up for Free · Unlock unlimited access to News, Articles, Special Reports…</div></div>
+        <div class="wf-row"><div class="wf-box brand">[ G  Sign In/Up with Google ]</div><div class="wf-box">[ → Login / Sign up ]  (new)</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">/login (computer)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">Pink panel: logo · "Sign-In/Up for Free" · ✓ news ✓ reports ✓ newsletters ✓ dashboard</div><div class="wf-box">← Back to StartupNews<br/>[ G Continue with Google ]<br/>— or use your email —<br/>( Create account ) ( Sign in )<br/>[ Full name ] [ Email ] [ IN +91 ▾ | Mobile ] [ Password 👁 ]<br/>[ Create account ]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="v122">
   <div class="ver">
     <div class="ver-head">
@@ -4312,6 +5059,359 @@ PHONE                                   +--------------------+
   </div>
 </section>
 
+<section id="v120">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v120</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-04</span>
+    </div>
+    <p><strong>What changed.</strong> Before, the sign-in popup that slides up on news pages only offered <strong>Continue with Google</strong>. Readers without a Google account had no way to join. The popup now has a second button, <strong>Sign up with Email</strong>. It opens a short form with two tabs: <em>Create account</em> and <em>Sign in</em>. After a successful sign-up or sign-in, the reader gets the same welcome card and the same member access as a Google user.</p>
+    <table>
+      <thead><tr><th>Tab</th><th>Fields</th><th>Rules</th></tr></thead>
+      <tbody>
+        <tr><td>Create account</td><td>Full name, Email, Mobile number, Password</td><td>All required. Name at least 2 letters, a real-looking email, mobile 7–15 digits (a + country code is fine), password at least 6 characters.</td></tr>
+        <tr><td>Sign in</td><td>Email, Password</td><td>For people who created an account with email before.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What if the email is already registered with a password?</td><td>The form says an account already exists and asks the reader to sign in instead.</td></tr>
+        <tr><td>What if the email was registered through Google?</td><td>The form tells the reader to use Continue with Google. The same message shows if they try to sign in with a password.</td></tr>
+        <tr><td>Is the password stored safely?</td><td>Yes. Only a scrambled (hashed) version is saved, never the password itself.</td></tr>
+        <tr><td>Where do these readers show up for the team?</td><td>In the same reader list as Google sign-ups, marked as "email" sign-ups.</td></tr>
+        <tr><td>Is the country captured?</td><td>Yes. Like Google sign-ups, the country, city and time zone are filled in automatically when possible.</td></tr>
+        <tr><td>Can the reader see their password while typing?</td><td>Yes. The eye icon shows or hides it.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Sign-in popup (bottom of any news page)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Sign-In for Free · Unlock unlimited access to News, Articles, Special Reports…</div></div>
+        <div class="wf-row"><div class="wf-box brand">[ G  Continue with Google ]</div></div>
+        <div class="wf-row"><div class="wf-box">[ ✉ Sign up with Email ]  (new)</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">After clicking Sign up with Email</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">( Create account )</div><div class="wf-box">( Sign in )</div></div>
+        <div class="wf-row"><div class="wf-box">[ Full name ]</div><div class="wf-box">[ Email address ]</div></div>
+        <div class="wf-row"><div class="wf-box">[ Mobile number ]</div><div class="wf-box">[ Password (min 6 chars) 👁 ]</div></div>
+        <div class="wf-row"><div class="wf-box brand">[ Create account ]</div></div>
+        <div class="wf-row"><div class="wf-box">← Back to other options</div><div class="wf-box">Have an account? Sign in</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v119">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v119</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-03</span>
+    </div>
+    <p><strong>What changed.</strong> HR can once again change an employee&apos;s attendance for a day straight from the attendance calendar. Click a day, pick the correct status, write the reason, and save. Before saving, a <strong>warning popup</strong> says exactly how the change affects the employee&apos;s pay. Unlike the old dropdown (removed on 30 Sep because payroll ignored it), the new status <strong>is what payroll pays</strong>. The employee&apos;s own calendar shows it too.</p>
+    <table>
+      <thead><tr><th>Status HR can pick</th><th>What the day pays</th></tr></thead>
+      <tbody>
+        <tr><td>Present</td><td>Full day</td></tr>
+        <tr><td>Short leave</td><td>Full day. Counts toward the 2 free short leaves, so the 3rd one in a cycle pays half a day.</td></tr>
+        <tr><td>Half day</td><td>Half a day</td></tr>
+        <tr><td>Absent</td><td>Nothing (loss of pay)</td></tr>
+        <tr><td>Unpaid leave (LOP)</td><td>Nothing (shown as unpaid leave, not absent)</td></tr>
+        <tr><td>Week-off / Holiday (paid)</td><td>Full day, as a paid day off for this employee only</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Who can do it?</td><td>HR Head and Founder only.</td></tr>
+        <tr><td>Is a reason needed?</td><td>Yes. It is saved, shown on the day, shown to the employee, and written to the audit log with the admin&apos;s name.</td></tr>
+        <tr><td>Which days can be changed?</td><td>Past days and today, while the person was employed. Not future days, Sundays or holidays, days already paid in an earlier payroll run, or days with a leave request (handle the leave first).</td></tr>
+        <tr><td>What if payroll was already run?</td><td>If it is a draft, that employee&apos;s draft payslip is updated automatically. If the month is frozen (final), the change is blocked until payroll is reversed.</td></tr>
+        <tr><td>What happens to the real punch times?</td><td>They stay as they were and remain visible. Only the day&apos;s status changes.</td></tr>
+        <tr><td>What about a pending regularization request on that day?</td><td>It is closed automatically, and it does not count toward the employee&apos;s monthly limit.</td></tr>
+        <tr><td>Can the employee still ask for a change?</td><td>No regularization or leave on that day. The employee sees &quot;Set by HR&quot; and the reason, and contacts HR if it looks wrong.</td></tr>
+        <tr><td>Can it be undone?</td><td>Yes. &quot;Remove HR status&quot; puts the day back on punches and leave, with the same warning first.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Attendance → employee calendar → click a day</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Status · Present · pays 1 day</div><div class="wf-box">In / Out · 10:16 am – 06:44 pm</div></div>
+        <div class="wf-row"><div class="wf-box brand">HR CORRECTION · [ Half day ▾ ] · Reason: [ Left early for a family emergency, approved by manager ] · [ Save correction ]</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Warning — this changes payroll</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">This change affects Yash Goswami&apos;s salary. You are changing 21 Sep 2026 from Present to Half day.</div></div>
+        <div class="wf-row"><div class="wf-box">Pay for this day: 1 → 0.5 day · paid days and salary for 26 Aug – 25 Sep recalculated · draft payslip updated automatically · employee sees &quot;Set by HR&quot; · saved in audit log</div></div>
+        <div class="wf-row"><div class="wf-box">[ Cancel ]</div><div class="wf-box brand">[ Yes, change attendance ]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v118">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v118</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-03</span>
+    </div>
+    <p><strong>What changed.</strong> When an employee resigns, the system now always sets a <strong>resignation date 30 days from the day they resign</strong>. This is the same for everyone, on probation or confirmed. The employee can also pick an optional <strong>requested date</strong>, earlier or later. HR then sees three dates side by side and decides the final last working day. Before, the employee typed any "preferred" date, there was no 30-day check, and HR adjusted notice and waived-day numbers by hand.</p>
+    <table>
+      <thead><tr><th>Date</th><th>Who sets it</th><th>Example (resigns 3 Oct)</th></tr></thead>
+      <tbody>
+        <tr><td>Resignation date (system)</td><td>The system: resign day + 30 days. Can&apos;t be changed.</td><td>2 Nov</td></tr>
+        <tr><td>Requested date</td><td>The employee, optional</td><td>20 Oct</td></tr>
+        <tr><td>Admin approval date</td><td>HR: approve the requested date, keep the system date, or pick another date</td><td>e.g. 2 Nov</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>What happens</th><th>Salary in the Full &amp; Final</th></tr></thead>
+      <tbody>
+        <tr><td>HR approves the requested date (20 Oct)</td><td>Paid up to 20 Oct. Nothing deducted.</td></tr>
+        <tr><td>HR keeps the system date (2 Nov)</td><td>Paid up to 2 Nov.</td></tr>
+        <tr><td>HR picks another date</td><td>Paid up to that date. Nothing deducted.</td></tr>
+        <tr><td>HR clicks "End notice today" (the company&apos;s choice)</td><td>Paid up to today. Nothing deducted.</td></tr>
+        <tr><td><strong>The employee stops coming before the agreed date</strong> (agreed 2 Nov, last worked 23 Oct). HR clicks <strong>"Employee left early"</strong>.</td><td>Paid up to 23 Oct, and the 10 missed days are <strong>recovered</strong>: 10 × monthly salary ÷ 30 (₹30,000/month → ₹10,000)</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can HR record "left early" after the agreed date has passed?</td><td>Yes, until the Full &amp; Final is approved. If the settlement is still a draft, it is recalculated straight away.</td></tr>
+        <tr><td>What if the recovery is more than what the company owes?</td><td>The settlement shows an amount <em>recoverable from the employee</em>, and HR records how it was collected (this already worked before).</td></tr>
+        <tr><td>Resignations already waiting for HR?</td><td>Their system date is the day they resigned + 30. Their earlier "preferred" date shows as the requested date.</td></tr>
+        <tr><td>Notice setting?</td><td>Removed from Offboarding → Settings. Notice is fixed at 30 days for everyone, terminations with notice included.</td></tr>
+        <tr><td>Can the employee see all of this?</td><td>Yes. My Exit shows the system date, their requested date, and the final date with a line saying which one HR chose.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Employee portal → My Exit · Submit your resignation</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">RESIGNATION DATE (SYSTEM) · 2 Nov 2026 · 30 days&apos; notice from today</div><div class="wf-box">REQUESTED DATE (optional) · [ date ] · Clear</div></div>
+        <div class="wf-row"><div class="wf-box">HR decides your final last working day. Leaving before it without approval: missed days are recovered in your F&amp;F.</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Offboarding → resignation window</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Resignation date (system) · 2 Nov</div><div class="wf-box">Requested date · 20 Oct</div><div class="wf-box">Admin approval date · not decided</div></div>
+        <div class="wf-row"><div class="wf-box brand">( ) Approve requested date — 20 Oct · ( ) Keep system date — 2 Nov · ( ) Pick another date [ date ]</div></div>
+        <div class="wf-row"><div class="wf-box">After acceptance: [ Employee left early ] → day they last worked + note → "10 days recovered in F&amp;F"</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v117">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v117</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-03</span>
+    </div>
+    <p><strong>What changed.</strong> If an employee doesn&apos;t come in and hasn&apos;t applied for leave, the system now pays that day from their Casual leave on its own, as long as they have balance left. Only the days beyond the balance are loss of pay (LOP). Before, every such day was LOP unless the employee had applied for leave.</p>
+    <table>
+      <thead><tr><th>Example</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>5 Casual leaves left, absent 6 days, no leave applied</td><td>6 days LOP, 5 leaves still left</td><td>5 days paid as Casual leave, 1 day LOP, 0 leaves left</td></tr>
+        <tr><td>0 Casual leaves left, absent 2 days</td><td>2 days LOP</td><td>2 days LOP</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Which days are covered?</td><td>Working days with no punch-in at all and no leave request. Sundays and holidays are never charged.</td></tr>
+        <tr><td>What about a day with a punch-in but no punch-out?</td><td>Not covered. That day can be fixed with a regularization request.</td></tr>
+        <tr><td>What if the employee later punches in, regularizes or applies for leave for that day?</td><td>The day is taken out of the automatic cover and the leave comes back to the balance.</td></tr>
+        <tr><td>When does it start?</td><td>From 26 September 2026, the start of the first pay cycle that isn&apos;t already final. August and September payslips don&apos;t change.</td></tr>
+        <tr><td>Today?</td><td>Today counts once the day is over, so a no-show shows as absent until tomorrow.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Attendance calendar · Casual leave card</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">CASUAL LEAVE · 0 available · of 10 total this year · This month: 5 used (5 for absences)</div><div class="wf-box">ABSENT / LOP · 1</div></div>
+        <div class="wf-row"><div class="wf-box">Day square: "auto casual" — click it: "Absent — paid from Casual leave automatically"</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v116">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v116</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-03</span>
+    </div>
+    <p><strong>What changed.</strong> Every regularization request an employee applies for now uses up one day of their limit of 5 per pay cycle, even if HR rejects it. Before, a rejected request gave the day back, so the employee could apply again.</p>
+    <table>
+      <thead><tr><th>Example in one pay cycle</th><th>Days used — before</th><th>Days used — now</th></tr></thead>
+      <tbody>
+        <tr><td>3 approved, 1 pending, 1 rejected</td><td>4 of 5 (1 more allowed)</td><td>5 of 5 (no more allowed)</td></tr>
+        <tr><td>2 approved, 3 rejected</td><td>2 of 5 (3 more allowed)</td><td>5 of 5 (no more allowed)</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Does fixing punch-in and punch-out on the same day still count once?</td><td>Yes. One date is one day, whatever its status.</td></tr>
+        <tr><td>Do old HR corrections count?</td><td>No. Corrections HR made directly, before the request system, still don&apos;t count.</td></tr>
+        <tr><td>Does it apply to requests already rejected this cycle?</td><td>Yes. They count from now on.</td></tr>
+        <tr><td>Where is this shown?</td><td>The employee&apos;s attendance widget ("X of 5 days used"), the HR attendance calendar tile and its request list, the Rules page and the Policy summary.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v115">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v115</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-03</span>
+    </div>
+    <p><strong>What changed.</strong> In an employee&apos;s attendance calendar, the two regularization tiles now count only the requests the employee applied for themselves. Before, the "Regularized" tile also counted old attendance corrections HR made directly, before the request system existed. These never used up the employee&apos;s limit of 5, but they made it look as if someone had gone over it (for example, "Regularized 8"). Clicking either tile now opens a list of every request in that pay cycle.</p>
+    <table>
+      <thead><tr><th>Tile</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Reg. pending</td><td>Days with a request waiting for a decision</td><td>Same number, labelled "applied by employee". Can be clicked</td></tr>
+        <tr><td>Regularized</td><td>Every approved correction, including old HR corrections</td><td>Only approved requests the employee applied for, plus "limit used X of 5". Can be clicked</td></tr>
+        <tr><td>Purple dot on a day</td><td>Also shown when the only request for that day was rejected</td><td>Shown only when the day was actually corrected</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What is in the list?</td><td>One row per request: date, punch in or out, the time asked for, the reason, the status (Pending, Approved or Rejected) and any remarks. Rejected requests are listed but don&apos;t use up the limit.</td></tr>
+        <tr><td>Can HR approve from the list?</td><td>Click a date to open that day, then approve or reject the request there, as before.</td></tr>
+        <tr><td>Did the limit change?</td><td>No. An employee still can&apos;t apply for more than 5 days per pay cycle. This only fixes what the tiles show.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Attendance calendar → click "Regularized"</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Reg. pending · 2 · applied by employee</div><div class="wf-box brand">Regularized · 0 · limit used 2 of 5</div></div>
+        <div class="wf-row"><div class="wf-box">Regularization requests — 26 Aug – 25 Sep · Limit used 2 of 5</div></div>
+        <div class="wf-row"><div class="wf-box">Date · Punch in / out · Time asked · Reason · Status · Remarks</div></div>
+        <div class="wf-row"><div class="wf-box">(one row per request — click a date to open that day)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v114">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v114</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-03</span>
+    </div>
+    <p><strong>What changed.</strong> Short leave days are now counted in sets of three within each payroll cycle. The first two are paid as full days, the third costs half a day&apos;s pay, and then the count starts over. Before, once an employee had used their two free short leaves, <em>every</em> short leave after that cost half a day.</p>
+    <table>
+      <thead><tr><th>Short leaves in the cycle</th><th>Half days deducted — before</th><th>Half days deducted — now</th></tr></thead>
+      <tbody>
+        <tr><td>2</td><td>0</td><td>0</td></tr>
+        <tr><td>3</td><td>1</td><td>1</td></tr>
+        <tr><td>4</td><td>2</td><td>1</td></tr>
+        <tr><td>5</td><td>3</td><td>1</td></tr>
+        <tr><td>6</td><td>4</td><td>2</td></tr>
+        <tr><td>9</td><td>7</td><td>3</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can HR change the size of the set?</td><td>Yes. The "Short leave — free per payroll cycle" setting in Rules still controls it: 2 free means sets of 3, 1 free means sets of 2, 0 means every short leave costs half a day.</td></tr>
+        <tr><td>Does anything carry into the next cycle?</td><td>No. The count starts from zero every payroll cycle.</td></tr>
+        <tr><td>Which months are affected?</td><td>Drafts and open months pick up the new rule the next time payroll is run. Frozen months keep the amounts already saved.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Attendance calendar · short leave days in one cycle</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">SL 1 · full day</div><div class="wf-box">SL 2 · full day</div><div class="wf-box brand">SL 3 · ½ deducted</div><div class="wf-box">SL 4 · full day</div><div class="wf-box">SL 5 · full day</div><div class="wf-box brand">SL 6 · ½ deducted</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v113">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v113</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-02</span>
+    </div>
+    <p><strong>What changed.</strong> The Payroll page no longer talks about waiting leave or regularization requests. Before, rows showed an orange "Provisional · N pending" link and the Freeze box said "N request(s) still pending" with a "Review pending requests" button, all of which jumped to the Attendance page. Those are gone: HR approves or rejects requests only from the Attendance (or Leave) section. Also, the download buttons moved to the top of the card, next to "Ready to run" and "In progress", so the bottom row only has the payout total and the Run Payroll / Freeze buttons.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can a month still be frozen while requests are waiting?</td><td>No, that rule is unchanged. The Freeze button stays greyed out until every request for the month is decided in Attendance / Leave and Payroll is run again.</td></tr>
+        <tr><td>Do other Freeze reasons still show?</td><td>Yes: "Run Payroll first", missing CTC, "data changed since the last Run", unsaved TDS and "freeze the earlier month first" still appear in the yellow box.</td></tr>
+        <tr><td>Where are CSV / Excel / All payslips (ZIP)?</td><td>Top right of the payroll card, after the two month buttons.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Payroll · October 2026 (draft)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Draft saved — October 2026</div><div class="wf-box brand">Ready to run · Oct 2026</div><div class="wf-box">In progress · Nov 2026</div><div class="wf-box">⤓ CSV</div><div class="wf-box">⤓ Excel</div><div class="wf-box">⤓ All payslips (ZIP)</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Rishabh Prajapati · LOP 2 · ₹37,333 · PDF</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Total payout ₹3,79,650 · draft</div><div class="wf-box">⟳ Run Payroll again</div><div class="wf-box brand">🔒 Freeze</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v112">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v112</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-02</span>
+    </div>
+    <p><strong>What changed.</strong> Payroll now has a clear final step. Before, salaries kept changing by themselves and the month locked on its own after the 30th. Now HR works the month out with <strong>Run Payroll</strong> as many times as needed, then presses <strong>Freeze</strong> to make it final. Freezing publishes each employee's salary slip, and employees download it from a new <strong>My Payslips</strong> page. If something was wrong, HR can press <strong>Reverse</strong> on the latest frozen month (with a reason). The payslips disappear for employees until the month is frozen again.</p>
+    <table>
+      <thead><tr><th>Button</th><th>What it does</th><th>When it's available</th></tr></thead>
+      <tbody>
+        <tr><td>Run Payroll</td><td>Works out every salary from attendance right now and saves it as a draft (with the TDS typed in). Requests still waiting count as "not approved".</td><td>26th–30th, and later until the month is frozen</td></tr>
+        <tr><td>Freeze</td><td>Makes the month final. Saves a fixed copy of every payslip and shows it to employees.</td><td>Only when nothing is pending, nothing changed since the last Run, every employee has a CTC, and the month before is already frozen</td></tr>
+        <tr><td>Reverse</td><td>Undoes the freeze. Payslips are withdrawn from employees ("not generated") and the month is a draft again.</td><td>Only on the most recent frozen month, and a reason is required</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can requests be approved after Freeze?</td><td>No. Leave and regularization requests dated in a frozen month can't be approved, rejected or cancelled, and employees can't apply for those dates. Reverse first.</td></tr>
+        <tr><td>What if HR doesn't freeze by the 30th?</td><td>Nothing happens automatically. The month shows in red as "Not frozen — overdue" until HR freezes it.</td></tr>
+        <tr><td>Will a payslip change if a salary is edited later?</td><td>No. A frozen payslip is a saved copy; later CTC or designation edits don't touch it.</td></tr>
+        <tr><td>What happened to "Reopen (Founder)"?</td><td>Removed. Reverse replaces it.</td></tr>
+        <tr><td>Older months?</td><td>August and September 2026 count as frozen, so employees can download them.</td></tr>
+        <tr><td>Notifications?</td><td>None. The payslip simply appears in My Payslips.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR tool → Payroll · October 2026 (draft)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">⚠ Freeze is not available yet: 2 requests pending · Review pending requests</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">Total payout ₹3,79,550 · draft</div><div class="wf-box">⟳ Run Payroll again</div><div class="wf-box brand">🔒 Freeze</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Employee panel → My Payslips</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">September 2026 · 26 Aug – 25 Sep · Net pay ₹35,000</div><div class="wf-box brand">Download PDF</div></div>
+        <div class="wf-row" style="margin-top:4px"><div class="wf-box">August 2026 · 01 Aug – 31 Aug · Net pay ₹12,419</div><div class="wf-box brand">Download PDF</div></div>
+      </div>
+    </div>
   </div>
 </section>
 

@@ -10,8 +10,8 @@ import { letterheadLogo } from '@/lib/letterhead-logo';
 import { HrOffboardingRepository, OpenCaseExistsError } from '../repository/hr-offboarding.repository';
 import { LETTER_TEMPLATE_NAME, LETTER_TITLE, buildLetterText, isLetterType, type LetterType } from '../utils/letters';
 import {
-  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, CLEARANCE_STATUSES, DEDUCTIBLE_CATEGORIES, FNF_LIMITS, OFFBOARDING_LIMITS, fnfForEmployee,
-  lettersForEmployee, type OffboardingLetterRecord,
+  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, CLEARANCE_STATUSES, DEDUCTIBLE_CATEGORIES, FNF_LIMITS, NOTICE_DAYS, OFFBOARDING_LIMITS, fnfForEmployee,
+  leftEarlyDays, lettersForEmployee, systemLwd, type LwdChoice, type OffboardingLetterRecord,
   OPEN_OFFBOARDING_STATUSES, RESIGNATION_REASONS, WORKABLE_OFFBOARDING_STATUSES,
   type ClearanceCategory, type ClearanceStatus, type MyExitView, type OffboardingAccessMode, type OffboardingCase,
   type OffboardingCaseDetail, type OffboardingClearanceItem, type OffboardingFnf, type OffboardingFnfLine, type OffboardingSettings,
@@ -30,12 +30,10 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_LWD_AHEAD_DAYS = 365;
 /** Salary cycles one F&F prices (notice start → LWD); a year's notice spans at most 14. */
 const FNF_MAX_SALARY_CYCLES = 14;
-const MAX_NOTICE_DAYS = 180;
 const CONFLICT = 'This exit was just changed by someone else. Refresh and try again.';
 
 const fail = (error: string, status = 400): { ok: false; error: string; status: number } => ({ ok: false, error, status });
 const clean = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
-const nonNegativeInt = (v: unknown): number => Math.max(0, Math.round(Number(v) || 0));
 
 /** A YYYY-MM-DD that is an actual calendar date (rejects 2026-02-30, which Date would roll over). */
 function isRealDate(d: string | null): d is string {
@@ -86,10 +84,9 @@ export interface StartExitInput extends ResignInput {
   terminationMode?: string;
   approvedLwd?: string;
   accessMode?: string;
-  noticeWaivedDays?: number;
   note?: string;
 }
-export interface DecideInput { decision?: string; approvedLwd?: string; noticeDays?: number; noticeWaivedDays?: number; note?: string; accessMode?: string; }
+export interface DecideInput { decision?: string; lwdChoice?: string; customLwd?: string; note?: string; accessMode?: string; }
 export interface FnfInput { version?: number; lines?: unknown; paidOn?: string; reference?: string; }
 export interface ClearanceInput { itemId?: number; status?: string; note?: string; deductionAmount?: number; category?: string; item?: string; }
 
@@ -122,22 +119,14 @@ export class HrOffboardingService {
     }
     if (CLEARANCE_CATEGORIES.every((cat) => checklist[cat].length === 0)) return fail('The checklist needs at least one item.');
     const next: OffboardingSettings = {
-      noticeDaysProbation: input.noticeDaysProbation === undefined ? current.noticeDaysProbation : nonNegativeInt(input.noticeDaysProbation),
-      noticeDaysConfirmed: input.noticeDaysConfirmed === undefined ? current.noticeDaysConfirmed : nonNegativeInt(input.noticeDaysConfirmed),
       checklist,
       encashableLeaveTypes: Array.isArray(input.encashableLeaveTypes)
         ? [...new Set(input.encashableLeaveTypes.map((x) => String(x).trim()).filter(Boolean))]
         : current.encashableLeaveTypes,
     };
-    if (next.noticeDaysProbation > MAX_NOTICE_DAYS || next.noticeDaysConfirmed > MAX_NOTICE_DAYS) return fail(`Notice period cannot be more than ${MAX_NOTICE_DAYS} days.`);
     await this.repository.saveSettings(next, actor);
-    await this.audit(actor, `Updated offboarding settings (notice: ${next.noticeDaysProbation}d probation / ${next.noticeDaysConfirmed}d confirmed)`);
+    await this.audit(actor, 'Updated offboarding settings (checklist / encashable leave)');
     return { ok: true, data: next };
-  }
-
-  /** Probation employees serve the shorter notice; everyone else the confirmed one. */
-  noticeDaysFor(employee: Pick<HrEmployee, 'status'>, settings: OffboardingSettings): number {
-    return employee.status === 'probation' ? settings.noticeDaysProbation : settings.noticeDaysConfirmed;
   }
 
   // --- Reads ---
@@ -177,17 +166,15 @@ export class HrOffboardingService {
 
   async getMyExit(employee: HrEmployee | null, credentialId: number): Promise<MyExitView> {
     await this.applyDueExits();
-    const settings = await this.repository.findSettings();
     const today = todayStr();
     if (!employee) {
-      return { linked: false, alumni: false, current: null, clearance: [], history: [], noticeDays: 0, suggestedLwd: today, reasons: RESIGNATION_REASONS };
+      return { linked: false, alumni: false, current: null, clearance: [], history: [], noticeDays: NOTICE_DAYS, systemLwd: addDaysUTC(today, NOTICE_DAYS), reasons: RESIGNATION_REASONS };
     }
     // A termination HR started and then cancelled never took effect — it (and its internal reason)
     // isn't the employee's to see.
     const history = (await this.repository.findForEmployee(employee.id))
       .filter((c) => !(c.exitType === 'termination' && c.status === 'cancelled'));
     const current = history.find((c) => OPEN_OFFBOARDING_STATUSES.includes(c.status) || c.status === 'completed') || null;
-    const noticeDays = this.noticeDaysFor(employee, settings);
     const forEmployee = (x: OffboardingCase): OffboardingCase => ({ ...x, fnf: fnfForEmployee(x.fnf), letters: lettersForEmployee(x.letters) });
     return {
       linked: true,
@@ -195,8 +182,8 @@ export class HrOffboardingService {
       current: current ? forEmployee(current) : null,
       clearance: current && current.status !== 'pending' ? await this.repository.findClearance(current.id) : [],
       history: history.map(forEmployee),
-      noticeDays,
-      suggestedLwd: addDaysUTC(today, noticeDays),
+      noticeDays: NOTICE_DAYS,
+      systemLwd: addDaysUTC(today, NOTICE_DAYS),
       reasons: RESIGNATION_REASONS,
     };
   }
@@ -232,28 +219,30 @@ export class HrOffboardingService {
     if (lengthError) return fail(lengthError);
     const today = todayStr();
     const requestedLwd = clean(input.requestedLwd);
-    if (requestedLwd && (!isRealDate(requestedLwd) || requestedLwd < today)) return fail('Preferred last working day must be a valid date, today or later.');
-    if (requestedLwd && requestedLwd > addDaysUTC(today, MAX_LWD_AHEAD_DAYS)) return fail('Preferred last working day is too far ahead — please check the year.');
+    if (requestedLwd && (!isRealDate(requestedLwd) || requestedLwd < today)) return fail('Requested date must be a valid date, today or later.');
+    if (requestedLwd && requestedLwd > addDaysUTC(today, MAX_LWD_AHEAD_DAYS)) return fail('Requested date is too far ahead — please check the year.');
+    const systemDate = addDaysUTC(today, NOTICE_DAYS);
 
-    const settings = await this.repository.findSettings();
+    // The system date is always resignation day + NOTICE_DAYS (see systemLwd) — nothing the employee
+    // sends can shorten it. Their requested date is only a request; HR decides in decide().
     try {
       const created = await this.repository.insert({
         employeeId: employee.id, credentialId: credentialId ?? employee.credentialId ?? null, emp: employee.name,
         exitType: 'resignation', initiatedBy: 'employee', status: 'pending', resignationDate: today,
         reasonCategory, reasonText, requestedLwd,
-        noticeDays: this.noticeDaysFor(employee, settings), noticeWaivedDays: 0, approvedLwd: null,
+        noticeDays: NOTICE_DAYS, noticeWaivedDays: 0, approvedLwd: null,
         terminationMode: null, accessMode: 'alumni', personalEmail, handoverNotes,
         decidedBy: null, decidedAt: null, decisionNote: null,
       });
       await this.audit(employee.name, `Submitted resignation (reason: ${reasonCategory})`);
       this.notify(hrOpsInbox(), `Resignation received — ${employee.name}`, [
         `${employee.name} (${employee.designation || 'no designation'}) has submitted their resignation.`,
-        `Reason: ${reasonCategory}${requestedLwd ? `\nPreferred last working day: ${shortDate(requestedLwd)}` : ''}`,
+        `Reason: ${reasonCategory}\nResignation date (system, ${NOTICE_DAYS} days' notice): ${shortDate(systemDate)}\nRequested date: ${requestedLwd ? shortDate(requestedLwd) : 'not requested'}`,
         'Review it in HR Management → Offboarding.',
       ]);
       this.notify(personalEmail, 'We have received your resignation', [
         `Dear ${employee.name},`,
-        'HR has received your resignation and will confirm your last working day shortly. You can follow its progress on the My Exit page of the employee portal.',
+        `HR has received your resignation. With ${NOTICE_DAYS} days' notice, your resignation date is ${shortDate(systemDate)}${requestedLwd ? `; you requested ${shortDate(requestedLwd)}` : ''}. HR will confirm your final last working day shortly. You can follow its progress on the My Exit page of the employee portal.`,
         'Regards,\nHR',
       ]);
       return { ok: true, data: created };
@@ -312,7 +301,7 @@ export class HrOffboardingService {
 
     const settings = await this.repository.findSettings();
     const today = todayStr();
-    const noticeDays = this.noticeDaysFor(employee, settings);
+    const noticeDays = NOTICE_DAYS;
     const terminationMode: TerminationMode | null = exitType === 'termination'
       ? (input.terminationMode === 'with_notice' ? 'with_notice' : 'immediate')
       : null;
@@ -322,8 +311,8 @@ export class HrOffboardingService {
     if (!isRealDate(approvedLwd)) return fail('Last working day is not a valid date.');
     if (approvedLwd < today) return fail('Last working day cannot be in the past. For an exit that already happened, use today.');
     if (approvedLwd > addDaysUTC(today, MAX_LWD_AHEAD_DAYS)) return fail('Last working day is too far ahead — please check the year.');
-    const waived = immediate ? 0 : nonNegativeInt(input.noticeWaivedDays);
-    if (waived > noticeDays) return fail('Waived days cannot be more than the notice period.');
+    // Record only (no money effect): notice days not served because HR set an earlier date.
+    const waived = immediate ? 0 : Math.max(0, noticeDays - daysBetween(today, approvedLwd));
 
     let created: OffboardingCase;
     try {
@@ -366,26 +355,47 @@ export class HrOffboardingService {
     }
     if (input.decision !== 'accept') return fail('Decision must be accept or reject.');
 
+    // HR picks one of three dates. None of them costs the employee anything in F&F: salary is paid up
+    // to the chosen day. Only leaving before it without approval (markLeftEarly) costs them.
     const today = todayStr();
-    const noticeDays = input.noticeDays === undefined ? c.noticeDays : nonNegativeInt(input.noticeDays);
-    if (noticeDays > MAX_NOTICE_DAYS) return fail(`Notice period cannot be more than ${MAX_NOTICE_DAYS} days.`);
-    const waived = nonNegativeInt(input.noticeWaivedDays);
-    if (waived > noticeDays) return fail('Waived days cannot be more than the notice period.');
-    const approvedLwd = clean(input.approvedLwd) || c.requestedLwd || addDaysUTC(c.resignationDate, noticeDays);
-    if (!isRealDate(approvedLwd) || approvedLwd < today) return fail('Last working day must be a valid date, today or later.');
-    if (approvedLwd > addDaysUTC(today, MAX_LWD_AHEAD_DAYS)) return fail('Last working day is too far ahead — please check the year.');
+    const lwdChoice: LwdChoice | null = input.lwdChoice === 'requested' || input.lwdChoice === 'system' || input.lwdChoice === 'custom' ? input.lwdChoice : null;
+    if (!lwdChoice) return fail('Pick which date to accept: the requested date, the system date, or your own date.');
+    let approvedLwd: string | null;
+    if (lwdChoice === 'requested') {
+      if (!c.requestedLwd) return fail('The employee did not request a date — keep the system date or pick your own.');
+      approvedLwd = c.requestedLwd;
+    } else {
+      approvedLwd = lwdChoice === 'system' ? systemLwd(c) : clean(input.customLwd);
+    }
+    const which = lwdChoice === 'requested' ? 'The requested date' : lwdChoice === 'system' ? 'The system date' : 'Your date';
+    if (!isRealDate(approvedLwd)) return fail('Pick a valid last working day.');
+    if (approvedLwd < today) return fail(`${which} (${shortDate(approvedLwd)}) has already passed — pick your own date, today or later.`);
+    if (approvedLwd > addDaysUTC(today, MAX_LWD_AHEAD_DAYS)) return fail(`${which} is too far ahead — please check the year.`);
     const accessMode: OffboardingAccessMode = input.accessMode === 'blocked' ? 'blocked' : 'alumni';
+    const waived = Math.max(0, NOTICE_DAYS - daysBetween(c.resignationDate, approvedLwd));
 
-    const ok = await this.repository.transition(id, ['pending'], {
-      status: 'accepted', noticeDays, noticeWaivedDays: waived, approvedLwd, accessMode,
+    const patch = {
+      status: 'accepted' as const, noticeDays: NOTICE_DAYS, noticeWaivedDays: waived, approvedLwd, accessMode,
       decidedBy: actor, decidedAt: nowMysqlDatetime(), decisionNote: note,
-    });
+    };
+    let ok: boolean;
+    try {
+      ok = await this.repository.transition(id, ['pending'], { ...patch, lwdChoice });
+    } catch (e) {
+      // add-hr-offboarding-lwd-choice.sql not run yet: accept anyway, only the label is lost.
+      if (!isMissingColumnError(e)) throw e;
+      ok = await this.repository.transition(id, ['pending'], patch);
+    }
     if (!ok) return fail('The employee withdrew or someone else already decided this resignation. Refresh to see the latest.', 409);
     await this.seedClearanceSafely(id, await this.repository.findSettings());
-    await this.audit(actor, `Accepted resignation of ${c.emp} — LWD ${approvedLwd}`);
+    await this.audit(actor, `Accepted resignation of ${c.emp} — LWD ${approvedLwd} (${lwdChoice === 'requested' ? 'requested date approved' : lwdChoice === 'system' ? 'system date' : 'HR date'})`);
+    const how = lwdChoice === 'requested' ? 'HR has approved the date you requested.'
+      : lwdChoice === 'system' ? `HR has kept the system date (${NOTICE_DAYS} days' notice).`
+      : 'HR has set this date.';
     this.notify(c.personalEmail, 'Your resignation has been accepted', [
       `Dear ${c.emp},`,
-      `Your resignation has been accepted. Your last working day is ${shortDate(approvedLwd)}.${waived ? ` ${waived} day(s) of your notice period have been waived.` : ''}`,
+      `Your resignation has been accepted. Your last working day is ${shortDate(approvedLwd)} — ${how}`,
+      'If you stop working before this date without HR\'s approval, your Full & Final settlement will pay no salary or other dues, and one month\'s salary will be recovered from you.',
       'Please return all company items and complete your handover before then. You can see your clearance checklist on the My Exit page of the employee portal.',
       'Regards,\nHR',
     ]);
@@ -461,6 +471,55 @@ export class HrOffboardingService {
     const updated: OffboardingCase = { ...c, status: 'exited', approvedLwd: today };
     await this.applyExitSideEffects(updated, actor);
     await this.audit(actor, `Ended notice early for ${c.emp} — exited today`);
+    return { ok: true, data: (await this.repository.findById(id)) || updated };
+  }
+
+  /**
+   * The employee stopped working before the agreed last day of their resignation without HR's
+   * approval. Their last working day becomes the day they actually left and the agreed day is kept
+   * in agreed_lwd; F&F then pays no earnings at all and recovers a flat month's salary (the
+   * `left-early` line), however many days they worked. Resignations only. Unlike exitNow —
+   * the company's own choice — this costs the employee. Allowed until the F&F is approved, and can be
+   * recorded again to correct the date (always measured against the original agreed day).
+   */
+  async markLeftEarly(id: number, input: { actualLwd?: unknown; note?: unknown }, actor: string): Promise<OffboardingResult> {
+    const c = await this.repository.findById(id);
+    if (!c) return fail('Offboarding case not found.', 404);
+    if (c.exitType !== 'resignation') return fail('"Left early" applies to resignations only.', 409);
+    if (c.status !== 'accepted' && c.status !== 'exited') return fail('"Left early" can only be recorded on an exit that is serving notice or has taken effect.', 409);
+    if (c.fnf && c.fnf.status !== 'draft') return fail('The Full & Final is already approved — reopen it to draft before recording this.', 409);
+    const agreed = c.agreedLwd || c.approvedLwd;
+    if (!agreed) return fail('This exit has no agreed last working day.', 409);
+    const actualLwd = clean(input.actualLwd);
+    const note = clean(input.note);
+    // HR enters this by hand and may pick any day — the only rule is that it is before the agreed day.
+    if (!isRealDate(actualLwd)) return fail('Pick the day they actually last worked.');
+    if (actualLwd >= agreed) return fail(`That isn't early — the agreed last working day is ${shortDate(agreed)}.`);
+    if (!note) return fail('Please add a note (e.g. how HR found out they stopped coming).');
+    const lengthError = tooLong('Note', note, OFFBOARDING_LIMITS.noteLength);
+    if (lengthError) return fail(lengthError);
+
+    let ok: boolean;
+    try {
+      ok = await this.repository.transition(id, [c.status], {
+        status: 'exited', approvedLwd: actualLwd, agreedLwd: agreed,
+        decisionNote: `Left early on ${shortDate(actualLwd)} (agreed ${shortDate(agreed)}): ${note}`.slice(0, OFFBOARDING_LIMITS.noteLength),
+      });
+    } catch (e) {
+      if (isMissingColumnError(e)) return fail('Run scripts/migrations/add-hr-offboarding-lwd-choice.sql on the database first.', 500);
+      throw e;
+    }
+    if (!ok) return fail(CONFLICT, 409);
+    const updated: OffboardingCase = { ...c, status: 'exited', approvedLwd: actualLwd, agreedLwd: agreed };
+    if (c.status === 'accepted') await this.applyExitSideEffects(updated, actor);
+    await this.audit(actor, `Recorded ${c.emp} left early on ${actualLwd} (agreed ${agreed}) — F&F earnings forfeited, 1 month's salary to recover: ${note}`);
+    // A draft settlement was priced before this — refresh it so the forfeit and the recovery show.
+    if (c.fnf?.status === 'draft') await this.calculateFnf(id, actor);
+    this.notify(c.personalEmail, 'Update on your exit', [
+      `Dear ${c.emp},`,
+      `HR has recorded ${shortDate(actualLwd)} as your last working day. Your agreed last working day was ${shortDate(agreed)}. Because you left before it without HR's approval, your Full & Final settlement will pay no salary or other dues, and one month's salary will be recovered from you.`,
+      'Please speak to HR if you have questions.\n\nRegards,\nHR',
+    ]);
     return { ok: true, data: (await this.repository.findById(id)) || updated };
   }
 
@@ -838,8 +897,8 @@ export class HrOffboardingService {
     for (const line of fnf.lines) {
       const month = line.key === 'salary' ? fnf.salaryMonth : line.key?.startsWith('salary:') ? line.key.slice('salary:'.length) : null;
       if (!month || line.overridden || line.amount <= 0) continue;
-      if (await this.hrRepository.findPayrollEntryForEmployee(month, c.employeeId)) {
-        return fail('Payroll for one of these cycles was run after the F&F was calculated, so that salary is already paid — click Recalculate.', 409);
+      if (await this.hrRepository.hasFrozenPayrollEntry(month, c.employeeId)) {
+        return fail('Payroll for one of these cycles was frozen after the F&F was calculated, so that salary is already paid — click Recalculate.', 409);
       }
     }
     if (!fnf.lines.length) return fail('The settlement has no lines.');
@@ -905,12 +964,14 @@ export class HrOffboardingService {
 
   /**
    * The system's lines, each with a stable key:
-   *  salary      final cycle, priced by the payroll engine up to the LWD (0 if that cycle's payroll ran)
+   *  salary      final cycle, priced by the payroll engine up to the LWD (0 if that cycle's payroll is frozen)
    *  leave:<t>   encashable leave balance × per-day (negative balance → a deduction)
    *  expenses    approved expense claims (nothing in the HR tool reimburses them otherwise)
-   *  notice      resignation notice not served (after waived days) × per-day
+   *  left-early  HR recorded "left early": a flat month's salary (CTC ÷ 12), however many days they worked
    *  clearance:<id>  each checklist recovery
    * Per-day = monthly salary (CTC ÷ 12) ÷ 30, the same convention as payroll's LOP.
+   * Left early forfeits every earning: salary, leave and expense lines are still listed, at ₹0, so
+   * HR sees what was withheld and can override one (with a note) if it should be paid after all.
    */
   private async buildFnfAutoLines(c: OffboardingCase): Promise<OffboardingResult<{ lines: OffboardingFnfLine[]; salaryMonth: string; monthlySalary: number; perDay: number }>> {
     const employee = await this.hrRepository.findEmployeeById(c.employeeId);
@@ -925,8 +986,14 @@ export class HrOffboardingService {
     const perDay = monthlySalary / 30;
     const salaryMonth = payrollMonthKeyForDate(lwd, rules);
     const lines: OffboardingFnfLine[] = [];
-    const auto = (key: string, label: string, kind: 'earning' | 'deduction', amount: number): OffboardingFnfLine =>
-      ({ key, label: label.slice(0, FNF_LIMITS.labelLength), kind, amount: Math.max(0, Math.round(amount)), source: 'auto' });
+    // Leaving before the agreed day without approval forfeits every earning (see the doc comment).
+    const earlyDays = leftEarlyDays(c);
+    const forfeit = earlyDays > 0;
+    const FORFEITED = ' — forfeited, left before agreed last day';
+    const auto = (key: string, label: string, kind: 'earning' | 'deduction', amount: number): OffboardingFnfLine => {
+      const lost = forfeit && kind === 'earning' && amount > 0;
+      return { key, label: (lost ? label + FORFEITED : label).slice(0, FNF_LIMITS.labelLength), kind, amount: lost ? 0 : Math.max(0, Math.round(amount)), source: 'auto' };
+    };
 
     // Payroll holds salary from the cycle the notice started in (see computePayrollForMonth), so the
     // F&F pays every cycle from there to the LWD's — one line each. A cycle whose payroll already
@@ -940,8 +1007,8 @@ export class HrOffboardingService {
       const final = month === salaryMonth;
       const key = final ? 'salary' : `salary:${month}`;
       const range = `${shortDate(from)} – ${shortDate(final ? lwd : to)}`;
-      if (await this.hrRepository.findPayrollEntryForEmployee(month, employee.id)) {
-        lines.push(auto(key, `Salary ${range}: already paid in that month's payroll`, 'earning', 0));
+      if (await this.hrRepository.hasFrozenPayrollEntry(month, employee.id)) {
+        lines.push(auto(key, `Salary ${range}: already paid in that month's frozen payroll`, 'earning', 0));
         continue;
       }
       const preview = await this.hrTool.computePayrollForMonth(
@@ -960,7 +1027,8 @@ export class HrOffboardingService {
     for (const type of settings.encashableLeaveTypes) {
       const days = Math.round((Number(balances[type]) || 0) * 100) / 100;
       if (days > 0) lines.push(auto(`leave:${type}`, `Leave encashment — ${type} (${days} days)`, 'earning', days * perDay));
-      else if (days < 0) lines.push(auto(`leave:${type}`, `Excess ${type} leave taken (${-days} days)`, 'deduction', -days * perDay));
+      // The flat left-early recovery replaces any per-day leave adjustment.
+      else if (days < 0 && !forfeit) lines.push(auto(`leave:${type}`, `Excess ${type} leave taken (${-days} days)`, 'deduction', -days * perDay));
     }
 
     const expenses = (await this.hrRepository.findExpenses()).filter((x) => x.employeeId === employee.id && x.status === 'approved');
@@ -969,12 +1037,10 @@ export class HrOffboardingService {
       if (total > 0) lines.push(auto('expenses', `Approved expense claims (${expenses.length})`, 'earning', total));
     }
 
-    if (c.exitType === 'resignation') {
-      const required = Math.max(0, c.noticeDays - c.noticeWaivedDays);
-      const served = Math.max(0, daysBetween(c.resignationDate, lwd));
-      const shortfall = Math.max(0, required - served);
-      const waivedNote = c.noticeWaivedDays ? `, ${c.noticeWaivedDays} waived` : '';
-      if (shortfall > 0) lines.push(auto('notice', `Notice not served (${shortfall} of ${c.noticeDays} days${waivedNote})`, 'deduction', shortfall * perDay));
+    // Whatever date HR agreed costs nothing; leaving before it without approval costs a flat month's
+    // salary, however many days were worked or missed.
+    if (forfeit) {
+      lines.push(auto('left-early', `Recovery — 1 month's salary, left before agreed last day (left ${shortDate(lwd)}, agreed ${shortDate(c.agreedLwd!)})`, 'deduction', monthlySalary));
     }
 
     for (const item of await this.repository.findClearance(c.id)) {

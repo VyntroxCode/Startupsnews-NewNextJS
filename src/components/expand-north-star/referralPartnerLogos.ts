@@ -46,6 +46,8 @@ const REFERRAL_PARTNER_LOGOS: ReferralPartnerLogo[] = [
   { slug: "indicorn-angels", name: "Indicorn Angels", linkUrl: "https://indicornangels.com/" },
   // Added 2026-09-30. Strip-only: not in sources.ts's REFERRED_BY_OPTIONS, so not on the form.
   { slug: "eritonxt", name: "EritoNxt", linkUrl: "https://www.linkedin.com/company/eritonxt/about/" },
+  // Added 2026-10-02 (strip first, then the same day to REFERRED_BY_OPTIONS too). No link supplied yet.
+  { slug: "ellenox", name: "Ellenox" },
 ];
 
 /** `PartnerLogosMarquee`-shaped list — `id`/`section`/`sortOrder` are only there to satisfy the

@@ -39,17 +39,17 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .metric { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--pink); border-radius: 10px; padding: 14px 16px; }
       .sales-tracker-page .metric .num { font-size: 24px; font-weight: 700; line-height: 1.2; color: var(--text); font-variant-numeric: tabular-nums; }
       .sales-tracker-page .metric .lbl { font-size: 12px; color: var(--text2); font-weight: 600; margin-top: 2px; }
-      .sales-tracker-page button.metric-btn { display: block; width: 100%; height: auto; text-align: left; font: inherit; padding: 14px 16px; background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--pink); border-radius: 10px; cursor: pointer; transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s; }
-      .sales-tracker-page button.metric-btn:hover { background: var(--pink-bg2); border-color: var(--pink); }
-      .sales-tracker-page button.metric-btn.active { background: var(--pink-bg); border-color: var(--pink); box-shadow: var(--ring); }
-      .sales-tracker-page button.metric-btn.alert { background: var(--danger-bg); border-color: var(--danger-border); border-left-color: var(--danger); }
-      .sales-tracker-page button.metric-btn.alert:hover { border-color: var(--danger); }
-      .sales-tracker-page button.metric-btn.alert.active { border-color: var(--danger); box-shadow: 0 0 0 3px #FEE2E2; }
-      .sales-tracker-page button.metric-btn.alert .num, .sales-tracker-page button.metric-btn.alert .metric-cta { color: #B91C1C; }
-      .sales-tracker-page .metric-btn .metric-open { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--danger); }
-      .sales-tracker-page .metric-btn .metric-cta { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--pink-dark); display: flex; align-items: center; gap: 6px; }
-      .sales-tracker-page .metric-btn .chev { transition: transform 0.15s; display: inline-flex; }
-      .sales-tracker-page .metric-btn .chev.open { transform: rotate(90deg); }
+      .sales-tracker-page .metrics button.metric-btn { display: block; width: 100%; height: auto; text-align: left; font: inherit; padding: 14px 16px; background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--pink); border-radius: 10px; cursor: pointer; white-space: normal; transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s; }
+      .sales-tracker-page .metrics button.metric-btn:hover { background: var(--pink-bg2); border-color: var(--pink); }
+      .sales-tracker-page .metrics button.metric-btn.active { background: var(--pink-bg); border-color: var(--pink); box-shadow: var(--ring); }
+      .sales-tracker-page .metrics button.metric-btn.alert { background: var(--danger-bg); border-color: var(--danger-border); border-left-color: var(--danger); }
+      .sales-tracker-page .metrics button.metric-btn.alert:hover { border-color: var(--danger); }
+      .sales-tracker-page .metrics button.metric-btn.alert.active { border-color: var(--danger); box-shadow: 0 0 0 3px #FEE2E2; }
+      .sales-tracker-page .metrics button.metric-btn.alert .num, .sales-tracker-page .metrics button.metric-btn.alert .metric-cta { color: #B91C1C; }
+      .sales-tracker-page .metrics .metric-btn .metric-open { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--danger); }
+      .sales-tracker-page .metrics .metric-btn .metric-cta { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--pink-dark); display: flex; align-items: center; gap: 6px; }
+      .sales-tracker-page .metrics .metric-btn .chev { transition: transform 0.15s; display: inline-flex; }
+      .sales-tracker-page .metrics .metric-btn .chev.open { transform: rotate(90deg); }
 
       /* ---------- Form layout ---------- */
       .sales-tracker-page .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -85,15 +85,17 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .field.has-error input[type=email] { border-color: var(--danger); box-shadow: 0 0 0 3px #FEE2E2; }
 
       /* ---------- Buttons ---------- */
-      .sales-tracker-page button {
+      /* :not(.tw) — elements styled with Tailwind utilities (LeadsOverview) opt out of these
+         page-wide element rules, which would otherwise outrank a single utility class. */
+      .sales-tracker-page button:not(.tw) {
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--border-strong); background: #fff;
         font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--text); cursor: pointer; white-space: nowrap;
         transition: background-color 0.15s, border-color 0.15s, color 0.15s;
       }
-      .sales-tracker-page button:hover { background: var(--pink-bg2); border-color: var(--border-hover); }
-      .sales-tracker-page button:focus-visible { outline: none; box-shadow: var(--ring); }
-      .sales-tracker-page button:disabled { opacity: 0.6; cursor: not-allowed; }
+      .sales-tracker-page button:not(.tw):hover { background: var(--pink-bg2); border-color: var(--border-hover); }
+      .sales-tracker-page button:not(.tw):focus-visible { outline: none; box-shadow: var(--ring); }
+      .sales-tracker-page button:not(.tw):disabled { opacity: 0.6; cursor: not-allowed; }
       .sales-tracker-page button.primary { background: var(--pink); color: #fff; border-color: var(--pink); }
       .sales-tracker-page button.primary:hover:not(:disabled) { background: var(--pink-dark); border-color: var(--pink-dark); }
       .sales-tracker-page button.small { height: 30px; padding: 0 12px; font-size: 12.5px; }
@@ -179,11 +181,11 @@ export default function SalesTrackerStyles() {
 
       /* ---------- Tables ---------- */
       .sales-tracker-page .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
-      .sales-tracker-page table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
-      .sales-tracker-page th, .sales-tracker-page td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
-      .sales-tracker-page th { color: var(--text2); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; background: var(--pink-bg2); position: sticky; top: 0; z-index: 1; }
-      .sales-tracker-page tbody tr:last-child td { border-bottom: none; }
-      .sales-tracker-page tbody tr:hover td { background: var(--row-hover); }
+      .sales-tracker-page table:not(.tw) { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+      .sales-tracker-page table:not(.tw) th, .sales-tracker-page table:not(.tw) td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+      .sales-tracker-page table:not(.tw) th { color: var(--text2); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; background: var(--pink-bg2); position: sticky; top: 0; z-index: 1; }
+      .sales-tracker-page table:not(.tw) tbody tr:last-child td { border-bottom: none; }
+      .sales-tracker-page table:not(.tw) tbody tr:hover td { background: var(--row-hover); }
       .sales-tracker-page #leadsTable tbody tr { cursor: pointer; }
       .sales-tracker-page #leadsTable tbody tr input, .sales-tracker-page #leadsTable tbody tr select, .sales-tracker-page #leadsTable tbody tr button { cursor: auto; }
       .sales-tracker-page #leadsTable tbody tr button { cursor: pointer; }
@@ -200,14 +202,6 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page td .inline-cell.inline-cell-text { min-width: 170px; }
       .sales-tracker-page .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: var(--pink-bg); color: var(--pink-dark); }
 
-      /* Summary breakdown grid keeps full cell borders. */
-      .sales-tracker-page .summary-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-      .sales-tracker-page .summary-table th, .sales-tracker-page .summary-table td { padding: 8px 10px; border: 1px solid var(--border); text-align: center; position: static; }
-      .sales-tracker-page .summary-table th { background: var(--pink-bg2); font-weight: 600; font-size: 11px; color: var(--text2); }
-      .sales-tracker-page .summary-table td.rowlabel { text-align: left; font-weight: 600; background: var(--pink-bg2); }
-      .sales-tracker-page .summary-table td.total { font-weight: 700; background: var(--pink-bg); color: var(--pink-dark); }
-      .sales-tracker-page .summary-table tbody tr:hover td { background: inherit; }
-
       /* ---------- Toolbar, chips, messages ---------- */
       .sales-tracker-page .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
       .sales-tracker-page .export-toolbar { display: flex; gap: 8px; margin-left: auto; }
@@ -221,15 +215,6 @@ export default function SalesTrackerStyles() {
         font-size: 12.5px; font-weight: 600; color: var(--pink-dark); background: var(--pink-bg);
         border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;
       }
-
-      /* ---------- Charts ---------- */
-      .sales-tracker-page .charts-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 22px; }
-      .sales-tracker-page .chart-title { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
-      .sales-tracker-page .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-      .sales-tracker-page .bar-label { width: 150px; font-size: 12.5px; color: var(--text2); flex-shrink: 0; }
-      .sales-tracker-page .bar-track { flex: 1; background: #F1F5F9; border-radius: 999px; height: 10px; overflow: hidden; }
-      .sales-tracker-page .bar-fill { height: 100%; background: var(--pink); border-radius: 999px; transition: width 0.3s; }
-      .sales-tracker-page .bar-count { width: 28px; font-size: 12.5px; font-weight: 700; color: var(--text); text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
       /* ---------- Sponsor Event submissions card + detail modal ---------- */
       .sales-tracker-page .se-intro { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
@@ -319,26 +304,20 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .ee-inclusions li > svg { position: absolute; left: 0; top: 3px; color: #059669; }
       .sales-tracker-page .ee-inclusions li.is-highlight { font-weight: 700; }
       .sales-tracker-page .ee-inclusions li.is-highlight > svg { color: var(--pink); }
-      .sales-tracker-page a.se-btn-link.ee-btn-ghost { background: #fff; color: var(--pink-dark); }
-      .sales-tracker-page a.se-btn-link.ee-btn-ghost:hover { background: var(--pink-bg2); }
       @media (max-width: 760px) {
         .sales-tracker-page .ee-dates, .sales-tracker-page .ee-panels { grid-template-columns: minmax(0, 1fr); }
         .sales-tracker-page .ee-panel-kv { grid-template-columns: minmax(0, 1fr); gap: 0; }
         .sales-tracker-page .ee-panel-kv dt { padding-bottom: 2px; border-bottom: 0; }
       }
-      .sales-tracker-page a.se-btn-link { display: inline-flex; align-items: center; justify-content: center; height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--pink); background: var(--pink); color: #fff; font-size: 13.5px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-      .sales-tracker-page a.se-btn-link:hover { background: var(--pink-dark); border-color: var(--pink-dark); }
       @media (max-width: 700px) {
         .sales-tracker-page .se-detail { grid-template-columns: 1fr; }
         .sales-tracker-page .se-kv { grid-template-columns: 1fr; gap: 2px 0; }
         .sales-tracker-page .se-kv dd { margin-bottom: 10px; }
         .sales-tracker-page .se-count { margin-left: 0; }
-        .sales-tracker-page .modal-actions a.se-btn-link { width: 100%; }
       }
 
       /* ---------- Small screens ---------- */
       @media (max-width: 700px) {
-        .sales-tracker-page .charts-wrap { grid-template-columns: 1fr; }
         .sales-tracker-page .export-toolbar { margin-left: 0; }
         .sales-tracker-page .modal-overlay { padding: 16px 10px; }
         /* The 80vw modal width above is for desktop/tablet — on a small screen that's a narrower

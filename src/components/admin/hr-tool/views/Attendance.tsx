@@ -10,7 +10,8 @@ import PunchOutTimeInput from '../../PunchOutTimeInput';
 import { ApprovalBadge, StatusBadge, arrivalBucket, employeeName, isAdmin, latenessInfo, rmOf, scopedApprovals, todayStr } from '../utils';
 import { hrApi } from '../api';
 import { realDayHoursBucket } from '@/modules/hr-tool/utils/lateness';
-import { payrollMonthKeyForDate, shiftMonthKey } from '@/modules/hr-tool/utils/time';
+import { payrollMonthKeyForDate, payrollPeriodRange, shiftMonthKey } from '@/modules/hr-tool/utils/time';
+import { fmtWindowTime } from '@/modules/hr-tool/utils/regularization-policy';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import { getCurrentBrowserLocation, geofenceHintFor, type BrowserLocation } from '@/lib/browser-geolocation';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
@@ -39,7 +40,17 @@ export default function Attendance() {
       ? (employeeId: string) => rmOf(state.employees, employeeId) === state.currentUser?.id || employeeId === state.currentUser?.id
       : (employeeId: string) => employeeId === state.currentUser?.id;
   const attRows = state.attendance.filter((a) => a.date === todayStr() && scopeFilter(a.employeeId));
-  const regRows = scopedApprovals(state.regularizations, state.role, state.currentUser?.id, state.employees);
+  // Regularization requests are shown one pay cycle at a time (by the date being corrected),
+  // opening on the cycle today falls in; the arrows reach earlier cycles.
+  const currentRegCycle = useMemo(() => payrollMonthKeyForDate(todayStr(), state.rules), [state.rules]);
+  const [regMonth, setRegMonth] = useState(currentRegCycle);
+  const regPeriod = payrollPeriodRange(regMonth, state.rules);
+  const allRegRows = scopedApprovals(state.regularizations, state.role, state.currentUser?.id, state.employees);
+  const regRows = allRegRows
+    .filter((r) => payrollMonthKeyForDate(r.date, state.rules) === regMonth)
+    .sort((a, b) => b.date.localeCompare(a.date) || a.emp.localeCompare(b.emp));
+  // Pending requests in other cycles would otherwise be out of sight — counted so HR still sees them.
+  const pendingElsewhere = allRegRows.filter((r) => r.status === 'pending' && payrollMonthKeyForDate(r.date, state.rules) !== regMonth).length;
   // Employee ID / role for a row comes through that employee's own credential link, never a name match.
   const credentialById = useMemo(() => new Map(state.employeeCredentials.map((c) => [c.id, c])), [state.employeeCredentials]);
   const employeeById = useMemo(() => new Map(state.employees.map((e) => [e.id, e])), [state.employees]);
@@ -128,6 +139,7 @@ export default function Attendance() {
         <div className="toolbar" style={{ justifyContent: 'flex-end', alignItems: 'center', marginBottom: 14, gap: 8 }}>
           <div style={{ color: 'var(--muted)', fontSize: 12.5, marginRight: 'auto' }}>
             Shift: {state.rules.shiftStartTime} – {state.rules.shiftEndTime} ({state.rules.shiftGraceMinutes} min grace) — set by HR
+            <br />Punch In {fmtWindowTime(state.rules.punchInFrom)} – {fmtWindowTime(state.rules.punchInTo)} · Punch Out until {fmtWindowTime(state.rules.punchOutTo)} (from {fmtWindowTime(state.rules.punchOutFrom)} if you haven&apos;t punched in)
             {state.rules.geoFencing && <><br /><span className="ic-text"><MapPin size={13} aria-hidden />Punch In / Out only within {state.rules.geoFenceRadiusM} m of the office — your browser will ask for your location.</span></>}
             {myLateness && <><br /><span className="ic-text" style={{ fontWeight: 700, color: myLateness.late ? 'var(--red)' : 'var(--green)' }}>{myLateness.late ? <TriangleAlert size={13} aria-hidden /> : <CircleCheck size={13} aria-hidden />}{myLateness.text}</span></>}
           </div>
@@ -184,6 +196,12 @@ export default function Attendance() {
       <MonthlyAttendance scopeFilter={scopeFilter} onOpen={(employeeId, month) => { setCalendarMonth(month); setCalendarEmp(employeeId); }} />
       <section className="block">
         <div className="block-head"><h2>Regularization requests</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', marginRight: isEmployeeOnly ? 12 : 0 }}>
+            <button type="button" className="btn ghost sm" onClick={() => setRegMonth((m) => shiftMonthKey(m, -1))} aria-label="Previous pay cycle"><ChevronLeft size={14} aria-hidden /></button>
+            <strong style={{ fontSize: 13 }}>{fmtCycleDate(regPeriod.from)} – {fmtCycleDate(regPeriod.to)}</strong>
+            <button type="button" className="btn ghost sm" onClick={() => regMonth < currentRegCycle && setRegMonth((m) => shiftMonthKey(m, 1))} disabled={regMonth >= currentRegCycle} aria-label="Next pay cycle" style={{ opacity: regMonth < currentRegCycle ? 1 : 0.4 }}><ChevronRight size={14} aria-hidden /></button>
+            {regMonth !== currentRegCycle && <button type="button" className="btn ghost sm" onClick={() => setRegMonth(currentRegCycle)}>Current cycle</button>}
+          </div>
           {isEmployeeOnly && (
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn sm" onClick={() => { setRegDate(todayStr()); setRegPunchType('in'); setRegTime(''); setRegReason(REG_REASONS[0]); setRegReasonOther(''); setRegOpen(true); }}>+ Regularize Punch In</button>
@@ -191,7 +209,10 @@ export default function Attendance() {
             </div>
           )}
         </div>
-        <div className="meta" style={{ marginBottom: 10 }}>Employees can request within {state.rules.regularizationWindowDays} days of the date, up to {state.rules.regularizationMonthlyQuota} days per payroll cycle. HR approves or rejects — attendance can&apos;t be edited directly.</div>
+        <div className="meta" style={{ marginBottom: 10 }}>Employees can request within {state.rules.regularizationWindowDays} days of the date, up to {state.rules.regularizationMonthlyQuota} days per payroll cycle. HR approves or rejects — attendance can&apos;t be edited directly.
+          {regMonth === currentRegCycle ? ' Showing the current pay cycle.' : ''}
+          {pendingElsewhere > 0 && <span style={{ color: '#B45309', fontWeight: 700 }}> {pendingElsewhere} pending request{pendingElsewhere === 1 ? '' : 's'} in other pay cycles — use the arrows to find {pendingElsewhere === 1 ? 'it' : 'them'}.</span>}
+        </div>
         <div className="card"><div className="table-scroll wrap-table"><table>
           <colgroup>
             <col style={{ width: '13%' }} /><col style={{ width: '9%' }} /><col style={{ width: '9%' }} /><col style={{ width: '10%' }} /><col style={{ width: '27%' }} /><col style={{ width: '13%' }} /><col style={{ width: '19%' }} />
@@ -203,7 +224,7 @@ export default function Attendance() {
                 <td style={{ textAlign: 'right' }}><ApprovalCell req={r} onDecide={(level, decision, remarks) => decideReg(r.id, level, decision, remarks)} /></td>
               </tr>
             ))}
-            {regRows.length === 0 && <tr><td colSpan={7}><div className="empty">Nothing here.</div></td></tr>}
+            {regRows.length === 0 && <tr><td colSpan={7}><div className="empty">No regularization requests in this pay cycle.</div></td></tr>}
           </tbody>
         </table></div></div>
       </section>
@@ -213,11 +234,11 @@ export default function Attendance() {
           { label: 'Cancel', cls: 'btn', onClick: () => setRegOpen(false) },
           { label: 'Submit', cls: 'btn primary', onClick: submitRegularization },
         ]}>
-          <div className="notice">Requests must be submitted within {state.rules.regularizationWindowDays} days of the date, up to {state.rules.regularizationMonthlyQuota} days per payroll cycle. Punch In 8:00 AM–2:00 PM, Punch Out 2:00 PM–11:00 PM.</div>
+          <div className="notice">Requests must be submitted within {state.rules.regularizationWindowDays} days of the date, up to {state.rules.regularizationMonthlyQuota} days per payroll cycle. Punch In {fmtWindowTime(state.rules.punchInFrom)}–{fmtWindowTime(state.rules.punchInTo)}, Punch Out {fmtWindowTime(state.rules.punchOutFrom)}–{fmtWindowTime(state.rules.punchOutTo)}.</div>
           <div className="field"><label className="field-label">Date</label><input type="date" value={regDate} onChange={(e) => setRegDate(e.target.value)} /></div>
           <div className="field"><label className="field-label">{regPunchType === 'out' ? 'Punch Out' : 'Punch In'} time</label>{regPunchType === 'out'
-            ? <div><PunchOutTimeInput value={regTime} onChange={setRegTime} selectStyle={{ width: 'auto' }} /></div>
-            : <input type="time" min="08:00" max="14:00" value={regTime} onChange={(e) => setRegTime(e.target.value)} />}</div>
+            ? <div><PunchOutTimeInput value={regTime} onChange={setRegTime} from={state.rules.punchOutFrom} to={state.rules.punchOutTo} selectStyle={{ width: 'auto' }} /></div>
+            : <input type="time" min={state.rules.punchInFrom} max={state.rules.punchInTo} value={regTime} onChange={(e) => setRegTime(e.target.value)} />}</div>
           <div className="field"><label className="field-label">Reason</label>
             <select value={regReason} onChange={(e) => setRegReason(e.target.value)}>
               {REG_REASONS.map((r) => <option key={r}>{r}</option>)}
@@ -279,7 +300,7 @@ function MonthlyAttendance({ scopeFilter, onOpen }: { scopeFilter: (employeeId: 
       <div className="meta" style={{ marginBottom: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <span>
           One salary month{month === currentCycle ? ', so far' : ''}. These are the numbers payroll pays by. Click an employee to open their calendar for this month.
-          {data?.month === month && data.locked && ' Payroll for this month is locked — the saved payslips are what was paid.'}
+          {data?.month === month && data.locked && ' Payroll for this month is frozen — the saved payslips are what was paid.'}
         </span>
         <input type="search" placeholder="Search employee…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ maxWidth: 220, marginLeft: 'auto' }} />
       </div>

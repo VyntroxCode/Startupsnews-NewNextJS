@@ -11,8 +11,6 @@ interface DelegationDay {
   key: string;
   /** Short label on the photo, e.g. "Day 2". */
   day: string;
-  /** Date as [number, ordinal suffix, rest], e.g. ["6", "th", "Dec 2026"]. */
-  date: [string, string, string];
   /** Who hosts that day, shown under the title — only Day 1 (Dubai Konnect) has one. */
   host?: string;
   /** Card title — may hold one "\n" (see ENS_DAY) for a forced second line. */
@@ -29,7 +27,7 @@ interface DelegationDay {
 
 /** The dates line under the section title: the delegation's first and last day (the "Itinerary" pill
  * before it was removed on request, 2026-09-18). */
-const ITINERARY_DATES = "6 Dec 2026 – 11 Dec 2026";
+const ITINERARY_DATES = "7 Dec 2026 – 12 Dec 2026";
 
 /** Content from the six itinerary pages of the delegation programme PDF the team shared
  * ("Indian Startup Dubai Delegation"), re-dated to the December 2026 trip — the programme's day
@@ -68,7 +66,6 @@ const DAYS: DelegationDay[] = [
   {
     key: "launchpad",
     day: "Day 1",
-    date: ["6", "th", "Dec 2026"],
     host: "Dubai Konnect",
     title: "Launchpad Middle-East",
     points: [
@@ -85,7 +82,6 @@ const DAYS: DelegationDay[] = [
   {
     key: "ens-day-1",
     day: "Day 2",
-    date: ["7", "th", "Dec 2026"],
     title: ENS_DAY(1),
     points: ENS_SHOW_DAY_POINTS,
     image: ensImages.dayEnsOne,
@@ -93,7 +89,6 @@ const DAYS: DelegationDay[] = [
   {
     key: "ens-day-2",
     day: "Day 3",
-    date: ["8", "th", "Dec 2026"],
     title: ENS_DAY(2),
     points: ENS_NETWORKING_DAY_POINTS,
     image: ensImages.dayEnsTwo,
@@ -101,7 +96,6 @@ const DAYS: DelegationDay[] = [
   {
     key: "ens-day-3",
     day: "Day 4",
-    date: ["9", "th", "Dec 2026"],
     title: ENS_DAY(3),
     // Same four points as Day 3, not the show-floor list Day 2 uses (on request, 2026-09-19).
     points: ENS_NETWORKING_DAY_POINTS,
@@ -110,7 +104,6 @@ const DAYS: DelegationDay[] = [
   {
     key: "ens-day-4",
     day: "Day 5",
-    date: ["10", "th", "Dec 2026"],
     title: ENS_DAY(4, "and After Party"),
     points: [
       { lead: "Day-Long Networking", text: "Build meaningful, valuable connections to grow your business." },
@@ -122,7 +115,6 @@ const DAYS: DelegationDay[] = [
   {
     key: "departure",
     day: "Day 6",
-    date: ["11", "th", "Dec 2026"],
     title: "Checkout, Follow-Up, Roam Around Dubai, Fly Back to Base",
     points: [
       { lead: "Morning Hustle", text: "Begin the day with follow-up meetings, wrapping up key discussions." },
@@ -146,7 +138,7 @@ function PlusIcon() {
 /** One programme day.
  *
  * Closed: the photo fills the card with the day and title over a dark fade and a pink "+".
- * Open: the photo shrinks into a ringed circle in the top-left corner and the date, pink title, host
+ * Open: the photo shrinks into a ringed circle in the top-left corner and the day label, pink title, host
  * line (Day 1 only) and points rise in one after another.
  *
  * Opens on mouse hover, on keyboard focus (Tab), and on tap for touch — tap again or tap elsewhere
@@ -155,7 +147,7 @@ function DayCard({ day, index }: { day: DelegationDay; index: number }) {
   const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
   const pointerType = useRef("mouse");
-  // Reveal order: date 0, title 1, then the host line (Day 1 only) before the points.
+  // Reveal order: day label 0, title 1, then the host line (Day 1 only) before the points.
   const base = day.host ? 3 : 2;
 
   return (
@@ -219,11 +211,8 @@ function DayCard({ day, index }: { day: DelegationDay; index: number }) {
         <div className="ens-day-body">
           <div className="ens-day-head ens-day-reveal" style={{ "--i": 0 } as React.CSSProperties}>
             <p className="ens-day-date">
+              {/* Only "Day N" — the per-day date line under it was removed on request (2026-10-05). */}
               <span className="ens-day-date-day">{day.day}</span>
-              <span className="ens-day-date-when">
-                {day.date[0]}
-                <sup>{day.date[1]}</sup> {day.date[2]}
-              </span>
             </p>
           </div>
           <h3 className="ens-day-title ens-day-reveal" style={{ "--i": 1 } as React.CSSProperties}>

@@ -397,6 +397,13 @@ export const COUNTRY_FLAGS: Record<string, string> = Object.fromEntries(
   Object.entries({ ...COUNTRY_ISO2, ...NON_SOVEREIGN_ISO2 }).map(([name, code]) => [name, flagFromIso2(code)])
 );
 
+/** Lower-case ISO alpha-2 for a country name ('India' → 'in'), or '' when it isn't recognised —
+ * the key of its flag SVG in S3 (/events "Explore by Country" strip). */
+export function isoForCountry(country: string): string {
+  const name = canonicalCountryName(country);
+  return (COUNTRY_ISO2[name] || NON_SOVEREIGN_ISO2[name] || '').toLowerCase();
+}
+
 /** Flag emoji for a country name, or '' when it isn't recognised — callers render `flag + name`
  * so an unknown country degrades to just its name rather than showing a placeholder box. */
 export function flagForCountry(country: string): string {

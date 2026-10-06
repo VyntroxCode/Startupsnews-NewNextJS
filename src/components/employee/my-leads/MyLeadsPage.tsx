@@ -165,7 +165,7 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
       </div>
 
       {/* Phones: one swipeable row of KPI cards; from sm up the original grid. */}
-      <div className={`-mx-4 mb-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:mb-6 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 ${cards.length > 5 ? 'xl:grid-cols-7' : 'xl:grid-cols-6'}`}>
+      <div className={`-mx-4 mb-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 sm:mx-0 sm:scroll-px-0 sm:mb-6 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 ${cards.length > 5 ? 'xl:grid-cols-7' : 'xl:grid-cols-6'}`}>
         {cards.map(({ key, total, pending, followed }) => {
           const active = filter === key;
           const alert = pending > 0;
@@ -176,14 +176,14 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
               onClick={() => setFilter(active ? '' : key)}
               aria-pressed={active}
               aria-label={`${pageLabel(key)}: ${pending} pending, ${followed} followed up, ${total} total`}
-              className={`relative w-[11rem] shrink-0 snap-start cursor-pointer overflow-hidden rounded-xl border p-3.5 text-left transition-colors sm:w-auto sm:p-4 ${
+              className={`relative w-[11rem] shrink-0 snap-start cursor-pointer overflow-hidden rounded-xl border border-solid p-3.5 text-left transition-colors sm:w-auto sm:p-4 ${
                 alert
                   ? `border-red-400 bg-white hover:border-red-500 ${active ? 'ring-2 ring-red-300' : ''}`
                   : `bg-white hover:border-indigo-300 ${active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-200'}`
               }`}
             >
               {/* The blink: a red wash pulsing behind the text, so the numbers stay fully readable. */}
-              {alert && <span aria-hidden="true" className="pointer-events-none absolute inset-0 animate-pulse bg-red-100 motion-reduce:animate-none" />}
+              {alert && <span aria-hidden="true" className="pointer-events-none absolute top-0 right-0 bottom-0 left-0 animate-pulse bg-red-100 motion-reduce:animate-none" />}
               <div className="relative">
                 <div className="flex items-center justify-between gap-2">
                   <span className={`text-sm font-semibold ${alert ? 'text-red-800' : 'text-slate-700'}`}>{pageLabel(key)}</span>
@@ -214,7 +214,7 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
           onClick={() => setFilter('')}
           aria-pressed={!filter}
           aria-label={`Lead Status: ${statusCounts.map((r) => `${r.count} ${r.label}`).join(', ')} of ${leads ? leads.length : 0} leads. Show all leads`}
-          className={`w-[14rem] shrink-0 snap-start cursor-pointer rounded-xl border bg-white p-3.5 text-left transition-colors hover:border-indigo-300 sm:w-auto sm:p-4 ${!filter ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-200'}`}
+          className={`w-[14rem] shrink-0 snap-start cursor-pointer rounded-xl border border-solid bg-white p-3.5 text-left transition-colors hover:border-indigo-300 sm:w-auto sm:p-4 ${!filter ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-200'}`}
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-slate-700">Lead Status</span>

@@ -6,7 +6,7 @@ import { getCurrentBrowserLocation } from "@/lib/browser-geolocation";
 import type { StartupEvent } from "@/modules/events/domain/types";
 import { OTHER_CITIES_SECTION } from "@/modules/partnership-events/domain/country-city-data";
 import { COHORT_PARTNERSHIP_TYPE } from "@/modules/partnership-events/domain/types";
-import { NON_GEOGRAPHIC_REGIONS } from "@/modules/events/utils/region-country.utils";
+import { NON_GEOGRAPHIC_REGIONS, countrySectionId } from "@/modules/events/utils/region-country.utils";
 import { orderByVisitorLocation } from "@/modules/events/utils/visitor-location-order.utils";
 
 const COOKIE = "sn_event_loc";
@@ -96,7 +96,9 @@ export function EventsByCountryList({ eventsByCountry }: { eventsByCountry: Even
         // it's the country's sole section, the heading adds nothing, so drop it.
         const onlyOtherCities = Object.keys(cities).length === 1 && OTHER_CITIES_SECTION in cities;
         return (
-          <section key={country} className="event-by-country-section">
+          // The id is the scroll target of this country's EventsCountryStrip circle; scroll-mt
+          // keeps the heading clear of the sticky site header when it lands.
+          <section key={country} id={countrySectionId(country)} className="event-by-country-section scroll-mt-28">
             <h2 className="event-by-country-region">{country}</h2>
             {Object.entries(cities).map(([city, events]) => (
               <div key={city} className="event-by-country-city-group">

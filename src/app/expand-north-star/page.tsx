@@ -47,7 +47,7 @@ export const metadata: Metadata = {
         url: OG_IMAGE,
         width: 1200,
         height: 675,
-        alt: "Dubai is calling Indian founders: Expand North Star, 6 to 11 December 2026, Dubai",
+        alt: "Dubai is calling Indian founders: Expand North Star, 7 to 12 December 2026, Dubai",
       },
     ],
   },

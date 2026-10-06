@@ -1,12 +1,14 @@
 import { getDbConnection, query, queryOne } from '@/shared/database/connection';
 import { findAllRows, replaceAllRows, parseJsonColumn, SqlParam } from './shared';
 import {
-  HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrPunch, HrPunchGeo,
+  HrTeam, HrHoliday, HrEmployee, HrDocRef, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch, HrPunchGeo,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrTemplate,
   HrRules, HrAuditLogEntry, HrCompanyProfile, HrDocumentUploadRequest, HrEmployeeRef, normalizeLeaveTypes,
 } from '../domain/types';
 import { HrKycDocuments, mergeKycDocuments } from '../domain/kyc';
 import { parseTime12h } from '../utils/lateness';
+import { DEFAULT_PUNCH_WINDOWS } from '../utils/regularization-policy';
+import type { PayslipData } from '../utils/payslip-data';
 
 interface NameRow { name: string; }
 interface TeamRow { name: string; manager: string | null; manager_id?: string | null; }
@@ -34,6 +36,7 @@ interface GeoColumns {
  * matched on — plus `emp`, a snapshot of the employee's name kept only for display. */
 interface EmployeeOwned { employee_id: string | null; emp: string; }
 interface AttendanceRow extends GeoColumns, EmployeeOwned { attendance_date: string; status: string; in_time: string | null; in_minutes: number | null; out_minutes: number | null; out_time: string | null; }
+interface OverrideRow extends EmployeeOwned { override_date: string; status: string; reason: string | null; set_by: string | null; set_at: string | null; }
 interface PunchRow extends GeoColumns, EmployeeOwned { punch_date: string; in_time: string | null; in_minutes: number | null; out_minutes: number | null; out_time: string | null; }
 interface ApprovalRow extends EmployeeOwned { id: string; stage: string; status: string; rm_remarks: string | null; hr_remarks: string | null; }
 interface RegularizationRow extends ApprovalRow { reg_date: string; punch_type: string; reason: string | null; requested_time: string | null; source?: string | null; }
@@ -43,13 +46,14 @@ interface TicketRow extends EmployeeOwned { id: string; category: string | null;
 interface ComplianceRow { task: string; due_date: string | null; status: string; }
 interface PayrollRow {
   month: string; status: string; run_at: string | null; run_by: string | null;
-  period_from?: string | null; period_to?: string | null; computed_at?: string | null; locked_at?: string | null;
-  reopened_until?: string | null; reopen_reason?: string | null;
+  period_from?: string | null; period_to?: string | null; computed_at?: string | null;
+  frozen_at?: string | null; frozen_by?: string | null; reversed_at?: string | null; reversed_by?: string | null; reverse_reason?: string | null;
 }
 interface PayrollEntryRow extends EmployeeOwned {
   month: string; working_days: number; total_days: number; present_days: number; absent_days: number;
   week_off_days: number; leave_days: number; short_leave_days: number; short_leave_carry_out: number;
   half_day_days: number; lop_days: number; monthly_gross: number; tds: number; net_pay: number;
+  payslip_json?: string | null;
 }
 interface RulesRow {
   working_days_pattern: string; shift_start_time: string; shift_end_time: string; shift_grace_minutes: number;
@@ -61,6 +65,7 @@ interface RulesRow {
   leave_types: unknown; two_level_approval_leave: number; two_level_approval_attendance: number; two_level_approval_expense: number;
   late_mark_penalty: number; geo_fencing: number; selfie_checkin: number; pf_esi: number; optional_holiday_choice: number; asset_checklist: number;
   geo_fence_lat?: string | number | null; geo_fence_lng?: string | number | null; geo_fence_radius_m?: number | null;
+  punch_in_from?: string | null; punch_in_to?: string | null; punch_out_from?: string | null; punch_out_to?: string | null;
 }
 
 function isMissingTable(e: unknown): boolean {
@@ -73,6 +78,9 @@ function isMissingTable(e: unknown): boolean {
 const DEFAULT_GEO_FENCE = { lat: 28.644533, lng: 77.2003635, radiusM: 50 } as const;
 
 const decimalOrNull = (v: DecimalCell): number | null => (v === null || v === undefined || v === '' ? null : Number(v));
+/** An "HH:MM" column (punch windows), or the fallback when it's missing — the columns are NULL
+ * until add-hr-punch-windows.sql has run. */
+const hhmmOr = (v: string | null | undefined, fallback: string): string => (v && /^\d{2}:\d{2}/.test(v) ? v.slice(0, 5) : fallback);
 /** Null when no fix was stored for that punch (pre-geofencing rows, geofencing off, regularized days). */
 function geoFromRow(lat: DecimalCell, lng: DecimalCell, accuracy: DecimalCell, distance: DecimalCell): HrPunchGeo | null {
   const latN = decimalOrNull(lat);
@@ -98,6 +106,11 @@ const EMPLOYEE_RECORD_TABLES = [
 const UNIQUE_EMPLOYEE_NAMES = '(SELECT name, MIN(id) AS id FROM hr_employees GROUP BY name HAVING COUNT(*) = 1)';
 
 const employeeIdOf = (r: EmployeeOwned): string => r.employee_id || '';
+/** hr_payroll_entries.payslip_json → the frozen payslip, or null (draft, or unreadable). */
+const parsePayslip = (raw: string | null | undefined): PayslipData | null => {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as PayslipData; } catch { return null; }
+};
 
 function mapRegularizationRow(r: RegularizationRow): HrRegularization {
   return {
@@ -411,6 +424,38 @@ export class HrToolRepository {
     );
     return rows.map((r) => this.mapAttendanceRow(r));
   }
+  /** HR-set day statuses (see HrAttendanceOverride). Rows left from before 2026-09-30 were all
+   * converted and deleted, so every row here was written by setAttendanceOverride. */
+  async findAttendanceOverrides(): Promise<HrAttendanceOverride[]> {
+    const rows = await query<OverrideRow>('SELECT * FROM hr_attendance_overrides WHERE employee_id IS NOT NULL ORDER BY override_date ASC', []);
+    return rows.map((r) => this.mapOverrideRow(r));
+  }
+  async findAttendanceOverridesForEmployeeInRange(employeeId: string, fromDate: string, toDate: string): Promise<HrAttendanceOverride[]> {
+    const rows = await query<OverrideRow>(
+      'SELECT * FROM hr_attendance_overrides WHERE employee_id = ? AND override_date BETWEEN ? AND ? ORDER BY override_date ASC',
+      [employeeId, fromDate, toDate]
+    );
+    return rows.map((r) => this.mapOverrideRow(r));
+  }
+  async upsertAttendanceOverride(o: HrAttendanceOverride): Promise<void> {
+    // The legacy primary key is (emp, override_date); employee_id + date is unique too. Clear any
+    // row for this employee/date first so a rename can't leave two rows for one day.
+    await query('DELETE FROM hr_attendance_overrides WHERE employee_id = ? AND override_date = ?', [o.employeeId, o.date]);
+    await query(
+      `INSERT INTO hr_attendance_overrides (employee_id, emp, override_date, status, reason, set_by, set_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE employee_id = VALUES(employee_id), status = VALUES(status), reason = VALUES(reason), set_by = VALUES(set_by), set_at = VALUES(set_at)`,
+      [o.employeeId, o.emp, o.date, o.status, o.reason, o.setBy, o.setAt]
+    );
+  }
+  async deleteAttendanceOverride(employeeId: string, date: string): Promise<void> {
+    await query('DELETE FROM hr_attendance_overrides WHERE employee_id = ? AND override_date = ?', [employeeId, date]);
+  }
+  private mapOverrideRow(r: OverrideRow): HrAttendanceOverride {
+    return {
+      employeeId: employeeIdOf(r), emp: r.emp, date: r.override_date, status: r.status as HrAttendanceOverride['status'],
+      reason: r.reason || '', setBy: r.set_by || null, setAt: r.set_at || null,
+    };
+  }
   /** Overwrites EVERY column, geo included — callers must pass through any existing inGeo/outGeo
    * they don't intend to change (punchEmployee and decideRegularization both do). */
   async upsertAttendance(rec: HrAttendanceRecord): Promise<void> {
@@ -471,6 +516,40 @@ export class HrToolRepository {
   async findRegularizationByEmployeeDateAndType(employeeId: string, date: string, punchType: HrRegularization['punchType']): Promise<HrRegularization | null> {
     const row = await queryOne<RegularizationRow>('SELECT * FROM hr_regularizations WHERE employee_id = ? AND reg_date = ? AND punch_type = ?', [employeeId, date, punchType]);
     return row ? mapRegularizationRow(row) : null;
+  }
+  /** Inserts a request only if it still fits the per-cycle day limit, checked and written as one
+   * step: the employee's hr_employees row is locked (FOR UPDATE) for the transaction, so two
+   * requests sent at the same moment run one after the other and the second sees the first. Same
+   * counting as countedRegularizationDates — distinct dates in from..to, every status counts
+   * (rejected too), converted 'hr-edit' rows and requests closed by an HR-set day ('cancelled') don't, a date that's already counted is free. Also re-checks the
+   * one-request-per-date-and-punch rule under the same lock. */
+  async insertRegularizationWithinLimit(reg: HrRegularization, from: string, to: string, quota: number): Promise<'ok' | 'limit' | 'duplicate'> {
+    const pool = await getDbConnection();
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.query('SELECT id FROM hr_employees WHERE id = ? FOR UPDATE', [reg.employeeId]);
+      const dup = await connection.query('SELECT id FROM hr_regularizations WHERE employee_id = ? AND reg_date = ? AND punch_type = ? LIMIT 1', [reg.employeeId, reg.date, reg.punchType]);
+      if ((dup as unknown[]).length > 0) { await connection.rollback(); return 'duplicate'; }
+      const rows = await connection.query(
+        `SELECT DISTINCT DATE_FORMAT(reg_date, '%Y-%m-%d') AS d FROM hr_regularizations
+         WHERE employee_id = ? AND reg_date BETWEEN ? AND ? AND (source IS NULL OR source <> 'hr-edit') AND status <> 'cancelled'`,
+        [reg.employeeId, from, to]
+      );
+      const used = new Set((rows as { d: string }[]).map((r) => r.d));
+      if (!used.has(reg.date) && used.size >= quota) { await connection.rollback(); return 'limit'; }
+      await connection.query(
+        'INSERT INTO hr_regularizations (id, employee_id, emp, reg_date, punch_type, reason, requested_time, stage, status, rm_remarks, hr_remarks, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [reg.id, reg.employeeId, reg.emp, reg.date, reg.punchType, reg.reason || null, reg.requestedTime || null, reg.stage, reg.status, reg.rmRemarks || null, reg.hrRemarks || null, reg.source || 'employee']
+      );
+      await connection.commit();
+      return 'ok';
+    } catch (e) {
+      await connection.rollback();
+      throw e;
+    } finally {
+      connection.release();
+    }
   }
   /** Single-row insert, safe for an isolated employee session to call directly. */
   async insertRegularization(reg: HrRegularization): Promise<void> {
@@ -573,8 +652,9 @@ export class HrToolRepository {
     const rows = await findAllRows<PayrollRow>('hr_payroll_runs');
     return rows.map((r) => ({
       month: r.month, status: r.status, runAt: r.run_at, runBy: r.run_by,
-      periodFrom: r.period_from || null, periodTo: r.period_to || null, lockedAt: r.locked_at || null,
-      reopenedUntil: r.reopened_until || null, reopenReason: r.reopen_reason || null, computedAt: r.computed_at || null,
+      periodFrom: r.period_from || null, periodTo: r.period_to || null, computedAt: r.computed_at || null,
+      frozenAt: r.frozen_at || null, frozenBy: r.frozen_by || null,
+      reversedAt: r.reversed_at || null, reversedBy: r.reversed_by || null, reverseReason: r.reverse_reason || null,
     }));
   }
   /** Records a run. computed_at is stamped by the DB clock (NOW()) — the same clock that stamps the
@@ -587,11 +667,42 @@ export class HrToolRepository {
       [run.month, run.status, run.runAt || null, run.runBy || null, run.periodFrom || null, run.periodTo || null]
     );
   }
-  async lockPayrollRun(month: string): Promise<void> {
-    await query('UPDATE hr_payroll_runs SET locked_at = NOW(), reopened_until = NULL WHERE month = ? AND locked_at IS NULL', [month]);
+  /** Freezes a drafted month. Conditional on it not being frozen already, so two admins clicking
+   * Freeze at once can't both succeed — returns false for the loser. */
+  async freezePayrollRun(month: string, by: string): Promise<boolean> {
+    const [res] = await query<{ affectedRows?: number }>(
+      "UPDATE hr_payroll_runs SET frozen_at = NOW(), frozen_by = ? WHERE month = ? AND status = 'run' AND frozen_at IS NULL", [by, month]
+    );
+    return Number(res?.affectedRows || 0) > 0;
   }
-  async reopenPayrollRun(month: string, until: string, reason: string): Promise<void> {
-    await query('UPDATE hr_payroll_runs SET locked_at = NULL, reopened_until = ?, reopen_reason = ? WHERE month = ?', [until, reason, month]);
+  /** Discards an unfrozen draft: the run row goes back to 'not_run' (its period cleared so no later
+   * cycle treats those days as already paid) and its entries are deleted. Conditional on the month
+   * still being an unfrozen draft, so it can't race a Freeze — returns false if it isn't. */
+  async discardPayrollDraft(month: string, by: string): Promise<boolean> {
+    const [res] = await query<{ affectedRows?: number }>(
+      `UPDATE hr_payroll_runs SET status = 'not_run', period_from = NULL, period_to = NULL, computed_at = NULL,
+         reversed_at = NOW(), reversed_by = ?, reverse_reason = NULL
+       WHERE month = ? AND status = 'run' AND frozen_at IS NULL`,
+      [by, month]
+    );
+    if (Number(res?.affectedRows || 0) === 0) return false;
+    await query('DELETE FROM hr_payroll_entries WHERE month = ?', [month]);
+    return true;
+  }
+  /** Reverses a frozen month back to a draft and withdraws its payslip snapshots. Only reachable
+   * when FROZEN_PAYROLL_REVERSIBLE is on (hr-tool.service) — frozen payroll is final otherwise. */
+  async reversePayrollRun(month: string, by: string, reason: string): Promise<boolean> {
+    // query() wraps a non-array result (mariadb's OkPacket) in an array.
+    const [res] = await query<{ affectedRows?: number }>(
+      'UPDATE hr_payroll_runs SET frozen_at = NULL, frozen_by = NULL, reversed_at = NOW(), reversed_by = ?, reverse_reason = ? WHERE month = ? AND frozen_at IS NOT NULL',
+      [by, reason, month]
+    );
+    if (Number(res?.affectedRows || 0) === 0) return false;
+    await query('UPDATE hr_payroll_entries SET payslip_json = NULL WHERE month = ?', [month]);
+    return true;
+  }
+  async savePayslipSnapshot(month: string, employeeId: string, payslip: PayslipData): Promise<void> {
+    await query('UPDATE hr_payroll_entries SET payslip_json = ? WHERE month = ? AND employee_id = ?', [JSON.stringify(payslip), month, employeeId]);
   }
   /** Requests still waiting for a decision that touch a date range — the cycle can't lock while
    * any exist, and the Payroll page marks those employees' figures provisional. */
@@ -616,18 +727,6 @@ export class HrToolRepository {
         detail: [`${l.type} leave${l.half_day ? ` (half day, ${l.half_day} half)` : ''}`, l.remarks || ''].filter(Boolean).join(' — '),
       })),
     ];
-  }
-  /** True when a regularization or leave request touching the range changed after the month's
-   * last run (both timestamps from the DB clock) — the frozen figures are then out of date. */
-  async hasRequestChangesSinceRun(month: string, fromDate: string, toDate: string): Promise<boolean> {
-    const rows = await query<{ n: number }>(
-      `SELECT
-         (SELECT COUNT(*) FROM hr_regularizations g WHERE g.reg_date BETWEEN ? AND ? AND g.updated_at > r.computed_at)
-       + (SELECT COUNT(*) FROM hr_leave_requests l WHERE l.from_date <= ? AND l.to_date >= ? AND l.updated_at > r.computed_at) AS n
-       FROM hr_payroll_runs r WHERE r.month = ? AND r.computed_at IS NOT NULL`,
-      [fromDate, toDate, toDate, fromDate, month]
-    );
-    return Number(rows[0]?.n || 0) > 0;
   }
 
   // --- Payroll entries (per-employee-per-month computed payroll) ---
@@ -683,6 +782,16 @@ export class HrToolRepository {
   async findPayrollEntryForEmployee(month: string, employeeId: string): Promise<HrPayrollEntry | null> {
     return (await this.findPayrollEntriesForMonth(month)).find((e) => e.employeeId === employeeId) ?? null;
   }
+  /** True when this employee's salary for `month` was paid by a FROZEN payroll (a draft run is
+   * not a payment) — Full & Final uses it so a cycle is never paid twice. */
+  async hasFrozenPayrollEntry(month: string, employeeId: string): Promise<boolean> {
+    const rows = await query<{ n: number | bigint }>(
+      `SELECT COUNT(*) AS n FROM hr_payroll_entries e JOIN hr_payroll_runs r ON r.month = e.month
+       WHERE e.month = ? AND e.employee_id = ? AND r.status = 'run' AND r.frozen_at IS NOT NULL`,
+      [month, employeeId]
+    );
+    return Number(rows[0]?.n || 0) > 0;
+  }
 
   async findPayrollEntriesForMonth(month: string): Promise<HrPayrollEntry[]> {
     const rows = await query<PayrollEntryRow>('SELECT * FROM hr_payroll_entries WHERE month = ? ORDER BY emp ASC', [month]);
@@ -692,6 +801,7 @@ export class HrToolRepository {
       presentDays: Number(r.present_days), leaveDays: Number(r.leave_days), absentDays: Number(r.absent_days),
       shortLeaveDays: r.short_leave_days, shortLeaveCarryOut: r.short_leave_carry_out, halfDayDays: r.half_day_days,
       lopDays: Number(r.lop_days), monthlyGross: r.monthly_gross, tds: r.tds, netPay: r.net_pay,
+      payslip: parsePayslip(r.payslip_json),
     }));
   }
   async upsertPayrollEntry(month: string, entry: HrPayrollEntry): Promise<void> {
@@ -713,14 +823,10 @@ export class HrToolRepository {
       ]
     );
   }
-  /** Drops one employee's payslip from a run — used when an auto-update finds they no longer
-   * belong in it (e.g. their salary moved into a Full & Final). */
+  /** Drops one employee's payslip from a draft — used when a re-run finds they no longer belong
+   * in it (e.g. their salary moved into a Full & Final). */
   async deletePayrollEntry(month: string, employeeId: string): Promise<void> {
     await query('DELETE FROM hr_payroll_entries WHERE month = ? AND employee_id = ?', [month, employeeId]);
-  }
-  /** Re-stamps a run's computed_at (DB clock) after its entries were brought up to date. */
-  async touchPayrollRunComputedAt(month: string): Promise<void> {
-    await query('UPDATE hr_payroll_runs SET computed_at = NOW() WHERE month = ?', [month]);
   }
 
   // --- Templates ---
@@ -740,7 +846,10 @@ export class HrToolRepository {
     if (!r) return null;
     return {
       workingDaysPattern: r.working_days_pattern, shiftStartTime: r.shift_start_time, shiftEndTime: r.shift_end_time,
-      shiftGraceMinutes: r.shift_grace_minutes, halfDayThresholdHours: Number(r.half_day_threshold_hours),
+      shiftGraceMinutes: r.shift_grace_minutes,
+      punchInFrom: hhmmOr(r.punch_in_from, DEFAULT_PUNCH_WINDOWS.punchInFrom), punchInTo: hhmmOr(r.punch_in_to, DEFAULT_PUNCH_WINDOWS.punchInTo),
+      punchOutFrom: hhmmOr(r.punch_out_from, DEFAULT_PUNCH_WINDOWS.punchOutFrom), punchOutTo: hhmmOr(r.punch_out_to, DEFAULT_PUNCH_WINDOWS.punchOutTo),
+      halfDayThresholdHours: Number(r.half_day_threshold_hours),
       regularizationWindowDays: r.regularization_window_days, regularizationOverride: !!r.regularization_override,
       regularizationMonthlyQuota: r.regularization_monthly_quota, shortLeaveMaxHours: Number(r.short_leave_max_hours),
       shortLeaveMonthlyQuota: r.short_leave_monthly_quota,
@@ -774,6 +883,7 @@ export class HrToolRepository {
       rules.lateMarkPenalty ? 1 : 0, rules.geoFencing ? 1 : 0, rules.selfieCheckin ? 1 : 0, rules.pfEsi ? 1 : 0,
       rules.optionalHolidayChoice ? 1 : 0, rules.assetChecklist ? 1 : 0,
       rules.geoFenceLat, rules.geoFenceLng, Math.round(rules.geoFenceRadiusM),
+      rules.punchInFrom, rules.punchInTo, rules.punchOutFrom, rules.punchOutTo,
     ];
     await query(
       `INSERT INTO hr_rules (id, working_days_pattern, shift_start_time, shift_end_time, shift_grace_minutes, half_day_threshold_hours,
@@ -781,8 +891,9 @@ export class HrToolRepository {
         half_day_min_worked_hours, short_leave_min_worked_hours, full_day_min_worked_hours,
         salary_period_from, salary_period_to, ctc_basic_pct, ctc_hra_pct, ctc_convenience_type, ctc_convenience_value,
         leave_types, two_level_approval_leave, two_level_approval_attendance, two_level_approval_expense, late_mark_penalty, geo_fencing,
-        selfie_checkin, pf_esi, optional_holiday_choice, asset_checklist, geo_fence_lat, geo_fence_lng, geo_fence_radius_m)
-       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        selfie_checkin, pf_esi, optional_holiday_choice, asset_checklist, geo_fence_lat, geo_fence_lng, geo_fence_radius_m,
+        punch_in_from, punch_in_to, punch_out_from, punch_out_to)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
         working_days_pattern = VALUES(working_days_pattern), shift_start_time = VALUES(shift_start_time), shift_end_time = VALUES(shift_end_time),
         shift_grace_minutes = VALUES(shift_grace_minutes), half_day_threshold_hours = VALUES(half_day_threshold_hours),
@@ -798,7 +909,9 @@ export class HrToolRepository {
         two_level_approval_attendance = VALUES(two_level_approval_attendance), two_level_approval_expense = VALUES(two_level_approval_expense),
         late_mark_penalty = VALUES(late_mark_penalty), geo_fencing = VALUES(geo_fencing), selfie_checkin = VALUES(selfie_checkin),
         pf_esi = VALUES(pf_esi), optional_holiday_choice = VALUES(optional_holiday_choice), asset_checklist = VALUES(asset_checklist),
-        geo_fence_lat = VALUES(geo_fence_lat), geo_fence_lng = VALUES(geo_fence_lng), geo_fence_radius_m = VALUES(geo_fence_radius_m)`,
+        geo_fence_lat = VALUES(geo_fence_lat), geo_fence_lng = VALUES(geo_fence_lng), geo_fence_radius_m = VALUES(geo_fence_radius_m),
+        punch_in_from = VALUES(punch_in_from), punch_in_to = VALUES(punch_in_to),
+        punch_out_from = VALUES(punch_out_from), punch_out_to = VALUES(punch_out_to)`,
       params
     );
   }

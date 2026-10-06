@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ArrowUpRight, Check, X } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowUpRight, Check, Lock, X } from 'lucide-react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { EnsTravelEnquiry, EnsTravelEnquiryAdminInput } from '@/modules/ens-travel-enquiries/domain/types';
 import {
   CONVERSATION_NOTE_MAX_LENGTH,
   LEAD_STATUS_OPTIONS,
-  leadStatusLabel,
   leadStatusTakesNote,
   NO_STATUS_LABEL,
 } from '@/modules/ens-travel-enquiries/domain/lead-status';
@@ -15,17 +15,14 @@ import {
   packageFor,
   PARTICIPATION_OPTIONS,
   PARTICIPATION_OTHERS,
-  participationLabel,
   REQUIREMENT_MAX_LENGTH,
 } from '@/modules/ens-travel-enquiries/domain/participation';
 import {
   FOUND_US_DETAIL_MAX_LENGTH,
   FOUND_US_OPTIONS,
   FOUND_US_OTHERS,
-  foundUsLabel,
   NO_REFERRER_LABEL,
   REFERRED_BY_OPTIONS,
-  referredByLabel,
 } from '@/modules/ens-travel-enquiries/domain/sources';
 import { COUNTRY_NAMES } from '@/modules/partnership-events/domain/country-city-data';
 import {
@@ -37,9 +34,11 @@ import {
   sameAssignmentDraft,
 } from '@/modules/lead-assignments/domain/types';
 import FollowUpsPanel from './FollowUpsPanel';
+import SaveConfirmDialog from './SaveConfirmDialog';
 import LeadAssignmentFields from './LeadAssignmentFields';
 import LeadMessagesPanel from './LeadMessagesPanel';
 import { salesTrackerApi } from './api';
+import { ENS_ENQUIRY_TYPE_LABEL, PAGE_LEAD_LABELS } from './constants';
 import { updateEnsEnquiry } from './ensEnquiriesApi';
 import { formatSubmittedOn, whatsappLink } from './sponsorEventFormat';
 
@@ -60,33 +59,31 @@ function toInput(e: EnsTravelEnquiry): EnsTravelEnquiryAdminInput {
   };
 }
 
-/** The lead-status pill: one tone per status, and a muted one for "no conversation yet". */
-export function leadStatusBadge(status: EnsTravelEnquiry['leadStatus']): { label: string; tone: string } {
-  return { label: leadStatusLabel(status), tone: status ?? 'none' };
-}
+/** Field labels for the save warning, in form order. */
+const FIELD_LABELS: Record<keyof EnsTravelEnquiryAdminInput, string> = {
+  name: 'Name',
+  contact: 'Contact no.',
+  email: 'Email ID',
+  country: 'Country',
+  city: 'City',
+  participation: 'Participating as',
+  requirement: 'Requirement',
+  referredBy: 'Referred by',
+  foundUs: 'How they found us',
+  foundUsDetail: 'In their words',
+  leadStatus: 'Status',
+  conversationNote: 'Conversation result',
+};
 
-/** Which of the page's two packages an option belongs to, as a short badge label. */
-export function participationBadge(value: string): { label: string; tone: 'delegate' | 'booth' | 'others' } {
-  const pack = packageFor(value);
-  if (pack === 'delegate') return { label: participationLabel(value), tone: 'delegate' };
-  if (pack === 'booth') return { label: participationLabel(value), tone: 'booth' };
-  return { label: 'Others', tone: 'others' };
-}
-
-/** One /expand-north-star enquiry, in full, with editing.
- *
- * View: who they are and how to reach them, where they're travelling from, how they're taking part
- * — with that package's inclusions, exactly as the public page lists them, or the requirement they
- * wrote under "Others" — and the record's own dates: when it was submitted and when an admin last
- * edited it (and who).
- *
- * Edit: the same fields the visitor filled, checked by the same rules server-side, plus the team's
- * own record of the conversation — a Lead status (Confirmed / Follow Up / Not Interested, or none yet)
- * and, under Confirmed or Follow Up, a note on what the conversation led to — and who works it:
- * Departments + Assigned to (LeadAssignmentFields), saved through the Sales Tracker's assignments
- * endpoint (`onAssign`) right after the enquiry itself — then, once both are filled, an optional
- * "Message for assigned employees" (LeadMessagesPanel) sent last. Saving stamps "Last updated" and
- * switches back to the view showing the saved record. */
+/** One /expand-north-star enquiry, in the same window layout as every other Sales Tracker lead
+ * (LeadFormModal): labelled form rows that open straight into edit mode (no "Edit lead" step),
+ * Departments + Assigned to, the message panel, Status, then the employee follow-ups.
+ * Only the fields differ — this record lives in ens_travel_enquiries, so it shows what the public
+ * page collects (participation package, referred by, how they found us) and saves through its own
+ * PATCH endpoint, then the assignment (`onAssign`), then an optional message (sent last, since it
+ * needs the people stored first). Source and Type of lead are fixed by the page, so they're shown
+ * locked. "Save changes" first shows SaveConfirmDialog listing what changed; confirming saves and
+ * stamps "Last updated". Closing with unsaved edits asks before throwing them away. */
 export default function EnsEnquiryDetailModal({ enquiry, employees, departments, assignment, onAssign, onClose, onSaved }: {
   enquiry: EnsTravelEnquiry;
   employees: AssignableEmployee[];
@@ -98,44 +95,39 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
   onSaved: (updated: EnsTravelEnquiry) => void;
 }) {
   const [current, setCurrent] = useState(enquiry);
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<EnsTravelEnquiryAdminInput>(() => toInput(enquiry));
   const [assignmentDraft, setAssignmentDraft] = useState<LeadAssignmentDraft>(() => assignmentToDraft(assignment));
   const [messageDraft, setMessageDraft] = useState('');
   // Bumped after a save so LeadMessagesPanel re-reads the history.
   const [messagesVersion, setMessagesVersion] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   const canMessage = assignmentDraft.departments.length > 0 && assignmentDraft.assignees.length > 0;
   const newMessage = canMessage ? messageDraft.trim() : '';
   const assignmentDirty = !sameAssignmentDraft(assignmentDraft, assignmentToDraft(assignment));
-  const dirty = editing && (JSON.stringify(draft) !== JSON.stringify(toInput(current)) || assignmentDirty || !!newMessage);
+  const stored = toInput(current);
+  const changes = [
+    ...(Object.keys(FIELD_LABELS) as (keyof EnsTravelEnquiryAdminInput)[])
+      .filter((k) => JSON.stringify(draft[k]) !== JSON.stringify(stored[k]))
+      .map((k) => FIELD_LABELS[k]),
+    ...(assignmentDirty ? ['Departments / Assigned to'] : []),
+    ...(newMessage ? ['New message for assigned employees'] : []),
+  ];
+  const dirty = changes.length > 0;
 
   function requestClose() {
+    // Escape while the save warning is up only dismisses the warning.
+    if (confirmOpen) { if (!saving) setConfirmOpen(false); return; }
     if (dirty && !window.confirm('Discard your unsaved changes?')) return;
     onClose();
   }
+  useEscapeKey(requestClose);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') requestClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
-  function startEdit() {
-    setDraft(toInput(current));
-    setAssignmentDraft(assignmentToDraft(assignment));
-    setMessageDraft('');
+  function requestSave() {
     setMsg(null);
-    setEditing(true);
-  }
-
-  function cancelEdit() {
-    setEditing(false);
-    setMsg(null);
+    setConfirmOpen(true);
   }
 
   async function save() {
@@ -150,8 +142,9 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
       };
       const saved = await updateEnsEnquiry(current.id, payload);
       setCurrent(saved);
+      setDraft(toInput(saved));
       onSaved(saved);
-      // The enquiry is saved by now; if only the assignment fails, say so and stay in Edit so it
+      // The enquiry is saved by now; if only the assignment fails, say so and keep the draft so it
       // can be retried (saving again is safe — both saves replace).
       if (assignmentDirty) {
         try { await onAssign(assignmentDraft); } catch (err) {
@@ -170,322 +163,158 @@ export default function EnsEnquiryDetailModal({ enquiry, employees, departments,
           return;
         }
       }
-      setEditing(false);
       setMsg({ kind: 'ok', text: `Changes saved · last updated ${formatSubmittedOn(saved.updatedAt ?? undefined)}` });
     } catch (err) {
       setMsg({ kind: 'err', text: err instanceof Error ? err.message : "Couldn't save the changes" });
     } finally {
       setSaving(false);
+      setConfirmOpen(false);
     }
   }
 
   const e = current;
-  const badge = participationBadge(e.participation);
-  const pack = packageFor(e.participation);
-  const statusBadge = leadStatusBadge(e.leadStatus);
+  const pack = packageFor(draft.participation);
+  const pageLabel = PAGE_LEAD_LABELS[ENS_ENQUIRY_TYPE_LABEL];
   const set = <K extends keyof EnsTravelEnquiryAdminInput>(key: K, value: EnsTravelEnquiryAdminInput[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
-  const replySubject = encodeURIComponent('Your Expand North Star enquiry — StartupNews.fyi');
+  const lockNote = (why: string) => <span className="lock-hint" title={why}><Lock size={11} aria-hidden />{why}</span>;
+  const req = <span style={{ color: 'var(--pink)' }}>*</span>;
 
   return (
-    <div className="modal-overlay" onClick={requestClose}>
-      <div className="modal-box ee-modal" role="dialog" aria-modal="true" aria-labelledby="ee-modal-title" onClick={(ev) => ev.stopPropagation()}>
+    <>
+    <div className="modal-overlay open" onClick={(ev) => { if (ev.target === ev.currentTarget) requestClose(); }}>
+      <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="ee-modal-title">
         <div className="modal-head">
-          <h2 id="ee-modal-title">{editing ? `Edit enquiry — ${e.name}` : e.name}</h2>
+          <h2 id="ee-modal-title">Lead details</h2>
           <button type="button" className="modal-close" aria-label="Close" onClick={requestClose}><X size={20} aria-hidden /></button>
         </div>
-
         <div className="modal-body">
-          <div className="modal-meta">Expand North Star enquiry · ID {e.id}</div>
-
-          {/* The record's two dates, always visible above both the view and the form. */}
-          <div className="ee-dates">
-            <div className="ee-date">
-              <span className="ee-date-lbl">Received on</span>
-              <span className="ee-date-val">{formatSubmittedOn(e.createdAt)}</span>
-              <span className="hint">Submitted from /expand-north-star</span>
+          <div className="hint" style={{ marginBottom: 10 }}>Edit any detail below, then click <strong>Save changes</strong>. You&apos;ll be asked to confirm before anything is saved.</div>
+          <div className="row">
+            <div className="field"><label>Arrival date {lockNote('Set when the enquiry arrived')}</label><input type="text" value={formatSubmittedOn(e.createdAt)} disabled readOnly /></div>
+            <div className="field">
+              <label>Last updated {lockNote('Changes automatically when you save an edit')}</label>
+              <input type="text" value={e.updatedAt ? `${formatSubmittedOn(e.updatedAt)} · by ${e.updatedBy || 'an admin'}` : 'Never edited'} disabled readOnly />
             </div>
-            <div className={`ee-date${e.updatedAt ? ' is-edited' : ''}`}>
-              <span className="ee-date-lbl">Last updated</span>
-              <span className="ee-date-val">{e.updatedAt ? formatSubmittedOn(e.updatedAt) : 'Never edited'}</span>
-              <span className="hint">{e.updatedAt ? `by ${e.updatedBy || 'an admin'}` : 'Shows the time of the last admin edit'}</span>
+            <div className="field"><label htmlFor="ee-name">Name {req}</label>
+              <input id="ee-name" type="text" maxLength={120} placeholder="Lead's name" value={draft.name} onChange={(ev) => set('name', ev.target.value)} />
             </div>
           </div>
-
+          <div className="row">
+            {/* Same fixed-basis width as LeadFormModal's Contact no., so the number doesn't stretch. */}
+            <div style={{ flex: '0 1 360px', minWidth: 300 }}>
+              <div className="field">
+                <label htmlFor="ee-contact">Contact no. {req}</label>
+                <input id="ee-contact" type="tel" maxLength={24} placeholder="+91 9876543210" value={draft.contact} onChange={(ev) => set('contact', ev.target.value)} />
+                <div className="hint">With the country code, e.g. +971 501234567</div>
+                {e.contact && <a href={whatsappLink(e.contact)} target="_blank" rel="noopener noreferrer" className="hint ic-text" style={{ marginTop: 4 }}>Open in WhatsApp<ArrowUpRight size={12} aria-hidden /></a>}
+              </div>
+            </div>
+            <div className="field"><label htmlFor="ee-email">Email ID {req}</label>
+              <input id="ee-email" type="email" maxLength={160} placeholder="name@company.com" value={draft.email} onChange={(ev) => set('email', ev.target.value)} />
+            </div>
+          </div>
+          <div className="row">
+            <div className="field"><label htmlFor="ee-country">Country {req}</label>
+              <input id="ee-country" type="text" maxLength={120} list="ee-country-list" placeholder="—" value={draft.country} onChange={(ev) => set('country', ev.target.value)} />
+              <datalist id="ee-country-list">
+                {COUNTRY_NAMES.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+            <div className="field"><label htmlFor="ee-city">City {req}</label>
+              <input id="ee-city" type="text" maxLength={120} placeholder="—" value={draft.city} onChange={(ev) => set('city', ev.target.value)} />
+            </div>
+          </div>
+          <div className="row">
+            <div className="field"><label>Source of lead {lockNote(`Set by the ${pageLabel} page`)}</label><input type="text" value={pageLabel} disabled readOnly /></div>
+            <div className="field"><label>Type of lead {lockNote(`Set by the ${pageLabel} page`)}</label>
+              <select value={ENS_ENQUIRY_TYPE_LABEL} disabled><option>{ENS_ENQUIRY_TYPE_LABEL}</option></select>
+            </div>
+          </div>
+          <div className="row">
+            <div className="field"><label htmlFor="ee-participation">Participating as {req}</label>
+              <select id="ee-participation" value={draft.participation} onChange={(ev) => set('participation', ev.target.value as EnsTravelEnquiryAdminInput['participation'])}>
+                {PARTICIPATION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              {pack && (
+                <ul className="ee-inclusions" style={{ marginTop: 10 }}>
+                  {PACKAGE_INCLUSIONS[pack].map((item) => (
+                    <li key={item.text} className={item.highlight ? 'is-highlight' : undefined}><Check size={14} strokeWidth={3} aria-hidden />{item.text}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {draft.participation === PARTICIPATION_OTHERS && (
+              <div className="field"><label htmlFor="ee-requirement">Requirement {req}</label>
+                <textarea id="ee-requirement" maxLength={REQUIREMENT_MAX_LENGTH} placeholder="—" value={draft.requirement} onChange={(ev) => set('requirement', ev.target.value)} />
+                <div className="hint">{draft.requirement.length} / {REQUIREMENT_MAX_LENGTH}</div>
+              </div>
+            )}
+          </div>
+          <div className="row">
+            <div className="field"><label htmlFor="ee-referred-by">Referred by</label>
+              <select id="ee-referred-by" value={draft.referredBy} onChange={(ev) => set('referredBy', ev.target.value as EnsTravelEnquiryAdminInput['referredBy'])}>
+                <option value="">{NO_REFERRER_LABEL}</option>
+                {REFERRED_BY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div className="field"><label htmlFor="ee-found-us">How they found us {req}</label>
+              <select id="ee-found-us" value={draft.foundUs} onChange={(ev) => set('foundUs', ev.target.value as EnsTravelEnquiryAdminInput['foundUs'])}>
+                {FOUND_US_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            {draft.foundUs === FOUND_US_OTHERS && (
+              <div className="field"><label htmlFor="ee-found-us-detail">In their words {req}</label>
+                <input id="ee-found-us-detail" type="text" maxLength={FOUND_US_DETAIL_MAX_LENGTH} placeholder="—" value={draft.foundUsDetail} onChange={(ev) => set('foundUsDetail', ev.target.value)} />
+              </div>
+            )}
+          </div>
+          <LeadAssignmentFields
+            idPrefix="ee"
+            employees={employees}
+            departments={departments}
+            assignment={assignment}
+            value={assignmentDraft}
+            onChange={setAssignmentDraft}
+          />
+          <LeadMessagesPanel
+            idPrefix="ee"
+            source="ens"
+            leadId={e.id}
+            canWrite={canMessage}
+            value={messageDraft}
+            onChange={setMessageDraft}
+            refreshKey={messagesVersion}
+          />
+          <div className="row">
+            <div className="field"><label htmlFor="ee-lead-status">Status</label>
+              <select id="ee-lead-status" value={draft.leadStatus ?? ''} onChange={(ev) => set('leadStatus', (ev.target.value || null) as EnsTravelEnquiryAdminInput['leadStatus'])}>
+                <option value="">{NO_STATUS_LABEL}</option>
+                {LEAD_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+          {leadStatusTakesNote(draft.leadStatus) && (
+            <div className="row">
+              <div className="field" style={{ flexBasis: '100%' }}><label htmlFor="ee-conversation-note">Conversation result</label>
+                <textarea id="ee-conversation-note" maxLength={CONVERSATION_NOTE_MAX_LENGTH} placeholder="What happened on the call / chat, and what was agreed next" value={draft.conversationNote} onChange={(ev) => set('conversationNote', ev.target.value)} />
+                <div className="hint">{draft.conversationNote.length} / {CONVERSATION_NOTE_MAX_LENGTH}</div>
+              </div>
+            </div>
+          )}
+          {/* Read-only; its content isn't part of this form. */}
+          <FollowUpsPanel source="ens" leadId={e.id} />
           {msg && <div className={`msg ${msg.kind}`} role={msg.kind === 'err' ? 'alert' : 'status'}>{msg.text}</div>}
-
-          {!editing ? (
-            <div className="ee-panels">
-              <section className="ee-panel">
-                <header className="ee-panel-head">
-                  <h3>Contact</h3>
-                  <span>Who they are and how to reach them</span>
-                </header>
-                <dl className="ee-panel-kv">
-                  <dt>Full name</dt><dd>{e.name}</dd>
-                  <dt>Email</dt><dd><a href={`mailto:${e.email}`}>{e.email}</a></dd>
-                  <dt>Contact number</dt>
-                  <dd>
-                    <a href={`tel:${e.contact.replace(/\s+/g, '')}`}>{e.contact}</a>
-                    {' · '}
-                    <a href={whatsappLink(e.contact)} target="_blank" rel="noopener noreferrer" className="ic-text">WhatsApp<ArrowUpRight size={12} aria-hidden /></a>
-                  </dd>
-                </dl>
-              </section>
-
-              <section className="ee-panel">
-                <header className="ee-panel-head">
-                  <h3>Travelling from</h3>
-                  <span>Where they will be coming from</span>
-                </header>
-                <dl className="ee-panel-kv">
-                  <dt>City</dt><dd>{e.city}</dd>
-                  <dt>Country</dt><dd>{e.country}</dd>
-                </dl>
-              </section>
-
-              <section className={`ee-panel is-${badge.tone}`}>
-                <header className="ee-panel-head">
-                  <h3>Participating as</h3>
-                  <span>{pack ? 'Package they asked about' : 'Their own requirement'}</span>
-                </header>
-                <p className="ee-package-name">{participationLabel(e.participation)}</p>
-                {pack ? (
-                  <>
-                    <p className="ee-package-sub">{pack === 'delegate' ? 'Delegation' : 'Booth / POD'} inclusions</p>
-                    <ul className="ee-inclusions">
-                      {PACKAGE_INCLUSIONS[pack].map((item) => (
-                        <li key={item.text} className={item.highlight ? 'is-highlight' : undefined}><Check size={14} strokeWidth={3} aria-hidden />{item.text}</li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <>
-                    <p className="ee-package-sub">Requirement</p>
-                    <p className="se-desc">{e.requirement || <span className="hint">Not provided</span>}</p>
-                  </>
-                )}
-              </section>
-
-              <section className="ee-panel">
-                <header className="ee-panel-head">
-                  <h3>Source</h3>
-                  <span>Who sent them, and where they found the event</span>
-                </header>
-                <dl className="ee-panel-kv">
-                  <dt>Referred by</dt><dd>{e.referredBy ? referredByLabel(e.referredBy) : <span className="hint">{NO_REFERRER_LABEL}</span>}</dd>
-                  <dt>How they found us</dt><dd>{foundUsLabel(e.foundUs)}</dd>
-                  {e.foundUs === FOUND_US_OTHERS && (
-                    <><dt>In their words</dt><dd>{e.foundUsDetail || <span className="hint">Not provided</span>}</dd></>
-                  )}
-                </dl>
-              </section>
-
-              <section className={`ee-panel is-status-${statusBadge.tone}`}>
-                <header className="ee-panel-head">
-                  <h3>Conversation</h3>
-                  <span>Where the team’s conversation with this lead stands</span>
-                </header>
-                <div className="ee-status-row">
-                  <span className="ee-status-lbl">Lead status</span>
-                  <span className={`badge ee-status is-${statusBadge.tone}`}>{statusBadge.label}</span>
-                </div>
-                {leadStatusTakesNote(e.leadStatus) ? (
-                  <>
-                    <p className="ee-package-sub">Conversation result</p>
-                    <p className="se-desc">{e.conversationNote || <span className="hint">No note written yet — use Edit details to add what the conversation led to.</span>}</p>
-                  </>
-                ) : (
-                  <p className="ee-panel-note">
-                    {e.leadStatus === null
-                      ? 'Nobody has logged a conversation with this lead yet. Use Edit details to set a status once you have spoken to them.'
-                      : 'This lead is not interested. No further conversation note is kept for these leads.'}
-                  </p>
-                )}
-              </section>
-
-              <section className="ee-panel">
-                <header className="ee-panel-head">
-                  <h3>Assigned to</h3>
-                  <span>Who on the team is working this lead</span>
-                </header>
-                {assignment?.assignees.length || assignment?.departments.length ? (
-                  <dl className="ee-panel-kv">
-                    <dt>Departments</dt>
-                    <dd>{assignment.departments.length ? assignment.departments.join(', ') : <span className="hint">None — people picked by hand</span>}</dd>
-                    <dt>People</dt>
-                    <dd>{assignment.assignees.length
-                      ? assignment.assignees.map((p) => `${p.employeeName || 'Former employee'}${p.active ? '' : ' (no longer active)'}`).join(', ')
-                      : <span className="hint">Nobody</span>}</dd>
-                  </dl>
-                ) : (
-                  <p className="ee-panel-note">Nobody is assigned yet. Use Edit details to pick departments or people.</p>
-                )}
-              </section>
-
-              <LeadMessagesPanel
-                idPrefix="ee"
-                source="ens"
-                leadId={e.id}
-                editing={false}
-                canWrite={false}
-                value=""
-                onChange={() => {}}
-                refreshKey={messagesVersion}
-              />
-
-              <FollowUpsPanel source="ens" leadId={e.id} />
-            </div>
-          ) : (
-            <div className="ee-form">
-              <div className="row">
-                <div className="field">
-                  <label htmlFor="ee-name">Full name <span style={{ color: 'var(--pink)' }}>*</span></label>
-                  <input id="ee-name" type="text" maxLength={120} value={draft.name} onChange={(ev) => set('name', ev.target.value)} />
-                </div>
-                <div className="field">
-                  <label htmlFor="ee-email">Email <span style={{ color: 'var(--pink)' }}>*</span></label>
-                  <input id="ee-email" type="email" maxLength={160} value={draft.email} onChange={(ev) => set('email', ev.target.value)} />
-                </div>
-                <div className="field">
-                  <label htmlFor="ee-contact">Contact number <span style={{ color: 'var(--pink)' }}>*</span></label>
-                  <input id="ee-contact" type="tel" maxLength={24} placeholder="+91 9876543210" value={draft.contact} onChange={(ev) => set('contact', ev.target.value)} />
-                  <div className="hint">With the country code, e.g. +971 501234567</div>
-                </div>
-              </div>
-              <div className="row">
-                <div className="field">
-                  <label htmlFor="ee-city">City <span style={{ color: 'var(--pink)' }}>*</span></label>
-                  <input id="ee-city" type="text" maxLength={120} value={draft.city} onChange={(ev) => set('city', ev.target.value)} />
-                </div>
-                <div className="field">
-                  <label htmlFor="ee-country">Country <span style={{ color: 'var(--pink)' }}>*</span></label>
-                  <input id="ee-country" type="text" maxLength={120} list="ee-country-list" value={draft.country} onChange={(ev) => set('country', ev.target.value)} />
-                  <datalist id="ee-country-list">
-                    {COUNTRY_NAMES.map((c) => <option key={c} value={c} />)}
-                  </datalist>
-                </div>
-                <div className="field">
-                  <label htmlFor="ee-participation">Participating as <span style={{ color: 'var(--pink)' }}>*</span></label>
-                  <select id="ee-participation" value={draft.participation} onChange={(ev) => set('participation', ev.target.value as EnsTravelEnquiryAdminInput['participation'])}>
-                    {PARTICIPATION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
-              </div>
-              {draft.participation === PARTICIPATION_OTHERS && (
-                <div className="row">
-                  <div className="field" style={{ flexBasis: '100%' }}>
-                    <label htmlFor="ee-requirement">Requirement <span style={{ color: 'var(--pink)' }}>*</span></label>
-                    <textarea id="ee-requirement" maxLength={REQUIREMENT_MAX_LENGTH} value={draft.requirement} onChange={(ev) => set('requirement', ev.target.value)} />
-                    <div className="hint">{draft.requirement.length} / {REQUIREMENT_MAX_LENGTH}</div>
-                  </div>
-                </div>
-              )}
-
-              <div className="ee-form-divider">Source</div>
-              <div className="row">
-                <div className="field">
-                  <label htmlFor="ee-referred-by">Referred by</label>
-                  <select
-                    id="ee-referred-by"
-                    value={draft.referredBy}
-                    onChange={(ev) => set('referredBy', ev.target.value as EnsTravelEnquiryAdminInput['referredBy'])}
-                  >
-                    <option value="">{NO_REFERRER_LABEL}</option>
-                    {REFERRED_BY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                  <div className="hint">The partner organisation that sent them, if any</div>
-                </div>
-                <div className="field">
-                  <label htmlFor="ee-found-us">How they found us <span style={{ color: 'var(--pink)' }}>*</span></label>
-                  <select
-                    id="ee-found-us"
-                    value={draft.foundUs}
-                    onChange={(ev) => set('foundUs', ev.target.value as EnsTravelEnquiryAdminInput['foundUs'])}
-                  >
-                    {FOUND_US_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
-                {draft.foundUs === FOUND_US_OTHERS && (
-                  <div className="field">
-                    <label htmlFor="ee-found-us-detail">In their words <span style={{ color: 'var(--pink)' }}>*</span></label>
-                    <input id="ee-found-us-detail" type="text" maxLength={FOUND_US_DETAIL_MAX_LENGTH} value={draft.foundUsDetail} onChange={(ev) => set('foundUsDetail', ev.target.value)} />
-                    <div className="hint">{draft.foundUsDetail.length} / {FOUND_US_DETAIL_MAX_LENGTH}</div>
-                  </div>
-                )}
-              </div>
-
-              <div className="ee-form-divider">Assigned to</div>
-              <LeadAssignmentFields
-                idPrefix="ee"
-                employees={employees}
-                departments={departments}
-                assignment={assignment}
-                value={assignmentDraft}
-                onChange={setAssignmentDraft}
-              />
-              <LeadMessagesPanel
-                idPrefix="ee"
-                source="ens"
-                leadId={e.id}
-                editing
-                canWrite={canMessage}
-                value={messageDraft}
-                onChange={setMessageDraft}
-                refreshKey={messagesVersion}
-              />
-
-              <div className="ee-form-divider">Conversation</div>
-              <div className="row">
-                <div className="field">
-                  <label htmlFor="ee-lead-status">Lead status</label>
-                  <select
-                    id="ee-lead-status"
-                    value={draft.leadStatus ?? ''}
-                    onChange={(ev) => set('leadStatus', (ev.target.value || null) as EnsTravelEnquiryAdminInput['leadStatus'])}
-                  >
-                    <option value="">{NO_STATUS_LABEL}</option>
-                    {LEAD_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                  <div className="hint">How the conversation with this lead stands</div>
-                </div>
-              </div>
-              {leadStatusTakesNote(draft.leadStatus) && (
-                <div className="row">
-                  <div className="field" style={{ flexBasis: '100%' }}>
-                    <label htmlFor="ee-conversation-note">Conversation result</label>
-                    <textarea
-                      id="ee-conversation-note"
-                      maxLength={CONVERSATION_NOTE_MAX_LENGTH}
-                      placeholder="What happened on the call / chat, and what was agreed next"
-                      value={draft.conversationNote}
-                      onChange={(ev) => set('conversationNote', ev.target.value)}
-                    />
-                    <div className="hint">{draft.conversationNote.length} / {CONVERSATION_NOTE_MAX_LENGTH}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
-
         <div className="modal-actions">
-          {!editing ? (
-            <>
-              <button type="button" onClick={requestClose}>Close</button>
-              <a className="se-btn-link ee-btn-ghost" href={`mailto:${e.email}?subject=${replySubject}`}>Reply by email</a>
-              <button type="button" className="primary" onClick={startEdit}>Edit details</button>
-            </>
-          ) : (
-            <>
-              <button type="button" onClick={cancelEdit} disabled={saving}>Cancel</button>
-              <button type="button" className="primary" onClick={() => void save()} disabled={saving || !dirty}>
-                {saving ? 'Saving…' : 'Save changes'}
-              </button>
-            </>
-          )}
+          <button type="button" disabled={saving} onClick={requestClose}>Close</button>
+          <button type="button" className="primary" disabled={saving || !dirty} onClick={requestSave}>{saving ? 'Saving…' : 'Save changes'}</button>
         </div>
       </div>
     </div>
+    {confirmOpen && (
+      <SaveConfirmDialog changes={changes} saving={saving} onCancel={() => setConfirmOpen(false)} onConfirm={() => void save()} />
+    )}
+    </>
   );
 }

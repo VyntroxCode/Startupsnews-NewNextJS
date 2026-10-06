@@ -11,8 +11,8 @@ export function readerAuthHeaders(): HeadersInit {
 
 /** GET a reader Funding API; throws with a readable message on 401 / failure. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function fundingGet<T = any>(url: string): Promise<T> {
-  const res = await fetch(url, { headers: readerAuthHeaders() });
+export async function fundingGet<T = any>(url: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(url, { headers: readerAuthHeaders(), signal });
   const json = await res.json().catch(() => null);
   if (res.status === 401) throw new Error('Your session has expired. Please log in again.');
   if (!json?.success) throw new Error(json?.error || 'Could not load funding data.');

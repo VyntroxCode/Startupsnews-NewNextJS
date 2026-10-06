@@ -10,13 +10,13 @@ import { BannerCarouselClient } from "@/components/BannerCarouselClient";
 import { DelegationStrip } from "@/components/DelegationStrip";
 import type { Banner } from "@/modules/banners/domain/types";
 
-/** Event landing pages that bring their own top bar. They render without the site header, the
+/** Event landing pages that bring their own top bar, plus the full-screen reader /login page. They render without the site header, the
  * banner carousel or the footer, so the page opens on its own first strip and ends on its own
  * closing section; `is-bare-route` on the body wrapper lets the page drop the 72px padding that
  * otherwise clears the fixed site header (see expand-north-star.css). Exported so other site chrome
  * that shouldn't appear on these pages either — the scroll-triggered login popup, see AuthModal.tsx
  * — can check the same list instead of keeping a second one that could drift out of step. */
-export const BARE_ROUTES = ['/expand-north-star'];
+export const BARE_ROUTES = ['/expand-north-star', '/login'];
 
 /** Whether `pathname` is one of `BARE_ROUTES`, or a sub-path of one. */
 export function isBareRoute(pathname: string | null): boolean {

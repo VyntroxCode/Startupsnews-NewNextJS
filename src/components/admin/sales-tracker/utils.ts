@@ -1,4 +1,4 @@
-import { assignmentStatusLabel, statusFromEns, type LeadAssignment } from '@/modules/lead-assignments/domain/types';
+import { assignmentStatusLabel, statusFromEns, statusFromSalesLead, type LeadAssignment } from '@/modules/lead-assignments/domain/types';
 import { participationLabel } from '@/modules/ens-travel-enquiries/domain/participation';
 import { foundUsText, referredByLabel } from '@/modules/ens-travel-enquiries/domain/sources';
 import { ENS_ENQUIRY_TYPE_LABEL } from './constants';
@@ -40,6 +40,21 @@ export function loadScriptOnce(src: string, isAlreadyLoaded: () => boolean): Pro
     s.onerror = () => reject(new Error('Failed to load ' + src));
     document.head.appendChild(s);
   });
+}
+
+/** The row's status as one of the four shared labels. An Expand North Star enquiry keeps its own
+ * codes in lead_status, so it's converted; a sales lead stores the label, and anything outside the
+ * four (empty, or a pre-2026-09-29 status) reads as Pending — so every row lands in exactly one. */
+export function statusLabelOf(row: UnifiedLeadRow): string {
+  return assignmentStatusLabel(row._source === 'ens' ? statusFromEns(row.leadStatus) : statusFromSalesLead(row.status));
+}
+
+/** Whether the row is of lead type `value` ('' = any) — a TYPES / PAGE_LEAD_TYPES label for a sales
+ * lead, ENS_ENQUIRY_TYPE_LABEL for an Expand North Star enquiry. The All leads type filters and the
+ * Leads overview counts both use it, so a count always equals the rows its click shows. */
+export function matchesType(row: UnifiedLeadRow, value: string): boolean {
+  if (!value) return true;
+  return row._source === 'ens' ? value === ENS_ENQUIRY_TYPE_LABEL : row.type === value;
 }
 
 /** `assignment`: the lead's stored departments and people, if any. */

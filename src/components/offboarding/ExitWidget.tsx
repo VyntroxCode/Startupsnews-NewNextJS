@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, clearanceProgress,
-  type MyExitView, type OffboardingCase, type OffboardingClearanceItem, type OffboardingStatus,
+  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, NOTICE_DAYS, clearanceProgress, leftEarlyDays, systemLwd,
+  type LwdChoice, type MyExitView, type OffboardingCase, type OffboardingClearanceItem, type OffboardingStatus,
 } from '@/modules/hr-offboarding/domain/types';
 import type { EmployeeUser } from '@/lib/employee-auth';
 
@@ -164,17 +164,42 @@ function Quote({ label, text, tone = 'slate' }: { label: string; text: string; t
   );
 }
 
+const CHOICE_LABEL: Record<LwdChoice, string> = {
+  requested: 'HR approved your requested date',
+  system: 'HR kept the system date',
+  custom: 'HR set a different date',
+};
+
 /** Everything the employee submitted, plus HR's decision. */
 function DetailsCard({ c }: { c: OffboardingCase }) {
   const pending = c.status === 'pending';
+  const resignation = c.exitType === 'resignation';
+  const decided = !pending && !!c.approvedLwd;
+  const earlyDays = leftEarlyDays(c);
   return (
     <div className={cardCls}>
       <h3 className={sectionTitleCls}>{c.exitType === 'termination' ? 'Separation details' : 'Resignation details'}</h3>
       <dl className="m-0 mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
         <Fact label="Submitted on" value={dateTimeLabel(c.createdAt) || formatDate(c.resignationDate)} />
         <Fact label="Reason" value={c.reasonCategory} />
-        <Fact label={pending ? 'Preferred last working day' : 'Last working day'} value={pending ? (c.requestedLwd ? formatDate(c.requestedLwd) : 'Not specified') : formatDate(c.approvedLwd)} />
-        <Fact label="Notice period" value={`${c.noticeDays} day${c.noticeDays === 1 ? '' : 's'}${c.noticeWaivedDays ? ` (${c.noticeWaivedDays} waived)` : ''}`} />
+        {resignation ? (
+          <>
+            <Fact label="Resignation date (system)" value={<>{formatDate(systemLwd(c))} <span className="text-xs text-slate-500">· {NOTICE_DAYS} days&apos; notice</span></>} />
+            <Fact label="Your requested date" value={c.requestedLwd ? formatDate(c.requestedLwd) : 'Not requested'} />
+            <Fact label="Final last working day" value={pending ? 'Awaiting HR' : (
+              <>
+                {formatDate(earlyDays ? c.agreedLwd : c.approvedLwd)}
+                {c.lwdChoice && <span className="block text-xs text-slate-500">{CHOICE_LABEL[c.lwdChoice]}</span>}
+              </>
+            )} />
+          </>
+        ) : (
+          <Fact label="Last working day" value={formatDate(c.approvedLwd)} />
+        )}
+        {earlyDays > 0 && (
+          <Fact label="Left early" value={<span className="text-red-700">Left on {formatDate(c.approvedLwd)}, {earlyDays} day{earlyDays === 1 ? '' : 's'} early · no salary or dues in your F&amp;F, 1 month&apos;s salary recovered</span>} />
+        )}
+        {!resignation && decided && <Fact label="Notice period" value={`${c.noticeDays} day${c.noticeDays === 1 ? '' : 's'}`} />}
         <Fact label="Personal email" value={c.personalEmail} />
         {!pending && <Fact label="Decided on" value={c.decidedAt ? formatDate(c.decidedAt) : '—'} />}
       </dl>
@@ -186,12 +211,13 @@ function DetailsCard({ c }: { c: OffboardingCase }) {
 
 const NEXT_STEPS: Partial<Record<OffboardingStatus, string[]>> = {
   pending: [
-    'HR reviews your resignation and confirms your last working day.',
+    'HR reviews your resignation and confirms your final last working day — the system date, your requested date, or another date.',
     'You get an email when it is accepted — the notice period starts then.',
     'Keep working as usual in the meantime.',
   ],
   accepted: [
     'Keep your handover notes up to date.',
+    'Work until your final last working day — if you leave before it without HR\'s approval, your F&F pays no salary or dues and 1 month\'s salary is recovered from you.',
     'Return company items (laptop, ID card…) — HR ticks them off on your clearance checklist.',
     'After your last day, this page stays open (read-only) for your settlement and letters.',
   ],
@@ -446,7 +472,7 @@ function LettersCard({ c, apiBase, getHeaders }: { c: OffboardingCase; apiBase: 
 function ResignForm({ view, apiBase, getHeaders, onDone }: { view: MyExitView; apiBase: string; getHeaders: () => HeadersInit; onDone: () => void }) {
   const [reasonCategory, setReasonCategory] = useState('');
   const [reasonText, setReasonText] = useState('');
-  const [requestedLwd, setRequestedLwd] = useState(view.suggestedLwd);
+  const [requestedLwd, setRequestedLwd] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
   const [handoverNotes, setHandoverNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -463,7 +489,7 @@ function ResignForm({ view, apiBase, getHeaders, onDone }: { view: MyExitView; a
     try {
       const res = await fetch(apiBase, {
         method: 'POST', headers: getHeaders(),
-        body: JSON.stringify({ reasonCategory, reasonText, requestedLwd, personalEmail, handoverNotes }),
+        body: JSON.stringify({ reasonCategory, reasonText, requestedLwd: requestedLwd || null, personalEmail, handoverNotes }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok || !body?.success) { setError(body?.error || 'Could not submit your resignation.'); return; }
@@ -503,12 +529,21 @@ function ResignForm({ view, apiBase, getHeaders, onDone }: { view: MyExitView; a
         <h4 className={groupTitle}>Last working day</h4>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className={labelCls} htmlFor="exit-lwd">Preferred last working day</label>
+            <div className={labelCls}>Resignation date (system)</div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">{formatDate(view.systemLwd)}</div>
+            <p className="mb-0 mt-1.5 text-xs text-slate-500">{view.noticeDays} days&apos; notice from today — set by the system.</p>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="exit-lwd">Requested date <span className="font-normal text-slate-400">(optional)</span></label>
             <input id="exit-lwd" type="date" min={today} className={inputCls} value={requestedLwd} onChange={(e) => setRequestedLwd(e.target.value)} />
+            <p className="mb-0 mt-1.5 text-xs text-slate-500">
+              If you&apos;d like a different last day, pick it here.
+              {requestedLwd && <> <button type="button" onClick={() => setRequestedLwd('')} className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-indigo-600 hover:underline">Clear</button></>}
+            </p>
           </div>
-          <div className="rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
-            Your notice period is <strong>{view.noticeDays} days</strong> — that&apos;s <strong>{formatDate(view.suggestedLwd)}</strong> if you resign today. HR confirms the final date.
-          </div>
+        </div>
+        <div className="mt-4 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+          HR decides your final last working day: the system date, your requested date, or another date. If you stop working before it without HR&apos;s approval, your Full &amp; Final settlement pays no salary or other dues, and one month&apos;s salary is recovered from you.
         </div>
       </div>
 
@@ -537,7 +572,9 @@ function ResignForm({ view, apiBase, getHeaders, onDone }: { view: MyExitView; a
 
 function BeforeYouResignCard({ view }: { view: MyExitView }) {
   const items = [
-    `Your notice period is ${view.noticeDays} days from the day you resign.`,
+    `Your notice period is ${view.noticeDays} days from the day you resign — that day is your resignation date (system).`,
+    'You can request a different last day; HR decides the final date.',
+    'Leaving before the final date without HR\'s approval: no salary or dues in your F&F, and 1 month\'s salary is recovered from you.',
     'HR reviews your resignation and confirms your last working day by email.',
     'You can withdraw it any time before HR accepts it.',
     'During notice: hand over your work and return company items.',

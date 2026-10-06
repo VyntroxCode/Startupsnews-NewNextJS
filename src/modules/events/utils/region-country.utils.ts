@@ -50,3 +50,15 @@ export function resolveCountry(region: string, events: StartupEvent[]): string {
   // then to the region's own name, exactly as before.
   return best || REGION_COUNTRY[region] || region;
 }
+
+/** DOM id of a country's section on /events — the scroll target of its "Explore by Country"
+ * circle. Accents are folded so "Türkiye" gives a plain `events-country-turkiye`. */
+export function countrySectionId(country: string): string {
+  const slug = country
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `events-country-${slug}`;
+}

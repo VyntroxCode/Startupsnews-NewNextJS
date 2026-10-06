@@ -6,9 +6,22 @@ import ModalShell from '../ModalShell';
 import ApprovalCell from './ApprovalCell';
 import { hrApi } from '../api';
 import { ApprovalBadge, employeeName, isAdmin, scopedApprovals, todayStr } from '../utils';
-import { allocateLeave, type LeaveAllocation } from '@/modules/hr-tool/utils/leave-balance';
+import { allocateLeave, leaveCreditDay, absenceCoverThrough, punchedShortfall, type LeaveAllocation } from '@/modules/hr-tool/utils/leave-balance';
 
 const HALF_LABEL: Record<string, string> = { first: 'First half', second: 'Second half' };
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "13 Oct 2026", "12 – 16 Oct 2026", "25 Sep – 2 Oct 2026" — the year only once when shared. */
+function fmtLeaveDates(from: string, to: string): string {
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  if (!fy || !ty) return to && to !== from ? `${from} – ${to}` : from;
+  if (from === to) return `${fd} ${MONTHS[fm - 1]} ${fy}`;
+  if (fy !== ty) return `${fd} ${MONTHS[fm - 1]} ${fy} – ${td} ${MONTHS[tm - 1]} ${ty}`;
+  if (fm !== tm) return `${fd} ${MONTHS[fm - 1]} – ${td} ${MONTHS[tm - 1]} ${ty}`;
+  return `${fd} – ${td} ${MONTHS[tm - 1]} ${ty}`;
+}
+const fmtDays = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(1)} day${n === 1 ? '' : 's'}`;
 
 export default function Leave() {
   const { state, upsertLeaveRequestInState } = useHrTool();
@@ -35,11 +48,15 @@ export default function Leave() {
     for (const e of state.employees) {
       const mine = state.leaveRequests.filter((l) => l.employeeId === e.id);
       if (mine.length === 0) continue;
-      const worked = state.attendance.filter((a) => a.employeeId === e.id && a.inMinutes != null).map((a) => a.date);
-      allocateLeave(e.doj, state.rules.leaveTypes, mine, today, holidayDates, worked).forEach((v, k) => out.set(k, v));
+      const attendance = state.attendance.filter((a) => a.employeeId === e.id);
+      const worked = attendance.filter((a) => a.inMinutes != null).map((a) => a.date);
+      const overrides = state.attendanceOverrides.filter((o) => o.employeeId === e.id);
+      const through = absenceCoverThrough(today);
+      const shortfall = punchedShortfall({ doj: e.doj, attendance, overrides, requests: mine, holidayDates, rules: state.rules, through });
+      allocateLeave(e.doj, state.rules.leaveTypes, leaveCreditDay(state.rules), mine, today, holidayDates, worked, { through, skip: overrides.map((o) => o.date), shortfall }).forEach((v, k) => out.set(k, v));
     }
     return out;
-  }, [state.employees, state.leaveRequests, state.attendance, state.rules.leaveTypes, holidayDates]);
+  }, [state.employees, state.leaveRequests, state.attendance, state.attendanceOverrides, state.rules, holidayDates]);
 
   function openApply() {
     setEmployeeId(lockedToSelf ? (state.currentUser?.id || '') : (state.employees.find((e) => e.status !== 'exited')?.id || ''));
@@ -76,11 +93,16 @@ export default function Leave() {
     setCancelTarget(null);
   }
 
-  const splitLabel = (id: string, status: string) => {
-    if (status !== 'pending' && status !== 'approved') return '—';
-    const s = splitById.get(id);
-    if (!s) return '—';
-    return s.unpaid > 0 ? <span>{s.paid} paid + <strong style={{ color: 'var(--red)' }}>{s.unpaid} unpaid</strong></span> : `${s.paid} paid`;
+  // Only pending/approved requests hold balance, so only they have a paid/unpaid split.
+  const splitOf = (id: string, status: string) => (status === 'pending' || status === 'approved' ? splitById.get(id) || null : null);
+  const splitLabel = (s: LeaveAllocation | null) => {
+    if (!s) return <span className="meta">—</span>;
+    return (
+      <span className="pay-chips">
+        {(s.paid > 0 || s.unpaid === 0) && <span className="pay-chip paid">{s.paid} paid</span>}
+        {s.unpaid > 0 && <span className="pay-chip unpaid">{s.unpaid} unpaid</span>}
+      </span>
+    );
   };
 
   return (
@@ -90,27 +112,48 @@ export default function Leave() {
         <div className="as-role">{state.currentUser ? state.currentUser.name : ''} · {state.role}</div>
       </div>
       <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: 14 }}><button className="btn primary" onClick={openApply}>+ Apply for leave</button></div>
-      <div className="card"><table><thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th>Paid / unpaid</th><th>Remarks</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
-        <tbody>
-          {rows.map((l) => (
-            <tr key={l.id}>
-              <td>{employeeName(state.employees, l.employeeId, l.emp)}</td>
-              <td>{l.type === 'WFH' ? <span className="badge active">Work From Home</span> : l.type}{l.halfDay ? ` · ${HALF_LABEL[l.halfDay]}` : ''}</td>
-              <td>{l.from}{l.to !== l.from ? ` – ${l.to}` : ''}</td>
-              <td>{splitLabel(l.id, l.status)}</td>
-              <td>{l.remarks || '—'}{l.hrRemarks && l.status !== 'pending' && <div className="meta">{l.hrRemarks}</div>}</td>
-              <td><ApprovalBadge req={l} /></td>
-              <td style={{ textAlign: 'right' }}>
-                <ApprovalCell req={l} onDecide={(_level, decision, r) => decide(l.id, decision, r)} />
-                {isAdmin(state.role) && l.status === 'approved' && (
-                  <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => { setCancelTarget(l.id); setCancelRemarks(''); }}>Cancel leave</button>
-                )}
-              </td>
-            </tr>
-          ))}
-          {rows.length === 0 && <tr><td colSpan={7}><div className="empty">No leave requests.</div></td></tr>}
-        </tbody>
-      </table></div>
+      <div className="card table-scroll">
+        <table className="leave-table">
+          <colgroup>
+            <col style={{ width: '15%' }} /><col style={{ width: '12%' }} /><col style={{ width: '16%' }} /><col style={{ width: '13%' }} />
+            <col /><col style={{ width: '11%' }} /><col style={{ width: '15%' }} />
+          </colgroup>
+          <thead><tr><th>Employee</th><th>Leave type</th><th>Dates</th><th>Paid / unpaid</th><th>Reason</th><th>Status</th><th className="col-action">Action</th></tr></thead>
+          <tbody>
+            {rows.map((l) => {
+              const split = splitOf(l.id, l.status);
+              const days = split ? split.paid + split.unpaid : null;
+              const pendingDecision = l.status === 'pending';
+              const canCancel = isAdmin(state.role) && l.status === 'approved';
+              return (
+                <tr key={l.id}>
+                  <td className="who">{employeeName(state.employees, l.employeeId, l.emp)}</td>
+                  <td>
+                    {l.type === 'WFH' ? <span className="badge active">Work From Home</span> : l.type}
+                    {l.halfDay && <div className="meta">{HALF_LABEL[l.halfDay]}</div>}
+                  </td>
+                  <td>
+                    <div className="dates">{fmtLeaveDates(l.from, l.to)}</div>
+                    {days != null && <div className="meta">{fmtDays(days)}</div>}
+                  </td>
+                  <td>{splitLabel(split)}</td>
+                  <td className="reason">
+                    <div>{l.remarks || '—'}</div>
+                    {l.hrRemarks && l.status !== 'pending' && <div className="meta">HR: {l.hrRemarks}</div>}
+                  </td>
+                  <td><ApprovalBadge req={l} /></td>
+                  <td className="col-action">
+                    {pendingDecision && <ApprovalCell req={l} onDecide={(_level, decision, r) => decide(l.id, decision, r)} />}
+                    {canCancel && <button className="btn sm" onClick={() => { setCancelTarget(l.id); setCancelRemarks(''); }}>Cancel leave</button>}
+                    {!pendingDecision && !canCancel && <span className="meta">—</span>}
+                  </td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && <tr><td colSpan={7}><div className="empty">No leave requests.</div></td></tr>}
+          </tbody>
+        </table>
+      </div>
       <div className="footnote">Leave types currently enabled by HR: {enabledTypes.join(', ') || 'none'}. Configure this from Rules &amp; Org Structure. Sundays and holidays inside a leave aren&apos;t counted.</div>
 
       {applyOpen && (
@@ -142,7 +185,7 @@ export default function Leave() {
             <div className="field"><label className="field-label">To</label><input type="date" value={halfDay ? from : to} min={from} disabled={!!halfDay} onChange={(e) => setTo(e.target.value)} /></div>
           </div>
           <div className="field"><label className="field-label">Reason</label><textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} /></div>
-          <div className="meta">Today, yesterday or later. Days beyond the balance are unpaid. Full-day leave isn&apos;t allowed on a day with a punch-in.</div>
+          <div className="meta">Any date — past, today or future — except in a frozen payroll month. Days beyond the balance are unpaid. Full-day leave isn&apos;t allowed on a day with a punch-in.</div>
         </ModalShell>
       )}
 

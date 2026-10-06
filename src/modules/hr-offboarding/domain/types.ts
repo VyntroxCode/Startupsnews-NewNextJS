@@ -9,12 +9,35 @@
  * A termination by HR is created already `accepted` — or `exited` when immediate.
  */
 
+import { addDaysUTC } from '@/modules/hr-tool/utils/time';
+
 export type OffboardingExitType = 'resignation' | 'termination';
 export type OffboardingInitiator = 'employee' | 'admin';
 export type OffboardingStatus = 'pending' | 'accepted' | 'exited' | 'completed' | 'rejected' | 'withdrawn' | 'cancelled';
 export type TerminationMode = 'immediate' | 'with_notice';
 /** What the login becomes once the LWD has passed: read-only "My Exit" access, or nothing. */
 export type OffboardingAccessMode = 'alumni' | 'blocked';
+
+/** Notice period, in calendar days, for every employee (probation or confirmed) and every exit type.
+ * Fixed by policy — not a setting. */
+export const NOTICE_DAYS = 30;
+
+/** Which date HR accepted a resignation with: the employee's requested date, the system date
+ * (resignation day + NOTICE_DAYS), or a date HR picked. */
+export type LwdChoice = 'requested' | 'system' | 'custom';
+export const LWD_CHOICES: readonly LwdChoice[] = ['requested', 'system', 'custom'];
+
+/** The system's last working day for a case: the day they resigned + NOTICE_DAYS. Cases created
+ * before the fixed 30 days (e.g. a 15-day probation notice) are measured the same way. */
+export function systemLwd(c: Pick<OffboardingCase, 'resignationDate'>): string {
+  return addDaysUTC(c.resignationDate.slice(0, 10), NOTICE_DAYS);
+}
+
+/** Whole calendar days a leaver owes when they stopped before the agreed last day (0 if not). */
+export function leftEarlyDays(c: Pick<OffboardingCase, 'agreedLwd' | 'approvedLwd'>): number {
+  if (!c.agreedLwd || !c.approvedLwd || c.agreedLwd <= c.approvedLwd) return 0;
+  return Math.round((Date.parse(c.agreedLwd.slice(0, 10) + 'T00:00:00Z') - Date.parse(c.approvedLwd.slice(0, 10) + 'T00:00:00Z')) / 86_400_000);
+}
 
 /** Statuses that are still "live" — an employee can have at most one of these at a time. */
 export const OPEN_OFFBOARDING_STATUSES: readonly OffboardingStatus[] = ['pending', 'accepted', 'exited'];
@@ -64,7 +87,7 @@ export interface OffboardingClearanceItem {
 /**
  * Full & Final settlement, stored as JSON on hr_offboarding.fnf.
  *
- * Auto lines carry a stable `key` (salary, leave:<type>, expenses, notice, clearance:<itemId>) so a
+ * Auto lines carry a stable `key` (salary, leave:<type>, expenses, left-early, clearance:<itemId>) so a
  * recalculation replaces them in place. HR may override an auto line's amount (note required), which
  * a recalculation then keeps; auto lines can't be deleted (set 0 with a note). Manual lines are free.
  * Totals are always computed server-side. `version` is bumped on every write — a save from a stale
@@ -155,8 +178,15 @@ export interface OffboardingCase {
   reasonText: string | null;
   requestedLwd: string | null;
   noticeDays: number;
+  /** Record only: notice days not served because HR accepted an earlier date. No money effect. */
   noticeWaivedDays: number;
+  /** The final last working day. After "left early" it is the day they actually left. */
   approvedLwd: string | null;
+  /** How HR picked approvedLwd on a resignation (null for terminations / older cases). */
+  lwdChoice: LwdChoice | null;
+  /** Set only when HR recorded "left early" (resignations only): the last day HR had agreed. F&F then
+   * forfeits every earning and recovers a flat month's salary (the `left-early` line). */
+  agreedLwd: string | null;
   terminationMode: TerminationMode | null;
   accessMode: OffboardingAccessMode;
   personalEmail: string | null;
@@ -172,15 +202,11 @@ export interface OffboardingCase {
 }
 
 export interface OffboardingSettings {
-  noticeDaysProbation: number;
-  noticeDaysConfirmed: number;
   checklist: Record<ClearanceCategory, string[]>;
   encashableLeaveTypes: string[];
 }
 
 export const DEFAULT_OFFBOARDING_SETTINGS: OffboardingSettings = {
-  noticeDaysProbation: 15,
-  noticeDaysConfirmed: 30,
   checklist: {
     asset: ['Laptop', 'Charger', 'ID card', 'Access card'],
     handover: ['Leads reassigned', 'Handover notes received'],
@@ -220,8 +246,8 @@ export interface MyExitView {
   /** The current case's checklist (read-only for the employee). */
   clearance: OffboardingClearanceItem[];
   history: OffboardingCase[];
-  /** Pre-fill for the resign form: notice days by the employee's current status, and the LWD they give. */
+  /** For the resign form: the fixed notice and the system last working day if they resign today. */
   noticeDays: number;
-  suggestedLwd: string;
+  systemLwd: string;
   reasons: readonly string[];
 }

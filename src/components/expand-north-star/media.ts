@@ -120,6 +120,10 @@ export const ENS_REFERRAL_LOGOS: Record<string, string> = {
   // band of white). White margin trimmed to a 2234×733 PNG so it fills the tile, then uploaded; the
   // local file was deleted once this key was confirmed live. A partner, not a "Referred By" option.
   "eritonxt": s3Image("startupnews-in/uploads/2026/09/expand-north-star/partner-eritonxt.png"),
+  // 2026-10-02: supplied into public/images/expand-north-star/ as a WhatsApp JPEG (1382×361, green
+  // sigma mark + white "Ellenox" wordmark on black), uploaded as-is; the local file was deleted once
+  // this key was confirmed live. Also a "Referred By" option (same slug in sources.ts).
+  "ellenox": s3Image("startupnews-in/uploads/2026/10/expand-north-star/partner-ellenox.jpg"),
 };
 
 export const ensImages = {

@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Megaphone } from 'lucide-react';
-import { noteCls } from './ui';
 
 const SLOTS = [
   { initial: 'A', color: 'bg-[#E91E8C]', title: 'Your brand here', sub: 'Reach founders and investors' },
@@ -33,7 +32,6 @@ export default function SponsoredStrip() {
           </Link>
         ))}
       </div>
-      <div className={noteCls}><span>⚠️</span><div><b className="text-[#6B4308]">Coming soon:</b> sponsor slots. Want one? Each card links to Advertise with us.</div></div>
     </div>
   );
 }

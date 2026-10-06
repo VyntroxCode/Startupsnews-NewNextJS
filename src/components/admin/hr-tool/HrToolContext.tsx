@@ -8,11 +8,12 @@ import { hhmmToMinutes, formatTime12h } from '@/modules/hr-tool/utils/lateness';
 import { getAdminUser } from '@/lib/admin-auth';
 import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 import type {
-  HrTeam, HrOrgStructure, HrEmployee, HrOnboarding, HrAttendanceRecord, HrPunch,
+  HrTeam, HrOrgStructure, HrEmployee, HrOnboarding, HrAttendanceRecord, HrAttendanceOverride, HrPunch,
   HrRegularization, HrLeaveRequest, HrExpense, HrTicket, HrComplianceTask, HrPayrollRun, HrPayrollEntry, HrRules,
   HrAuditLogEntry, HrRole, HrView, HrCompanyProfile,
 } from './types';
 import { emptyKycDocuments, VIEW_ACCESS } from './types';
+import { DEFAULT_PUNCH_WINDOWS } from '@/modules/hr-tool/utils/regularization-policy';
 
 interface HrState {
   role: HrRole | null;
@@ -24,6 +25,8 @@ interface HrState {
   employeeCredentials: HrEmployeeCredential[];
   onboarding: HrOnboarding[];
   attendance: HrAttendanceRecord[];
+  /** Days whose status HR set directly — the day ledger (payroll, calendars) follows them. */
+  attendanceOverrides: HrAttendanceOverride[];
   punchLog: Record<string, HrPunch>;
   regularizations: HrRegularization[];
   leaveRequests: HrLeaveRequest[];
@@ -43,7 +46,7 @@ interface HrState {
 
 const DEFAULT_RULES: HrRules = {
   workingDaysPattern: 'Mon–Sat working, Sundays and public holidays off', shiftStartTime: '10:00', shiftEndTime: '18:35',
-  shiftGraceMinutes: 15, halfDayThresholdHours: 5.5, regularizationWindowDays: 5, regularizationOverride: false,
+  shiftGraceMinutes: 15, ...DEFAULT_PUNCH_WINDOWS, halfDayThresholdHours: 5.5, regularizationWindowDays: 5, regularizationOverride: false,
   regularizationMonthlyQuota: 5, shortLeaveMaxHours: 1, shortLeaveMonthlyQuota: 2,
   halfDayMinWorkedHours: 4.5, shortLeaveMinWorkedHours: 7.5, fullDayMinWorkedHours: 8.25,
   salaryPeriodFrom: 26, salaryPeriodTo: '25', ctcSplit: { basicPct: 50, hraPctOfBasic: 50, convenienceType: 'amount', convenienceValue: 0 },
@@ -63,7 +66,7 @@ function initialState(): HrState {
   return {
     role: null, view: readStoredView(), currentUser: null, teams: [],
     orgStructure: { designations: [], expenseCategories: [], requiredDocuments: [], holidays: [] },
-    employees: [], employeeCredentials: [], onboarding: [], attendance: [], punchLog: {},
+    employees: [], employeeCredentials: [], onboarding: [], attendance: [], attendanceOverrides: [], punchLog: {},
     regularizations: [], leaveRequests: [], expenses: [], tickets: [], compliance: [],
     payrollRun: { month: payrollCycleToRunKey(DEFAULT_RULES), status: 'not_run' }, payrollRuns: [],
     templates: {}, rules: DEFAULT_RULES, auditLog: [], companyProfile: DEFAULT_COMPANY_PROFILE,
@@ -168,6 +171,10 @@ interface HrToolContextValue {
   persistOnboarding: (v: HrOnboarding[]) => Promise<void>;
   addRegularizationToState: (r: HrRegularization) => void;
   decideRegularization: (id: string, level: 'rm' | 'hr', decision: 'approved' | 'rejected', remarks: string) => Promise<boolean>;
+  /** HR sets one day's status through the server; resolves the server's error message, or null on
+   * success. State gets the override + any regularization it closed, which re-fetches the ledger. */
+  setAttendanceOverride: (employeeId: string, date: string, status: string, reason: string) => Promise<{ error: string | null; draftUpdated?: boolean }>;
+  clearAttendanceOverride: (employeeId: string, date: string) => Promise<{ error: string | null; draftUpdated?: boolean }>;
   /** Client-state only: mirrors a leave row the server has ALREADY written (create/decide/cancel). */
   upsertLeaveRequestInState: (r: HrLeaveRequest) => void;
   persistExpenses: (v: HrExpense[]) => Promise<void>;
@@ -178,6 +185,8 @@ interface HrToolContextValue {
    * punchLog and today's attendance row, so the Today table updates without a bootstrap reload. */
   applyServerPunch: (p: HrPunch) => void;
   runPayrollForMonth: (month: string, tds?: Record<string, number>) => Promise<{ success: boolean; data?: { entries: HrPayrollEntry[] }; error?: string }>;
+  /** Patches one month in state.payrollRuns (and payrollRun, if it's that month) after a Freeze/Reverse (the server is the source of truth). */
+  patchPayrollRunInState: (month: string, patch: Partial<HrPayrollRun>) => void;
   persistTemplate: (name: string, content: string) => Promise<void>;
   resetSampleData: () => Promise<boolean>;
   upsertEmployeeCredentialInState: (cred: HrEmployeeCredential) => void;
@@ -212,7 +221,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
             ...s,
             teams: data.teams, orgStructure: data.orgStructure, employees: data.employees,
             employeeCredentials: data.employeeCredentials || [],
-            onboarding: data.onboarding, attendance: data.attendance, punchLog,
+            onboarding: data.onboarding, attendance: data.attendance, attendanceOverrides: data.attendanceOverrides || [], punchLog,
             regularizations: data.regularizations, leaveRequests: data.leaveRequests, expenses: data.expenses,
             tickets: data.tickets, compliance: data.compliance,
             payrollRun: currentMonthRun || s.payrollRun, payrollRuns: data.payrollRuns || [],
@@ -272,6 +281,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
         employeeCredentials: s.employeeCredentials.map((c) =>
           (renamed?.credentialId != null && c.id === renamed.credentialId ? { ...c, name } : c)),
         attendance: s.attendance.map(rename),
+        attendanceOverrides: s.attendanceOverrides.map(rename),
         punchLog,
         regularizations: s.regularizations.map(rename),
         leaveRequests: s.leaveRequests.map(rename),
@@ -305,6 +315,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
         teams: s.teams.map((t) => (t.managerId === id ? { ...t, manager: null, managerId: null } : t)),
         onboarding: s.onboarding.filter((o) => o.employeeId !== id),
         attendance: s.attendance.filter((a) => a.employeeId !== id),
+        attendanceOverrides: s.attendanceOverrides.filter((o) => o.employeeId !== id),
         punchLog,
         regularizations: s.regularizations.filter((r) => r.employeeId !== id),
         leaveRequests: s.leaveRequests.filter((l) => l.employeeId !== id),
@@ -357,6 +368,28 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
       return true;
     } catch { warnSaveFailed(); return false; }
   }, []);
+  const setAttendanceOverride = useCallback(async (employeeId: string, date: string, status: string, reason: string) => {
+    try {
+      const res = await hrApi.setAttendanceOverride({ employeeId, date, status, reason });
+      if (!res.success || !res.data) return { error: res.error || 'Could not save the status.' };
+      const { override, closedRegularizations } = res.data;
+      const closed = new Map(closedRegularizations.map((r) => [r.id, r]));
+      setState((s) => ({
+        ...s,
+        attendanceOverrides: [...s.attendanceOverrides.filter((o) => !(o.employeeId === employeeId && o.date === date)), override],
+        regularizations: closed.size ? s.regularizations.map((r) => closed.get(r.id) || r) : s.regularizations,
+      }));
+      return { error: null, draftUpdated: res.data.draftUpdated };
+    } catch { return { error: 'Could not save the status — please try again.' }; }
+  }, []);
+  const clearAttendanceOverride = useCallback(async (employeeId: string, date: string) => {
+    try {
+      const res = await hrApi.clearAttendanceOverride(employeeId, date);
+      if (!res.success) return { error: res.error || 'Could not remove the status.' };
+      setState((s) => ({ ...s, attendanceOverrides: s.attendanceOverrides.filter((o) => !(o.employeeId === employeeId && o.date === date)) }));
+      return { error: null, draftUpdated: res.data?.draftUpdated };
+    } catch { return { error: 'Could not remove the status — please try again.' }; }
+  }, []);
   const upsertLeaveRequestInState = useCallback((r: HrLeaveRequest) => {
     setState((s) => ({ ...s, leaveRequests: s.leaveRequests.some((l) => l.id === r.id) ? s.leaveRequests.map((l) => (l.id === r.id ? r : l)) : [r, ...s.leaveRequests] }));
   }, []);
@@ -383,7 +416,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
   const runPayrollForMonth = useCallback(async (month: string, tds?: Record<string, number>) => {
     const res = await hrApi.runPayroll(month, tds);
     if (res.success) {
-      const run: HrPayrollRun = { month, status: 'run', runAt: new Date().toISOString(), runBy: state.currentUser?.name || null };
+      const run: HrPayrollRun = { ...state.payrollRuns.find((r) => r.month === month), month, status: 'run', runAt: new Date().toISOString(), runBy: state.currentUser?.name || null };
       setState((s) => ({
         ...s,
         payrollRun: run,
@@ -391,7 +424,14 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
       }));
     }
     return res;
-  }, [state.currentUser]);
+  }, [state.currentUser, state.payrollRuns]);
+  const patchPayrollRunInState = useCallback((month: string, patch: Partial<HrPayrollRun>) => {
+    setState((s) => ({
+      ...s,
+      payrollRun: s.payrollRun.month === month ? { ...s.payrollRun, ...patch } : s.payrollRun,
+      payrollRuns: s.payrollRuns.map((r) => (r.month === month ? { ...r, ...patch } : r)),
+    }));
+  }, []);
   /** Patches state.employeeCredentials with a just-created/edited credential (the REST
    * response already has the full row — no need to refetch the whole list). Keeps
    * Directory's orphan-credential detection and any name-matched lookups (Attendance,
@@ -419,7 +459,7 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
       ...s,
       employees: [{ ...me, manager: null, managerId: null, ctcSplitOverride: null }],
       teams: clearedTeams,
-      onboarding: [], attendance: [], punchLog: {},
+      onboarding: [], attendance: [], attendanceOverrides: [], punchLog: {},
       regularizations: [], leaveRequests: [], expenses: [], tickets: [],
       payrollRun: { month: s.payrollRun.month, status: 'not_run' }, payrollRuns: [],
     }));
@@ -430,16 +470,18 @@ export function HrToolProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<HrToolContextValue>(() => ({
     state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
+    setAttendanceOverride, clearAttendanceOverride,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, applyEmployeeRenameInState, deleteEmployee, applyEmployeeStatusInState, persistOnboarding, upsertLeaveRequestInState, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, applyServerPunch,
-    runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
+    runPayrollForMonth, patchPayrollRunInState, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   }), [
     state, loading, loadError, setView, login, logout, logRuleChange, addRegularizationToState, decideRegularization,
+    setAttendanceOverride, clearAttendanceOverride,
     persistTeams, persistDesignations, persistExpenseCategories, persistRequiredDocuments, persistHolidays,
     persistEmployees, applyEmployeeRenameInState, deleteEmployee, applyEmployeeStatusInState, persistOnboarding, upsertLeaveRequestInState, persistExpenses,
     persistTickets, persistRules, persistCompanyProfile, applyServerPunch,
-    runPayrollForMonth, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
+    runPayrollForMonth, patchPayrollRunInState, persistTemplate, resetSampleData, upsertEmployeeCredentialInState,
   ]);
 
   return <HrToolContext.Provider value={value}>{children}</HrToolContext.Provider>;

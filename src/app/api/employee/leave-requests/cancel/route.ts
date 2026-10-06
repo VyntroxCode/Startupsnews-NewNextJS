@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireEmployeeAuth } from '@/shared/middleware/employee-auth.middleware';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { NO_DIRECTORY_RECORD_ERROR } from '@/modules/hr-tool/service/hr-tool.service';
-import { refreshPayrollForDates } from '@/app/api/admin/hr-tool/_lib';
 import { hrToolService } from '../_lib';
 
 /** POST /api/employee/leave-requests/cancel — { id }. The employee withdraws their own pending
@@ -22,7 +21,6 @@ export async function POST(request: NextRequest) {
     const result = await hrToolService.cancelLeaveRequest(body.id, { kind: 'employee', employeeId: employee.id });
     if (!result.ok) return NextResponse.json({ success: false, error: result.error }, { status: 409 });
     // Same as HR's cancel/decide routes: an already-run, unlocked payroll cycle follows the change.
-    if (result.updated) await refreshPayrollForDates([result.updated.from, result.updated.to]);
     return NextResponse.json({ success: true, data: result.updated });
   } catch (error) {
     console.error('Error cancelling employee leave request:', error);

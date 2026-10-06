@@ -3,7 +3,7 @@
 import { ArrowRight } from 'lucide-react';
 import { useHrTool } from '../HrToolContext';
 import { StatusBadge, ApprovalBadge, employeeName, initials, rmOf, todayStr, monthKeyToLabel } from '../utils';
-import { computeLeaveBalances } from '@/modules/hr-tool/utils/leave-balance';
+import { computeLeaveBalances, leaveCreditDay, absenceCoverThrough, punchedShortfall } from '@/modules/hr-tool/utils/leave-balance';
 import type { HrView } from '../types';
 
 /** `tone` is an optional green/red accent for tiles that represent a done/not-done state (e.g.
@@ -128,7 +128,11 @@ function EmployeeDashboard() {
   // Live-computed, same accrual rule as Directory.tsx's profile modal — not the stored,
   // never-accruing me.leaveBalance snapshot.
   const myWorkedDates = state.attendance.filter((a) => a.employeeId === me.id && a.inMinutes != null).map((a) => a.date);
-  const myLeaveBalance = computeLeaveBalances(me.doj, state.rules.leaveTypes, myLeave, todayStr(), state.orgStructure.holidays.map((h) => h.date), myWorkedDates);
+  const myHolidays = state.orgStructure.holidays.map((h) => h.date);
+  const myOverrides = state.attendanceOverrides.filter((o) => o.employeeId === me.id);
+  const myCoverThrough = absenceCoverThrough(todayStr());
+  const myShortfall = punchedShortfall({ doj: me.doj, attendance: state.attendance.filter((a) => a.employeeId === me.id), overrides: myOverrides, requests: myLeave, holidayDates: myHolidays, rules: state.rules, through: myCoverThrough });
+  const myLeaveBalance = computeLeaveBalances(me.doj, state.rules.leaveTypes, leaveCreditDay(state.rules), myLeave, todayStr(), myHolidays, myWorkedDates, { through: myCoverThrough, skip: myOverrides.map((o) => o.date), shortfall: myShortfall });
   return (
     <>
       <PageHead title={`Welcome back, ${me.name.split(' ')[0]}`} sub="Here's where things stand for you today." />

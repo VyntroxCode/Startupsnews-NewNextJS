@@ -17,6 +17,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
     }
 
+    if (!user.password_hash) {
+      return NextResponse.json({ success: false, error: 'This account uses Google sign-in. Please use Continue with Google.' }, { status: 401 });
+    }
+
     const valid = await repo.verifyPassword(user, password);
     if (!valid) {
       return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
@@ -34,7 +38,7 @@ export async function POST(req: NextRequest) {
       success: true,
       data: {
         token,
-        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, city: user.city, created_at: user.created_at },
+        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, city: user.city, linkedin_url: user.linkedin_url, newsletter_category_slugs: user.newsletter_category_slugs ?? null, created_at: user.created_at },
       },
     });
   } catch (err) {

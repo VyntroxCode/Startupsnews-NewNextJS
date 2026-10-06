@@ -1,36 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import Script from "next/script";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { trackEvent } from "@/lib/analytics";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import { ArrowRight } from "lucide-react";
 import { isBareRoute } from "@/components/ConditionalLayout";
+import { takeQueuedWelcome, type AuthUser } from "@/components/auth/readerAuth";
 
-declare global {
-	interface Window {
-		google?: {
-			accounts: {
-				id: {
-					initialize: (cfg: {
-						client_id: string;
-						callback: (r: { credential: string }) => void;
-						auto_select?: boolean;
-					}) => void;
-					renderButton: (el: HTMLElement, opts: object) => void;
-				};
-				oauth2: {
-					initTokenClient: (cfg: {
-						client_id: string;
-						scope: string;
-						callback: (response: { access_token?: string; error?: string }) => void;
-					}) => { requestAccessToken: (opts?: { prompt?: string }) => void };
-				};
-			};
-		};
-	}
-}
-
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 const GOOGLE_ICON =
 	"https://techdocs.akamai.com/identity-cloud/img/social-login/identity-providers/iconfinder-new-google-favicon-682665.png";
 const LINKEDIN_ICON =
@@ -47,16 +24,24 @@ const modalTheme = {
 	panelStrong: "#fff7fb",
 };
 
-interface AuthUser {
-	id: number;
-	name: string;
-	email: string;
-	phone?: string;
-	country?: string;
-	city?: string;
-	linkedin_url?: string;
-	newsletter_category_slugs?: string | null;
-}
+/* The popup's single "Login / Sign up" button. */
+const authButtonBase = (mobile: boolean): CSSProperties => ({
+	display: "inline-flex",
+	alignItems: "center",
+	justifyContent: "center",
+	gap: 12,
+	width: mobile ? "100%" : 300,
+	height: mobile ? 46 : 58,
+	padding: "0 24px",
+	boxSizing: "border-box",
+	borderRadius: 999,
+	fontWeight: 700,
+	fontSize: mobile ? 14.5 : 17,
+	letterSpacing: "0.01em",
+	cursor: "pointer",
+	fontFamily: "inherit",
+	transition: "transform 0.15s, box-shadow 0.15s, border-color 0.15s, color 0.15s",
+});
 
 export default function AuthModal() {
 	const pathname = usePathname();
@@ -75,8 +60,6 @@ export default function AuthModal() {
 	const [open, setOpen] = useState(false);
 	const [loggedIn, setLoggedIn] = useState(false);
 	const [user, setUser] = useState<AuthUser | null>(null);
-	const [error, setError] = useState("");
-	const [success, setSuccess] = useState("");
 
 	const [showWelcome, setShowWelcome] = useState(false);
 	const [welcomeUser, setWelcomeUser] = useState<AuthUser | null>(null);
@@ -87,96 +70,23 @@ export default function AuthModal() {
 	const sheetRef = useRef<HTMLDivElement>(null);
 	const rafRef = useRef<number | null>(null);
 
-	/* ── Google OAuth2 ──────────────────────────────────────── */
-	const initGIS = useCallback(() => {
-		// Script loaded successfully
-	}, []);
-
-	const handleGoogleScriptError = useCallback(() => {
-		setError("Failed to load Google Sign-In SDK. If you are using an adblocker or private browsing mode, please disable it and refresh the page.");
-	}, []);
-
-	const handleGoogleButtonClick = useCallback(() => {
-		if (!GOOGLE_CLIENT_ID) {
-			setError("Google Sign-In is not configured on this server (Missing Client ID).");
-			return;
-		}
-		if (!window.google) {
-			setError("Google Sign-In is still loading or has been blocked by your adblocker. Please check your connection or disable adblockers and try again.");
-			return;
-		}
-		setError("");
-		try {
-			const client = window.google.accounts.oauth2.initTokenClient({
-				client_id: GOOGLE_CLIENT_ID,
-				scope: "openid email profile",
-				callback: async (response) => {
-					if (!response.access_token) {
-						setError("Google sign-in failed. Try again.");
-						return;
-					}
-					setError("");
-					try {
-						let country: string | undefined;
-						let city: string | undefined;
-						try {
-							const geoRes = await fetch("https://ipapi.co/json/", {
-								signal: AbortSignal.timeout(3000),
-							});
-							if (geoRes.ok) {
-								const geo = (await geoRes.json()) as {
-									country_name?: string;
-									city?: string;
-								};
-								country = geo.country_name || undefined;
-								city = geo.city || undefined;
-							}
-						} catch { /* geo is best-effort */ }
-
-						const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
-
-						const res = await fetch("/api/public-auth/google-verify", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ accessToken: response.access_token, country, city, timezone }),
-						});
-						const d = (await res.json()) as {
-							success: boolean;
-							data?: { token: string; user: AuthUser; isNew: boolean };
-							error?: string;
-						};
-						if (d.success && d.data) {
-							localStorage.setItem("pub_auth_token", d.data.token);
-							localStorage.setItem("pub_auth_user", JSON.stringify(d.data.user));
-							sessionStorage.removeItem("pending_profile_dismissed");
-							setUser(d.data.user);
-							setLoggedIn(true);
-							setOpen(false);
-							setWelcomeUser(d.data.user);
-							setShowWelcome(true);
-							window.dispatchEvent(new Event("pub-auth-changed"));
-							if (!suppressed) {
-								trackEvent(d.data.isNew ? "sign_up" : "login", { method: "google" });
-							}
-						} else {
-							setError(d.error || "Google sign-in failed");
-						}
-					} catch {
-						setError("Google sign-in failed. Try again.");
-					}
-				},
-			});
-			client.requestAccessToken({ prompt: "select_account" });
-		} catch (err: any) {
-			console.error("Error creating Google Token Client:", err);
-			setError("Google Sign-In initialization failed: " + (err.message || err));
-		}
-	}, [suppressed]);
-
 	/* ── Mount & session check ──────────────────────────────── */
 	useEffect(() => {
 		setMounted(true);
 	}, []);
+
+	/* /login sends the reader home after a successful sign-in/up and queues the welcome card here. */
+	useEffect(() => {
+		if (!mounted || suppressed) return;
+		const frame = requestAnimationFrame(() => {
+			const queued = takeQueuedWelcome();
+			if (queued) {
+				setWelcomeUser(queued);
+				setShowWelcome(true);
+			}
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [mounted, suppressed]);
 
 	useEffect(() => {
 		if (!mounted) return;
@@ -215,8 +125,6 @@ export default function AuthModal() {
 	useEffect(() => {
 		if (!mounted) return;
 		const handler = () => {
-			setError("");
-			setSuccess("");
 			setOpenedByScroll(false);
 			setOpen(true);
 		};
@@ -260,8 +168,6 @@ export default function AuthModal() {
 			if (progress >= 1) {
 				setScrollVisible(false);
 				setOpenedByScroll(true);
-				setError("");
-				setSuccess("");
 				setOpen(true);
 				window.removeEventListener("scroll", onScroll);
 			}
@@ -291,16 +197,12 @@ export default function AuthModal() {
 		setLoggedIn(false);
 		setOpen(false);
 		setOpenedByScroll(false);
-		setError("");
-		setSuccess("");
 		window.dispatchEvent(new Event("pub-auth-changed"));
 	};
 
 	const closeModal = () => {
 		setOpen(false);
 		setOpenedByScroll(false);
-		setError("");
-		setSuccess("");
 	};
 
 	/* ── Broadcast auth-flow visibility so other UI (e.g. the PWA install
@@ -326,15 +228,6 @@ export default function AuthModal() {
 	/* ─────────────── SINGLE RETURN ─────────────── */
 	return (
 		<>
-			{GOOGLE_CLIENT_ID && open && (
-				<Script
-					src="https://accounts.google.com/gsi/client"
-					onLoad={initGIS}
-					onError={handleGoogleScriptError}
-					strategy="afterInteractive"
-				/>
-			)}
-
 			{/* Welcome overlay — rendered independently of open/close state */}
 			{showWelcome && welcomeUser && (
 				<div
@@ -673,7 +566,7 @@ export default function AuthModal() {
 									whiteSpace: isMobileBanner ? "normal" : "nowrap",
 								}}
 							>
-								Sign-In for Free
+								Stay ahead of the startup story
 							</p>
 							<p
 								style={{
@@ -686,86 +579,27 @@ export default function AuthModal() {
 									whiteSpace: isMobileBanner ? "normal" : "nowrap",
 								}}
 							>
-								Unlock unlimited access to News, Articles, Special Reports, Curated Newsletters built for You & Your Business.
+								Unlimited news, special reports and curated newsletters on startups and funding. Free with one account.
 							</p>
 
-							{error && (
-								<div
-									style={{
-										background: "rgba(255,255,255,0.94)",
-										border: "1px solid #fecdd3",
-										borderRadius: 14,
-										padding: "10px 14px",
-										marginBottom: 16,
-										fontSize: 13,
-										color: "#b42318",
-										display: "inline-flex",
-										gap: 8,
-										alignItems: "flex-start",
-										maxWidth: 380,
-									}}
-								>
-									<span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span>
-									{error}
-								</div>
-							)}
-							{success && (
-								<div
-									style={{
-										background: "rgba(255,255,255,0.94)",
-										border: "1px solid #bbf7d0",
-										borderRadius: 14,
-										padding: "10px 14px",
-										marginBottom: 16,
-										fontSize: 13,
-										color: "#15803d",
-										display: "inline-flex",
-										gap: 8,
-										alignItems: "flex-start",
-										maxWidth: 380,
-									}}
-								>
-									<span style={{ flexShrink: 0, marginTop: 1 }}>✓</span>
-									{success}
-								</div>
-							)}
-
-							<div
-								onClick={handleGoogleButtonClick}
-								style={{
-									display: "inline-flex",
-									alignItems: "center",
-									justifyContent: "center",
-									gap: 16,
-									padding: isMobileBanner ? "11px 30px" : "18px 58px",
-									borderRadius: 999,
-									background: modalTheme.ink,
-									color: "#fff",
-									fontWeight: 700,
-									fontSize: isMobileBanner ? 14 : 22,
-									letterSpacing: "0.01em",
-									cursor: "pointer",
-									boxShadow: "0 8px 22px rgba(0,0,0,0.3)",
-									transition: "transform 0.15s, box-shadow 0.15s",
-								}}
+							{/* One way in: every sign-in / sign-up option (Google, email registration, email sign-in)
+							    lives on the full-screen /login page, which sends the reader home with the welcome card. */}
+							<Link
+								href="/login"
+								onClick={() => closeModal()}
+								style={{ ...authButtonBase(isMobileBanner), background: modalTheme.brand, color: "#fff", border: `1.5px solid ${modalTheme.brand}`, boxShadow: "0 10px 24px rgba(231,34,98,0.32)", textDecoration: "none" }}
 								onMouseEnter={(e) => {
 									e.currentTarget.style.transform = "translateY(-1px)";
-									e.currentTarget.style.boxShadow = "0 10px 26px rgba(0,0,0,0.36)";
+									e.currentTarget.style.boxShadow = "0 14px 30px rgba(231,34,98,0.4)";
 								}}
 								onMouseLeave={(e) => {
 									e.currentTarget.style.transform = "translateY(0)";
-									e.currentTarget.style.boxShadow = "0 8px 22px rgba(0,0,0,0.3)";
+									e.currentTarget.style.boxShadow = "0 10px 24px rgba(231,34,98,0.32)";
 								}}
 							>
-								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width={isMobileBanner ? 18 : 28} height={isMobileBanner ? 18 : 28} style={{ flexShrink: 0 }}>
-									<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-									<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-									<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-									<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-									<path fill="none" d="M0 0h48v48H0z" />
-								</svg>
-								Continue with Google
-							</div>
+								Login / Sign up
+								<ArrowRight size={isMobileBanner ? 18 : 20} strokeWidth={2.4} style={{ flexShrink: 0 }} />
+							</Link>
 
 							{/* Footer */}
 							<p

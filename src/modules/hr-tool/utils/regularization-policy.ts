@@ -5,19 +5,31 @@
  * lateness.ts, so both sides import the same numbers.
  *
  * The configurable parts live in hr_rules: the per-cycle day limit
- * (regularizationMonthlyQuota) and the request window (regularizationWindowDays).
+ * (regularizationMonthlyQuota), the request window (regularizationWindowDays) and the punch
+ * clock windows (PunchWindows — shared with real punches).
  */
 import { addDaysUTC } from './time';
 import { hhmmToMinutes } from './lateness';
 
-/** Earliest/latest punch-in time a request may ask for. 14:00 is also the latest arrival that
- * can still earn a half day (4.5 h before an 18:30 shift end), so a later punch-in would be
- * Absent whether regularized or not. */
-export const REG_PUNCH_IN_EARLIEST = 8 * 60;
-export const REG_PUNCH_IN_LATEST = 14 * 60;
-/** Earliest/latest punch-out time a request may ask for. */
-export const REG_PUNCH_OUT_EARLIEST = 14 * 60;
-export const REG_PUNCH_OUT_LATEST = 23 * 60;
+/** The clock windows ("HH:MM", IST, both ends inclusive) set in hr_rules for a real Punch In /
+ * Punch Out AND for the time a regularization may ask for — one set of times everywhere.
+ * Punch-out windows must stay in the afternoon (from ≥ 12:00): PunchOutTimeInput shows a fixed
+ * "PM". Enforced by HrToolService.punchEmployee / submitEmployeeRegularization; the forms only
+ * use them to guide input. */
+export interface PunchWindows { punchInFrom: string; punchInTo: string; punchOutFrom: string; punchOutTo: string; }
+export const DEFAULT_PUNCH_WINDOWS: PunchWindows = { punchInFrom: '09:00', punchInTo: '15:00', punchOutFrom: '15:00', punchOutTo: '23:59' };
+
+/** "15:00" → "3:00 PM" for messages. */
+export function fmtWindowTime(hhmm: string): string {
+  const minutes = hhmmToMinutes(hhmm);
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+/** Whether a clock time (minutes since midnight) falls inside [from, to]. */
+export function inWindow(minutes: number, from: string, to: string): boolean {
+  return minutes >= hhmmToMinutes(from) && minutes <= hhmmToMinutes(to);
+}
 
 /** Days after a payroll cycle ends during which requests for that cycle are still accepted
  * (e.g. the 26th and 27th for a cycle ending on the 25th). After that the cycle is closed to new
@@ -26,17 +38,15 @@ export const REG_LATE_FILING_DAYS = 2;
 
 export type RegularizationSource = 'employee' | 'hr-edit';
 
-/** Out-of-window error for a requested time, or null when it's allowed. */
-export function requestedTimeError(punchType: 'in' | 'out', requestedTime: string): string | null {
+/** Out-of-window error for a requested regularization time, or null when it's allowed. Same
+ * windows as a real punch (see PunchWindows). */
+export function requestedTimeError(punchType: 'in' | 'out', requestedTime: string, windows: PunchWindows): string | null {
   const minutes = hhmmToMinutes(requestedTime);
-  if (punchType === 'in' && (minutes < REG_PUNCH_IN_EARLIEST || minutes > REG_PUNCH_IN_LATEST)) {
-    if (minutes > REG_PUNCH_IN_LATEST) {
-      return 'Punch-in after 2:00 PM can\'t earn a half day (needs 4.5 hours before shift end), so it can\'t be regularized. For a planned late arrival, apply for leave in advance.';
-    }
-    return 'Punch-in time must be between 8:00 AM and 2:00 PM.';
+  if (punchType === 'in' && !inWindow(minutes, windows.punchInFrom, windows.punchInTo)) {
+    return `Punch-in time must be between ${fmtWindowTime(windows.punchInFrom)} and ${fmtWindowTime(windows.punchInTo)}. For a planned late arrival, apply for leave in advance.`;
   }
-  if (punchType === 'out' && (minutes < REG_PUNCH_OUT_EARLIEST || minutes > REG_PUNCH_OUT_LATEST)) {
-    return 'Punch-out time must be between 2:00 PM and 11:00 PM.';
+  if (punchType === 'out' && !inWindow(minutes, windows.punchOutFrom, windows.punchOutTo)) {
+    return `Punch-out time must be between ${fmtWindowTime(windows.punchOutFrom)} and ${fmtWindowTime(windows.punchOutTo)}.`;
   }
   return null;
 }
@@ -49,11 +59,13 @@ export function regularizationDeadline(date: string, windowDays: number): string
 interface CountableRegularization { date: string; status: string; source?: RegularizationSource | null; }
 
 /** Distinct DAYS that use up the limit: a punch-in and a punch-out fix on the same date are one
- * day; a rejected request frees its day; records converted from old HR edits never count. */
+ * day; approved, pending AND rejected requests all count (a rejected request does not give its
+ * day back — since 2026-10-03); records converted from old HR edits never count. */
 export function countedRegularizationDates(regs: CountableRegularization[], from: string, to: string): Set<string> {
   const dates = new Set<string>();
   for (const r of regs) {
-    if (r.status === 'rejected' || r.source === 'hr-edit') continue;
+    // A request closed because HR set the day directly (status 'cancelled') never used the limit.
+    if (r.source === 'hr-edit' || r.status === 'cancelled') continue;
     if (r.date < from || r.date > to) continue;
     dates.add(r.date);
   }

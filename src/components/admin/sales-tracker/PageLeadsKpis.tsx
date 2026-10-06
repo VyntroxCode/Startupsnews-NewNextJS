@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { isOpenStatusLabel, PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS } from './constants';
-import { matchesType } from './LeadsTable';
+import { matchesType } from './utils';
 import type { UnifiedLeadRow } from './types';
 
 /** Still needs work: status Pending or Follow Up (not Confirmed / Not Interested) — the same four

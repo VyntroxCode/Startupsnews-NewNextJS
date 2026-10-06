@@ -10,7 +10,7 @@ import { StartExitModal } from './Offboarding';
 import EditCredentialModal from './EditCredentialModal';
 import { PANEL_ROLE_LABEL } from './CredentialFields';
 import { StatusBadge, addDays, initialLeaveBalance, computeCtcBreakdown, employeeName, exportCSV, exportExcel, initials, isAdmin, nextEmployeeId, todayStr } from '../utils';
-import { computeLeaveBalances } from '@/modules/hr-tool/utils/leave-balance';
+import { computeLeaveBalances, leaveCreditDay, absenceCoverThrough, punchedShortfall } from '@/modules/hr-tool/utils/leave-balance';
 
 /** How many days a new hire has to submit their required-documents checklist, counted from doj. */
 const DOCUMENTS_WINDOW_DAYS = 5;
@@ -699,7 +699,11 @@ function EmployeeProfileModal({ employee, admin, founder, onClose, onEditCtcSpli
           // probation-confirm and never accrues or resets, so it goes stale immediately.
           const myLeave = state.leaveRequests.filter((l) => l.employeeId === employee.id);
           const workedDates = state.attendance.filter((a) => a.employeeId === employee.id && a.inMinutes != null).map((a) => a.date);
-          const balances = computeLeaveBalances(employee.doj, state.rules.leaveTypes, myLeave, todayStr(), state.orgStructure.holidays.map((h) => h.date), workedDates);
+          const holidayDates = state.orgStructure.holidays.map((h) => h.date);
+          const overrides = state.attendanceOverrides.filter((o) => o.employeeId === employee.id);
+          const through = absenceCoverThrough(todayStr());
+          const shortfall = punchedShortfall({ doj: employee.doj, attendance: state.attendance.filter((a) => a.employeeId === employee.id), overrides, requests: myLeave, holidayDates, rules: state.rules, through });
+          const balances = computeLeaveBalances(employee.doj, state.rules.leaveTypes, leaveCreditDay(state.rules), myLeave, todayStr(), holidayDates, workedDates, { through, skip: overrides.map((o) => o.date), shortfall });
           return Object.entries(balances).map(([k, v]) => <span className="badge active" style={{ marginRight: 6 }} key={k}>{k}: {v}</span>);
         })()}
       </div>

@@ -196,9 +196,9 @@ components).
 
 ### Public (reader-facing)
 `/` (home — the only route that renders `components/DelegationStrip.tsx`, the delegation announcement band; `showDelegationStrip = pathname === '/'` in `ConditionalLayout`, placed between `<Header />` and the banner carousel) · `/[...slug]` (article + legacy WP slugs) · `/news` · `/category/*` · `/author/*` · `/search` ·
-`/events` (country → city carousels, countries A–Z and cities A–Z with "Other Cities" last — that heading is hidden when Other Cities is the country's only section, Online/Cohort trailing; when the visitor has shared a location, `orderByVisitorLocation` moves their city/country to the top — location comes only from the `sn_event_loc` cookie that the headless `EventsLocationBar` (renders nothing; asks the browser prompt on every load while no cookie) writes, read by `lib/visitor-location.ts`; no IP lookup) · `/startup-events` · `/press-release` · `/about-us` · `/advertise-with-us` ·
-`/our-partners` · `/ecosystem-partners` · `/incubatx` · `/careers` · `/dashboard` (reader; since 2026-10-04 incl. `/dashboard/funding` + `/deals`, `/market`, `/search`, `/ai`) ·
-`/expand-north-star` (Expand North Star 2026 event page — a **bare route**: `BARE_ROUTES` in `components/ConditionalLayout.tsx` renders it without the site `Header`, banner carousel or `Footer` (footer dropped 2026-09-19) and tags `#mvp-main-body-wrap` with `is-bare-route` so the page can drop the 72px header clearance; grounds run full width with a 1200px content column; `src/app/expand-north-star/page.tsx` loads Cairo via `next/font/google` as `--ens-font` → client `components/expand-north-star/ExpandNorthStarPage.tsx`; the hero (`EnsHero`) opens straight on its headline — the white "Back To Home" pill that stood above it (`.ens-home-btn` / `.ens-hero-title-row`, added 2026-09-21) was removed with its CSS on request 2026-09-28, so the only link home on this bare route is `SectionNav`'s "Back to Home" once the reader scrolls past the hero; the big rounded card below the headline plays a **YouTube embed** (`<iframe>`, `.ens-hero-yt`, swapped in 2026-09-23 for the local `.mp4` background clip — `EnsVideo`/`ensVideos.hero` are now unused but left in place) with `autoplay=1&mute=1&loop=1&playlist=<id>&controls=0` params approximating the old muted/looping/no-controls behaviour, `pointer-events: none` (still no play/pause UI, per row 23's removal); above the bar a sticky white band (`EnsDelegationTitle`) reads **"Startup Delegation to Dubai"**, its Montserrat 900 type sized to the band's width (`calc(100cqi / 18)`; ratio re-measured whenever the wording changes); the sticky event bar (`EnsNav`, full-width row: lockup → Launchpad → Konnect packed left, button `margin-left: auto` at the right gutter; bar padding and the lockup/Launchpad/Konnect/button sizes all shrunk together 2026-09-23 to cut the bar's height) ends in a **Participate Now** button that scrolls to `#ens-participate`, the closing enquiry section (`PlanYourJourney`), and a second, larger **Participate Now** under the 2025 figures (`ShowNumbers`) lands in the same place via the shared `scrollToParticipate()` in `hooks.ts` (reads the pinned band + bar heights at click time); `EnsPartners` reuses `PartnerLogosMarquee` with `rows={2}`, fed by this page's own fixed `REFERRAL_PARTNER_LOGOS_FOR_MARQUEE` (referralPartnerLogos.ts, served from S3 via `ENS_REFERRAL_LOGOS` in media.ts) rather than the admin Inner Pages feed `/our-partners` reads — two of its ten logos (Angel Bay, Indicorn Angels) carry a `linkUrl` opening the partner's own site in a new tab, corrected/added 2026-09-19, every other logo still links nowhere; a floating `SectionNav` (added 2026-09-28, Tailwind only, appears after 60% of a viewport of scroll) jumps via `scrollToSection` to `#ens-days` (Itinerary), `#ens-benefits` (Benefits), `#ens-fee` (Participate Now), `#ens-participate` (Kick Start) or `/` — a bottom-centre dock with a `layoutId` active pill (scroll-spy line at 45% of the viewport) and reading-progress line at ≥1024px, a pink menu button (stacked above the root-layout `ScrollButtons` at bottom 122px) + right-hand `role="dialog"` sidebar (portalled to `<body>` at z 10000 so ScrollButtons at 9999 can't cover it; body scroll lock, Escape, focus trap) below; right after the six days, `DelegationBenefits` ("Benefits of Joining the Delegation", added 2026-09-28) shows a cream founders card and a navy enablers card (six benefits each, paid add-on chips on the enablers card, both CTAs scroll to `#ens-participate` via `scrollToSection`) — the page's **only Tailwind section**: `src/app/expand-north-star/layout.tsx` imports the shared `isolated-tailwind.css`, which carries an `@source` line for that one file and the `--color-ens-*` tokens, while every other section stays on `expand-north-star.css` (the CTA pill is drawn on a span inside the `<a>` because style.css's unlayered `a, a:visited` colour/transition outranks a single utility); the six `DelegationDays` cards date as `6th Dec 2026` (three-letter month) with the Day 1 host (Dubai Konnect) on its own `.ens-day-host` line under the title; media/links in `media.ts`, clips served from `public/images/gif/`. Everything above the closing section is static — the one API call on the page is the travel-enquiry form's `POST /api/expand-north-star/travel-enquiry`, see §6.6) ·
+`/events` ("Explore by Country" strip just below the breadcrumb — `components/EventsCountryStrip.tsx`, data from `buildCountryCircles()` in `app/events/page.tsx`: one row of every country A–Z looping left→right (the earlier featured / "Other Countries" two-row split was merged 2026-10-06), no Cohort/Online circle; round flags at `${S3_IMAGE_BASE_URL}/${S3_UPLOAD_PREFIX}/flags/1x1/<iso2>.svg` via `isoForCountry()`; a click scrolls to the section id `countrySectionId(country)` set in `EventsByCountryList`; then country → city carousels, countries A–Z and cities A–Z with "Other Cities" last — that heading is hidden when Other Cities is the country's only section, Online/Cohort trailing; when the visitor has shared a location, `orderByVisitorLocation` moves their city/country to the top — location comes only from the `sn_event_loc` cookie that the headless `EventsLocationBar` (renders nothing; asks the browser prompt on every load while no cookie) writes, read by `lib/visitor-location.ts`; no IP lookup) · `/startup-events/[slug]` (event detail: from lg up, two columns — banner, then "About", description, speakers on the left; a sticky 360px details box on the right with the h1 title, date, time, venue (Maps link), organiser, ticket price and the "Get Access Now" button; stacks banner → box → About below lg; below the article a "Similar Events" `EventsCarousel` of 3 from `pickSimilarEvents()` (`modules/events/utils/similar-events.utils.ts`: same /events city bucket → same country → any, each tier soonest-first, never the current event); Tailwind via `app/startup-events/layout.tsx`) · `/press-release` · `/about-us` · `/advertise-with-us` ·
+`/login` (reader sign-in/up, full-screen bare route since 2026-10-04) · `/our-partners` · `/ecosystem-partners` · `/incubatx` · `/careers` · `/dashboard` (reader; since 2026-10-04 incl. `/dashboard/funding` + `/deals`, `/market`, `/search`, `/ai`) ·
+`/expand-north-star` (Expand North Star 2026 event page — a **bare route**: `BARE_ROUTES` in `components/ConditionalLayout.tsx` renders it without the site `Header`, banner carousel or `Footer` (footer dropped 2026-09-19) and tags `#mvp-main-body-wrap` with `is-bare-route` so the page can drop the 72px header clearance; grounds run full width with a 1200px content column; `src/app/expand-north-star/page.tsx` loads Cairo via `next/font/google` as `--ens-font` → client `components/expand-north-star/ExpandNorthStarPage.tsx`; the hero (`EnsHero`) opens straight on its headline — the white "Back To Home" pill that stood above it (`.ens-home-btn` / `.ens-hero-title-row`, added 2026-09-21) was removed with its CSS on request 2026-09-28, so the only link home on this bare route is `SectionNav`'s "Back to Home" once the reader scrolls past the hero; the big rounded card below the headline plays a **YouTube embed** (`<iframe>`, `.ens-hero-yt`, swapped in 2026-09-23 for the local `.mp4` background clip — `EnsVideo`/`ensVideos.hero` are now unused but left in place) with `autoplay=1&mute=1&loop=1&playlist=<id>&controls=0` params approximating the old muted/looping/no-controls behaviour, `pointer-events: none` (still no play/pause UI, per row 23's removal); above the bar a sticky white band (`EnsDelegationTitle`) reads **"Startup Delegation to Dubai"**, its Montserrat 900 type sized to the band's width (`calc(100cqi / 18)`; ratio re-measured whenever the wording changes); the sticky event bar (`EnsNav`, full-width row: lockup → Launchpad → Konnect packed left, button `margin-left: auto` at the right gutter; bar padding and the lockup/Launchpad/Konnect/button sizes all shrunk together 2026-09-23 to cut the bar's height) ends in a **Participate Now** button that scrolls to `#ens-participate`, the closing enquiry section (`PlanYourJourney`), and a second, larger **Participate Now** under the 2025 figures (`ShowNumbers`) lands in the same place via the shared `scrollToParticipate()` in `hooks.ts` (reads the pinned band + bar heights at click time); `EnsPartners` reuses `PartnerLogosMarquee` with `rows={2}`, fed by this page's own fixed `REFERRAL_PARTNER_LOGOS_FOR_MARQUEE` (referralPartnerLogos.ts, served from S3 via `ENS_REFERRAL_LOGOS` in media.ts) rather than the admin Inner Pages feed `/our-partners` reads — two of its ten logos (Angel Bay, Indicorn Angels) carry a `linkUrl` opening the partner's own site in a new tab, corrected/added 2026-09-19, every other logo still links nowhere; a floating `SectionNav` (added 2026-09-28, Tailwind only, appears after 60% of a viewport of scroll) jumps via `scrollToSection` to `#ens-days` (Itinerary), `#ens-benefits` (Benefits), `#ens-fee` (Participate Now), `#ens-participate` (Kick Start) or `/` — a bottom-centre dock with a `layoutId` active pill (scroll-spy line at 45% of the viewport) and reading-progress line at ≥1024px, a pink menu button (stacked above the root-layout `ScrollButtons` at bottom 122px) + right-hand `role="dialog"` sidebar (portalled to `<body>` at z 10000 so ScrollButtons at 9999 can't cover it; body scroll lock, Escape, focus trap) below; right after the six days, `DelegationBenefits` ("Benefits of Joining the Delegation", added 2026-09-28) shows a cream founders card and a navy enablers card (six benefits each, paid add-on chips on the enablers card, both CTAs scroll to `#ens-participate` via `scrollToSection`) — the page's **only Tailwind section**: `src/app/expand-north-star/layout.tsx` imports the shared `isolated-tailwind.css`, which carries an `@source` line for that one file and the `--color-ens-*` tokens, while every other section stays on `expand-north-star.css` (the CTA pill is drawn on a span inside the `<a>` because style.css's unlayered `a, a:visited` colour/transition outranks a single utility); the six `DelegationDays` cards show only "Day N" — no per-day date since 2026-10-05, arch #315 (the range line under the title and the home strip read 7 – 12 Dec 2026 since 2026-10-05, arch #314 / #317) (three-letter month) with the Day 1 host (Dubai Konnect) on its own `.ens-day-host` line under the title; media/links in `media.ts`, clips served from `public/images/gif/`. Everything above the closing section is static — the one API call on the page is the travel-enquiry form's `POST /api/expand-north-star/travel-enquiry`, see §6.6) ·
 policy pages (`/privacy-policy`, `/terms-and-conditions`, `/editorial-policy`, `/return-refund-policy`, `/delete-your-account`) ·
 lead-gen forms (`/feature-your-startup`, `/submit-funding-round`, `/submit-press-release`, `/submit-event`, `/list-your-event`, `/sponsor-event`, `/contact-us`) ·
 SEO (`/sitemap_index.xml`, `/sitemap.xml`, `/sitemap-news.xml`, `/sitemap-posts-N.xml`, `/sitemap-events.xml`, `/sitemap-static.xml`, `/llms.txt`, `/unsubscribe`)
@@ -231,10 +231,13 @@ the last working day an `alumni` login sees only this page: the layout filters t
 redirects every other `/employee/*` path there, and every other `/api/employee/*` route answers 403
 `code: ALUMNI`. Publisher/Event Admins get the same widget at `/admin/my-exit` (sidebar "Resignation").
 **Mobile frame (since 2026-09-29, responsive overhaul phase 1).** `src/app/employee/EmployeeShell.tsx` (client; `layout.tsx` is a server wrapper exporting `robots: noindex` metadata, since 2026-10-02) is
-Tailwind (sheet `src/components/admin/staff-panel-tailwind.css`). At `md` (768px) and up it keeps the
+Tailwind (sheet `src/components/admin/staff-panel-tailwind.css`, which must `@source` `EmployeeShell.tsx` itself — without it `md:flex` is never generated and the desktop sidebar stays `hidden`). At `md` (768px) and up it keeps the
 260px sticky sidebar. Below `md` there is no sidebar column. Instead there is a sticky 56px top bar
-(hamburger, current page name, avatar), an off-canvas drawer (`z-[1003]`, backdrop `z-[1002]`, with
-the same `SidebarContent`) and a fixed bottom tab bar (Attendance · Leave · My Leads · More → drawer;
+(hamburger, current page name, avatar), a drawer (`z-[1003]`, backdrop `z-[1002]`, with
+the same `SidebarContent`; since 2026-10-05 **mounted only while open** — no `translate-*` slide — and
+positioned with physical `top-0/bottom-0/left-0`, never `inset-*`, because older Android browsers ignore
+the `translate` property and logical `inset` and the "closed" drawer stayed over the page; profile
+header and Logout pinned, the menu list scrolls between them; menu rows are `box-border` 44px) and a fixed bottom tab bar (Attendance · Leave · My Leads · More → drawer;
 hidden for alumni). The drawer's open state is `drawerPath === pathname`, so any navigation closes it
 without an effect; Esc closes it via `useEscapeKey`, and body scroll is locked while it is open. Main
 content is `px-4` on phones and reserves space for the tab bar and safe area at the bottom.
@@ -242,7 +245,9 @@ content is `px-4` on phones and reserves space for the tab bar and safe area at 
 `AttendanceWidget` leads with a **Today** card: live clock, today's In/Out tiles from the API's
 `today` block (so it stays correct while the calendar shows another month), and full-width 48px
 Punch In / Punch Out buttons. A day-details card appears only when a non-today date is picked. The
-calendar is a compact `grid-cols-7` of square cells on phones. `LeaveWidget` and `MyLeadsPage` show
+calendar is a compact `grid-cols-7` of square cells on phones; from `sm` up each cell also prints
+"In hh:mm / Out hh:mm" from the month's `calendar` row (`'—'` = no punch). The HR tool's
+`AttendanceCalendar` does the same from `state.attendance` (`.cal-time` in `HrToolApp`'s style block). `LeaveWidget` and `MyLeadsPage` show
 card lists below `md` and keep their tables from `md` up.
 
 ### API (221 handlers)
@@ -512,6 +517,21 @@ row click and **View** → read-only; **Edit** → `onEdit(row, true)`; the inli
 (`StatusSelect.tsx`, which saved on change via `updateLeadField`) became the read-only
 `StatusBadge.tsx`, and `updateLeadField` was removed from `useSalesTrackerData`. **Invariant:** no
 control in the All leads table writes data — every edit goes through the lead window.
+
+**Superseded 2026-10-05 (arch #307): lead windows open editable, save asks first.** `startEditing`,
+the `editing` state and the `<fieldset disabled>` are gone from `LeadFormModal` and
+`EnsEnquiryDetailModal`; PhoneField / CountryCityFields always render. Each window computes a
+`changes` list (field labels whose draft differs from the stored lead, plus contact/country/city,
+assignment, new message); "Save changes" is disabled while it's empty, and for an existing lead opens
+`SaveConfirmDialog.tsx` (rendered as a *sibling* of the window's `.modal-overlay`, z-index 1001 —
+the overlay's backdrop-filter would trap a fixed child). Confirm → the existing save path. Add new
+lead skips the dialog. Close/Escape/backdrop with `changes` asks `window.confirm('Discard…')`;
+Escape while the dialog is open only dismisses the dialog. `LeadsTable` has one **Edit** button per
+row (View removed); `LeadMessagesPanel` lost its `editing` prop. Locked fields (Arrival date, Last
+updated, page-lead Source/Type, Sponsor company) keep their own `disabled`. Invariant unchanged: the
+table itself still writes nothing.
+
+**2026-10-05 (arch #308):** the "Reply by email" `mailto:` link was removed from `EnsEnquiryDetailModal`'s actions (now Close / Save changes only), along with its now-unused `a.se-btn-link` / `.ee-btn-ghost` rules in `SalesTrackerStyles.tsx`.
 Columns (since 2026-10-01): Date · Name · Company · Contact · Email · City · Source · **Referred By** ·
 Assigned · Current Status · actions. Referred By = `referredByLabel(row.referredBy)` for an ENS row with a
 referrer, "—" otherwise (`sales_leads` has no referrer field; exports already carried a `Referred By` column).
@@ -673,6 +693,18 @@ Followed Up, dirty-check on close, server errors inline), styles `.ee-*` (incl. 
 `.ee-form-divider`) in `SalesTrackerStyles.tsx` — mounted by `/admin/sales-tracker`'s page component
 itself now (`activeEnsId` state + `handleRowEdit`), not by a card, since the card that used to mount
 it is gone.
+
+**Since 2026-10-04 (arch #295) the panel view above is gone:** `EnsEnquiryDetailModal` now uses the
+same window layout as `LeadFormModal` — "Lead details" / "Edit lead" title, read-only hint, one
+`<fieldset disabled={!editing}>` of `.row`/`.field` inputs (Arrival date + Last updated locked, Name,
+Contact no. + WhatsApp link, Email ID, Country, City, Source of lead + Type of lead locked to
+"Expand North Star" / `ENS_ENQUIRY_TYPE_LABEL`, Participating as + package inclusions or
+Requirement, Referred by, How they found us (+ In their words), `LeadAssignmentFields`,
+`LeadMessagesPanel`, Status (ENS lead status, "Pending" = none), Conversation result under
+Confirmed/Follow Up), `FollowUpsPanel` outside the fieldset, actions Close / Reply by email / Edit
+lead ↔ Cancel / Update lead. Data, save order and endpoint unchanged. The table's Edit button now
+opens it unlocked (`startEditing`, `ensStartEditing` in `page.tsx`). `.ee-panel*`, `.ee-dates`,
+`.ee-date*`, `.ee-status-row` styles are now unused (left in place); `.ee-inclusions` still used.
 
 Front end: `components/expand-north-star/PlanYourJourney.tsx` (section, decor, scroll parallax) →
 `JourneyForm.tsx` (grid, submit) → `JourneyField.tsx` (reveal wrapper only), with
@@ -926,10 +958,46 @@ flowchart TB
 > tagged `hr_regularizations.source = 'hr-edit'`; Absent edits dropped. **HR now only approves or
 > rejects requests.** (Historical: arch #224 added Bulk mark, #225 made payroll honour overrides.)
 >
+> **HR day status — RESTORED, ledger-backed** (`agent.md` #1163, arch #282). HR Head / Founder can
+> again set one day's status from the HR calendar's day popup: Present · Short leave · Half day ·
+> Absent · Unpaid leave (LOP) · Week-off / Holiday (paid). `POST|DELETE /api/admin/hr-tool/attendance-overrides`
+> (HR_TOOL_ROLES) → `HrToolService.setAttendanceOverride` / `clearAttendanceOverride`. Rules
+> (`checkOverrideDate`): date ≤ today, ≥ `doj`, ≤ exit date, not Sunday/holiday, not frozen, not inside
+> `settledThrough`, no pending/approved leave request on the date; reason mandatory. Row
+> `hr_attendance_overrides (employee_id, emp, override_date, status, reason, set_by, set_at)` — new
+> columns from `scripts/migrations/add-hr-attendance-override-fields.sql`. Punches are **not** touched.
+> `buildDayLedger` takes `overrideByDate`: present/short-leave/half-day/absent replace the hours bucket
+> (short leave still counts toward the free quota), `off` = paid week-off, `unpaid-leave` = 1 day LOP;
+> leave is ignored on that date; `LedgerDay.hrSet = true`. `AbsenceCoverOptions.skip` keeps HR-set dates
+> out of the automatic Casual cover (server ledger, leave overview → `absenceCoverSkip`, leave submit,
+> client Dashboard/Directory/LeaveWidget). Side effects: pending regularizations on the date →
+> `status 'cancelled'`, `stage 'done'` (excluded from `countedRegularizationDates` and the locked insert's
+> SQL); audit-log line "Set attendance for X on D: old → new. Reason: …"; `refreshDraftPayslip` re-upserts
+> that one employee's `hr_payroll_entries` row (saved TDS kept, `computePayrollForMonth(…, {onlyEmployeeId})`)
+> when the cycle has an unfrozen run. Employees can't regularize or apply leave on an HR-set date.
+> `bootstrap` returns `attendanceOverrides`; `/api/{employee,admin}/attendance/me` return
+> `hrOverrides[]` so `AttendanceWidget` colours the day by the HR status with a "Set by HR" tag and
+> shows the reason. UI: `AttendanceCalendar` DayDetailModal "HR correction" (dropdown + reason →
+> warning popup listing pay change, cycle recalculation, draft update, closed requests, employee
+> visibility, audit) and "Remove HR status"; cell outline `.cal-cell.hr-set` + "set by HR" note.
+>
+> **Missed punch-out — today + reminder (arch #324, 2026-10-06).** Punch-out regularization is allowed
+> for **today** too: `AttendanceWidget` `canRequestOutRegularization` no longer excludes today (needs
+> today's punch-in, no punch-out; `PunchOutTimeInput` `to` capped at the current time), and
+> `submitEmployeeRegularization` refuses a today punch-out later than `nowMinutesSinceMidnight()`.
+> New `HrToolService.getMissedPunchOuts(employeeId)`: past dates from `today − regularizationWindowDays`
+> to yesterday with a punch-in and no punch-out that pass the same submit checks (window, closed cycle,
+> frozen month, HR-set day, existing out request, full-day leave). Both `GET …/attendance/me` routes
+> (admin + employee) return it as `missedPunchOuts` — not limited to the calendar month. The widget's
+> Today card lists them (amber box) with **Regularize Punch Out**, which switches the calendar month if
+> needed, selects the date, opens the out form and scrolls to `#attendance-selected-day`. Before this the
+> option existed only after clicking the past date on the calendar.
+
 > **Regularization rules** (`HrToolService.submitEmployeeRegularization`, shared constants in
 > `utils/regularization-policy.ts`; every surface — employee portal, Publisher/Event Admin,
 > HR-tool Regularize buttons — posts through it):
-> - requested time: punch-in `08:00–14:00`, punch-out `14:00–23:00` (`requestedTimeError`), and out
+> - requested time: inside the punch windows from `hr_rules` (`requestedTimeError(type, time, rules)`,
+>   default in `09:00–15:00`, out `15:00–23:59`; was a fixed 08–14 / 14–23 until 2026-10-05, #304), and out
 >   strictly after in — "in" is the other punch's live (non-rejected) request time if one exists,
 >   else the raw punch;
 > - window: `today ≤ date + hr_rules.regularization_window_days` (5, calendar days), never a future
@@ -937,11 +1005,34 @@ flowchart TB
 > - cycle: the date's cycle = `payrollPeriodRange(payrollMonthKeyForDate(date))` (same range payroll
 >   uses). A date in an earlier cycle is accepted only until `cycle.to + REG_LATE_FILING_DAYS` (2);
 > - limit: `regularization_monthly_quota` (5) **distinct dates** per the date's cycle —
->   `countedRegularizationDates`: in + out on one date = 1, `status='rejected'` and `source='hr-edit'`
->   don't count, pending does. Hard block, no override. `getRegularizationUsage` returns the same
+>   `countedRegularizationDates`: in + out on one date = 1, `source='hr-edit'` doesn't count;
+>   pending, approved **and rejected** all count (since 2026-10-03, #276 — a rejection no longer frees the day). Hard block, no override. `getRegularizationUsage` returns the same
 >   count for the widgets (`usedThisMonth` is now days).
 > - unchanged: duplicate (date, punch type) blocked; punch-in only if not on time; punch-out only
 >   while missing. `PunchOutTimeInput` offers 2–11 PM (11 PM → :00 only).
+>
+> **Punch clock windows** (since 2026-10-05, #304): `hr_rules.punch_in_from / punch_in_to /
+> punch_out_from / punch_out_to` (VARCHAR(5) "HH:MM", IST, inclusive; migration
+> `add-hr-punch-windows.sql`, defaults 09:00 / 15:00 / 15:00 / 23:59; NULL → `DEFAULT_PUNCH_WINDOWS`
+> via `hhmmOr` in the repo). Shared helpers in `utils/regularization-policy.ts` (`PunchWindows`,
+> `inWindow`, `fmtWindowTime`). `HrToolService.punchEmployee` checks, after the duplicate check and
+> before leave/geofence: punch-in after today's punch-out → `ALREADY_PUNCHED`; punch-in outside
+> `punchInFrom–punchInTo` → `OUTSIDE_PUNCH_WINDOW` (409); punch-out after `punchOutTo` → same;
+> punch-out before `punchOutFrom` only allowed when punched in today (early leave). Clock =
+> `nowMinutesSinceMidnight()` (real IST; not affected by `NEXT_PUBLIC_HR_TEST_TODAY`). Pay is
+> unchanged: credited hours still clamp to shift start/end; no punch-out = absent.
+> `saveRules` fills missing windows with defaults and throws (→ 400) on non-HH:MM, from ≥ to, or
+> punch-out opening before 12:00 (PunchOutTimeInput shows fixed "PM"). Surfaced via
+> `getPolicySummary().punchWindows` → `attendance/me` (admin + employee) `punchWindows` →
+> `AttendanceWidget` hint + regularization inputs; HR tool reads `state.rules`; Rules page row
+> "Punch windows" (validated client-side too); employee Rules & Policy cards.
+>
+> **Regularization requests list** (`hr-tool/views/Attendance.tsx`, since 2026-10-05, #303): shows one
+> pay cycle at a time — rows whose `payrollMonthKeyForDate(r.date)` equals `regMonth`, sorted date desc.
+> `regMonth` opens on the cycle `todayStr()` falls in (honours `NEXT_PUBLIC_HR_TEST_TODAY` on dev);
+> ‹ › arrows step cycles (no future), a "Current cycle" button jumps back. Header shows
+> `payrollPeriodRange(regMonth)`. Pending requests in other cycles are counted in an amber note so they
+> aren't lost from view. Client-side filter only — `state.regularizations` still loads every row.
 
 ```mermaid
 flowchart TB
@@ -998,7 +1089,62 @@ flowchart TB
 > Schema: `scripts/migrations/add-hr-leave-half-day-and-decimal-payroll-days.sql` (`half_day`;
 > payroll day columns → DECIMAL(6,1); `working_days_pattern` → all Saturdays working).
 
-> **Payroll cycle, run window and lock** (`agent.md` #1092, arch #243). Cycle = `hr_rules`
+> **Payroll Run / Freeze / Reverse** (`agent.md` #1128–#1131, arch #263 — **current**; supersedes the
+> lock, Founder reopen and auto-update described in the next two paragraphs). `HrToolService.getPayrollCycleState(month, roster?)`
+> is the single gate. Phases: `in-progress` (`to ≥ today`, preview) → `window` (5 days after `to`) →
+> `overdue` (past the window, not frozen — still runnable/freezable, red) · `frozen` (`hr_payroll_runs.frozen_at`).
+> No auto-lock, no reopen.
+> - **Run Payroll** (`runPayroll`, `POST payroll-runs`) = draft: recompute with typed TDS, upsert entries,
+>   delete entries no longer in the result, audit-log. Refused when `in-progress` or `frozen`. Never
+>   updates by itself — `refreshRunIfOpen` / `refreshRunsForDates` / `refreshPayrollForDates` are gone.
+> - **Freeze** (`freezePayroll`, `POST payroll-runs/freeze`): blockers (`freezeBlockers`) = not run ·
+>   any pending request in the cycle · missing CTC · `stale` · an earlier drafted month not frozen
+>   (freeze in order). `stale` = a fresh `computePayrollForMonth` with the saved TDS ≠ saved entries
+>   (`samePayslip`), so decisions, attendance, CTC, holidays and F&F changes all count (the old
+>   `hasRequestChangesSinceRun` is removed). The client adds "TDS typed but not run". Freeze sets
+>   `frozen_at/by` with a conditional UPDATE (`WHERE frozen_at IS NULL` — double click safe), then
+>   `ensurePayslipSnapshots` writes `hr_payroll_entries.payslip_json` (`utils/payslip-data.ts`
+>   `buildPayslipData`: name, Employee Code, designation, DOJ, Basic/HRA/Conveyance/Special, gross,
+>   TDS, net) so later CTC/designation edits never change a published slip.
+>   Since arch #320 **Freeze is permanent** (confirm dialog says so).
+> - **Reverse** (`reversePayroll`, `POST payroll-runs/reverse`) — since arch #320 it works on a
+>   **draft only**: `canReverse = !!run && !reverseBlocker`. `repository.discardPayrollDraft` (conditional
+>   `WHERE status='run' AND frozen_at IS NULL`, so it can't race Freeze) sets `status='not_run'`, clears
+>   `period_from/to` + `computed_at` (so `settledThroughFor` never counts the discarded days as paid),
+>   stamps `reversed_at/by` (`reverse_reason` NULL — no reason, confirm only), then deletes every
+>   `hr_payroll_entries` row of the month; audit-logged "(draft discarded)". The month is "not run";
+>   the next Run Payroll recomputes from live attendance. **Frozen months are refused**:
+>   `FROZEN_PAYROLL_REVERSIBLE = false` (`hr-tool.service.ts`) makes `reverseBlocker` "Frozen payroll is
+>   final". The old frozen path (`reversePayrollRun`: latest frozen month only, reason required, clears
+>   `frozen_at/by` + `payslip_json`) is kept and only runs if that constant is flipped to `true` — the
+>   one code change to bring it back (the UI then shows the old Reverse + reason box automatically).
+> - **Frozen month guard:** `frozenMonthLabelFor(dates)` refuses leave decide/cancel, regularization
+>   decide, and employee leave/regularization **submit** for dates in a frozen month.
+> - **Employees:** `GET /api/employee/payslips` → `getEmployeePayslips` (frozen months only, snapshot
+>   lazily filled for months frozen by the migration) → `/employee/payslips` ("My Payslips", PDF via
+>   `components/admin/hr-tool/payslipPdf.ts`, loaded on demand). Draft/reversed months are not listed.
+>   The in-HR-tool "Employee" role view also shows only a frozen month's slip.
+>   The page is listed in `src/components/admin/staff-panel-tailwind.css` `@source` (the scoped
+>   employee sheet only generates classes for listed files).
+> - **F&F:** "salary already paid" = `hasFrozenPayrollEntry` (frozen months only); a draft that still
+>   contains a now-notice-held employee turns `stale`, so it can't be frozen without a re-run.
+> - Schema: `scripts/migrations/hr-payroll-freeze-reverse.sql` (`frozen_at/by`, `reversed_at/by`,
+>   `reverse_reason`, `payslip_json`; existing runs → frozen). `locked_at` / `reopened_until` /
+>   `reopen_reason` are left in the table, unread. `scripts/hr-payroll-test/restore.ts` copies by the
+>   backup's column list and re-freezes restored runs.
+>   Since arch #320: draft → Reverse · Run Payroll again · Freeze (Reverse = `window.confirm`, no reason);
+>   frozen → "Final — cannot be reversed" (the reason box shows only if `cycle.canReverse` on a frozen
+>   month, i.e. the constant is on). "Payroll reversed" banner only while not run; Payslip history lists
+>   `status='run'` rows only; `patchPayrollRunInState` also patches `payrollRun` (Dashboard tile).
+>   Frozen-month copy (`AttendanceCalendar.tsx`, `frozenMonthLabelFor` errors) says "frozen and final"
+>   instead of "reverse it first".
+> - Admin UI (`views/Payroll.tsx`, before #320): Run Payroll · Freeze · Reverse (reason box); banners for frozen /
+>   overdue / reversed; blocker list (pending-request blocker hidden, see arch #266); TDS read-only
+>   when frozen; draft PDFs stamped "DRAFT"; history status Frozen / Draft. Since arch #266 the
+>   CSV / Excel / All payslips (ZIP) buttons sit in the card header next to "Ready to run · <month>" /
+>   "In progress · <month>"; the bottom row holds only Total payout + Run Payroll / Freeze / Reverse.
+
+> **Payroll cycle, run window and lock** (`agent.md` #1092, arch #243; *lock, reopen and auto-update superseded by arch #263 above*). Cycle = `hr_rules`
 > 26 → '25' (named by its end month: `2026-10` = 26 Sep → 25 Oct). `HrToolService.getPayrollCycleState`
 > is the single gate: `in-progress` while `to ≥ today` (preview only) → `window` for
 > `PAYROLL_RUN_WINDOW_DAYS` (5) after `to` (26th–30th; Feb 26 → 2 Mar) or until a Founder's
@@ -1010,7 +1156,7 @@ flowchart TB
 > `findPendingRequestsInRange` — pending regularizations dated in the cycle + pending leave
 > overlapping it, now with `employee_id`), and each later decision rewrites them via
 > **Dev test hook:** `todayStr()` (`hr-tool/utils/time.ts`) returns `NEXT_PUBLIC_HR_TEST_TODAY` when set (YYYY-MM-DD), so a whole cycle can be judged and run ahead of time on dev. It is `NEXT_PUBLIC_` so the browser cycle picks agree with the server, and it is inlined at build, so it needs a rebuild. Never set on live. Test kit: `scripts/hr-payroll-test/` (backup → seed → verify → restore; see arch #252).
-> `refreshRunIfOpen` — triggered by `refreshPayrollForDates` (`api/admin/hr-tool/_lib.ts`) from HR leave decide/cancel, regularization decide, and (since arch #251) the employee and Publisher/Event Admin self-cancel routes (`api/employee/leave-requests/cancel`, `api/admin/leave-requests/cancel`), plus on every Payroll page load. Pending requests still keep the cycle from locking. The Payroll view shows no banner in the `window`/`overdue` phases (heading "Run — updating automatically" / "Not run yet"); only `in-progress` and `locked` keep a notice. Pending requests are decided inline: `findPendingRequestsInRange` now returns `id` + `detail`, and the row's "Provisional · N pending" button expands them with Approve/Reject (regularization → context `decideRegularization(id, 'hr', …)`, leave → `hrApi.decideLeaveRequest`), then a silent `loadPayroll` (arch #251, #253). `stale` = any regularization/leave touching the cycle with `updated_at >
+> `refreshRunIfOpen` — triggered by `refreshPayrollForDates` (`api/admin/hr-tool/_lib.ts`) from HR leave decide/cancel, regularization decide, and (since arch #251) the employee and Publisher/Event Admin self-cancel routes (`api/employee/leave-requests/cancel`, `api/admin/leave-requests/cancel`), plus on every Payroll page load. Pending requests still keep the cycle from locking. The Payroll view shows no banner in the `window`/`overdue` phases (heading "Run — updating automatically" / "Not run yet"); only `in-progress` and `locked` keep a notice. Pending requests are **not** decided from Payroll (since arch #261; the inline Approve/Reject from #251/#253 was removed): the row's "Provisional · N pending" button only navigates — `setView('attendance')` if the employee has a pending regularization, else `setView('leave')` — and decisions happen in Attendance / Leave, which already trigger `refreshPayrollForDates`. `stale` = any regularization/leave touching the cycle with `updated_at >
 > hr_payroll_runs.computed_at` (both DB-clock; `computed_at = NOW()` on every run). `runPayroll`
 > refuses unless allowed and records `period_from/period_to`. `reopenPayroll(month, reason)` (route
 > `payroll-runs/reopen`, HR_TOOL_ROLES = Founder) clears `locked_at` and sets `reopened_until =
@@ -1018,9 +1164,14 @@ flowchart TB
 > cancellation is refused for a date in a locked cycle; regularization approval re-checks
 > `requestedTimeError`. `periodEnded` is now `to < today`. **Settled days:** a cycle counts days up
 > to the latest earlier run's `period_to` as paid present (`settledThrough`) — the changeover (Aug
-> paid 1–31 Aug ⇒ Sep 26 Aug → 25 Sep pays 26–31 Aug). **Short leave:** first
-> `shortLeaveMonthlyQuota` (2) per cycle free, each extra −0.5 day, no carry (`shortLeaveCarryOut`
-> always 0). `payrollCycleToRunKey` = the cycle before today's. The Late-mark switch is gone from
+> paid 1–31 Aug ⇒ Sep 26 Aug → 25 Sep pays 26–31 Aug). Sundays/holidays inside that stretch stay
+> `off` (week-off), not `settled` — the off check runs first (#272). **Short leave** (arch #321):
+> per cycle in date order, the first `shortLeaveMonthlyQuota` are free, then every
+> `SHORT_LEAVE_DEDUCT_EVERY` (3)-th after them is −0.5 day — `isShortLeaveDeducted(n, quota)` =
+> `n > quota && (n − quota) % 3 === 0` in `day-ledger.ts`, so quota 2 → 5th/8th/11th/14th…; quota 0 →
+> 3rd/6th/9th…. `leave-balance.ts` (auto-Casual cover) calls the same helper; display copy comes from
+> `shortLeaveRuleText` / `shortLeaveDeductedPositions`; the Short Leaves tiles (`AttendanceCycleSummary`, HR `AttendanceCalendar`) use the short `shortLeaveRuleShort` ("First 2 free"). No carry (`shortLeaveCarryOut` always 0).
+> (History: #271 2026-10-03 blocks of quota+1 → 3rd/6th/9th; before that "2 free, each extra −0.5".) `payrollCycleToRunKey` = the cycle before today's. The Late-mark switch is gone from
 > Rules (column kept). Schema: `scripts/migrations/hr-payroll-cycle-26-25-window-and-lock.sql`.
 
 > **Payroll** (`computePayrollForMonth`): roster = `{credentialId, name, doj}` per login → Directory row
@@ -1028,11 +1179,77 @@ flowchart TB
 > TDS (`Record<employeeId, number>`) and `hr_payroll_entries` all by `employee_id`. The pay formula is
 > unchanged. `backfillMissingEmployeeIds()` (throttled 60 s) links any row an older build wrote by name.
 
+> **Leave rules since arch #322 (2026-10-06) — current; the two "automatic cover" paragraphs below
+> describe a mechanism that is now switched OFF.**
+> - **No automatic cover.** `leave-balance.ts` `AUTO_ABSENCE_COVER = false`: `allocateLeave` ignores its
+>   `absenceCover` option, so no `ABSENCE_COVER_ID` allocation exists, `LedgerDay.autoLeave` is never
+>   set and `leave[].autoInCycle` is 0. A day without an **approved** leave request (no punch, too few
+>   hours, no punch-out, half day, deducted short leave) is absent / LOP whatever the balance. Callers
+>   still compute and pass the cover options, so flipping the constant to `true` restores the old
+>   behaviour without other edits. Pending leave still holds balance but pays nothing until approved
+>   (`approvedLeaveByDate`).
+> - **Leave apply has no date window.** `submitEmployeeLeaveRequest` dropped the "today, yesterday or
+>   later" check and the closed-cycle (`REG_LATE_FILING_DAYS`) check. Still refused: frozen payroll
+>   month (`frozenMonthLabelFor`), HR-set day, overlap with pending/approved, full-day leave on a
+>   punched-in date. `LeaveWidget` date input lost `min={yesterday}`; HR `Leave.tsx` copy updated.
+>   `decideLeaveRequest` unchanged (frozen + punched-day checks).
+> - **Credits by pay cycle.** `leaveCreditDay(rules)` = `salaryPeriodFrom` (26, clamped 1–28).
+>   `creditsAccruedThisYear(doj, asOf, creditDay)` counts credit dates (leave-year start + same day of
+>   the next 11 months) that are `> doj` and `≤ asOf` — joins 10 Oct → first credit 26 Oct; joins 26 Oct
+>   → 26 Nov. Leave year (`leaveYearOf` / `leaveYearStart`): 26 Dec → 25 Dec (creditDay 1 → calendar
+>   year); unused balance lapses at its end, 12 credits a year. `allocateLeave` / `computeLeaveBalances`
+>   take `creditDay` as the 3rd argument (every caller: service ×4, Leave, Dashboard, Directory,
+>   LeaveWidget — the overview now returns `creditDay`); per-year usage is keyed by leave year.
+>   `monthsAccruedThisYear` removed; cycle ledger `earnedThisYear` uses `creditsAccruedThisYear`.
+>   Existing staff: same count as before on most days (e.g. 10 on 6 Oct 2026), credited on the 26th
+>   instead of the 1st. `utils.tsx` `initialLeaveBalance` now stores 0 per type (snapshot, unread).
+> - **One-time restart (arch #323).** `LEAVE_CREDIT_FROM = '2026-10-26'`: `creditsAccruedThisYear` ignores
+>   credit dates before it (4th arg `creditFrom`, default that constant), so every balance was 0 on
+>   2026-10-06 and the first credit is 26 Oct 2026. Requests created before `LEAVE_RESET_AT_MS`
+>   (1791254356869 = 2026-10-06 08:09 IST; `isLegacyLeaveRequest` parses `'L-' + Date.now()` ids, any
+>   other id is legacy) are allocated with `creditFrom = ''` in their own `legacy|type|year` pool — they
+>   keep their split and are skipped in `computeLeaveBalances`, so they never use the new balance.
+
+> **Automatic absence cover from Casual leave** (since 2026-10-03, arch #278; **off since arch #322**). `utils/leave-balance.ts`
+> `allocateLeave(…, absenceCover?: { through })`: every working day (not Sunday/holiday) from
+> `ABSENCE_COVER_FROM` = `2026-09-26` (first day of the first cycle not frozen at launch) or the join date,
+> up to `through` = `absenceCoverThrough(today, lastDay)` (yesterday, capped at a leaver's LWD), with **no
+> punch-in** and **no approved/pending leave request** becomes a slot of the synthetic allocation
+> `ABSENCE_COVER_ID` (`type: 'Casual'`, `auto: true`), paid in the same date order as requested leave.
+> Unpaid cover days are dropped, so an uncovered absence stays `absent` (never `unpaid-leave`).
+> `approvedLeaveByDate` includes `auto` allocations; `buildDayLedger` marks those days `leave` with
+> `autoLeave: true`. Punch-in-but-short / no-punch-out days are not covered. Nothing stored — a later
+> punch, regularization or leave request removes the day from the cover. **Invariant: every balance
+> caller passes `absenceCover`** (server: `getLeaveOverviewForEmployee` → also F&F encashment, apply-time
+> split, `buildEmployeeLedger` (attendance now loaded through today), cycle-ledger balances; client:
+> Dashboard, Directory, Leave view, LeaveWidget preview via overview's `workedDates` +
+> `absenceCoverThrough`), or screens disagree with payroll. Cycle ledger `leave[].autoInCycle`.
+
+> **Punched days that still cost pay are covered too** (since 2026-10-04, arch #296).
+> `punchedShortfall({ doj, attendance, overrides, requests, holidayDates, rules, through })` →
+> `Record<date, units>` passed as `absenceCover.shortfall`: from the cover start to `through`, a punched
+> working day costs **1** if its hours bucket (`realDayHoursBucket`, or the HR status mapped like the
+> ledger) is `absent` (too few hours / no punch-out), **0.5** if `half-day`, **0.5** if it's a short leave
+> closing a set of `shortLeaveMonthlyQuota + 1` in its pay cycle (counted from the cycle start via
+> `payrollPeriodRange(payrollMonthKeyForDate())`, HR-set short leaves count, approved-leave dates skipped —
+> the same counting as `buildDayLedger`). HR-set dates are never covered. `allocateLeave` adds these as
+> `ABSENCE_COVER_ID` slots with those units (no-punch days still 1). `buildDayLedger` reads an `auto`
+> entry on a punched day as `cover`: absent → `leave` + `autoLeave`; half-day → `half-leave` + `autoLeave`
+> (pay 0.5 worked + paid); deducted short leave keeps `short-leave` + `shortLeaveDeducted` + `autoLeave`
+> (pay 0.5 + paid). Covered days are **not** counted in `absentDays` / `halfDayDays` /
+> `shortLeaveDeductions` (those now mean "still LOP"), so `lopBreakdown` stays correct. A partly covered
+> day's remainder is `unpaidLeaveDays` (same as a partly covered no-punch absence). An approved
+> regularization changes the punch → day leaves the cover → balance returns. **Invariant: every caller
+> that passes `absenceCover` also passes `shortfall`** (service ×3, Dashboard, Directory, Leave view; the
+> LeaveWidget preview reads `absenceCoverShortfall` from the overview). Leave view now also passes `skip`.
+
 > **Day ledger — attendance and payroll in sync** (`agent.md` #1098, arch #245). `utils/day-ledger.ts`
 > `buildDayLedger` is the ONLY code that decides what a day of a pay cycle is worth: kinds
 > `not-employed | settled | off | future | present | short-leave | half-day | absent | leave |
 > unpaid-leave | half-leave`, each with `pay`/`worked`/`paidLeave`/`unpaidLeave`, plus `totals`
-> (present, paid + unpaid leave, half/short days and short-leave deductions, week-offs, paid days, LOP).
+> (present, paid + unpaid leave, half/short days and short-leave deductions, week-offs, paid days, LOP,
+> and since arch #262 `absentDays` = count of `absent`-kind days). Payroll's `absentDays` column is that
+> count — no-show days only, a subset of `lopDays` — not LOP (it was `t.lopDays` before #262).
 > Its logic is the old `computePayrollForMonth` day loop moved as-is (parity-checked on every employee
 > × two cycles). `HrToolService.buildEmployeeLedger` (private) loads the employee's year-to-date
 > punches + all leave, runs `allocateLeave` over approved + pending (pending holds balance, same as
@@ -1045,7 +1262,7 @@ flowchart TB
 > is gone); `AttendanceWidget` adds an `AttendanceCycleSummary` card. Legacy rows with a text time and
 > NULL minutes are read via `parseTime12h` in `mapAttendanceRow`, so every reader sees the same punch.
 >
-> **Auto-update until lock.** `refreshRunIfOpen(month, roster)`: for a run, unlocked cycle, recompute
+> **Auto-update until lock** (*removed in arch #263 — a draft changes only on Run Payroll*). `refreshRunIfOpen(month, roster)`: for a run, unlocked cycle, recompute
 > with each employee's saved TDS, upsert only changed `hr_payroll_entries`, delete rows no longer in the
 > result, re-stamp `computed_at`, audit-log "Payroll M updated from attendance: …" (skipped while a
 > roster member has no CTC). Called by the leave decide/cancel and regularization decide routes
@@ -1057,15 +1274,19 @@ flowchart TB
 flowchart LR
     PUNCH["Punch / approved<br/>regularization"] --> ATT[("hr_attendance")]
     LV["Leave decide / cancel"] --> LR[("hr_leave_requests")]
+    HRS["HR day status<br/>(warning → confirm)"] --> OV[("hr_attendance_overrides")]
     ATT --> BL["buildEmployeeLedger<br/>(allocateLeave + buildDayLedger)"]
     LR --> BL
+    OV --> BL
+    HRS -. "refreshDraftPayslip<br/>(unfrozen run)" .-> PE
     BL --> CAL["Attendance calendar<br/>(HR + self-service)"]
     BL --> PAY["computePayrollForMonth"]
-    PAY --> RF{"run exists and<br/>not locked?"}
-    RF -->|yes| PE[("hr_payroll_entries<br/>auto-updated + audit log")]
-    RF -->|no, preview| VIEW["Payroll page preview"]
-    LV -. "refreshPayrollForDates" .-> RF
-    PUNCH -. "refreshPayrollForDates" .-> RF
+    PAY --> VIEW["Payroll page<br/>(preview / draft)"]
+    VIEW -- "Run Payroll" --> PE[("hr_payroll_entries<br/>draft")]
+    PE -- "Freeze (no pending, not stale,<br/>earlier months frozen) — permanent" --> FZ[("frozen_at +<br/>payslip_json snapshot")]
+    PE -- "Reverse (draft only, confirm):<br/>entries deleted, status not_run" --> PAY
+    FZ --> EMP["/employee/payslips<br/>My Payslips (PDF)"]
+    FZ -. "blocks" .-> LV
 ```
 
 ### 6.8 Level 2 — IT ticket lifecycle
@@ -1244,15 +1465,16 @@ flowchart TB
     EMP(("Employee /<br/>Publisher·Event Admin"))
     HR(("HR / Founder"))
     MX["/employee/exit · /admin/my-exit<br/>ExitWidget"]
-    RS["POST /api/employee/offboarding<br/>POST /api/admin/my-exit<br/>{reason, requestedLwd, personalEmail, handover}"]
+    RS["POST /api/employee/offboarding<br/>POST /api/admin/my-exit<br/>{reason, requestedLwd?, personalEmail, handover}<br/>system date = resignation_date + NOTICE_DAYS (30)"]
     WD["POST …/withdraw<br/>(pending only)"]
     OV["/admin/hr-tool → Offboarding<br/>tabs + case modal"]
     DIR["Directory profile<br/>'Start exit'"]
     ST["POST /api/admin/hr-tool/offboarding<br/>resignation (offline) or termination<br/>immediate | with_notice"]
-    DC["POST /api/admin/hr-tool/offboarding/[id]<br/>decide · cancel · access · exit-now"]
+    DC["POST /api/admin/hr-tool/offboarding/[id]<br/>decide {lwdChoice: requested|system|custom}<br/>cancel · access · exit-now · left-early"]
     OB[("hr_offboarding<br/>source of truth")]
     CL[("hr_offboarding_clearance<br/>seeded on accept")]
-    SE[("hr_offboarding_settings<br/>notice 15 / 30")]
+    SE[("hr_offboarding_settings<br/>checklist · encashable leave")]
+    FF["buildFnfAutoLines<br/>left-early ⇒ earnings ₹0 + flat CTC/12 recovery"]
     SW["applyDueExits()<br/>bootstrap · list · login · every employee request<br/>throttled 1/min"]
     EM[("hr_employees.status<br/>= 'exited' mirror")]
     PA[("panel_admins.is_active = 0<br/>if linked")]
@@ -1263,7 +1485,8 @@ flowchart TB
 
     EMP --> MX --> RS --> OB
     MX --> WD --> OB
-    RS -.notice days by status.-> SE
+    DC -.left-early sets agreed_lwd.-> FF
+    DC -.checklist on accept.-> SE
     HR --> OV --> DC --> OB
     HR --> DIR --> ST
     OV --> ST --> OB
@@ -1278,6 +1501,22 @@ flowchart TB
     AU -->|yes, blocked| BLK
 ```
 
+- **Three dates (2026-10-03):** notice is the constant `NOTICE_DAYS = 30` (`domain/types.ts`) for every
+  employee and exit type — the probation/confirmed settings are gone (`hr_offboarding_settings.notice_days_*`
+  are written as 30 and never read). System date = `systemLwd(c)` = `resignation_date + 30`, computed, never
+  stored or sent by the client (old pending cases get the same). `requested_lwd` is the employee's optional
+  request (today … +365, earlier or later than the system date). `decide` accept takes `lwdChoice`
+  (`requested` | `system` | `custom` + `customLwd`); the chosen date must be ≥ today. It stores
+  `approved_lwd`, `lwd_choice`, `notice_days = 30` and `notice_waived_days = max(0, 30 − days to LWD)`
+  (record only). If the `lwd_choice` column is missing it retries without it. No choice costs money.
+- **Left early:** `markLeftEarly` (`action: 'left-early', actualLwd, note`) — resignations only (server refuses
+  other `exit_type`s since 2026-10-06) — for a resignation that is
+  `accepted`, or `exited` with no F&F / a draft F&F. `actualLwd` is typed by HR and only has to be
+  < the agreed day (no today / resignation_date bounds since 2026-10-06) (`agreed_lwd ?? approved_lwd`). It sets `approved_lwd = actualLwd` and `agreed_lwd =
+  agreed` and transitions to `exited` (side effects if it was `accepted`). A draft F&F is recalculated.
+  It can be re-recorded, always measured against the original agreed day. `exitNow` (company's choice)
+  leaves `agreed_lwd` NULL ⇒ nothing recovered. Migration `add-hr-offboarding-lwd-choice.sql` (not yet
+  applied) adds `lwd_choice VARCHAR(10)`, `agreed_lwd DATE`.
 - States: `pending → accepted → exited → completed`; `withdrawn` (employee, pending), `rejected`
   (HR, note required), `cancelled` (HR, accepted and LWD not passed). A termination is created
   `accepted`, or `exited` with LWD = today when immediate. At most one open (`pending`/`accepted`/
@@ -1304,7 +1543,12 @@ flowchart TB
   items by keyword ("panel" in access on exit, "lead" in handover when none remain).
 - **Full & Final (phase 3):** `exited` cases only. `calculateFnf` builds keyed auto lines — `salary`
   (`HrToolService.computePayrollForMonth(salaryMonth, [leaver], …, { onlyEmployeeId, includeFnfSettled })`,
-  or ₹0 if `hr_payroll_entries` already has that cycle), `leave:<type>`, `expenses`, `notice`, `clearance:<id>`
+  or ₹0 if `hr_payroll_entries` already has that cycle), `leave:<type>`, `expenses`, `left-early` (only when `agreed_lwd > approved_lwd`: a flat
+  CTC/12, however many days were worked — since 2026-10-06; was days × CTC/12/30 from 2026-10-03, which
+  replaced the old `notice` shortfall line). When left early, `auto()` forces every positive earning
+  (`salary`, `salary:<m>`, `leave:<t>`, `expenses`) to ₹0 with " — forfeited, left before agreed last day"
+  appended to the label, and negative-leave `leave:<t>` deductions are skipped; HR can still override any
+  line with a note, `clearance:<id>`
   — keeps manual lines and overridden auto lines. `updateFnf` = `UPDATE … WHERE status='exited' AND
   JSON version = expected`. Approve re-checks: no pending checklist items, recoveries unchanged, no payroll
   entry for `salaryMonth` newer than the calculation. Approved/paid ⇒ checklist edits and Reinstate refused.
@@ -1380,9 +1624,18 @@ flowchart TB
   the lead window; an employee's follow-up (any of the four) sets it in the same transaction as the
   insert (ENS: `updated_at`/`updated_by` untouched — they mean "last admin edit"). Every follow-up
   keeps the status it was saved with. `sales_lead_assignments.status` is no longer read.
-  Admin: Summary metrics Active (Pending + Follow Up) / Confirmed / Not Interested, "Pending leads"
-  tile = status Pending across sales leads + ENS (was "never edited"); the All leads status filter
-  and Status column cover ENS rows too; `PageLeadsKpis` open = not Confirmed / Not Interested.
+  Admin: the All leads status filter and Status column cover ENS rows too. **Leads overview (since
+  2026-10-05, v129)** replaced the Summary card (`PageLeadsKpis` "Leads by page" tiles were removed with it and restored unchanged in v130, below the overview; open = not Confirmed / Not Interested; tile click → `showInAllLeads({type})`, active tile click clears `pageFilter`): `LeadsOverview.tsx` (Tailwind,
+  `@source` in `staff-panel-tailwind.css`) counts the unified `rows` (sales leads + ENS) — status
+  tiles (All / 4 statuses), a status split bar, a lead type × status table grouped "From website
+  pages" (`PAGE_LEAD_FILTER_OPTIONS`) / "Added by the team" (`TYPES`), plus a "No type set" row if any
+  sales lead's type is in neither, and a stacked bar per type. Counts use `utils.matchesType` +
+  `utils.statusLabelOf` (non-ENS status outside the four → Pending, via `statusFromSalesLead`), the
+  same functions LeadsTable filters by, so rows/columns sum to the total and a number = rows its
+  click shows. Every number is a click → page `showInAllLeads` sets All leads' type / page-type /
+  status filters (all three lifted to the page) and bumps `jumpToken` (LeadsTable clears assigned /
+  department / search, opens, scrolls). `pendingOnly` removed. Legacy `.sales-tracker-page button`
+  / `table` element rules are `:not(.tw)` so Tailwind-styled elements opt out.
   Data reset: `scripts/migrations/unify-sales-lead-status.sql` (every lead → Pending; history renamed).
 - Everyone on a lead sees the whole log. **My Leads KPI cards (since 2026-09-29, v81)** — one per
   page only (the "All my leads" and "Followed up" cards were removed), each ONE number
@@ -1475,14 +1728,23 @@ flowchart TB
   page takes (reads + clears) it on mount, prefills title, slug, excerpt (subheadline, else meta
   description) and meta description, skips the restore-draft banner, and passes `html` to
   `RichTextEditor`'s new `importHtml` prop, which runs it once through the editor's own
-  `sanitizeHtmlForPaste` + `extractContentCss` — the exact Upload HTML path. The `<h1>` headline stays
-  in the body, as with a manual upload.
+  `sanitizeHtmlForPaste` + `extractContentCss` — the exact Upload HTML path. Since 2026-10-03 the
+  handoff uses `buildFullHtml(live, { forPost: true })`, which leaves out the `<h1>` headline and the
+  "Source:" footer, so neither lands in the post body (the headline goes only to the Title field).
+  Copy full HTML / Download still include both. `forPost` also passes `authorInputsLast` to
+  `serializeBlocks`, so filled "Your original input" (author-input) blocks are moved to the end of
+  the body, right before the FAQ section; the studio preview and Download keep them in place.
 - **The key never leaves the server.** `lib/llm/azureOpenAI.ts` imports `server-only`; the page passes the
   client only a boolean and the model name.
 - **Every studio POST is in the layout's `isSpecialPath`** (`/api/admin/content-studio`), otherwise
   the blanket remount 150 ms after each POST would throw the generated article away (§9 #13).
 - **SSE through nginx:** `generate` sends `X-Accel-Buffering: no` so steps arrive live, and an SSE
   comment every 15 s so a long LLM call doesn't hit nginx's 60 s idle read timeout.
+- **No data callouts in new drafts** (since 2026-10-03): the prompts (`lib/llm/prompts.ts` layout rule +
+  allowed tags, `lib/data/templates.ts` News style, the roster author in `lib/data/authors.ts`) forbid
+  `<div class="data-callout">`, the "Data callout" chip is gone, and `sanitizeBody`'s `exclusiveFilter`
+  drops any such div (and its content) the model still emits. `blocks.ts` / `ArticleBody` /
+  `buildFullHtml` still understand the `dataCallout` block, so older drafts keep rendering.
 - Model output is sanitised to the prompt's closed tag set (`lib/llm/postprocess.ts`) and parsed into
   `ArticleBlock[]` (`lib/article/blocks.ts`) that React renders; only inline HTML inside a block is
   injected. `blocks.ts` types cheerio through `cheerio/slim` because the host's `@types/cheerio@0.22`
@@ -1502,10 +1764,11 @@ flowchart TB
     DB[("funding_deals<br/>UNIQUE dedupe_key")]
     B[("funding_upload_batches")]
     R(("Logged-in reader"))
-    RUI["/dashboard/funding/*<br/>Dashboard · All Deals · Market Analysis ·<br/>Search · AI Assistant (shell)<br/>Chart.js charts + SVG Sankey"]
+    RUI["/dashboard/funding/*<br/>Dashboard: AG Charts Community + Recharts + GSAP<br/>(components/user/funding/dashboard/*)<br/>All Deals · Market Analysis (Chart.js + SVG Sankey) ·<br/>Search · AI Assistant (shell)"]
     G2{"requirePublicUser<br/>Bearer pub_auth_token JWT"}
     API["/api/funding/overview · /deals ·<br/>/filters · /export · /search ·<br/>/market?view=…"]
-    AGG["getFundingOverview / getMarketView<br/>findForAggregation → sumBy, investorAgg,<br/>timeBuckets, computeKpis, forecast,<br/>market.ts (one fn per tab)"]
+    AGG["getFundingOverview / getMarketView<br/>findForAggregation → sumBy, investorAgg (+leads),<br/>stageSectorMatrix, sizeBandAgg, timeBuckets,<br/>computeKpis (+ previous-year window), forecast,<br/>market.ts (one fn per tab)"]
+    SEL["dashboard/selectors.ts (useMemo)<br/>buildDashboard: colours, YoY, treemap tiles,<br/>Sankey nodes/links, heat grid, city points"]
 
     FA --> UI --> PARSE -->|"rows + row numbers"| G1
     UI --> G1
@@ -1520,8 +1783,14 @@ flowchart TB
     R --> RUI --> G2
     G2 -->|401 otherwise| X
     G2 --> API --> AGG --> DB
+    API -->|"overview JSON"| SEL --> RUI
 ```
 
+- **Reader Funding is locked (since arch #342).** The sidebar row in `UserDashboardLayout.tsx` has
+  `locked: true` (inert, lock icon, no navigation), and `src/app/dashboard/funding/layout.tsx`
+  returns `FundingLockedState` while `FUNDING_LOCKED = true`, so no `/dashboard/funding/*` page,
+  sub-nav or `/api/funding/*` call renders on a direct URL visit. The admin side
+  (`/admin/funding-data`) and the APIs are unchanged. Unlock = drop `locked` + flip the flag.
 - **Amounts are stored once, in USD millions** (`amount_usd_mn`, NULL = undisclosed), parsed at write
   time by `parseAmountToUsdMn`; `amount_raw` keeps what was typed. A bare number is read as millions
   unless it is ≥ 10,000 (then whole dollars). Rupees convert at `INR_PER_USD` (83) — changing it does
@@ -1536,6 +1805,22 @@ flowchart TB
 - **Reader auth**: `src/lib/public-auth-server.ts` `requirePublicUser` — the same JWT check the
   `/api/public-auth/*` routes do inline. Exports download via `fetch` + blob (an `<a href>` can't send the header).
 - `source_url` is kept only if it is `http(s)://` (rendered as a link to readers).
+- **Reader Dashboard (`/dashboard/funding`, from #340)**: one `GET /api/funding/overview` per country/range
+  change (`AbortController` cancels stale requests; "Try again" re-runs it). `dashboard/selectors.ts`
+  reshapes the response only; components hold **no data constants** (only colours and the API's "Other"
+  bucket name). Charts by library: AG Charts **Community** (`AllCartesianModule` registered in
+  `dashboard/charts/agSetup.ts`) for the trend combo, stage bars and city bubble; Recharts for the
+  sector Treemap, the stage→sector Sankey, size bands, business-model donut and forecast line;
+  the sector×stage heatmap is an HTML `<table>`. AG Treemap/Heatmap/Sankey and AG animations are
+  Enterprise-only and **not used**. Every chart is `next/dynamic({ ssr: false })`, so the chart
+  bundles load only on this route. **Cross-highlight**: `dashboard/highlight.tsx` holds one
+  `{ kind: 'sector'|'stage', key }`; treemap, ranking, Sankey, heatmap and stage bars (`itemStyler`)
+  each draw it themselves. **GSAP** (`dashboard/motion.ts`, `@gsap/react` `useGSAP` + `ScrollTrigger`)
+  only moves page furniture (`[data-reveal]` sections, `[data-reveal-item]` rows, `[data-bar]` bars,
+  count-ups via `textContent`, a 200ms fade while reloading), all inside `gsap.matchMedia()`, so
+  reduced-motion users get no tweens. Invariants: investor `total` is "capital in rounds joined"
+  (overlaps; never summed, share column = share of deals); loading shows skeletons, never `$0`;
+  a country with 0 deals shows an empty state, not zeros.
 - **Phase 2 (2026-10-04):** reader area is five sub-pages under `src/app/dashboard/funding/` (`layout.tsx` = fonts + `FundingSubNav`): Dashboard, `deals`, `market`, `search`, `ai`. Charts are Chart.js via `react-chartjs-2`, registered once in `components/user/funding/charts/setup.ts`; each chart reads its wrapper's computed font-family (next/font renames families) — `useChartFont()`. `GET /api/funding/market?view=overview|timeseries|location|growth|cumulative|h2h` → `getMarketView` → one pure function per tab in `utils/market.ts` over **all** deals (`findForAggregation({})`), plus `meta` (countries, years, last-12-month KPI strip). Overview response also carries `forecast` + `signals` (`utils/forecast.ts`, least-squares line over filtered monthly totals). `GET /api/funding/search` = `listDeals` with the shared filters, first 50 rows + total. Round-size bands `ROUND_BANDS`/`bandFor` live in `utils/aggregate.ts` (lower bound inclusive).
 - Excel parse uses raw cell values, so date cells arrive as serial numbers and `normalizeDate` converts them
   without the JS-Date timezone shift. Day-first for `12/03/2026`.
@@ -1544,11 +1829,13 @@ flowchart TB
 
 ### 7.1 Authentication — three independent systems
 
+Reader sign-in UI (since 2026-10-04): the slide-up popup (`components/AuthModal.tsx`) offers a single **Login / Sign up** link to `/login` (Google moved off the popup on 2026-10-04, v125) (`components/auth/LoginPage.tsx`), which holds Google, email register and email sign-in. Both use `components/auth/readerAuth.ts` (`useGoogleSignIn` → `/api/public-auth/google-verify`, `saveReaderSession` → `localStorage.pub_auth_token`/`pub_auth_user` + `pub-auth-changed`). `/login` hands the welcome card to the homepage through `sessionStorage.pub_auth_welcome` (`queueWelcome` → `takeQueuedWelcome` in AuthModal). `/login` is in `BARE_ROUTES`, so no site header/footer and no popup there.
+
 | System | Store | Credential | Guard | Surfaces |
 |---|---|---|---|---|
 | **Staff/admin** | `users` + `panel_admins` | email + bcrypt → JWT (`JWT_SECRET`) | `shared/middleware/auth.middleware.ts` + `roles.ts` | `/admin/*`, `/api/admin/*` |
 | **Employee** | `hr_employee_credentials` | own login → own token | `shared/middleware/employee-auth.middleware.ts` (+ offboarding access gate: past the LWD `alumni` → only `{ allowAlumni: true }` routes, `blocked` → 401; §6.11) | `/employee/*`, `/api/employee/*` — incl. IT tickets, where the credential becomes ticket actor `(id, 'employee')` |
-| **Reader** | `public_registrations` | email/password, Google, LinkedIn OAuth | `/api/public-auth/*` | `/dashboard`, newsletter prefs |
+| **Reader** | `public_registrations` | email/password (popup "Sign up with Email" → `register`/`login`, both return the 30d `{pubUserId,email,type:'public'}` JWT; password-less Google/LinkedIn rows are refused on both with a "use Google" message), Google, LinkedIn OAuth | `/api/public-auth/*` | `/dashboard`, newsletter prefs |
 
 The JWT `role` claim decides **which table the id is resolved against** — `event_admin`,
 `publisher_admin`, `it_support` live in `panel_admins`; everything else in `users`. Token
@@ -1811,7 +2098,7 @@ on re-run) so a retry is harmless.
 2. **No inline role arrays.** Roles come from `shared/middleware/roles.ts`.
 3. **Never build, `pm2 restart`, or apply a migration unless the user explicitly asks.**
 4. **Never delete sections from `agent.md`** — append or update only.
-5. **Never point an `@theme` font token at a `next/font` variable** (`--font-fi-space`, `--font-db-inter`, …): those are set on layout divs, so the token resolves empty at `:root` and text falls back to the legacy font. Use `font-(family-name:--font-x)` on the element instead (funding pages since 2026-10-04; the older `font-db` token still has this bug). Also: no Preflight on these sheets, so any `w-full` + padding box needs `box-border`.
+5. **Never point an `@theme` font token at a `next/font` variable** (`--font-fi-space`, `--font-db-inter`, …): those are set on layout divs, so the token resolves empty at `:root` and text falls back to the legacy font. Use `font-(family-name:--font-x)` on the element instead (funding pages since 2026-10-04; the older `font-db` token still has this bug). Also: no Preflight on these sheets, so any `w-full` + padding box needs `box-border`. **Old-browser floor (since 2026-10-05):** `staff-panel-tailwind.css` imports `staff-panel-palette.css`, an `@theme` copy of Tailwind's whole palette in sRGB hex (generated from `node_modules/tailwindcss/theme.css`), because Chromium < 111 — still the engine in many Android OEM default browsers — drops `oklch()` and every staff-panel colour vanished. In staff-panel markup use `bg-linear-to-*` (has a no-`in oklab` fallback) not `bg-gradient-to-*`, `top/right/bottom/left-0` not `inset-*` for overlays, and mount/unmount rather than `translate-*` to hide anything.
    Tailwind classes work only where a scoped sheet lists the file in an `@source` line: the public
    marketing routes and `components/user/{DashboardHome,UserDashboardLayout}.tsx` under `src/app/isolated-tailwind.css`, and every
    staff-panel file (`/employee/*`, `/admin/*`) under the single `src/components/admin/staff-panel-tailwind.css`
@@ -1911,23 +2198,26 @@ on re-run) so a retry is harmless.
     `src/app/(admin)`, `src/components/admin` or `src/modules/content-studio`. Charts, logos and text that
     is content (messages sent out, exports, prompts) are not icons. For a success/warning/error message,
     pass a tone to the toast/banner rather than prefixing ✓ / ⚠ / ✕ to the string (§7.5).
-28. **A day's attendance changes only through a real punch or an approved regularization.** No route may
-    write `hr_attendance`/`hr_punch_log` directly from an HR screen, and payroll reads only
-    `hr_attendance` + approved leave. Every regularization — whoever files it — goes through
+28. **A day's punches change only through a real punch or an approved regularization.** No route may
+    write `hr_attendance`/`hr_punch_log` directly from an HR screen. A day's *status* may also be set by
+    HR through `HrToolService.setAttendanceOverride` only (`hr_attendance_overrides`, reason required,
+    audit-logged, refused on frozen/settled/future/off/leave days); payroll reads `hr_attendance` +
+    approved leave + those overrides, all through `buildDayLedger`. Every regularization — whoever files it — goes through
     `HrToolService.submitEmployeeRegularization`, whose limit counts **distinct dates** in the date's own
     payroll cycle (§6.7). Don't reintroduce whole-list PUTs for approval tables that carry pay impact.
 29. **Leave is paid only by `allocateLeave`.** Payroll, the leave screens and the Full & Final all take
     the paid/unpaid split and the balance from `utils/leave-balance.ts`; never re-derive "paid leave"
     with a separate cap or counter. Leave requests are created only via `submitEmployeeLeaveRequest`
     and changed only by `decideLeaveRequest` / `cancelLeaveRequest` (single-row writes).
-30. **`getPayrollCycleState` is the only gate for running payroll.** Never let a run through outside the
-    window/overdue phases or into a locked cycle. A run may happen with requests pending (they count as
-    not approved and those payslips are provisional), but a cycle must never lock while any request for
-    it is pending or its run is out of date; anything that changes a request must bump its `updated_at`.
+30. **`getPayrollCycleState` is the only gate for Run / Freeze / Reverse** (arch #263). Never run a
+    frozen or in-progress month; never freeze with a pending request, a stale draft, a missing CTC or
+    an earlier unfrozen draft. Reverse only discards an unfrozen draft (arch #320); a frozen month is
+    final — never reverse it unless `FROZEN_PAYROLL_REVERSIBLE` is deliberately set to `true`. Nothing
+    dated in a frozen month may change (`frozenMonthLabelFor`). A frozen payslip is the stored
+    `payslip_json` snapshot — never rebuild it from live data.
 31. **`utils/day-ledger.ts` is the only day classifier for pay.** Payroll and every attendance calendar
     read `buildDayLedger` output (via `HrToolService.buildEmployeeLedger`); never add a screen that
-    decides present/absent/leave/LOP on its own. Anything that changes a run, unlocked cycle's inputs
-    must end in `refreshRunIfOpen` (decision routes call `refreshPayrollForDates`).
+    decides present/absent/leave/LOP on its own.
 32. **Funding amounts go through `parseAmountToUsdMn` and rows through `normalizeDealInput` +
     `buildDedupeKey`** (`modules/funding-deals/utils/`), on every write path (import, create, edit). Never
     store another unit in `amount_usd_mn` or build the dedupe key differently, or re-uploads start duplicating.
@@ -2227,7 +2517,90 @@ Every change to this system appends a row here. `Impact` drives what else gets u
 | 257 | 2026-10-01 | medium | `/dashboard/newsletter` redesign: Tailwind + Remix icons; Press Release excluded (`src/app/dashboard/newsletter/page.tsx`, `src/components/user/newsletter/*`) | All newsletter components rewritten from inline styles / `<style jsx>` to Tailwind utilities; hand-drawn SVGs replaced by `@remixicon/react`. `icons.tsx` is now a slug → Remix icon map (`categoryIcon(slug)`, fallback `RiHashtag`). `isMobile`/`stackRail` resize listeners removed in favour of `sm:` and `min-[900px]:grid-cols-[1fr_320px]`. Page-local `isPressRelease()` (`/press[\s_-]*release/i` on name and slug) filters the `/api/newsletter/categories` result and the saved slugs from `GET /api/public-auth/newsletter-preferences`, so Press Release can't be shown or re-saved; the API itself is unchanged (wizard, Settings and admin still get it). Unused `newsletter/SectionDivider.tsx` deleted (profile keeps its own copy). Selection logic from row 256 unchanged. | v109 |
 | 258 | 2026-10-01 | minor | `/dashboard/newsletter` responsive fix: newsletter files added to the isolated Tailwind sheet (`src/app/isolated-tailwind.css`) | Root cause of the "not responsive" report after row 257: the dashboard uses `isolated-tailwind.css` (`source(none)` + explicit `@source` list), and neither `dashboard/newsletter/page.tsx` nor `components/user/newsletter/` was listed, so most utilities were never generated on the live build (no grid, no right rail, black `currentColor` borders, an unhidden 160px mail icon, an invisible Save button). Added `@source "./dashboard/newsletter/page.tsx"` and `@source "../components/user/newsletter"`. **Invariant: any new dashboard component that uses Tailwind must be added to that `@source` list.** No Preflight on this sheet, so the Clear/Save/Retry buttons now set `border-0`/`bg-transparent`/`font-[inherit]` explicitly. Rail breakpoint `min-[900px]` → `lg:grid-cols-[minmax(0,1fr)_320px]`; category grid `1 → sm:2 → xl:3 → 2xl:4` columns; names `line-clamp-2` instead of `truncate`. `icons.tsx` gained the dev/prod slugs (`ai-deeptech`, `ev-mobility`, `funding-tracker`, `spacetech`, `web3-blockchain`, plus `business`, `consumer-d2c`, `saas-enterprise`). Verified by compiling the sheet with `@tailwindcss/postcss` and screenshotting dev with the compiled CSS injected (390 / 820 / 1440 px). | — |
 | 260 | 2026-10-02 | minor | Merge of `origin/main` a798d33 into local work; employee layout split (`src/app/employee/layout.tsx`, `src/app/employee/EmployeeShell.tsx`) | Remote turned `employee/layout.tsx` into a server component (exports `metadata.robots` noindex/nofollow) that renders the client `EmployeeShell`. Conflict resolved by taking the remote wrapper and porting the local layout additions into `EmployeeShell.tsx`: Directory nav item gated by `canEmployeeUseDirectory`, `PendingLeadsAlarm`, Directory wide-content route, `ComponentType` nav typing. **Invariant: employee frame changes now go in `EmployeeShell.tsx`, not `layout.tsx`.** Other overlapping files (`package.json`, lock, `(admin)/layout.tsx`, `isolated-tailwind.css`) auto-merged. `tsc` clean. | — |
+| 261 | 2026-10-02 | minor | HR Payroll: removed inline approve/reject of pending requests (`src/components/admin/hr-tool/views/Payroll.tsx`) | The "Provisional · N pending" badge no longer expands an Approve/Reject sub-row. Removed `openPendingFor`/`decidingId` state, `decidePending()` and the expanded row; the badge now calls `setView('attendance')` (any pending regularization) or `setView('leave')` (leave only). **Invariant: Payroll is read-only for requests; decisions live in Attendance / Leave.** Provisional payslip note and run-button pending text unchanged. `tsc` clean. Not built. | — |
+| 262 | 2026-10-02 | minor | Expand North Star partners strip (§6) | `media.ts` `ENS_REFERRAL_LOGOS["ellenox"]` → S3/CDN key `startupnews-in/uploads/2026/10/expand-north-star/partner-ellenox.jpg` (1382×361 JPEG, black ground, uploaded as-is); `referralPartnerLogos.ts` gains `{ slug: "ellenox", name: "Ellenox" }`, marquee only, not in `REFERRED_BY_OPTIONS`, no `linkUrl`. Local `public/images/expand-north-star/WhatsApp Image 2026-10-02 at 6.11.58 PM.jpeg` deleted. | — |
+| 263 | 2026-10-02 | minor | Expand North Star Referred By options (§6) | `ens-travel-enquiries/domain/sources.ts` `REFERRED_BY_OPTIONS` gains `{ value: "ellenox", label: "Ellenox" }` (13 options). This flows to `JourneyForm` select, `isReferredByValue` (API validation) and `EnsEnquiryDetailModal`. Slug matches `ENS_REFERRAL_LOGOS["ellenox"]`; Ellenox is now both a strip logo and a referrer. No DB change (`referred_by` VARCHAR(40)). | — |
+| 262 | 2026-10-02 | minor | HR Payroll "Absent Days" = real absences (`src/modules/hr-tool/utils/day-ledger.ts`, `service/hr-tool.service.ts`, `domain/types.ts`) | `LedgerTotals` gains `absentDays` (whole days of kind `absent`: no punch + no leave, or too few hours / no punch-out). `computePayrollForMonth` sets `absentDays: t.absentDays` instead of `t.lopDays`, so unpaid leave, half days and short-leave deductions no longer show as absent. Pay, LOP and net unchanged (verified on dev 2026-10: all 9 nets identical; Yash 3→0, Abhishek 1.5→0, Vandana 1→0, Bhavika 0.5→0, Kirti 2.5→2). Open (run, unlocked) cycles pick up the new value via `refreshRunIfOpen` (`samePayslip` compares `absentDays`); locked cycles keep the stored value. `tsc` clean. Not built. | — |
+| 264 | 2026-10-02 | minor | Employee panel desktop sidebar missing (`src/components/admin/staff-panel-tailwind.css`) | When the employee frame moved from `employee/layout.tsx` to `employee/EmployeeShell.tsx`, the scoped sheet kept `@source`-ing only `layout.tsx`, so the shell's `md:flex` / `md:hidden` / `md:px-10` etc. were never generated: the desktop `<aside>` stayed `hidden` (sidebar only via the phone drawer). Added `@source` for `app/employee/EmployeeShell.tsx` and `app/employee/directory/page.tsx`; header comment now names `EmployeeShell.tsx` as the importer. **Invariant: any file that renders Tailwind classes on staff panels needs its own `@source` line.** Not built. | — |
+| 263 | 2026-10-02 | major | HR Payroll Run / Freeze / Reverse + employee My Payslips (§6.7, §9 #30–31; `hr-tool.service.ts`, `hr-tool.repository.ts`, `utils/payslip-data.ts` new, `api/admin/hr-tool/payroll-runs/{freeze,reverse}` new, `payroll-runs/reopen` deleted, `api/employee/payslips` new, `app/employee/payslips/page.tsx` new, `EmployeeShell.tsx`, `views/Payroll.tsx`, `HrToolContext.tsx`, `hr-offboarding.service.ts`, migration `hr-payroll-freeze-reverse.sql`) | Run = manual draft (no auto-update/auto-lock/reopen). Freeze = final, blocked by pending/stale/missing CTC/earlier unfrozen draft; snapshots payslips into `payslip_json`. Reverse = latest frozen month only, reason required. Frozen months refuse request decide/cancel/submit. F&F counts only frozen months. Employees download frozen payslips from `/employee/payslips`. Migration applied on dev (Aug + Sep 2026 → frozen). Verified on dev via service calls (blockers, double freeze, run-while-frozen, reverse rules, frozen guards, snapshots). `tsc` + eslint clean. Not built. | v112 |
+| 265 | 2026-10-02 | minor | Build command (`package.json` `scripts.build`) | Restored to `next build --webpack`. Commit a798d33 had pointed it at `bash scripts/build.sh` but never committed that script, so `deploy.sh` failed at the build step. If the safe-swap `scripts/build.sh` is committed later, point `build` back at it. **Invariant: `scripts.build` must reference only files tracked in git.** Built and deployed via `deploy.sh` (pm2 `startupgpt-dev`, `startupgpt-dev-cron` restarted). | — |
+| 266 | 2026-10-02 | medium | HR Payroll: no pending-request UI; exports moved to header (`src/components/admin/hr-tool/views/Payroll.tsx`) | Removed the per-row "Provisional · N pending" button (and its `setView` navigation, `pendingByEmployee` read, Lucide `Clock`) and the "Review pending requests" button. The server still returns the "N request(s) still pending" freeze blocker and still refuses Freeze while requests are pending; the view filters that string out of the yellow "Freeze is not available yet" list and the Freeze tooltip (`shownBlockers`; tooltip falls back to "Not ready to freeze yet"). **Invariant: Payroll shows nothing about pending requests; HR decides them in Attendance / Leave.** CSV / Excel / All payslips (ZIP) moved from the bottom action row into the card-header toolbar after the Ready-to-run / In-progress month buttons (thin divider), disabled while loading. `tsc` + eslint clean. Not built. | v113 |
+| 267 | 2026-10-03 | minor | Content Studio: no data callout box (§6.13; `modules/content-studio/lib/llm/prompts.ts`, `lib/data/templates.ts`, `lib/data/authors.ts`, `lib/llm/postprocess.ts`) | Prompts no longer ask for (and now forbid) the pink `<div class="data-callout">` figure box; it is removed from the allowed tags, the News template layout/structure, the News default chips and the chip list, and one roster author's structure. Safety net: `sanitizeBody` uses sanitize-html `exclusiveFilter` to drop any `div.data-callout` with its content. Rendering of the `dataCallout` block is kept for older drafts. `tsc` clean. Not built. | — |
+| 268 | 2026-10-03 | minor | Content Studio Move to post: no title / source in body (§6.13; `lib/article/buildFullHtml.ts`, `components/output/ReaderPane.tsx`) | `buildFullHtml` takes `opts.forPost`; when true it omits the `<h1>` headline and the `.source-footer` "Source:" link. `moveToPost` passes `{ forPost: true }`; Copy full HTML / Download keep the full document. `tsc` clean. Not built. | — |
+| 269 | 2026-10-03 | minor | Content Studio Move to post: author input before FAQ (§6.13; `lib/article/blocks.ts`, `lib/article/buildFullHtml.ts`) | `serializeBlocks` takes `authorInputsLast`; when true, every `authorInput` block is serialised after all other blocks (relative order kept; empty ones still dropped). `buildFullHtml(…, { forPost: true })` turns it on, so in the post body the editor's own input sits at the end, directly before the FAQ section. Preview, Raw tab, Copy full HTML and Download unchanged. `tsc` clean. Not built. | — |
+| 271 | 2026-10-03 | medium | HR short leave: blocks of quota+1 instead of "every one after the quota" (§6.7; `modules/hr-tool/utils/day-ledger.ts`, `service/hr-tool.service.ts`, `components/admin/PolicySummaryWidget.tsx`, `hr-tool/views/AttendanceCalendar.tsx`, `hr-tool/views/Rules.tsx`) | `buildDayLedger`: `deducted = shortLeaveDays % (freeShortLeave + 1) === 0` (was `shortLeaveDays > freeShortLeave`). With quota 2 the 3rd, 6th, 9th… short leave of the cycle costs ½ day; quota 0 still deducts every one. Payroll, attendance calendar and cycle summaries all read the ledger, so they change together. Copy updated on Rules, Policy summary, calendar card and day modal. **Invariant: short-leave deduction is decided only in `day-ledger.ts`.** Open/draft cycles recompute on next Run; frozen cycles keep stored values. `tsc` clean. Not built. | v114 |
+| 272 | 2026-10-03 | minor | HR day ledger: Sunday/holiday beats settled (§6.7; `modules/hr-tool/utils/day-ledger.ts`) | `buildDayLedger` now tests `isSunday \|\| holidays` before `settledThrough`, so a Sunday/holiday inside the already-paid changeover stretch (Sun 30 Aug in 26 Aug–25 Sep) is a week-off, not a present "settled" day. Week-offs +1, working −1, present −1; paid days, LOP and gross unchanged (both kinds pay 1). Payroll and attendance calendar both read the ledger; the calendar's "N days already paid" note now excludes such days. Not-employed check still runs first. Open/draft cycles recompute on next Run; frozen cycles keep stored values. Not built. | — |
+| 273 | 2026-10-03 | medium | HR attendance calendar: regularization tiles = employee-applied only + details modal (§6.7; `components/admin/hr-tool/views/AttendanceCalendar.tsx`) | "Reg. pending" / "Regularized" now count distinct dates of requests with `source !== 'hr-edit'` inside `ledger.periodFrom..periodTo` (approved = `stage done` + `approved`, a date with a pending request counts as pending only). "Regularized" sub = `limit used N of quota`, N from the shared `countedRegularizationDates` (same as the server limit). `CalStat` takes an optional `onClick` (role=button, Enter/Space); both tiles open `RegularizationListModal` — table of the cycle's applied requests (date, punch, time, reason, status, remarks), rejected included; a date opens `DayDetailModal` for approve/reject. Day dot now renders only for pending/approved (was any reg, so rejected-only dates showed purple). Dots still include converted `hr-edit` corrections. Limit enforcement unchanged. `tsc` clean. Not built. | v115 |
+| 274 | 2026-10-03 | minor | HR regularization limit: race-safe insert (§6.7; `modules/hr-tool/repository/hr-tool.repository.ts`, `service/hr-tool.service.ts`) | New `insertRegularizationWithinLimit(reg, from, to, quota)`: one transaction — `SELECT … FROM hr_employees WHERE id = ? FOR UPDATE` (per-employee serialization, InnoDB), re-checks duplicate date+punch, re-counts distinct counted dates (status ≠ rejected, source ≠ 'hr-edit', same rule as `countedRegularizationDates`), inserts or returns `'limit'`/`'duplicate'`. `submitEmployeeRegularization` keeps its early check (fast, friendly error) and now inserts only through this. Request id gets a 4-char random suffix (max 24 chars, column `varchar(30)`) so same-millisecond requests can't collide. **Invariant: a regularization row is created only via `insertRegularizationWithinLimit`** (`insertRegularization` kept, no app callers). `tsc` clean. Not built; concurrency not load-tested against the live DB. | — |
+| 275 | 2026-10-03 | minor | HR attendance calendar: "Regularized" tile → "Regularizations · N applied" (§6.7; `components/admin/hr-tool/views/AttendanceCalendar.tsx`) | Tile renamed "Regularizations"; big number = distinct dates with any employee-applied request in the cycle (pending, approved or rejected; `hr-edit` excluded), with unit "applied"; sub = `X approved · limit used N of quota` (approved = dates with a `done`+`approved` request). `CalStat` takes optional `unit`. Request-list popup header shows the same "applied · approved". Days, not rows (in + out on one date = 1). `tsc` clean. Not built. | — |
+| 276 | 2026-10-03 | medium | HR regularization limit: rejected requests now count (§6.7; `utils/regularization-policy.ts`, `repository/hr-tool.repository.ts`, `components/admin/AttendanceWidget.tsx`, copy in `service/hr-tool.service.ts`, `domain/types.ts`, `PolicySummaryWidget.tsx`, `hr-tool/views/Rules.tsx`, `hr-tool/views/AttendanceCalendar.tsx`) | `countedRegularizationDates` drops the `status === 'rejected'` skip (only `hr-edit` excluded); `insertRegularizationWithinLimit` SQL drops `status <> 'rejected'`; `AttendanceWidget` `selectedDateCounted` counts any non-`hr-edit` request on the date. `getRegularizationUsage`, the server limit, the widget's "X of 5 used" and the calendar's "limit used" all follow (same function). Effect: a rejected request keeps using its day; "applied" and "limit used" on the calendar tile are now the same number. Existing rejected rows count immediately (no migration). Unchanged: a rejected date still can't get a second request for the same punch (duplicate check). `tsc` clean. Not built. | v116 |
+| 277 | 2026-10-03 | minor | HR short-leave copy: "free" → "fully paid" (`hr-tool/views/AttendanceCalendar.tsx`, `AttendanceCycleSummary.tsx`, `hr-tool/views/Rules.tsx`) | Calendar "Total short leaves" sub now from `shortLeaveRule(quota)` → "2 fully paid, every 3rd costs ½ day" (+ " · N deducted"; quota 0 → "each costs ½ day"; `ordinal` helper). Cycle summary sub "within the free limit" → "all fully paid". Rules row title "Short leave — fully paid per payroll cycle", desc "are fully paid before…". Copy only; rule unchanged. `tsc` clean. Not built. | — |
+| 278 | 2026-10-03 | medium | HR leave: absences paid from Casual automatically (§6.7; `utils/leave-balance.ts`, `utils/day-ledger.ts`, `service/hr-tool.service.ts`, `LeaveWidget.tsx`, `AttendanceCycleSummary.tsx`, `hr-tool/views/{AttendanceCalendar,Dashboard,Directory,Leave}.tsx`) | See §6.7 "Automatic absence cover". New exports `ABSENCE_COVER_FROM/TYPE/ID`, `AbsenceCoverOptions`, `absenceCoverThrough`; `LeaveAllocation.type/auto`; `LedgerDay.autoLeave`; `EmployeeCycleLedger.leave[].autoInCycle`; overview returns `workedDates` + `absenceCoverThrough`. Calendar: Casual card "N available · of T total this year · This month: U used (A for absences)[ · unpaid][ · waiting]"; covered day note "auto casual", day popup "Absent — paid from Casual leave automatically". Frozen cycles (Aug, Sep) unchanged. Today's no-show is judged absent until tomorrow (cover runs to yesterday). Verified: tsc clean; tsx unit test (5 left + 6 absences → 5 auto leave, 1 absent, balance 0; a punched day drops out; no option → no cover). Not built. | v117 |
+| 279 | 2026-10-03 | minor | Attendance calendar + cycle summary: separate Absent and LOP tiles (`utils/day-ledger.ts`, `hr-tool/views/AttendanceCalendar.tsx`, `AttendanceCycleSummary.tsx`) | "Absent / LOP" tile (value `lopDays`) split into "Absent" = `totals.absentDays` (whole no-show days, sub "whole days, no show") and "LOP days" = `totals.lopDays` with sub from new `lopBreakdown(totals)` → e.g. "3 absent · ½ half day · ½ short leave · 2 unpaid leave · 26 before joining / after leaving" (non-zero parts only; "no pay lost" when empty). Same split as payroll's Absent / LOP columns (#262). Both the HR calendar and the employee portal's cycle summary. `tsc` clean. Not built. | — |
+| 280 | 2026-10-03 | medium | HR Offboarding: fixed 30-day system date, requested date, HR 3-way choice, "left early" recovery (§6.11; `hr-offboarding/domain/types.ts`, `repository/hr-offboarding.repository.ts`, `service/hr-offboarding.service.ts`, `api/admin/hr-tool/offboarding/[id]/route.ts`, `offboarding/settings/route.ts`, `components/offboarding/ExitWidget.tsx`, `hr-tool/views/Offboarding.tsx`, new `scripts/migrations/add-hr-offboarding-lwd-choice.sql`) | `NOTICE_DAYS = 30` constant + `systemLwd`/`leftEarlyDays` helpers; settings notice fields removed (`noticeDaysFor` gone). `decide` takes `lwdChoice`/`customLwd` instead of `approvedLwd`/`noticeDays`/`noticeWaivedDays`; stores `lwd_choice`. New `markLeftEarly` + `left-early` action; new columns `lwd_choice`, `agreed_lwd` (migration written, not applied). F&F: `notice` shortfall line removed; `left-early` recovery line added. `MyExitView.suggestedLwd` → `systemLwd`. My Exit: read-only system date + optional requested date + three-date card. HR case window: three dates, radio choice, "Employee left early" inline form; start-exit waived input gone. | v118 |
+| 281 | 2026-10-03 | minor | Attendance calendars: punch-in/out times on each day cell (`hr-tool/views/AttendanceCalendar.tsx`, `hr-tool/HrToolApp.tsx`, `AttendanceWidget.tsx`) | HR calendar (Attendance, Payroll "my attendance", Offboarding) builds a `punchByDate` map from `state.attendance` and renders a `.cal-time` block "In … / Out …" under the date when either punch exists (`'—'` treated as missing). `AttendanceWidget` (employee portal, admin `/admin/attendance`, scoped-role dashboard) renders the same two lines from the `calendar` row, `hidden sm:block` so phone cells stay square. Display only — no ledger/payroll logic touched. `tsc` clean. Not built. | — |
+| 282 | 2026-10-03 | medium | HR day status (attendance override) restored and wired into the day ledger / payroll (§6.7, §9 #28; `domain/types.ts`, `repository/hr-tool.repository.ts`, `service/hr-tool.service.ts`, `utils/day-ledger.ts`, `utils/leave-balance.ts`, `utils/regularization-policy.ts`, new `api/admin/hr-tool/attendance-overrides/route.ts`, `api/{employee,admin}/attendance/me/route.ts`, `hr-tool/{api.ts,types.ts,HrToolContext.tsx,HrToolApp.tsx}`, `hr-tool/views/{AttendanceCalendar,Dashboard,Directory}.tsx`, `AttendanceWidget.tsx`, `LeaveWidget.tsx`, new `scripts/migrations/add-hr-attendance-override-fields.sql`) | Supersedes the "HR only approves/rejects" part of #241. New `ATTENDANCE_OVERRIDE_STATUSES/LABEL`, `HrAttendanceOverride(Status)`, `HrBootstrap.attendanceOverrides`; repo `findAttendanceOverrides`, `findAttendanceOverridesForEmployeeInRange`, `upsertAttendanceOverride`, `deleteAttendanceOverride`; service `setAttendanceOverride`, `clearAttendanceOverride`, private `checkOverrideDate`, `refreshDraftPayslip`, `getAttendanceOverridesForEmployeeInRange`; `DayLedgerInput.overrideByDate`, `LedgerDay.hrSet`; `AbsenceCoverOptions.skip`; leave overview `absenceCoverSkip`; regularization status `'cancelled'` excluded from the limit; regularization + leave submit refuse HR-set dates. Verified: `tsc` clean; tsx ledger test (absent/present/half-day/off/unpaid-leave overrides pay 0/1/½/1/0; 3rd HR short leave ½; cover skips HR-set date). Migration written, **not applied**; not built. | v119 |
+| 283 | 2026-10-03 | minor | HR tool Leave table readability (`hr-tool/views/Leave.tsx`, `hr-tool/HrToolApp.tsx`) | Table wrapped in `.card.table-scroll` as `.leave-table` (fixed layout, `<colgroup>` widths, min-width 980px → scrolls sideways on small screens): shaded header, vertical column dividers, zebra rows, bold employee, half-day on its own line under the type, dates via `fmtLeaveDates` ("12 – 16 Oct 2026", year once) + day count from the allocation, paid/unpaid as green/red `.pay-chip`s, "Remarks" → "Reason" with HR remark prefixed "HR:". Action column: Approve/Reject only while pending, "Cancel leave" alone for approved (the stray "—" from `ApprovalCell` gone), "—" otherwise. No logic change. `tsc` + eslint clean. Not built. | — |
+| 284 | 2026-10-03 | minor | HR attendance calendar summary copy (`hr-tool/views/AttendanceCalendar.tsx`) | The long `.cal-summary-rule` paragraph (absent/half-day/auto-Casual rules + settled-days sentence) replaced by one line: frozen → "Payroll for this cycle is frozen. To change anything, reverse it in Payroll first."; otherwise "If anything changes for this cycle (attendance, leave or regularizations), run Payroll again so the payslip picks it up." Payslip line's duplicate "— Run Payroll again to pick up changes" dropped (now "· payroll run as a draft"); unused `settledDays` removed. `tsc` clean. Not built. | — |
+| 285 | 2026-10-03 | minor | HR attendance calendar footnote removed (`hr-tool/views/AttendanceCalendar.tsx`) | The "Click any day for details… HR Head / Founder can also set a day's status…" footnote under the legend is gone. No logic change. Not built. | — |
+| 286 | 2026-10-03 | minor | HR attendance calendar KPI cards tidied (`hr-tool/views/AttendanceCalendar.tsx`, `hr-tool/HrToolApp.tsx`) | Removed sub-lines "½ day each" (Half day), "of N total this year" (leave card), "whole days, no show" (Absent), "no pay lost" (LOP — breakdown now only when LOP > 0), "applied by employee" (Reg. pending), and Present's "paid worth of days worked"; `CalStat` renders no sub line when empty. "Total short leaves" → "Short leaves". Order: Days in cycle, Present, Half day, Short leaves, Absent, LOP · Week-offs, Paid days, Casual leave (`.cal-stat.wide`, 2 cols), Reg. pending, Regularizations. `.cal-stats` is a fixed 6-column grid (4 ≤1100px, 3 ≤760px, 2 ≤560px); cards `min-height: 92px`, flex column, so rows line up. `tsc` clean. Not built. | — |
+| 287 | 2026-10-04 | medium | Reader manual email registration + sign-in in the auth popup (`src/components/AuthModal.tsx`, `api/public-auth/register/route.ts`, `api/public-auth/login/route.ts`, `modules/public-users/repository/public-users.repository.ts`) | Popup gains a "Sign up with Email" button → `view: "options" \| "email"` with Create account / Sign in tabs (name, email, mobile, password). `register` now requires a mobile (`^\+?\d{7,15}$` after stripping spaces/dashes/brackets), accepts country/city/timezone from the shared `fetchGeo()` (ipapi, also used by Google), returns `{ token, isNew: true, user }` (same user shape as `google-verify`) instead of only a message; 409 text depends on whether the existing row has a `password_hash`. `repo.create()` now stores city/timezone/`last_login` and returns the entity. `login` refuses password-less rows with a "use Google" message and returns `linkedin_url` + `newsletter_category_slugs`. Client success path for Google and email unified in `completeLogin()`. New form uses inline styles like the rest of `AuthModal.tsx`, because root-level Tailwind would leak utilities onto legacy pages (§7.5). No schema change. Not built. | v120 |
+| 288 | 2026-10-04 | minor | Auth popup button pair restyled (`src/components/AuthModal.tsx`) | Google and "Sign up with Email" share `authButtonBase(isMobileBanner)` (equal width/height/font). Row with "or" on desktop, column with "— or —" divider on mobile. Google button is now a real `<button>` (was a clickable `<div>`). No logic change. Not built. | — |
+| 289 | 2026-10-04 | minor | Auth popup mobile field gets a dial-code picker (`src/components/AuthModal.tsx`, `api/public-auth/register/route.ts`) | Default `+91`; options = `COUNTRY_CODE_OPTIONS` minus `other`, India first. Overlay pattern: visible "IN +91 ▾" box plus an opacity-0 native `<select>` (the sheet is `overflowY: hidden` on desktop, which would clip a custom dropdown list). Client and server both validate with `PHONE_RULES[code]`. Server requires `^(\+\d{1,5})\s+digits$` and stores `"<code> <digits>"`, matching `CompleteProfileWizard.splitPhone`. Not built. | — |
 | 290 | 2026-10-04 | major | Funding Intelligence, phase 1: new `financial_analyst` panel role + Funding Data admin section + reader `/dashboard/funding` (`modules/funding-deals/*`, `api/admin/funding-deals/*`, `api/funding/*`, `components/admin/funding-data/*`, `components/user/funding/*`, `lib/public-auth-server.ts`, migration `add-funding-deals-and-financial-analyst-role.sql`) | Role registered everywhere `it_support` is (type, `PANEL_ADMIN_ROLES`, `ALL_ADMIN_ROLES`, `IT_TICKETS_ROLES`, login/verify allow-lists, panel-admin create/edit, Users dropdown, header + HR labels, scoped dashboard with 3 funding cards via `/api/admin/stats`, which tolerates missing tables); new `FUNDING_ROLES`. Tables `funding_deals` (USD Mn, `UNIQUE dedupe_key`) + `funding_upload_batches` (FK cascade = undo). Migration also widens `hr_employee_credentials.panel_role` to the full panel-role set (had lagged since `it_support`). Charts are hand-built Tailwind + SVG (no chart lib). New §6.14 DFD, invariant #32. Migration not applied; not built. | v121 |
 | 291 | 2026-10-04 | minor | Migration `add-funding-deals-and-financial-analyst-role.sql` applied to dev `zox_db` | Both role enums now include `financial_analyst`; `funding_deals` + `funding_upload_batches` created (empty). Production still pending. | — |
 | 292 | 2026-10-04 | major | Funding phase 2 — all preview sections with Chart.js (`components/user/funding/**`, `app/dashboard/funding/**`, `modules/funding-deals/utils/{forecast,market,aggregate}.ts`, `api/funding/{market,search}`, admin `funding-data/{AiSourcesPanel,ExportCard}.tsx`, `isolated-tailwind.css`, `src/fonts/ibm-plex-mono-*`, `package.json`) | New dependency `chart.js` + `react-chartjs-2`. Reader Funding split into 5 sub-pages; `fi-*` theme tokens reproduce the preview design. Market Analysis computed server-side per tab over all deals (≈30–70 ms on 10k rows). AI Assistant + admin AI Data Sources are UI shells. Invariant #33 (honest labels). Not built. | v122 |
 | 293 | 2026-10-04 | minor | Funding pages layout/typography fix (`app/dashboard/funding/layout.tsx`, `components/user/funding/**`, `isolated-tailwind.css`) | Fonts via `font-(family-name:--var)` (broken `--font-fi-*` @theme tokens removed); `box-border min-w-0` wrapper fixes 32–56px overflow; responsive KPI strip, scrolling tab rows, row-sized horizontal bar charts (`barsHeight`), swipe hint for Sankey/Marimekko, stacked Head-to-head selects + single-country note. Tailwind classes only, Chart.js unchanged. Invariant #5 extended. Not built. | — |
+| 294 | 2026-10-04 | medium | Reader login page + popup button (`src/app/login/page.tsx`, `components/auth/{LoginPage.tsx,readerAuth.ts}`, `components/AuthModal.tsx`, `components/ConditionalLayout.tsx`, `isolated-tailwind.css`) | All reader auth options moved to full-screen `/login` (bare route). Popup keeps Google, Email button replaced by Login / Sign up link; in-popup email form removed. Success on `/login` → session saved, welcome queued in sessionStorage, `router.replace('/')`, AuthModal shows the welcome card. Shared GIS/geo/session code extracted to `readerAuth.ts`. Not built. | v123 |
+| 295 | 2026-10-04 | minor | Sales Tracker — Expand North Star lead window uses the same layout as other leads (`EnsEnquiryDetailModal.tsx`, `admin/sales-tracker/page.tsx`) | Panel/card view replaced with `LeadFormModal`'s form layout: disabled fieldset of labelled rows (locked Arrival date, Last updated, Source and Type of lead), Departments/Assigned to, message panel, Status, follow-ups; "Edit lead" unlocks the same fields in place. ENS data, `PATCH …/ens-enquiries/[id]` save, then assignment, then message — unchanged. Table Edit button opens it unlocked (`startEditing`). `leadStatusBadge` / `participationBadge` exports removed (no callers). tsc + eslint clean. Not built. | — |
+| 295 | 2026-10-04 | minor | `src/app/login/layout.tsx` (new) | Imports `isolated-tailwind.css` for /login — an `@source` line alone is not enough; a route must import the sheet in its layout. | — |
+| 296 | 2026-10-04 | medium | HR leave: half days, punched absences and deducted short leaves paid from Casual automatically (§6.7; `utils/leave-balance.ts`, `utils/day-ledger.ts`, `service/hr-tool.service.ts`, `LeaveWidget.tsx`, `hr-tool/views/{AttendanceCalendar,Dashboard,Directory,Leave}.tsx`) | See §6.7 "Punched days that still cost pay are covered too". New `punchedShortfall`, `AbsenceCoverOptions.shortfall`, overview `absenceCoverShortfall`. Ledger totals `absentDays`/`halfDayDays`/`shortLeaveDeductions` now count only uncovered days. Calendar: popup "Half day / Short leave — the missing ½ day paid from Casual leave automatically", cell note "½ auto casual", Casual card "(N automatic, for absences / half days)". Verified with tsx against real ledger code: 3 half days + 3 Casual → LOP 0, 1.5 used; balance 1 → covered in date order, rest LOP; 3 short leaves → 3rd's ½ covered; own approved half-day request → no auto. tsc clean; eslint: only pre-existing `set-state-in-effect` in AttendanceCalendar. Not built. | v124 |
+| 297 | 2026-10-04 | minor | `src/components/auth/LoginPage.tsx` | /login restyled: dark full-screen page, left column (logo, serif headline, auth card with Sign up/Log in tabs, Google, email form), right rounded media panel (lg+) fed by the `LOGIN_MEDIA_URL` constant (S3/CloudFront GIF via next/image `unoptimized`; gradient while empty). Auth flow unchanged. | — |
+| 298 | 2026-10-04 | minor | `src/components/auth/LoginPage.tsx` | /login switched to a light theme; logo centred above the headline; `LOGIN_MEDIA_URL` now points at the login GIF on S3 (`startupnews-in/uploads/2026/10/admin-login-media-1791143582494.gif`), shown `object-contain` in a white panel (lg+). | — |
+| 299 | 2026-10-04 | medium | `src/components/AuthModal.tsx`, `src/components/auth/LoginPage.tsx` | Reader popup reduced to one CTA (`Link` → `/login`); the popup no longer loads GIS or runs Google sign-in, so `/login` is the only reader sign-in surface (Google + email). New popup copy. /login logo rendered without a chip/padding. | v125 |
+| 300 | 2026-10-04 | minor | `src/components/auth/LoginPage.tsx` | /login logo enlarged to 44px (mobile) / 56px (sm+) tall. | — |
+| 301 | 2026-10-04 | minor | `src/components/auth/LoginPage.tsx` | /login back link: text "Back to homepage", plain link (no pill/padding). | — |
+| 302 | 2026-10-05 | minor | DB `zox_db` (HR) | Applied pending migrations `add-hr-attendance-override-fields.sql` (hr_attendance_overrides +reason/set_by/set_at, uniq_employee_date) and `add-hr-offboarding-lwd-choice.sql` (hr_offboarding +lwd_choice/agreed_lwd). Fixes HR attendance override save 500. | — |
+| 303 | 2026-10-05 | medium | `hr-tool/views/Attendance.tsx` (§6.7) | Regularization requests list split by pay cycle: opens on the current cycle, ‹ › arrows + "Current cycle" button, newest date first, amber count of pending requests in other cycles, empty state "No regularization requests in this pay cycle." | v126 |
+| 304 | 2026-10-05 | medium | HR punch windows (§6.7) — `regularization-policy.ts`, `hr-tool.service.ts` (`punchEmployee`, `saveRules`, `getPolicySummary`, regularization submit/decide), repo `findRules`/`saveRules`, `domain/types.ts`, `PunchOutTimeInput.tsx`, `AttendanceWidget.tsx`, `PolicySummaryWidget.tsx`, HR `Attendance.tsx`/`AttendanceCalendar.tsx`/`Rules.tsx`/`HrToolContext.tsx`, both `attendance/me` routes | Punch In only 09:00–15:00, Punch Out until 23:59 (before 15:00 only after a punch-in), no punch-in after punch-out; regularization request times use the same windows (were 08–14 / 14–23); windows editable on Rules. New columns `hr_rules.punch_in_from/to`, `punch_out_from/to` via `scripts/migrations/add-hr-punch-windows.sql` — applied to dev `zox_db` 2026-10-05; **production not yet**. New `PunchErrorCode` `OUTSIDE_PUNCH_WINDOW`. | v127 |
+| 296 | 2026-10-04 | minor | Sales Tracker — "Failed to load messages" in every lead window (`zox_db.sales_lead_messages`, `LeadMessagesPanel.tsx`) | Root cause: `GET /api/admin/sales-tracker/messages` returned 500 because table `sales_lead_messages` did not exist in dev `zox_db` (`ER_NO_SUCH_TABLE` in `logs/nextjs.log`); the other `sales_lead_*` tables were present. Applied `scripts/migrations/add-sales-lead-messages.sql` (additive `CREATE TABLE IF NOT EXISTS`) on dev `zox_db` — table now exists, 0 rows. **Live DB needs the same migration.** Panel empty state now shows in read and edit mode ("No messages on this lead yet." + hint), wording "Edit lead" for both lead kinds; load error text clearer. No rebuild needed for the DB fix; panel text change needs a build. | — |
+| 304 | 2026-10-05 | minor | Employee layout: `/employee/exit` gets full content width | `src/app/employee/EmployeeShell.tsx` `wideContent` now matches `/employee/exit` too (with it-tickets, leads, directory), so `<main>` drops `md:max-w-[1100px]`; `ExitWidget` 2/3 + 1/3 grid fills the width. Not built. | — |
+| 305 | 2026-10-05 | minor | HR offboarding case window (`hr-tool/views/Offboarding.tsx`) + employee sidebar (`EmployeeShell.tsx`) | Case window max-width 860→1120; submission facts in a `sm:2 / lg:4` column grid, LWD dates as 3 `DateTile` cards, message + handover side by side while pending; decided facts grid 4 columns. Sidebar/bottom-tab links get `visited:text-*` variants because legacy `style.css` `a:visited { color:#E62E69 }` (0,1,1) outranks plain Tailwind text utilities (0,1,0) — any staff-panel `<a>` colour needs a `visited:` twin. Not built. | — |
+| 306 | 2026-10-05 | minor | HR offboarding clearance checklist remove (`hr-tool/views/Offboarding.tsx`) | The × on a clearance row sends `clearance-remove` with no `confirm()` prompt (confirm text dropped from `run`). Server behaviour unchanged. Not built. | — |
+| 307 | 2026-10-05 | medium | Sales Tracker lead windows (`LeadFormModal.tsx`, `EnsEnquiryDetailModal.tsx`, new `SaveConfirmDialog.tsx`, `LeadMessagesPanel.tsx`, `LeadsTable.tsx`, `admin/sales-tracker/page.tsx`) | Read-only mode + "Edit lead" removed — every lead opens editable from any row. "Save changes" on an existing lead shows a confirm dialog listing changed fields; closing with unsaved edits asks to discard. Row View/Edit buttons merged into Edit. tsc + eslint clean. Not built. | v128 |
+| 308 | 2026-10-05 | minor | Sales Tracker — Expand North Star lead window actions (`EnsEnquiryDetailModal.tsx`, `SalesTrackerStyles.tsx`) | Removed the "Reply by email" mailto button (bottom-right) and `replySubject`; dropped the unused `a.se-btn-link` / `.ee-btn-ghost` CSS. tsc + eslint clean. Not built. | — |
+| 309 | 2026-10-05 | minor | Employee panel on old mobile browsers (`EmployeeShell.tsx`, new `staff-panel-palette.css`, `staff-panel-tailwind.css`, `AttendanceWidget` / `LeaveWidget` / `KycDocumentsWidget` / `ProfileProgressStrip`, `MyLeadsPage`, `LeadDetailDrawer`, `it-tickets/Modal`) | Phone screenshot showed the closed drawer stuck over the page, black/pink text, no avatar. Cause: Tailwind v4 output unsupported by Chromium < 111 (oklch colours, `translate`, logical `inset`, `in oklab` gradients). Fix: hex `@theme` palette; drawer + backdrop mounted only when open with physical sides; bottom tab bar `left-0 right-0`; `bg-gradient-to-*` → `bg-linear-to-*`; `inset-0` → four sides; drawer rows `box-border` (were 68px content-box); added missing `@source ./AttendanceCycleSummary.tsx`; My Leads KPI strip `scroll-px-4` (first card snapped to the screen edge) + `border-solid`. Verified at 360px in Chromium 101 and current Chromium. Not built. | — |
+| 310 | 2026-10-05 | medium | Sales Tracker — Leads overview replaces Summary + Leads by page (§6.12; new `LeadsOverview.tsx`; removed `SummaryCard.tsx`, `PageLeadsKpis.tsx`, `BarChart.tsx`; `LeadsTable.tsx`, `utils.ts`, `constants.ts`, `useSalesTrackerData.ts`, `SalesTrackerStyles.tsx`, `staff-panel-tailwind.css`, `admin/sales-tracker/page.tsx`) | Summary only had rows for the 5 team-picked `TYPES` (page leads counted in totals but no row) and counted ENS only in "Pending leads". New Tailwind card over the unified `rows`: status tiles, split bar, type × status table (website pages incl. ENS / team types / "No type set" if needed), stacked bar per type; every number clickable. `matchesType` + new `statusLabelOf` (legacy/empty sales status → Pending) moved to `utils.ts`. All leads' type / page-type / status filters lifted to the page (`showInAllLeads` + `jumpToken`); `pendingOnly`, `isPending`, `isOpenStatusLabel`, `leads` hook return, and the `.metric*` / `.summary-table` / `.charts-wrap` / `.bar-*` CSS removed. Legacy `button` / `table` element rules scoped `:not(.tw)`. Inline `style` only for data-driven bar widths. tsc + eslint clean. Not built. | v129 |
+| 311 | 2026-10-05 | medium | Sales Tracker — Leads by page KPI tiles restored (`PageLeadsKpis.tsx` restored from HEAD, import of `matchesType` now from `utils.ts`; `isOpenStatusLabel` back in `constants.ts`; `.metrics` / `.metric` / `.metric-btn*` CSS back in `SalesTrackerStyles.tsx`; `admin/sales-tracker/page.tsx`) | User wanted the per-page tiles back exactly as before. Rendered under Leads overview. Same behaviour: count per page, red + "N not closed" while any lead is open, click filters All leads to that page (now via `showInAllLeads`, which also clears type/status filters), clicking the active tile clears it. tsc + eslint clean. Not built. | v130 |
+| 312 | 2026-10-05 | minor | Sales Tracker — save-confirm dialog layout (`SaveConfirmDialog.tsx`, `staff-panel-tailwind.css`) | Body text had no size and the `<ul>` lost its bullets/indent to the globals reset, so the changed fields rendered as loose oversized lines. Content now Tailwind (new `@source`): amber icon circle + title + one-line subtitle in the head, "You're changing N fields" label, fields as a bordered divided list with a pencil icon each. `.modal-*` frame and `button` / `button.primary` actions unchanged. tsc + eslint clean. Not built. | — |
+| 313 | 2026-10-05 | minor | Sales Tracker — Leads by page tile CSS (`SalesTrackerStyles.tsx`) | `.sales-tracker-page button:not(.tw)` (0,2,1, declared later) overrode `.sales-tracker-page button.metric-btn` (0,2,1), forcing tiles to inline-flex / 38px / nowrap. `.metric-btn*` selectors now `.sales-tracker-page .metrics …` (0,3,1) and set `white-space: normal`. Not built. | — |
+| 314 | 2026-10-05 | minor | Delegation date range 6–11 → 7–11 Dec 2026 (`components/expand-north-star/DelegationDays.tsx` `ITINERARY_DATES`, `expand-north-star.css` comment, `components/DelegationStrip.tsx` visible + sr-only line, `app/expand-north-star/page.tsx` OG alt) | Text only. `DAYS` per-card dates untouched (Day 1 still 6th Dec) pending the user's call. Not built. | — |
+| 315 | 2026-10-05 | minor | `/expand-north-star` — day cards show "Day N" only (`components/expand-north-star/DelegationDays.tsx`, `expand-north-star.css`) | `DelegationDay.date` removed (type + all six `DAYS` rows); `.ens-day-date` renders just `.ens-day-date-day`. Dead CSS `.ens-day-date-when` / `.ens-day-date sup` deleted. `ITINERARY_DATES` range line unchanged. Not built. | — |
+| 316 | 2026-10-05 | minor | `/expand-north-star` — open day card "Day N" label size/position (`expand-north-star.css` `.ens-day-date-day`, `.ens-day-head`) | Label `clamp(30px, 3vw, 40px)`, weight 900, line-height 1, tracking 0.08em; head padding-left `calc(var(--ens-day-dot) + 44px)` (ring is dot + 26px wide, so ~31px clear of it). CSS only. Not built. | — |
+| 317 | 2026-10-05 | minor | Delegation date range 7–11 → 7–12 Dec 2026 (same files as #314) | Correction of #314's end date. Text only. Not built. | — |
+| 318 | 2026-10-05 | minor | Event detail description lists (`src/app/globals.css` `.event-detail-description ul/ol/li`) | Theme reset `style.css` `ol, ul { list-style: none }` hid bullets in editor HTML. Scoped override restores `disc`/`decimal` (`outside`), nested `circle`, `li { display: list-item }`. CSS only. Not built. | — |
+| 319 | 2026-10-05 | medium | Employee pay-cycle card mirrors the HR attendance calendar (`components/admin/AttendanceCycleSummary.tsx`, `api/employee/attendance/ledger/route.ts`) | Route now also returns `payrollRun` (`!!ledger.saved`), `shortLeaveQuota` (rules) and `regularizations {pending, applied, approved, limitUsed, quota}` for the cycle — same filter/counting as `AttendanceCalendar` (`source !== 'hr-edit'`, by date, `countedRegularizationDates`). Still no ₹. Card rewritten: header "N of T days paid · L LOP" + present/leave/LOP bar; tiles in HR order and colours — Days in cycle, Present, Half day, Short leaves (`shortLeaveRule`), Absent, LOP days, Week-offs, Paid days, one wide card per leave type (available + used/auto/unpaid/waiting), Reg. pending, Regularizations; grid 2/3/6 cols; payslip line (paid days + frozen/draft/estimate/not run). Old separate Paid leave / Unpaid leave tiles dropped (folded into the leave card + LOP breakdown, as HR). `tsc` clean. Not built. | v131 |
+| 320 | 2026-10-06 | medium | HR payroll: Freeze is permanent, Reverse discards a draft (§6.7, §9 #30; `hr-tool.service.ts`, `hr-tool.repository.ts`, `domain/types.ts`, `api/admin/hr-tool/payroll-runs/reverse/route.ts`, `views/Payroll.tsx`, `views/AttendanceCalendar.tsx`, `HrToolContext.tsx`) | `FROZEN_PAYROLL_REVERSIBLE = false` → `reverseBlocker` on every frozen month; `canReverse = !!run && !reverseBlocker`. Draft reverse = new `discardPayrollDraft` (conditional UPDATE → `status='not_run'`, `period_from/to`/`computed_at` NULL, `reversed_at/by`, then DELETE entries); no reason. Old frozen reverse path kept behind the constant. Run Payroll on frozen: "final and cannot be run again". UI: draft Reverse button (confirm), frozen shows "Final — cannot be reversed", Freeze confirm says permanent, history lists `status='run'` only. No migration. `tsc` clean. Not built, not exercised against the DB. | v132 |
+| 321 | 2026-10-06 | medium | HR short leave: first `quota` free, then every 3rd (§6.7; `utils/day-ledger.ts`, `utils/leave-balance.ts`, `service/hr-tool.service.ts` comment, `components/admin/AttendanceCycleSummary.tsx`, `PolicySummaryWidget.tsx`, `hr-tool/views/AttendanceCalendar.tsx`, `hr-tool/views/Rules.tsx`) | New exports in `day-ledger.ts`: `SHORT_LEAVE_DEDUCT_EVERY = 3`, `isShortLeaveDeducted(n, free)` (`n > free && (n − free) % 3 === 0`), `shortLeaveDeductedPositions`, `shortLeaveRuleText`. `buildDayLedger` and `leave-balance.ts` short-leave cover both use the helper (they were each `n % (quota+1) === 0`). Quota 2 (current setting) → 5th, 8th, 11th, 14th, 17th… deducted (checked with tsx: 5,8,11,14,17,20). Setting unchanged (`short_leave_monthly_quota`, Rules label/desc reworded); per-cycle reset unchanged. The duplicated `shortLeaveRule` helpers in the two UI files are replaced by `shortLeaveRuleText`. Open/draft cycles change on next compute (drafts turn stale → re-run before Freeze); frozen months keep snapshots. No migration. `tsc` clean. Not built. | v133 |
+| 322 | 2026-10-06 | medium | HR leave: no automatic Casual cover, leave apply for any date, Casual credited per completed cycle (§6.7; `utils/leave-balance.ts`, `utils/day-ledger.ts` comment, `service/hr-tool.service.ts`, `LeaveWidget.tsx`, `AttendanceCycleSummary.tsx`, `PolicySummaryWidget.tsx`, `hr-tool/utils.tsx`, `hr-tool/views/{Leave,Dashboard,Directory,Rules}.tsx`) | `AUTO_ABSENCE_COVER = false` gates the cover inside `allocateLeave` (plumbing kept). Submit: date-window + closed-cycle checks removed; frozen / HR-set / overlap / punched-day checks kept. New `leaveCreditDay`, `leaveYearOf`, `leaveYearStart`, `creditsAccruedThisYear`; `allocateLeave` + `computeLeaveBalances` gain `creditDay` (3rd arg); `monthsAccruedThisYear` removed; overview returns `creditDay`. Copy updated (Rules leave types, Policy summary, employee cycle note, leave forms). Verified with tsx: credits (10 Oct join → 0 on 25 Oct, 1 on 26 Oct; 26 Oct join → 1 on 26 Nov; long-time staff 10 on 6 Oct, 12 on 25 Dec, 1 on 26 Dec); cover passed but none allocated; approved past leave paid, balance 10 → 8; new joiner's leave before first credit unpaid. No migration. `tsc` + eslint clean on touched files. Not built. | v134 |
+| 323 | 2026-10-06 | medium | HR leave: one-time Casual restart to 0, first credit 26 Oct 2026 (§6.7; `utils/leave-balance.ts`) | New `LEAVE_CREDIT_FROM`, `LEAVE_RESET_AT_MS`, `isLegacyLeaveRequest`; `creditsAccruedThisYear(…, creditFrom)`. `allocateLeave` gives legacy requests (created before the restart) their own pool counted without the cut; `computeLeaveBalances` skips them. Verified with tsx: balance 0 on 6/25 Oct, 1 on 26 Oct, 2 on 26 Nov, 1 on 26 Dec; legacy approved 1–2 Oct stays 2 paid; new 8 Oct request unpaid; future 27 Oct request unpaid in today's preview, paid once 26 Oct credit lands. `tsc` + eslint clean. Not built. | v135 |
+| 324 | 2026-10-06 | medium | Attendance: punch-out regularization for today + missed punch-out reminder (§6.7; `service/hr-tool.service.ts`, `api/{admin,employee}/attendance/me/route.ts`, `components/admin/AttendanceWidget.tsx`) | User forgot to punch out and found no Regularize Punch Out: the widget showed it only for a past date picked on the calendar, never on the Today card, and never for today. New `getMissedPunchOuts` → `missedPunchOuts` in both `me` routes; Today-card reminder with a button that opens the form on that date (month switch + scroll). Today allowed (client gate + time picker capped at now; server rejects a today punch-out later than now). Found during the check: this box's `.env` has `NEXT_PUBLIC_HR_TEST_TODAY=2026-10-26` (payroll test kit) and its DB holds seeded test punches — not the live site. `tsc` + eslint clean. Not built, not exercised in a browser. | v136 |
+| 325 | 2026-10-06 | minor | Attendance: shorter Short Leaves tile caption (§6.7; `utils/day-ledger.ts`, `components/admin/AttendanceCycleSummary.tsx`, `hr-tool/views/AttendanceCalendar.tsx`) | New `shortLeaveRuleShort(free)` → "First 2 free" ("No free short leaves" at quota 0); both Short Leaves tiles use it instead of the full `shortLeaveRuleText` sentence ("· N deducted" suffix kept). `shortLeaveRuleText` stays exported, now unused. `tsc` clean; eslint's only error is the existing setState-in-effect at `AttendanceCalendar.tsx:61`. Not built. | — |
+| 326 | 2026-10-06 | medium | HR Offboarding: left-early F&F = forfeit all earnings + flat 1-month recovery (§6.11; `hr-offboarding/service/hr-offboarding.service.ts`, `domain/types.ts`, `api/admin/hr-tool/offboarding/[id]/route.ts`, `hr-tool/views/Offboarding.tsx`, `components/offboarding/ExitWidget.tsx`) | User: a resigning employee who leaves before HR's accepted date gets no salary and pays a recovery whatever days they worked. `buildFnfAutoLines`: `forfeit = leftEarlyDays(c) > 0` ⇒ positive earning auto lines ₹0 (labelled forfeited), negative-leave deduction skipped, `left-early` = `monthlySalary` (CTC/12). `markLeftEarly` refuses non-resignations; emails/audit/UI copy updated. Overrides with note unchanged. Payroll already holds notice cycles and skips the LWD cycle once F&F is approved, so forfeited salary isn't paid elsewhere; cycles frozen before acceptance stay paid. `tsc` clean. Not built. | v137 |
+| 327 | 2026-10-06 | minor | HR Offboarding: "Employee left early" form moved to the bottom of the case window (§6.11; `hr-tool/views/Offboarding.tsx`) | User: the red form opened mid-window (under Exit details) while the button sits in the footer, so HR thought nothing happened. Form now renders after Letters / Complete exit, right above the footer buttons, and `useEffect` on `leftOpen` calls `scrollIntoView({ behavior: 'smooth', block: 'center' })` via `leftFormRef`. No logic change. `tsc` clean. Not built. | — |
+| 328 | 2026-10-06 | minor | HR Offboarding: "left early" date is free for HR to set (§6.11; `hr-offboarding/service/hr-offboarding.service.ts`, `hr-tool/views/Offboarding.tsx`) | User couldn't pick any date: case #3 has resignation_date 2026-10-26 (after today 2026-10-06), so the picker's min (resignation date) > max (today) and every day was disabled. Removed the client `min` and the today cap (input `max` = agreed − 1 only) and the server's "not in the future" / "not before resignation" checks; the only rule left is `actualLwd < agreed`. A future date still exits the case now (status → exited, access switched). `tsc` clean. Not built. | — |
+| 329 | 2026-10-06 | minor | HR Offboarding: "left early" errors shown inside the form (§6.11; `hr-tool/views/Offboarding.tsx`) | User: after confirming "Record left early" nothing happened. The running build (06:18 UTC) predates #328, so the server refused the date ("can't be before they resigned") and the only `ErrorNote` sat at the top of the modal, out of view. The form now repeats `<ErrorNote text={error} />` under its heading. Needs a rebuild for #328 + this. `tsc` clean. Not built. | — |
+| 330 | 2026-10-06 | minor | HR Offboarding: data fix, no code change (`hr_offboarding` #3, `hr_employees` E-103) | Yash Goswami was marked exited while testing, with a paid test F&F, which blocks `reinstate()`. Same effect applied by SQL: case → `cancelled`, employee status → `active`, audit row added. Invariant: a `cancelled` case is ignored by `findExitDates`, `findNoticeStartDates`, `findFnfSettledEmployeeIds` and `findDecidedForCredential`, so the employee is fully normal again. | — |
+| 331 | 2026-10-06 | medium | `/events`: "Explore by Country" flag-circle strip (§5; `components/EventsCountryStrip.tsx`, `app/events/page.tsx`, `components/EventsByCountryList.tsx`, `partnership-events/domain/country-city-data.ts`, `events/utils/region-country.utils.ts`, `app/isolated-tailwind.css`) | New client `EventsCountryStrip` rendered between the breadcrumb and `EventsSearchBar`, so it stays visible while searching; with a search open the sections aren't mounted and a click falls back to the plain `#hash` link. Server-side `buildCountryCircles(eventsByRegion)` skips Cohort and `NON_GEOGRAPHIC_REGIONS`, resolves each region with `resolveCountry`, and keeps the largest single-region count per country. `citySectionQualifies(max)` puts a country in `featured`, otherwise in `others`. It counts raw regions, so a city force-merged into Other Cities still counts. New `isoForCountry()` returns the lower-case ISO2 from `COUNTRY_ISO2`/`NON_SOVEREIGN_ISO2`. New `countrySectionId()` gives an accent-folded slug `events-country-<slug>`; each country `<section>` gets that id plus `scroll-mt-28`. `MarqueeRow` measures with a ResizeObserver. If the list overflows, it renders a second `aria-hidden` copy (links `tabIndex -1`), animates `animate-ec-marquee-ltr`/`-rtl` (new `@theme` keyframes, ±50%) with duration = circles × 3 s, and pauses on hover/focus-within/active. `motion-reduce` swaps the animation for a swipeable row. If the list fits, it is centred with no animation. Flags are flag-icons 7.2.3 `1x1` SVGs (MIT), 15 uploaded on 2026-10-06 (ae cn es in jp ke ma nl ph sa sg th tr us za), `Cache-Control: immutable`. Unknown or missing flags show the ISO2 or initials (`img onError` hides it). `@source` lines were added for the strip and `EventsByCountryList`. tsc clean. Not built. | v138 |
+| 332 | 2026-10-06 | minor | `/events` Explore by Country: larger circles (`components/EventsCountryStrip.tsx`) | Circle `size-16 sm:size-20` → `size-20 sm:size-28`; item `w-20 sm:w-24` → `w-24 sm:w-32`. Wider rows now overflow sooner, so they start looping at narrower widths. | — |
+| 333 | 2026-10-06 | medium | Event detail page: two-column layout with a details box (§5; `app/startup-events/[slug]/page.tsx`, new `app/startup-events/layout.tsx`, `app/isolated-tailwind.css`, `app/globals.css`) | The `<article>` is now a Tailwind grid, `lg:grid-cols-[minmax(0,1fr)_360px]`. The hero sits in column 1 row 1. The `<aside>` is `lg:col-start-2 lg:row-span-2 lg:sticky lg:top-28` and holds the h1, lucide Calendar/Clock/MapPin/Building2/Ticket rows (`dateRange`, `timeRange`, `venueAddress` or `location` linked to `googleLocationLink`, `organiser`, `ticketCurrency ticketPrice`) and the full-width `event.url` button. The About column (h2 "About", description, speakers, "More Events") is `lg:col-start-1`. In the DOM order the box comes before About, so on mobile it shows right after the banner. Removed: the meta row under the title and the bottom "Date :- / Time :- / Venue :-" block (now in the box), and the old bottom button. `.event-detail-container` max-width went from 900px to 1200px (only this page uses it). New route layout imports `isolated-tailwind.css`, with `@source "./startup-events"` (a directory, because `[slug]` would be read as a glob character class). JSON-LD and metadata are unchanged. tsc clean. Not built. | v139 |
+| 334 | 2026-10-06 | minor | Event detail box: layout fix (`app/startup-events/[slug]/page.tsx`) | `isolated-tailwind.css` has no Preflight, so elements are `content-box` and the `w-full px-6` button overflowed. Card, sections and button are now `box-border`. The box is now title header (border-b), then `<dl>` rows (`size-10` icon tile `bg-[#E62E69]/10` + `dt` label + `dd` value), then the button block. `googleLocationLink` is shown as a separate "View on map" link (lucide `ExternalLink`) under the venue text. Invariant: any Tailwind element in isolated-Tailwind routes that combines `w-full` with padding or border needs `box-border`. | — |
+| 335 | 2026-10-06 | minor | `/events` Explore by Country: one row instead of two (`app/events/page.tsx`, `components/EventsCountryStrip.tsx`) | `buildCountryCircles()` now returns a single A–Z `CountryCircle[]` (a `Set` of resolved countries; the per-country busiest-region count and the `citySectionQualifies` split are gone). `EventsCountryStrip` takes `countries` and renders one `MarqueeRow` (`ltr`); the "Other Countries" h3 and the `rtl` row are removed. `MarqueeRow` keeps its `direction` prop and the `ec-marquee-rtl` keyframes stay in `isolated-tailwind.css` (unused for now). tsc clean. Not built. | — |
+| 336 | 2026-10-06 | medium | Event detail page: "Similar Events" (§5; new `modules/events/utils/similar-events.utils.ts`, `app/startup-events/[slug]/page.tsx`) | `pickSimilarEvents(current, eventsByRegion, count = SIMILAR_EVENTS_COUNT = 3)` is pure. It tags every event in the cached upcoming-only `getEventsByRegion()` map with its region and `resolveCountry(region)`, then finds the current event by `slug`/`id`/`url`. If the current event isn't in the map (ended or unlisted), it falls back to `city`/`location` and `canonicalCountryName(country)`. It fills three tiers until it has 3: region equals current region, then country equals current country, then any. Each tier is sorted by `eventDateSortKey` ascending and de-duplicated. Cohort and Online events are only excluded as the current event itself, so a Cohort event with an India country can fill India's country tier. Rendered after `</article>` as `<EventsCarousel title="Similar Events">` (same cards as /events; 3 per row on desktop, so no autoplay), and hidden when the result is empty. Checked on live data: Delhi→3 Delhi NCR; Abu Dhabi→1 Abu Dhabi + 2 Dubai; Shenzhen→Shenzhen + Macau + 1 any; Nairobi→3 any. tsc clean. Not built. | v140 |
+| 337 | 2026-10-06 | minor | Dashboard funding sponsor strip (`components/user/funding/SponsoredStrip.tsx`) | Removed the `noteCls` "⚠️ Coming soon: sponsor slots…" note under the three sponsor cards and the unused `noteCls` import. Cards and their `/advertise-with-us` links are unchanged. Not built. | — |
+| 338 | 2026-10-06 | minor | Dashboard funding page: filter bar removed (`components/user/funding/FundingDashboard.tsx`) | Dropped the `FilterBar` render, the `options` state and its `/api/funding/filters` fetch, and the `applied` debounce state (only search/investor typing needed it). The overview query now reads `filters` directly; `filters` is still `emptyFilters(country)` (current-year dates), changed only by the time-zone country guess and the `PinnedOverview` country tabs. Section sub-label updated to "Reacts to the country above · current calendar year". `FilterBar.tsx` is kept for `AllDealsPage`. tsc + eslint clean. Not built. | — |
+| 339 | 2026-10-06 | medium | Funding overview API: additive aggregates for the dashboard redesign (`modules/funding-deals/{domain/types.ts,utils/aggregate.ts,repository/funding-deals.repository.ts,service/funding-deals.service.ts}`) | `FundingOverview` gains `previousKpis` (`computeKpis` over the request's `from`/`to` shifted −1 year via `shiftYear`, Feb 29 clamped; null when no window), `stageSector` (`stageSectorMatrix(rows, 8, 8)`: top stages/sectors by $, rest folded into "Other", so cells sum to the totals), `bySizeBand` (`sizeBandAgg`, the five `ROUND_BANDS`), `byBusinessModel`, `topCompanies` (top 10 by $), and `topInvestors` becomes `InvestorRow` (`leads` = deals where the name is in the comma-split `lead_investor`). `bySector`/`byStage`/`byCity` are no longer capped at 8 (the current BarList slices to 8 itself). `AggDeal` gets optional `startupName`/`leadInvestor`/`businessModel`; `findForAggregation` selects those three extra columns (Market Analysis ignores them). Invariant: investor `total` credits the full round to each participant, so it must never be summed. One extra query in the existing `Promise.all`. Payload about 12 KB. Verified against direct SQL. | — (Product version at completion) |
+| 340 | 2026-10-06 | major | Reader Funding Dashboard redesign (§6.14; `components/user/funding/FundingDashboard.tsx`, new `components/user/funding/dashboard/{selectors.ts,highlight.tsx,motion.ts,media.ts,parts.tsx,OverviewHero,TrendSection,SectorSection,StageSection,MoneyFlowSection,CitySection,InvestorSection}.tsx`, `dashboard/charts/{agSetup.ts,TrendChart,StageBars,CityBubble,SectorTreemap,MoneySankey,SmallCharts}.tsx`, `OutlookCards.tsx`, `api.ts`; removed `KpiGrid`, `BarList`, `InvestorTable`, `PinnedOverview`, `charts/TrendComboChart`, `charts/ForecastChart`; deps `ag-charts-react`/`ag-charts-community` 14.2.0, `recharts` 3.10.1, `@gsap/react` 2.1.2, `react-is` 19.2.3) | The page is now one sequence: hero (dominant total + YoY vs the same dates last year, 5 secondary metrics, country tabs with arrow keys), then trend (AG area + deal bars on a second `deals` axis; phones drop the bars), then sector treemap + top-8 ranking, then stage bars + size bands, then a full-width stage→sector Sankey (custom node/link renderers; tooltip $ · deals · share of stage) + sector×stage heatmap (phones: per-sector top-3 list), then a city bubble (x deals, y avg round, size $) + leaderboard, then investors (capital in rounds joined*, deals, led, share of deals) + top companies + business-model donut, then the outlook (forecast ported to Recharts) + signals. `fundingGet(url, signal?)` gained an optional `AbortSignal` (other callers are unchanged). Ticker, SponsoredStrip, FundingSubNav and the other funding pages are untouched. QA on an isolated `next dev -p 3021` (scratchpad copy, `node_modules` bind-mounted, PM2 untouched, then removed) with Playwright: 34/34 checks pass, covering API vs DOM (hero, top-3 sectors/cities, investors, companies), Sankey 74 links = 74 cells, 25 treemap tiles, 81 heat cells, cross-highlight, Sankey tooltip, range year (5 buckets)/week (16), USA empty state with no numbers, All/India switching, loading (no `$0`), 500 error + retry, reduced motion (nothing hidden), no horizontal overflow at 375/768/1024/1440, console clean. tsc + eslint clean. Not built. | v141 |
+| 341 | 2026-10-06 | minor | Git: `main` fast-forwarded to `feature/funding-intelligence` (`8cdd431`); local uncommitted work re-applied on top unchanged (docs + Tailwind sheet conflicts resolved to local side, retired funding components kept removed). No architecture change. | — |
+| 342 | 2026-10-06 | medium | Reader Funding locked (§6.14; `components/user/UserDashboardLayout.tsx`, `app/dashboard/funding/layout.tsx`) | Funding nav entry gets `locked: true` (same inert row as Brand Stories/Handouts/Incubators/Grants). The funding layout short-circuits to a `FundingLockedState` (Lucide `Lock`, Tailwind only, Back to Dashboard link) while `FUNDING_LOCKED = true`, so children (dashboard, All Deals, Market, Search, AI) and the sub-nav never mount and no `/api/funding/*` request fires. APIs and admin Funding Data untouched. | v142 |
+| 343 | 2026-10-06 | minor | Git: whole working tree committed on `main`, rebased onto `origin/main` (`f5936f9`), pushed. No architecture change. | — |

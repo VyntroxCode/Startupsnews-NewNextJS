@@ -62,7 +62,7 @@ export default function ProfileProgressStrip({
     <Link
       href={documentsHref}
       className={`mb-4 flex items-center gap-3 rounded-[10px] border border-solid px-3.5 py-3 no-underline md:mb-6 md:gap-4 md:px-4 ${
-        overdue ? 'border-red-200 bg-gradient-to-br from-red-50 to-rose-50' : 'border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50'
+        overdue ? 'border-red-200 bg-linear-to-br from-red-50 to-rose-50' : 'border-indigo-100 bg-linear-to-br from-indigo-50 to-violet-50'
       }`}
     >
       <div className="min-w-0 flex-1">

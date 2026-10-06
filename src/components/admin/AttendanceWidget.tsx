@@ -7,7 +7,7 @@ import PunchOutTimeInput from './PunchOutTimeInput';
 import AttendanceCycleSummary from './AttendanceCycleSummary';
 import { getCurrentBrowserLocation, geofenceHintFor, type BrowserLocation } from '@/lib/browser-geolocation';
 import { latenessBucket, combinedAttendanceBucket, type ShiftSettings, type LatenessBucket } from '@/modules/hr-tool/utils/lateness';
-import { regularizationDeadline } from '@/modules/hr-tool/utils/regularization-policy';
+import { regularizationDeadline, DEFAULT_PUNCH_WINDOWS, fmtWindowTime, type PunchWindows } from '@/modules/hr-tool/utils/regularization-policy';
 
 interface AttendanceDayRecord { date: string; status: string; inTime: string; outTime: string; inMinutes: number | null; outMinutes: number | null; }
 interface HolidayRecord { date: string; name: string; }
@@ -26,18 +26,25 @@ interface AttendanceMeData {
   holidays?: HolidayRecord[];
   shiftRules?: ShiftSettings & { shiftEndTime: string };
   regularizations?: RegularizationRecord[];
+  /** Days HR set a status on directly — that status (not the punches) decides the day and its pay. */
+  hrOverrides?: { date: string; status: string; reason: string }[];
   /** Approved leave overlapping the month shown. */
   leaves?: { from: string; to: string; type: string; halfDay: 'first' | 'second' | null }[];
   /** usedThisMonth is in DAYS for the current payroll cycle (cycleFrom → cycleTo). */
+  /** Recent past days with a punch-in but no punch-out that can still be regularized — any month
+   * (server: getMissedPunchOuts). Shown as a reminder on the Today card. */
+  missedPunchOuts?: string[];
   regularizationPolicy?: { windowDays: number; monthlyQuota: number; usedThisMonth: number; cycleFrom?: string; cycleTo?: string };
   /** When enabled, punch() asks the browser for a GPS fix first; the server does the actual check. */
   geofence?: { enabled: boolean; radiusM: number };
+  /** Punch In / Punch Out clock windows ("HH:MM", IST) — also the times a regularization may request. */
+  punchWindows?: PunchWindows;
 }
 
-const cardClass = 'rounded-xl border border-solid border-black/5 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm box-border sm:p-6 md:p-8';
+const cardClass = 'rounded-xl border border-solid border-black/5 bg-linear-to-br from-white to-slate-50 p-4 shadow-sm box-border sm:p-6 md:p-8';
 
 const actionButtonClass = 'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border-0 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300';
-const blueButtonClass = `${actionButtonClass} bg-gradient-to-br from-blue-400 to-blue-500`;
+const blueButtonClass = `${actionButtonClass} bg-linear-to-br from-blue-400 to-blue-500`;
 const secondaryButtonClass = 'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-solid border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60';
 
 const navButtonClass = 'flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-solid border-slate-200 bg-white text-xl text-slate-700 disabled:cursor-not-allowed disabled:opacity-35';
@@ -91,7 +98,7 @@ const BUCKET_LABEL: Record<LatenessBucket, string> = {
  * whatever lateness color it would otherwise have — the request itself is now the more
  * relevant status for that day. */
 const REG_TONE = 'bg-blue-100 border-blue-400 text-blue-800';
-const REG_STATUS_LABEL: Record<string, string> = { pending: 'Pending admin approval', approved: 'Approved', rejected: 'Rejected' };
+const REG_STATUS_LABEL: Record<string, string> = { pending: 'Pending admin approval', approved: 'Approved', rejected: 'Rejected', cancelled: 'Closed — HR set this day' };
 const REG_TYPE_LABEL: Record<'in' | 'out', string> = { in: 'Punch In', out: 'Punch Out' };
 
 /** A day on the admin's Holiday calendar (HR Management → Rules & Org Structure) — shown in
@@ -100,6 +107,16 @@ const REG_TYPE_LABEL: Record<'in' | 'out', string> = { in: 'Punch In', out: 'Pun
 const HOLIDAY_TONE = 'bg-violet-100 border-violet-400 text-violet-700';
 /** An approved leave day (full or half). */
 const LEAVE_TONE = 'bg-sky-100 border-sky-400 text-sky-800';
+
+/** A day HR set directly: same colour as the status it stands for, plus a "Set by HR" tag.
+ * Labels mirror ATTENDANCE_OVERRIDE_LABEL in src/modules/hr-tool/domain/types.ts. */
+const HR_SET_TONE: Record<string, string> = {
+  present: BUCKET_TONE['on-time'], 'short-leave': BUCKET_TONE['short-leave'], 'half-day': BUCKET_TONE['half-day'], absent: BUCKET_TONE.absent,
+  'unpaid-leave': 'bg-rose-100 border-rose-400 text-rose-800', off: 'bg-slate-100 border-slate-400 text-slate-700',
+};
+const HR_SET_LABEL: Record<string, string> = {
+  present: 'Present', 'short-leave': 'Short leave', 'half-day': 'Half day', absent: 'Absent', 'unpaid-leave': 'Unpaid leave (LOP)', off: 'Week-off / Holiday (paid)',
+};
 
 function LegendDot({ tone, label }: { tone: string; label: string }) {
   return (
@@ -253,6 +270,8 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
     return map;
   }, [data]);
 
+  const hrSetByDate = useMemo(() => new Map((data?.hrOverrides || []).map((o) => [o.date, o])), [data]);
+
   const leaveFor = (dateStr: string) => (data?.leaves || []).find((l) => l.from <= dateStr && l.to >= dateStr) || null;
 
   const holidayMap = useMemo(() => {
@@ -267,6 +286,15 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
     setRegReason('');
     setRegTime('');
     setRegError('');
+  }
+
+  /** From the Today card's reminder: jump to a past day missing its punch-out (switching month if
+   * needed) with the punch-out regularization form already open. */
+  function openMissedPunchOut(dateStr: string) {
+    if (dateStr.slice(0, 7) !== calendarMonth) setCalendarMonth(dateStr.slice(0, 7));
+    selectDate(dateStr);
+    setRegFormOpen('out');
+    window.setTimeout(() => document.getElementById('attendance-selected-day')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
 
   function changeMonth(delta: number) {
@@ -304,7 +332,8 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const selectedHoliday = holidayMap.get(selectedDate);
   const selectedLeave = leaveFor(selectedDate);
   const leaveStatus = selectedLeave ? `On leave — ${selectedLeave.type}${selectedLeave.halfDay ? ` (${selectedLeave.halfDay} half)` : ''}` : null;
-  const rowStatus = selectedHoliday ? `Holiday — ${selectedHoliday}` : (selectedRecord?.status === 'WFH' ? 'Work From Home — full day' : (leaveStatus && !selectedRecord ? leaveStatus : selectedRecord?.status)) || leaveStatus || (isSelectedToday ? 'Not punched in yet' : 'No record');
+  const selectedHr = hrSetByDate.get(selectedDate);
+  const rowStatus = selectedHr ? `${HR_SET_LABEL[selectedHr.status] || selectedHr.status} — set by HR` : selectedHoliday ? `Holiday — ${selectedHoliday}` : (selectedRecord?.status === 'WFH' ? 'Work From Home — full day' : (leaveStatus && !selectedRecord ? leaveStatus : selectedRecord?.status)) || leaveStatus || (isSelectedToday ? 'Not punched in yet' : 'No record');
   // Combined bucket (arrival time + hours worked, worse of the two) drives the day's displayed
   // status/color; the pure arrival-time bucket separately gates punch-in Regularization, since
   // that's specifically about correcting the punch-in itself, not the day's overall outcome —
@@ -315,8 +344,9 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const selectedRegIn = selectedRegs.find((r) => r.punchType === 'in');
   const selectedRegOut = selectedRegs.find((r) => r.punchType === 'out');
   const regPolicy = data.regularizationPolicy;
-  // A date that already has a live request (the other punch) doesn't use another day of the limit.
-  const selectedDateCounted = selectedRegs.some((r) => r.status !== 'rejected' && r.source !== 'hr-edit');
+  const windows = data.punchWindows || DEFAULT_PUNCH_WINDOWS;
+  // A date that already has a request (the other punch, any status) doesn't use another day of the limit.
+  const selectedDateCounted = selectedRegs.some((r) => r.source !== 'hr-edit');
   const quotaReached = !!regPolicy && regPolicy.usedThisMonth >= regPolicy.monthlyQuota && !selectedDateCounted;
   // Last day a request for the selected date can be filed — the server enforces the same rule.
   const regDeadline = regPolicy ? regularizationDeadline(selectedDate, regPolicy.windowDays) : null;
@@ -326,12 +356,20 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   // missing punch-in has no lateness bucket at all. Only an on-time punch-in has nothing to
   // correct. Future dates are excluded because there is nothing there to fix yet.
   const isSelectedFuture = selectedDate > today;
-  const canRequestInRegularization = !selectedRegIn && !isSelectedFuture && !windowClosed
+  // A day HR set directly is final for the employee — no regularization (the server refuses too).
+  const canRequestInRegularization = !selectedHr && !selectedRegIn && !isSelectedFuture && !windowClosed
     && (!hasIn || (!!selectedTimeBucket && selectedTimeBucket !== 'on-time'));
-  const canRequestOutRegularization = !selectedRegOut && !isSelectedToday && !isSelectedFuture && !hasOut && !windowClosed;
+  // Punch-out: any day with it missing, today included (forgot, or left without punching) — the
+  // server only accepts a time that has already passed for today.
+  const todayHasIn = isSelectedToday && !!(data.today ? data.today.inTime : hasIn);
+  const todayHasOut = isSelectedToday && !!(data.today ? data.today.outTime : hasOut);
+  // Today's punch-out can only be regularized up to the current time (the server checks too).
+  const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const canRequestOutRegularization = !selectedHr && !selectedRegOut && !isSelectedFuture && !windowClosed
+    && (isSelectedToday ? todayHasIn && !todayHasOut : !hasOut);
   // Something is wrong with the day but it's past the window — say so instead of silently hiding the buttons.
-  const missedWindow = windowClosed && !isSelectedFuture
-    && ((!selectedRegIn && (!hasIn || (!!selectedTimeBucket && selectedTimeBucket !== 'on-time'))) || (!selectedRegOut && !isSelectedToday && !hasOut));
+  const missedWindow = !selectedHr && windowClosed && !isSelectedFuture
+    && ((!selectedRegIn && (!hasIn || (!!selectedTimeBucket && selectedTimeBucket !== 'on-time'))) || (!selectedRegOut && !hasOut));
 
   // Today's punch comes from the API's own `today` block, so the Today card stays right even while
   // the calendar is showing an earlier month (whose `calendar` rows don't include today).
@@ -403,7 +441,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
               <p className="m-0 text-sm font-semibold text-slate-700">Regularizing: {REG_TYPE_LABEL[regFormOpen]}</p>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-500">
-                  {REG_TYPE_LABEL[regFormOpen]} time ({regFormOpen === 'in' ? '8:00 AM – 2:00 PM' : '2:00 PM – 11:00 PM'})
+                  {REG_TYPE_LABEL[regFormOpen]} time ({regFormOpen === 'in' ? `${fmtWindowTime(windows.punchInFrom)} – ${fmtWindowTime(windows.punchInTo)}` : `${fmtWindowTime(windows.punchOutFrom)} – ${fmtWindowTime(windows.punchOutTo)}`})
                 </label>
                 {/* Punch Out is always PM (office closes in the evening), so no AM/PM choice. */}
                 {regFormOpen === 'out' ? (
@@ -411,14 +449,16 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                     <PunchOutTimeInput
                       value={regTime}
                       onChange={setRegTime}
+                      from={windows.punchOutFrom}
+                      to={isSelectedToday && nowHHMM < windows.punchOutTo ? nowHHMM : windows.punchOutTo}
                       selectClassName="min-h-11 rounded-lg border border-solid border-slate-200 bg-white px-2.5 text-base sm:text-sm"
                     />
                   </div>
                 ) : (
                   <input
                     type="time"
-                    min="08:00"
-                    max="14:00"
+                    min={windows.punchInFrom}
+                    max={windows.punchInTo}
                     value={regTime}
                     onChange={(e) => setRegTime(e.target.value)}
                     className="box-border min-h-11 w-full rounded-lg border border-solid border-slate-200 bg-white px-3 text-base sm:w-auto sm:text-sm"
@@ -493,7 +533,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
         ) : (
           <div className={`mt-4 grid gap-2 sm:gap-3 ${!todayIn && !todayOut ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:max-w-xs'}`}>
             {!todayIn && (
-              <button type="button" onClick={() => punch('in')} disabled={punching !== null} className={`${actionButtonClass} min-h-12 w-full bg-gradient-to-br from-green-500 to-green-600 text-base shadow-sm`}>
+              <button type="button" onClick={() => punch('in')} disabled={punching !== null} className={`${actionButtonClass} min-h-12 w-full bg-linear-to-br from-green-500 to-green-600 text-base shadow-sm`}>
                 <Timer className="size-5 shrink-0" aria-hidden />{punchLabel('in')}
               </button>
             )}
@@ -503,7 +543,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
                 onClick={() => punch('out')}
                 disabled={punching !== null}
                 className={todayIn
-                  ? `${actionButtonClass} min-h-12 w-full bg-gradient-to-br from-red-400 to-red-500 text-base shadow-sm`
+                  ? `${actionButtonClass} min-h-12 w-full bg-linear-to-br from-red-400 to-red-500 text-base shadow-sm`
                   : `${secondaryButtonClass} min-h-12 w-full gap-2 text-base text-red-600`}
               >
                 <Timer className="size-5 shrink-0" aria-hidden />{punchLabel('out')}
@@ -512,6 +552,11 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
           </div>
         )}
 
+        {!(todayIn && todayOut) && (
+          <p className="m-0 mt-3 flex items-start gap-1 text-xs text-slate-400">
+            <Timer className="mt-px size-3.5 shrink-0" aria-hidden />Punch In {fmtWindowTime(windows.punchInFrom)} – {fmtWindowTime(windows.punchInTo)} · Punch Out until {fmtWindowTime(windows.punchOutTo)} (from {fmtWindowTime(windows.punchOutFrom)} if you haven&apos;t punched in)
+          </p>
+        )}
         {data.geofence?.enabled && (
           <p className="m-0 mt-3 flex items-start gap-1 text-xs text-slate-400">
             <MapPin className="mt-px size-3.5 shrink-0" aria-hidden />Punch In / Punch Out only within {data.geofence.radiusM} m of the office — your browser will ask for your location.
@@ -521,12 +566,30 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
         {error && <p className="m-0 mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         {error && errorHint && <p className="m-0 mt-1 text-[0.8rem] text-slate-500">{errorHint}</p>}
 
+        {(data.missedPunchOuts || []).length > 0 && (
+          <div className="mt-4 rounded-lg border border-solid border-amber-200 bg-amber-50 p-3">
+            <p className="m-0 flex items-start gap-1.5 text-sm font-semibold text-amber-900">
+              <TriangleAlert className="mt-px size-4 shrink-0" aria-hidden />No punch-out recorded — the day counts as Absent until a regularization is approved.
+            </p>
+            <div className="mt-2 flex flex-col gap-2">
+              {(data.missedPunchOuts || []).map((d) => (
+                <div key={d} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-sm text-amber-900">{formatDateLong(d)}</span>
+                  <button type="button" onClick={() => openMissedPunchOut(d)} className={`${blueButtonClass} w-full sm:w-auto`}>
+                    Regularize Punch Out
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isSelectedToday && regularizationBlock}
       </section>
 
       {/* Selected-day details (any day other than today, picked from the calendar) */}
       {!isSelectedToday && (
-        <section className={cardClass}>
+        <section id="attendance-selected-day" className={cardClass}>
           <div className="flex items-center justify-between gap-2">
             <h3 className="m-0 text-[0.9375rem] font-semibold text-slate-700">{formatDateLong(selectedDate)}</h3>
             <button type="button" onClick={() => selectDate(today)} className="min-h-9 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent px-2 text-sm font-semibold text-indigo-600">
@@ -551,7 +614,13 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
               <dd className="m-0 mt-1 text-sm font-semibold tabular-nums text-slate-900">{hasOut ? selectedRecord?.outTime : '—'}</dd>
             </div>
           </dl>
-          {selectedBucket && (
+          {selectedHr && (
+            <p className="m-0 mt-3 rounded-lg border border-solid border-teal-200 bg-teal-50 p-3 text-sm text-teal-900">
+              <span className="font-semibold">Set by HR:</span> {HR_SET_LABEL[selectedHr.status] || selectedHr.status}. Reason: {selectedHr.reason}
+              <span className="mt-1 block text-xs text-teal-700">This status decides your pay for the day. Contact HR if it looks wrong.</span>
+            </p>
+          )}
+          {selectedBucket && !selectedHr && (
             <span className={`mt-3 inline-flex items-center gap-1 rounded-full border border-solid px-2.5 py-1 text-xs font-semibold ${BUCKET_TONE[selectedBucket]}`}>
               {selectedBucket === 'on-time' ? <CircleCheck className="size-3.5 shrink-0" aria-hidden /> : <TriangleAlert className="size-3.5 shrink-0" aria-hidden />}{BUCKET_LABEL[selectedBucket]}
             </span>
@@ -587,27 +656,37 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
             const dateStr = `${calendarMonth}-${String(day).padStart(2, '0')}`;
             const rec = calendarMap.get(dateStr);
             const bucket = shiftRules ? combinedAttendanceBucket(rec?.inMinutes ?? null, rec?.outMinutes ?? null, shiftRules, false) : null;
-            const isRegularized = regularizationByDate.has(dateStr);
+            const isRegularized = (regularizationByDate.get(dateStr) || []).some((r) => r.status !== 'cancelled');
+            const hrSet = hrSetByDate.get(dateStr);
             const holidayName = holidayMap.get(dateStr);
             const leave = leaveFor(dateStr);
             // Regularization is the most actionable status, so it still wins if a request happens
             // to land on a holiday; otherwise a holiday must win over the plain attendance bucket,
             // since no punch on a non-working day would otherwise render as a false "Absent".
-            const tone = isRegularized ? REG_TONE : holidayName ? HOLIDAY_TONE : leave && (!bucket || leave.halfDay) ? LEAVE_TONE : bucket ? BUCKET_TONE[bucket] : 'bg-white border-slate-200 text-slate-700';
+            const tone = hrSet ? HR_SET_TONE[hrSet.status] || BUCKET_TONE['on-time'] : isRegularized ? REG_TONE : holidayName ? HOLIDAY_TONE : leave && (!bucket || leave.halfDay) ? LEAVE_TONE : bucket ? BUCKET_TONE[bucket] : 'bg-white border-slate-200 text-slate-700';
             const isSelected = dateStr === selectedDate;
             const isToday = dateStr === today;
+            const punchIn = rec?.inTime && rec.inTime !== '—' ? rec.inTime : null;
+            const punchOut = rec?.outTime && rec.outTime !== '—' ? rec.outTime : null;
             return (
               <button
                 type="button"
                 key={dateStr}
                 onClick={() => selectDate(dateStr)}
-                title={holidayName}
+                title={hrSet ? `${HR_SET_LABEL[hrSet.status] || hrSet.status} — set by HR: ${hrSet.reason}` : holidayName}
                 aria-pressed={isSelected}
                 className={`relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-solid p-0 text-sm sm:aspect-auto sm:min-h-[3.75rem] sm:p-1.5 sm:text-[0.9375rem] ${tone} ${isToday ? 'font-bold' : 'font-medium'} ${isSelected ? 'ring-2 ring-slate-700 ring-offset-1' : ''}`}
               >
                 <span>{day}</span>
                 {isToday && <span className="hidden text-[0.625rem] font-semibold sm:block">Today</span>}
-                {!isToday && holidayName && <span className="hidden text-[0.625rem] font-semibold sm:block">Holiday</span>}
+                {!isToday && holidayName && !hrSet && <span className="hidden text-[0.625rem] font-semibold sm:block">Holiday</span>}
+                {hrSet && <span className="hidden text-[0.625rem] font-semibold sm:block">Set by HR</span>}
+                {(punchIn || punchOut) && (
+                  <span className="hidden text-[0.625rem] font-medium leading-tight tabular-nums opacity-90 sm:block">
+                    <span className="block whitespace-nowrap">In {punchIn || '—'}</span>
+                    <span className="block whitespace-nowrap">Out {punchOut || '—'}</span>
+                  </span>
+                )}
                 {isToday && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-current sm:hidden" aria-hidden="true" />}
               </button>
             );
@@ -623,6 +702,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
           <LegendDot tone={BUCKET_TONE.absent} label={BUCKET_LABEL.absent} />
           <LegendDot tone={REG_TONE} label="Regularization requested" />
           <LegendDot tone={LEAVE_TONE} label="On leave" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 sm:text-[0.8rem]">&ldquo;Set by HR&rdquo; = status set by HR</div>
         </div>
       </section>
 
