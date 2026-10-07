@@ -244,10 +244,18 @@ content is `px-4` on phones and reserves space for the tab bar and safe area at 
 `ScrollButtons`, `InstallPWA` and `AuthModal` do not render on `/employee/*`.
 `AttendanceWidget` leads with a **Today** card: live clock, today's In/Out tiles from the API's
 `today` block (so it stays correct while the calendar shows another month), and full-width 48px
-Punch In / Punch Out buttons. A day-details card appears only when a non-today date is picked. The
-calendar is a compact `grid-cols-7` of square cells on phones; from `sm` up each cell also prints
-"In hh:mm / Out hh:mm" from the month's `calendar` row (`'—'` = no punch). The HR tool's
-`AttendanceCalendar` does the same from `state.attendance` (`.cal-time` in `HrToolApp`'s style block). `LeaveWidget` and `MyLeadsPage` show
+Punch In / Punch Out buttons. A day-details card appears only when a non-today date is picked. Since
+2026-10-07 (arch #346) there is **no calendar-month (1st–31st) grid** any more: the last card is
+`AttendanceCycleSummary` — the **pay cycle (26th → 25th)** laid out like HR's `AttendanceCalendar`:
+tiles, payslip line, then a `grid-cols-7` of one square per ledger day coloured by `LedgerDayKind`
+(`DAY_TONE`, Tailwind mirror of `.cal-cell.*`), same notes ("½ deducted", "auto casual", "set by HR"),
+reg dots from the ledger route's `regDays`, HR-set inset ring and the same legend. From `sm` up each
+square prints "In / Out" from the ledger day's `inMinutes`/`outMinutes` (`formatTime12h`). Tapping a
+square calls `pickCycleDay` → selects the date (switching the `/me?month=` load to that date's
+calendar month, since a cycle spans two) and scrolls to the details card, which now shows
+**"Payroll counts this day as: …"** via `describeLedgerDay` (same sentence as HR's day popup;
+labels from the shared `LEDGER_KIND_LABEL` in `utils/day-ledger.ts`). The HR tool's
+`AttendanceCalendar` prints punch times from `state.attendance` (`.cal-time` in `HrToolApp`'s style block). `LeaveWidget` and `MyLeadsPage` show
 card lists below `md` and keep their tables from `md` up.
 
 ### API (221 handlers)
@@ -258,7 +266,7 @@ card lists below `md` and keep their tables from `md` up.
 | `/api/public-auth/*` | 8 | Reader register/login, Google verify, LinkedIn OAuth, profile, newsletter prefs |
 | `/api/events/*` | 8 | Public event reads + submission |
 | `/api/cron/*` | 4 | HTTP-triggered job entry points |
-| `/api/posts/*`, `/api/categories/*`, `/api/search`, `/api/banners`, `/api/reports`, `/api/brand-stories`, `/api/dashboard/*` (incl. `weekly-highlights` and `nearby-events`, added for the reader dashboard home), `/api/site-settings/*`, `/api/incubatx/*`, `/api/advertise`, `/api/feature-your-startup`, `/api/submit-funding-round`, `/api/submit-press-release`, `/api/events/sponsor-event`, `/api/expand-north-star/travel-enquiry`, `/api/newsletter`, `/api/unsubscribe`, `/api/health` | rest | Public reads and form intake |
+| `/api/posts/*`, `/api/categories/*`, `/api/search`, `/api/banners`, `/api/reports`, `/api/brand-stories`, `/api/dashboard/*` (incl. `weekly-highlights` and `nearby-events`, added for the reader dashboard home), `/api/site-settings/*`, `/api/incubatx/*`, `/api/advertise`, `/api/contact`, `/api/feature-your-startup`, `/api/submit-funding-round`, `/api/submit-press-release`, `/api/events/sponsor-event`, `/api/expand-north-star/travel-enquiry`, `/api/newsletter`, `/api/unsubscribe`, `/api/health` | rest | Public reads and form intake |
 
 ---
 
@@ -489,6 +497,8 @@ also run `validateCountry` + `validateCity`** (errors keyed `country` / `city`, 
 value, so "Others (Manually Fill)" with an empty box still fails); Funding Round's own
 `FIELD_VALIDATORS` and Press Release's `ReviewStep` re-check both before submit. Never change 1–3 in place — other
 pages depend on them; add a new canonical step instead.
+
+**Contact Us form (since 2026-10-07, arch #344).** `/contact-us` → `ContactForm.tsx` → `POST /api/contact`: IP rate limit (5 per 10 min, key `contact-us:<ip>`, in-memory `checkRateLimit`) → Turnstile verify → validate name/email/message (topic must be in `app/contact-us/topics.ts`, else "General enquiry") → HTML-escaped mail via `sendSmtpMail` to the hard-coded `office@startupnews.fyi` (not `SMTP_TO`), `replyTo` = sender. **No DB row, no Sales Tracker mirror** — email is the only record. Topic list lives in `topics.ts` because Next route files may only export handlers/config.
 
 **Page-lead mirroring into the Sales Tracker.** The three `useLeadForm` pages each pass a real
 `onSubmit` (4th arg) and POST the same six fields (name, companyName, composed phone, email,
@@ -2604,3 +2614,7 @@ Every change to this system appends a row here. `Impact` drives what else gets u
 | 341 | 2026-10-06 | minor | Git: `main` fast-forwarded to `feature/funding-intelligence` (`8cdd431`); local uncommitted work re-applied on top unchanged (docs + Tailwind sheet conflicts resolved to local side, retired funding components kept removed). No architecture change. | — |
 | 342 | 2026-10-06 | medium | Reader Funding locked (§6.14; `components/user/UserDashboardLayout.tsx`, `app/dashboard/funding/layout.tsx`) | Funding nav entry gets `locked: true` (same inert row as Brand Stories/Handouts/Incubators/Grants). The funding layout short-circuits to a `FundingLockedState` (Lucide `Lock`, Tailwind only, Back to Dashboard link) while `FUNDING_LOCKED = true`, so children (dashboard, All Deals, Market, Search, AI) and the sub-nav never mount and no `/api/funding/*` request fires. APIs and admin Funding Data untouched. | v142 |
 | 343 | 2026-10-06 | minor | Git: whole working tree committed on `main`, rebased onto `origin/main` (`f5936f9`), pushed. No architecture change. | — |
+| 344 | 2026-10-07 | medium | Contact Us redesign + Get in touch form (§6.6; `app/contact-us/{page.tsx,ContactForm.tsx,topics.ts}`, new `app/api/contact/route.ts`, `app/isolated-tailwind.css` @source) | Page rebuilt with address/phone/email cards + form. New public `POST /api/contact`: rate limit → Turnstile → validate → escaped SMTP mail to office@startupnews.fyi, reply-to sender; no persistence. Admin inner-page HTML now renders under the form instead of replacing the page. | v143 |
+| 345 | 2026-10-07 | minor | Hotfix: admin self-attendance ledger shape (`app/api/admin/attendance/ledger/route.ts`, `components/admin/AttendanceCycleSummary.tsx`) | `/api/admin/attendance/ledger` now returns `regularizations`, `payrollRun`, `shortLeaveQuota` exactly like `/api/employee/attendance/ledger` — invariant: both self-attendance ledger routes return the same shape, since `AttendanceCycleSummary` is shared. Component defaults missing `regularizations`/`leave` so a partial response can't crash the `/admin` dashboard (was crashing Publisher/Event Admin pages and blocking punch-in). | — |
+| 346 | 2026-10-07 | medium | Employee self-attendance: pay-cycle calendar like HR's (§ staff panel; `components/admin/{AttendanceWidget,AttendanceCycleSummary}.tsx`, `modules/hr-tool/utils/{day-ledger,regularization-policy}.ts`, both `api/{admin,employee}/attendance/ledger/route.ts`, `hr-tool/views/AttendanceCalendar.tsx`) | Calendar-month grid removed from `AttendanceWidget`; `AttendanceCycleSummary` now renders HR's 26→25 ledger grid (kind colours, notes, reg dots, HR-set ring, legend) under the tiles, and the day-details card adds the payroll verdict (`describeLedgerDay`). New pure `summarizeCycleRegularizations()` builds tile counts + `regDays` for both ledger routes (invariant: both return the same shape). `LEDGER_KIND_LABEL` moved to `day-ledger.ts`, shared with HR's calendar. Applies to plain employees and Publisher/Event Admins. | v144 |
+| 347 | 2026-10-07 | minor | Contact Us form styling (`app/contact-us/ContactForm.tsx`) | Fields get `box-border` (no Preflight on isolated-tailwind pages, so `w-full` inputs with padding overflowed); select uses `appearance-none` + ChevronDown icon. | — |

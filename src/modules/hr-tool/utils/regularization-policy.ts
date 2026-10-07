@@ -71,3 +71,28 @@ export function countedRegularizationDates(regs: CountableRegularization[], from
   }
   return dates;
 }
+
+interface CycleRegularization extends CountableRegularization { stage: string; }
+
+/** What the self-service pay-cycle card needs about one cycle's regularizations, worked out exactly
+ * as the HR attendance calendar does: the tile counts (in DAYS, converted HR edits left out) and
+ * one dot per date for the calendar (amber pending / violet approved — HR edits included, as HR's
+ * grid shows them). Shared by /api/employee/attendance/ledger and /api/admin/attendance/ledger. */
+export function summarizeCycleRegularizations(allRegs: CycleRegularization[], periodFrom: string, periodTo: string, quota: number) {
+  const inCycle = allRegs.filter((r) => r.date >= periodFrom && r.date <= periodTo);
+  const regs = inCycle.filter((r) => r.source !== 'hr-edit');
+  const regularizations = {
+    pending: new Set(regs.filter((r) => r.status === 'pending').map((r) => r.date)).size,
+    applied: new Set(regs.map((r) => r.date)).size,
+    approved: new Set(regs.filter((r) => r.stage === 'done' && r.status === 'approved').map((r) => r.date)).size,
+    limitUsed: countedRegularizationDates(regs, periodFrom, periodTo).size,
+    quota,
+  };
+  const dots = new Map<string, 'pending' | 'approved'>();
+  for (const r of inCycle) {
+    if (r.status === 'pending') dots.set(r.date, 'pending');
+    else if (r.stage === 'done' && r.status === 'approved' && !dots.has(r.date)) dots.set(r.date, 'approved');
+  }
+  const regDays = [...dots].map(([date, state]) => ({ date, state }));
+  return { regularizations, regDays };
+}

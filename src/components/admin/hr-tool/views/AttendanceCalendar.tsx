@@ -14,18 +14,14 @@ import { payrollMonthKeyForDate, shiftMonthKey } from '@/modules/hr-tool/utils/t
 import { countedRegularizationDates } from '@/modules/hr-tool/utils/regularization-policy';
 import { ABSENCE_COVER_TYPE } from '@/modules/hr-tool/utils/leave-balance';
 import type { HrRegularization } from '@/modules/hr-tool/domain/types';
-import { lopBreakdown, shortLeaveRuleShort, shortLeaveDeductedPositions, type EmployeeCycleLedger, type LedgerDay, type LedgerDayKind } from '@/modules/hr-tool/utils/day-ledger';
+import { LEDGER_KIND_LABEL, lopBreakdown, shortLeaveRuleShort, shortLeaveDeductedPositions, type EmployeeCycleLedger, type LedgerDay, type LedgerDayKind } from '@/modules/hr-tool/utils/day-ledger';
 
 const REG_REASONS = ['Forgot to punch out', 'Forgot to punch in', 'System/network issue', 'Worked from a client site'];
 
 const DOWS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 /** Plain-words label for each day kind, used in the day popup. */
-const KIND_LABEL: Record<LedgerDayKind, string> = {
-  present: 'Present', 'short-leave': 'Short leave', 'half-day': 'Half day', absent: 'Absent',
-  leave: 'On leave (paid)', 'unpaid-leave': 'On leave — unpaid (no balance left)', 'half-leave': 'Half-day leave',
-  off: 'Week-off / holiday', future: 'Not due yet', 'not-employed': 'Not employed on this date', settled: 'Already paid in an earlier payroll run',
-};
+const KIND_LABEL = LEDGER_KIND_LABEL;
 
 /** What each HR-set status pays for the day (short leave: 1, or ½ when it's beyond the free quota). */
 const HR_STATUS_PAY: Record<HrAttendanceOverrideStatus, number> = { present: 1, 'short-leave': 1, 'half-day': 0.5, absent: 0, 'unpaid-leave': 0, off: 1 };

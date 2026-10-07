@@ -38,6 +38,14 @@ export type LedgerDayKind =
   | 'present' | 'short-leave' | 'half-day' | 'absent'
   | 'leave' | 'unpaid-leave' | 'half-leave';
 
+/** Plain-words label for each day kind — the HR attendance calendar's day popup and the
+ * employee's own pay-cycle calendar both use it, so the two read the same. */
+export const LEDGER_KIND_LABEL: Record<LedgerDayKind, string> = {
+  present: 'Present', 'short-leave': 'Short leave', 'half-day': 'Half day', absent: 'Absent',
+  leave: 'On leave (paid)', 'unpaid-leave': 'On leave — unpaid (no balance left)', 'half-leave': 'Half-day leave',
+  off: 'Week-off / holiday', future: 'Not due yet', 'not-employed': 'Not employed on this date', settled: 'Already paid in an earlier payroll run',
+};
+
 export interface LedgerDay {
   date: string;
   kind: LedgerDayKind;

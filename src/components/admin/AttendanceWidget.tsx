@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, CircleCheck, MapPin, Timer, TriangleAlert } from 'lucide-react';
+import { CircleCheck, MapPin, Timer, TriangleAlert } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import PunchOutTimeInput from './PunchOutTimeInput';
-import AttendanceCycleSummary from './AttendanceCycleSummary';
+import AttendanceCycleSummary, { describeLedgerDay } from './AttendanceCycleSummary';
 import { getCurrentBrowserLocation, geofenceHintFor, type BrowserLocation } from '@/lib/browser-geolocation';
 import { latenessBucket, combinedAttendanceBucket, type ShiftSettings, type LatenessBucket } from '@/modules/hr-tool/utils/lateness';
+import type { LedgerDay } from '@/modules/hr-tool/utils/day-ledger';
 import { regularizationDeadline, DEFAULT_PUNCH_WINDOWS, fmtWindowTime, type PunchWindows } from '@/modules/hr-tool/utils/regularization-policy';
 
 interface AttendanceDayRecord { date: string; status: string; inTime: string; outTime: string; inMinutes: number | null; outMinutes: number | null; }
@@ -47,35 +48,14 @@ const actionButtonClass = 'inline-flex min-h-11 cursor-pointer items-center just
 const blueButtonClass = `${actionButtonClass} bg-linear-to-br from-blue-400 to-blue-500`;
 const secondaryButtonClass = 'inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-solid border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60';
 
-const navButtonClass = 'flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg border border-solid border-slate-200 bg-white text-xl text-slate-700 disabled:cursor-not-allowed disabled:opacity-35';
-
 /** Matches the DB's date-column convention already used across the HR Tool (see hr-tool's own
  * client-side todayStr()) — UTC-based, not locale/timezone-aware, kept consistent on purpose. */
 function localTodayStr(): string { return new Date().toISOString().slice(0, 10); }
 
-function shiftMonth(monthStr: string, delta: number): string {
-  const [y, m] = monthStr.split('-').map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-function daysInMonth(monthStr: string): number {
-  const [y, m] = monthStr.split('-').map(Number);
-  return new Date(y, m, 0).getDate();
-}
-function firstWeekday(monthStr: string): number {
-  const [y, m] = monthStr.split('-').map(Number);
-  return new Date(y, m - 1, 1).getDay();
-}
-function monthLabel(monthStr: string): string {
-  const [y, m] = monthStr.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-}
 function formatDateLong(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
-
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** Tailwind bg / border / text per bucket — the same palette the calendar has always used. */
 const BUCKET_TONE: Record<LatenessBucket, string> = {
@@ -94,10 +74,6 @@ const BUCKET_LABEL: Record<LatenessBucket, string> = {
   'on-time': 'On time', grace: 'Grace Period', late: 'Late', 'short-leave': 'Short Leave', 'half-day': 'Half Day', absent: 'Absent',
 };
 
-/** A date with a regularization request on file shows light blue on the calendar, overriding
- * whatever lateness color it would otherwise have — the request itself is now the more
- * relevant status for that day. */
-const REG_TONE = 'bg-blue-100 border-blue-400 text-blue-800';
 const REG_STATUS_LABEL: Record<string, string> = { pending: 'Pending admin approval', approved: 'Approved', rejected: 'Rejected', cancelled: 'Closed — HR set this day' };
 const REG_TYPE_LABEL: Record<'in' | 'out', string> = { in: 'Punch In', out: 'Punch Out' };
 
@@ -105,27 +81,10 @@ const REG_TYPE_LABEL: Record<'in' | 'out', string> = { in: 'Punch In', out: 'Pun
  * violet, distinct from every lateness/regularization color, on both the calendar grid and the
  * selected-date detail panel. */
 const HOLIDAY_TONE = 'bg-violet-100 border-violet-400 text-violet-700';
-/** An approved leave day (full or half). */
-const LEAVE_TONE = 'bg-sky-100 border-sky-400 text-sky-800';
-
-/** A day HR set directly: same colour as the status it stands for, plus a "Set by HR" tag.
- * Labels mirror ATTENDANCE_OVERRIDE_LABEL in src/modules/hr-tool/domain/types.ts. */
-const HR_SET_TONE: Record<string, string> = {
-  present: BUCKET_TONE['on-time'], 'short-leave': BUCKET_TONE['short-leave'], 'half-day': BUCKET_TONE['half-day'], absent: BUCKET_TONE.absent,
-  'unpaid-leave': 'bg-rose-100 border-rose-400 text-rose-800', off: 'bg-slate-100 border-slate-400 text-slate-700',
-};
+/** Labels mirror ATTENDANCE_OVERRIDE_LABEL in src/modules/hr-tool/domain/types.ts. */
 const HR_SET_LABEL: Record<string, string> = {
   present: 'Present', 'short-leave': 'Short leave', 'half-day': 'Half day', absent: 'Absent', 'unpaid-leave': 'Unpaid leave (LOP)', off: 'Week-off / Holiday (paid)',
 };
-
-function LegendDot({ tone, label }: { tone: string; label: string }) {
-  return (
-    <div className="flex items-center gap-1.5 text-xs text-slate-500 sm:text-[0.8rem]">
-      <span className={`h-3 w-3 shrink-0 rounded-[3px] border border-solid ${tone}`} />
-      {label}
-    </div>
-  );
-}
 
 function formatClock(d: Date): string {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -165,6 +124,8 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [regError, setRegError] = useState('');
   const [now, setNow] = useState(() => new Date());
+  /** The pay cycle's days from the ledger (the card below) — says how payroll counts the picked day. */
+  const [ledger, setLedger] = useState<{ days: Map<string, LedgerDay>; shortLeaveQuota: number } | null>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 30_000);
@@ -281,6 +242,8 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   }, [data]);
 
   function selectDate(dateStr: string) {
+    // The pay cycle spans two calendar months (26th → 25th) — load the punches for the picked day's month.
+    if (dateStr.slice(0, 7) !== calendarMonth) setCalendarMonth(dateStr.slice(0, 7));
     setSelectedDate(dateStr);
     setRegFormOpen(null);
     setRegReason('');
@@ -291,18 +254,15 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   /** From the Today card's reminder: jump to a past day missing its punch-out (switching month if
    * needed) with the punch-out regularization form already open. */
   function openMissedPunchOut(dateStr: string) {
-    if (dateStr.slice(0, 7) !== calendarMonth) setCalendarMonth(dateStr.slice(0, 7));
     selectDate(dateStr);
     setRegFormOpen('out');
     window.setTimeout(() => document.getElementById('attendance-selected-day')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
 
-  function changeMonth(delta: number) {
-    const newMonth = shiftMonth(calendarMonth, delta);
-    const day = Number(selectedDate.slice(8, 10));
-    const clampedDay = Math.min(day, daysInMonth(newMonth));
-    selectDate(`${newMonth}-${String(clampedDay).padStart(2, '0')}`);
-    setCalendarMonth(newMonth);
+  /** A square in the pay-cycle calendar: open that day in the details card and bring it into view. */
+  function pickCycleDay(dateStr: string) {
+    selectDate(dateStr);
+    window.setTimeout(() => document.getElementById(dateStr === today ? 'attendance-today' : 'attendance-selected-day')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
 
   if (loading && !data) {
@@ -381,11 +341,12 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   const todayBucket = shiftRules && todayIn ? combinedAttendanceBucket(todayInMinutes, todayOutMinutes, shiftRules, false) : null;
   const todayHoliday = holidayMap.get(today);
 
-  const totalDays = daysInMonth(calendarMonth);
-  const leadPad = firstWeekday(calendarMonth);
-  const cells: (number | null)[] = [...Array(leadPad).fill(null), ...Array.from({ length: totalDays }, (_, i) => i + 1)];
-  while (cells.length % 7 !== 0) cells.push(null);
-  const canGoNext = calendarMonth < today.slice(0, 7);
+  const selectedLedgerDay = ledger?.days.get(selectedDate);
+  const ledgerVerdict = selectedLedgerDay && ledger ? (
+    <p className="m-0 mt-3 rounded-lg border border-solid border-slate-200 bg-white p-3 text-sm text-slate-700">
+      <span className="font-semibold text-slate-900">Payroll counts this day as:</span> {describeLedgerDay(selectedLedgerDay, ledger.shortLeaveQuota)}
+    </p>
+  ) : null;
 
   const punchLabel = (type: 'in' | 'out') => (punching === type
     ? (locating ? 'Getting your location…' : type === 'in' ? 'Punching in…' : 'Punching out…')
@@ -491,7 +452,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   return (
     <div className="mt-4 flex flex-col gap-4 md:mt-6 md:gap-6">
       {/* Today — punch card */}
-      <section className={cardClass}>
+      <section id="attendance-today" className={cardClass}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wider text-indigo-500">Today</div>
@@ -584,6 +545,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
           </div>
         )}
 
+        {isSelectedToday && ledgerVerdict}
         {isSelectedToday && regularizationBlock}
       </section>
 
@@ -625,90 +587,15 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
               {selectedBucket === 'on-time' ? <CircleCheck className="size-3.5 shrink-0" aria-hidden /> : <TriangleAlert className="size-3.5 shrink-0" aria-hidden />}{BUCKET_LABEL[selectedBucket]}
             </span>
           )}
+          {ledgerVerdict}
           {regularizationBlock}
         </section>
       )}
 
-      {/* Month calendar */}
+      {/* Pay cycle (26th → 25th) — tiles + day-by-day calendar from the same day ledger payroll pays by, laid out like HR's */}
       <section className={cardClass}>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <button type="button" onClick={() => changeMonth(-1)} className={navButtonClass} aria-label="Previous month"><ChevronLeft className="size-5" aria-hidden /></button>
-          <h3 className="m-0 text-base font-semibold text-slate-900 md:text-[1.0625rem]">{monthLabel(calendarMonth)}</h3>
-          <button
-            type="button"
-            onClick={() => canGoNext && changeMonth(1)}
-            disabled={!canGoNext}
-            aria-label="Next month"
-            className={navButtonClass}
-          >
-            <ChevronRight className="size-5" aria-hidden />
-          </button>
-        </div>
-
-        <div className="mb-1 grid grid-cols-7 gap-1 sm:gap-1.5">
-          {WEEKDAY_LABELS.map((w) => (
-            <div key={w} className="text-center text-[0.65rem] font-semibold uppercase text-slate-400 sm:text-xs">{w}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-          {cells.map((day, idx) => {
-            if (day === null) return <div key={`pad-${idx}`} />;
-            const dateStr = `${calendarMonth}-${String(day).padStart(2, '0')}`;
-            const rec = calendarMap.get(dateStr);
-            const bucket = shiftRules ? combinedAttendanceBucket(rec?.inMinutes ?? null, rec?.outMinutes ?? null, shiftRules, false) : null;
-            const isRegularized = (regularizationByDate.get(dateStr) || []).some((r) => r.status !== 'cancelled');
-            const hrSet = hrSetByDate.get(dateStr);
-            const holidayName = holidayMap.get(dateStr);
-            const leave = leaveFor(dateStr);
-            // Regularization is the most actionable status, so it still wins if a request happens
-            // to land on a holiday; otherwise a holiday must win over the plain attendance bucket,
-            // since no punch on a non-working day would otherwise render as a false "Absent".
-            const tone = hrSet ? HR_SET_TONE[hrSet.status] || BUCKET_TONE['on-time'] : isRegularized ? REG_TONE : holidayName ? HOLIDAY_TONE : leave && (!bucket || leave.halfDay) ? LEAVE_TONE : bucket ? BUCKET_TONE[bucket] : 'bg-white border-slate-200 text-slate-700';
-            const isSelected = dateStr === selectedDate;
-            const isToday = dateStr === today;
-            const punchIn = rec?.inTime && rec.inTime !== '—' ? rec.inTime : null;
-            const punchOut = rec?.outTime && rec.outTime !== '—' ? rec.outTime : null;
-            return (
-              <button
-                type="button"
-                key={dateStr}
-                onClick={() => selectDate(dateStr)}
-                title={hrSet ? `${HR_SET_LABEL[hrSet.status] || hrSet.status} — set by HR: ${hrSet.reason}` : holidayName}
-                aria-pressed={isSelected}
-                className={`relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-solid p-0 text-sm sm:aspect-auto sm:min-h-[3.75rem] sm:p-1.5 sm:text-[0.9375rem] ${tone} ${isToday ? 'font-bold' : 'font-medium'} ${isSelected ? 'ring-2 ring-slate-700 ring-offset-1' : ''}`}
-              >
-                <span>{day}</span>
-                {isToday && <span className="hidden text-[0.625rem] font-semibold sm:block">Today</span>}
-                {!isToday && holidayName && !hrSet && <span className="hidden text-[0.625rem] font-semibold sm:block">Holiday</span>}
-                {hrSet && <span className="hidden text-[0.625rem] font-semibold sm:block">Set by HR</span>}
-                {(punchIn || punchOut) && (
-                  <span className="hidden text-[0.625rem] font-medium leading-tight tabular-nums opacity-90 sm:block">
-                    <span className="block whitespace-nowrap">In {punchIn || '—'}</span>
-                    <span className="block whitespace-nowrap">Out {punchOut || '—'}</span>
-                  </span>
-                )}
-                {isToday && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-current sm:hidden" aria-hidden="true" />}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 sm:flex sm:flex-wrap sm:gap-4">
-          <LegendDot tone={HOLIDAY_TONE} label="Holiday" />
-          <LegendDot tone={BUCKET_TONE['on-time']} label={BUCKET_LABEL['on-time']} />
-          <LegendDot tone={BUCKET_TONE.grace} label={BUCKET_LABEL.grace} />
-          <LegendDot tone={BUCKET_TONE['short-leave']} label={BUCKET_LABEL['short-leave']} />
-          <LegendDot tone={BUCKET_TONE['half-day']} label={BUCKET_LABEL['half-day']} />
-          <LegendDot tone={BUCKET_TONE.absent} label={BUCKET_LABEL.absent} />
-          <LegendDot tone={REG_TONE} label="Regularization requested" />
-          <LegendDot tone={LEAVE_TONE} label="On leave" />
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 sm:text-[0.8rem]">&ldquo;Set by HR&rdquo; = status set by HR</div>
-        </div>
-      </section>
-
-      {/* Pay cycle — the same day ledger payroll pays by */}
-      <section className={cardClass}>
-        <AttendanceCycleSummary apiBase={apiBase} getHeaders={getHeaders} refreshKey={data} />
+        <AttendanceCycleSummary apiBase={apiBase} getHeaders={getHeaders} refreshKey={data} today={today} selectedDate={selectedDate}
+          onSelectDate={pickCycleDay} onDays={(days, shortLeaveQuota) => setLedger({ days: new Map(days.map((d) => [d.date, d])), shortLeaveQuota })} />
       </section>
     </div>
   );

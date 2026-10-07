@@ -116,7 +116,7 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v142</span>
+    <span class="badge v">Version v144</span>
     <span class="badge">Released 2026-10-01</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
@@ -904,6 +904,8 @@ flowchart LR
       <tr><td><strong>v140</strong></td><td>2026-10-06</td><td>Medium</td><td>Event page: a <strong>Similar Events</strong> row of 3 cards at the bottom, from the same city first, then the same country, then any upcoming event.</td></tr>
       <tr><td><strong>v141</strong></td><td>2026-10-06</td><td>Major</td><td>Reader dashboard → Funding: rebuilt as a guided story. A big <strong>total funding</strong> figure with year-on-year change, then the trend, a <strong>sector map</strong>, round stages, a <strong>money-flow chart</strong> from round stage to sector, a city chart, investors and companies, and the outlook. Hovering a sector or stage lights it up in every chart. Every number comes from the funding database.</td></tr>
       <tr><td><strong>v142</strong></td><td>2026-10-06</td><td>Medium</td><td>Reader dashboard → <strong>Funding</strong> is locked: the menu item shows a lock and does not open, and a direct link shows a "Funding is locked" message.</td></tr>
+      <tr><td><strong>v144</strong></td><td>2026-10-07</td><td>Medium</td><td>Employees now see their attendance as the <strong>26th → 25th pay cycle</strong>, day by day, in the same colours and layout HR sees, and each day says how payroll counted it.</td></tr>
+      <tr><td><strong>v143</strong></td><td>2026-10-07</td><td>Medium</td><td><strong>Contact Us</strong> page redesigned: office address, phone and email shown up front, plus a <strong>Get in touch</strong> form whose messages are emailed to office@startupnews.fyi.</td></tr>
       <tr><td><strong>v130</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the <strong>Leads by page</strong> tiles (one per website page) are back, exactly as before, just below the new Leads overview.</td></tr>
       <tr><td><strong>v129</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the old <strong>Summary</strong> and <strong>Leads by page</strong> boxes are replaced by one <strong>Leads overview</strong> that counts every lead — every website page, Expand North Star and leads added by the team — by type and by status, with charts. Click any number to see those leads.</td></tr>
       <tr><td><strong>v128</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: clicking any lead now opens it <strong>ready to edit</strong> — no more "Edit lead" button. Pressing <strong>Save changes</strong> shows a warning listing what you changed, and nothing is saved until you confirm.</td></tr>
@@ -4442,6 +4444,74 @@ PHONE                                   +--------------------+
         <div class="wf-row"><div class="wf-box">City bubbles</div><div class="wf-box">City leaderboard</div></div>
         <div class="wf-row"><div class="wf-box">Top investors*</div><div class="wf-box">Top companies · Business models</div></div>
         <div class="wf-row"><div class="wf-box">12-month outlook · Signals</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v144">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v144</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-07</span>
+    </div>
+    <p><strong>What changed.</strong> Employees used to see a normal 1st-to-31st calendar coloured only by how late they punched in, while HR worked from a 26th-to-25th pay-cycle calendar showing what each day is <em>paid</em> as. The two did not match, so staff could not see how their salary days were worked out. Now every employee (including Publisher and Event Admins) sees the <strong>same pay-cycle calendar HR sees</strong>: same tiles, same colours, same little notes, same legend.</p>
+    <table>
+      <thead><tr><th>Part of the page</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>Today card</td><td>Unchanged: clock, Punch In / Punch Out.</td></tr>
+        <tr><td>Pay cycle (e.g. 26 Sep – 25 Oct)</td><td>The summary tiles (present, half days, short leaves, absent, loss-of-pay, week-offs, paid days, leave balance, regularizations), followed by one square per day of the cycle.</td></tr>
+        <tr><td>Each day square</td><td>Coloured by what payroll counts it as (present, short leave, half day, absent, paid leave, unpaid leave, week-off…), with punch times and notes like "½ deducted", "auto casual" or "set by HR". A dot marks a regularization (amber = waiting, violet = approved).</td></tr>
+        <tr><td>Tapping a day</td><td>Opens that day's details: punches, regularization, and a new line <strong>"Payroll counts this day as: …"</strong> explaining it in plain words (for example "Half day · pays 0.5 day").</td></tr>
+        <tr><td>Old 1–31 month calendar</td><td>Removed. The pay-cycle calendar replaces it.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/employee/attendance</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Today · 10:42 am · Punch In / Punch Out</div></div>
+        <div class="wf-row"><div class="wf-box">◀ Pay cycle 26 Sep – 25 Oct (in progress) ▶ · 9 of 30 days paid</div></div>
+        <div class="wf-row"><div class="wf-box">Present</div><div class="wf-box">Half day</div><div class="wf-box">Short leaves</div><div class="wf-box">Absent</div><div class="wf-box">LOP</div><div class="wf-box">Paid days</div></div>
+        <div class="wf-row"><div class="wf-box">Su Mo Tu We Th Fr Sa<br/>26 Sep · 27 · 28 … one coloured square per day … 25</div></div>
+        <div class="wf-row"><div class="wf-box">Legend: Present · Short leave · Half day · Absent · Paid leave · Week-off · Set by HR</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v143">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v143</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-07</span>
+    </div>
+    <p><strong>What changed.</strong> The Contact Us page has a new look. Our registered address, phone number and email are shown as clear cards, and visitors can now send us a message from a <strong>Get in touch</strong> form instead of having to open their own email app. Every message lands in the <strong>office@startupnews.fyi</strong> inbox, and hitting Reply answers the visitor directly.</p>
+    <table>
+      <thead><tr><th>Part of the page</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>Registered Address</td><td>1553 A-8, West Rohtash Nagar, Shahdara, Delhi - 110032, with an "Open in Google Maps" link.</td></tr>
+        <tr><td>Contact No.</td><td>+91-96259 52588. Tapping it on a phone starts a call.</td></tr>
+        <tr><td>Email</td><td>office@startupnews.fyi</td></tr>
+        <tr><td>Reach a specific team</td><td>Press (publishing@startupnews.fyi), Careers (link to the Careers page) and Quick support (the chat widget).</td></tr>
+        <tr><td>Get in touch form</td><td>Name, Email, Phone / WhatsApp (optional), Company (optional), what it is about, and the message, plus a quick security check.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where do messages go?</td><td>An email to office@startupnews.fyi. They are not saved anywhere else.</td></tr>
+        <tr><td>What does the visitor see after sending?</td><td>A "Thanks, your message is on its way" note with a button to send another.</td></tr>
+        <tr><td>Can someone flood the inbox?</td><td>No. Each sender passes a security check, and one network can send at most 5 messages every 10 minutes.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/contact-us</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Contact Us</div></div>
+        <div class="wf-row"><div class="wf-box">📍 Registered Address<br/>📞 +91-96259 52588<br/>✉ office@startupnews.fyi<br/>Reach a specific team</div><div class="wf-box">Get in touch: Send us a message<br/>Name · Email · Phone · Company · Topic · Message<br/>Security check</div></div>
+        <div class="wf-row"><div class="wf-box brand">Send Message</div></div>
       </div>
     </div>
   </div>

@@ -39,6 +39,7 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
 @source "./ecosystem-partners/EcosystemPartnersClient.tsx";
 @source "../components/marketing/Reveal.tsx";
 @source "./contact-us/page.tsx";
+@source "./contact-us/ContactForm.tsx";
 @source "./careers/page.tsx";
 @source "../components/user/DashboardHome.tsx";
 @source "../components/user/UserDashboardLayout.tsx";
