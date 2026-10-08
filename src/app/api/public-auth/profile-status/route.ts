@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import * as repo from '@/modules/public-users/repository/public-users.repository';
 import type { PublicUserEntity } from '@/modules/public-users/domain/types';
+import { requireJwtSecret } from '@/shared/config/jwt-secret';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
+const JWT_SECRET = requireJwtSecret();
 
 // Profile completion is a fixed set of weighted fields that adds up to 100, the same for every
 // category (weights set by the product owner, 2026-09-30). Country + City are one 10% item and

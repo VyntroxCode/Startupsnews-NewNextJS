@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '86bc9tenkei7os'; // Use env var in prod
-  const NEXT_PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://dev.thebackend.in';
+  const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+  if (!LINKEDIN_CLIENT_ID) {
+    return new NextResponse('LinkedIn sign-in is not configured', { status: 503 });
+  }
+  const NEXT_PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://startupnews.fyi';
   
   const redirectUri = `${NEXT_PUBLIC_SITE_URL}/api/public-auth/linkedin/callback`;
   const scope = 'openid profile email';

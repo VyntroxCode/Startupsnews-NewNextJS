@@ -5,6 +5,7 @@
 
 import { S3Client, PutObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { imageSize } from 'image-size';
+import { s3ClientConfig, s3CredentialsAvailable } from '@/shared/utils/s3-client-config';
 
 /** Minimum bytes for an image to be used as featured (avoids 1x1 placeholders / tracking pixels). */
 const MIN_FEATURED_BYTES = 8192;
@@ -211,14 +212,9 @@ export function isValidFeaturedImage(buffer: Buffer): boolean {
 let s3Client: S3Client | null = null;
 
 function getS3Client(): S3Client | null {
-  const key = (process.env.AWS_ACCESS_KEY_ID ?? '').replace(/^["']|["']$/g, '').trim();
-  const secret = (process.env.AWS_SECRET_ACCESS_KEY ?? '').replace(/^["']|["']$/g, '').trim();
-  if (!key || !secret) return null;
+  if (!s3CredentialsAvailable()) return null;
   if (!s3Client) {
-    s3Client = new S3Client({
-      region: AWS_REGION.trim(),
-      credentials: { accessKeyId: key, secretAccessKey: secret },
-    });
+    s3Client = new S3Client(s3ClientConfig(AWS_REGION.trim()));
   }
   return s3Client;
 }
@@ -234,7 +230,7 @@ export async function uploadImageToS3(
 ): Promise<string> {
   const s3 = getS3Client();
   if (!s3) {
-    throw new Error('S3 client not configured. Please check AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.');
+    throw new Error('S3 client not configured: set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY, or run with a role (Lambda/ECS) or S3_USE_DEFAULT_CREDENTIALS=true.');
   }
   
   if (!key || !body || body.length === 0) {

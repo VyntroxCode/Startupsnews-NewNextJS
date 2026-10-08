@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import * as repo from '@/modules/public-users/repository/public-users.repository';
 import { PHONE_RULES } from '@/components/ui/constants/phone';
+import { requireJwtSecret } from '@/shared/config/jwt-secret';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
+const JWT_SECRET = requireJwtSecret();
 
 export async function POST(req: NextRequest) {
   try {

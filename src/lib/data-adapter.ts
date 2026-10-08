@@ -425,10 +425,28 @@ export async function getMoreNewsSlugs(
   }
 }
 
+// Category slugs are lowercase words joined by hyphens. Probe URLs (/.env.local, /index.php,
+// /wp-json …) reach the catch-all route as "category" slugs; rejecting them up front stops each
+// one from running a DB query and from creating its own Redis key.
+const CATEGORY_SLUG_SHAPE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+async function isKnownCategorySlug(categorySlug: string): Promise<boolean> {
+  if (!categorySlug || categorySlug.length > 100 || !CATEGORY_SLUG_SHAPE.test(categorySlug)) {
+    return false;
+  }
+  try {
+    // Cached for 10 minutes per existing slug by CategoriesService.
+    return !!(await categoriesService.getCategoryBySlug(categorySlug));
+  } catch {
+    return true; // fail open: let the normal query path decide
+  }
+}
+
 export async function getPostsByCategory(
   categorySlug: string,
   limit = 10,
 ): Promise<Post[]> {
+  if (!(await isKnownCategorySlug(categorySlug))) return [];
   const cacheKey = `posts:category:${categorySlug}:${limit}`;
   const cached = await getCache<Post[]>(cacheKey);
   if (cached) return cached;
@@ -456,6 +474,7 @@ export async function getCategorySectionPosts(categorySlug: string): Promise<{
   right: [Post | null, Post | null];
   list: Post[];
 }> {
+  if (!CATEGORY_SLUG_SHAPE.test(categorySlug)) return { featured: null, right: [null, null], list: [] };
   const cacheKey = `posts:all:category_section:${categorySlug}`;
   const cached = await getCache<{
     featured: Post | null;
@@ -525,6 +544,7 @@ export async function getDarkSectionPosts(categorySlug: string): Promise<{
   featured: Post | null;
   list: Post[];
 }> {
+  if (!CATEGORY_SLUG_SHAPE.test(categorySlug)) return { featured: null, list: [] };
   const cacheKey = `posts:all:dark_section:${categorySlug}`;
   const cached = await getCache<{ featured: Post | null; list: Post[] }>(
     cacheKey,
@@ -569,6 +589,7 @@ export async function getFeat1SectionPosts(categorySlug: string): Promise<{
   top: [Post | null, Post | null];
   bottom: [Post | null, Post | null, Post | null, Post | null];
 }> {
+  if (!CATEGORY_SLUG_SHAPE.test(categorySlug)) return { top: [null, null], bottom: [null, null, null, null] };
   const cacheKey = `posts:all:feat1_section:${categorySlug}`;
   const cached = await getCache<{
     top: [Post | null, Post | null];

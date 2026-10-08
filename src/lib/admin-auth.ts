@@ -130,10 +130,10 @@ export function getAuthHeaders(): HeadersInit {
  * occasionally strip auth headers on admin API requests.
  */
 export function withAdminToken(url: string): string {
-  const token = getAdminToken();
-  if (!token) return url;
-  const joiner = url.includes('?') ? '&' : '?';
-  return `${url}${joiner}_token=${encodeURIComponent(token)}`;
+  // Tokens no longer travel in URLs (they leaked into access and CDN logs). The server reads
+  // the Authorization header or the admin_token cookie; this keeps the call sites unchanged.
+  getAdminToken(); // re-syncs the cookie from sessionStorage when they differ
+  return url;
 }
 
 /**

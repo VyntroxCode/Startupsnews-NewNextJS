@@ -5,6 +5,7 @@ import {
     getS3Bucket,
     getS3BaseUrl,
 } from '@/modules/rss-feeds/utils/image-to-s3';
+import { s3ClientConfig, s3CredentialsAvailable } from '@/shared/utils/s3-client-config';
 
 /**
  * POST /api/admin/presign
@@ -58,11 +59,7 @@ export async function POST(request: NextRequest) {
         const bucket = getS3Bucket();
         const baseUrl = getS3BaseUrl();
 
-        const accessKeyId = process.env.AWS_ACCESS_KEY_ID?.trim()?.replace(/^["']|["']$/g, '');
-        const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY?.trim()?.replace(/^["']|["']$/g, '');
-        const region = (process.env.AWS_REGION || 'us-east-1').trim();
-
-        if (!accessKeyId || !secretAccessKey) {
+        if (!s3CredentialsAvailable()) {
             return NextResponse.json(
                 { success: false, error: 'S3 credentials not configured' },
                 { status: 500 }
@@ -72,10 +69,7 @@ export async function POST(request: NextRequest) {
         const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
         const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
 
-        const s3Client = new S3Client({
-            region,
-            credentials: { accessKeyId, secretAccessKey },
-        });
+        const s3Client = new S3Client(s3ClientConfig());
 
         const command = new PutObjectCommand({
             Bucket: bucket,

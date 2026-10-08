@@ -3,6 +3,7 @@
  * Used when S3_USE_PRESIGNED_URLS=true and AWS credentials are set.
  * Presigned URLs expire (default 7 days); they are generated at request time on the server.
  */
+import { s3ClientConfig, s3CredentialsAvailable } from '@/shared/utils/s3-client-config';
 
 const BUCKET = (process.env.S3_BUCKET || 'startupnews-media-2026').trim();
 const S3_HOST = 'startupnews-media-2026.s3.us-east-1.amazonaws.com';
@@ -42,23 +43,14 @@ export async function toPresignedUrlIfEnabled(s3ObjectUrl: string): Promise<stri
   const parsed = parseS3UrlToBucketKey(s3ObjectUrl);
   if (!parsed) return s3ObjectUrl;
 
-  const key = process.env.AWS_ACCESS_KEY_ID?.trim();
-  const secret = process.env.AWS_SECRET_ACCESS_KEY?.trim();
-  if (!key || !secret) return s3ObjectUrl;
+  if (!s3CredentialsAvailable()) return s3ObjectUrl;
 
   try {
     const [{ getSignedUrl }, { S3Client, GetObjectCommand }] = await Promise.all([
       import('@aws-sdk/s3-request-presigner'),
       import('@aws-sdk/client-s3'),
     ]);
-    const region = (process.env.AWS_REGION || 'us-east-1').trim();
-    const client = new S3Client({
-      region,
-      credentials: {
-        accessKeyId: key.replace(/^["']|["']$/g, ''),
-        secretAccessKey: secret.replace(/^["']|["']$/g, ''),
-      },
-    });
+    const client = new S3Client(s3ClientConfig());
     // SigV4 presigned URLs support up to 7 days (604800s).
     const expiresIn = Math.min(604800, Math.max(300, parseInt(process.env.S3_PRESIGNED_EXPIRES_SECONDS || '604800', 10) || 604800));
     const signed = await getSignedUrl(

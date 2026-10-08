@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { requireJwtSecret } from '@/shared/config/jwt-secret';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
+const JWT_SECRET = requireJwtSecret();
 
 /**
  * Server-side check for a logged-in reader (public site user). The dashboard sends the JWT from

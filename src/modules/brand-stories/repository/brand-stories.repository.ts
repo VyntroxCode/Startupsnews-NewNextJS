@@ -129,7 +129,7 @@ export class BrandStoriesRepository {
     const isFuture = rawPublishAt ? new Date(rawPublishAt) > new Date() : false;
     const isActive = isFuture ? 0 : (input.isActive === false ? 0 : 1);
     // Always store the user-entered date; only fall back to NOW() when no date given
-    await query(
+    const insertResult = await query<{ insertId?: number | bigint }>(
       `INSERT INTO brand_stories (title, description, file_url, thumbnail_url, file_name, file_size, page_count, mime_type, is_active, publish_at, section_id, created_by, updated_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW()), ?, ?, ?)`,
       [
@@ -149,7 +149,9 @@ export class BrandStoriesRepository {
       ]
     );
 
-    const created = await queryOne<{ id: number }>('SELECT LAST_INSERT_ID() as id');
+    // insertId comes from the INSERT itself: a separate SELECT LAST_INSERT_ID() can run on a
+    // different pooled connection and return another insert's id (or 0).
+    const created = { id: Number(insertResult[0]?.insertId ?? 0) };
     return (await this.findById(created?.id || 0)) as BrandStoryEntity;
   }
 
@@ -190,7 +192,8 @@ export class BrandStoriesRepository {
     const result = await query<{ affectedRows?: number }>(
       `UPDATE brand_stories SET is_active = 1 WHERE publish_at IS NOT NULL AND publish_at <= NOW() AND is_active = 0`
     );
-    return (result as unknown as { affectedRows: number })?.affectedRows ?? 0;
+    // query() wraps the driver's OK packet in a one-element array.
+    return Number(result[0]?.affectedRows ?? 0);
   }
 
   async delete(id: number): Promise<void> {

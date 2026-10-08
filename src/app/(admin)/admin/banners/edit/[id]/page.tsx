@@ -93,7 +93,7 @@ export default function EditBannerPage() {
 
       // Fallback if a proxy strips auth headers for this route.
       if (response.status === 401 && token) {
-        response = await fetch(`/api/admin/banners/${bannerId}?_token=${encodeURIComponent(token)}`, {
+        response = await fetch(`/api/admin/banners/${bannerId}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
           body: JSON.stringify(requestBody),

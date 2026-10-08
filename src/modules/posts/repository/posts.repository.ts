@@ -3,6 +3,7 @@ import { PostEntity } from '../domain/types';
 import { invalidatePostsListCache } from '@/shared/cache/redis.client';
 import { revalidatePath } from 'next/cache';
 import { getPostPath } from '@/lib/post-utils';
+import { stripS3PresignedQuery, stripS3PresignedQueriesInHtml } from '@/shared/utils/s3-url';
 import { isCloudflarePurgeConfigured, schedulePostPurge } from '@/lib/cloudflare-purge';
 
 /** Only show published posts that have body (content) and at least one image (featured or <img> in content). */
@@ -205,11 +206,12 @@ export class PostsRepository {
           []
         )) as Array<{ id: number }>).map((r) => Number(r.id))
       : [];
-    const result = await query(
+    // query() wraps the driver's OK packet in a one-element array.
+    const result = await query<{ affectedRows?: number }>(
       `UPDATE posts SET status = 'published' WHERE status = 'scheduled' AND published_at <= NOW()`,
       []
-    ) as { affectedRows?: number };
-    const published = result.affectedRows || 0;
+    );
+    const published = Number(result[0]?.affectedRows ?? 0);
     if (published > 0) {
       await invalidatePostsListCache();
       // Bust Next.js ISR page cache so new posts appear immediately on refresh.
@@ -819,11 +821,11 @@ export class PostsRepository {
       ...(hasMetaDescription ? [data.metaDescription || null] : []),
       ...(hasRobots ? [data.robots || 'index,follow'] : []),
       (data as { contentFollow?: string }).contentFollow || 'nofollow',
-      data.content,
+      stripS3PresignedQueriesInHtml(data.content),
       data.categoryId,
       data.authorId,
-      data.featuredImageUrl || null,
-      data.featuredImageSmallUrl || null,
+      stripS3PresignedQuery(data.featuredImageUrl) || null,
+      stripS3PresignedQuery(data.featuredImageSmallUrl) || null,
       data.imageCredit || null,
       data.format || 'standard',
       status,
@@ -868,6 +870,11 @@ export class PostsRepository {
 
     const fields: string[] = [];
     const params: (string | number | boolean | Date | null)[] = [];
+
+    // Never persist an expiring presigned S3 URL (see src/shared/utils/s3-url.ts).
+    if (typeof data.featured_image_url === 'string') data.featured_image_url = stripS3PresignedQuery(data.featured_image_url) as string;
+    if (typeof data.featured_image_small_url === 'string') data.featured_image_small_url = stripS3PresignedQuery(data.featured_image_small_url) as string;
+    if (typeof data.content === 'string') data.content = stripS3PresignedQueriesInHtml(data.content) as string;
 
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && key !== 'id') {

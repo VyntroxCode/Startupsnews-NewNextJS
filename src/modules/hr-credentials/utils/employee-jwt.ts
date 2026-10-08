@@ -1,5 +1,6 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import type { HrEmployeeCredential } from '../domain/types';
+import { requireJwtSecret } from '@/shared/config/jwt-secret';
 
 /**
  * Isolated JWT for plain HR employees (no linked panel_admins account) logging in from
@@ -14,7 +15,7 @@ export interface EmployeeJwtPayload {
   type: 'hr_employee';
 }
 
-const JWT_SECRET: string = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_SECRET: string = requireJwtSecret();
 const EMPLOYEE_JWT_EXPIRES_IN: string = process.env.EMPLOYEE_JWT_EXPIRES_IN || '12h';
 
 export function signEmployeeToken(credential: HrEmployeeCredential): string {

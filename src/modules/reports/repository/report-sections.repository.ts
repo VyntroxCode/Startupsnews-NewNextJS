@@ -37,11 +37,13 @@ export class ReportSectionsRepository {
 
   async create(input: ReportSectionInput): Promise<ReportSectionEntity> {
     await this.ensureTable();
-    await query(
+    const insertResult = await query<{ insertId?: number | bigint }>(
       'INSERT INTO report_sections (title, sort_order, created_by, updated_by) VALUES (?, ?, ?, ?)',
       [input.title.trim(), input.sortOrder ?? 0, input.createdBy || null, input.createdBy || null]
     );
-    const created = await queryOne<{ id: number }>('SELECT LAST_INSERT_ID() as id');
+    // insertId comes from the INSERT itself: a separate SELECT LAST_INSERT_ID() can run on a
+    // different pooled connection and return another insert's id (or 0).
+    const created = { id: Number(insertResult[0]?.insertId ?? 0) };
     return (await this.findById(created?.id || 0))!;
   }
 

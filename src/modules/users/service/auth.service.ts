@@ -3,6 +3,7 @@ import { User } from '../domain/types';
 import { PanelAdminsService } from '@/modules/panel-admins/service/panel-admins.service';
 import { PanelAdmin } from '@/modules/panel-admins/domain/types';
 import jwt, { SignOptions } from 'jsonwebtoken';
+import { requireJwtSecret } from '@/shared/config/jwt-secret';
 
 /** Minimal shape needed to sign a token — satisfied by both User and PanelAdmin. */
 interface AuthPrincipal {
@@ -12,7 +13,7 @@ interface AuthPrincipal {
 }
 
 // Ensure JWT_SECRET is always a string (required for jwt.sign)
-const JWT_SECRET: string = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_SECRET: string = requireJwtSecret();
 const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m';
 const JWT_REFRESH_EXPIRES_IN: string = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 const JWT_EXPIRED_GRACE_SECONDS = parseInt(process.env.JWT_EXPIRED_GRACE_SECONDS || String(30 * 24 * 60 * 60), 10);

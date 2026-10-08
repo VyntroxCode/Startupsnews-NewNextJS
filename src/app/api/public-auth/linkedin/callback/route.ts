@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import * as repo from '@/modules/public-users/repository/public-users.repository';
+import { requireJwtSecret } from '@/shared/config/jwt-secret';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
+const JWT_SECRET = requireJwtSecret();
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,9 +19,12 @@ export async function GET(req: NextRequest) {
       return new NextResponse('No code provided by LinkedIn', { status: 400 });
     }
 
-    const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || '86bc9tenkei7os';
-    const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET || 'dGH3oVM3EsmUqKdx';
-    const NEXT_PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://dev.thebackend.in';
+    const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+    const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+    if (!LINKEDIN_CLIENT_ID || !LINKEDIN_CLIENT_SECRET) {
+      return new NextResponse('LinkedIn sign-in is not configured', { status: 503 });
+    }
+    const NEXT_PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://startupnews.fyi';
     const redirectUri = `${NEXT_PUBLIC_SITE_URL}/api/public-auth/linkedin/callback`;
 
     // 1. Exchange code for access token

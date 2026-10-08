@@ -20,8 +20,8 @@ const reportsRepository = new ReportsRepository();
 
 export async function GET() {
   try {
-    await postsRepository.publishScheduledPosts();
-
+    // Due posts are published by the post-scheduler cron job (every 5 min, cron/index.ts) —
+    // a read request must not run that UPDATE.
     const [posts, events, categories, reports] = await Promise.all([
       postsRepository.count({ status: 'published' }),
       eventsService.countEvents({ status: 'upcoming' }),

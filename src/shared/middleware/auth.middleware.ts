@@ -41,16 +41,10 @@ function getTokenFromRequest(request: NextRequest, formToken?: string | null): s
   if (xAccessToken && typeof xAccessToken === 'string' && xAccessToken.trim()) return xAccessToken.trim();
   const cookieToken = request.cookies.get('admin_token')?.value;
   if (cookieToken && cookieToken.trim()) return cookieToken.trim();
-  if (formToken && typeof formToken === 'string' && formToken.trim()) return formToken.trim();
-
-  // Fallback to URL parameters if headers are stripped by proxy/WAF
-  const queryToken = request.nextUrl?.searchParams?.get('_token');
-  if (queryToken && queryToken.trim()) return queryToken.trim();
-  const queryTokenAlt = request.nextUrl?.searchParams?.get('token');
-  if (queryTokenAlt && queryTokenAlt.trim()) return queryTokenAlt.trim();
-  const queryAdminToken = request.nextUrl?.searchParams?.get('admin_token');
-  if (queryAdminToken && queryAdminToken.trim()) return queryAdminToken.trim();
-
+  // Tokens are accepted only from headers and the admin_token cookie. Query-string and
+  // request-body tokens were removed: they ended up in access logs and CDN logs, and the cookie
+  // (sent automatically on every same-origin request) already covers proxies that strip headers.
+  void formToken;
   return null;
 }
 
@@ -115,33 +109,7 @@ async function authenticateRequest(
   user: AuthUser;
   payload: JWTPayload;
 } | NextResponse> {
-  let token = getTokenFromRequest(request);
-
-  // Fallback: If no token in headers, try to extract from URL search params or body
-  if (!token) {
-    try {
-      // If still no token, try body
-      if (!token) {
-        const clonedReq = request.clone();
-        const contentType = clonedReq.headers.get('content-type') || '';
-
-        if (contentType.includes('application/json')) {
-          const body = await clonedReq.json();
-          if (body && typeof body._token === 'string' && body._token.trim()) {
-            token = body._token.trim();
-          }
-        } else if (contentType.includes('multipart/form-data')) {
-          const formData = await clonedReq.formData();
-          const formToken = formData.get('_token');
-          if (typeof formToken === 'string' && formToken.trim()) {
-            token = formToken.trim();
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[Auth] Failed to parse body/url for fallback token:', err);
-    }
-  }
+  const token = getTokenFromRequest(request);
 
   if (!token) {
     return NextResponse.json(

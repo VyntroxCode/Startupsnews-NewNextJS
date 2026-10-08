@@ -25,8 +25,8 @@ export async function GET(
   { params }: RouteParams
 ) {
   try {
-    await postsRepository.publishScheduledPosts();
-
+    // Due posts are published by the post-scheduler cron job (every 5 min, cron/index.ts) —
+    // a read request must not run that UPDATE.
     const { slug } = await params;
     const cacheKey = `api:post:${slug}`;
     const cached = await getCache<{ success: boolean; data: unknown }>(cacheKey);

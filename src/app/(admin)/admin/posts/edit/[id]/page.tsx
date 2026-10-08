@@ -249,7 +249,7 @@ export default function EditPostPage() {
         return;
       }
       const postUrl = `/api/admin/posts/${postId}`;
-      const postUrlWithToken = token ? `${postUrl}?_token=${encodeURIComponent(token)}` : postUrl;
+      const postUrlWithToken = postUrl;
       const isCloudFrontEdgeBlock = async (res: Response): Promise<boolean> => {
         if (res.status !== 403) return false;
         try {

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { unsubscribeByEmail, findByEmail } from '@/modules/public-users/repository/public-users.repository';
+import { requireJwtSecret } from '@/shared/config/jwt-secret';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
+const JWT_SECRET = requireJwtSecret();
 
 /** POST /api/unsubscribe — unsubscribe by email (form submission) */
 export async function POST(req: NextRequest) {

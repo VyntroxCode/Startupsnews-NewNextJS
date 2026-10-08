@@ -5,7 +5,7 @@ const repo = new BrandStoriesRepository();
 
 export async function GET() {
   try {
-    await repo.publishDue().catch(() => {});
+    // Due brand stories are published by the brand-story-scheduler cron job (every 5 min).
     const stories = await repo.findActive();
     return NextResponse.json({ success: true, data: stories });
   } catch (err) {
