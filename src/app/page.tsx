@@ -35,9 +35,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
 // the trailing slash from a root URL ("https://startupnews.fyi"), but the served URL is ".../".
 export const metadata: Metadata = {};
 
-// ISR: serve cached HTML for 15 min so CDN/edge can serve in ~0.01s when cached.
+// ISR: serve cached HTML for 5 min so CDN/edge can serve in ~0.01s when cached.
 // New/edited posts still appear immediately via revalidatePath('/', 'page') in posts.repository.ts.
-export const revalidate = 900;
+export const revalidate = 300;
 
 export default async function HomePage() {
   const categorySlugs = [
