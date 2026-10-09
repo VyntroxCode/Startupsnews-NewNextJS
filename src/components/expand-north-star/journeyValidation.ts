@@ -1,4 +1,4 @@
-import { resolveCity, resolveCountry } from "@/components/lead-forms/shared/compose";
+import { resolveCountry } from "@/components/lead-forms/shared/compose";
 import { validatePhone } from "@/components/lead-forms/shared/validation";
 import {
   isParticipationValue,
@@ -72,7 +72,7 @@ export const FIELD_FOCUS_TARGET: Record<JourneyField, string> = {
   email: "#f-ens-jf-email",
   phone: "#f-ens-jf-phone-number",
   country: "#field-country .cs-input",
-  city: "#field-city .custom-select-btn",
+  city: "#field-city input",
   participation: "#field-ens-jf-participation .custom-select-btn",
   requirement: "#f-ens-jf-requirement",
   referredBy: "#field-ens-jf-referred-by .custom-select-btn",
@@ -100,9 +100,9 @@ function validateCountry(data: JourneyFormData): string {
   return resolveCountry(data) ? "" : "Please enter your country.";
 }
 
-function validateCity(data: JourneyFormData): string {
-  if (!data.city) return "Please select your city.";
-  return resolveCity(data) ? "" : "Please enter your city.";
+/** City is optional (since 2026-10-08); only Country is required. */
+function validateCity(): string {
+  return "";
 }
 
 function validateParticipation(data: JourneyFormData): string {

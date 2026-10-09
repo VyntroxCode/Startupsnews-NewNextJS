@@ -6,9 +6,10 @@ import { CountryCityFields } from "@/components/submit-event/CountryCityFields";
 import type { LeadFormController } from "@/components/lead-forms/shared/useLeadForm";
 import { validateCity, validateCountry, validateWebsite } from "@/components/lead-forms/shared/validation";
 import { staggerVariants, staggerItemVariants } from "../motion";
+import { TELL_US_MORE_MAX_LENGTH } from "@/modules/sales-tracker/domain/types";
 
 /** Step 02 — "The Source". Canonical validation step 5: website (optional) plus the location
- * (country and city, both required). Email used to open this step; it moved to The Story,
+ * (country and city, both required), then the optional "Tell us more" box. Email used to open this step; it moved to The Story,
  * straight after the phone number, on request. See StoryStep for how the split is kept in step with
  * validation.
  *
@@ -45,6 +46,8 @@ export function SourceStep({ ctrl, promotedCities }: {
       </motion.div>
       <motion.div variants={staggerItemVariants}>
         <CountryCityFields
+          cityAsText
+          cityOptional
           country={data.country}
           countryOther={data.countryOther}
           city={data.city}
@@ -58,6 +61,19 @@ export function SourceStep({ ctrl, promotedCities }: {
           onChangeCityOther={(v) => ctrl.updateAndMaybeValidate("cityOther", v, "city", validateCity)}
           onBlurCountry={() => ctrl.blurValidate("country", validateCountry)}
           onBlurCity={() => ctrl.blurValidate("city", validateCity)}
+        />
+      </motion.div>
+      <motion.div variants={staggerItemVariants}>
+        <FormField
+          id="pr-tell-us-more"
+          label="Tell Us More"
+          optionalHint="(optional)"
+          type="textarea"
+          rows={4}
+          maxLength={TELL_US_MORE_MAX_LENGTH}
+          placeholder="Anything else you would like us to know"
+          value={data.tellUsMore}
+          onChange={(v) => ctrl.setField("tellUsMore", v)}
         />
       </motion.div>
 

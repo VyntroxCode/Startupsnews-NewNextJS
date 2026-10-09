@@ -1,3 +1,5 @@
+import { LeadFollowUpsRepository } from '@/modules/lead-followups/repository/lead-followups.repository';
+import { assignmentChanges } from '@/modules/lead-followups/service/lead-changes';
 import { LeadAssignmentsRepository } from '../repository/lead-assignments.repository';
 import {
   ASSIGNMENT_STATUS_OPTIONS,
@@ -32,6 +34,7 @@ function entityToAssignee(e: LeadAssigneeEntity): Assignee {
     active: Number(e.is_active) === 1,
     viaDepartment: e.via_department || null,
     status: toStatus(e.status),
+    nextFollowUpDate: e.next_follow_up_date ? String(e.next_follow_up_date).slice(0, 10) : '',
     assignedAt: String(e.assigned_at),
     assignedBy: e.assigned_by || '',
   };
@@ -112,7 +115,11 @@ export class LeadAssignmentsService {
    *   be among `departments`, and that's what's stored as their viaDepartment.
    * - A kept person's viaDepartment must be one of the lead's departments, otherwise it becomes null
    *   (the "picked by hand" state older leads may have) — so removing a department never leaves
-   *   people tagged to it. */
+   *   people tagged to it.
+   *
+   * A change of departments or people is recorded in the lead's history as old list → new list,
+   * under `by` (see LeadFollowUpsRepository.appendAdminChanges, which folds it into the entry the
+   * same Save has just written for the lead's other fields). If that fails the assignment stands. */
   async setForLead(body: Record<string, unknown>, by: string): Promise<LeadAssignment> {
     const { source, leadId } = body;
     if (!isLeadSource(source)) throw new LeadAssignmentValidationError('Unknown lead source.');
@@ -159,8 +166,21 @@ export class LeadAssignmentsService {
       }
     }
 
+    const before = await this.getForLead(source, leadId);
     await this.repository.replaceForLead(source, leadId, departments, assignees, ASSIGNMENT_STATUS_PENDING, by);
-    return this.getForLead(source, leadId);
+    const after = await this.getForLead(source, leadId);
+    const changes = assignmentChanges(before, after);
+    if (changes.length) {
+      try {
+        const followUps = new LeadFollowUpsRepository();
+        const statusRaw = await followUps.findLeadStatusRaw(source, leadId);
+        const status = source === 'lead' ? statusFromSalesLead(statusRaw) : statusFromEns(statusRaw);
+        await followUps.appendAdminChanges(source, leadId, by || 'Admin', status, changes);
+      } catch (error) {
+        console.error('Could not log the assignment change on lead', source, leadId, error);
+      }
+    }
+    return after;
   }
 
   async countForEmployee(credentialId: number): Promise<{ total: number; lead: number; ens: number }> {
@@ -181,7 +201,15 @@ export class LeadAssignmentsService {
   }
 
   async getForEmployee(credentialId: number): Promise<AssignedLead[]> {
-    const rows = await this.repository.findForEmployee(credentialId);
+    const [rows, unreadRows] = await Promise.all([
+      this.repository.findForEmployee(credentialId),
+      new LeadFollowUpsRepository().findUnreadRepliesForEmployee(credentialId),
+    ]);
+    const unread = new Map<string, number>();
+    for (const u of unreadRows) {
+      const key = `${u.lead_source}:${u.lead_id}`;
+      unread.set(key, (unread.get(key) ?? 0) + 1);
+    }
     return rows
       .filter((r) => isLeadSource(r.lead_source))
       .map((r) => ({
@@ -201,6 +229,8 @@ export class LeadAssignmentsService {
         assignedBy: r.assigned_by || '',
         followUpCount: Number(r.followup_count) || 0,
         lastFollowUpAt: r.last_followup_at ? String(r.last_followup_at) : '',
+        nextFollowUpDate: r.next_follow_up_date ? String(r.next_follow_up_date).slice(0, 10) : '',
+        unreadReplies: unread.get(`${r.lead_source}:${r.lead_id}`) ?? 0,
       }));
   }
 }

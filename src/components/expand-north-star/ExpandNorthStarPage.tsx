@@ -1,6 +1,7 @@
 "use client";
 
 import "./expand-north-star.css";
+import { leadPageFont } from "@/lib/lead-page-font";
 import { MotionConfig } from "motion/react";
 import { EnsDelegationTitle } from "./EnsDelegationTitle";
 import { EnsNav } from "./EnsNav";
@@ -42,16 +43,14 @@ import { SectionNav } from "./SectionNav";
  * comes from media.ts. `MotionConfig reducedMotion="user"` backs up each component's own
  * reduced-motion path. No heading or step carries a running number. */
 export function ExpandNorthStarPage({
-  fontClassName,
   promotedCities,
 }: {
-  fontClassName?: string;
   /** Cities that have earned a dropdown slot, for the closing form's City field. */
   promotedCities?: Record<string, string[]>;
 }) {
   return (
     <MotionConfig reducedMotion="user">
-      <div className={"ens-page" + (fontClassName ? ` ${fontClassName}` : "")}>
+      <div className={`ens-page ${leadPageFont.variable}`}>
         <EnsDelegationTitle />
         <EnsNav />
         <EnsHero />
@@ -64,7 +63,7 @@ export function ExpandNorthStarPage({
         <ParticipationFee />
         <EnsPartners />
         <PlanYourJourney promotedCities={promotedCities} />
-        <SectionNav fontClassName={fontClassName} />
+        <SectionNav />
       </div>
     </MotionConfig>
   );

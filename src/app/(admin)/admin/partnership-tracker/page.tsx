@@ -1389,10 +1389,11 @@ export default function PartnershipTrackerPage() {
       if (!isOnline && !draft.venueAddress.trim()) { setModalError(publishRequiredMsg('Complete Address')); return; }
       if (!isOnline && !draft.googleLocationLink.trim()) { setModalError(publishRequiredMsg('Google Location (Maps link)')); return; }
     }
-    // The banner image itself stays optional; a go-live date is mandatory as soon as one is
-    // added, so nothing can reach the homepage carousel without an explicit start date.
-    if (draft.bannerUrl.trim() && !draft.bannerStartDate.trim()) {
-      setModalError('Banner Start Date is required once a homepage banner image is added — pick the date the banner should start showing (or remove the banner image).');
+    // The banner image itself stays optional; once one is added, a go-live date is mandatory to
+    // Publish or Cancel. A Draft can be saved without it — syncHomepageBanner keeps a banner
+    // with no start date (or on a Draft listing) switched off, so it can't reach the homepage.
+    if (draft.siteStatus !== 'draft' && draft.bannerUrl.trim() && !draft.bannerStartDate.trim()) {
+      setModalError('Banner Start Date is required once a homepage banner image is added — pick the date the banner should start showing, remove the banner image, or leave Website Listing Status as Draft for now.');
       return;
     }
     const missingSpeakerIdx = draft.speakers.findIndex((sp) => !sp.name.trim());
@@ -2394,7 +2395,7 @@ export default function PartnershipTrackerPage() {
               <ImageUpload value={draft.bannerUrl} onChange={(url) => setDraft({ ...draft, bannerUrl: url })} label="Homepage banner" exactDimensions={IMAGE_SPECS.banner} />
               <div className="pt-form-grid" style={{ marginTop: 10 }}>
                 <div className="pt-fg">
-                  <label>Banner Start Date{draft.bannerUrl.trim() && ' *'}</label>
+                  <label>Banner Start Date{requiredToPublish && draft.bannerUrl.trim() && ' *'}</label>
                   <input
                     type="date"
                     value={draft.bannerStartDate}

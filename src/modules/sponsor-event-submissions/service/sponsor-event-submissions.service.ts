@@ -118,7 +118,6 @@ export function normalizeSubmissionInput(raw: unknown): SponsorEventSubmissionIn
     ['eventSlug', 'slug'],
     ['location', 'location'],
     ['country', 'country'],
-    ['city', 'city'],
     ['eventDate', 'date'],
     ['eventTime', 'time'],
     ['description', 'description'],

@@ -36,7 +36,8 @@ export function ChapterReview({
     { label: "Phone / WhatsApp", value: data.phone, fieldId: "fr-phone", required: true, hint: "For the follow-up conversation" },
     { label: "Official email", value: data.email, fieldId: "fr-email", required: true, hint: "Where our reply lands" },
     { label: "Website", value: data.website, fieldId: "fr-website", required: false, hint: "Optional" },
-    { label: "Country / City", value: data.countryCity, fieldId: "fr-country-city", required: true, hint: "Where the company is based" },
+    { label: "Country / City", value: data.countryCity, fieldId: "fr-country-city", required: true, hint: "Where the company is based (city optional)" },
+    { label: "Tell us more", value: data.tellUsMore, fieldId: "f-fr-tell-us-more", required: false, hint: "Optional" },
   ];
 
   const missingRequired = rows.filter((row) => row.required && !row.value.trim()).length;
@@ -49,7 +50,7 @@ export function ChapterReview({
       onEdit("details");
       window.setTimeout(() => {
         const el = document.getElementById(fieldId);
-        if (el instanceof HTMLInputElement) el.focus({ preventScroll: true });
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.focus({ preventScroll: true });
       }, 650);
     },
     [onEdit]

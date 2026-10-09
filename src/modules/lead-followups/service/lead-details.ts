@@ -14,6 +14,9 @@ import { PRESS_RELEASE_PAGE_LEAD_TYPE } from '@/modules/press-release-submission
 import { SponsorEventSubmissionsRepository } from '@/modules/sponsor-event-submissions/repository/sponsor-event-submissions.repository';
 import { entityToSubmission as sponsorToSubmission } from '@/modules/sponsor-event-submissions/service/sponsor-event-submissions.service';
 import { SPONSOR_EVENT_PAGE_LEAD_TYPE } from '@/modules/sponsor-event-submissions/service/to-sales-lead';
+import { AdvertiseSubmissionsRepository } from '@/modules/advertise-submissions/repository/advertise-submissions.repository';
+import { entityToSubmission as advertiseToSubmission } from '@/modules/advertise-submissions/service/advertise-submissions.service';
+import { ADVERTISE_PAGE_LEAD_TYPE } from '@/modules/advertise-submissions/service/to-sales-lead';
 import { EnsTravelEnquiriesRepository } from '@/modules/ens-travel-enquiries/repository/ens-travel-enquiries.repository';
 import { entityToEnquiry } from '@/modules/ens-travel-enquiries/service/ens-travel-enquiries.service';
 import { PACKAGE_INCLUSIONS, packageFor, participationLabel } from '@/modules/ens-travel-enquiries/domain/participation';
@@ -30,10 +33,16 @@ const field = (label: string, value: string | null | undefined, kind: LeadDetail
   kind,
 });
 
-/** The three shared lead forms collect the same six fields. */
+/** The visitor's optional "Tell us more" text, as its own section so it reads as a message rather
+ * than one more row of contact details. Always listed — empty shows as "Not provided". */
+function tellUsMoreSection(text: string) {
+  return { title: 'Tell us more', fields: [field('Tell us more', text, 'long')] };
+}
+
+/** The three shared lead forms collect the same fields. */
 function sharedLeadForm(
   page: string,
-  s: { name: string; companyName: string; phone: string; email: string; website: string; country: string; city: string; createdAt?: string }
+  s: { name: string; companyName: string; phone: string; email: string; website: string; country: string; city: string; tellUsMore: string; createdAt?: string }
 ): LeadSubmission {
   return {
     page,
@@ -51,6 +60,7 @@ function sharedLeadForm(
         title: 'Company',
         fields: [field('Website', s.website, 'url'), field('Country', s.country), field('City', s.city)],
       },
+      tellUsMoreSection(s.tellUsMore),
     ],
   };
 }
@@ -79,6 +89,10 @@ function fromTracker(lead: SalesLead): LeadSubmission {
           field('Query', lead.query, 'long'),
         ],
       },
+      ...(lead.budgetRange || lead.campaignGoal
+        ? [{ title: 'Campaign', fields: [field('Budget range', lead.budgetRange), field('Campaign goal', lead.campaignGoal)] }]
+        : []),
+      ...(lead.tellUsMore ? [tellUsMoreSection(lead.tellUsMore)] : []),
       ...(hasEvent
         ? [{
             title: 'Event',
@@ -110,6 +124,30 @@ async function fromPageLead(lead: SalesLead): Promise<LeadSubmission | null> {
     case PRESS_RELEASE_PAGE_LEAD_TYPE: {
       const e = await new PressReleaseSubmissionsRepository().findById(lead.id);
       return e ? sharedLeadForm(lead.type, pressToSubmission(e)) : null;
+    }
+    case ADVERTISE_PAGE_LEAD_TYPE: {
+      const e = await new AdvertiseSubmissionsRepository().findById(lead.id);
+      if (!e) return null;
+      const s = advertiseToSubmission(e);
+      return {
+        page: lead.type,
+        origin: 'submission',
+        submittedAt: s.createdAt || '',
+        name: s.name,
+        contact: s.phone,
+        email: s.email,
+        sections: [
+          {
+            title: 'Contact',
+            fields: [field('Name', s.name), field('Company name', s.companyName), field('Phone / WhatsApp', s.phone, 'phone'), field('Email', s.email, 'email'), field('Country', s.country), field('City', s.city)],
+          },
+          {
+            title: 'Campaign',
+            fields: [field('Budget range', s.budgetRange), field('Campaign goal', s.campaignGoal)],
+          },
+          tellUsMoreSection(s.tellUsMore),
+        ],
+      };
     }
     case SPONSOR_EVENT_PAGE_LEAD_TYPE: {
       const e = await new SponsorEventSubmissionsRepository().findById(lead.id);

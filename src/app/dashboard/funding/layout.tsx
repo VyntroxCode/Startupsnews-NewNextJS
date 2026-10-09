@@ -22,11 +22,11 @@ const plexMono = localFont({
   variable: '--font-fi-plex',
 });
 
-/** Locked at the user's request: the sidebar row is inert, and this guard covers a direct URL
- * visit / bookmark to any /dashboard/funding/* page. The pages are not rendered (no API calls)
- * while locked. To unlock: flip this to `false` and drop `locked: true` from the Funding entry in
+/** Lock switch for the whole section, currently open. When `true` this guard covers a direct URL
+ * visit / bookmark to any /dashboard/funding/* page and the pages are not rendered (no API calls).
+ * To lock again: flip this to `true` and add `locked: true` to the Funding entry in
  * `UserDashboardLayout.tsx`'s `NAV_GROUPS`. */
-const FUNDING_LOCKED = true;
+const FUNDING_LOCKED: boolean = false;
 
 function FundingLockedState() {
   return (

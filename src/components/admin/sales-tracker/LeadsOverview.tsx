@@ -1,8 +1,12 @@
 'use client';
 
 import { Fragment, useMemo } from 'react';
+import { CalendarClock } from 'lucide-react';
+import type { LeadAssignment } from '@/modules/lead-assignments/domain/types';
+import { FOLLOW_UP_TAG, localToday } from '@/modules/lead-followups/domain/follow-up-date';
 import { PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS, STATUSES, TYPES } from './constants';
-import { matchesType, statusLabelOf } from './utils';
+import { assignmentKey } from './useSalesTrackerData';
+import { followUpTagOf, matchesType, statusLabelOf } from './utils';
 import type { UnifiedLeadRow } from './types';
 
 /** What a click in the overview asks All leads to show: one lead type (a page type, Expand North
@@ -57,16 +61,42 @@ function CountButton({ n, active, strong, title, onClick }: { n: number; active:
  * plus Expand North Star enquiries), counted from the same `rows` the All leads table lists and by
  * the same rules it filters with (matchesType, statusLabelOf), so every number equals the rows a
  * click shows. Status tiles across the top, then a lead type × status table and a stacked bar per
- * lead type. Replaced the old Summary card (team-picked types only, ENS counted in one tile only)
+ * lead type.
+ *
+ * The first tile is "Today's Follow up": every open lead whose next follow-up date is today or
+ * already past, whoever set that date — the admin (the lead's own date) or any assigned employee
+ * (their own, set with a follow-up in My Leads). It shows two numbers — leads due Today and leads
+ * Overdue (a lead with both counts once, as overdue; see utils.followUpTagOf) — and is red while
+ * there is at least one, plain when nobody has a follow-up due. Clicking it lists exactly those leads in All leads (state owned
+ * by the page); clicking it again clears that. A lead leaves it when the person whose date it is
+ * sets a later one, or the lead becomes Confirmed / Not Interested. It counts with the same
+ * rule the table filters and tags by. Replaced the old Summary card (team-picked types only, ENS counted in one tile only)
  * and the Leads by page tiles, 2026-10-05. */
-export default function LeadsOverview({ rows, loaded, active, onSelect }: {
+export default function LeadsOverview({ rows, assignments, loaded, active, onSelect, followUpActive, onFollowUpSelect }: {
   rows: UnifiedLeadRow[];
+  /** Each lead's people (with their own next follow-up dates), keyed by assignmentKey. */
+  assignments: Record<string, LeadAssignment>;
   loaded: boolean;
   /** The All leads filters currently applied, to highlight the matching tile / number. */
   active: LeadsFilter;
   /** Applies a filter to All leads and scrolls it into view — owned by the page. */
   onSelect: (filter: LeadsFilter) => void;
+  /** Whether All leads is showing only the leads in Today's Follow up, and the switch for it. */
+  followUpActive: boolean;
+  onFollowUpSelect: (on: boolean) => void;
 }) {
+  const due = useMemo(() => {
+    const today = localToday();
+    let dueToday = 0;
+    let overdue = 0;
+    for (const r of rows) {
+      const tag = followUpTagOf(r, assignments[assignmentKey(r._source, r.id)], today);
+      if (tag === 'overdue') overdue++;
+      else if (tag === 'today') dueToday++;
+    }
+    return { total: dueToday + overdue, dueToday, overdue };
+  }, [rows, assignments]);
+
   const stats = useMemo(() => {
     const known = new Set(GROUPS.flatMap((g) => g.types));
     return {
@@ -95,7 +125,36 @@ export default function LeadsOverview({ rows, loaded, active, onSelect }: {
         </div>
 
         {/* Status tiles */}
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <button
+            type="button"
+            aria-pressed={followUpActive}
+            title="Open leads whose next follow-up date is today or has passed, set by you or by the people assigned"
+            onClick={() => onFollowUpSelect(!followUpActive)}
+            className={`tw flex w-full cursor-pointer flex-col items-start rounded-[10px] border border-l-[3px] px-4 py-3 text-left font-[inherit] transition-colors ${
+              due.total > 0
+                ? `border-red-200 border-l-red-600 bg-red-50 hover:border-red-400 ${followUpActive ? 'ring-3 ring-red-500/25' : ''}`
+                : `border-l-slate-300 ${followUpActive ? 'border-indigo-300 bg-indigo-50 ring-3 ring-indigo-500/20' : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50'}`
+            }`}
+          >
+            {/* Two numbers, not a total: leads due today and leads whose date has already passed. */}
+            <span className="flex w-full items-end gap-4">
+              <span className="flex flex-col">
+                <span className={`text-2xl font-bold leading-tight tabular-nums ${due.dueToday > 0 ? FOLLOW_UP_TAG.today.text : 'text-slate-300'}`}>{due.dueToday}</span>
+                <span className={`text-[11px] font-semibold ${due.dueToday > 0 ? FOLLOW_UP_TAG.today.text : 'text-slate-400'}`}>Today</span>
+              </span>
+              <span className="flex flex-col">
+                <span className={`text-2xl font-bold leading-tight tabular-nums ${due.overdue > 0 ? FOLLOW_UP_TAG.overdue.text : 'text-slate-300'}`}>{due.overdue}</span>
+                <span className={`text-[11px] font-semibold ${due.overdue > 0 ? FOLLOW_UP_TAG.overdue.text : 'text-slate-400'}`}>Overdue</span>
+              </span>
+            </span>
+            <span className={`mt-1 flex items-center gap-1 text-xs font-semibold ${due.total > 0 ? 'text-red-700' : 'text-slate-600'}`}>
+              <CalendarClock size={13} aria-hidden />Today&apos;s Follow up
+            </span>
+            <span className={`mt-1 text-[11.5px] ${due.total > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+              {due.total > 0 ? (followUpActive ? 'Showing in All leads · clear' : 'View in All leads') : 'Nothing due'}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => onSelect({ type: '', status: '' })}

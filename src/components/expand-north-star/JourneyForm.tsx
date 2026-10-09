@@ -413,6 +413,8 @@ export function JourneyForm({
             grid and lets that component's own `.field-row` do the splitting. */}
         <JourneyField index={4} wide>
           <CountryCityFields
+            cityAsText
+            cityOptional
             country={data.country}
             countryOther={data.countryOther}
             city={data.city}
@@ -424,10 +426,10 @@ export function JourneyForm({
             onChangeCountryOther={(v) => form.update({ countryOther: v }, "country")}
             onChangeCity={(v) => form.update({ city: v }, "city")}
             onChangeCityOther={(v) => form.update({ cityOther: v }, "city")}
-            /* false: leaving a dropdown is not answering it — see blurValidate. These two speak
-               only once Register has been pressed. */
+            /* false: leaving a dropdown is not answering it — see blurValidate. Country speaks only
+               once Register has been pressed. City is a typed box now, so leaving it empty counts. */
             onBlurCountry={() => form.blurValidate("country", false)}
-            onBlurCity={() => form.blurValidate("city", false)}
+            onBlurCity={() => form.blurValidate("city")}
           />
         </JourneyField>
 

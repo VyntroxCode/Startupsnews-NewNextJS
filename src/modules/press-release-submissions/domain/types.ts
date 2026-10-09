@@ -16,6 +16,8 @@ export interface PressReleaseSubmission {
   /** The picked country, or what was typed under "Other (add manually)". Required on new submissions (older rows may be empty). */
   country: string;
   city: string;
+  /** The form's optional "Tell us more" box — free text, line breaks kept. */
+  tellUsMore: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -29,6 +31,7 @@ export interface PressReleaseSubmissionEntity {
   website: string | null;
   country: string | null;
   city: string | null;
+  tell_us_more: string | null;
   created_at: string;
   updated_at: string;
 }

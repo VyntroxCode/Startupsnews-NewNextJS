@@ -36,7 +36,7 @@ export async function exportLeadsExcel(leads: UnifiedLeadRow[], assignmentFor: A
 /** The free-text columns that get extra width in the PDF, by header name (not position, so adding
  * a column can't give the width to the wrong one). */
 const WIDE_PDF_COLUMNS: Record<string, number> = {
-  Query: 160, 'Last Call Discussion': 140, 'Event Description': 160,
+  Query: 160, 'Last Call Discussion': 140, 'Event Description': 160, 'Tell Us More': 160,
 };
 
 /** Exports via jsPDF + jspdf-autotable, loaded from CDN on demand (not npm deps here). */

@@ -8277,7 +8277,10 @@ body .banner-carousel-container,
 }
 
 .snf-page .phone-row { display: flex; gap: 10px; }
-.snf-page .phone-row .custom-select-wrap { width: 110px; flex: 0 0 110px; }
+/* The code box is sized to the code it shows (`--phone-code-w`, set by PhoneField) instead of a
+   fixed width wide enough for the longest code, and its trigger drops the full-field side padding. */
+.snf-page .phone-row .custom-select-wrap { width: calc(var(--phone-code-w, 3.4em) + 36px); flex: 0 0 auto; font-size: 14px; }
+.snf-page .phone-row .custom-select-btn { padding-left: 10px; padding-right: 10px; gap: 4px; }
 .snf-page .phone-row > input[type=text] { width: 80px; flex: 0 0 80px; }
 .snf-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
 /* The dial-code list names each country after its code, so it opens wider than its trigger. */
@@ -9329,7 +9332,7 @@ body .banner-carousel-container,
      carry as their SITE_FONT_FAMILY constant. Nothing on this site loads a webfont, so in
      practice this resolves to Helvetica/Arial everywhere — /events included. Keep it in step with
      <body>; a different stack here would make this the only page in a different typeface. */
-  --fys-sans: "Garnett", Helvetica, Arial, sans-serif;
+  --fys-sans: var(--lead-font), Helvetica, Arial, sans-serif;
   --fys-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* The site's 1200px column — the same box .mvp-main-box gives every other page, and exactly
@@ -10376,13 +10379,14 @@ body .banner-carousel-container,
 /* The code select, the "Other" code box and the number share one line. The two fixed widths are
    what stop a 3-digit dial code from taking a third of the field away from the number itself. */
 .fys-page .phone-row { display: flex; gap: 10px; }
-.fys-page .phone-row .custom-select-wrap { width: 116px; flex: 0 0 116px; }
+/* The code box is sized to the code it shows (`--phone-code-w`, set by PhoneField) instead of a
+   fixed width wide enough for the longest code, and its trigger drops the full-field side padding. */
+.fys-page .phone-row .custom-select-wrap { width: calc(var(--phone-code-w, 3.4em) + 36px); flex: 0 0 auto; font-size: 14.5px; }
+.fys-page .phone-row .custom-select-btn { padding-left: 10px; padding-right: 10px; gap: 4px; }
 .fys-page .phone-row > input[type=text] { width: 84px; flex: 0 0 84px; }
 .fys-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
 /* The dial-code list names each country after its code, so it opens wider than its trigger. */
 .fys-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
-/* Beside Email in a half-row the code select gives up 16px so the number keeps a usable width. */
-.fys-field-row .phone-row .custom-select-wrap { width: 100px; flex: 0 0 100px; }
 
 /* Phone owns a full row, so it only has to stack on a genuinely narrow screen — and then only
    because picking "Other" puts a third control (the typed dial code) on the same line. */
@@ -10713,7 +10717,7 @@ body .banner-carousel-container,
      page ran on Geist for body copy and DM Serif Display for headlines, which made it read as a
      separate product rather than as StartupNews.fyi. The serif is gone entirely; emphasis is
      carried by italics and weight in this one family instead. */
-  --pr-sans: "Garnett", Helvetica, Arial, sans-serif;
+  --pr-sans: var(--lead-font), Helvetica, Arial, sans-serif;
 
   /* The site's 1200px column — the same box .mvp-main-box gives every other page, and exactly
      the width of the header above (measured: 360–1560 at 1920). This page used to span the full
@@ -11594,13 +11598,13 @@ body .banner-carousel-container,
 /* The code select, the "Other" code box and the number share one line. The two fixed widths stop a
    3-digit dial code from taking a third of the field away from the number. */
 .pr-page .phone-row { display: flex; align-items: flex-end; gap: 14px; }
-.pr-page .phone-row .custom-select-wrap { width: 118px; flex: 0 0 118px; }
+/* The code box is sized to the code it shows (`--phone-code-w`, set by PhoneField) instead of a
+   fixed width wide enough for the longest code, and its trigger drops the full-field side padding. */
+.pr-page .phone-row .custom-select-wrap { width: calc(var(--phone-code-w, 3.4em) + 24px); flex: 0 0 auto; font-size: 15px; }
 .pr-page .phone-row > input[type=text] { width: 86px; flex: 0 0 86px; }
 .pr-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
 /* The dial-code list names each country after its code, so it opens wider than its trigger. */
 .pr-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
-/* Beside Email in a half-row the code select gives up 14px so the number keeps a usable width. */
-.pr-field-row .phone-row .custom-select-wrap { width: 104px; flex: 0 0 104px; }
 
 /* Only on a genuinely narrow screen, and then only because picking "Other" puts a third control on
    the line — Phone already owns a full row, so it has the width everywhere else. */
@@ -11926,7 +11930,7 @@ body .banner-carousel-container,
      page used to set its headings in Playfair Display; that webfont was dropped on request so the
      page reads as part of the site, and the editorial voice it was carrying now comes from italics
      on the emphasised phrases instead. */
-  --fr-sans: "Garnett", Helvetica, Arial, sans-serif;
+  --fr-sans: var(--lead-font), Helvetica, Arial, sans-serif;
   --fr-ink: #16131A;
   --fr-ink-soft: #302B33;
   --fr-muted: #6B6670;
@@ -12551,14 +12555,14 @@ body .banner-carousel-container,
   fill: #fff;
   font-size: 15px;
   font-weight: 700;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--fr-sans);
 }
 
 .fr-network-label {
   fill: var(--fr-ink);
   font-size: 13px;
   font-weight: 700;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--fr-sans);
 }
 
 .fr-network-spark { fill: var(--fr-accent); }
@@ -12942,13 +12946,13 @@ body .banner-carousel-container,
 /* The code select, the "Other" code box and the number share one line. The two fixed widths stop a
    3-digit dial code from taking a third of the field away from the number. */
 .fr-page .phone-row { display: flex; align-items: flex-end; gap: 14px; }
-.fr-page .phone-row .custom-select-wrap { width: 118px; flex: 0 0 118px; }
+/* The code box is sized to the code it shows (`--phone-code-w`, set by PhoneField) instead of a
+   fixed width wide enough for the longest code, and its trigger drops the full-field side padding. */
+.fr-page .phone-row .custom-select-wrap { width: calc(var(--phone-code-w, 3.4em) + 24px); flex: 0 0 auto; font-size: 15px; }
 .fr-page .phone-row > input[type=text] { width: 86px; flex: 0 0 86px; }
 .fr-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
 /* The dial-code list names each country after its code, so it opens wider than its trigger. */
 .fr-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
-/* Beside Email in a half-row the code select gives up 14px so the number keeps a usable width. */
-.fr-field-row .phone-row .custom-select-wrap { width: 104px; flex: 0 0 104px; }
 
 /* Only on a genuinely narrow screen, and then only because picking "Other" puts a third control on
    the line. Phone already owns a full row, so it has the width everywhere else. */

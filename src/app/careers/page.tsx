@@ -6,11 +6,6 @@ import { Reveal, StatsSection } from "@/components/marketing/Reveal";
 
 const SITE_FONT_FAMILY = '"Garnett", Helvetica, Arial, sans-serif';
 
-const CAREERS_EMAIL = "office@startupnews.fyi";
-const MAILTO_HREF = `mailto:${CAREERS_EMAIL}?subject=${encodeURIComponent(
-  "Career Application – StartupNews.fyi"
-)}`;
-
 const VALUES = [
   {
     label: "SPEED",
@@ -94,20 +89,6 @@ export default function CareersPage() {
               technology news. If you want your work to ship fast and reach real readers, we&apos;d love
               to hear from you.
             </p>
-            <div className="flex flex-wrap gap-3.5 pt-2">
-              <a
-                href="#open-roles"
-                className="bg-cr-pink hover:bg-cr-pink-deep !text-white text-[15px] font-bold px-8 py-[15px] rounded-full transition-colors"
-              >
-                View Open Roles
-              </a>
-              <a
-                href={MAILTO_HREF}
-                className="border-[1.5px] border-cr-ink text-cr-ink text-[15px] font-bold px-8 py-[15px] rounded-full transition-colors hover:bg-cr-ink hover:text-white"
-              >
-                Send Your Resume
-              </a>
-            </div>
           </Reveal>
         </section>
 
@@ -194,12 +175,6 @@ export default function CareersPage() {
               We&apos;re a small team and we hire when we find the right person, not on a fixed
               calendar. If you think you&apos;d be a great fit, we&apos;d still love to hear from you.
             </p>
-            <a
-              href={MAILTO_HREF}
-              className="inline-block mt-7 bg-cr-pink hover:bg-cr-pink-deep !text-white text-[15px] font-bold px-8 py-[15px] rounded-full transition-colors"
-            >
-              Email Us Your Resume
-            </a>
           </Reveal>
         </section>
 
@@ -217,12 +192,6 @@ export default function CareersPage() {
             </p>
           </Reveal>
           <Reveal delay={200} className="flex flex-wrap justify-center gap-3.5 pt-8">
-            <a
-              href={MAILTO_HREF}
-              className="bg-cr-pink hover:bg-cr-pink-deep !text-white text-[15px] font-bold px-8 py-[15px] rounded-full transition-colors"
-            >
-              Email {CAREERS_EMAIL}
-            </a>
             <Link
               href="/contact-us"
               className="border-[1.5px] border-white text-white text-[15px] font-bold px-8 py-[15px] rounded-full transition-colors hover:bg-white hover:text-cr-ink"

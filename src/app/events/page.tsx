@@ -96,9 +96,10 @@ function groupByCountry(eventsByRegion: Record<string, StartupEvent[]>): Record<
   return Object.fromEntries(orderedEntries);
 }
 
-/** Public folder of the round (1x1) flag SVGs, keyed by lower-case ISO alpha-2 (`in.svg`). Only the
- * countries that had events on 2026-10-06 are uploaded so far; a missing file falls back to the
- * country's initials inside the circle (EventsCountryStrip). */
+/** Public folder of the round (1x1) flag SVGs, keyed by lower-case ISO alpha-2 (`in.svg`). Every
+ * country in COUNTRY_ISO2 / NON_SOVEREIGN_ISO2 has a file (200 flags, flag-icons 7.5.0, uploaded
+ * 2026-10-07); an unrecognised country falls back to its initials inside the circle
+ * (EventsCountryStrip). */
 const FLAG_BASE_URL = [
   (process.env.S3_IMAGE_BASE_URL || "https://startupnews-media-2026.s3.us-east-1.amazonaws.com").replace(/\/$/, ""),
   (process.env.S3_UPLOAD_PREFIX || "startupnews-in").replace(/^\/|\/$/g, ""),
@@ -183,7 +184,10 @@ export default async function EventsPage() {
                   title="Events"
                   subtitle="Discover startup and technology events by region."
                 >
-                  <EventsByCountryList eventsByCountry={eventsByCountry} />
+                  <EventsByCountryList
+                    eventsByCountry={eventsByCountry}
+                    flags={Object.fromEntries(countryCircles.map((c) => [c.name, c.flagUrl]))}
+                  />
                 </EventsSearchBar>
               </div>
             </div>

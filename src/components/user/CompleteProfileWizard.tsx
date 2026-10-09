@@ -9,6 +9,7 @@ import { RiLinkedinBoxFill } from '@remixicon/react';
 import { COUNTRIES } from '@/constants/countries';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { COUNTRY_CODE_OPTIONS, PHONE_RULES } from '@/components/ui/constants/phone';
+import { phoneCodeTextWidth } from '@/components/ui/PhoneField';
 import {
   REGISTRATION_CATEGORIES, INVESTOR_TYPES, CHECK_SIZES, STAGE_FOCUS, ENTITY_TYPES,
   STARTUP_STAGES, TEAM_SIZES, REVENUE_STATUSES, ROUND_TYPES,
@@ -134,7 +135,11 @@ function PhoneInput({ code, number, invalid, onChangeCode, onChangeNumber, onBlu
   const rule = PHONE_RULES[code] || PHONE_RULES.other;
   return (
     <div className="flex gap-2">
-      <div className={`w-[112px] shrink-0 ${SELECT_SKIN} ${CODE_SKIN}`}>
+      {/* Sized to the code it shows rather than one fixed width for the longest code. */}
+      <div
+        className={`shrink-0 text-[15px] font-medium ${SELECT_SKIN} ${CODE_SKIN}`}
+        style={{ width: `calc(${phoneCodeTextWidth(PHONE_CODE_OPTIONS.find((o) => o.value === code)?.label ?? "")} + 46px)` }}
+      >
         <CustomSelect ariaLabel="Country Code" options={PHONE_CODE_OPTIONS} value={code} onChange={onChangeCode} onBlurValidate={onBlur} />
       </div>
       <input

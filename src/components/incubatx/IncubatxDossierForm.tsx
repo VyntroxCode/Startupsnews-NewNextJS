@@ -187,7 +187,9 @@ export function IncubatxDossierForm() {
 
         /* Phone field */
         .incubatx-page .phone-row { display: flex; gap: 8px; }
-        .incubatx-page .phone-row .custom-select-wrap { flex-shrink: 0; width: 112px; }
+        /* Sized to the code it shows (--phone-code-w, set by PhoneField), not a fixed width. */
+        .incubatx-page .phone-row .custom-select-wrap { flex-shrink: 0; width: calc(var(--phone-code-w, 3.4em) + 38px); font-size: 14px; }
+        .incubatx-page .phone-row .custom-select-btn { padding-left: 10px; padding-right: 10px; gap: 4px; }
         .incubatx-page .phone-row > input { flex: 1; min-width: 0; }
 
         /* Repeatable lists (founders / linkedin use the generic default classes; speakers on

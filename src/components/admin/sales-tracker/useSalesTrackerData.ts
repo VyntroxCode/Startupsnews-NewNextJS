@@ -59,8 +59,8 @@ export function useSalesTrackerData() {
     setEnsEnquiries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
   }
 
-  async function saveLead(lead: SalesLead): Promise<SalesLead> {
-    const saved = await salesTrackerApi.saveLead(lead);
+  async function saveLead(lead: SalesLead, adminNote = ''): Promise<SalesLead> {
+    const saved = await salesTrackerApi.saveLead(lead, adminNote);
     setLeads((prev) => (lead.id && prev.some((l) => l.id === lead.id) ? prev.map((l) => (l.id === lead.id ? saved : l)) : [...prev, saved]));
     return saved;
   }

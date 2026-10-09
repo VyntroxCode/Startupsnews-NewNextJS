@@ -2,8 +2,9 @@ import { query, queryOne } from '@/shared/database/connection';
 import type { EnsTravelEnquiryAdminInput, EnsTravelEnquiryEntity, EnsTravelEnquiryInput } from '../domain/types';
 
 /** Table: ens_travel_enquiries (scripts/migrations/add-ens-travel-enquiries-table.sql, plus the
- * lead_status / conversation_note columns from add-ens-lead-status.sql and the referred_by /
- * found_us / found_us_detail columns from add-ens-referral-source.sql). */
+ * lead_status / conversation_note columns from add-ens-lead-status.sql, the referred_by /
+ * found_us / found_us_detail columns from add-ens-referral-source.sql and next_follow_up_date from
+ * add-next-follow-up-dates.sql). */
 export class EnsTravelEnquiriesRepository {
   async findAll(): Promise<EnsTravelEnquiryEntity[]> {
     return query<EnsTravelEnquiryEntity>('SELECT * FROM ens_travel_enquiries ORDER BY created_at DESC');
@@ -34,7 +35,7 @@ export class EnsTravelEnquiriesRepository {
       `UPDATE ens_travel_enquiries
           SET name = ?, email = ?, contact = ?, city = ?, country = ?, participation = ?, requirement = ?,
               referred_by = ?, found_us = ?, found_us_detail = ?,
-              lead_status = ?, conversation_note = ?,
+              lead_status = ?, conversation_note = ?, next_follow_up_date = ?,
               updated_at = CURRENT_TIMESTAMP, updated_by = ?
         WHERE id = ?`,
       [
@@ -50,6 +51,7 @@ export class EnsTravelEnquiriesRepository {
         input.foundUsDetail || null,
         input.leadStatus,
         input.conversationNote || null,
+        input.nextFollowUpDate || null,
         updatedBy || null,
         id,
       ]

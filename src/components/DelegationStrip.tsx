@@ -51,8 +51,9 @@ function Group() {
  * The announcement strip at the very top of the home page: the 12th Indian Startup Delegation to
  * Dubai, running left to right, with a standing "Participate Now" button into /expand-north-star.
  *
- * Styled from the Expand North Star palette (magenta ground, lime CTA, heavy uppercase) so the
- * strip and the page it leads to read as one piece — see expand-north-star.css.
+ * The ground is the StartupNews logo red (#E72263), so the strip matches the logo sitting right
+ * under it; the lime CTA and heavy uppercase come from the Expand North Star palette — see
+ * expand-north-star.css.
  *
  * The motion is pure CSS: the track holds two identical groups and slides from -50% (one whole
  * group left) to 0, so the seam is never visible. It pauses on hover and stands still under

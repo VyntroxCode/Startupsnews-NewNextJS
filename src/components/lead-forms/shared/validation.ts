@@ -1,8 +1,6 @@
 import { PHONE_RULES } from "@/components/ui/constants/phone";
-import { OTHER_CITY_VALUE } from "@/components/submit-event/constants";
 import {
   hasValidCustomCode,
-  resolveCity,
   resolveCountry,
   resolvePhoneCode,
   type LocationParts,
@@ -64,17 +62,18 @@ export function validateWebsite(data: LeadFormData): string {
   return "";
 }
 
-/** Country and city are required on every lead page — the Sales Tracker's Country/City columns
- * were arriving empty too often to route a lead. Both read the RESOLVED value, so picking
- * "Others (Manually Fill)" and leaving the box blank still counts as missing. */
+/** Country is required on every lead page — the Sales Tracker's Country column was arriving empty
+ * too often to route a lead. City was required too until 2026-10-08; it is now optional. */
 export function validateCountry(data: LocationParts): string {
   return resolveCountry(data) ? "" : "Please select your country.";
 }
 
 export function validateCity(data: LocationParts): string {
-  if (resolveCity(data)) return "";
-  if (!data.country) return "Please select your country first, then your city.";
-  return data.city === OTHER_CITY_VALUE ? "Please type your city name." : "Please select your city.";
+  // City is typed, not picked, on every lead page (CountryCityFields' `cityAsText`) and, since
+  // 2026-10-08, optional. Kept as a validator so the step maps and the forms' wiring stay as they
+  // are; only Country is required now.
+  void data;
+  return "";
 }
 
 export function validatePdfFile(data: LeadFormData): string {

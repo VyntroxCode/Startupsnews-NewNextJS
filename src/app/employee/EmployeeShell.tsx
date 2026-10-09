@@ -8,6 +8,7 @@ import { Contact, ReceiptText } from 'lucide-react';
 import { getEmployeeUser, clearEmployeeSession, getEmployeeAuthHeaders, setEmployeeSession, getEmployeeToken, type EmployeeUser } from '@/lib/employee-auth';
 import ProfileProgressStrip from '@/components/admin/ProfileProgressStrip';
 import PendingLeadsAlarm from '@/components/employee/PendingLeadsAlarm';
+import NewLeadReplyToast from '@/components/employee/NewLeadReplyToast';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { canEmployeeUseDirectory } from '@/modules/contacts/domain/directory-access';
 // Scoped Tailwind utilities for the employee frame and its self-service widgets — see that file's header.
@@ -345,6 +346,15 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
       </main>
       {/* 11 AM / 4 PM IST ringtone + toast while any assigned lead is still Pending. */}
       {!alumni && <PendingLeadsAlarm employeeCode={user.employeeCode} />}
+      {/* Silent pop-up when an admin replies on one of this employee's leads. */}
+      {!alumni && (
+        <NewLeadReplyToast
+          endpoint="/api/employee/leads/unread-replies"
+          getHeaders={getEmployeeAuthHeaders}
+          leadsHref="/employee/leads"
+          storageKey={`emp_lead_reply_announced:${user.employeeCode}`}
+        />
+      )}
 
       {/* Phone: bottom tab bar — daily pages one tap away, "More" opens the drawer. */}
       {bottomTabs.length > 0 && (

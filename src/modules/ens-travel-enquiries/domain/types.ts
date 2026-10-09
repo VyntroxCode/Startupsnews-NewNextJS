@@ -30,6 +30,10 @@ export interface EnsTravelEnquiry {
   /** What the last conversation led to. Only kept while `leadStatus` is "confirmed" or "followed-up"; empty
    * otherwise. */
   conversationNote: string;
+  /** The admin's next follow-up date for this enquiry (YYYY-MM-DD). Compulsory on an admin save
+   * while the enquiry is open (no status / "followed-up"); '' on arrival and once it is closed is
+   * allowed. See lead-followups/domain/follow-up-date.ts. */
+  nextFollowUpDate: string;
   /** When the visitor submitted, as the DB returns it ("2026-09-17 11:30:00", IST pool timezone). */
   createdAt: string;
   /** When an admin last edited it in the Sales Tracker; null if never edited. */
@@ -46,7 +50,7 @@ export type EnsTravelEnquiryInput = Pick<
 
 /** What an admin saves from the Sales Tracker's edit dialog: the visitor's fields plus the team's
  * own conversation record, which the public form never sends. */
-export type EnsTravelEnquiryAdminInput = EnsTravelEnquiryInput & Pick<EnsTravelEnquiry, 'leadStatus' | 'conversationNote'>;
+export type EnsTravelEnquiryAdminInput = EnsTravelEnquiryInput & Pick<EnsTravelEnquiry, 'leadStatus' | 'conversationNote' | 'nextFollowUpDate'>;
 
 export interface EnsTravelEnquiryEntity {
   id: string;
@@ -62,6 +66,7 @@ export interface EnsTravelEnquiryEntity {
   found_us_detail: string | null;
   lead_status: string | null;
   conversation_note: string | null;
+  next_follow_up_date: string | null;
   created_at: string | Date;
   updated_at: string | Date | null;
   updated_by: string | null;

@@ -91,14 +91,11 @@ function fmtTime(d?: string) {
 	return fmt(d);
 }
 
+const PAGE_SIZE = 50;
+
 export default function RegisteredUsersPage() {
 	const [users, setUsers] = useState<RegisteredUser[]>([]);
-	const [pagination, setPagination] = useState<Pagination>({
-		page: 1,
-		limit: 20,
-		total: 0,
-		totalPages: 0,
-	});
+	const [page, setPage] = useState(1);
 	const [search, setSearch] = useState("");
 	const [filter, setFilter] = useState<"all" | "email" | "google">("all");
 	const [categoryFilter, setCategoryFilter] = useState("");
@@ -113,30 +110,45 @@ export default function RegisteredUsersPage() {
 		activeToday: 0,
 	});
 
-	const fetchUsers = useCallback(async (page = 1) => {
+	// Loads every user (100 per request) so search, filters, paging and the
+	// CSV export all work on the full list rather than one server page.
+	const fetchUsers = useCallback(async () => {
 		setLoading(true);
 		try {
-			const params = new URLSearchParams({ page: String(page), limit: "50" });
-			const res = await fetch(`/api/admin/registered-users?${params}`);
-			const d = (await res.json()) as {
-				success: boolean;
-				data: RegisteredUser[];
-				pagination: Pagination;
-				stats: Stats;
-			};
-			if (d.success) {
-				setUsers(d.data);
-				setPagination(d.pagination);
-				setStats(d.stats);
+			const all: RegisteredUser[] = [];
+			const seen = new Set<number>();
+			let totalPages = 1;
+			for (let p = 1; p <= totalPages; p++) {
+				const params = new URLSearchParams({ page: String(p), limit: "100" });
+				const res = await fetch(`/api/admin/registered-users?${params}`);
+				const d = (await res.json()) as {
+					success: boolean;
+					data: RegisteredUser[];
+					pagination: Pagination;
+					stats: Stats;
+				};
+				if (!d.success) return;
+				totalPages = d.pagination.totalPages;
+				if (p === 1) setStats(d.stats);
+				for (const u of d.data) {
+					if (seen.has(u.id)) continue;
+					seen.add(u.id);
+					all.push(u);
+				}
 			}
+			setUsers(all);
 		} finally {
 			setLoading(false);
 		}
 	}, []);
 
 	useEffect(() => {
-		fetchUsers(1);
+		fetchUsers();
 	}, [fetchUsers]);
+
+	useEffect(() => {
+		setPage(1);
+	}, [search, filter, categoryFilter, countryFilter, newsletterFilter, subscribedFilter]);
 
 	const countryOptions = Array.from(
 		new Set(users.map((u) => u.country).filter((c): c is string => !!c)),
@@ -153,7 +165,7 @@ export default function RegisteredUsersPage() {
 		),
 	).sort((a, b) => a.localeCompare(b));
 
-	const filtered = users.filter((u) => {
+	const matchesFilters = (u: RegisteredUser) => {
 		const q = search.toLowerCase();
 		const matchSearch =
 			!q ||
@@ -184,8 +196,16 @@ export default function RegisteredUsersPage() {
 			matchNewsletter &&
 			matchSubscribed
 		);
-	});
+	};
 
+	const filtered = users.filter(matchesFilters);
+	const pagination: Pagination = {
+		page,
+		limit: PAGE_SIZE,
+		total: filtered.length,
+		totalPages: Math.ceil(filtered.length / PAGE_SIZE),
+	};
+	const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
 	const exportCSV = () => {
 		const headers = [
@@ -357,7 +377,7 @@ export default function RegisteredUsersPage() {
 				{[
 					{
 						label: "Total Users",
-						value: pagination.total,
+						value: stats.total,
 						icon: Users,
 						color: "#6366f1",
 						bg: "#eef2ff",
@@ -534,7 +554,7 @@ export default function RegisteredUsersPage() {
 				>
 					{loading
 						? "Loading…"
-						: `Showing ${filtered.length} of ${pagination.total}`}
+						: `Showing ${pageRows.length} of ${filtered.length}`}
 				</div>
 			</div>
 
@@ -631,7 +651,7 @@ export default function RegisteredUsersPage() {
 								</tr>
 							</thead>
 							<tbody>
-								{filtered.map((u, i) => (
+								{pageRows.map((u, i) => (
 									<tr
 										key={u.id}
 										style={{
@@ -987,7 +1007,7 @@ export default function RegisteredUsersPage() {
 					}}
 				>
 					<button
-						onClick={() => fetchUsers(pagination.page - 1)}
+						onClick={() => setPage(pagination.page - 1)}
 						disabled={pagination.page === 1}
 						style={{
 							padding: "8px 16px",
@@ -1011,7 +1031,7 @@ export default function RegisteredUsersPage() {
 						(p) => (
 							<button
 								key={p}
-								onClick={() => fetchUsers(p)}
+								onClick={() => setPage(p)}
 								style={{
 									width: 38,
 									height: 38,
@@ -1031,7 +1051,7 @@ export default function RegisteredUsersPage() {
 					)}
 
 					<button
-						onClick={() => fetchUsers(pagination.page + 1)}
+						onClick={() => setPage(pagination.page + 1)}
 						disabled={pagination.page === pagination.totalPages}
 						style={{
 							padding: "8px 16px",

@@ -7,7 +7,9 @@ import { followUpErrorResponse } from '@/modules/lead-followups/service/http';
 const service = new LeadFollowUpsService(new LeadFollowUpsRepository());
 
 /** GET /api/employee/leads/[source]/[id] — one assigned lead, read-only: everything the visitor
- * submitted, the people on it and every follow-up. 404 unless the caller is assigned to it. */
+ * submitted, the people on it and every follow-up. 404 unless the caller is assigned to it.
+ * Opening the lead is what marks the admin's messages to the caller as seen (the response still
+ * flags them `unread` once, so the drawer can show them as new). */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ source: string; id: string }> }) {
   const auth = await requireEmployeeAuth(request);
   if (auth instanceof NextResponse) return auth;

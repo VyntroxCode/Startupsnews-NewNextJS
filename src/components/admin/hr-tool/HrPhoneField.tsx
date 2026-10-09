@@ -49,7 +49,8 @@ const WRAPPER = [
   '[&_label]:mb-[5px] [&_label]:block [&_label]:text-[11.5px] [&_label]:font-semibold [&_label]:text-[#94A3B8]',
   // code picker + number side by side; stacked on narrow screens
   '[&_.phone-row]:flex [&_.phone-row]:gap-2 max-sm:[&_.phone-row]:flex-col',
-  '[&_.phone-row>.custom-select-wrap]:w-[124px] [&_.phone-row>.custom-select-wrap]:shrink-0 max-sm:[&_.phone-row>.custom-select-wrap]:w-full',
+  // sized to the code it shows (--phone-code-w, set by PhoneField) rather than a fixed width
+  '[&_.phone-row>.custom-select-wrap]:w-[calc(var(--phone-code-w,3.4em)+38px)] [&_.phone-row>.custom-select-wrap]:text-[13px] [&_.phone-row>.custom-select-wrap]:shrink-0 max-sm:[&_.phone-row>.custom-select-wrap]:w-full',
   '[&_.phone-row>input[type=text]]:w-20! [&_.phone-row>input[type=text]]:shrink-0',
   '[&_.custom-select-wrap]:relative',
   // the picker's box (a div around a search input)

@@ -38,7 +38,7 @@
   --sp-violet: #7C6CF2;
 
   /* The site font, same stack <body> and /feature-your-startup use. */
-  --sp-sans: "Garnett", Helvetica, Arial, sans-serif;
+  --sp-sans: var(--lead-font), Helvetica, Arial, sans-serif;
   --sp-display: var(--sp-sans);
   --sp-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --sp-gutter: clamp(20px, 4vw, 48px);
@@ -1874,7 +1874,7 @@
 
 .sp-step .sp-group-label:first-of-type { margin-top: 0; }
 
-.sp-slug-preview { display: block; margin-top: 4px; font-family: monospace; font-size: 11.5px; color: var(--sp-muted); }
+.sp-slug-preview { display: block; margin-top: 4px; font-family: inherit; font-size: 11.5px; color: var(--sp-muted); }
 
 /* ---- Fields ---------------------------------------------------------------- */
 
@@ -2034,13 +2034,14 @@
 .sp-page .custom-select-list li.filtered-out { display: none; }
 
 .sp-page .phone-row { display: flex; gap: 12px; }
-.sp-page .phone-row .custom-select-wrap { flex: 0 0 122px; width: 122px; }
+/* The code box is sized to the code it shows (`--phone-code-w`, set by PhoneField) instead of a
+   fixed width wide enough for the longest code, and its trigger drops the full-field side padding. */
+.sp-page .phone-row .custom-select-wrap { width: calc(var(--phone-code-w, 3.4em) + 36px); flex: 0 0 auto; font-size: 15.5px; }
+.sp-page .phone-row .custom-select-btn { padding-left: 10px; padding-right: 10px; gap: 4px; }
 .sp-page .phone-row > input[type=text] { flex: 0 0 88px; width: 88px; }
 .sp-page .phone-row input[type=tel] { flex: 1; min-width: 0; }
 /* The dial-code list names each country after its code, so it opens wider than its trigger. */
 .sp-page .phone-row .custom-select-list { right: auto; min-width: 260px; }
-/* Beside Email in a half-row the code select gives up 18px so the number keeps a usable width. */
-.sp-field-row .phone-row .custom-select-wrap { flex: 0 0 104px; width: 104px; }
 
 @media (max-width: 560px) {
   .sp-page .field-row { grid-template-columns: minmax(0, 1fr); }

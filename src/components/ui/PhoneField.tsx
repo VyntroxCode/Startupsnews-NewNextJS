@@ -21,6 +21,28 @@ const PHONE_CODE_OPTIONS = COUNTRY_CODE_OPTIONS.map((c) => ({
 }));
 const PUBLIC_PHONE_CODE_OPTIONS = PHONE_CODE_OPTIONS.filter((o) => o.value !== "other");
 
+/** Rough advance width of one character, in em, for the sans faces the forms use. */
+function glyphEm(ch: string): number {
+  if (ch === " ") return 0.28;
+  if (ch === "+") return 0.6;
+  if (/\d/.test(ch)) return 0.57;
+  if (ch === "I") return 0.3;
+  if (ch === "J") return 0.52;
+  if (ch === "M") return 0.86;
+  if (ch === "W") return 0.96;
+  return /[A-Z]/.test(ch) ? 0.72 : 0.56;
+}
+
+/** How wide a code label ("IN +91", "JM +1876") is as text, as an em length. Every form used to
+ * give the code box one fixed width, big enough for the longest code, so the usual 2-3 digit code
+ * sat in a box nearly twice its size. The box is now sized to the code it actually shows: each
+ * page's CSS adds its own trigger padding and caret to this value (`--phone-code-w`). */
+export function phoneCodeTextWidth(label: string): string {
+  let em = 0;
+  for (const ch of label) em += glyphEm(ch);
+  return `${(em * 1.06 + 0.15).toFixed(2)}em`;
+}
+
 interface PhoneFieldProps {
   /** Distinguishes this field's DOM ids when more than one PhoneField could ever appear on a
    * page. Defaults to "organizer-phone" so /submit-event's existing ids are unchanged. */
@@ -59,11 +81,15 @@ export function PhoneField({
   const rule = PHONE_RULES[effectiveCode] || PHONE_RULES.other;
   const numberId = `f-${id}-number`;
   const errorId = `err-${id}`;
+  const codeLabel = PHONE_CODE_OPTIONS.find((o) => o.value === phoneCode)?.label ?? "";
 
   return (
     <div className={"field" + (error ? " has-error" : "")} id={`field-${id}`}>
       <label htmlFor={numberId}>{label}{required ? " *" : ""}</label>
-      <div className="phone-row">
+      <div
+        className="phone-row"
+        style={{ "--phone-code-w": phoneCodeTextWidth(codeLabel) } as React.CSSProperties}
+      >
         <CustomSelect
           options={allowOtherCode ? PHONE_CODE_OPTIONS : PUBLIC_PHONE_CODE_OPTIONS}
           value={phoneCode}

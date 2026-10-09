@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { leadPageFont } from "@/lib/lead-page-font";
 import { useFundingRoundForm } from "./useFundingRoundForm";
 import {
   validateCity,
@@ -142,7 +143,7 @@ export function FundingRoundPage({ promotedCities }: { promotedCities?: Record<s
   }, [ctrl.data]);
 
   return (
-    <div className="fr-page">
+    <div className={`fr-page ${leadPageFont.variable}`}>
       <FundingHero />
       <RoundMarquee />
       <FundingStory />

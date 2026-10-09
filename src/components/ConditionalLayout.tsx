@@ -8,6 +8,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BannerCarouselClient } from "@/components/BannerCarouselClient";
 import { DelegationStrip } from "@/components/DelegationStrip";
+import { SamePageReload } from "@/components/SamePageReload";
 import type { Banner } from "@/modules/banners/domain/types";
 
 /** Event landing pages that bring their own top bar, plus the full-screen reader /login page. They render without the site header, the
@@ -56,6 +57,8 @@ export default function ConditionalLayout({
   // For frontend routes, render the full layout with Header, Footer, etc.
   return (
     <FlyMenuProvider>
+      {/* Clicking a link to the page you're already on (logo on home, "Events" on /events) reloads it. */}
+      <SamePageReload />
       <FlyMenu />
       <div id="mvp-site" className="left relative">
         <div id="mvp-site-wall" className="left relative">

@@ -14,6 +14,7 @@ import AuthModal from "@/components/AuthModal";
 import InstallPWA from "@/components/InstallPWA";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { ScrollButtons } from "@/components/ScrollButtons";
+import { DatePickerOnClick } from "@/components/DatePickerOnClick";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { BannersService } from "@/modules/banners/service/banners.service";
 import { BannersRepository } from "@/modules/banners/repository/banners.repository";
@@ -267,6 +268,7 @@ export default async function RootLayout({
             #mvp-site-main's z-index:9999 stacking context, and before AuthModal so the login
             popup still covers it. */}
         <ScrollButtons />
+        <DatePickerOnClick />
         <InstallPWA />
         <AuthModal />
         <ServiceWorkerRegister />

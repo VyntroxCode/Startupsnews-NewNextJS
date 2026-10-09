@@ -27,9 +27,9 @@ function CountryItem({ country, duplicate }: { country: CountryCircle; duplicate
         href={`#${countrySectionId(country.name)}`}
         onClick={(e) => scrollToCountry(e, country.name)}
         tabIndex={duplicate ? -1 : undefined}
-        className="group flex w-24 flex-col items-center gap-2 no-underline sm:w-32"
+        className="group flex w-16 flex-col items-center gap-1.5 no-underline sm:w-20"
       >
-        <span className="relative flex size-20 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-sm font-semibold uppercase text-neutral-600 shadow-sm ring-1 ring-black/10 transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-2 group-hover:ring-[#E62E69] sm:size-28">
+        <span className="relative flex size-12 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-xs font-semibold uppercase text-neutral-600 shadow-sm ring-1 ring-black/10 transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-2 group-hover:ring-[#E62E69] sm:size-14">
           {/* Initials sit under the flag and only show if the flag has no file in S3 yet. */}
           {country.iso || country.name.slice(0, 2)}
           {country.flagUrl && (
@@ -43,7 +43,7 @@ function CountryItem({ country, duplicate }: { country: CountryCircle; duplicate
             />
           )}
         </span>
-        <span className="text-center text-sm font-medium leading-tight text-neutral-800 group-hover:text-[#E62E69]">
+        <span className="text-center text-xs font-medium leading-tight text-neutral-800 sm:text-sm group-hover:text-[#E62E69]">
           {country.name}
         </span>
       </a>
@@ -73,7 +73,7 @@ function MarqueeRow({ countries, direction }: { countries: CountryCircle[]; dire
     return () => observer.disconnect();
   }, [countries]);
 
-  const listClass = "m-0 flex shrink-0 list-none gap-4 p-0 pr-4 sm:gap-6 sm:pr-6";
+  const listClass = "m-0 flex shrink-0 list-none gap-3 p-0 pr-3 sm:gap-4 sm:pr-4";
 
   return (
     <div
@@ -111,7 +111,7 @@ function MarqueeRow({ countries, direction }: { countries: CountryCircle[]; dire
 
 /**
  * "Explore by Country" on /events, just below the breadcrumb: every country A–Z in one row sliding
- * left → right (busy and quiet countries were two rows until 2026-10-06). Online and Cohort get no
+ * right → left (busy and quiet countries were two rows until 2026-10-06). Online and Cohort get no
  * circle. Clicking a circle scrolls to that country's section in EventsByCountryList.
  */
 export function EventsCountryStrip({ countries }: { countries: CountryCircle[] }) {
@@ -121,7 +121,7 @@ export function EventsCountryStrip({ countries }: { countries: CountryCircle[] }
       <h2 id="explore-by-country-heading" className="mb-5 text-2xl font-bold text-neutral-900">
         Explore by Country
       </h2>
-      <MarqueeRow countries={countries} direction="ltr" />
+      <MarqueeRow countries={countries} direction="rtl" />
     </section>
   );
 }

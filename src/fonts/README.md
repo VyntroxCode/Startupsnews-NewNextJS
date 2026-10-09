@@ -13,11 +13,11 @@ so one file covers every weight in its range.
 
 | File | Family | Weights | Used by |
 |---|---|---|---|
-| cairo-latin-var.woff2 | Cairo | 200–1000 | `src/app/expand-north-star/page.tsx` |
-| montserrat-latin-var.woff2 | Montserrat | 100–900 | `src/app/expand-north-star/page.tsx` |
+| cairo-latin-var.woff2 | Cairo | 200–1000 | unused since 2026-10-08 (was `/expand-north-star`) |
+| montserrat-latin-var.woff2 | Montserrat | 100–900 | unused since 2026-10-08 (was `/expand-north-star`) |
 | schibsted-grotesk-latin-var.woff2 | Schibsted Grotesk | 400–900 | `src/app/dashboard/layout.tsx` |
 | space-grotesk-latin-var.woff2 | Space Grotesk | 300–700 | `src/app/(admin)/admin/partnership-tracker/page.tsx`, `src/app/dashboard/funding/layout.tsx` |
-| inter-latin-var.woff2 | Inter | 100–900 | `src/app/(admin)/admin/partnership-tracker/page.tsx` |
+| inter-latin-var.woff2 | Inter | 100–900 | `src/app/(admin)/admin/partnership-tracker/page.tsx`, `src/lib/lead-page-font.ts` (the six Sales Tracker lead pages) |
 | jetbrains-mono-latin-var.woff2 | JetBrains Mono | 100–800 | `src/app/(admin)/admin/partnership-tracker/page.tsx` |
 | fraunces-latin-var.woff2 | Fraunces (roman; opsz, SOFT, WONK axes) | 100–900 | `src/modules/content-studio/components/shell/fonts.ts` |
 | fraunces-italic-latin-var.woff2 | Fraunces (italic; opsz, SOFT, WONK axes) | 100–900 | `src/modules/content-studio/components/shell/fonts.ts` |

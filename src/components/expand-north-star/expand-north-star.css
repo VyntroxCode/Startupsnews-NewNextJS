@@ -5,8 +5,9 @@
    documented there. Imported by that component (not globals.css) and scoped under .ens-page so it
    can never leak into another page.
 
-   Built from the event's reference screenshots: Cairo (loaded in the route, exposed as
-   --ens-font; Montserrat as --ens-strip-font for the delegation pieces), magenta as the accent, lime as the second CTA colour, heavy uppercase headlines, big
+   Built from the event's reference screenshots: Inter (--ens-sans, from lib/lead-page-font.ts — the same face as
+   every other page that feeds the Sales Tracker; Cairo and Montserrat were dropped on 2026-10-08,
+   so the "measured in Cairo/Montserrat" notes below describe the old faces), magenta as the accent, lime as the second CTA colour, heavy uppercase headlines, big
    rounded cards and slow-drifting colour washes. Grounds run full width with a 1200px content
    column; motion habits as /sponsor-event and /feature-your-startup.
 
@@ -24,7 +25,7 @@
   --ens-graphite: #505054;
   --ens-soft: #F4F4F5;
 
-  --ens-sans: var(--ens-font, "Cairo"), "Garnett", Helvetica, Arial, sans-serif;
+  --ens-sans: var(--lead-font), Helvetica, Arial, sans-serif;
   --ens-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ens-gutter: clamp(18px, 4vw, 48px);
   /* Content column width; every one-line heading sizes itself to this, not the viewport. */
@@ -296,16 +297,15 @@
    soft warm shadow) give the letters an edge against the light pink; `text-shadow` can't be used,
    because it paints through transparent-filled text and would muddy the gold.
 
-   Montserrat is the page's strip face (--ens-strip-font, 900 loaded). Qualified with `.ens-nav`
-   because the element is a <p>, and `.ens-page p { font-family: inherit }` near the top of this
-   file would otherwise outrank a single class and hand it back to Cairo. */
+   Qualified with `.ens-nav` because the element is a <p>, and `.ens-page p { font-family: inherit }`
+   near the top of this file would otherwise outrank a single class. */
 .ens-nav .ens-nav-launchpad {
   flex: none;
   display: flex;
   flex-direction: column;
   margin: 0;
   padding: 0;
-  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-family: var(--ens-sans);
   font-size: clamp(11px, 1.3vw, 19px);
   font-weight: 900;
   line-height: 1.02;
@@ -373,7 +373,7 @@
   border-radius: 999px;
   background: var(--ens-pink);
   color: #fff;
-  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-family: var(--ens-sans);
   font-size: clamp(10px, 0.95vw, 13px);
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -468,7 +468,7 @@
    breaking after "Startup", was tried first but the ask is a single line everywhere). */
 .ens-page .ens-delegation-title {
   margin: 0;
-  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-family: var(--ens-sans);
   font-size: calc(100cqi / 18);
   font-weight: 900;
   line-height: 1.08;
@@ -701,7 +701,7 @@
   border-radius: 999px;
   background: var(--ens-pink);
   color: #fff;
-  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-family: var(--ens-sans);
   font-size: clamp(13px, 1.2vw, 16px);
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -1220,7 +1220,7 @@
   border-radius: clamp(26px, 3vw, 36px);
   background: #F6F6F7;
   color: var(--ens-ink);
-  font-family: var(--ens-strip-font, var(--ens-sans));
+  font-family: var(--ens-sans);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: translate 0.5s var(--ens-ease), box-shadow 0.5s var(--ens-ease);
@@ -2070,7 +2070,9 @@
   padding: 0;
 }
 
-.ens-journey .phone-row .custom-select-wrap { flex: 0 0 116px; width: 116px; }
+/* The code box is sized to the code it shows (`--phone-code-w`, set by PhoneField) instead of a
+   fixed width wide enough for the longest code, and its trigger drops the full-field side padding. */
+.ens-journey .phone-row .custom-select-wrap { width: calc(var(--phone-code-w, 3.4em) + 36px); flex: 0 0 auto; font-size: 15.5px; }
 
 .ens-journey .phone-row .custom-select-btn,
 .ens-journey .phone-row .custom-select-btn:hover,
@@ -2078,7 +2080,8 @@
 .ens-journey .phone-row .custom-select-btn.open {
   height: 100%;
   min-height: 0;
-  padding: 0 12px;
+  padding: 0 10px;
+  gap: 4px;
   border: 0;
   border-right: 1px solid var(--jf-line);
   /* Matches the row's own radius on the left edge only — this is the row's first child, and
@@ -2113,7 +2116,7 @@
 .ens-journey .field .phone-row input[type="tel"] { flex: 1 1 auto; min-width: 0; }
 .ens-journey .field .phone-row > input[type="text"] { flex: 0 0 96px; border-right: 1px solid var(--jf-line); }
 
-/* The trigger is only 116px wide; its list — code and country name — needs more than that to read. */
+/* The trigger is only as wide as its code; its list — code and country name — needs more than that to read. */
 .ens-journey .phone-row .custom-select-list { right: auto; min-width: 260px; }
 
 /* ---- Country / City dropdowns ---- */
@@ -2474,6 +2477,8 @@
   .ens-journey .field input[type="number"],
   .ens-journey .custom-select-btn,
   .ens-journey .phone-row { min-height: 54px; font-size: 16px; }
+  /* Keeps the code box's em-based width in step with the 16px trigger text. */
+  .ens-journey .phone-row .custom-select-wrap { font-size: 16px; }
   /* The requirement box keeps its own taller minimum; it only needs the no-zoom font size. */
   .ens-journey .field textarea { font-size: 16px; }
   .ens-jf-submit { width: 100%; }
@@ -2486,7 +2491,6 @@
      go. So the row stacks only once that box is actually on screen. A browser without `:has()`
      keeps all three on one line, which is tight but usable, rather than breaking the common case
      for everyone. */
-  .ens-journey .phone-row .custom-select-wrap { flex-basis: 104px; width: 104px; }
 
   .ens-journey .phone-row:has(> input[type="text"]) { flex-direction: column; align-items: stretch; }
   .ens-journey .phone-row:has(> input[type="text"]) .custom-select-btn,

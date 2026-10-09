@@ -75,7 +75,7 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page input:hover, .sales-tracker-page select:hover, .sales-tracker-page textarea:hover { border-color: var(--border-hover); }
       .sales-tracker-page input:focus, .sales-tracker-page select:focus, .sales-tracker-page textarea:focus { outline: none; border-color: var(--pink); box-shadow: var(--ring); }
       .sales-tracker-page input.invalid { border-color: var(--danger); box-shadow: 0 0 0 3px #FEE2E2; }
-      .sales-tracker-page input:disabled, .sales-tracker-page input[readonly], .sales-tracker-page select:disabled, .sales-tracker-page textarea:disabled { background: #F1F5F9; color: var(--muted); cursor: not-allowed; }
+      .sales-tracker-page input:disabled, .sales-tracker-page input[readonly], .sales-tracker-page select:disabled, .sales-tracker-page textarea:disabled { background: #E2E8F0; border-color: #B6C2D2; color: #64748B; cursor: not-allowed; opacity: 1; }
       .sales-tracker-page .lock-hint { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; }
       .sales-tracker-page .field-error { align-items: center; gap: 6px; color: var(--danger); font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
       .sales-tracker-page .field-error.visible { display: flex; }
@@ -125,7 +125,7 @@ export default function SalesTrackerStyles() {
       .sales-tracker-page .custom-select-btn .caret { font-size: 10px; color: var(--muted); flex-shrink: 0; transition: transform 0.2s; }
       .sales-tracker-page .custom-select-btn.open .caret { transform: rotate(180deg); }
       .sales-tracker-page .custom-select-btn.is-disabled,
-      .sales-tracker-page .custom-select-btn.is-disabled .cs-input { background: #F1F5F9; color: var(--muted); cursor: not-allowed; }
+      .sales-tracker-page .custom-select-btn.is-disabled .cs-input { background: #E2E8F0; border-color: #B6C2D2; color: #64748B; cursor: not-allowed; }
       .sales-tracker-page .custom-select-btn.is-disabled .caret { opacity: 0.4; }
       /* The searchable trigger's inner input must not draw a second box inside the trigger —
          (0,4,1) beats the generic input and .field.has-error input rules above. */
@@ -154,7 +154,9 @@ export default function SalesTrackerStyles() {
 
       /* Phone: code picker + optional custom code + number on one line. */
       .sales-tracker-page .phone-row { display: flex; gap: 8px; }
-      .sales-tracker-page .phone-row .custom-select-wrap { width: 120px; flex: 0 0 120px; }
+      /* Sized to the code it shows (--phone-code-w, set by PhoneField), not a fixed width. */
+      .sales-tracker-page .phone-row .custom-select-wrap { width: calc(var(--phone-code-w, 3.4em) + 36px); flex: 0 0 auto; font-size: 14px; }
+      .sales-tracker-page .phone-row .custom-select-btn { padding: 0 10px; gap: 4px; }
       .sales-tracker-page .phone-row > input[type=text] { flex: 0 0 80px; max-width: 80px; }
       /* min-width:0 (the flex default) let this shrink to illegibility whenever the Contact field's
          own column got narrow — e.g. squeezed as 1-of-4 in the old, narrower modal. A real floor
@@ -330,7 +332,6 @@ export default function SalesTrackerStyles() {
       }
       @media (max-width: 480px) {
         .sales-tracker-page .phone-row { flex-wrap: wrap; }
-        .sales-tracker-page .phone-row .custom-select-wrap { flex: 0 0 120px; }
         .sales-tracker-page .phone-row input[type=tel] { flex: 1 1 100%; }
       }
     `}</style>

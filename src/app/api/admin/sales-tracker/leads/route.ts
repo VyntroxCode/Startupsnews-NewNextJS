@@ -33,11 +33,12 @@ export async function POST(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const [body, errorResponse] = await parseJsonBody<SalesLead>(request);
+    // `adminNote` is the lead window's Conversation result: not stored on the lead, logged in its history.
+    const [body, errorResponse] = await parseJsonBody<SalesLead & { adminNote?: unknown }>(request);
     if (errorResponse) return errorResponse;
     if (!body) return NextResponse.json({ success: false, error: 'Request body is required' }, { status: 400 });
 
-    const lead = await service.saveLead(body);
+    const lead = await service.saveLeadByAdmin(body, auth.user.name || auth.user.email || '');
     return NextResponse.json({ success: true, data: lead }, { status: 201 });
   } catch (error) {
     console.error('Error saving sales lead:', error);

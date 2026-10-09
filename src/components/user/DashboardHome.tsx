@@ -48,11 +48,6 @@ interface SiteStats {
   totalEvents: number;
 }
 
-interface WeeklyHighlights {
-  fundingReportsThisWeek: number;
-  cityEventsThisWeek: number;
-}
-
 // No dashboard-specific event type — `/api/dashboard/nearby-events` now returns full
 // `StartupEvent` objects (via the same `entityToEvent` transform the public /events page uses),
 // so the real `EventByCountryCard` component can render them directly with the actual poster
@@ -258,10 +253,6 @@ export default function DashboardHome() {
   const [profile, setProfile] = useState<ProfileStatus | null>(null);
   const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
   const [profileFailed, setProfileFailed] = useState(false);
-  // `weekly` stays null when weekly-highlights fails; `weeklySettled` tells "still loading" apart
-  // from "failed", so the summary line can drop the this-week sentence instead of printing 0.
-  const [weekly, setWeekly] = useState<WeeklyHighlights | null>(null);
-  const [weeklySettled, setWeeklySettled] = useState(false);
   const [nearbyEvents, setNearbyEvents] = useState<StartupEvent[] | null>(null);
 
   // Saved-events count is real, dynamic, device-local state — there is no saved-events feature
@@ -270,25 +261,11 @@ export default function DashboardHome() {
   // "Joined" swap) — see the KPI row below.
   const [savedEventsCount] = useState(() => readLocalArray(SAVED_EVENTS_KEY).length);
 
-  // Weekly highlights and nearby events both need the city, so they wait for profile-status to
-  // settle — but they run whether it succeeded or not. Earlier they only ran on success, so any
-  // profile-status failure (e.g. an expired 30-day token on live) printed a hardcoded "0 new
-  // funding reports" and an empty events list instead of the real, public counts.
+  // Nearby events need the city, so they wait for profile-status to settle — but they run
+  // whether it succeeded or not, so a profile-status failure (e.g. an expired 30-day token on
+  // live) still shows the real, public events instead of an empty list.
   const loadCityData = useCallback((city: string | null) => {
     const cityParam = city ? `?city=${encodeURIComponent(city)}` : '';
-    fetch(`/api/dashboard/weekly-highlights${cityParam}`)
-      .then((r) => r.json())
-      .then((wd) => {
-        if (wd?.success) {
-          setWeekly({
-            fundingReportsThisWeek: Number(wd.data.fundingReportsThisWeek) || 0,
-            cityEventsThisWeek: Number(wd.data.cityEventsThisWeek) || 0,
-          });
-        } else setWeekly(null);
-      })
-      .catch(() => setWeekly(null))
-      .finally(() => setWeeklySettled(true));
-
     fetch(`/api/dashboard/nearby-events${cityParam}`)
       .then((r) => r.json())
       .then((ed) => {
@@ -369,7 +346,7 @@ export default function DashboardHome() {
       .catch(() => fallBackToCachedProfile());
   }, [loadCityData]);
 
-  const ready = profile !== null && siteStats !== null && weeklySettled;
+  const ready = profile !== null && siteStats !== null;
   const percent = profile?.percent ?? 0;
   const complete = percent >= 100;
   const shownPercent = useCountUp(percent, profile !== null, !!reduced);
@@ -383,19 +360,6 @@ export default function DashboardHome() {
     return `Add your ${labels.join(' & ')} to unlock personalised picks.`;
   }, [profile, complete]);
 
-  const summaryLine = useMemo(() => {
-    if (!profile || !siteStats) return '';
-    const totals = `You've got ${siteStats.totalReports} reports, ${siteStats.totalEvents} events and a full incubator list waiting. Let's pick up where you left off.`;
-    // weekly-highlights failed — say nothing about this week rather than print a made-up 0.
-    if (!weekly) return totals;
-    const city = profile.user.city;
-    const { fundingReportsThisWeek, cityEventsThisWeek } = weekly;
-    const cityPart = city
-      ? `${fundingReportsThisWeek} new funding ${fundingReportsThisWeek === 1 ? 'report' : 'reports'} and ${cityEventsThisWeek} founder ${cityEventsThisWeek === 1 ? 'event' : 'events'} dropped in ${city} this week.`
-      : `${fundingReportsThisWeek} new funding ${fundingReportsThisWeek === 1 ? 'report' : 'reports'} dropped this week. Add your city to see local founder events too.`;
-    return `${cityPart} ${totals}`;
-  }, [profile, weekly, siteStats]);
-
   const needsLocation = profile !== null && !profileFailed && (!profile.user.city || !profile.user.country);
 
   const onLocationSaved = (country: string, city: string) => {
@@ -407,7 +371,7 @@ export default function DashboardHome() {
 
   const memberSince = monthYear(profile?.user.createdAt ?? null);
 
-  // Both blurbs under the "Welcome back" heading are capped to the heading's own rendered
+  // The profile blurbs under the "Welcome back" heading are capped to the heading's own rendered
   // width (not a fixed ch value) so neither line of copy ever reads wider than the title
   // itself. `titleRef`'s element is `w-fit`, so its content-box width (via ResizeObserver,
   // which ignores the wave emoji's transform animation) is exactly the title's text+emoji
@@ -448,15 +412,6 @@ export default function DashboardHome() {
               👋
             </motion.span>
           </h1>
-
-          {ready ? (
-            <p className="m-0 mt-3 text-[15px] leading-relaxed text-db-muted" style={titleWidthStyle}>{summaryLine}</p>
-          ) : (
-            <div className="mt-3 flex flex-col gap-2">
-              <Skel className="h-5 w-full max-w-[70ch] rounded-md" />
-              <Skel className="h-5 w-2/3 max-w-[50ch] rounded-md" />
-            </div>
-          )}
 
           <div className="my-6 h-px w-full bg-db-line" aria-hidden="true" />
 

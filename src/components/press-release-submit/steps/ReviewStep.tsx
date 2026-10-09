@@ -29,6 +29,7 @@ const FIELDS: Array<{
   { field: "email", label: "Official email", step: 1, validate: validateEmail, fallback: "Not entered yet" },
   { field: "website", label: "Website", step: 2, validate: validateWebsite, fallback: "Not provided" },
   { field: "countryCity", label: "Country / City", step: 2, fallback: "Not entered yet" },
+  { field: "tellUsMore", label: "Tell us more", step: 2, fallback: "Not provided" },
 ];
 
 /** The Country / City row reads back one composed string, but its errors show under the two

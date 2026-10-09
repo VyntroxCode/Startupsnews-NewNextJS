@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { leadPageFont } from "@/lib/lead-page-font";
 import { SpotlightHero } from "./SpotlightHero";
 import { ReachStrip } from "./ReachStrip";
 import { SpotlightStory } from "./SpotlightStory";
@@ -62,7 +63,7 @@ export function FeatureStartupPage({
   }, [ctrl.submitted]);
 
   return (
-    <div className="fys-page">
+    <div className={`fys-page ${leadPageFont.variable}`}>
       <SpotlightHero />
       <ReachStrip />
       <SpotlightStory />

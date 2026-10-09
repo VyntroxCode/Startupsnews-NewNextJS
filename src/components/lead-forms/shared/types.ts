@@ -37,6 +37,9 @@ export interface LeadFormData {
   city: string;
   /** Free-text city, used only while `city` is the "Other (add manually)" sentinel. */
   cityOther: string;
+  /** The optional "Tell us more" box each lead form ends with — free text, never validated beyond
+   * its length cap (TELL_US_MORE_MAX_LENGTH, enforced by the textarea's maxLength and the server). */
+  tellUsMore: string;
   pdfFile: File | null;
 }
 
@@ -61,6 +64,7 @@ export function createInitialLeadFormData(overrides?: Partial<LeadFormData>): Le
     countryOther: "",
     city: "",
     cityOther: "",
+    tellUsMore: "",
     pdfFile: null,
     ...overrides,
   };

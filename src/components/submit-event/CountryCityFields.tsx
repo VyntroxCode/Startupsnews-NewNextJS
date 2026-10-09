@@ -20,6 +20,18 @@ interface CountryCityFieldsProps {
    * on them. Only the admin Sales Tracker's manual Add lead form passes false, so its labels pick
    * up the "(optional)" hint instead of an asterisk. */
   required?: boolean;
+  /** City is a plain text box instead of a dropdown — the visitor types the name. Set by every
+   * public page that feeds the Sales Tracker (Feature Your Startup, Funding Round, Press Release,
+   * Sponsor an Event, Advertise With Us, Expand North Star) and by the admin Sales Tracker lead
+   * window. /list-your-event leaves it off and keeps the curated City list, which /events relies
+   * on for its sections.
+   * The typed name travels the same way a hand-typed "Others" city always has: `city` holds
+   * OTHER_CITY_VALUE and the text is in `cityOther`, so every form's resolveCity is unchanged. */
+  cityAsText?: boolean;
+  /** City may be left empty while Country stays required: its label shows "(optional)" instead
+   * of an asterisk. Set by the same six lead pages as `cityAsText`. Defaults to following
+   * `required`, so /list-your-event (City required) and the admin lead window are unchanged. */
+  cityOptional?: boolean;
   /** Locks both selects — used for an online (virtual) event, which has no venue location. */
   locked?: boolean;
   lockedHint?: string;
@@ -63,6 +75,8 @@ export function CountryCityFields({
   cityError,
   promotedCities,
   required = true,
+  cityAsText = false,
+  cityOptional,
   locked = false,
   lockedHint,
   onChangeCountry,
@@ -83,6 +97,7 @@ export function CountryCityFields({
   // A country we curate no cities for offers nothing but "Other" — same as the admin form, which
   // drops straight into its free-text "Others…" mode rather than showing a one-option dropdown.
   const noCuratedCities = !!country && cities.length === 0;
+  const cityIsRequired = required && !cityOptional;
 
   return (
     <div className="field-row">
@@ -102,6 +117,11 @@ export function CountryCityFields({
             const hasCities = (cityOptionsForCountry(v, promotedCities) ?? []).length > 0;
             onChangeCountry(v);
             onChangeCountryOther("");
+            // A typed city is not tied to the country list, so it is kept when the country changes.
+            if (cityAsText) {
+              if (city !== OTHER_CITY_VALUE) onChangeCity(OTHER_CITY_VALUE);
+              return;
+            }
             onChangeCity(hasCities ? "" : OTHER_CITY_VALUE);
             onChangeCityOther("");
           }}
@@ -118,22 +138,41 @@ export function CountryCityFields({
       </div>
       <div className={"field" + (cityError ? " has-error" : "")} id="field-city">
         <label>
-          City{required ? " *" : ""}
-          {required ? null : <span className="opt"> (optional)</span>}
+          City{cityIsRequired ? " *" : ""}
+          {cityIsRequired ? null : <span className="opt"> (optional)</span>}
         </label>
-        <CustomSelect
-          options={cityOptions}
-          value={city}
-          onChange={(v) => onChangeCity(v)}
-          onBlurValidate={onBlurCity}
-          disabled={locked}
-          placeholder={locked ? "Not applicable" : country ? "Select city" : "Select a country first"}
-          ariaLabel="City"
-        />
-        {!locked && noCuratedCities && city === OTHER_CITY_VALUE ? (
+        {cityAsText ? (
+          <input
+            id="f-city"
+            type="text"
+            placeholder={locked ? "Not applicable" : "Enter city name"}
+            maxLength={120}
+            disabled={locked}
+            value={cityOther}
+            aria-label="City"
+            aria-invalid={!!cityError}
+            aria-describedby={cityError ? "err-city" : undefined}
+            onChange={(e) => {
+              if (city !== OTHER_CITY_VALUE) onChangeCity(OTHER_CITY_VALUE);
+              onChangeCityOther(e.target.value);
+            }}
+            onBlur={onBlurCity}
+          />
+        ) : (
+          <CustomSelect
+            options={cityOptions}
+            value={city}
+            onChange={(v) => onChangeCity(v)}
+            onBlurValidate={onBlurCity}
+            disabled={locked}
+            placeholder={locked ? "Not applicable" : country ? "Select city" : "Select a country first"}
+            ariaLabel="City"
+          />
+        )}
+        {!cityAsText && !locked && noCuratedCities && city === OTHER_CITY_VALUE ? (
           <div className="hint">No listed cities for {country}. Type the city name below.</div>
         ) : null}
-        {!locked && city === OTHER_CITY_VALUE && (
+        {!cityAsText && !locked && city === OTHER_CITY_VALUE && (
           <input
             type="text"
             placeholder="Enter city name"

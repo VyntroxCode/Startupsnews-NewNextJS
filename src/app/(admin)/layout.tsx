@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import NewLeadReplyToast from '@/components/employee/NewLeadReplyToast';
+import { MY_LEADS_PANEL_ROLES } from '@/shared/middleware/roles';
 import {
   getAdminUser,
+  getAuthHeaders,
   verifyToken,
   clearAdminSession,
   AdminUser,
@@ -215,6 +218,13 @@ export default function AdminLayout({
                             requestUrl.includes('/api/admin/it-tickets') ||
                             requestUrl.includes('/api/admin/sales-tracker/ens-enquiries') ||
                             requestUrl.includes('/api/admin/sales-tracker/assignments') ||
+                            // Saving a lead keeps its window open on the saved lead (like the
+                            // Expand North Star window); the remount closed it after every save.
+                            // useSalesTrackerData patches its own rows on save and delete.
+                            requestUrl.includes('/api/admin/sales-tracker/leads') ||
+                            // A reply is sent from inside the open lead window; a remount would
+                            // close the window on every reply.
+                            requestUrl.includes('/api/admin/sales-tracker/follow-ups') ||
                             requestUrl.includes('/api/admin/partnership-events') ||
                             requestUrl.includes('/api/admin/my-leads') ||
                             // Content Studio's POSTs are all reads (news fetch, extract, generate)
@@ -349,6 +359,16 @@ export default function AdminLayout({
           {children}
         </main>
       </div>
+      {/* Event / Publisher Admins get leads through My Leads here, so they get the same silent
+          new-reply pop-up the employee panel shows. */}
+      {user && (MY_LEADS_PANEL_ROLES as readonly string[]).includes(user.role) && (
+        <NewLeadReplyToast
+          endpoint="/api/admin/my-leads/unread-replies"
+          getHeaders={getAuthHeaders}
+          leadsHref="/admin/my-leads"
+          storageKey={`admin_lead_reply_announced:${user.id}`}
+        />
+      )}
     </div>
   );
 }

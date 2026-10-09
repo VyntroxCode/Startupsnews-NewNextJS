@@ -1,6 +1,6 @@
 import { getAuthHeaders } from '@/lib/admin-auth';
 import type { AssignableEmployee, DepartmentOption, LeadAssignment, LeadAssignmentDraft, LeadSource } from '@/modules/lead-assignments/domain/types';
-import type { LeadFollowUpsView, LeadMessage } from '@/modules/lead-followups/domain/types';
+import type { LeadFollowUpsView } from '@/modules/lead-followups/domain/types';
 import type { SalesLead } from './types';
 
 const API_BASE = '/api/admin/sales-tracker';
@@ -11,8 +11,9 @@ async function apiGetLeads(): Promise<{ leads: SalesLead[]; promotedCities: Reco
   const json = await res.json();
   return { leads: json.data || [], promotedCities: json.promotedCities || {} };
 }
-async function apiSaveLead(lead: SalesLead): Promise<SalesLead> {
-  const res = await fetch(`${API_BASE}/leads`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(lead) });
+/** `adminNote` = the lead window's Conversation result; the server logs it in the lead's history. */
+async function apiSaveLead(lead: SalesLead, adminNote = ''): Promise<SalesLead> {
+  const res = await fetch(`${API_BASE}/leads`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(adminNote ? { ...lead, adminNote } : lead) });
   if (!res.ok) throw new Error('Failed to save lead');
   const json = await res.json();
   return json.data;
@@ -34,7 +35,8 @@ async function apiAssignLead(source: LeadSource, leadId: string, draft: LeadAssi
   if (!res.ok || !json?.success) throw new Error(json?.error || "Couldn't save the assignment");
   return json.data;
 }
-/** What the assigned employees logged on one lead from My Leads — read-only here. */
+/** The lead's history: what the assigned employees logged from My Leads and the admin's status
+ * updates, each with the replies under it. */
 async function apiGetFollowUps(source: LeadSource, leadId: string): Promise<LeadFollowUpsView> {
   const qs = new URLSearchParams({ source, leadId });
   const res = await fetch(`${API_BASE}/follow-ups?${qs}`, { headers: getAuthHeaders() });
@@ -42,20 +44,11 @@ async function apiGetFollowUps(source: LeadSource, leadId: string): Promise<Lead
   if (!res.ok || !json?.success) throw new Error(json?.error || 'Failed to load follow-ups');
   return json.data;
 }
-
-/** The admin's messages to the people on one lead, newest first. */
-async function apiGetMessages(source: LeadSource, leadId: string): Promise<LeadMessage[]> {
-  const qs = new URLSearchParams({ source, leadId });
-  const res = await fetch(`${API_BASE}/messages?${qs}`, { headers: getAuthHeaders() });
+/** Adds the admin's reply under one entry of the lead's history; returns the refreshed history. */
+async function apiAddReply(source: LeadSource, leadId: string, followUpId: number, message: string): Promise<LeadFollowUpsView> {
+  const res = await fetch(`${API_BASE}/follow-ups/replies`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ source, leadId, followUpId, message }) });
   const json = await res.json().catch(() => null);
-  if (!res.ok || !json?.success) throw new Error(json?.error || 'Failed to load messages');
-  return json.data;
-}
-/** Adds a message for everyone assigned to the lead; returns the whole history. */
-async function apiAddMessage(source: LeadSource, leadId: string, message: string): Promise<LeadMessage[]> {
-  const res = await fetch(`${API_BASE}/messages`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ source, leadId, message }) });
-  const json = await res.json().catch(() => null);
-  if (!res.ok || !json?.success) throw new Error(json?.error || "Couldn't save the message");
+  if (!res.ok || !json?.success) throw new Error(json?.error || "Couldn't save the reply");
   return json.data;
 }
 
@@ -66,6 +59,5 @@ export const salesTrackerApi = {
   getAssignments: apiGetAssignments,
   assignLead: apiAssignLead,
   getFollowUps: apiGetFollowUps,
-  getMessages: apiGetMessages,
-  addMessage: apiAddMessage,
+  addReply: apiAddReply,
 };

@@ -1,3 +1,6 @@
+/** Longest "Tell us more" a public lead form accepts — one limit for every form and the server. */
+export const TELL_US_MORE_MAX_LENGTH = 2000;
+
 export interface SalesLead {
   id: string;
   date: string;
@@ -27,6 +30,14 @@ export interface SalesLead {
   externalUrl: string;
   posterUrl: string;
   description: string;
+  /** Populated only for an "Advertise Page Leads" row (mirrored from advertise_submissions, see
+   * modules/advertise-submissions/service/to-sales-lead.ts) — empty for every other lead. */
+  budgetRange: string;
+  campaignGoal: string;
+  /** What the visitor wrote in the public form's optional "Tell us more" box (Feature Your Startup,
+   * Funding Round, Press Release, Advertise With Us). Read-only in the lead window: the repository
+   * writes it on insert only, so a later save can never change the visitor's words. */
+  tellUsMore: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -51,6 +62,9 @@ export interface SalesLeadEntity {
   external_url: string | null;
   poster_url: string | null;
   description: string | null;
+  budget_range: string | null;
+  campaign_goal: string | null;
+  tell_us_more: string | null;
   assigned_to: string | null;
   status: string | null;
   next_follow_up_date: string | null;

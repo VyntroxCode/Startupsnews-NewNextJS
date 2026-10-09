@@ -5,12 +5,13 @@ import { ChevronRight, Download } from 'lucide-react';
 import { foundUsText, referredByLabel } from '@/modules/ens-travel-enquiries/domain/sources';
 import { participationLabel } from '@/modules/ens-travel-enquiries/domain/participation';
 import type { AssignableEmployee, DepartmentOption, LeadAssignment } from '@/modules/lead-assignments/domain/types';
+import { FOLLOW_UP_TAG, followUpDue, formatFollowUpDay, localToday } from '@/modules/lead-followups/domain/follow-up-date';
 import StatusBadge from './StatusBadge';
 import { PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS, STATUSES, TYPES } from './constants';
 import { exportLeadsCsv, exportLeadsExcel, exportLeadsPdf } from './exports';
 import type { UnifiedLeadRow } from './types';
 import { assignmentKey } from './useSalesTrackerData';
-import { matchesType, statusLabelOf } from './utils';
+import { dueFollowUpsOf, followUpDatesOf, followUpTagOf, matchesType, statusLabelOf } from './utils';
 
 const DASH = <span className="hint">—</span>;
 
@@ -24,7 +25,39 @@ function assigneeSummary(a: LeadAssignment | undefined): { text: string; full: s
   return { text: names.slice(0, 2).join(', ') + (names.length > 2 ? ` +${names.length - 2}` : ''), full: names.join(', ') };
 }
 
-export default function LeadsTable({ rows, employees, departments, assignments, onEdit, onDelete, filterType, onFilterTypeChange, filterPageType, onFilterPageTypeChange, filterStatus, onFilterStatusChange, jumpToken }: {
+/** The strip down the left edge of a due lead's row, by tag. Forced (`!`) because the tracker's own
+ * table CSS outranks a plain utility; written out in full so Tailwind's scanner finds them. */
+const ROW_STRIP: Record<'today' | 'overdue', string> = {
+  overdue: 'border-l-4! border-solid! border-l-red-600!',
+  today: 'border-l-4! border-solid! border-l-amber-500!',
+};
+
+/** The Next Follow-up cell. A date that is due is shown with its Today / Overdue tag, the date and
+ * whose it is — the admin's own or an assigned person's; otherwise the nearest upcoming date. Empty once the
+ * lead is closed, or when nobody has set a date yet. */
+function NextFollowUpCell({ row, assignment, today }: { row: UnifiedLeadRow; assignment: LeadAssignment | undefined; today: string }) {
+  const due = dueFollowUpsOf(row, assignment, today);
+  if (due.length) {
+    return (
+      <>
+        {due.map((d) => {
+          const tag = FOLLOW_UP_TAG[followUpDue(d.date, today) === 'overdue' ? 'overdue' : 'today'];
+          return (
+            <div key={`${d.who}:${d.date}`} className={`flex items-center gap-1.5 whitespace-nowrap py-0.5 text-[12.5px] font-semibold ${tag.text}`}>
+              <span className={`rounded px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${tag.tag}`}>{tag.label}</span>
+              {formatFollowUpDay(d.date)} · {d.who}
+            </div>
+          );
+        })}
+      </>
+    );
+  }
+  const next = followUpDatesOf(row, assignment).sort((a, b) => a.date.localeCompare(b.date))[0];
+  if (!next) return DASH;
+  return <span className="whitespace-nowrap" title={`Set by ${next.who}`}>{formatFollowUpDay(next.date)}</span>;
+}
+
+export default function LeadsTable({ rows, employees, departments, assignments, onEdit, onDelete, filterType, onFilterTypeChange, filterPageType, onFilterPageTypeChange, filterStatus, onFilterStatusChange, followUpDueOnly, onFollowUpDueOnlyChange, jumpToken }: {
   rows: UnifiedLeadRow[];
   /** For the "assigned to" / "department" filters, and each lead's stored departments and people
    * keyed by assignmentKey (edited in the lead window, shown read-only here). */
@@ -46,6 +79,10 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
   onFilterPageTypeChange: (value: string) => void;
   filterStatus: string;
   onFilterStatusChange: (value: string) => void;
+  /** Only leads in "Today's Follow up" (see utils.dueFollowUpsOf) — owned by the page, switched on
+   * by the Today's Follow up tile in LeadsOverview and off by "Show all leads" here. */
+  followUpDueOnly: boolean;
+  onFollowUpDueOnlyChange: (on: boolean) => void;
   /** Bumped by a Leads overview click — opens this card and scrolls it into view. */
   jumpToken: number;
 }) {
@@ -55,6 +92,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
   const [filterSearch, setFilterSearch] = useState('');
   const [exportBusy, setExportBusy] = useState<'excel' | 'pdf' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const today = localToday();
 
   useEffect(() => {
     if (!jumpToken) return;
@@ -75,6 +113,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
       if (!matchesType(r, filterPageType)) return false;
       if (filterStatus && statusLabelOf(r) !== filterStatus) return false;
       const a = assignments[assignmentKey(r._source, r.id)];
+      if (followUpDueOnly && !dueFollowUpsOf(r, a, today).length) return false;
       if (filterAssigned) {
         const people = a?.assignees ?? [];
         if (filterAssigned === UNASSIGNED ? people.length > 0 : !people.some((p) => String(p.credentialId) === filterAssigned)) return false;
@@ -90,11 +129,16 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
       }
       return true;
     }).sort((a, b) => {
+      // Today's Follow up view: overdue leads first, then today's; newest within each.
+      if (followUpDueOnly) {
+        const rank = (r: UnifiedLeadRow) => (followUpTagOf(r, assignments[assignmentKey(r._source, r.id)], today) === 'overdue' ? 0 : 1);
+        if (rank(a) !== rank(b)) return rank(a) - rank(b);
+      }
       const da = a._source === 'lead' ? a.date : a.createdAt.slice(0, 10);
       const db = b._source === 'lead' ? b.date : b.createdAt.slice(0, 10);
       return (db || '').localeCompare(da || '');
     });
-  }, [rows, assignments, filterType, filterPageType, filterStatus, filterAssigned, filterDepartment, filterSearch]);
+  }, [rows, assignments, filterType, filterPageType, filterStatus, followUpDueOnly, today, filterAssigned, filterDepartment, filterSearch]);
 
   // CSV / Excel / PDF export exactly the rows on screen — filteredRows, in the table's order, sales
   // leads and Expand North Star enquiries alike (see utils.leadExportRow for the shared columns).
@@ -116,14 +160,14 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
         <span className={`chev${open ? ' open' : ''}`}><ChevronRight size={16} aria-hidden /></span>
       </div>
       <div className={`card-body${open ? '' : ' collapsed'}`}>
-        {(filterType || filterPageType || filterStatus) && (
+        {(filterType || filterPageType || filterStatus || followUpDueOnly) && (
           <div className="pending-banner">
-            Showing {[filterPageType && (PAGE_LEAD_LABELS[filterPageType] || filterPageType), filterType, filterStatus].filter(Boolean).join(' · ')} leads only.
-            <button type="button" className="small" onClick={(e) => { e.stopPropagation(); onFilterTypeChange(''); onFilterPageTypeChange(''); onFilterStatusChange(''); }}>Show all leads</button>
+            Showing {[followUpDueOnly && "Today's Follow up", filterPageType && (PAGE_LEAD_LABELS[filterPageType] || filterPageType), filterType, filterStatus].filter(Boolean).join(' · ')} leads only.
+            <button type="button" className="small" onClick={(e) => { e.stopPropagation(); onFilterTypeChange(''); onFilterPageTypeChange(''); onFilterStatusChange(''); onFollowUpDueOnlyChange(false); }}>Show all leads</button>
           </div>
         )}
         <div className="hint" style={{ margin: '0 0 10px' }}>
-          Every page&apos;s submissions in one table — Feature Your Startup, Funding Round, Press Release, Sponsor an Event
+          Every page&apos;s submissions in one table — Feature Your Startup, Funding Round, Press Release, Sponsor an Event, Advertise With Us
           and Expand North Star. Click a lead to see all of its details; use Edit to change any of them.
         </div>
         <div className="toolbar">
@@ -170,16 +214,22 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
             <thead>
               <tr>
                 <th>Date</th><th>Name</th><th>Company</th><th>Contact</th><th>Email</th>
-                <th>City</th><th>Source</th><th>Referred By</th><th>Assigned</th><th>Current Status</th>
+                <th>City</th><th>Source</th><th>Referred By</th><th>Assigned</th><th>Next Follow-up</th><th>Current Status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((r) => {
                 const isLead = r._source === 'lead';
+                // A due lead carries a strip down its left edge and a Today / Overdue tag, in every view.
+                const dueTag = followUpTagOf(r, assignments[assignmentKey(r._source, r.id)], today);
+                const strip = dueTag ? FOLLOW_UP_TAG[dueTag] : null;
                 return (
                   <tr key={`${r._source}:${r.id}`} onClick={(e) => { if ((e.target as HTMLElement).closest('button, input, select')) return; onEdit(r); }}>
-                    <td>{isLead ? r.date : r.createdAt.slice(0, 10)}</td>
+                    <td className={dueTag ? ROW_STRIP[dueTag] : undefined}>
+                      {strip && <span className={`mb-1 block w-fit rounded px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${strip.tag}`}>{strip.label}</span>}
+                      {isLead ? r.date : r.createdAt.slice(0, 10)}
+                    </td>
                     <td>{r.name}</td>
                     <td>{isLead && r.company ? r.company : DASH}</td>
                     <td>{r.contact || DASH}</td>
@@ -199,6 +249,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
                         </>
                       );
                     })()}</td>
+                    <td><NextFollowUpCell row={r} assignment={assignments[assignmentKey(r._source, r.id)]} today={today} /></td>
                     <td><StatusBadge value={statusLabelOf(r)} /></td>
                     <td>
                       {isLead ? (

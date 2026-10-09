@@ -6,6 +6,7 @@ import {
   FundingRoundSubmissionInput,
   FundingRoundValidationError,
 } from '../domain/types';
+import { TELL_US_MORE_MAX_LENGTH } from '@/modules/sales-tracker/domain/types';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const URL_RE = /^https?:\/\/[^\s]+\.[^\s]+$/i;
@@ -22,6 +23,7 @@ const MAX_LEN: Record<keyof FundingRoundSubmissionInput, number> = {
   website: 500,
   country: 120,
   city: 120,
+  tellUsMore: TELL_US_MORE_MAX_LENGTH,
 };
 
 const LABELS: Record<keyof FundingRoundSubmissionInput, string> = {
@@ -32,6 +34,7 @@ const LABELS: Record<keyof FundingRoundSubmissionInput, string> = {
   website: 'Website',
   country: 'Country',
   city: 'City',
+  tellUsMore: 'Tell us more',
 };
 
 function str(value: unknown): string {
@@ -48,6 +51,7 @@ export function entityToSubmission(e: FundingRoundSubmissionEntity): FundingRoun
     website: e.website || '',
     country: e.country || '',
     city: e.city || '',
+    tellUsMore: e.tell_us_more || '',
     createdAt: e.created_at,
     updatedAt: e.updated_at,
   };
@@ -65,9 +69,11 @@ export function normalizeSubmissionInput(raw: unknown): FundingRoundSubmissionIn
     website: str(body.website),
     country: str(body.country),
     city: str(body.city),
+    // Optional. Trimmed at the ends only, so the line breaks the visitor typed are kept.
+    tellUsMore: str(body.tellUsMore),
   };
 
-  const missing = (['name', 'companyName', 'phone', 'email', 'country', 'city'] as const).filter((k) => !input[k]);
+  const missing = (['name', 'companyName', 'phone', 'email', 'country'] as const).filter((k) => !input[k]);
   if (missing.length) {
     throw new FundingRoundValidationError(`Please fill the required fields: ${missing.map((k) => LABELS[k]).join(', ')}.`);
   }

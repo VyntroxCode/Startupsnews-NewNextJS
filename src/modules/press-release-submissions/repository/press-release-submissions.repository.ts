@@ -12,6 +12,7 @@ function inputParams(input: PressReleaseSubmissionInput): SqlParam[] {
     input.website || null,
     input.country || null,
     input.city || null,
+    input.tellUsMore || null,
   ];
 }
 
@@ -26,8 +27,8 @@ export class PressReleaseSubmissionsRepository {
 
   async insert(id: string, input: PressReleaseSubmissionInput): Promise<void> {
     await query(
-      `INSERT INTO press_release_submissions (id, name, company_name, phone, email, website, country, city)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO press_release_submissions (id, name, company_name, phone, email, website, country, city, tell_us_more)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, ...inputParams(input)]
     );
   }
@@ -35,7 +36,7 @@ export class PressReleaseSubmissionsRepository {
   async update(id: string, input: PressReleaseSubmissionInput): Promise<void> {
     await query(
       `UPDATE press_release_submissions
-       SET name = ?, company_name = ?, phone = ?, email = ?, website = ?, country = ?, city = ?
+       SET name = ?, company_name = ?, phone = ?, email = ?, website = ?, country = ?, city = ?, tell_us_more = ?
        WHERE id = ?`,
       [...inputParams(input), id]
     );

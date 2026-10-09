@@ -12,6 +12,7 @@ function inputParams(input: FundingRoundSubmissionInput): SqlParam[] {
     input.website || null,
     input.country || null,
     input.city || null,
+    input.tellUsMore || null,
   ];
 }
 
@@ -26,8 +27,8 @@ export class FundingRoundSubmissionsRepository {
 
   async insert(id: string, input: FundingRoundSubmissionInput): Promise<void> {
     await query(
-      `INSERT INTO funding_round_submissions (id, name, company_name, phone, email, website, country, city)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO funding_round_submissions (id, name, company_name, phone, email, website, country, city, tell_us_more)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, ...inputParams(input)]
     );
   }
@@ -35,7 +36,7 @@ export class FundingRoundSubmissionsRepository {
   async update(id: string, input: FundingRoundSubmissionInput): Promise<void> {
     await query(
       `UPDATE funding_round_submissions
-       SET name = ?, company_name = ?, phone = ?, email = ?, website = ?, country = ?, city = ?
+       SET name = ?, company_name = ?, phone = ?, email = ?, website = ?, country = ?, city = ?, tell_us_more = ?
        WHERE id = ?`,
       [...inputParams(input), id]
     );

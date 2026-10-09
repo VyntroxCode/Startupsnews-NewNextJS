@@ -5,6 +5,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { CountryCityFields } from "@/components/submit-event/CountryCityFields";
 import { ChapterHeader } from "../ChapterHeader";
 import { ChapterContinue } from "../ChapterContinue";
+import { TELL_US_MORE_MAX_LENGTH } from "@/modules/sales-tracker/domain/types";
 import type { LeadFormController } from "@/components/lead-forms/shared/useLeadForm";
 import {
   validateCity,
@@ -119,6 +120,8 @@ export function ChapterDetails({
             onBlur={() => ctrl.blurValidate("website", validateWebsite)}
           />
           <CountryCityFields
+            cityAsText
+            cityOptional
             country={data.country}
             countryOther={data.countryOther}
             city={data.city}
@@ -132,6 +135,18 @@ export function ChapterDetails({
             onChangeCityOther={(v) => ctrl.updateAndMaybeValidate("cityOther", v, "city", validateCity)}
             onBlurCountry={() => ctrl.blurValidate("country", validateCountry)}
             onBlurCity={() => ctrl.blurValidate("city", validateCity)}
+          />
+          {/* Optional, and last: everything above is what we need, this is what the founder wants to add. */}
+          <FormField
+            id="fr-tell-us-more"
+            label="Tell Us More"
+            optionalHint="(optional)"
+            type="textarea"
+            rows={4}
+            maxLength={TELL_US_MORE_MAX_LENGTH}
+            placeholder="Anything else you would like us to know"
+            value={data.tellUsMore}
+            onChange={(v) => ctrl.setField("tellUsMore", v)}
           />
           <ChapterContinue label="Review" onClick={onContinue} />
         </div>

@@ -34,6 +34,7 @@ async function submitFeatureStartup(data: LeadFormData): Promise<void> {
       website: data.website.trim(),
       country: resolveCountry(data),
       city: resolveCity(data),
+      tellUsMore: data.tellUsMore.trim(),
     }),
   });
   const json = await res.json().catch(() => null);

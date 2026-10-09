@@ -3,9 +3,9 @@ import Link from "next/link";
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";
 import { Reveal, StatsSection } from "@/components/marketing/Reveal";
+import { getPromotedCityOptions } from "@/lib/data-adapter";
+import { LEAD_FONT_FAMILY, leadPageFont } from "@/lib/lead-page-font";
 import { AdvertiseEnquiryForm } from "./AdvertiseEnquiryForm";
-
-const SITE_FONT_FAMILY = '"Garnett", Helvetica, Arial, sans-serif';
 
 const STATS = [
 	{ value: "90.3M", label: "Google search impressions" },
@@ -49,9 +49,14 @@ const WHY_CARDS = [
 	},
 ];
 
-export default function AdvertisePage() {
+// Fetched here rather than in the client form, as the other lead pages do: the enquiry form's City
+// dropdown is then complete on first paint. Re-read every 5 minutes, the list's own cache window.
+export const revalidate = 300;
+
+export default async function AdvertisePage() {
+	const promotedCities = await getPromotedCityOptions();
 	return (
-		<div className="bg-white text-adv-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
+		<div className={`bg-white text-adv-ink overflow-x-hidden ${leadPageFont.variable}`} style={{ fontFamily: LEAD_FONT_FAMILY }}>
 			{/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
 			<div className="mvp-main-box event-by-country-container">
 				<PageBreadcrumb current="Advertise With Us" />
@@ -79,13 +84,13 @@ export default function AdvertisePage() {
 				<Reveal direction="right" delay={120} className="relative flex flex-col gap-0.5 min-w-0">
 					<div className="absolute -top-[54px] right-[6%] w-[116px] h-[116px] rounded-full bg-[#ffe8e8] pointer-events-none" />
 					<div className="absolute -bottom-10 right-[2%] w-[72px] h-[72px] rounded-full border-[10px] border-adv-ink pointer-events-none" />
-					<span className="relative text-[clamp(48px,8.2vw,128px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-ink">
+					<span className="relative text-[clamp(48px,8.2vw,100px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-ink">
 						Make
 					</span>
-					<span className="relative text-[clamp(48px,8.2vw,128px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-ink">
+					<span className="relative text-[clamp(48px,8.2vw,100px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-ink">
 						Your Brand
 					</span>
-					<span className="relative text-[clamp(48px,8.2vw,128px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-red">
+					<span className="relative text-[clamp(48px,8.2vw,100px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-red">
 						Stand Out.
 					</span>
 				</Reveal>
@@ -216,7 +221,7 @@ export default function AdvertisePage() {
 					{WHY_CARDS.map((c, i) => (
 						<Reveal key={c.title} delay={150 + i * 100}>
 							<article className="border border-[#23272e] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0 h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1.5">
-								<span className="block text-[26px] sm:text-[32px] lg:text-[38px] font-black tracking-[-0.04em] leading-none text-[#3d434c] break-words">
+								<span className="block text-[26px] sm:text-[30px] font-black tracking-[-0.04em] leading-none text-[#3d434c] whitespace-nowrap">
 									{c.label}
 								</span>
 								<h3 className="text-white text-[22px] font-extrabold tracking-[-0.02em] leading-[1.35]">{c.title}</h3>
@@ -228,27 +233,28 @@ export default function AdvertisePage() {
 			</section>
 
 			{/* ENQUIRY FORM — scroll-mt so the sticky nav doesn't cover the top fields when
-			    "#sn-form" links (Learn More / Submit Your Advertising Enquiry) jump here. */}
+			    "#sn-form" links (Learn More / Submit Your Advertising Enquiry) jump here.
+			    Stacked, not side by side: the form needs the full 1200px row for its three columns. */}
 			<section
 				id="sn-form"
-				className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 lg:gap-[72px] items-start px-5 sm:px-8 lg:px-10 pt-10 sm:pt-12 lg:pt-16 pb-6 sm:pb-8 lg:pb-10 scroll-mt-24"
+				className="flex flex-col gap-8 lg:gap-10 px-5 sm:px-8 lg:px-10 pt-10 sm:pt-12 lg:pt-16 pb-6 sm:pb-8 lg:pb-10 scroll-mt-24"
 			>
 				<Reveal direction="left" className="min-w-0">
 					<h2 className="text-adv-ink text-[30px] sm:text-[40px] lg:text-[52px] font-black tracking-[-0.035em] leading-[1.05]">
 						Ready to start your advertising journey?
 					</h2>
-					<p className="mt-5 text-lg leading-[1.65] text-adv-muted max-w-[46ch]">
+					<p className="mt-5 text-lg leading-[1.65] text-adv-muted max-w-[720px]">
 						Tell us about your brand and campaign goals. Our team will get back to you
 						within 24 hours with a custom media plan.
 					</p>
-					<p className="mt-6 text-[15px] leading-[1.6] text-adv-muted-2 max-w-[46ch]">
+					<p className="mt-3 text-[15px] leading-[1.6] text-adv-muted-2 max-w-[720px]">
 						Submit your advertising requirements and get expert media guidance across
 						StartupNews&apos;s premium media portfolio.
 					</p>
 				</Reveal>
 
 				<Reveal direction="right" delay={150} className="min-w-0 border border-adv-line rounded-[24px] p-6 sm:p-8">
-					<AdvertiseEnquiryForm />
+					<AdvertiseEnquiryForm promotedCities={promotedCities} />
 				</Reveal>
 			</section>
 			</div>

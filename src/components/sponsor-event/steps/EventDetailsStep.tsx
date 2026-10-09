@@ -63,15 +63,15 @@ export function EventDetailsStep({
         onBlur={() => ctrl.blurValidate("slug", validateSlug)}
       />
       <CountryCityFields
+        cityAsText
+        cityOptional
         country={data.country}
         countryOther={data.countryOther}
         city={data.city}
         cityOther={data.cityOther}
         promotedCities={promotedCities}
-        /* One `location` error, shown under whichever half is missing: under Country until one
-           is picked, then under City. */
-        countryError={data.country ? undefined : errors.location}
-        cityError={data.country ? errors.location : undefined}
+        /* The `location` error is only ever "no country picked" — City is optional. */
+        countryError={errors.location}
         onChangeCountry={(v) => ctrl.updateAndMaybeValidate("country", v, "location", validateLocation)}
         onChangeCountryOther={(v) => ctrl.setField("countryOther", v)}
         onChangeCity={(v) => ctrl.updateAndMaybeValidate("city", v, "location", validateLocation)}

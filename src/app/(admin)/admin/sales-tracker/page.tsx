@@ -11,7 +11,6 @@ import PageLeadsKpis from '@/components/admin/sales-tracker/PageLeadsKpis';
 import { assignmentKey, useSalesTrackerData } from '@/components/admin/sales-tracker/useSalesTrackerData';
 import { emptyLead } from '@/components/admin/sales-tracker/utils';
 import { PAGE_LEAD_FILTER_OPTIONS } from '@/components/admin/sales-tracker/constants';
-import { salesTrackerApi } from '@/components/admin/sales-tracker/api';
 import type { SalesLead, UnifiedLeadRow } from '@/components/admin/sales-tracker/types';
 import { assignmentToDraft, type LeadAssignmentDraft, sameAssignmentDraft } from '@/modules/lead-assignments/domain/types';
 
@@ -29,6 +28,9 @@ export default function SalesTrackerPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [pageFilter, setPageFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  // All leads' "follow-up due" filter, switched on by the Today's Follow up tile in Leads overview: only open leads
+  // whose next follow-up date (the admin's or an assignee's) is today or overdue.
+  const [followUpDueOnly, setFollowUpDueOnly] = useState(false);
   const [jumpToken, setJumpToken] = useState(0);
 
   // An overview lead type is either a page type (its own dropdown in All leads) or a team-picked one.
@@ -37,24 +39,36 @@ export default function SalesTrackerPage() {
     setTypeFilter(isPage ? '' : type);
     setPageFilter(isPage ? type : '');
     setStatusFilter(status);
+    setFollowUpDueOnly(false);
     setJumpToken((n) => n + 1);
   }
 
-  // The lead is saved first (a new lead needs its row before it can be assigned), then its
-  // departments and people, only if they changed, then the admin's message to them (it needs the
-  // people stored first). An error keeps the dialog open with its message; saving again is safe (the
-  // lead save is an upsert, the assignment save replaces, and the message is only added once it
-  // gets through).
-  async function handleSave(lead: SalesLead, assignmentDraft: LeadAssignmentDraft, message: string) {
-    const saved = await saveLead(lead);
+  // The Today's Follow up tile: every lead due, across all pages and statuses — so the other
+  // filters are cleared and the table shows exactly the number on the tile.
+  function showFollowUpsDue(on: boolean) {
+    setFollowUpDueOnly(on);
+    if (!on) return;
+    setTypeFilter('');
+    setPageFilter('');
+    setStatusFilter('');
+    setJumpToken((n) => n + 1);
+  }
+
+  // One Save does everything, in order: the lead (a new lead needs its row before it can be
+  // assigned), then its departments and people if they changed. An error keeps the dialog open
+  // with its message; saving again is safe (the lead save is an upsert, the assignment save
+  // replaces).
+  // `adminNote` (the window's Conversation result) rides along with the lead save; the server adds
+  // it, and any status change, to the lead's history.
+  // The window stays open after a save (same as the Expand North Star window): it is handed the
+  // stored lead straight away, so it shows what was saved — and a just-created lead has its id
+  // even if the assignment step then fails and the save is retried.
+  async function handleSave(lead: SalesLead, assignmentDraft: LeadAssignmentDraft, adminNote: string): Promise<SalesLead> {
+    const saved = await saveLead(lead, adminNote);
+    setActiveLead(saved);
     const current = assignmentToDraft(assignments[assignmentKey('lead', saved.id)]);
     if (!sameAssignmentDraft(assignmentDraft, current)) await assignLead('lead', saved.id, assignmentDraft);
-    if (message) {
-      try { await salesTrackerApi.addMessage('lead', saved.id, message); } catch (err) {
-        throw new Error(`Lead saved, but the message wasn't: ${err instanceof Error ? err.message : 'try again'}`);
-      }
-    }
-    setActiveLead(null);
+    return saved;
   }
 
   // The unified All leads table holds both sales_leads rows and (display-only) Expand North Star
@@ -81,9 +95,12 @@ export default function SalesTrackerPage() {
 
         <LeadsOverview
           rows={rows}
+          assignments={assignments}
           loaded={loaded}
           active={{ type: pageFilter || typeFilter, status: statusFilter }}
           onSelect={showInAllLeads}
+          followUpActive={followUpDueOnly}
+          onFollowUpSelect={showFollowUpsDue}
         />
 
         {/* Leads by page tiles: a click shows just that page's leads in All leads; clicking the
@@ -135,6 +152,8 @@ export default function SalesTrackerPage() {
           onFilterPageTypeChange={setPageFilter}
           filterStatus={statusFilter}
           onFilterStatusChange={setStatusFilter}
+          followUpDueOnly={followUpDueOnly}
+          onFollowUpDueOnlyChange={setFollowUpDueOnly}
           jumpToken={jumpToken}
         />
 

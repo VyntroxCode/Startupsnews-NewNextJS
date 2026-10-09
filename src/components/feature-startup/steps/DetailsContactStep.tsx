@@ -5,6 +5,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { Button } from "@/components/ui/Button";
 import { CountryCityFields } from "@/components/submit-event/CountryCityFields";
 import { FieldReveal } from "../FieldReveal";
+import { TELL_US_MORE_MAX_LENGTH } from "@/modules/sales-tracker/domain/types";
 import type { FeatureStartupFormController } from "../useFeatureStartupForm";
 import {
   validateCity,
@@ -124,6 +125,8 @@ export function DetailsContactStep({
       </FieldReveal>
       <FieldReveal index={6}>
         <CountryCityFields
+          cityAsText
+          cityOptional
           country={data.country}
           countryOther={data.countryOther}
           city={data.city}
@@ -139,8 +142,21 @@ export function DetailsContactStep({
           onBlurCity={() => ctrl.blurValidate("city", validateCity)}
         />
       </FieldReveal>
-
       <FieldReveal index={7}>
+        <FormField
+          id="fys-tell-us-more"
+          label="Tell Us More"
+          optionalHint="(optional)"
+          type="textarea"
+          rows={4}
+          maxLength={TELL_US_MORE_MAX_LENGTH}
+          placeholder="Anything else you would like us to know"
+          value={data.tellUsMore}
+          onChange={(v) => ctrl.setField("tellUsMore", v)}
+        />
+      </FieldReveal>
+
+      <FieldReveal index={8}>
         <div className="wizard-nav no-back">
           <Button
             variant="primary"

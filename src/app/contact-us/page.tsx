@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { MapPin, Phone, Mail, Megaphone, Briefcase, MessageCircle, ArrowUpRight } from "lucide-react";
+import { MapPin, Phone, Mail, Megaphone, MessageCircle } from "lucide-react";
 import { PageBreadcrumb } from "@/components/PageBreadcrumb";
 import { PageHeading } from "@/components/PageHeading";
 import { getInnerPageContent } from "@/lib/data-adapter";
@@ -10,37 +9,39 @@ export const revalidate = 60;
 const SITE_FONT_FAMILY = '"Garnett", Helvetica, Arial, sans-serif';
 
 const ADDRESS_LINES = ["1553 A-8, West Rohtash Nagar", "Shahdara, Delhi - 110032"];
-const MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-	"1553 A-8, West Rohtash Nagar, Shahdara, Delhi 110032"
-)}`;
-const PHONE_DISPLAY = "+91-96259 52588";
-const PHONE_HREF = "tel:+919625952588";
 
-const TEAMS = [
+// Shown top to bottom in this order; every card is the same size.
+const CONTACT_CARDS = [
 	{
-		icon: Megaphone,
-		title: "Press",
-		body: "Press enquiries and press releases",
-		linkLabel: "publishing@startupnews.fyi",
-		href: "mailto:publishing@startupnews.fyi",
+		icon: Mail,
+		title: "Email",
+		linkLabel: "office@startupnews.fyi",
+		href: "mailto:office@startupnews.fyi",
 	},
 	{
-		icon: Briefcase,
-		title: "Careers",
-		body: "See open roles and how to apply",
-		linkLabel: "Careers page",
-		href: "/careers",
+		icon: Phone,
+		title: "Contact No.",
+		linkLabel: "+91-96259 52588",
+		href: "tel:+919625952588",
 	},
 	{
 		icon: MessageCircle,
-		title: "Quick support",
-		body: "Chat with us using the widget at the bottom right of this page",
-		linkLabel: null,
-		href: null,
+		title: "WhatsApp",
+		linkLabel: "+91-96259 52588",
+		href: "https://wa.me/919625952588",
+	},
+	{
+		icon: Megaphone,
+		title: "Press",
+		linkLabel: "publishing@startupnews.fyi",
+		href: "mailto:publishing@startupnews.fyi",
 	},
 ];
 
-const CARD = "rounded-[20px] border border-cr-line bg-white p-5 sm:p-6";
+const CARD =
+	"box-border flex items-center gap-4 rounded-[20px] border border-cr-line bg-white p-5 sm:p-6";
+const CARD_LABEL =
+	"text-[13px] font-semibold uppercase tracking-[0.08em] text-cr-muted m-0 mb-1.5";
 const ICON_BOX =
 	"flex items-center justify-center w-11 h-11 shrink-0 rounded-xl bg-cr-panel text-cr-pink";
 const LINK = "text-cr-pink hover:text-cr-pink-deep font-semibold no-underline";
@@ -64,91 +65,39 @@ export default async function ContactUsPage() {
 
 				<div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8 lg:gap-12 items-start">
 					{/* Direct contact details */}
-					<aside className="flex flex-col gap-4 min-w-0">
-						<div className={CARD}>
-							<div className="flex gap-4">
+					<aside className="grid grid-cols-1 auto-rows-fr gap-4 min-w-0">
+						{CONTACT_CARDS.map(({ icon: Icon, title, linkLabel, href }) => (
+							<div key={title} className={CARD}>
 								<span className={ICON_BOX}>
-									<MapPin className="w-5 h-5" aria-hidden />
+									<Icon className="w-5 h-5" aria-hidden />
 								</span>
 								<div className="min-w-0">
-									<h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-cr-muted m-0 mb-1.5">
-										Registered Address
-									</h2>
-									<address className="not-italic text-[15px] leading-[1.6] text-cr-ink">
-										{ADDRESS_LINES.map((line) => (
-											<span key={line} className="block">
-												{line}
-											</span>
-										))}
-									</address>
+									<h2 className={CARD_LABEL}>{title}</h2>
 									<a
-										href={MAPS_URL}
-										target="_blank"
-										rel="noopener noreferrer"
-										className={`${LINK} inline-flex items-center gap-1 mt-2 text-[14px]`}
+										href={href}
+										className={`${LINK} text-[17px] break-all`}
+										{...(href.startsWith("https://") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
 									>
-										Open in Google Maps
-										<ArrowUpRight className="w-4 h-4" aria-hidden />
+										{linkLabel}
 									</a>
 								</div>
 							</div>
-						</div>
+						))}
 
 						<div className={CARD}>
-							<div className="flex gap-4">
-								<span className={ICON_BOX}>
-									<Phone className="w-5 h-5" aria-hidden />
-								</span>
-								<div className="min-w-0">
-									<h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-cr-muted m-0 mb-1.5">
-										Contact No.
-									</h2>
-									<a href={PHONE_HREF} className={`${LINK} text-[17px]`}>
-										{PHONE_DISPLAY}
-									</a>
-								</div>
+							<span className={ICON_BOX}>
+								<MapPin className="w-5 h-5" aria-hidden />
+							</span>
+							<div className="min-w-0">
+								<h2 className={CARD_LABEL}>Office</h2>
+								<address className="not-italic text-[15px] leading-[1.6] text-cr-ink">
+									{ADDRESS_LINES.map((line) => (
+										<span key={line} className="block">
+											{line}
+										</span>
+									))}
+								</address>
 							</div>
-						</div>
-
-						<div className={CARD}>
-							<div className="flex gap-4">
-								<span className={ICON_BOX}>
-									<Mail className="w-5 h-5" aria-hidden />
-								</span>
-								<div className="min-w-0">
-									<h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-cr-muted m-0 mb-1.5">
-										Email
-									</h2>
-									<a href="mailto:office@startupnews.fyi" className={`${LINK} text-[17px] break-all`}>
-										office@startupnews.fyi
-									</a>
-								</div>
-							</div>
-						</div>
-
-						<div className="rounded-[20px] bg-cr-panel p-5 sm:p-6 mt-2">
-							<h2 className="text-[16px] font-bold text-cr-ink m-0 mb-4">Reach a specific team</h2>
-							<ul className="list-none m-0 p-0 flex flex-col gap-4">
-								{TEAMS.map(({ icon: Icon, title, body, linkLabel, href }) => (
-									<li key={title} className="flex gap-3">
-										<Icon className="w-5 h-5 mt-0.5 shrink-0 text-cr-pink" aria-hidden />
-										<div className="min-w-0 text-[14px] leading-[1.6]">
-											<span className="block font-semibold text-cr-ink">{title}</span>
-											<span className="block text-cr-muted">{body}</span>
-											{href &&
-												(href.startsWith("/") ? (
-													<Link href={href} className={LINK}>
-														{linkLabel}
-													</Link>
-												) : (
-													<a href={href} className={`${LINK} break-all`}>
-														{linkLabel}
-													</a>
-												))}
-										</div>
-									</li>
-								))}
-							</ul>
 						</div>
 					</aside>
 

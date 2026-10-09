@@ -116,7 +116,7 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v144</span>
+    <span class="badge v">Version v163</span>
     <span class="badge">Released 2026-10-01</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
@@ -906,6 +906,25 @@ flowchart LR
       <tr><td><strong>v142</strong></td><td>2026-10-06</td><td>Medium</td><td>Reader dashboard → <strong>Funding</strong> is locked: the menu item shows a lock and does not open, and a direct link shows a "Funding is locked" message.</td></tr>
       <tr><td><strong>v144</strong></td><td>2026-10-07</td><td>Medium</td><td>Employees now see their attendance as the <strong>26th → 25th pay cycle</strong>, day by day, in the same colours and layout HR sees, and each day says how payroll counted it.</td></tr>
       <tr><td><strong>v143</strong></td><td>2026-10-07</td><td>Medium</td><td><strong>Contact Us</strong> page redesigned: office address, phone and email shown up front, plus a <strong>Get in touch</strong> form whose messages are emailed to office@startupnews.fyi.</td></tr>
+      <tr><td><strong>v145</strong></td><td>2026-10-07</td><td>Medium</td><td>Reader dashboard → <strong>Funding</strong> is open again: the menu item opens the funding pages and the lock message is gone.</td></tr>
+      <tr><td><strong>v146</strong></td><td>2026-10-07</td><td>Medium</td><td>Events page: each <strong>country heading now animates in</strong> as you scroll to it (flag, name and a pink line), and the event cards under it rise in one after another.</td></tr>
+      <tr><td><strong>v147</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker: the <strong>Lead details</strong> window now shows <strong>four fields per row</strong>, looks the same for every kind of lead, <strong>hides fields that do not belong to the lead</strong>, and shows locked fields in a clearly darker grey.</td></tr>
+      <tr><td><strong>v148</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker: every lead now ends with one <strong>Lead activity</strong> section, where the admin's messages and the employees' follow-ups appear together in one dated history.</td></tr>
+      <tr><td><strong>v149</strong></td><td>2026-10-08</td><td>Medium</td><td>Lead messages: the admin can message <strong>everyone on a lead or only selected people</strong>; the employee gets a <strong>pop-up</strong> and a <strong>Pending messages</strong> tile in My Leads until they open the lead.</td></tr>
+      <tr><td><strong>v150</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker lead window: the admin can now <strong>assign people and write them a message in one go</strong>. Save changes sends the message too.</td></tr>
+      <tr><td><strong>v151</strong></td><td>2026-10-08</td><td>Medium</td><td>Expand North Star leads: when the admin changes the <strong>status</strong> or writes a <strong>Conversation result</strong>, it is now added to the lead's history as an "Admin status update".</td></tr>
+      <tr><td><strong>v152</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker: <strong>Query description</strong> is removed from the lead window, and every lead type now has a <strong>Conversation result</strong> box whose text goes into the lead's history, as Expand North Star leads already had.</td></tr>
+      <tr><td><strong>v153</strong></td><td>2026-10-08</td><td>Medium</td><td>Events page: visitors now see <strong>their own country first without clicking anything</strong>. The page works out roughly where they are from their internet connection. Clicking <strong>Allow</strong> on the location popup still gives the more exact, city-level order. If neither works, the page stays A to Z.</td></tr>
+      <tr><td><strong>v154</strong></td><td>2026-10-08</td><td>Medium</td><td><strong>Advertise With Us</strong> enquiries now arrive in the Sales Tracker as leads, like the other pages. An optional <strong>Tell Us More</strong> box is added to Feature Your Startup, Funding Round and Press Release, and what the visitor writes is shown when the lead is opened.</td></tr>
+      <tr><td><strong>v155</strong></td><td>2026-10-08</td><td>Medium</td><td>On every form that feeds the Sales Tracker, <strong>City is now typed by hand</strong>. Country is still chosen from the dropdown. The List Your Event form is unchanged.</td></tr>
+      <tr><td><strong>v156</strong></td><td>2026-10-08</td><td>Medium</td><td>The six pages that send leads to the Sales Tracker now all use <strong>one font, Space Grotesk</strong>, and every visitor sees the same font on any device. Bold, italic and text sizes are unchanged.</td></tr>
+      <tr><td><strong>v157</strong></td><td>2026-10-08</td><td>Medium</td><td>The six pages that send leads to the Sales Tracker now use the font <strong>Inter</strong> instead of Space Grotesk. Extra-bold headings are extra-bold again.</td></tr>
+      <tr><td><strong>v158</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker: the separate <strong>Send a message</strong> feature for assigned employees is removed, on the admin side and the employee side. <strong>Lead activity</strong> now shows only the follow-up history, in full.</td></tr>
+      <tr><td><strong>v159</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker: <strong>internal messages</strong>. Admin can reply under any follow-up, and the people on the lead can reply back. Employees get a pop-up and a "new" badge when admin replies.</td></tr>
+      <tr><td><strong>v160</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker: a compulsory <strong>Next follow-up date</strong> on every lead type, one per person, and a <strong>Today's Follow up</strong> card for admin and employees that turns red when a follow-up is due. Last connect date removed; Arrival date renamed Lead Creation Date.</td></tr>
+      <tr><td><strong>v161</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker: every edit of a lead now shows in its follow-up list with who changed it and the old and new values, for admins and assigned employees.</td></tr>
+      <tr><td><strong>v162</strong></td><td>2026-10-08</td><td>Major</td><td>Every new reader who registers is now also <strong>copied to a Cloudflare database</strong>. The main database is unchanged. Needs three Cloudflare keys before it starts working.</td></tr>
+      <tr><td><strong>v163</strong></td><td>2026-10-08</td><td>Medium</td><td>The Cloudflare copy of new readers now goes into the <strong>same list MorningPulse uses</strong>, with every detail of the account and a last column <strong>User From = Startupnews</strong>.</td></tr>
       <tr><td><strong>v130</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the <strong>Leads by page</strong> tiles (one per website page) are back, exactly as before, just below the new Leads overview.</td></tr>
       <tr><td><strong>v129</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the old <strong>Summary</strong> and <strong>Leads by page</strong> boxes are replaced by one <strong>Leads overview</strong> that counts every lead — every website page, Expand North Star and leads added by the team — by type and by status, with charts. Click any number to see those leads.</td></tr>
       <tr><td><strong>v128</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: clicking any lead now opens it <strong>ready to edit</strong> — no more "Edit lead" button. Pressing <strong>Save changes</strong> shows a warning listing what you changed, and nothing is saved until you confirm.</td></tr>
@@ -4444,6 +4463,722 @@ PHONE                                   +--------------------+
         <div class="wf-row"><div class="wf-box">City bubbles</div><div class="wf-box">City leaderboard</div></div>
         <div class="wf-row"><div class="wf-box">Top investors*</div><div class="wf-box">Top companies · Business models</div></div>
         <div class="wf-row"><div class="wf-box">12-month outlook · Signals</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v163">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v163</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> The Cloudflare copy from v162 now goes into the Cloudflare database called <strong>morningpulse-users</strong>, into the same list that the MorningPulse website already fills. A last column, <strong>User From</strong>, says which website the reader registered on. This replaces the short contact-only copy described in v162.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>Where does the copy go?</td><td>Cloudflare database "morningpulse-users", one shared list of registered readers for both websites.</td></tr>
+        <tr><td>User From</td><td>The last column. "Startupnews" for readers from this website, "Morningpulse" for readers from the other.</td></tr>
+        <tr><td>What is copied?</td><td>Everything the account holds at sign-up: name, email, mobile, country, city, time zone, sign-up method, Google or LinkedIn account id, LinkedIn link, newsletter choices, and all profile fields (empty until the reader fills their profile).</td></tr>
+        <tr><td>What is never copied?</td><td>The password.</td></tr>
+        <tr><td>Is anything checked first?</td><td>No. Each new registration is simply added as a new row.</td></tr>
+        <tr><td>Same person on both websites</td><td>They appear twice, once per website. Tell them apart with User From.</td></tr>
+        <tr><td>Unchanged from v162</td><td>Only new registrations are copied, later profile edits are not, and a Cloudflare problem never stops a reader from registering.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Cloudflare list of registered readers</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Name</div><div class="wf-box">Email</div><div class="wf-box">… all other details …</div><div class="wf-box">User From</div></div>
+        <div class="wf-row"><div class="wf-box">Asha Rao</div><div class="wf-box">asha@abc.com</div><div class="wf-box">…</div><div class="wf-box">Startupnews</div></div>
+        <div class="wf-row"><div class="wf-box">Asha Rao</div><div class="wf-box">asha@abc.com</div><div class="wf-box">…</div><div class="wf-box">Morningpulse</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> The Cloudflare keys are in place and a test row was written and removed successfully. It starts working for real readers after the next build.</p>
+  </div>
+</section>
+
+<section id="v162">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v162</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> When a new reader creates an account, a copy of their contact details is now also saved in a second database, hosted on Cloudflare (called D1). The main database works exactly as before and is still the one the website uses for login, profiles and the newsletter.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>When is a copy made?</td><td>Once, at the moment a new account is created: Sign up with Email, first-time Google sign-in, or first-time LinkedIn sign-in.</td></tr>
+        <tr><td>What is copied?</td><td>Name, email, mobile number, country, city, time zone, LinkedIn link, how they signed up, and when.</td></tr>
+        <tr><td>What is never copied?</td><td>The password, and the reader's Google or LinkedIn account id.</td></tr>
+        <tr><td>Later logins and profile edits</td><td>Not copied. The Cloudflare copy shows the reader as they were when they registered.</td></tr>
+        <tr><td>Readers who registered earlier</td><td>Not copied. Only new registrations from now on.</td></tr>
+        <tr><td>If Cloudflare is down</td><td>The reader still registers normally. That one copy is skipped, and the main database still has them.</td></tr>
+        <tr><td>Does the reader wait longer?</td><td>No. The copy is made after the sign-up screen has already answered.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Where a new registration goes</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Reader signs up<br/>(Email · Google · LinkedIn)</div></div>
+        <div class="wf-row"><div class="wf-box">Main database<br/>full account, used by the website</div><div class="wf-box">Cloudflare database<br/>copy of contact details only</div></div>
+      </div>
+    </div>
+    <p><strong>Before it works.</strong> A database must be created in the Cloudflare account, and three keys from Cloudflare (account id, database id, access token) added to the server settings. Until then nothing is copied and nothing else is affected.</p>
+  </div>
+</section>
+
+<section id="v161">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v161</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> Any edit to a lead now shows in the lead's follow-up list, next to the follow-ups. Each entry says who made the edit, when, and what changed, with the old value and the new value. Admins and everyone assigned to the lead see it.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>What is recorded?</td><td>Lead details (name, company, contact, email, country, city, source, type, event details, budget, campaign goal, North Star fields), status, admin's next follow-up date, and who is assigned (people and departments).</td></tr>
+        <tr><td>How is it shown?</td><td>Field name, then old value → new value. An empty value reads "empty".</td></tr>
+        <tr><td>Several changes in one save</td><td>One entry lists them all.</td></tr>
+        <tr><td>Who is named?</td><td>The admin who saved the edit. Employees cannot edit a lead, so their entries are still follow-ups.</td></tr>
+        <tr><td>Who can see it?</td><td>Admins in the Sales Tracker, and every assigned employee in My Leads.</td></tr>
+        <tr><td>Alerts</td><td>None. The entry is there when the lead is opened.</td></tr>
+        <tr><td>Replies</td><td>A reply can be written under an edit entry, as under any other entry.</td></tr>
+        <tr><td>Older edits</td><td>Edits made before this version were not recorded and cannot be shown.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Lead activity (admin) and Follow-ups and edits (employee)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Lead edited · Aditya · 8 Oct, 14:05<br/>Email ID: old@abc.com → new@abc.com<br/>City: Pune → Mumbai<br/>Assigned to: Bhawna Panchal → Bhawna Panchal, Rishabh Prajapati</div></div>
+        <div class="wf-row"><div class="wf-box">Admin status update · Aditya · 8 Oct, 12:30 · Follow Up<br/>"Mail sent, will call Friday."<br/>Status: Pending → Follow Up</div></div>
+        <div class="wf-row"><div class="wf-box">Employee follow-up · Bhawna · 8 Oct, 11:51 · Follow Up — "Texted, will confirm time."</div></div>
+      </div>
+    </div>
+    <p><strong>Also.</strong> The "N follow-ups" count in All leads now counts only what employees logged, not admin entries.</p>
+    <p><strong>Before it works.</strong> One more database column must be added once. It is in the same file as the v160 columns.</p>
+  </div>
+</section>
+
+<section id="v160">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v160</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> Every lead now carries a <strong>Next follow-up date</strong>, on every lead type, and it is compulsory. A new <strong>Today's Follow up</strong> card shows each person the leads they must follow up today. The card turns red when something is due and stays normal when nothing is.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>Which leads have the date?</td><td>All of them: leads added by hand, Feature Your Startup, Funding Round, Press Release, Sponsor an Event, Advertise With Us and Expand North Star.</td></tr>
+        <tr><td>Whose date is it?</td><td>Each person has their own date on a lead. Admin sets one in the lead window. Every assigned employee sets their own when they log a follow-up.</td></tr>
+        <tr><td>When is it compulsory?</td><td>While the lead is Pending or Follow Up. It is not asked for when the lead is Confirmed or Not Interested.</td></tr>
+        <tr><td>Leads that arrive from the website</td><td>They arrive with no date. The first person who saves the lead or logs a follow-up must pick one.</td></tr>
+        <tr><td>Can a past date be picked?</td><td>No. A new date must be today or later.</td></tr>
+        <tr><td>What if the date passes?</td><td>The lead stays in Today's Follow up, marked overdue, until a new date is set or the lead is closed.</td></tr>
+        <tr><td>How does a lead leave the card?</td><td>The person sets a later date, or the lead becomes Confirmed or Not Interested.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Panel</th><th>What Today's Follow up shows</th><th>When it is red</th></tr></thead>
+      <tbody>
+        <tr><td>Admin: Sales Tracker</td><td>Every open lead due today or overdue, whether the date was set by admin or by an assigned employee. The table names who is due.</td><td>When at least one lead is due</td></tr>
+        <tr><td>Employee: My Leads</td><td>Only that employee's own leads due today or overdue</td><td>When at least one of their own dates is due. It stays normal if they have not set any date.</td></tr>
+        <tr><td>Admin: My Leads</td><td>Same as the employee card, for admins who are assigned leads</td><td>Same as the employee card</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin: Sales Tracker</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Today's Follow up (red)<br/>4 leads need a follow-up · 3 due today · 1 overdue · [ View in All leads ]</div></div>
+        <div class="wf-row"><div class="wf-box">All leads, new column "Next Follow-up": Today · Admin &nbsp;|&nbsp; Overdue · 06 Oct 2026 · Bhawna &nbsp;|&nbsp; 14 Oct 2026</div></div>
+        <div class="wf-row"><div class="wf-box">Lead window: Status → Next follow-up date * → Conversation result</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Employee: My Leads</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Today's Follow up (red) · 2 due today · 0 overdue · click to see them</div></div>
+        <div class="wf-row"><div class="wf-box">Add a follow-up: Status · Follow-up message · Next follow-up date *</div></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Also in this version</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Last connect date removed</td><td>The field is gone from the lead window and from the CSV, Excel and PDF exports. Dates saved earlier are kept in the database but no longer shown.</td></tr>
+        <tr><td>Arrival date renamed</td><td>The field is now called <strong>Lead Creation Date</strong>. My Leads says "Created" where it said "Arrived".</td></tr>
+        <tr><td>Exports</td><td>A new column lists each assigned employee's follow-up date.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Before it works.</strong> Three new database columns must be added once, before the site is rebuilt.</p>
+  </div>
+</section>
+
+<section id="v159">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v159</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> The follow-up list on a lead is now also a place to talk. Under every entry there is a <strong>Reply</strong> button. Admin replies from the Sales Tracker, the people assigned to the lead reply back from My Leads, and the conversation stays under the follow-up it is about. This replaces the separate "Send a message" box removed in v158.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>Where can a reply be written?</td><td>Under any entry in the lead's history: an employee follow-up or an admin status update.</td></tr>
+        <tr><td>Who can reply?</td><td>Any admin with the Sales Tracker, and every employee assigned to the lead.</td></tr>
+        <tr><td>Who can read the replies?</td><td>Admins and everyone assigned to the lead.</td></tr>
+        <tr><td>Order</td><td>Follow-ups stay newest first. Inside one conversation, replies read top to bottom, oldest first.</td></tr>
+        <tr><td>Edit or delete</td><td>Not possible. Each reply keeps its writer's name and the date and time.</td></tr>
+        <tr><td>Lead status</td><td>A reply does not change it. Only a follow-up or an admin edit does.</td></tr>
+        <tr><td>Length</td><td>Up to 2,000 characters.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Who</th><th>Told about a new reply?</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td>Employee assigned to the lead</td><td>Yes, when an admin replies</td><td>A pop-up "New reply from admin", an "N new" badge on the lead in My Leads, and a "New" mark on the reply itself. All clear when the lead is opened.</td></tr>
+        <tr><td>Employee, when a colleague replies</td><td>No</td><td>They see it when they open the lead.</td></tr>
+        <tr><td>Admin</td><td>No</td><td>Employee replies show when the admin opens the lead.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin: lead window, Lead activity</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Employee follow-up · Yash · 8 Oct, 11:20 · Follow Up<br/>"Spoke to them, they want the deck."</div></div>
+        <div class="wf-row"><div class="wf-box">↳ Admin · Aditya · 8 Oct, 11:45 — "Send the deck today and call again Friday."</div></div>
+        <div class="wf-row"><div class="wf-box">↳ Employee · Yash · 8 Oct, 12:10 — "Deck sent."</div></div>
+        <div class="wf-row"><div class="wf-box">[ Reply ]</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Employee: My Leads</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Lead name [ 1 new ]</div><div class="wf-box">Pop-up: New reply from admin · Open in My Leads</div></div>
+        <div class="wf-row"><div class="wf-box">Inside the lead: each follow-up shows its replies, admin replies marked "New", and a [ Reply ] button</div></div>
+      </div>
+    </div>
+    <p><strong>Before it works.</strong> Two new database tables must be created once. Until then the pages work as before and simply show no replies.</p>
+  </div>
+</section>
+
+<section id="v158">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v158</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> An admin could write a separate message to the people assigned to a lead, and those people saw it in their own panel. That whole feature is removed. This is the first step before a new way of working is added.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Admin: lead window, Lead activity</td><td>A "Send a message" box with tick boxes for who gets it, and a Send message button</td><td>Removed. The section shows only the history list.</td></tr>
+        <tr><td>Admin: Save changes</td><td>Could also send the message that was typed</td><td>Saves the lead details and the assignment only</td></tr>
+        <tr><td>Admin: history list</td><td>Admin messages, admin status updates and employee follow-ups mixed together</td><td>Admin status updates and employee follow-ups only</td></tr>
+        <tr><td>Employee: pop-up</td><td>A box in the corner saying "New message from admin"</td><td>Removed</td></tr>
+        <tr><td>Employee: My Leads</td><td>A "Pending messages" card and an "N new" label on leads</td><td>Removed</td></tr>
+        <tr><td>Employee: lead view</td><td>A "Message from admin" card at the top</td><td>Removed. The follow-up form and the follow-up list are unchanged.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>How many follow-ups does a lead show?</td><td>All of them, from the first one, newest at the top. The Sales Tracker never deleted or hid older follow-ups, so nothing needed to change there.</td></tr>
+        <tr><td>Where does a "last 5" rule exist?</td><td>Only in the Partnership Tracker, on an event's Follow Up notes. That is a different tool and it is unchanged.</td></tr>
+        <tr><td>What happened to messages already sent?</td><td>They can no longer be seen anywhere in the admin or employee panels. They are still stored in the database and have not been deleted.</td></tr>
+        <tr><td>Can employees still add follow-ups?</td><td>Yes, exactly as before, from My Leads.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin: lead window, last section</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Lead activity (3) · newest first</div></div>
+        <div class="wf-row"><div class="wf-box">Employee follow-up · name · date · status · what they wrote</div></div>
+        <div class="wf-row"><div class="wf-box">Admin status update · name · date · status · conversation result</div></div>
+        <div class="wf-row"><div class="wf-box">Employee follow-up · name · date · status · what they wrote</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v157">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v157</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> The six pages that send leads to the Sales Tracker (Feature Your Startup, Funding Round, Press Release, Sponsor an Event, Advertise With Us, Expand North Star) now use the font <strong>Inter</strong>. It replaces Space Grotesk from v156, which was not liked. Inter is also hosted on our own site, so every visitor still sees the same font on any device.</p>
+    <table>
+      <thead><tr><th>Point</th><th>Space Grotesk (v156)</th><th>Inter (now)</th></tr></thead>
+      <tbody>
+        <tr><td>Look</td><td>Quirky, geometric letters</td><td>Clean and neutral, close to the Helvetica and Arial look the pages were designed with</td></tr>
+        <tr><td>Extra-bold headings</td><td>Shown as bold only</td><td>Shown as extra-bold, as designed</td></tr>
+        <tr><td>Italic text</td><td>Slanted by the browser</td><td>Slanted by the browser (no change)</td></tr>
+        <tr><td>Same font on every device</td><td>Yes</td><td>Yes</td></tr>
+      </tbody>
+    </table>
+    <p><strong>What did not change.</strong> Bold, italic and text sizes are as they were. The home page, news pages, header and footer keep their current font.</p>
+  </div>
+</section>
+
+<section id="v156">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v156</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> The six public pages whose forms send leads to the Sales Tracker now share one font, <strong>Space Grotesk</strong>. The font file is hosted on our own site, so a visitor on Windows, Mac, iPhone or Android sees exactly the same letters. Before this, five pages asked for a font called Garnett that was never installed on the site, so each device showed its own substitute, and Expand North Star used two different fonts of its own.</p>
+    <table>
+      <thead><tr><th>Page</th><th>Font before</th><th>Font now</th></tr></thead>
+      <tbody>
+        <tr><td>Feature Your Startup</td><td>Helvetica, Arial or Roboto, depending on the device</td><td>Space Grotesk</td></tr>
+        <tr><td>Funding Round</td><td>Helvetica, Arial or Roboto, depending on the device</td><td>Space Grotesk</td></tr>
+        <tr><td>Press Release</td><td>Helvetica, Arial or Roboto, depending on the device</td><td>Space Grotesk</td></tr>
+        <tr><td>Sponsor an Event</td><td>Helvetica, Arial or Roboto, depending on the device</td><td>Space Grotesk</td></tr>
+        <tr><td>Advertise With Us</td><td>Helvetica, Arial or Roboto, depending on the device</td><td>Space Grotesk</td></tr>
+        <tr><td>Expand North Star</td><td>Cairo, with Montserrat on the delegation strip and day cards</td><td>Space Grotesk</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Did bold, italic or text sizes change?</td><td>No. Every setting is as it was; only the font itself changed.</td></tr>
+        <tr><td>Will anything look different apart from the letter shapes?</td><td>Two things. Space Grotesk's heaviest weight is bold, so headings that were extra-bold now show as bold. Its letters are a little wider, so a long heading may wrap onto one more line.</td></tr>
+        <tr><td>What about italic text?</td><td>Space Grotesk has no separate italic design, so the browser slants the normal letters. It still reads as italic.</td></tr>
+        <tr><td>Did the rest of the site change?</td><td>No. The home page, news pages, the site header and footer keep their current font.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v155">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v155</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> The forms that send leads to the Sales Tracker asked for Country and City with two dropdowns. The City dropdown only listed some cities, so most visitors had to pick "Others" and then type. Now City is a simple box the visitor types into. Country is still picked from the list.</p>
+    <table>
+      <thead><tr><th>Form</th><th>Country</th><th>City</th></tr></thead>
+      <tbody>
+        <tr><td>Feature Your Startup</td><td>Dropdown</td><td>Typed</td></tr>
+        <tr><td>Submit Your Funding Round</td><td>Dropdown</td><td>Typed</td></tr>
+        <tr><td>Submit Your Press Release</td><td>Dropdown</td><td>Typed</td></tr>
+        <tr><td>Sponsor an Event</td><td>Dropdown</td><td>Typed</td></tr>
+        <tr><td>Advertise With Us</td><td>Dropdown</td><td>Typed</td></tr>
+        <tr><td>Expand North Star</td><td>Dropdown</td><td>Typed</td></tr>
+        <tr><td>List Your Event</td><td>Dropdown</td><td>Dropdown (unchanged)</td></tr>
+        <tr><td>Admin: Sales Tracker lead window</td><td>Dropdown</td><td>Dropdown (unchanged). A typed city opens under "Others" with the name filled in.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Good to know</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Required</td><td>Country is required. City is <strong>optional</strong> on all six forms and is labelled "(optional)" (changed later the same day; it was required at first). List Your Event still requires City.</td></tr>
+        <tr><td>Changing the country</td><td>The typed city is kept.</td></tr>
+        <tr><td>Spelling</td><td>Because the name is typed, the same city can arrive spelled in different ways (for example "Bengaluru" and "Bangalore"). The city filter in the Sales Tracker treats those as different.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Visitor: any lead form</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Country * [ Select country ▾ ]</div><div class="wf-box">City * [ Enter city name ]</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v154">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v154</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> Until now an enquiry from the <strong>Advertise With Us</strong> page was only sent as an email. If that email was missed, the enquiry was gone. Now every enquiry is saved and appears in the <strong>Sales Tracker</strong> as a lead, exactly like leads from the other pages. The email still goes out as well. At the same time, an optional <strong>Tell Us More</strong> box was added to the other lead forms.</p>
+    <table>
+      <thead><tr><th>Advertise With Us form</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Where the enquiry goes</td><td>Email to the office only</td><td>Saved, added to the Sales Tracker as an <strong>Advertise With Us</strong> lead, and emailed.</td></tr>
+        <tr><td>Phone / WhatsApp</td><td>One plain box</td><td>Country code picker plus number, checked against that country's number length.</td></tr>
+        <tr><td>Country and City</td><td>Not asked</td><td>Two required dropdowns, the same ones the other forms use.</td></tr>
+        <tr><td>Budget Range</td><td>Any text</td><td>Required and checked: it must contain an amount, for example "$5,000 – $10,000". Text such as "not sure" or a web link is refused with a message under the box.</td></tr>
+        <tr><td>Campaign Goal</td><td>Required, any text</td><td>Unchanged.</td></tr>
+        <tr><td>Tell Us More</td><td>Required</td><td>Optional.</td></tr>
+        <tr><td>Layout</td><td>Form beside the text, fields overlapping</td><td>Form below the text, across the full page width.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Page</th><th>Tell Us More box</th></tr></thead>
+      <tbody>
+        <tr><td>Feature Your Startup</td><td>Added, optional, last field before the submit button.</td></tr>
+        <tr><td>Submit Your Funding Round</td><td>Added, optional. Also listed on the Review step.</td></tr>
+        <tr><td>Submit Your Press Release</td><td>Added, optional, on "The Source" step. Also listed on the Review step.</td></tr>
+        <tr><td>Advertise With Us</td><td>Already there; now optional.</td></tr>
+        <tr><td>Sponsor an Event</td><td>Not added. Its event Description box already covers it.</td></tr>
+        <tr><td>Expand North Star</td><td>Not added.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>In the Sales Tracker</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Leads by page</td><td>A new <strong>Advertise With Us</strong> tile, and a matching choice in "Filter: page leads".</td></tr>
+        <tr><td>Opening an Advertise lead</td><td>The same lead window as every other lead: contact details, country, city, assignment, status, Conversation result and Lead activity. It also shows <strong>Budget range</strong> and <strong>Campaign goal</strong>.</td></tr>
+        <tr><td>Tell us more</td><td>Shown in its own block, with the visitor's line breaks kept. It is <strong>view only</strong>: staff cannot change what the visitor wrote. Staff notes still go in Conversation result. If the visitor left it empty, the window says so.</td></tr>
+        <tr><td>Employees (My Leads)</td><td>See the same details when they open the lead, including Tell us more.</td></tr>
+        <tr><td>Excel / CSV / PDF export</td><td>Three new columns: Budget Range, Campaign Goal, Tell Us More.</td></tr>
+        <tr><td>Older leads</td><td>Unchanged. They show Tell us more as empty.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Visitor: Advertise With Us → enquiry form</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Your Name *</div><div class="wf-box">Company Name *</div><div class="wf-box">Email *</div></div>
+        <div class="wf-row"><div class="wf-box">Phone / WhatsApp * (code + number)</div><div class="wf-box">Country *</div><div class="wf-box">City *</div></div>
+        <div class="wf-row"><div class="wf-box">Budget Range *</div><div class="wf-box">Campaign Goal *</div></div>
+        <div class="wf-row"><div class="wf-box">Tell Us More (optional)</div></div>
+        <div class="wf-row"><div class="wf-box brand">Submit Your Enquiry Today</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Admin: Sales Tracker → an Advertise With Us lead</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Name</div><div class="wf-box">Company</div><div class="wf-box">Contact no.</div><div class="wf-box">Email</div></div>
+        <div class="wf-row"><div class="wf-box">Country</div><div class="wf-box">City</div><div class="wf-box">Assigned to</div><div class="wf-box">Status</div></div>
+        <div class="wf-row"><div class="wf-box">Budget range</div><div class="wf-box">Campaign goal</div></div>
+        <div class="wf-row"><div class="wf-box">Tell us more (view only): "We are launching in March and want…"</div></div>
+        <div class="wf-row"><div class="wf-box brand">Lead activity</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> Visitor submits the form → security check → enquiry saved → copied into the Sales Tracker → email to the office. If the copy or the email fails, the saved enquiry is not lost. This is the same path as DFD 6.6 (public submission / lead capture).</p>
+  </div>
+</section>
+
+<section id="v153">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v153</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> Until now the Events page only put a visitor's own country and city first if they clicked <strong>Allow</strong> on the browser's location popup. Anyone who blocked or ignored the popup saw every country A to Z. The page now has a second way to find out where a visitor is: their internet connection (IP address). It needs no click, so most visitors see their own country first straight away.</p>
+    <table>
+      <thead><tr><th>Step</th><th>What the page tries</th><th>Does the visitor click anything?</th><th>How exact</th><th>Remembered for</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Internet connection (IP address)</td><td>No</td><td>Country is reliable, city is a rough guess</td><td>1 day</td></tr>
+        <tr><td>2</td><td>Browser location popup (Allow / Block)</td><td>Yes, Allow</td><td>Exact city</td><td>30 days</td></tr>
+        <tr><td>3</td><td>Neither worked</td><td>—</td><td>—</td><td>Countries A to Z</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Situation</th><th>What the visitor sees</th></tr></thead>
+      <tbody>
+        <tr><td>Opens the page, has not answered the popup yet</td><td>Their country (and city, if we have it) moves to the top within a second or two</td></tr>
+        <tr><td>Clicks <strong>Allow</strong></td><td>The order is corrected to their exact city, and stays that way for 30 days</td></tr>
+        <tr><td>Clicks <strong>Block</strong> or ignores the popup</td><td>The order from their internet connection stays</td></tr>
+        <tr><td>Uses a VPN or a company network</td><td>They may see the country of that network first. Clicking Allow fixes it.</td></tr>
+        <tr><td>We have no events in their country</td><td>Countries A to Z, as before</td></tr>
+        <tr><td>The location service cannot be reached (for example an ad blocker stops it)</td><td>Countries A to Z, as before</td></tr>
+      </tbody>
+    </table>
+    <p><strong>What did not change.</strong> No event is hidden; only the order changes. The <strong>Explore by Country</strong> flag row stays A to Z. Events inside a city are still listed by date, soonest first. Cohort and Online stay at the bottom. The popup is still shown, because it is the only way to get the exact city.</p>
+    <p><strong>Note.</strong> An IP-based order was first added in v65 and taken out in v66. This version brings it back in a different form: the check now runs in the visitor's browser instead of on our server.</p>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/events — visitor in Mumbai, popup not answered</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">India (moved to the top)</div></div>
+        <div class="wf-row"><div class="wf-box">Mumbai (first)</div><div class="wf-box">Bengaluru</div><div class="wf-box">Delhi NCR …</div></div>
+        <div class="wf-row"><div class="wf-box">China</div></div>
+        <div class="wf-row"><div class="wf-box">Japan</div></div>
+        <div class="wf-row"><div class="wf-box">… other countries A to Z</div></div>
+        <div class="wf-row"><div class="wf-box">Cohort · Online (always last)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v152">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v152</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> In v151 only Expand North Star leads recorded the admin's status change and Conversation result in the lead's history. Leads from the other pages had a <strong>Query description</strong> box instead, which was not part of the history. Now all leads work the same way.</p>
+    <table>
+      <thead><tr><th>Part of the lead window</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Query description</td><td>A large box on Feature Your Startup, Funding Round, Press Release, Sponsor an Event and hand-added leads</td><td>Removed from the window.</td></tr>
+        <tr><td>Conversation result</td><td>Only on Expand North Star leads</td><td>On every lead. It appears under Status when the status is <strong>Follow Up</strong> or <strong>Confirmed</strong>.</td></tr>
+        <tr><td>Saving with a new status or a Conversation result</td><td>Nothing was added to the history (except on Expand North Star)</td><td>An amber <strong>Admin status update</strong> line is added to Lead activity: who, when, the status, and the text.</td></tr>
+        <tr><td>Changing only the status</td><td>No trace</td><td>A line such as "Status changed to Not Interested."</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Good to know</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Old query text (for example "Website: …")</td><td>Kept in the database and in the Excel / PDF export, but no longer shown in the lead window.</td></tr>
+        <tr><td>The Conversation result box on these leads</td><td>Starts empty each time the lead is opened. What was written before is in Lead activity below.</td></tr>
+        <tr><td>Employees</td><td>See the admin's update in the lead in My Leads, marked "Admin update". It does not count as their own follow-up.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin: Sales Tracker → any lead</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Status: Confirmed</div></div>
+        <div class="wf-row"><div class="wf-box">Conversation result: "They agreed to the package."</div></div>
+        <div class="wf-row"><div class="wf-box brand">Lead activity</div></div>
+        <div class="wf-row"><div class="wf-box">[Admin status update] Admin User · Confirmed<br>"They agreed to the package."</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v151">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v151</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> On an Expand North Star lead the admin can set a status and write a <strong>Conversation result</strong>. That text was kept only in its own box, and each new result replaced the last one, so the lead's history never showed what the admin had done. Now every such save adds a line to <strong>Lead activity</strong>.</p>
+    <table>
+      <thead><tr><th>What the admin does</th><th>What appears in Lead activity</th></tr></thead>
+      <tbody>
+        <tr><td>Changes the status and writes a Conversation result</td><td>An amber <strong>Admin status update</strong> line: the admin's name, date and time, the status, and the text.</td></tr>
+        <tr><td>Changes only the Conversation result</td><td>A new line with the new text and the current status. Earlier lines stay, so the history is complete.</td></tr>
+        <tr><td>Changes only the status (no text)</td><td>A line saying "Status changed to Not Interested." (or whichever status).</td></tr>
+        <tr><td>Saves other details without touching status or result</td><td>Nothing is added.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Who else sees it</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td>Employees assigned to the lead</td><td>In the lead's follow-up list in My Leads, marked <strong>Admin update</strong>.</td></tr>
+        <tr><td>My Leads tiles</td><td>Unchanged. An admin update does not count as an employee follow-up, so a lead nobody has followed up still shows as pending.</td></tr>
+      </tbody>
+    </table>
+    <p>Conversation results saved before this change are not added to the history; the box still shows the latest one. Leads from the other pages do not have a Conversation result box, so this applies to Expand North Star leads only.</p>
+    <div class="wf">
+      <div class="wf-bar">Admin: Sales Tracker → Expand North Star lead → Lead activity</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">[Admin status update] Admin User · 8 Oct, 11:20 · Confirmed<br>"Spoke to them, they are joining as a delegate."</div></div>
+        <div class="wf-row"><div class="wf-box">[Employee follow-up] Yash Goswami · 8 Oct, 10:57 · Confirmed</div></div>
+        <div class="wf-row"><div class="wf-box">[Admin message] Admin User · To: Yash Goswami</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v150">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v150</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> In v149 a message could only be sent to people who were already saved on the lead. So an admin who had just picked someone under Assigned to had to save the lead, open it again, and only then write the message. Now it is one step.</p>
+    <table>
+      <thead><tr><th>Situation</th><th>Before (v149)</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Admin picks a person under Assigned to and wants to message them</td><td>Save the lead first, reopen it, then send</td><td>The person appears in the tick boxes straight away. Write the message and press <strong>Save changes</strong>: the lead, the assignment and the message are all saved together.</td></tr>
+        <tr><td>Save confirmation box</td><td>Listed the changed fields</td><td>Also lists "Message to everyone on the lead" or "Message to 2 selected people", so the admin sees it will be sent.</td></tr>
+        <tr><td>Nothing else changed on the lead, admin only wants to send a message</td><td>Send message button</td><td>Same: the <strong>Send message</strong> button sends it at once without saving the lead.</td></tr>
+        <tr><td>Adding a new lead</td><td>No message until the lead was saved</td><td>Pick people, write the message, press Save lead.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin: Sales Tracker → Lead details</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Departments: Sales</div><div class="wf-box">Assigned to: + Bhawna (just picked)</div></div>
+        <div class="wf-row"><div class="wf-box brand">Send a message → ☐ Everyone ☑ Bhawna ☐ Yash</div></div>
+        <div class="wf-row"><div class="wf-box">"Please call them today."</div></div>
+        <div class="wf-row"><div class="wf-box">[ Save changes ] → saves the lead, assigns Bhawna, sends her the message</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v149">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v149</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> Until now a message from the admin always went to everyone on the lead, was only sent when the whole lead was saved, and nobody could tell whether an employee had noticed it. Now the admin chooses who gets each message and sends it with its own button, and the employee is told about it until they have opened the lead.</p>
+    <table>
+      <thead><tr><th>Who</th><th>Where</th><th>What they can do or see</th></tr></thead>
+      <tbody>
+        <tr><td>Admin</td><td>Sales Tracker › a lead › Lead activity › Send a message</td><td>A tick box for each person assigned to the lead, plus <strong>Everyone</strong> (ticked to start with). Write the message and press <strong>Send message</strong>. It goes straight away.</td></tr>
+        <tr><td>Admin</td><td>Same place</td><td>Untick names to send to only some people. Only the ticked people can read that message. Others on the same lead never see it.</td></tr>
+        <tr><td>Admin</td><td>Lead activity history</td><td>Each message shows who it was sent to: "To: Everyone on the lead" or "To: Riya, Arjun".</td></tr>
+        <tr><td>Employee, Event Admin, Publisher Admin</td><td>Any page of their panel</td><td>A small silent <strong>pop-up</strong> in the corner: "New message from admin", with the lead's name and a link to My Leads. It appears within about half a minute.</td></tr>
+        <tr><td>Same people</td><td>My Leads</td><td>A new <strong>Pending messages</strong> tile showing how many messages they have not seen and on how many leads. Clicking it lists only those leads. Each of those leads carries a "new" badge.</td></tr>
+        <tr><td>Same people</td><td>Inside the lead</td><td>The unseen message is marked <strong>New</strong>. Opening the lead is what counts as seeing it: the tile count and the badge drop straight away.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>Messages sent before this change</td><td>Count as already seen. Nobody gets a flood of old alerts.</td></tr>
+        <tr><td>Someone added to a lead later</td><td>Can read earlier "everyone" messages in the lead, but is not alerted about them.</td></tr>
+        <tr><td>Someone just picked under Assigned to</td><td>The lead has to be saved first, then they appear in the tick boxes.</td></tr>
+        <tr><td>Closing the pop-up</td><td>Only hides it. The message stays pending until the lead is opened.</td></tr>
+        <tr><td>Whether the admin sees who has read a message</td><td>No. The admin sees who it was sent to, not who has opened it.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin: Sales Tracker → Lead details → Lead activity</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">Send a message</div></div>
+        <div class="wf-row"><div class="wf-box">☑ Everyone (3)</div><div class="wf-box">☑ Riya</div><div class="wf-box">☑ Arjun</div><div class="wf-box">☑ Meera</div></div>
+        <div class="wf-row"><div class="wf-box">Message box</div><div class="wf-box">[ Send message ]</div></div>
+        <div class="wf-row"><div class="wf-box">[Admin message] Admin · To: Riya, Arjun<br>"Call them before Friday."</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Employee: My Leads</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">Pending messages<br><strong>2</strong> on 1 lead</div><div class="wf-box">Feature Your Startup</div><div class="wf-box">Funding Round</div><div class="wf-box">Lead Status</div></div>
+        <div class="wf-row"><div class="wf-box">Lead: Russlan Ramdowar · <strong>2 new</strong></div></div>
+        <div class="wf-row"><div class="wf-box">Pop-up (corner): New message from admin · Open in My Leads</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v148">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v148</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> A lead used to keep its history in two separate boxes: "Message for assigned employees" in the middle of the form, and "Employee follow-ups" at the bottom. To understand what had happened on a lead you had to read both and work out the order yourself. Now there is one <strong>Lead activity</strong> section, always the last thing in the window, that shows everything in the order it happened.</p>
+    <table>
+      <thead><tr><th>Part of the section</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>On this lead</td><td>The people currently assigned to the lead.</td></tr>
+        <tr><td>New message</td><td>The box where the admin writes to the assigned people. It is sent when the lead is saved, as before, and only appears once a department and at least one person are picked.</td></tr>
+        <tr><td>Count line</td><td>How many admin messages and how many employee follow-ups the lead has.</td></tr>
+        <tr><td>History</td><td>One list, newest first. Each entry says who wrote it and when.</td></tr>
+        <tr><td>Admin message</td><td>Blue tag and blue edge. What the admin told the team.</td></tr>
+        <tr><td>Employee follow-up</td><td>Green tag and green edge. What the employee wrote from My Leads, with the status they set (Pending, Follow Up, Confirmed, Not Interested).</td></tr>
+      </tbody>
+    </table>
+    <p>Nothing changed for employees: they still read the admin's messages and add follow-ups from My Leads.</p>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/admin/sales-tracker → Lead details (bottom)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Lead fields (4 per row)</div></div>
+        <div class="wf-row"><div class="wf-box brand">Lead activity (3)</div></div>
+        <div class="wf-row"><div class="wf-box">On this lead: Riya · Arjun</div></div>
+        <div class="wf-row"><div class="wf-box">New message for assigned employees</div></div>
+        <div class="wf-row"><div class="wf-box">[Employee follow-up] Riya · 8 Oct, 4:10 pm · Follow Up<br>"Spoke to them, sending the deck tomorrow."</div></div>
+        <div class="wf-row"><div class="wf-box">[Admin message] Admin · 8 Oct, 11:00 am<br>"Call them before Friday."</div></div>
+        <div class="wf-row"><div class="wf-box">[Employee follow-up] Arjun · 7 Oct, 6:30 pm · Pending<br>"No answer, will retry."</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v147">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v147</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-08</span>
+    </div>
+    <p><strong>What changed.</strong> In the <strong>Sales Tracker</strong>, opening a lead used to show a long, uneven form: some rows had two boxes, some three, some four, and it took a lot of scrolling. Leads from different website pages also looked slightly different from each other and showed boxes for details that page never asks for. Now every lead opens in the same tidy window. What is saved, and how saving works, is unchanged.</p>
+    <table>
+      <thead><tr><th>Part of the window</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Layout</td><td>2 to 4 boxes per row, different widths</td><td><strong>4 boxes per row</strong>, all the same width (2 per row on a tablet, 1 on a phone)</td></tr>
+        <tr><td>Look across lead types</td><td>Expand North Star leads and other leads looked different</td><td>Same order, same look for every lead. The City dropdown now matches the other boxes, and every lead has an <strong>Open in WhatsApp</strong> link under the contact number.</td></tr>
+        <tr><td>Company name on a Sponsor an Event lead</td><td>Shown, locked and empty</td><td>Not shown (that page does not ask for a company)</td></tr>
+        <tr><td>Next follow-up date, Last connect date, Last call discussion on a lead that came from a website page</td><td>Always shown</td><td>Not shown, unless one of them was already filled in. Follow-ups for these leads are the ones employees log, shown at the bottom of the window. Leads added by hand keep these three boxes.</td></tr>
+        <tr><td>Event details</td><td>Only on Sponsor an Event leads</td><td>Same</td></tr>
+        <tr><td>Boxes you cannot edit (Arrival date, Last updated, Source, Type)</td><td>Very light grey, easy to mistake for an editable box</td><td><strong>Darker grey</strong> with a darker border, so they clearly read as locked</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/admin/sales-tracker → Lead details</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Arrival date 🔒</div><div class="wf-box">Last updated 🔒</div><div class="wf-box">Name</div><div class="wf-box">Company name</div></div>
+        <div class="wf-row"><div class="wf-box">Contact no.</div><div class="wf-box">Email ID</div><div class="wf-box">Country</div><div class="wf-box">City</div></div>
+        <div class="wf-row"><div class="wf-box">Source of lead 🔒</div><div class="wf-box">Type of lead 🔒</div><div class="wf-box">Departments</div><div class="wf-box">Assigned to</div></div>
+        <div class="wf-row"><div class="wf-box brand">Message for assigned employees</div></div>
+        <div class="wf-row"><div class="wf-box">Status</div></div>
+        <div class="wf-row"><div class="wf-box">Query description</div></div>
+        <div class="wf-row"><div class="wf-box">Employee follow-ups</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v146">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v146</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-07</span>
+    </div>
+    <p><strong>What changed.</strong> On the <strong>Events</strong> page the country names used to be plain, still text, so scrolling from one country to the next was easy to miss. Now each country announces itself as it scrolls into view. The events, their order and the cards themselves are the same.</p>
+    <table>
+      <thead><tr><th>Part of the page</th><th>What the visitor sees while scrolling</th></tr></thead>
+      <tbody>
+        <tr><td>Country heading</td><td>The country's round flag now sits beside its name. The flag spins in, the name slides up into place, and a pink line draws across under it.</td></tr>
+        <tr><td>City name</td><td>Slides in from the left.</td></tr>
+        <tr><td>Event cards</td><td>The first five cards of each row rise in one after another.</td></tr>
+        <tr><td>Each animation</td><td>Plays once, the first time that part of the page is reached. Scrolling back does not replay it.</td></tr>
+        <tr><td>Visitors who turn off motion on their device</td><td>See the page without animation, with everything visible straight away.</td></tr>
+        <tr><td>Online and Cohort sections</td><td>Same animation, but no flag, since they are not countries.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/events</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Explore by Country (flag circles)</div></div>
+        <div class="wf-row"><div class="wf-box">(flag) <strong>Japan</strong>, with a pink line drawing across below</div></div>
+        <div class="wf-row"><div class="wf-box">Event card ↑</div><div class="wf-box">Event card ↑</div><div class="wf-box">Event card ↑</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="v145">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v145</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-07</span>
+    </div>
+    <p><strong>What changed.</strong> The <strong>Funding</strong> section of the reader dashboard, locked in v142, is open again. Nothing new was built. The same pages and data that were hidden are now visible. Brand Stories, Handouts, Incubators and Grants stay locked.</p>
+    <table>
+      <thead><tr><th>Where</th><th>What the reader sees</th></tr></thead>
+      <tbody>
+        <tr><td>Dashboard menu</td><td>"Funding" is a normal menu item again, with no lock icon. Clicking it opens the funding pages.</td></tr>
+        <tr><td>Direct link or bookmark (any /dashboard/funding page)</td><td>The page itself, with its charts and deals. The "Funding is locked" message no longer appears.</td></tr>
+        <tr><td>Admin › Funding Data</td><td>Unchanged. The Financial Analyst uploads and manages the deals shown here.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/dashboard/funding</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Menu: Reports · <strong>Funding</strong> (open) · 🔒 Brand Stories</div></div>
+        <div class="wf-row"><div class="wf-box">Funding tabs</div></div>
+        <div class="wf-row"><div class="wf-box">Key numbers</div><div class="wf-box">Charts</div><div class="wf-box">Deals</div></div>
       </div>
     </div>
   </div>

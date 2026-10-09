@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { leadPageFont } from "@/lib/lead-page-font";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll, useSpring, type Variants } from "motion/react";
 import { EASE, scrollToSection, useReducedMotion } from "./hooks";
 
@@ -160,12 +161,10 @@ function Sidebar({
   visible,
   active,
   reducedMotion,
-  fontClassName,
 }: {
   visible: boolean;
   active: SectionId | null;
   reducedMotion: boolean;
-  fontClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   // The panel is portalled to <body> (see below), which only exists once mounted.
@@ -248,11 +247,11 @@ function Sidebar({
 
       {/* Portalled to the end of <body> at z 10000. Inside the page it would share #mvp-site-main's
           z-index 9999 stack, and the site-wide up/down ScrollButtons (also 9999, mounted later)
-          would float over the open panel. The page font class travels with it, since the portal
-          sits outside `.ens-page` where the Cairo variable is set. */}
+          would float over the open panel. The font is set here because the portal sits outside
+          `.ens-page`. */}
       {portalReady &&
         createPortal(
-          <div className={`relative z-[10000] font-[family-name:var(--ens-font),Cairo,Helvetica,Arial,sans-serif] antialiased lg:hidden ${fontClassName ?? ""}`}>
+          <div className={`relative z-[10000] font-[family-name:var(--lead-font),Helvetica,Arial,sans-serif] antialiased lg:hidden ${leadPageFont.variable}`}>
             <AnimatePresence>
               {open && (
                 <>
@@ -372,14 +371,14 @@ function Sidebar({
  * (bottom right, stacked above the site-wide up/down ScrollButtons, with a soft pulse) opens a right-hand sidebar listing the same sections; tapping
  * one closes the sidebar and scrolls there. Every jump goes through `scrollToSection`, so it clears
  * the pinned delegation band and event bar. Tailwind utilities only. */
-export function SectionNav({ fontClassName }: { fontClassName?: string }) {
+export function SectionNav() {
   const reducedMotion = useReducedMotion();
   const { visible, active } = useSectionSpy();
 
   return (
     <>
       <AnimatePresence>{visible && <Dock key="dock" active={active} reducedMotion={reducedMotion} />}</AnimatePresence>
-      <Sidebar visible={visible} active={active} reducedMotion={reducedMotion} fontClassName={fontClassName} />
+      <Sidebar visible={visible} active={active} reducedMotion={reducedMotion} />
     </>
   );
 }

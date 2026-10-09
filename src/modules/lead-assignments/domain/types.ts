@@ -131,6 +131,9 @@ export interface Assignee {
   /** The department they were added through; null = picked by hand. */
   viaDepartment: string | null;
   status: AssignmentStatus;
+  /** This person's own next follow-up date on the lead (YYYY-MM-DD), set by the follow-up they log
+   * from My Leads; '' until they set one. See lead-followups/domain/follow-up-date.ts. */
+  nextFollowUpDate: string;
   assignedAt: string;
   assignedBy: string;
 }
@@ -194,6 +197,10 @@ export interface AssignedLead {
   /** Follow-ups logged on this lead by anyone assigned to it, and when the latest was added. */
   followUpCount: number;
   lastFollowUpAt: string;
+  /** The reader's own next follow-up date on this lead (YYYY-MM-DD); '' until they set one. */
+  nextFollowUpDate: string;
+  /** Admin replies on this lead the reader hasn't seen yet (cleared when they open the lead). */
+  unreadReplies: number;
 }
 
 export interface LeadAssigneeEntity {
@@ -202,6 +209,7 @@ export interface LeadAssigneeEntity {
   credential_id: number;
   via_department: string | null;
   status: string;
+  next_follow_up_date: string | null;
   assigned_by: string | null;
   assigned_at: string;
   employee_name: string | null;

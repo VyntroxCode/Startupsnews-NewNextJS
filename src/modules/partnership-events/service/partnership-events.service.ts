@@ -312,8 +312,9 @@ export class PartnershipEventsService {
    * scheduled, never immediate: the banner sits in the `banners` table with start_date set to
    * the admin-chosen Banner Start Date, and BannersRepository.findAll's date filter (plus
    * BannerCarousel's own start/end check) keeps it invisible on the site until that day
-   * arrives. The admin form makes the date mandatory the moment a banner image is added, so a
-   * banner can never reach the homepage without an explicit go-live date.
+   * arrives. The admin form makes the date mandatory to Publish or Cancel once a banner image is
+   * added (a Draft may be saved without it); with no date the row below stays switched off, so
+   * a banner can never reach the homepage without an explicit go-live date.
    *
    * The row is auto-managed: banner_id remembers it so re-saving updates it in place instead
    * of stacking duplicates, and it's deactivated (never deleted) when the image is cleared, so

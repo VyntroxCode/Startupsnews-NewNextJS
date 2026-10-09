@@ -44,6 +44,7 @@
 @source "./ProfileProgressStrip.tsx";
 @source "./PunchOutTimeInput.tsx";
 @source "../employee/PendingLeadsAlarm.tsx";
+@source "../employee/NewLeadReplyToast.tsx";
 
 /* Admin Rules (/admin/rules-policy, /employee/rules-policy) */
 @source "./PolicySummaryWidget.tsx";
@@ -96,9 +97,13 @@
 /* Funding Data (/admin/funding-data) — manual entry, Excel upload, records, upload history. */
 @source "./funding-data";
 @source "../../app/(admin)/admin/funding-data/page.tsx";
-/* Sales Tracker (/admin/sales-tracker) — Leads overview card + save-confirm dialog content; the rest of the page is styled-jsx. */
+/* Sales Tracker (/admin/sales-tracker) — Leads overview card + save-confirm dialog content + the lead window's 4-column field grid (LEAD_FORM_GRID in constants.ts); the rest of the page is styled-jsx. */
 @source "./sales-tracker/LeadsOverview.tsx";
 @source "./sales-tracker/SaveConfirmDialog.tsx";
+@source "./sales-tracker/constants.ts";
+@source "./sales-tracker/LeadFormModal.tsx";
+@source "./sales-tracker/EnsEnquiryDetailModal.tsx";
+@source "./sales-tracker/LeadActivityPanel.tsx";
 
 /* Content Studio theme — the pink palette ported 1:1 from the standalone app. Every token is
    namespaced `cs-` (bg-cs-surface, text-cs-ink, font-cs-sans…) so it cannot change what an

@@ -3,6 +3,7 @@
 import "./sponsor-event.css";
 import { useCallback, useEffect, useRef } from "react";
 import { MotionConfig } from "motion/react";
+import { leadPageFont } from "@/lib/lead-page-font";
 import { SponsorHero } from "./SponsorHero";
 import { EventReel } from "./EventReel";
 import { EventStory } from "./EventStory";
@@ -67,7 +68,7 @@ export function SponsorEventPage({ promotedCities }: { promotedCities?: Record<s
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="sp-page">
+      <div className={`sp-page ${leadPageFont.variable}`}>
         <SponsorHero />
         <EventReel />
         <EventStory />

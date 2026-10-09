@@ -2,8 +2,9 @@
    HOME ANNOUNCEMENT STRIP (DelegationStrip.tsx)
 
    A single slim band at the top of the home page for the 12th Indian Startup Delegation to Dubai.
-   Palette is the Expand North Star one (see expand-north-star.css) — magenta ground, lime CTA,
-   heavy uppercase — so the strip and the page it links to look like one campaign.
+   Ground is the StartupNews logo red (#E72263, since 2026-10-08 — it was the Expand North Star
+   magenta gradient, which read as a different pink next to the logo right below it). The lime CTA
+   and heavy uppercase are still the Expand North Star ones (see expand-north-star.css).
 
    Two structural facts drive the layout rules here:
    - Since 2026-09-19 the strip is FIXED at the very top of the screen, above the site header, and
@@ -40,7 +41,7 @@
   float: none;
   clear: both;
   overflow: hidden;
-  background: linear-gradient(90deg, #BD0C63 0%, #E4157C 48%, #E4157C 58%, #BD0C63 100%);
+  background: #E72263; /* the StartupNews logo red, sampled from public/logo.png */
   font-family: "Garnett", Helvetica, Arial, sans-serif;
 }
 

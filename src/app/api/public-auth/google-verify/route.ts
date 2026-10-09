@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import jwt from 'jsonwebtoken';
 import * as repo from '@/modules/public-users/repository/public-users.repository';
 import { requireJwtSecret } from '@/shared/config/jwt-secret';
+import { mirrorRegistrationToD1 } from '@/lib/cloudflare-d1';
 
 const JWT_SECRET = requireJwtSecret();
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
       city: city || undefined,
       timezone: timezone || undefined,
     });
+    if (isNew) after(() => mirrorRegistrationToD1(user));
 
     const token = jwt.sign(
       { pubUserId: user.id, email: user.email, type: 'public' },

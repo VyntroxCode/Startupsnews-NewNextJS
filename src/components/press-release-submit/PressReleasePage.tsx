@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { leadPageFont } from "@/lib/lead-page-font";
 import { useLeadForm } from "@/components/lead-forms/shared/useLeadForm";
 import { resolveCity, resolveCountry } from "@/components/lead-forms/shared/compose";
 import type { LeadFormData } from "@/components/lead-forms/shared/types";
@@ -72,6 +73,7 @@ async function submitPressRelease(data: LeadFormData): Promise<void> {
       website: data.website.trim(),
       country: resolveCountry(data),
       city: resolveCity(data),
+      tellUsMore: data.tellUsMore.trim(),
     }),
   });
   const json = await res.json().catch(() => null);
@@ -95,7 +97,7 @@ export function PressReleasePage({ promotedCities }: { promotedCities?: Record<s
   }, [ctrl.submitted]);
 
   return (
-    <div className="pr-page">
+    <div className={`pr-page ${leadPageFont.variable}`}>
       <PressHero />
       <EditorialTicker />
       <StoryPrinciples />

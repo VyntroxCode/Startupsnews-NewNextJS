@@ -10,6 +10,11 @@ import { isParticipationValue, PARTICIPATION_OTHERS, REQUIREMENT_MAX_LENGTH } fr
 import { FOUND_US_DETAIL_MAX_LENGTH, FOUND_US_OTHERS, isFoundUsValue, isReferredByValue, type ReferredByValue } from '../domain/sources';
 import { CONVERSATION_NOTE_MAX_LENGTH, type EnsLeadStatus, isLeadStatus, leadStatusTakesNote } from '../domain/lead-status';
 import type { EnsTravelEnquiriesRepository } from '../repository/ens-travel-enquiries.repository';
+import { statusFromEns } from '@/modules/lead-assignments/domain/types';
+import { STATUS_CHANGE_FIELD } from '@/modules/lead-followups/domain/types';
+import { ensEnquiryChanges } from '@/modules/lead-followups/service/lead-changes';
+import { LeadFollowUpsRepository } from '@/modules/lead-followups/repository/lead-followups.repository';
+import { isIsoDay, statusNeedsFollowUpDate } from '@/modules/lead-followups/domain/follow-up-date';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** The "+<code> <digits>" (or bare digits) the form composes. Per-country digit rules are enforced
@@ -44,6 +49,7 @@ export function entityToEnquiry(e: EnsTravelEnquiryEntity): EnsTravelEnquiry {
     foundUsDetail: e.found_us === FOUND_US_OTHERS ? e.found_us_detail || '' : '',
     leadStatus: e.lead_status && isLeadStatus(e.lead_status) ? e.lead_status : null,
     conversationNote: leadStatusTakesNote(e.lead_status) ? e.conversation_note || '' : '',
+    nextFollowUpDate: e.next_follow_up_date ? String(e.next_follow_up_date).slice(0, 10) : '',
     createdAt: toText(e.created_at),
     updatedAt: e.updated_at ? toText(e.updated_at) : null,
     updatedBy: e.updated_by || '',
@@ -65,7 +71,6 @@ export function normalizeEnquiryInput(body: Record<string, unknown>): EnsTravelE
   if (!EMAIL_RE.test(email)) throw new EnsTravelValidationError('Please enter a valid email address.');
   if (!contact) throw new EnsTravelValidationError('Please enter your contact number.');
   if (!CONTACT_RE.test(contact)) throw new EnsTravelValidationError('Please enter a valid contact number.');
-  if (!city) throw new EnsTravelValidationError('Please enter your city.');
   if (!country) throw new EnsTravelValidationError('Please select your country.');
 
   for (const [field, max] of Object.entries(MAX_LEN)) {
@@ -112,10 +117,13 @@ export function normalizeEnquiryInput(body: Record<string, unknown>): EnsTravelE
   return { name, email, contact, city, country, participation, requirement, referredBy, foundUs, foundUsDetail };
 }
 
-/** The admin-only part of an edit: the lead status and, under "Confirmed" / "Follow Up", the conversation note.
+/** The admin-only part of an edit: the lead status, under "Confirmed" / "Follow Up" the conversation
+ * note, and the admin's next follow-up date.
  * An empty status means "no conversation yet" and clears the note; a note sent with any other
- * status is dropped rather than stored against a status it doesn't describe. */
-export function normalizeLeadStatusInput(body: Record<string, unknown>): Pick<EnsTravelEnquiryAdminInput, 'leadStatus' | 'conversationNote'> {
+ * status is dropped rather than stored against a status it doesn't describe.
+ * The date is compulsory while the enquiry is open (no status = Pending, or Follow Up). Once it is
+ * closed none is asked for; whatever is sent (a valid date or nothing) is stored as-is. */
+export function normalizeLeadStatusInput(body: Record<string, unknown>): Pick<EnsTravelEnquiryAdminInput, 'leadStatus' | 'conversationNote' | 'nextFollowUpDate'> {
   const rawStatus = str(body.leadStatus);
   let leadStatus: EnsLeadStatus | null = null;
   if (rawStatus) {
@@ -126,7 +134,12 @@ export function normalizeLeadStatusInput(body: Record<string, unknown>): Pick<En
   if (conversationNote.length > CONVERSATION_NOTE_MAX_LENGTH) {
     throw new EnsTravelValidationError(`Please keep the conversation note under ${CONVERSATION_NOTE_MAX_LENGTH} characters.`);
   }
-  return { leadStatus, conversationNote };
+  const nextFollowUpDate = str(body.nextFollowUpDate);
+  if (nextFollowUpDate && !isIsoDay(nextFollowUpDate)) throw new EnsTravelValidationError('Please pick a valid next follow-up date.');
+  if (!nextFollowUpDate && statusNeedsFollowUpDate(statusFromEns(leadStatus))) {
+    throw new EnsTravelValidationError('Please pick the next follow-up date.');
+  }
+  return { leadStatus, conversationNote, nextFollowUpDate };
 }
 
 export class EnsTravelEnquiryNotFoundError extends Error {
@@ -163,8 +176,8 @@ export class EnsTravelEnquiriesService {
     return entityToEnquiry(saved);
   }
 
-  /** An admin edit: the visitor's fields plus the lead status / conversation note. Returns the
-   * stored enquiry with its new `updatedAt` / `updatedBy`. */
+  /** An admin edit: the visitor's fields plus the lead status / conversation note / next follow-up
+   * date. Returns the stored enquiry with its new `updatedAt` / `updatedBy`. */
   async update(id: string, body: Record<string, unknown>, updatedBy: string): Promise<EnsTravelEnquiry> {
     const existing = await this.repository.findById(id);
     if (!existing) throw new EnsTravelEnquiryNotFoundError();
@@ -172,6 +185,29 @@ export class EnsTravelEnquiriesService {
     await this.repository.update(id, input, updatedBy);
     const saved = await this.repository.findById(id);
     if (!saved) throw new EnsTravelEnquiryNotFoundError();
+    // The lead's history (Lead activity in the Sales Tracker, the follow-up log in My Leads) gets
+    // ONE entry for a save that changed anything: every changed field as old value → new value
+    // (see lead-changes.ts), plus the conversation result as the entry's text when the status or
+    // the result itself changed — the field only ever holds the latest text. Logged after the save;
+    // if it fails the edit still stands.
+    const before = entityToEnquiry(existing);
+    const after = entityToEnquiry(saved);
+    const changes = ensEnquiryChanges(before, after);
+    const statusChanged = before.leadStatus !== after.leadStatus;
+    const note = statusChanged || before.conversationNote !== after.conversationNote ? after.conversationNote : '';
+    if (note || changes.length) {
+      const status = statusFromEns(after.leadStatus);
+      const dated = note || changes.some((c) => c.field === STATUS_CHANGE_FIELD || c.field === 'Next follow-up date');
+      try {
+        await new LeadFollowUpsRepository().addAdminUpdate(
+          'ens', id, updatedBy || 'Admin', status, note,
+          dated && statusNeedsFollowUpDate(status) ? after.nextFollowUpDate : '',
+          changes
+        );
+      } catch (error) {
+        console.error('Could not log the admin update on Expand North Star enquiry', id, error);
+      }
+    }
     return entityToEnquiry(saved);
   }
 }

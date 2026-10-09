@@ -45,9 +45,9 @@ const NAV_GROUPS = [
     items: [
       { href: '/dashboard/reports', label: 'Reports', badge: '', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
       // Funding-round data uploaded by the Financial Analyst in Admin › Funding Data.
-      // Locked at the user's request; `src/app/dashboard/funding/layout.tsx` guards direct URL
-      // visits too. To unlock: drop `locked` here and flip `FUNDING_LOCKED` there.
-      { href: '/dashboard/funding', label: 'Funding', badge: '', locked: true, icon: <TrendingUp strokeWidth={2} /> },
+      // Unlocked. To lock again: add `locked: true` here and flip `FUNDING_LOCKED` in
+      // `src/app/dashboard/funding/layout.tsx` (it guards direct URL visits).
+      { href: '/dashboard/funding', label: 'Funding', badge: '', icon: <TrendingUp strokeWidth={2} /> },
       // Locked — no real brand-story content exists yet (`/api/brand-stories` and
       // `/api/brand-story-sections` both come back empty). Shows a lock icon and doesn't
       // navigate; the route itself renders the same locked state in place (no redirect) as a
