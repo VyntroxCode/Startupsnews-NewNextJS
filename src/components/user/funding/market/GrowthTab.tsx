@@ -18,12 +18,12 @@ export default function GrowthTab({ onMeta, years }: { onMeta: (m: MarketMeta) =
   );
   return (
     <MaCard
-      title="Who's accelerating the fastest"
+      title="Who's Accelerating The Fastest"
       desc="Same breakdown as By location, ranked by percentage change in capital raised between two full years. Tiny bases are excluded so a jump from near-zero never tops the chart."
     >
       <Controls>
-        <Control label="From year">{yearSelect(from || data?.from || '', setFrom)}</Control>
-        <Control label="To year">{yearSelect(to || data?.to || '', setTo)}</Control>
+        <Control label="From Year">{yearSelect(from || data?.from || '', setFrom)}</Control>
+        <Control label="To Year">{yearSelect(to || data?.to || '', setTo)}</Control>
       </Controls>
       {data ? <GrowthChart rows={data.rows} /> : <Loading error={error} />}
     </MaCard>

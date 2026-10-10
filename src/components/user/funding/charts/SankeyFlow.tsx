@@ -57,6 +57,7 @@ export default function SankeyFlow({ overview }: { overview: MarketOverview }) {
           d={`M${x0},${y0} C${cx},${y0} ${cx},${y1} ${x1},${y1} L${x1},${y1 + th} C${cx},${y1 + th} ${cx},${y0 + fh} ${x0},${y0 + fh} Z`}
           fill={color}
           opacity={0.18}
+          className="transition-opacity duration-150 hover:opacity-55 motion-reduce:transition-none"
         >
           <title>{`${f.from} → ${f.to}`}</title>
         </path>
@@ -65,14 +66,14 @@ export default function SankeyFlow({ overview }: { overview: MarketOverview }) {
 
   return (
     <div className="w-full min-w-0 overflow-x-auto">
-      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} className="block min-w-[640px] max-w-full" role="img" aria-label="Capital flow from funding stage to sector">
+      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} className="block min-w-[640px] max-w-full [&:has(path:hover)>path:not(:hover)]:opacity-[0.07]" role="img" aria-label="Capital flow from funding stage to sector">
         {paths}
         {stages.map((s) => {
           const p = leftPos.get(s.key)!;
           return (
             <g key={`l-${s.key}`}>
               <rect x={LEFT_X} y={p.y} width={NODE_W} height={p.h} fill="#8E8E9E" rx={2} />
-              <text x={LEFT_X - 10} y={p.y + p.h / 2 + 4} textAnchor="end" fontSize={12} fill="#5A5763" className="font-(family-name:--font-db-inter)">{s.key}</text>
+              <text x={LEFT_X - 10} y={p.y + p.h / 2 + 4} textAnchor="end" fontSize={12} fill="#5A5763">{s.key}</text>
             </g>
           );
         })}
@@ -81,7 +82,7 @@ export default function SankeyFlow({ overview }: { overview: MarketOverview }) {
           return (
             <g key={`r-${s.key}`}>
               <rect x={RIGHT_X} y={p.y} width={NODE_W} height={p.h} fill={PALETTE[i % PALETTE.length]} rx={2} />
-              <text x={RIGHT_X + NODE_W + 10} y={p.y + p.h / 2 + 4} fontSize={12} fill="#5A5763" className="font-(family-name:--font-db-inter)">{s.key}</text>
+              <text x={RIGHT_X + NODE_W + 10} y={p.y + p.h / 2 + 4} fontSize={12} fill="#5A5763">{s.key}</text>
             </g>
           );
         })}

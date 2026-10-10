@@ -10,9 +10,9 @@ import { ChartFigure, ChartSkeleton, EmptyNote, Section, primaryCard } from './p
 const TrendChart = dynamic(() => import('./charts/TrendChart'), { ssr: false, loading: () => <ChartSkeleton height="100%" /> });
 
 const RANGES: { value: TrendRange; label: string; short: string }[] = [
-  { value: 'week', label: 'Week on week', short: 'Weekly' },
-  { value: 'month', label: 'Month on month', short: 'Monthly' },
-  { value: 'year', label: 'Year on year', short: 'Yearly' },
+  { value: 'week', label: 'Week On Week', short: 'Weekly' },
+  { value: 'month', label: 'Month On Month', short: 'Monthly' },
+  { value: 'year', label: 'Year On Year', short: 'Yearly' },
 ];
 
 function summary(buckets: TimeBucket[]): string {
@@ -30,7 +30,7 @@ export default function TrendSection({ buckets, range, onRange }: { buckets: Tim
     <Section
       id="fi-trend"
       eyebrow="Momentum"
-      title="Funding over time"
+      title="Funding Over Time"
       sub={range === 'year' ? 'Capital raised and deals closed, by year (last five years).' : 'Capital raised and deals closed this year. Is money rising, and is it more deals or bigger rounds?'}
       right={
         <div className={segWrap} role="group" aria-label="Time grouping">

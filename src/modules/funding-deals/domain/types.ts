@@ -68,6 +68,8 @@ export interface FundingFilters {
   city?: string;
   country?: string;
   investor?: string;
+  /** Exact match on the Lead Investor column (dropdown); `investor` is the free-text match on the full list. */
+  leadInvestor?: string;
   from?: string;
   to?: string;
 }
@@ -166,6 +168,7 @@ export interface FundingFilterOptions {
   stages: string[];
   cities: string[];
   countries: string[];
+  leadInvestors: string[];
 }
 
 // ── Forecast + signals (Dashboard "12-month outlook") ──

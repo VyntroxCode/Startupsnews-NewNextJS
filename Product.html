@@ -116,8 +116,8 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v163</span>
-    <span class="badge">Released 2026-10-01</span>
+    <span class="badge v">Version v173</span>
+    <span class="badge">Released 2026-10-09</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
     <span class="badge">Next.js 16 · React 19 · MariaDB</span>
@@ -134,11 +134,13 @@
   about it — almost every architectural decision follows from it.</p>
 
   <div class="grid">
-    <div class="card"><h5>1. The public news site</h5><p>Articles, categories, authors, search, startup events, reports, brand stories and press releases. This is what readers and Google see.</p></div>
-    <div class="card"><h5>2. The newsroom CMS</h5><p>Where staff write, schedule and publish everything above — plus banners, partner logos and editable page content.</p></div>
-    <div class="card"><h5>3. Internal business tools</h5><p>HR tool, Sales Tracker, Network Manager (CRM), Partnership Tracker, IT helpdesk and the newsletter engine. Staff-only, role-gated.</p></div>
-    <div class="card"><h5>4. Employee self-service</h5><p>Staff punch in and out, request leave, and upload KYC and onboarding documents from their own portal.</p></div>
+    <div class="card"><h5>1. The public news site</h5><p>Articles, categories, authors, search, startup events, reports, brand stories and press releases, plus a member dashboard for signed-in readers (Funding, Reports, Brand Stories, Newsletter). This is what readers and Google see.</p></div>
+    <div class="card"><h5>2. The newsroom CMS</h5><p>Where staff write, schedule and publish everything above — plus banners, partner logos, editable page content and Content Studio, which drafts posts with AI.</p></div>
+    <div class="card"><h5>3. Internal business tools</h5><p>HR tool (attendance, leave, payroll, offboarding), Sales Tracker, Network Manager (CRM), Partnership / Events Tracker, IT helpdesk, Funding Data and the newsletter engine. Staff-only, role-gated.</p></div>
+    <div class="card"><h5>4. Employee self-service</h5><p>Staff punch in and out, request leave, upload documents, see payslips, follow up the sales leads given to them, raise IT tickets and resign, all from their own portal.</p></div>
   </div>
+
+  <p style="font-size:13px;color:var(--muted)">Sections 1 to 8 were brought up to date with <strong>v166</strong> on 2026-10-09. Before that they described the product as it was at v1 (2026-09-13).</p>
 
   <p>A fifth piece runs with no screen at all: a <strong>background worker</strong> that pulls in RSS
   feeds from other publications, publishes scheduled content the moment it is due, and sends the daily
@@ -151,15 +153,18 @@
     in <code>arch.md</code>, and why anything medium or larger gets its own version entry in this document.
   </div>
 
-  <h3>The numbers, as of v1</h3>
-  <dl class="kv">
-    <dt>Public + admin pages</dt><dd>78</dd>
-    <dt>API endpoints</dt><dd>172 (119 admin · 11 employee · 8 reader auth · 34 public/other)</dd>
-    <dt>UI component files</dt><dd>266</dd>
-    <dt>Feature modules</dt><dd>22</dd>
-    <dt>Database tables</dt><dd>≈ 60</dd>
-    <dt>Background jobs</dt><dd>5 (RSS, post scheduler, report scheduler, brand-story scheduler, morning signal)</dd>
-  </dl>
+  <h3>The numbers, at v1 and now</h3>
+  <table>
+    <thead><tr><th>What</th><th>At v1 (2026-09-13)</th><th>At v166 (2026-10-09)</th></tr></thead>
+    <tbody>
+      <tr><td>Pages (public, member, admin, employee)</td><td>78</td><td>96</td></tr>
+      <tr><td>API endpoints</td><td>172</td><td>249</td></tr>
+      <tr><td>UI component files</td><td>266</td><td>319</td></tr>
+      <tr><td>Feature modules</td><td>22</td><td>32</td></tr>
+      <tr><td>Database tables</td><td>≈ 60</td><td>More than at v1 (not recounted; the new ones are listed in Section 8)</td></tr>
+      <tr><td>Background jobs</td><td colspan="2">5 (RSS, post scheduler, report scheduler, brand-story scheduler, morning signal)</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <!-- ───────────────────────── 2 ───────────────────────── -->
@@ -173,15 +178,16 @@
   <table>
     <thead><tr><th>Person</th><th>Logs in where</th><th>Account lives in</th><th>What they can do</th></tr></thead>
     <tbody>
-      <tr><td><strong>Reader</strong></td><td>Site header / <code>/dashboard</code></td><td><code>public_registrations</code></td><td>Read, search, save preferences, subscribe to the newsletter. Can sign in with email, Google or LinkedIn.</td></tr>
-      <tr><td><strong>Super Admin</strong> <code>admin</code></td><td><code>/admin/login</code></td><td><code>users</code></td><td>Everything. Only role allowed into HR Tool, Sales Tracker and Network Manager.</td></tr>
+      <tr><td><strong>Reader</strong></td><td>Site header / <code>/dashboard</code></td><td><code>public_registrations</code></td><td>Read, search, save preferences, subscribe to the newsletter. Signs up with email and password, Google or LinkedIn. Once signed in, gets a member dashboard: Funding, Reports, Brand Stories, Newsletter and Settings. Each new sign-up is also copied to a Cloudflare database (v162).</td></tr>
+      <tr><td><strong>Super Admin</strong> <code>admin</code></td><td><code>/admin/login</code></td><td><code>users</code></td><td>Everything. Only role allowed into HR Tool, Sales Tracker and User Management.</td></tr>
       <tr><td><strong>Editor</strong> <code>editor</code></td><td><code>/admin/login</code></td><td><code>users</code></td><td>Full content control: publish, delete, manage categories and authors, reports, brand stories, events, banners.</td></tr>
       <tr><td><strong>Author</strong> <code>author</code></td><td><code>/admin/login</code></td><td><code>users</code></td><td>Write and edit content. Cannot delete or bulk-mutate, cannot manage categories or authors.</td></tr>
-      <tr><td><strong>Event Admin</strong> <code>event_admin</code></td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Events, event regions and home-page banners. Content access is scoped to the Press Release category only.</td></tr>
-      <tr><td><strong>Publisher Admin</strong> <code>publisher_admin</code></td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Content management, reports, brand stories and inner pages. Does not manage categories or authors directly.</td></tr>
+      <tr><td><strong>Event Admin</strong> <code>event_admin</code></td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Events, event regions and home-page banners. Content access is scoped to the Press Release category only. Also full access to Network Manager (contacts, since v107), plus My Leads and My Exit.</td></tr>
+      <tr><td><strong>Publisher Admin</strong> <code>publisher_admin</code></td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Content management, reports, brand stories, inner pages and Content Studio. Does not manage categories or authors directly. Also has My Leads and My Exit.</td></tr>
       <tr><td><strong>IT Support</strong> <code>it_support</code></td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Triages the whole IT ticket queue — status, priority, assignee, removing comments and attachments.</td></tr>
-      <tr><td><strong>Employee</strong></td><td><code>/employee</code></td><td><code>hr_employee_credentials</code></td><td>Own attendance, leave requests, documents and KYC. No admin panel access at all.</td></tr>
-      <tr><td><strong>Submitter</strong> (no account)</td><td>Public forms</td><td>—</td><td>Submit a startup, funding round, press release or event; these land in the admin panel for review.</td></tr>
+      <tr><td><strong>Financial Analyst</strong> <code>financial_analyst</code> (since v121)</td><td><code>/admin/login</code></td><td><code>panel_admins</code></td><td>Funding Data only: adds funding deals by hand or uploads them from Excel / CSV. These feed the member dashboard's Funding pages. Can also raise IT tickets.</td></tr>
+      <tr><td><strong>Employee</strong></td><td><code>/employee</code></td><td><code>hr_employee_credentials</code></td><td>Own attendance (pay-cycle calendar), leave, documents and KYC, payslips, the staff directory, rules &amp; policy, IT tickets, My Leads (sales leads given to them, with follow-ups) and My Exit (resignation). No admin panel access at all.</td></tr>
+      <tr><td><strong>Submitter</strong> (no account)</td><td>Public forms</td><td>—</td><td>Submit a startup, funding round, press release, event, sponsorship, advertising or travel enquiry; these arrive in the Sales Tracker as leads.</td></tr>
     </tbody>
   </table>
 
@@ -205,12 +211,15 @@
       <tr><td>Articles</td><td>News stories with categories, authors, tags, images and SEO metadata. Can be drafted, scheduled for later, or published now.</td><td><code>/[...slug]</code>, <code>/news</code></td></tr>
       <tr><td>Categories &amp; authors</td><td>Browsing by topic or by writer.</td><td><code>/category/*</code>, <code>/author/*</code></td></tr>
       <tr><td>Search</td><td>Site-wide article search.</td><td><code>/search</code></td></tr>
-      <tr><td>Startup events</td><td>Event listings, filterable by country/region, with a horizontally scrolling carousel on the home page.</td><td><code>/events</code>, <code>/startup-events</code></td></tr>
+      <tr><td>Startup events</td><td>Event listings by country, with an Explore by Country flag strip and the visitor's own country shown first. Each event page has a details box and Similar Events. On the home page: a horizontally scrolling carousel and a Startup Events timeline.</td><td><code>/events</code>, <code>/startup-events</code></td></tr>
       <tr><td>Reports</td><td>Long-form research pieces built from ordered sections, with page counts.</td><td>Report pages</td></tr>
       <tr><td>Brand stories</td><td>Sponsored long-form content, also section-based, also schedulable.</td><td>Brand story pages</td></tr>
       <tr><td>Press releases</td><td>A dedicated content stream, deliberately excluded from the Google News sitemap.</td><td><code>/press-release</code></td></tr>
-      <tr><td>Reader accounts</td><td>Sign up with email, Google or LinkedIn; manage newsletter preferences; delete your account.</td><td><code>/dashboard</code></td></tr>
-      <tr><td>Lead-gen forms</td><td>Six public forms: feature your startup, submit a funding round, submit a press release, submit/list an event, sponsor an event, advertise, contact.</td><td>See wireframe 4.3</td></tr>
+      <tr><td>Reader accounts</td><td>Sign up with email and password, Google or LinkedIn, from one Login / Sign up page; complete a profile; manage newsletter preferences; delete your account.</td><td><code>/login</code>, <code>/dashboard</code></td></tr>
+      <tr><td>Member dashboard</td><td>Home with events near you and a newsletter card, plus Reports, Brand Stories, Newsletter and Settings.</td><td><code>/dashboard/*</code></td></tr>
+      <tr><td>Funding (members)</td><td>Five pages of startup funding data: Dashboard, All Deals, Market Analysis, Search and AI Assistant, with a moving Market Pulse line and up to three sponsor cards.</td><td><code>/dashboard/funding/*</code></td></tr>
+      <tr><td>Home page</td><td>Latest News cards that change by themselves every 5 seconds, a Trending column and a Startup Events timeline (v164).</td><td><code>/</code></td></tr>
+      <tr><td>Lead-gen forms</td><td>Public forms: feature your startup, submit a funding round, submit a press release, list an event, sponsor an event, advertise, Expand North Star travel enquiry, and Contact Us. All but Contact Us arrive in the Sales Tracker as leads; Contact Us is emailed to the office.</td><td>See wireframe 4.3</td></tr>
       <tr><td>Newsletter</td><td>Opt-in, scheduled sends, one-click unsubscribe.</td><td><code>/unsubscribe</code></td></tr>
       <tr><td>SEO surface</td><td>Split sitemaps (index, news, posts in 1000-URL files, events, static), <code>llms.txt</code>, per-article robots directives, 410s for removed legacy URLs.</td><td><code>/sitemap_index.xml</code></td></tr>
     </tbody>
@@ -223,11 +232,16 @@
       <tr><td>Post editor</td><td>Rich-text editor (TipTap) with images, tables, embeds, links, character count. Schedule or publish.</td><td>admin, editor, author, publisher_admin, event_admin*</td></tr>
       <tr><td>RSS feeds</td><td>Register other publications' feeds; the background worker imports their articles as drafts every 30 minutes.</td><td>admin, editor</td></tr>
       <tr><td>Newsletter manager</td><td>Categories, items and send schedules.</td><td>admin, editor</td></tr>
-      <tr><td>HR Tool</td><td>The largest internal tool — 30 endpoints. Employee directory, attendance, leave, regularisations, payroll runs, onboarding, company profile, policy rules, KYC documents.</td><td>admin only</td></tr>
+      <tr><td>Content Studio</td><td>Writes a ready-to-edit article draft with AI (Azure OpenAI) from a trending story, a web link or a topic. Opened from a tab on the Posts page; "Move to post" opens a new post already filled in.</td><td>admin, editor, author, publisher_admin</td></tr>
+      <tr><td>HR Tool</td><td>The largest internal tool. Employee directory, attendance calendar by pay cycle (26th to 25th), leave, regularisations, payroll (Run, Freeze, Reverse, payslips), onboarding, offboarding with Full &amp; Final, company profile, policy rules, KYC documents.</td><td>admin only</td></tr>
       <tr><td>Attendance &amp; leave</td><td>The admin-side view of what employees submit from their portal.</td><td>admin</td></tr>
-      <tr><td>Sales Tracker</td><td>Sales leads with country/city, and the sales team roster.</td><td>admin only</td></tr>
-      <tr><td>Network Manager</td><td>Contacts CRM.</td><td>admin only</td></tr>
-      <tr><td>Partnership Tracker</td><td>Event partnerships through their lifecycle, including whether each is live-listed on the public site and auto-expiry of past partnerships.</td><td>admin</td></tr>
+      <tr><td>Sales Tracker</td><td>Every lead from every public form in one place. The admin assigns a lead to departments and people, sees one Lead activity history (employee follow-ups, admin status updates, edits and reply threads), and has a Today's Follow up card with Today and Overdue counts.</td><td>admin only</td></tr>
+      <tr><td>My Leads</td><td>Where the people a lead was given to read it, add follow-ups with a next follow-up date, and reply to the admin.</td><td>employees; event_admin, publisher_admin</td></tr>
+      <tr><td>Funding Data</td><td>Add funding deals by hand or upload Excel / CSV, with a check of every row and an upload history that can be undone. Feeds the member Funding pages.</td><td>admin, financial_analyst</td></tr>
+      <tr><td>User Management</td><td>Where the admin writes the sponsor cards shown on the member Funding Dashboard (v166).</td><td>admin only</td></tr>
+      <tr><td>Registered Users</td><td>The list of readers who signed up, with search, filters and CSV export over all users.</td><td>admin</td></tr>
+      <tr><td>Network Manager</td><td>Contacts CRM.</td><td>admin, event_admin</td></tr>
+      <tr><td>Partnership Tracker (also called Events Tracker)</td><td>Event partnerships through their lifecycle, including whether each is live-listed on the public site and auto-expiry of past partnerships.</td><td>admin</td></tr>
       <tr><td>IT Tickets</td><td>Internal helpdesk. Anyone on the panel can raise a ticket and see their own; IT Support and admin triage the whole queue.</td><td>all panel roles (raise) / admin + it_support (triage)</td></tr>
       <tr><td>HTML Tools</td><td>Standalone tools that can be shared with specific panel roles.</td><td>admin, editor + explicitly shared</td></tr>
       <tr><td>Site settings</td><td>Key-value settings edited from the dashboard — footer copyright, Feature-Your-Startup hero images — changed without a deploy.</td><td>editor+</td></tr>
@@ -272,7 +286,7 @@
     <div class="wf-body">
       <div class="wf-row">
         <div class="wf-stack" style="flex:0 0 180px">
-          <div class="wf-box solid"><span class="t">Sidebar</span>Dashboard<br>Posts · Categories · Authors<br>Events · Banners<br>Reports · Brand Stories<br>RSS · Newsletter<br>Users · Panel Admins<br>HR Tool · Attendance · Leave<br>Sales · Contacts · Partnerships<br>IT Tickets · Tools</div>
+          <div class="wf-box solid"><span class="t">Sidebar</span>Dashboard<br>Posts (+ Content Studio tab) · Categories · Authors<br>Events · Banners<br>Reports · Brand Stories<br>RSS · Newsletter<br>Users · Registered Users · User Management<br>HR Tool · Attendance · Leave<br>Sales Tracker · My Leads · Contacts · Partnerships<br>Funding Data<br>IT Tickets · Tools · My Exit</div>
         </div>
         <div class="wf-stack" style="flex:1">
           <div class="wf-box solid"><span class="t">Top bar</span>Breadcrumb · search · logged-in user + role · logout</div>
@@ -293,7 +307,7 @@
         <div class="wf-box brand" style="flex:1;min-height:190px"><span class="t">Image panel</span>Full-height photo + caption that changes per step. Source: CDN URL from site settings, falling back to a bundled local image so it can never break.</div>
         <div class="wf-stack" style="flex:1.2">
           <div class="wf-box"><span class="t">Progress</span>"Step 1 of 2"</div>
-          <div class="wf-box solid" style="min-height:110px"><span class="t">Step 1 — details &amp; contact</span>Name* · Company* · Phone* · Email* · Website · Country/City</div>
+          <div class="wf-box solid" style="min-height:110px"><span class="t">Step 1 — details &amp; contact</span>Name* · Company* · Phone* · Email* · Website · Country (dropdown) · City (typed, optional)</div>
           <div class="wf-box"><span class="t">Step 2 — pitch deck</span>Drag-or-click PDF dropzone, 10&nbsp;MB max</div>
           <div class="wf-box"><span class="t">Turnstile</span>CAPTCHA — the endpoint rejects the request without it</div>
           <div class="wf-row"><div class="wf-box">← Back</div><div class="wf-box brand">Submit →</div></div>
@@ -320,6 +334,13 @@
         <div class="wf-box"><span class="t">KYC</span>12 slots — 5 required, 7 optional</div>
         <div class="wf-box"><span class="t">Leave requests</span>Apply · history · status</div>
       </div>
+      <div class="wf-row">
+        <div class="wf-box"><span class="t">Attendance calendar</span>Pay cycle 26th → 25th, day by day</div>
+        <div class="wf-box"><span class="t">Payslips</span>Published when payroll is frozen</div>
+        <div class="wf-box"><span class="t">My Leads</span>Leads given to me · follow-ups · replies</div>
+        <div class="wf-box"><span class="t">Also</span>Directory · Rules &amp; Policy · IT Tickets · My Exit</div>
+      </div>
+      <div class="wf-note">On phones the portal uses a menu button and bottom tabs instead of a sidebar (v81). Punch In works 9:00 AM to 3:00 PM and Punch Out until 11:59 PM (v127).</div>
     </div>
   </div>
   <div class="callout warn">
@@ -404,9 +425,10 @@ flowchart LR
     D -->|fails| E["Friendly error,<br/>stays on the form"]
     D -->|passes| F["Saved to the<br/>submissions table"]
     F --> G["Email to the<br/>editorial inbox"]
-    F --> H(("Admin reviews<br/>in the panel"))
+    F --> H["Appears in the Sales Tracker<br/>as a lead"]
+    H --> I(("Admin assigns it;<br/>employees follow up<br/>from My Leads"))
     </pre>
-    <figcaption>Every public form follows this shape: CAPTCHA → rate limit → schema validation → store → notify.</figcaption>
+    <figcaption>Every public form follows this shape: CAPTCHA → rate limit → schema validation → store → notify. Since v2 to v154 every lead form also lands in the Sales Tracker.</figcaption>
   </figure>
 
   <h3>5.4 An employee marks attendance</h3>
@@ -440,12 +462,17 @@ flowchart LR
     <thead><tr><th>Piece</th><th>What it is</th><th>Plain-language role</th></tr></thead>
     <tbody>
       <tr><td>Next.js 16 + React 19</td><td>The application framework</td><td>Renders every page and hosts every API endpoint. One process serves the public site, the admin panel and the employee portal.</td></tr>
-      <tr><td>MariaDB (<code>zox_db</code>)</td><td>The database</td><td>The only place real data lives — roughly 60 tables. If it is not in here, it is not saved.</td></tr>
+      <tr><td>MariaDB (<code>zox_db</code>)</td><td>The database</td><td>The only place real data lives — roughly 60 tables at v1 and more since. If it is not in here, it is not saved.</td></tr>
       <tr><td>Redis</td><td>Cache + lock</td><td>Makes repeated reads fast and stops two background runs colliding. <strong>Optional</strong> — if Redis is down the site still works, just slower.</td></tr>
       <tr><td>AWS S3 + CloudFront</td><td>File storage + image CDN</td><td>Every image, PDF and attachment. Browsers fetch them from <code>images.startupnews.fyi</code>, never from the app server.</td></tr>
       <tr><td>PM2</td><td>Process manager</td><td>Keeps two processes alive: the website and the background worker.</td></tr>
       <tr><td>SMTP / Resend</td><td>Email</td><td>Form notifications, transactional mail and the newsletter.</td></tr>
       <tr><td>Cloudflare Turnstile</td><td>CAPTCHA</td><td>Keeps bots out of the public forms.</td></tr>
+      <tr><td>Google / LinkedIn sign-in</td><td>Outside login services</td><td>Let readers sign in without creating a password.</td></tr>
+      <tr><td>Cloudflare D1 (since v162)</td><td>A second, outside database</td><td>Receives a copy of every new reader sign-up, in the same list MorningPulse uses. The main database is unchanged, and the site works without it.</td></tr>
+      <tr><td>Azure OpenAI (since v94)</td><td>AI writing service</td><td>Writes the drafts in Content Studio. Used nowhere else.</td></tr>
+      <tr><td>Google News / Trends</td><td>News sources</td><td>Where Content Studio finds trending stories.</td></tr>
+      <tr><td>Location lookup (since v153)</td><td>Outside service, called from the visitor's browser</td><td>Works out roughly which country a visitor is in, so the Events page can show their country first.</td></tr>
     </tbody>
   </table>
 
@@ -489,8 +516,10 @@ graph TB
     C --> EXT["Other publications'<br/>RSS feeds"]
     S --> CDN["CloudFront<br/>images.startupnews.fyi"]
     CDN --> U
+    W --> D1[("Cloudflare D1<br/>copy of reader sign-ups")]
+    W --> AI["Azure OpenAI<br/>(Content Studio)"]
     </pre>
-    <figcaption>Two processes, one codebase, one database. The background process has no web address — it simply wakes on a timer.</figcaption>
+    <figcaption>Two processes, one codebase, one main database. The background process has no web address — it simply wakes on a timer. Cloudflare D1 and Azure OpenAI are outside services the website calls; neither holds the site's main data.</figcaption>
   </figure>
 </section>
 
@@ -660,28 +689,30 @@ flowchart LR
 flowchart LR
     E(("Employee")) --> M["My Leads"]
     M -->|clicks a lead| V["Lead window:<br/>everything the visitor filled in<br/>(view only)"]
-    V --> F["Adds a follow-up:<br/>status + message"]
+    V --> F["Adds a follow-up:<br/>status + message +<br/>next follow-up date (compulsory)"]
     F --> S[("Saved with today's date and time<br/>(set automatically)")]
     S --> K["Lead moves into<br/>the Followed up card"]
+    S --> TF["Today's Follow up card:<br/>Today and Overdue counts<br/>(admin and employee)"]
     S --> A["Admin opens the lead<br/>in the Sales Tracker"]
-    A --> P["Employee follow-ups panel:<br/>who, when, status, message"]
-    A -->|"writes a message<br/>(once departments + people are picked)"| MS[("Message for assigned employees<br/>(kept as a history)")]
-    MS -->|"shown at the top<br/>of the lead window"| V
+    A --> P["Lead activity:<br/>follow-ups, admin status updates<br/>and every edit (old → new)"]
+    P -->|"admin clicks Reply<br/>under an entry"| RP[("Reply thread<br/>under that entry")]
+    V -->|"employee replies back"| RP
+    RP -->|"pop-up + 'new' badge<br/>for the employee"| M
     </pre>
-    <figcaption>Employees can read a lead and add follow-ups, but can never change what the visitor submitted. Everyone on the lead sees the same history. The admin's messages tell the team what to do; the team answers with follow-ups.</figcaption>
+    <figcaption>Employees can read a lead and add follow-ups, but can never change what the visitor submitted. Everyone on the lead sees the same history. Since v158–v161 there is no separate "message" box: admin and team talk in reply threads under each follow-up, every follow-up carries a next follow-up date, and admin edits are logged in the same list.</figcaption>
   </figure>
   <h3>Drafting a post with Content Studio (arch.md §6.13)</h3>
   <figure class="diagram">
     <pre class="mermaid">
 flowchart LR
-    ED(("Editor")) --> P["Picks a source:<br/>trending story, web link<br/>or a typed topic"]
-    P --> CS["Content Studio<br/>(admin panel)"]
+    ED(("Editor, Author or<br/>Publisher Admin")) --> P["Picks a source:<br/>trending story, web link<br/>or a typed topic"]
+    P --> CS["Content Studio<br/>(a tab on the Posts page)"]
     CS -->|"fetches the story text"| WEB["News sites and<br/>Google News / Trends"]
-    CS -->|"asks for a draft"| AI["Claude (AI)<br/>writes in 3–4 steps"]
+    CS -->|"asks for a draft"| AI["Azure OpenAI (AI)<br/>writes in 3–4 steps"]
     AI --> D["Draft on screen:<br/>article, byline, FAQs,<br/>SEO title and description"]
-    D -->|"copy or download .html"| POST["Posts → New post<br/>(editor reviews and publishes)"]
+    D -->|"Move to post<br/>(or download .html)"| POST["Posts → New post, already filled in<br/>(editor reviews and publishes)"]
     </pre>
-    <figcaption>Content Studio only prepares the draft. Nothing is published or saved to the site until an editor pastes it into Posts and publishes it the usual way.</figcaption>
+    <figcaption>Content Studio only prepares the draft. Nothing is published or saved to the site until an editor reviews the new post and publishes it the usual way. The AI is the company's own Azure OpenAI account (since v94); "Move to post" was added in v88.</figcaption>
   </figure>
   <h3>Funding data: from an analyst's Excel file to the reader's Funding page (arch.md §6.14)</h3>
   <figure class="diagram">
@@ -702,19 +733,20 @@ flowchart LR
 <section id="data">
   <h2>Section 8</h2>
   <div class="h2sub">Data at a glance</div>
-  <p>Around 60 tables, grouped by what they are for.</p>
+  <p>Around 60 tables at v1 and more since, grouped by what they are for.</p>
 
   <table>
     <thead><tr><th>Group</th><th>Tables</th><th>Holds</th></tr></thead>
     <tbody>
       <tr><td>Content</td><td><code>posts</code>, <code>post_tags</code>, <code>categories</code></td><td>Articles and how they are organised</td></tr>
       <tr><td>Long-form</td><td><code>reports</code>, <code>report_sections</code>, <code>brand_stories</code>, <code>brand_story_sections</code></td><td>Section-built research and sponsored pieces</td></tr>
-      <tr><td>Events</td><td><code>events</code>, <code>event_regions</code>, <code>partnership_events</code></td><td>Listings, regions, and the partnership pipeline</td></tr>
+      <tr><td>Events</td><td><code>events</code>, <code>event_regions</code>, <code>partnership_events</code>, <code>partnership_event_follow_ups</code></td><td>Listings, regions, and the partnership pipeline with its follow-up notes</td></tr>
       <tr><td>Accounts</td><td><code>users</code>, <code>panel_admins</code>, <code>public_registrations</code>, <code>public_registration_founders</code>, <code>public_registration_funding_rounds</code></td><td>The three separate login worlds</td></tr>
       <tr><td>HR</td><td>19 <code>hr_*</code> tables — employees, attendance, punch log, leave, regularisations, payroll runs and entries, rules, teams, onboarding, expenses, templates, audit log, company profile, credentials, overrides, document requests, and (from v72) offboarding cases, their clearance checklists and offboarding settings</td><td>Everything the HR tool and employee portal touch</td></tr>
       <tr><td>IT helpdesk</td><td><code>it_tickets</code>, <code>it_ticket_comments</code>, <code>it_ticket_attachments</code>, <code>it_ticket_key_seq</code></td><td>Tickets and their human-readable keys</td></tr>
-      <tr><td>Submissions</td><td><code>feature_startup_submissions</code>, <code>funding_round_submissions</code>, <code>incubatx_dossiers</code></td><td>What the public forms create</td></tr>
-      <tr><td>Sales &amp; CRM</td><td><code>sales_leads</code>, <code>sales_team_members</code>, <code>contacts</code></td><td>Pipeline and contact book</td></tr>
+      <tr><td>Submissions</td><td><code>feature_startup_submissions</code>, <code>funding_round_submissions</code>, <code>press_release_submissions</code>, <code>sponsor_event_submissions</code>, <code>advertise_submissions</code>, <code>ens_travel_enquiries</code>, <code>incubatx_dossiers</code></td><td>What the public forms create</td></tr>
+      <tr><td>Sales &amp; CRM</td><td><code>sales_leads</code>, <code>sales_team_members</code>, <code>contacts</code>, <code>sales_lead_departments</code>, <code>sales_lead_assignments</code>, <code>sales_lead_followups</code>, <code>sales_lead_followup_replies</code>, <code>sales_lead_reply_seen</code></td><td>Pipeline and contact book; who each lead was given to, their follow-ups, and the reply threads under them</td></tr>
+      <tr><td>Funding (since v121)</td><td><code>funding_deals</code>, <code>funding_upload_batches</code>, <code>funding_sponsor_cards</code></td><td>Funding deals, the history of each upload, and the sponsor cards on the member Funding Dashboard</td></tr>
       <tr><td>Ingestion</td><td><code>rss_feeds</code>, <code>rss_feed_items</code></td><td>Feed registry and what has already been imported</td></tr>
       <tr><td>Newsletter</td><td><code>newsletter_categories</code>, <code>newsletter_items</code>, <code>newsletter_schedules</code></td><td>What goes out, and when</td></tr>
       <tr><td>Site chrome</td><td><code>banners</code>, <code>partner_logos</code>, <code>inner_page_content</code>, <code>site_settings</code>, <code>settings</code>, <code>admin_tools</code></td><td>Editable bits of the site that need no deploy to change</td></tr>
@@ -925,6 +957,16 @@ flowchart LR
       <tr><td><strong>v161</strong></td><td>2026-10-08</td><td>Medium</td><td>Sales Tracker: every edit of a lead now shows in its follow-up list with who changed it and the old and new values, for admins and assigned employees.</td></tr>
       <tr><td><strong>v162</strong></td><td>2026-10-08</td><td>Major</td><td>Every new reader who registers is now also <strong>copied to a Cloudflare database</strong>. The main database is unchanged. Needs three Cloudflare keys before it starts working.</td></tr>
       <tr><td><strong>v163</strong></td><td>2026-10-08</td><td>Medium</td><td>The Cloudflare copy of new readers now goes into the <strong>same list MorningPulse uses</strong>, with every detail of the account and a last column <strong>User From = Startupnews</strong>.</td></tr>
+      <tr><td><strong>v164</strong></td><td>2026-10-09</td><td>Medium</td><td>Homepage: the three <strong>Latest News</strong> cards now change by themselves every 5 seconds to another story from the same category, sliding in sideways. A card stops changing while the mouse is on it. Trending and Startup Events also slide in, and the events timeline grows as you scroll.</td></tr>
+      <tr><td><strong>v165</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding: the moving <strong>Market Pulse</strong> line now sits in the top bar beside the StartupNews logo, on every Funding page. The "Dashboard / Funding intelligence at a glance" heading is removed.</td></tr>
+      <tr><td><strong>v166</strong></td><td>2026-10-09</td><td>Medium</td><td>Admin panel: new <strong>User Management</strong> section where the admin writes the <strong>sponsor cards</strong> shown at the top of the Funding Dashboard: title, sub title, logo and link. Up to 5 cards can be kept, up to 3 shown. Clicking a card opens its link in a new tab.</td></tr>
+      <tr><td><strong>v167</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding: the summary card's "All countries / India / USA" buttons are replaced by one <strong>Country</strong> drop-down (only India can be chosen for now), the selected country shows as a round flag with its name, the page always opens on India, and the card has a pink-to-violet background with a new label and a large date line.</td></tr>
+      <tr><td><strong>v168</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding charts: the details box now appears just above the item you point at (it used to jump to the top-left corner of the screen after scrolling), the pointed item turns darker and the others fade, on every Funding chart.</td></tr>
+      <tr><td><strong>v169</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding, <strong>All Deals</strong>: three new drop-down filters, <strong>Round Stage</strong>, <strong>City</strong> and <strong>Lead Investor</strong>. Each list is made from the values that are actually in that column of the deals table, so a new city, stage or investor appears in the list on its own.</td></tr>
+      <tr><td><strong>v170</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding: the <strong>Sector × Stage</strong> grid is tidied. Stage and sector names sit in clear labelled boxes, every column is the same width, stages run from earliest to latest round, and pointing at a box lights up its sector name and its stage name.</td></tr>
+      <tr><td><strong>v171</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding: in <strong>Cities: Volume Vs. Cheque Size</strong> each of the top 8 cities now has its own colour, used for its bubble on the left and its bar on the right. Other cities are grey. Pointing at a city in the leaderboard picks out its bubble.</td></tr>
+      <tr><td><strong>v172</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding: every page in the Funding section now uses one typeface, <strong>Calibri</strong>, for headings, numbers, tables, buttons and charts.</td></tr>
+      <tr><td><strong>v173</strong></td><td>2026-10-09</td><td>Medium</td><td>HR Management, Directory: to give an employee <strong>Publisher Admin</strong> or <strong>Event Admin</strong> access, HR now only picks the role. The employee's panel account is made automatically. The "Link to existing account" box and its yellow "No available accounts" warning are removed.</td></tr>
       <tr><td><strong>v130</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the <strong>Leads by page</strong> tiles (one per website page) are back, exactly as before, just below the new Leads overview.</td></tr>
       <tr><td><strong>v129</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the old <strong>Summary</strong> and <strong>Leads by page</strong> boxes are replaced by one <strong>Leads overview</strong> that counts every lead — every website page, Expand North Star and leads added by the team — by type and by status, with charts. Click any number to see those leads.</td></tr>
       <tr><td><strong>v128</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: clicking any lead now opens it <strong>ready to edit</strong> — no more "Edit lead" button. Pressing <strong>Save changes</strong> shows a warning listing what you changed, and nothing is saved until you confirm.</td></tr>
@@ -2123,6 +2165,7 @@ flowchart LR
       <li><strong>The asterisk on "INR 1.65 lakh*" has no footnote yet.</strong> Say what it should point to (taxes, per person, terms) and it can be added under the cards.</li>
       <li><strong>Not live yet.</strong> The dev site is on an older build; a rebuild is needed to see this and the other recent changes.</li>
     </ul>
+  </div>
   <div class="ver">
     <div class="ver-head">
       <span class="n">v22</span>
@@ -2157,6 +2200,7 @@ flowchart LR
       <li><strong>Database change applied on the dev server.</strong> Two new optional columns on the enquiries table; nothing existing was altered. The same migration file needs running on live before deploying.</li>
       <li><strong>Not live yet.</strong> Needs a rebuild to appear on the dev site.</li>
     </ul>
+  </div>
   <div class="ver">
     <div class="ver-head">
       <span class="n">v23</span>
@@ -2180,6 +2224,7 @@ flowchart LR
       <li><strong>Assignee and follow-up dates</strong> were features of the All-leads copy, so they no longer apply to these enquiries. If the team needs them here, they can be added to the Expand North Star section itself.</li>
       <li><strong>Not live yet.</strong> Needs a rebuild to appear on the dev site.</li>
     </ul>
+  </div>
   <div class="ver">
     <div class="ver-head">
       <span class="n">v24</span>
@@ -2803,6 +2848,9 @@ flowchart LR
       <tbody>
         <tr><td>What bugs were found and fixed while building this?</td><td>Two. On a phone, once the menu was opened it couldn't always be closed by tapping the same menu button &mdash; only by tapping outside it. And someone navigating the menu with a keyboard instead of a mouse couldn't see which item was currently selected. Both are now fixed.</td></tr>
         <tr><td>Did the previous mosaic layout (v39) do something wrong?</td><td>No &mdash; this is a further design direction the team asked for, not a correction of v39.</td></tr>
+      </tbody>
+    </table>
+  </div>
   <div class="ver">
     <div class="ver-head">
       <span class="n">v41</span>
@@ -2840,6 +2888,7 @@ flowchart LR
   </div>
 </section>
 
+<section id="v42">
   <div class="ver">
     <div class="ver-head">
       <span class="n">v42</span>
@@ -2872,6 +2921,7 @@ flowchart LR
   </div>
 </section>
 
+<section id="v43">
   <div class="ver">
     <div class="ver-head">
       <span class="n">v43</span>
@@ -4465,6 +4515,344 @@ PHONE                                   +--------------------+
         <div class="wf-row"><div class="wf-box">12-month outlook · Signals</div></div>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="v173">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v173</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> In <strong>HR Management, Directory</strong>, giving an employee <strong>Publisher Admin</strong> or <strong>Event Admin</strong> access now takes one step: pick the role. Before, HR also had to pick an already existing panel account, and each account could be used by one employee only, so the form showed "No available accounts" once the single account was taken.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What does HR do now?</td><td>Choose <strong>Publisher Admin</strong> or <strong>Event Admin</strong> in "Role (admin panel access)" and save. Nothing else.</td></tr>
+        <tr><td>What does the employee get?</td><td>Their own panel account with the full set of menus and features for that role, the same as anyone else holding the role.</td></tr>
+        <tr><td>How do they sign in?</td><td>With their Employee ID and password, on the admin login page's "Employee ID" tab. Same as before.</td></tr>
+        <tr><td>Can several employees hold the same role?</td><td>Yes. There is no limit, because each person gets their own account.</td></tr>
+        <tr><td>Why their own account and not a shared one?</td><td>So the system can show who did what, and one person's access can be removed without affecting anyone else.</td></tr>
+        <tr><td>What if HR changes the role?</td><td>The same account moves to the new role. Their past work stays with them.</td></tr>
+        <tr><td>What if HR sets the role back to "None"?</td><td>Their panel access is switched off. Nothing is deleted. They can still sign in to the employee portal. Choosing the role again switches the access back on.</td></tr>
+        <tr><td>What if the employee leaves?</td><td>Unchanged: their panel access is switched off automatically on exit.</td></tr>
+        <tr><td>Did anything change for people who already have access?</td><td>No. Existing Publisher Admin and Event Admin employees keep their accounts and sign in the same way.</td></tr>
+        <tr><td>Where do the new accounts appear?</td><td>In <strong>Admin, Users, Panel Admins</strong>, like any other panel account.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">HR Directory, hire / edit form, admin panel access</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Before<br>Role: [Publisher Admin ▾]<br>Link to existing account: [— Select — ▾]<br>⚠ No available Publisher Admin accounts</div><div class="wf-box brand">Now<br>Role: [Publisher Admin ▾]<br>This person gets their own Publisher Admin access and signs in with this Employee ID and password.</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v172">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v172</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> The whole member <strong>Funding</strong> section now uses a single typeface, <strong>Calibri</strong>. Before, four different typefaces were mixed on the same page.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where does Calibri show?</td><td>On every Funding page: page and card headings, the big headline numbers, deal tables (amounts and dates), filters, buttons, search and chat boxes, chart labels and the Market Pulse strip at the top.</td></tr>
+        <tr><td>What was there before?</td><td>A serif typeface for headings, a second one for big numbers, a typewriter-style one for amounts and dates, and a fourth for everything else.</td></tr>
+        <tr><td>Does every visitor have Calibri?</td><td>No. It comes with Windows and Microsoft Office. Visitors who have it see Calibri itself. Everyone else (most phones, Macs without Office) sees Carlito, a free typeface made to the same shapes and spacing, which the site supplies. The two look the same at a glance.</td></tr>
+        <tr><td>Will small text become hard to read?</td><td>Calibri's letters are naturally smaller than the old typeface's. The pages enlarge them slightly so small labels stay as readable as before.</td></tr>
+        <tr><td>Is anything visibly different besides the letter shapes?</td><td>Calibri has two thicknesses, regular and bold. Text that used an in-between thickness now shows as regular or bold. Amounts in tables are no longer in typewriter style, but the digits still line up in columns.</td></tr>
+        <tr><td>Did the rest of the dashboard change?</td><td>No. The left menu, the top bar and the other dashboard pages keep their current typeface.</td></tr>
+        <tr><td>Did any numbers change?</td><td>No.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Funding section, typefaces</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Before<br>Headings: serif<br>Big numbers: display<br>Amounts and dates: typewriter<br>Body and buttons: sans</div><div class="wf-box">Now<br>Headings: Calibri<br>Big numbers: Calibri<br>Amounts and dates: Calibri<br>Body, buttons, charts: Calibri</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v171">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v171</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> On the member <strong>Funding Dashboard</strong>, the two city cards (the bubble chart on the left and the <strong>City Leaderboard</strong> on the right) now use matching colours and are easier to read.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What was wrong?</td><td>Every bubble was the same pale pink, so cities could not be told apart, and every leaderboard bar was black. Nothing linked a bubble to its row in the list.</td></tr>
+        <tr><td>How are the colours used now?</td><td>The top 8 cities by money raised each get their own colour. The same colour is used for that city's bubble, the dot beside its name and its bar in the leaderboard.</td></tr>
+        <tr><td>What about the other cities?</td><td>Their bubbles are grey. A small key under the chart explains this.</td></tr>
+        <tr><td>What happens when I point at a city in the leaderboard?</td><td>Its row is shaded, its bubble turns solid, and the other rows and bubbles fade.</td></tr>
+        <tr><td>What happens when I point at a bubble?</td><td>It turns solid with a dark outline and the others fade. The details box now starts with a dot in the city's colour and the city name. The empty circle on a line of its own is gone.</td></tr>
+        <tr><td>Anything else?</td><td>The axis wording is darker and clearer ("Number of deals", "Avg. round size"), city names on the bubbles are bolder, and the leaderboard bars are a little thicker.</td></tr>
+        <tr><td>Did any numbers change?</td><td>No.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Funding Dashboard, Cities: Volume Vs. Cheque Size</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Bubble chart<br>each top city in its own colour, others grey<br><br>● ● ● ● Top 8 cities, same colours as the leaderboard &middot; ● Other cities</div><div class="wf-box">City Leaderboard<br>1 ● Gurugram ▬▬▬▬▬▬ $1.51 Bn<br>2 ● Pune ▬▬▬▬▬ $1.41 Bn<br>3 ● Hyderabad ▬▬▬▬ $1.27 Bn<br>(each bar in the city's colour)</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v170">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v170</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> On the member <strong>Funding Dashboard</strong>, the <strong>Sector × Stage</strong> grid (under the money flow chart) is redrawn so it is easier to read.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What was wrong?</td><td>The stage names along the top were plain text that was easy to miss, the columns were all different widths, the numbers were pale, and the highlighted row was drawn with heavy black boxes.</td></tr>
+        <tr><td>How do the names look now?</td><td>Every stage name (top) and sector name (left) sits in its own bordered box, so it reads as a proper heading.</td></tr>
+        <tr><td>What happens when I point at a box?</td><td>Its sector name and its stage name turn dark, the rest of that row and column stay bright, and the other boxes fade. The box itself gets a thin dark outline.</td></tr>
+        <tr><td>In what order are the stages?</td><td>From earliest to latest round: Pre-Seed, Seed, Pre-Series A, Series A, Series B and so on, then Bridge, Debt and Other. Before, they were ordered by money raised, which looked random.</td></tr>
+        <tr><td>What do the boxes mean?</td><td>The number is how many deals. Deeper pink means more money. A small "Less capital → More capital" key now sits under the grid. A dash means no deals.</td></tr>
+        <tr><td>Did any numbers change?</td><td>No. Only the look, the column order and the pointing behaviour.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Funding Dashboard, Sector × Stage (pointing at TravelTech × Series A)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Sector ↓ · Stage →</div><div class="wf-box">Seed</div><div class="wf-box brand"><strong>Series A</strong></div><div class="wf-box">Series B</div><div class="wf-box">Other</div></div>
+        <div class="wf-row"><div class="wf-box">ClimateTech</div><div class="wf-box">(faded)</div><div class="wf-box">5</div><div class="wf-box">(faded)</div><div class="wf-box">(faded)</div></div>
+        <div class="wf-row"><div class="wf-box brand"><strong>TravelTech</strong></div><div class="wf-box">3</div><div class="wf-box brand"><strong>5</strong></div><div class="wf-box">5</div><div class="wf-box">15</div></div>
+        <div class="wf-row"><div class="wf-box">Less capital ▢ ▢ ▢ ▢ ▢ More capital</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v169">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v169</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> On the member <strong>Funding &rarr; All Deals</strong> page, the filter row has three new drop-downs: <strong>Round Stage</strong>, <strong>City</strong> and <strong>Lead Investor</strong>. They sit beside the Sector and Country drop-downs that were already there.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where do the choices in each list come from?</td><td>From the deals themselves. Each list holds every different value found in that column (Stage, City, Lead Investor), with no repeats. Nothing is typed in by hand.</td></tr>
+        <tr><td>What happens when new deals are uploaded?</td><td>A new city, stage or investor shows up in its list the next time the page is opened. Nobody has to add it.</td></tr>
+        <tr><td>In what order are the choices?</td><td>The most common first, the same as Sector and Country.</td></tr>
+        <tr><td>What does picking an investor do?</td><td>The table shows only deals where that name is in the <strong>Lead Investor</strong> column, matched exactly.</td></tr>
+        <tr><td>Can filters be combined?</td><td>Yes. Any mix of search, sector, stage, city, country, lead investor and dates works together.</td></tr>
+        <tr><td>Does the Excel download follow them?</td><td>Yes. The download holds exactly the deals that match the filters on screen.</td></tr>
+        <tr><td>What does "Reset To This Year" do?</td><td>It clears all the drop-downs and the search box, and sets the dates back to this year.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Funding &rarr; All Deals, filter row</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Search Startup</div><div class="wf-box">Sector &#9662;</div><div class="wf-box brand">Round Stage &#9662;</div><div class="wf-box brand">City &#9662;</div></div>
+        <div class="wf-row"><div class="wf-box">Country &#9662;</div><div class="wf-box brand">Lead Investor &#9662;</div><div class="wf-box">From</div><div class="wf-box">To</div></div>
+        <div class="wf-row"><div class="wf-box">Deals table (only the matching deals) &middot; Download filtered deals (.xlsx)</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v168">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v168</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> In the member <strong>Funding</strong> section, pointing at a chart now behaves properly. The small details box appears right above the bar, point or bubble you are pointing at, and that item becomes darker while the others fade back.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What was wrong?</td><td>After scrolling down the page, the details box jumped to the top-left corner of the screen, far from the chart. On the Funding Over Time chart it also listed the same three figures twice.</td></tr>
+        <tr><td>Where does the box show now?</td><td>Just above the item you point at. If there is no room above, it shows just below.</td></tr>
+        <tr><td>What happens to the item I point at?</td><td>It turns darker, and the other bars, bubbles, slices or lines fade so the one you chose stands out.</td></tr>
+        <tr><td>Which charts?</td><td>Funding Dashboard: Funding Over Time, Round Stage bars, Round Sizes, Business Model ring, City bubbles, Sector tiles. Market Analysis: all bar and line charts, the flow chart and the country blocks chart.</td></tr>
+        <tr><td>Did any numbers change?</td><td>No. Only where the box appears and how the charts react to the pointer.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Funding Dashboard, Funding Over Time (pointing at April)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">&nbsp;</div><div class="wf-box">Apr 2026<br>Deals 74<br>Funding $2.24 Bn<br>Avg. Round $30.3 Mn<br>▼</div><div class="wf-box">&nbsp;</div></div>
+        <div class="wf-row"><div class="wf-box">Mar (faded)</div><div class="wf-box"><strong>Apr (darker)</strong></div><div class="wf-box">May (faded)</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. The main charts were tested in a test browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v167">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v167</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> The big summary card at the top of the member <strong>Funding Dashboard</strong> has a new look and a new way to choose the country. The three buttons "All countries / India / USA" are gone. In their place there is one <strong>Country</strong> drop-down list on the right, above the total funding figure. For now only <strong>India</strong> can be chosen.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where do I pick the country?</td><td>In the Country list on the right side of the card, above "Total funding".</td></tr>
+        <tr><td>Which countries can I pick?</td><td>Only India for now. USA and All countries are listed but greyed out, marked "coming soon".</td></tr>
+        <tr><td>How do I know which country I am looking at?</td><td>Under the date line the card shows the country's flag in a small circle with the country name beside it.</td></tr>
+        <tr><td>Which country does the page open on?</td><td>Always India, for every member. Before, the page guessed from the member's time zone, so members in America saw USA and members elsewhere saw all countries.</td></tr>
+        <tr><td>What does the card say at the top now?</td><td>A small label "Indian Startups Funding States Till Today", then the date range in large type, for example "1 Jan – today, 2026". The old title "2026 funding, India" was removed.</td></tr>
+        <tr><td>Did the colours change?</td><td>Yes. The card is no longer plain white. It fades from pink to light violet, and the total funding figure is written in pink-to-violet colour.</td></tr>
+        <tr><td>Did any figures change?</td><td>No. The numbers and charts are worked out the same way as before.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Member dashboard, Funding Dashboard, summary card</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">INDIAN STARTUPS FUNDING STATES TILL TODAY<br><strong>1 Jan – today, 2026</strong><br>(flag) India</div><div class="wf-box">[ Country: India ▾ ]<br>TOTAL FUNDING<br><strong>$21.29 Bn</strong><br>−7% vs the same dates in 2025</div></div>
+        <div class="wf-row"><div class="wf-box">Deals</div><div class="wf-box">Avg. round</div><div class="wf-box">Active sectors</div><div class="wf-box">Leading sector</div><div class="wf-box">Most active investor</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. It appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v166">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v166</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> The three cards at the top of the Funding Dashboard used to be fixed: each said "Your brand here" and led to the Advertise With Us page. They are now written by the admin. A new item in the admin side menu, <strong>User Management</strong>, is where the admin creates, edits, deletes and switches these cards on and off.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Rule</th></tr></thead>
+      <tbody>
+        <tr><td>Title</td><td>Required. At most 5 words.</td></tr>
+        <tr><td>Sub title</td><td>Optional. At most 15 words.</td></tr>
+        <tr><td>Image or logo</td><td>Optional. Upload a file, or paste the web address of an image. With no image the card shows a megaphone icon.</td></tr>
+        <tr><td>Link</td><td>Required. A full web address (https://…). Clicking the card opens it in a new tab.</td></tr>
+        <tr><td>Show on the Funding page</td><td>An on/off switch on each card.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>How many cards can the admin keep?</td><td>Up to 5. To add a sixth, one must be deleted first.</td></tr>
+        <tr><td>How many show to readers?</td><td>Up to 3. A fourth cannot be switched on until one is switched off.</td></tr>
+        <tr><td>What if fewer than 3 are switched on?</td><td>Only those show, and they stretch to fill the row. There is no "Your brand here" filler any more.</td></tr>
+        <tr><td>What if none are switched on?</td><td>The row is not shown at all. The page starts with the funding figures.</td></tr>
+        <tr><td>Where do the cards appear?</td><td>Only on the Funding Dashboard tab of the member dashboard, with the small SPONSORED label as before.</td></tr>
+        <tr><td>Who can edit them?</td><td>Only the main admin. Other team roles do not see User Management.</td></tr>
+        <tr><td>How fast does an edit show?</td><td>Immediately, the next time a reader opens or reloads the Funding Dashboard.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin panel › User Management</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Cards created<br>4 of 5</div><div class="wf-box">Showing on Funding page<br>3 of 3</div><div class="wf-box">[ + Add card ]</div></div>
+        <div class="wf-row"><div class="wf-box">New / Edit card<br>Title (0 / 5 words)<br>Sub title (0 / 15 words)<br>Link<br>Image or logo: upload, or paste address<br>☑ Show this card on the Funding page<br>[ Cancel ] [ Save ]</div><div class="wf-box">Preview<br>the card exactly as readers see it</div></div>
+        <div class="wf-row"><div class="wf-box">Card 1 · link &nbsp; (on) Showing &nbsp; ✎ &nbsp; 🗑</div></div>
+        <div class="wf-row"><div class="wf-box">Card 2 · link &nbsp; (off) Hidden &nbsp; ✎ &nbsp; 🗑</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Member dashboard › Funding › Dashboard</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">logo · Title<br>Sub title<br>SPONSORED → opens link in new tab</div><div class="wf-box">logo · Title<br>Sub title<br>SPONSORED</div><div class="wf-box">logo · Title<br>Sub title<br>SPONSORED</div></div>
+        <div class="wf-row"><div class="wf-box">Funding figures and charts</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors, and the storage for the cards has been created on the development server. The screens appear after the next build. Until the admin adds a card and switches it on, the Funding Dashboard shows no sponsor row.</p>
+  </div>
+</section>
+
+<section id="v165">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v165</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> In the member dashboard, the dark moving line of market figures (<strong>Market Pulse</strong>) has moved. It used to sit inside the Funding Dashboard page, under the sponsor cards. It now sits at the very top of the screen, in the same row as the StartupNews logo, and it shows on <strong>every</strong> Funding page.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where is the moving line now?</td><td>In the top bar, to the right of the logo, filling the rest of that row.</td></tr>
+        <tr><td>On which pages does it show?</td><td>All Funding pages: Dashboard, All Deals, Market Analysis, Search and AI Assistant.</td></tr>
+        <tr><td>Does it show outside Funding?</td><td>No. On Dashboard, Reports, Profile and the other sections the top bar shows only the logo, as before.</td></tr>
+        <tr><td>Phones</td><td>The phone top bar has no logo row (it holds the menu button), so the line sits directly under that bar, on every Funding page.</td></tr>
+        <tr><td>Are the figures live?</td><td>No. They are still sample values and the line still carries the SAMPLE label.</td></tr>
+        <tr><td>Anything removed?</td><td>The heading "Dashboard / Funding intelligence at a glance" at the top of the Funding Dashboard page. The page now starts with the sponsor cards.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Member dashboard, any Funding page (computer)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">StartupNews logo</div><div class="wf-box">MARKET PULSE · SAMPLE &nbsp; NIFTY 50 ▲ &nbsp; SENSEX ▲ &nbsp; BTC ▲ &nbsp; USD/INR ▼ … (moving)</div></div>
+        <div class="wf-row"><div class="wf-box">Side menu<br>Dashboard<br>Reports<br>Funding</div><div class="wf-box">Funding tabs: Dashboard · All Deals · Market Analysis · Search · AI Assistant<br>Sponsor cards<br>Funding figures and charts</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. It appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v164">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v164</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-09</span>
+    </div>
+    <p><strong>What changed.</strong> The top of the homepage now moves. The three <strong>Latest News</strong> cards used to show one story each until the page was reloaded. Now each card changes by itself to another recent story from the <strong>same category</strong>, with the new story sliding in from the side and pushing the old one out.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>How often does a card change?</td><td>Every 5 seconds. All three cards change at the same moment.</td></tr>
+        <tr><td>Which story comes next?</td><td>Another recent story from the same category as that card. An AI &amp; Deeptech card only shows AI &amp; Deeptech stories.</td></tr>
+        <tr><td>How many stories does a card go through?</td><td>Up to 5: the original story and up to 4 more. After the last one it starts again from the first.</td></tr>
+        <tr><td>Which way does it slide?</td><td>Card 1 (big): right to left. Card 2: left to right. Card 3: right to left.</td></tr>
+        <tr><td>Mouse on a card</td><td>That card stops changing so it can be read and clicked. The other two keep changing. When the mouse leaves, the card joins the others again at the next change.</td></tr>
+        <tr><td>Can two cards show the same story?</td><td>No, even when two cards are in the same category.</td></tr>
+        <tr><td>A category with no other story</td><td>That card simply stays on its one story.</td></tr>
+        <tr><td>Reader has "reduce motion" switched on</td><td>Nothing moves. The cards stay as they were before this version.</td></tr>
+        <tr><td>Phones</td><td>Unchanged. The phone layout of the homepage is a separate design.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Homepage, top section</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Trending<br>slides in from the left</div><div class="wf-box">Latest News<br>card 1 ← changes right to left<br>card 2 → changes left to right<br>card 3 ← changes right to left</div><div class="wf-box">Startup Events<br>slides in from the right<br>red line grows on scroll</div></div>
+      </div>
+    </div>
+    <p><strong>Also in this version (smaller touches).</strong> The Trending heading and stories slide in from the left, and the Startup Events heading and rows slide in from the right, each over 2 seconds, the first time they come on screen. The red dotted line beside Startup Events now grows as the reader scrolls, and each dot turns red and blinks when the line reaches it.</p>
+    <table>
+      <thead><tr><th>Other small changes made the same day</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Website footer</td><td>The <strong>Get Media Coverage</strong> and <strong>Careers</strong> links are hidden for now. The Careers page itself still opens by its direct address.</td></tr>
+        <tr><td>Member dashboard: "Complete your profile" window</td><td>Now a small pop-up in the middle of the screen with space on every side, on phones and computers. Before, it filled almost the whole phone screen. The close (X) button is the brand pink.</td></tr>
+        <tr><td>Member dashboard home: newsletter card</td><td>Heading now reads "Join 15,000+ Founders Getting <strong>The Morning Pulse Newsletter</strong>" with the name in pink; the line below ends "With StartupNews.fyi". Both lines appear word by word the first time the card comes on screen.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Status.</strong> Written and checked for errors. It appears on the website after the next build.</p>
   </div>
 </section>
 
@@ -7169,7 +7557,7 @@ flowchart LR
 
   <hr>
   <p style="color:var(--muted);font-size:12.5px">
-    StartupNews.fyi · Product &amp; Architecture Book · v26 · 2026-09-18 · maintained by Jarvis alongside
+    StartupNews.fyi · Product &amp; Architecture Book · v173 · 2026-10-09 · maintained by Jarvis alongside
     <code>arch.md</code> and <code>agent.md</code>. Diagrams render with Mermaid; open this file in any browser.
   </p>
 </section>

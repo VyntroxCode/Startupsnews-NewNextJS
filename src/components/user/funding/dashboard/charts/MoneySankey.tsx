@@ -108,12 +108,12 @@ export default function MoneySankey({ flow }: { flow: FlowData }) {
         {twoLines ? (
           <>
             <text x={tx} y={mid - 2} textAnchor={anchor} fontSize={12} fontWeight={600} fill="#15131A">{n.name}</text>
-            <text x={tx} y={mid + 12} textAnchor={anchor} fontSize={10.5} fill="#9C99A6" className="font-(family-name:--font-fi-plex)">{formatUsdMn(n.total)}</text>
+            <text x={tx} y={mid + 12} textAnchor={anchor} fontSize={10.5} fill="#9C99A6">{formatUsdMn(n.total)}</text>
           </>
         ) : (
           <text x={tx} y={mid + 4} textAnchor={anchor} fontSize={11} fill="#15131A">
             <tspan fontWeight={600}>{n.name}</tspan>
-            <tspan fill="#9C99A6" className="font-(family-name:--font-fi-plex)">{`  ${formatUsdMn(n.total)}`}</tspan>
+            <tspan fill="#9C99A6">{`  ${formatUsdMn(n.total)}`}</tspan>
           </text>
         )}
       </g>
@@ -139,7 +139,7 @@ export default function MoneySankey({ flow }: { flow: FlowData }) {
           <div className="mb-1 font-semibold">{tip.link.stage} <span className="text-fi-ink-faint">→</span> {tip.link.sector}</div>
           <TipRow label="Funding" value={formatUsdMn(tip.link.value)} />
           <TipRow label="Deals" value={tip.link.count.toLocaleString('en-IN')} />
-          <TipRow label={`Share of ${tip.link.stage}`} value={pct(tip.link.shareOfStage)} />
+          <TipRow label={`Share Of ${tip.link.stage}`} value={pct(tip.link.shareOfStage)} />
         </FloatTip>
       )}
       {tip?.node && (

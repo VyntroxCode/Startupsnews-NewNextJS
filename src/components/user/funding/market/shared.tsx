@@ -9,7 +9,7 @@ import { cardCls, emptyCls, inputCls } from '../ui';
 export function MaCard({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
   return (
     <div className={`${cardCls} mb-4 min-w-0 p-4 sm:p-5`}>
-      <h3 className="m-0 mb-1 font-(family-name:--font-fi-space) text-[14px] font-bold text-fi-ink sm:text-[15px]">{title}</h3>
+      <h3 className="m-0 mb-1 text-[15px] font-semibold text-fi-ink sm:text-[16px]">{title}</h3>
       <div className="mb-3.5 text-[11.5px] leading-normal text-fi-ink-faint sm:text-[12px]">{desc}</div>
       {children}
     </div>
@@ -25,7 +25,7 @@ export function Controls({ children }: { children: React.ReactNode }) {
 export function Control({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:flex-none">
-      <span className="text-[10px] font-bold uppercase tracking-[0.04em] text-fi-ink-faint">{label}</span>
+      <span className="text-[11.5px] font-semibold tracking-[0.01em] text-fi-ink">{label}</span>
       {children}
     </div>
   );
@@ -40,7 +40,7 @@ export function MiniSeg<T extends string>({ value, options, onChange }: { value:
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`shrink-0 cursor-pointer whitespace-nowrap rounded-md border-0 px-3 py-1.5 text-[11.5px] font-semibold font-(family-name:--font-db-inter) ${value === o.value ? 'bg-fi-surface text-fi-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'bg-transparent text-fi-ink-soft'}`}
+          className={`shrink-0 cursor-pointer whitespace-nowrap rounded-md border-0 px-3 py-1.5 text-[11.5px] font-semibold ${value === o.value ? 'bg-fi-surface text-fi-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'bg-transparent text-fi-ink-soft'}`}
         >
           {o.label}
         </button>

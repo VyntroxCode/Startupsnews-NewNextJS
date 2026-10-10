@@ -7,9 +7,9 @@
 
 export const primaryCard = 'box-border min-w-0 rounded-[14px] border border-solid border-fi-line bg-fi-surface p-4 shadow-fi sm:p-6';
 export const supportCard = 'box-border min-w-0 rounded-[12px] border border-solid border-fi-line bg-fi-surface p-4';
-export const supportTitle = 'm-0 font-(family-name:--font-fi-space) text-[13.5px] font-semibold text-fi-ink';
+export const supportTitle = 'm-0 text-[14.5px] font-semibold text-fi-ink';
 export const supportSub = 'm-0 mt-0.5 text-[11.5px] text-fi-ink-faint';
-export const mono = 'font-(family-name:--font-fi-plex)';
+export const mono = 'tabular-nums';
 
 /** A story section: eyebrow + h2 + one-line question, then its cards. */
 export function Section({
@@ -31,8 +31,8 @@ export function Section({
     <section aria-labelledby={`${id}-h`} data-reveal className="mt-10 sm:mt-12">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-fi-primary">{eyebrow}</div>
-          <h2 id={`${id}-h`} className="m-0 mt-1 font-(family-name:--font-fi-space) text-[19px] font-bold tracking-[-0.015em] text-fi-ink sm:text-[22px]">{title}</h2>
+          <div className="text-[12px] font-semibold tracking-[0.01em] text-fi-primary">{eyebrow}</div>
+          <h2 id={`${id}-h`} className="m-0 mt-1 text-[20px] font-semibold tracking-[-0.01em] text-fi-ink sm:text-[24px]">{title}</h2>
           <p className="m-0 mt-1 max-w-[640px] text-[12.5px] leading-normal text-fi-ink-soft">{sub}</p>
         </div>
         {right}

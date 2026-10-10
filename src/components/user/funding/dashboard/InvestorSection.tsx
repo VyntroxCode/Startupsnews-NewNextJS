@@ -10,7 +10,7 @@ import { ChartFigure, ChartSkeleton, EmptyNote, Section, mono, pct, supportCard,
 
 const ModelDonut = dynamic(() => import('./charts/SmallCharts').then((m) => m.ModelDonut), { ssr: false, loading: () => <ChartSkeleton height="100%" /> });
 
-const th = 'border-0 border-b border-solid border-fi-line px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-fi-ink-faint';
+const th = 'border-0 border-b border-solid border-fi-line px-2 py-2 text-left text-[12px] font-bold tracking-[0.01em] text-fi-ink';
 
 /**
  * Investors. A round's full amount is credited to every investor on it, so the capital column
@@ -26,26 +26,26 @@ function InvestorBoard({ rows, totalDeals }: { rows: InvestorRow[]; totalDeals: 
           <tr>
             <th scope="col" className={`${th} w-6`}>#</th>
             <th scope="col" className={th}>Investor</th>
-            <th scope="col" className={`${th} text-right`}>Capital in rounds joined*</th>
+            <th scope="col" className={`${th} text-right`}>Capital In Rounds Joined*</th>
             <th scope="col" className={`${th} text-right`}>Deals</th>
             <th scope="col" className={`${th} text-right`}>Led</th>
-            <th scope="col" className={`${th} hidden text-right sm:table-cell`}>Share of deals</th>
+            <th scope="col" className={`${th} hidden text-right sm:table-cell`}>Share Of Deals</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.key} data-reveal-item className="transition-colors hover:bg-fi-bg">
-              <td className={`${mono} border-0 border-b border-solid border-fi-line px-2 py-2.5 text-[11px] text-fi-ink-faint`}>{i + 1}</td>
+              <td className={`${mono} border-0 border-b border-solid border-fi-line px-2 py-2.5 text-[11.5px] text-fi-ink-soft`}>{i + 1}</td>
               <td className="border-0 border-b border-solid border-fi-line px-2 py-2.5">
-                <div className="font-semibold text-fi-ink">{r.key}</div>
+                <div className="text-[13.5px] font-bold text-fi-ink">{r.key}</div>
                 <div className="mt-1 h-1 w-full max-w-[220px] overflow-hidden rounded-full bg-fi-bg">
                   <div data-bar className="h-full rounded-full bg-fi-primary transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${Math.max(3, (r.total / max) * 100)}%` }} />
                 </div>
               </td>
               <td className={`${mono} border-0 border-b border-solid border-fi-line px-2 py-2.5 text-right font-semibold text-fi-ink`}>{formatUsdMn(r.total)}</td>
-              <td className={`${mono} border-0 border-b border-solid border-fi-line px-2 py-2.5 text-right`}>{r.count}</td>
-              <td className={`${mono} border-0 border-b border-solid border-fi-line px-2 py-2.5 text-right text-fi-ink-soft`}>{r.leads}</td>
-              <td className={`${mono} hidden border-0 border-b border-solid border-fi-line px-2 py-2.5 text-right text-fi-ink-soft sm:table-cell`}>{pct(totalDeals ? (r.count / totalDeals) * 100 : 0)}</td>
+              <td className={`${mono} border-0 border-b border-solid border-fi-line px-2 py-2.5 text-right text-fi-ink`}>{r.count}</td>
+              <td className={`${mono} border-0 border-b border-solid border-fi-line px-2 py-2.5 text-right text-fi-ink`}>{r.leads}</td>
+              <td className={`${mono} hidden border-0 border-b border-solid border-fi-line px-2 py-2.5 text-right text-fi-ink sm:table-cell`}>{pct(totalDeals ? (r.count / totalDeals) * 100 : 0)}</td>
             </tr>
           ))}
         </tbody>
@@ -59,10 +59,10 @@ function Companies({ rows }: { rows: AggRow[] }) {
     <ol className="m-0 mt-3 list-none p-0">
       {rows.map((r, i) => (
         <li key={r.key} data-reveal-item className="flex items-baseline gap-2.5 border-0 border-b border-solid border-fi-line py-2 last:border-b-0">
-          <span className={`${mono} w-4 shrink-0 text-[11px] text-fi-ink-faint`}>{i + 1}</span>
-          <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-fi-ink" title={r.key}>{r.key}</span>
+          <span className={`${mono} w-4 shrink-0 text-[11.5px] text-fi-ink-soft`}>{i + 1}</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-fi-ink" title={r.key}>{r.key}</span>
           <span className={`${mono} shrink-0 text-[12px] font-semibold text-fi-ink`}>{formatUsdMn(r.total)}</span>
-          <span className="w-14 shrink-0 text-right text-[10.5px] text-fi-ink-faint">{r.count} {r.count === 1 ? 'round' : 'rounds'}</span>
+          <span className="w-14 shrink-0 text-right text-[11px] text-fi-ink-soft">{r.count} {r.count === 1 ? 'round' : 'rounds'}</span>
         </li>
       ))}
     </ol>
@@ -84,10 +84,10 @@ export default function InvestorSection({
   const reduced = useReducedMotion();
   const modelTotal = models?.reduce((a, m) => a + m.total, 0) ?? 0;
   return (
-    <Section id="fi-who" eyebrow="Who is investing" title="Investors and companies" sub="The most active backers this period, the startups that raised the most, and the business models money went into.">
+    <Section id="fi-who" eyebrow="Who Is Investing" title="Investors And Companies" sub="The most active backers this period, the startups that raised the most, and the business models money went into.">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className={supportCard}>
-          <h3 className={supportTitle}>Top investors</h3>
+          <h3 className={supportTitle}>Top Investors</h3>
           <p className={supportSub}>Ranked by the capital of the rounds they joined.</p>
           <div className="mt-3">
             {!investors ? <ChartSkeleton height={360} /> : !investors.length ? <EmptyNote>No investor data for this selection.</EmptyNote> : <InvestorBoard rows={investors} totalDeals={totalDeals} />}
@@ -100,14 +100,14 @@ export default function InvestorSection({
 
         <div className="flex min-w-0 flex-col gap-4">
           <div className={supportCard}>
-            <h3 className={supportTitle}>Top companies</h3>
+            <h3 className={supportTitle}>Top Companies</h3>
             <p className={supportSub}>Startups that raised the most this period.</p>
             {!companies ? <ChartSkeleton height={260} /> : !companies.length ? <EmptyNote>No company data for this selection.</EmptyNote> : <Companies rows={companies} />}
           </div>
 
           {models && models.length > 0 && modelTotal > 0 && (
             <div className={supportCard}>
-              <h3 className={supportTitle}>Business models</h3>
+              <h3 className={supportTitle}>Business Models</h3>
               <p className={supportSub}>Share of capital by business model.</p>
               <div className="mt-3 grid grid-cols-[120px_minmax(0,1fr)] items-center gap-4">
                 <ChartFigure label="Capital by business model" summary={models.map((m) => `${m.key}: ${formatUsdMn(m.total)}`).join('. ')} height={120}>
@@ -117,8 +117,8 @@ export default function InvestorSection({
                   {models.map((m, i) => (
                     <li key={m.key} className="flex items-center gap-2 py-[3px]">
                       <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: PALETTE[(i + 2) % PALETTE.length] }} aria-hidden />
-                      <span className="min-w-0 flex-1 truncate text-fi-ink">{m.key}</span>
-                      <span className={`${mono} text-fi-ink-soft`}>{pct((m.total / modelTotal) * 100)}</span>
+                      <span className="min-w-0 flex-1 truncate font-semibold text-fi-ink">{m.key}</span>
+                      <span className={`${mono} text-fi-ink`}>{pct((m.total / modelTotal) * 100)}</span>
                     </li>
                   ))}
                 </ul>

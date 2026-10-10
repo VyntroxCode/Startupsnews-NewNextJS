@@ -4,9 +4,8 @@ import { HR_TOOL_ROLES } from '@/shared/middleware/roles';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { HrCredentialDesignation } from '@/modules/hr-credentials/domain/types';
 import { PanelAdminRole } from '@/modules/panel-admins/domain/types';
+import { ASSIGNABLE_PANEL_ROLES } from '@/modules/hr-credentials/service/hr-credentials.service';
 import { hrCredentialsService, hrToolService } from './_lib';
-
-const ALLOWED_PANEL_ROLES: PanelAdminRole[] = ['event_admin', 'publisher_admin'];
 
 interface CreateBody {
   employeeCode?: string;
@@ -16,7 +15,6 @@ interface CreateBody {
   avatarUrl?: string;
   password?: string;
   panelRole?: string;
-  linkedPanelAdminId?: number;
 }
 
 /** GET /api/admin/hr-tool/employee-credentials — list all Assigning-IDs credentials. */
@@ -36,7 +34,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** POST /api/admin/hr-tool/employee-credentials — create an Employee ID + password credential. */
+/** POST /api/admin/hr-tool/employee-credentials — create an Employee ID + password credential.
+ * A `panelRole` also provisions that person's own Publisher/Event Admin account. */
 export async function POST(request: NextRequest) {
   const auth = await requireAnyRole(request, HR_TOOL_ROLES);
   if (auth instanceof NextResponse) return auth;
@@ -60,8 +59,8 @@ export async function POST(request: NextRequest) {
     if (!designation || !allowedDesignations.includes(designation)) {
       return NextResponse.json({ success: false, error: `Designation must be one of: ${allowedDesignations.join(', ')}` }, { status: 400 });
     }
-    if (body?.panelRole && !ALLOWED_PANEL_ROLES.includes(body.panelRole as PanelAdminRole)) {
-      return NextResponse.json({ success: false, error: `Role must be one of: ${ALLOWED_PANEL_ROLES.join(', ')}` }, { status: 400 });
+    if (body?.panelRole && !ASSIGNABLE_PANEL_ROLES.includes(body.panelRole as PanelAdminRole)) {
+      return NextResponse.json({ success: false, error: `Role must be one of: ${ASSIGNABLE_PANEL_ROLES.join(', ')}` }, { status: 400 });
     }
 
     const credential = await hrCredentialsService.create({
@@ -72,7 +71,6 @@ export async function POST(request: NextRequest) {
       avatarUrl: body?.avatarUrl?.trim() || null,
       password,
       panelRole: (body?.panelRole as PanelAdminRole) || null,
-      linkedPanelAdminId: body?.linkedPanelAdminId || null,
       createdBy: auth.user.email,
     });
     return NextResponse.json({ success: true, data: credential });

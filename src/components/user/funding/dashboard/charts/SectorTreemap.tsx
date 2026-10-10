@@ -55,7 +55,7 @@ export default function SectorTreemap({ tiles }: { tiles: SectorTile[] }) {
           height={Math.max(0, height - 2)}
           rx={4}
           fill={t.colour}
-          fillOpacity={state === 'off' ? 0.25 : light ? 0.55 : 0.92}
+          fillOpacity={state === 'off' ? 0.25 : state === 'on' ? 1 : light ? 0.55 : 0.92}
           stroke={state === 'on' ? '#15131A' : 'none'}
           strokeWidth={2}
         />
@@ -65,7 +65,7 @@ export default function SectorTreemap({ tiles }: { tiles: SectorTile[] }) {
           </text>
         )}
         {showValue && (
-          <text x={x + 10} y={y + 37} fontSize={11} fill={light ? '#5A5763' : '#FFFFFF'} fillOpacity={state === 'off' ? 0.45 : 0.85} className="font-(family-name:--font-fi-plex)">
+          <text x={x + 10} y={y + 37} fontSize={11} fill={light ? '#5A5763' : '#FFFFFF'} fillOpacity={state === 'off' ? 0.45 : 0.85}>
             {formatUsdMn(t.size)}
           </text>
         )}
@@ -83,7 +83,7 @@ export default function SectorTreemap({ tiles }: { tiles: SectorTile[] }) {
           <div className="mb-1 font-semibold">{tip.tile.name}</div>
           <TipRow label="Funding" value={formatUsdMn(tip.tile.size)} />
           <TipRow label="Deals" value={tip.tile.count.toLocaleString('en-IN')} />
-          <TipRow label="Share of capital" value={pct(tip.tile.share, 1)} />
+          <TipRow label="Share Of Capital" value={pct(tip.tile.share, 1)} />
         </FloatTip>
       )}
     </div>

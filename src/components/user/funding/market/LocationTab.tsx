@@ -11,7 +11,7 @@ export default function LocationTab({ onMeta, countries }: { onMeta: (m: MarketM
   const { data, error } = useMarketView<MarketLocation>('location', { metric }, onMeta);
   return (
     <>
-      <MaCard title="Where the capital landed, geographically" desc="Top locations by total capital raised in the selected period.">
+      <MaCard title="Where The Capital Landed, Geographically" desc="Top locations by total capital raised in the selected period.">
         <Controls>
           <Control label="Metric">
             <MiniSeg value={metric} onChange={setMetric} options={[{ value: 'amount', label: 'Amount raised' }, { value: 'count', label: 'Number of rounds' }]} />
@@ -19,7 +19,7 @@ export default function LocationTab({ onMeta, countries }: { onMeta: (m: MarketM
         </Controls>
         {data ? <LocationBarChart rows={data.countries} metric={metric} /> : <Loading error={error} />}
       </MaCard>
-      <MaCard title="Where the capital landed, by round size" desc="Each column is a round-size band, its width the band's share of all capital raised, its height split by destination country.">
+      <MaCard title="Where The Capital Landed, By Round Size" desc="Each column is a round-size band, its width the band's share of all capital raised, its height split by destination country.">
         {data ? (<><SwipeHint /><Marimekko data={data.marimekko} countries={countries} /></>) : <Loading error={error} />}
       </MaCard>
     </>

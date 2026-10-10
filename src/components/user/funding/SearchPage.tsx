@@ -25,7 +25,7 @@ export default function SearchPage() {
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
   const [chips, setChips] = useState<Record<ChipKey, string>>({ sector: '', city: '', country: '', stage: '', investor: '' });
-  const [options, setOptions] = useState<FundingFilterOptions>({ sectors: [], stages: [], cities: [], countries: [] });
+  const [options, setOptions] = useState<FundingFilterOptions>({ sectors: [], stages: [], cities: [], countries: [], leadInvestors: [] });
   const [rows, setRows] = useState<SearchRow[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export default function SearchPage() {
           {chip('sector', 'Sector', options.sectors)}
           {chip('city', 'City', options.cities)}
           {chip('country', 'Country', options.countries)}
-          {chip('stage', 'Funding stage', options.stages)}
+          {chip('stage', 'Funding Stage', options.stages)}
           <label className={`flex items-center gap-[5px] rounded-[9px] border border-solid px-[13px] py-[3px] text-[12.5px] font-semibold ${chips.investor ? 'border-fi-ink' : 'border-fi-line'} bg-fi-surface text-fi-ink-soft`}>
             Investor
             <input
@@ -101,7 +101,7 @@ export default function SearchPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] border-collapse text-[12.5px]">
-              <thead><tr>{['Name', 'Sector', 'Stage', 'Amount', 'City', 'Country', 'Lead investor'].map((h) => <th key={h} className={thCls}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Name', 'Sector', 'Stage', 'Amount', 'City', 'Country', 'Lead Investor'].map((h) => <th key={h} className={thCls}>{h}</th>)}</tr></thead>
               <tbody>
                 {rows && rows.length === 0 && <tr><td colSpan={7} className="px-3.5 py-5 text-center text-fi-ink-faint">No matches</td></tr>}
                 {rows?.map((r) => (
@@ -109,10 +109,10 @@ export default function SearchPage() {
                     <td className={tdCls}><b>{r.startupName}</b></td>
                     <td className={tdCls}>{r.sector || '—'}</td>
                     <td className={tdCls}>{r.roundStage ? <span className={pillCls}>{r.roundStage}</span> : '—'}</td>
-                    <td className={`${tdCls} whitespace-nowrap font-(family-name:--font-fi-plex) font-medium`}>{formatUsdMn(r.amount)}</td>
+                    <td className={`${tdCls} whitespace-nowrap font-medium`}>{formatUsdMn(r.amount)}</td>
                     <td className={tdCls}>{r.city || '—'}</td>
                     <td className={tdCls}>{r.country || '—'}</td>
-                    <td className={tdCls}>{r.leadInvestor || '—'}</td>
+                    <td className={`${tdCls} font-semibold text-fi-ink`}>{r.leadInvestor || '—'}</td>
                   </tr>
                 ))}
               </tbody>

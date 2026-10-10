@@ -220,6 +220,7 @@ export function filtersFromSearchParams(sp: URLSearchParams): FundingFilters {
     city: get('city'),
     country: get('country'),
     investor: get('investor'),
+    leadInvestor: get('leadInvestor'),
     from: date('from'),
     to: date('to'),
   };

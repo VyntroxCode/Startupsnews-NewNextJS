@@ -695,6 +695,42 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   padding-bottom: 0;
 }
 
+/* Live timeline (homepage): EventsTimelineList sets data-timeline="live" from JS, publishes scroll
+   progress as --events-line and marks each row the line has reached with data-reached. The
+   existing ::before line becomes the grey track; ::after is the same line in red, revealed from
+   the top by clip-path so the dashes keep their size instead of stretching. */
+/* #id form too: the base rule is also written against #mvp-feat-tab-col1 and would outrank a class. */
+.startup-events-wrap .startup-events-list[data-timeline="live"]::before,
+.startup-events-wrap #mvp-feat-tab-col1[data-timeline="live"]::before {
+  border-left-color: #e2e2e2;
+}
+
+.startup-events-wrap .startup-events-list[data-timeline="live"]::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  bottom: 8px;
+  border-left: 2px dashed #d6293e;
+  clip-path: inset(0 0 calc(100% - var(--events-line, 0%)) 0);
+  transition: clip-path 0.2s linear;
+}
+
+.startup-events-wrap .startup-events-list[data-timeline="live"] .startup-events-item::before {
+  background: #cfcfcf;
+  transition: background-color 0.2s ease-out;
+}
+
+.startup-events-wrap .startup-events-list[data-timeline="live"] .startup-events-item[data-reached]::before {
+  background: #d6293e;
+  animation: events-dot-blink 1.2s ease-in-out both;
+}
+
+@keyframes events-dot-blink {
+  0%, 33%, 66%, 100% { opacity: 1; }
+  16%, 50%, 83% { opacity: 0.15; }
+}
+
 .startup-events-wrap .startup-events-item:hover .mvp-feat1-list-text h2 {
   color: #ee1761 !important;
 }

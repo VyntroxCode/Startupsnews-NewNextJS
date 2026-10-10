@@ -539,13 +539,13 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
   const filledFounders = founders.filter((f) => f.name.trim());
 
   return (
-    <div className="fixed inset-0 z-[2000] flex animate-cpw-fade items-end justify-center bg-[rgba(15,23,42,0.6)] p-0 backdrop-blur-[6px] sm:items-center sm:p-4">
-      <div className="flex max-h-[92dvh] w-full max-w-[680px] animate-cpw-modal flex-col overflow-hidden rounded-t-3xl bg-white font-db-nav shadow-[0_30px_70px_rgba(15,23,42,0.3),0_4px_12px_rgba(15,23,42,0.08)] sm:max-h-[90vh] sm:rounded-3xl">
+    <div className="fixed inset-0 z-[2000] flex animate-cpw-fade items-center justify-center bg-[rgba(15,23,42,0.6)] px-6 py-10 backdrop-blur-[6px] sm:p-6">
+      <div className="flex max-h-[min(80dvh,640px)] w-full max-w-[400px] animate-cpw-modal flex-col overflow-hidden rounded-3xl bg-white font-db-nav shadow-[0_30px_70px_rgba(15,23,42,0.3),0_4px_12px_rgba(15,23,42,0.08)] sm:max-h-[min(84vh,720px)] sm:max-w-[560px]">
         {/* Header */}
-        <div className="shrink-0 border-b border-solid border-db-line px-5 pb-5 pt-6 sm:px-8 sm:pt-7">
+        <div className="shrink-0 border-b border-solid border-db-line px-4 pb-4 pt-5 sm:px-8 sm:pb-5 sm:pt-7">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <h2 className="m-0 text-[22px] font-extrabold leading-tight tracking-[-0.02em] text-db-ink sm:text-[26px]">Complete your profile</h2>
+              <h2 className="m-0 text-[19px] font-extrabold leading-tight tracking-[-0.02em] text-db-ink sm:text-[24px]">Complete your profile</h2>
               <p className="m-0 mt-1.5 text-sm leading-snug text-db-muted">
                 <span className="font-semibold text-db-ink">Step {stepIdx + 1} of {steps.length}</span> · {STEP_SUBTITLES[step]}
               </p>
@@ -554,13 +554,13 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
               type="button"
               onClick={dismiss}
               aria-label="Skip"
-              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-db-bg text-db-ink transition hover:bg-db-line"
+              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-db-pink text-white transition hover:bg-db-pink-deep"
             >
               <X size={16} strokeWidth={2.4} />
             </button>
           </div>
 
-          <ol className="m-0 mt-5 flex list-none items-center p-0">
+          <ol className="m-0 mt-4 flex list-none items-center p-0">
             {steps.map((s, i) => (
               <Fragment key={s}>
                 <li className="flex shrink-0">
@@ -594,7 +594,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
         </div>
 
         {/* Body */}
-        <div key={step} className="min-h-0 flex-1 animate-cpw-step overflow-y-auto px-5 py-6 [scrollbar-width:thin] sm:px-8">
+        <div key={step} className="min-h-0 flex-1 animate-cpw-step overflow-y-auto px-4 py-5 [scrollbar-width:thin] sm:px-8 sm:py-6">
           {error && (
             <div className="mb-5 flex items-start gap-2 rounded-xl border border-solid border-[#fecdd3] bg-[#fff1f2] px-3.5 py-3 text-[13px] font-medium text-[#b42318]">
               <AlertCircle size={16} className="mt-px shrink-0" />
@@ -907,7 +907,7 @@ export default function CompleteProfileWizard({ onClose, onComplete }: { onClose
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-solid border-db-line bg-white px-5 pb-5 pt-4 sm:px-8 sm:pb-6">
+        <div className="shrink-0 border-t border-solid border-db-line bg-white px-4 pb-4 pt-3 sm:px-8 sm:pb-6 sm:pt-4">
           {!isLast && !stepValid && (
             <p className="m-0 mb-3 text-[13px] font-medium text-[#c2410c]">Fill in all required fields (*) to continue.</p>
           )}

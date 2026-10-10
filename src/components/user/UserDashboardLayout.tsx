@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Building2, ChevronDown, ClipboardList, HandCoins, LogOut, TrendingUp, UserRound, X } from 'lucide-react';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import CompleteProfileWizard from './CompleteProfileWizard';
+import Ticker from './funding/Ticker';
 
 interface AuthUser {
   id: number;
@@ -75,6 +76,8 @@ function clearSession() {
 
 export default function UserDashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // Funding section only: the Market Pulse ticker rides in the masthead, beside the logo.
+  const inFunding = pathname === '/dashboard/funding' || !!pathname?.startsWith('/dashboard/funding/');
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   // Starts collapsed (icon-only) on desktop — the sidebar opens on hover/focus and closes again
@@ -451,7 +454,11 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
             {sidebar}
           </div>
 
-          <main className="pt-[72px]">{children}</main>
+          <main className="pt-[72px]">
+            {/* No logo row on phones (the top bar holds the menu button), so the ticker sits right under it. */}
+            {inFunding && <div className="bg-fi-bg px-3 pt-3"><Ticker /></div>}
+            {children}
+          </main>
         </>
       )}
 
@@ -462,9 +469,10 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
               (see the `isMobile` guard on the sidebar's own header above). Sits above the rail,
               which starts at `top-[72px]` to sit flush beneath it. */}
           <div className="fixed inset-x-0 top-0 z-[110] flex h-[72px] items-center border-b border-db-line/70 bg-db-card px-6">
-            <Link href="/" className="flex items-center gap-2.5 rounded-md no-underline outline-none focus-visible:ring-2 focus-visible:ring-db-pink/50">
+            <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-md no-underline outline-none focus-visible:ring-2 focus-visible:ring-db-pink/50">
               <Image src="/logo.png" alt="StartupNews" width={172} height={60} className="h-10 w-auto object-contain" />
             </Link>
+            {inFunding && <Ticker className="ml-6 min-w-0 flex-1" />}
           </div>
 
           <div className="flex min-h-screen pt-[72px]">

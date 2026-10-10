@@ -7,10 +7,10 @@ import PageTopbar from './PageTopbar';
 import { noteCls, tagCls } from './ui';
 
 const QUICK = [
-  { label: '📊 Weekly report (Excel)', prompt: "Get me last week's fintech funding in India as Excel" },
+  { label: '📊 Weekly Report (Excel)', prompt: "Get me last week's fintech funding in India as Excel" },
   { label: '🖼️ Infographic', prompt: "Make an infographic of this month's top 5 sectors" },
-  { label: '📽️ PPT summary', prompt: 'Build a PPT summary of Q3 funding trends' },
-  { label: '📄 PDF report', prompt: 'PDF report on AI sector funding this year' },
+  { label: '📽️ PPT Summary', prompt: 'Build a PPT Summary of Q3 funding trends' },
+  { label: '📄 PDF Report', prompt: 'PDF report on AI sector funding this year' },
 ];
 
 interface Msg {
@@ -49,7 +49,7 @@ export default function AiAssistant() {
       <PageTopbar
         title="AI Assistant"
         sub="Ask for a report, an export, a chart — in your language, your format"
-        right={<span className={tagCls}>COMING SOON</span>}
+        right={<span className={tagCls}>Coming Soon</span>}
       />
       <div className="-mx-3 bg-linear-to-b from-fi-ai-light to-fi-bg to-[240px] px-3 pb-[70px] pt-[22px] sm:-mx-5 sm:px-5 lg:-mx-7 lg:px-7">
         <div className="mx-auto mt-5 max-w-[820px]">
@@ -57,7 +57,7 @@ export default function AiAssistant() {
             <div className="mx-auto mb-3.5 flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-linear-135 from-fi-ai to-fi-ai-dark text-white">
               <Sparkles size={24} aria-hidden />
             </div>
-            <h2 className="m-0 mb-1.5 font-(family-name:--font-fi-space) text-[24px] font-bold text-fi-ink">What do you want to know?</h2>
+            <h2 className="m-0 mb-1.5 text-[26px] font-semibold text-fi-ink">What Do You Want To Know?</h2>
             <p className="mx-auto my-0 max-w-[520px] text-[13px] leading-[1.6] text-fi-ink-soft">
               Try: &ldquo;Get me last week&apos;s fintech funding in India as an Excel file&rdquo;. When it launches, the assistant will answer from the funding dataset and cite where every number came from.
             </p>
@@ -77,7 +77,7 @@ export default function AiAssistant() {
                 key={q.label}
                 type="button"
                 onClick={() => ask(q.prompt)}
-                className="cursor-pointer rounded-[20px] border border-solid border-[#DCC9F5] bg-white px-3.5 py-2 text-[12px] font-semibold text-fi-ai-dark font-(family-name:--font-db-inter) hover:bg-fi-ai-light"
+                className="cursor-pointer rounded-[20px] border border-solid border-[#DCC9F5] bg-white px-3.5 py-2 text-[12px] font-semibold text-fi-ai-dark hover:bg-fi-ai-light"
               >
                 {q.label}
               </button>
@@ -107,9 +107,9 @@ export default function AiAssistant() {
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input); } }}
               placeholder="Ask for a report, a chart, an export…"
               aria-label="Ask the AI Assistant"
-              className="box-border max-h-[120px] min-h-[22px] w-full resize-none border-0 bg-transparent px-2.5 py-2 text-[13.5px] text-fi-ink font-(family-name:--font-db-inter) outline-none"
+              className="box-border max-h-[120px] min-h-[22px] w-full resize-none border-0 bg-transparent px-2.5 py-2 text-[13.5px] text-fi-ink outline-none"
             />
-            <button type="submit" className="cursor-pointer whitespace-nowrap rounded-[7px] border border-solid border-fi-ai bg-fi-ai px-2.5 py-1.5 text-[12px] font-semibold text-white font-(family-name:--font-db-inter) hover:bg-fi-ai-dark">
+            <button type="submit" className="cursor-pointer whitespace-nowrap rounded-[7px] border border-solid border-fi-ai bg-fi-ai px-2.5 py-1.5 text-[12px] font-semibold text-white hover:bg-fi-ai-dark">
               Send
             </button>
           </form>

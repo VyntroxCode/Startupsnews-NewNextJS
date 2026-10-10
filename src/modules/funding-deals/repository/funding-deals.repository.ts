@@ -75,6 +75,7 @@ function buildWhere(filters: FundingFilters): { where: string; params: SqlParam[
   if (filters.city) { clauses.push('city = ?'); params.push(filters.city); }
   if (filters.country) { clauses.push('country = ?'); params.push(filters.country); }
   if (filters.investor) { clauses.push('investors LIKE ?'); params.push(like(filters.investor)); }
+  if (filters.leadInvestor) { clauses.push('lead_investor = ?'); params.push(filters.leadInvestor); }
   if (filters.from) { clauses.push('deal_date >= ?'); params.push(filters.from); }
   if (filters.to) { clauses.push('deal_date <= ?'); params.push(filters.to); }
 
@@ -258,16 +259,16 @@ export class FundingDealsRepository {
   }
 
   async filterOptions(): Promise<FundingFilterOptions> {
-    const distinct = async (col: 'sector' | 'round_stage' | 'city' | 'country') => {
+    const distinct = async (col: 'sector' | 'round_stage' | 'city' | 'country' | 'lead_investor') => {
       const rows = await query<DbRow>(
         `SELECT ${col} AS v, COUNT(*) AS c FROM funding_deals WHERE ${col} IS NOT NULL AND ${col} <> '' GROUP BY ${col} ORDER BY c DESC, ${col} ASC`,
       );
       return rows.map((r) => str(r.v));
     };
-    const [sectors, stages, cities, countries] = await Promise.all([
-      distinct('sector'), distinct('round_stage'), distinct('city'), distinct('country'),
+    const [sectors, stages, cities, countries, leadInvestors] = await Promise.all([
+      distinct('sector'), distinct('round_stage'), distinct('city'), distinct('country'), distinct('lead_investor'),
     ]);
-    return { sectors, stages, cities, countries };
+    return { sectors, stages, cities, countries, leadInvestors };
   }
 
   /** Admin dashboard card numbers. */

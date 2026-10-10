@@ -4,9 +4,8 @@ import { HR_TOOL_ROLES } from '@/shared/middleware/roles';
 import { parseJsonBody } from '@/shared/utils/parse-json-body';
 import { HrCredentialDesignation } from '@/modules/hr-credentials/domain/types';
 import { PanelAdminRole } from '@/modules/panel-admins/domain/types';
+import { ASSIGNABLE_PANEL_ROLES } from '@/modules/hr-credentials/service/hr-credentials.service';
 import { hrCredentialsService, hrToolService } from '../_lib';
-
-const ALLOWED_PANEL_ROLES: PanelAdminRole[] = ['event_admin', 'publisher_admin'];
 
 interface UpdateBody {
   name?: string;
@@ -15,7 +14,6 @@ interface UpdateBody {
   avatarUrl?: string | null;
   password?: string;
   panelRole?: string | null;
-  linkedPanelAdminId?: number | null;
   isActive?: boolean;
 }
 
@@ -73,8 +71,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ success: false, error: `Designation must be one of: ${allowedDesignations.join(', ')}` }, { status: 400 });
       }
     }
-    if (body?.panelRole && !ALLOWED_PANEL_ROLES.includes(body.panelRole as PanelAdminRole)) {
-      return NextResponse.json({ success: false, error: `Role must be one of: ${ALLOWED_PANEL_ROLES.join(', ')}` }, { status: 400 });
+    if (body?.panelRole && !ASSIGNABLE_PANEL_ROLES.includes(body.panelRole as PanelAdminRole)) {
+      return NextResponse.json({ success: false, error: `Role must be one of: ${ASSIGNABLE_PANEL_ROLES.join(', ')}` }, { status: 400 });
     }
 
     const credential = await hrCredentialsService.update(credentialId, {
@@ -84,7 +82,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       avatarUrl: body?.avatarUrl !== undefined ? (body.avatarUrl?.trim() || null) : undefined,
       password: body?.password || undefined,
       panelRole: body?.panelRole !== undefined ? (body.panelRole as PanelAdminRole | null) : undefined,
-      linkedPanelAdminId: body?.linkedPanelAdminId !== undefined ? body.linkedPanelAdminId : undefined,
       isActive: body?.isActive,
       updatedBy: auth.user.email,
     });

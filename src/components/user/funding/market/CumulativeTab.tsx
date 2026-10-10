@@ -10,7 +10,7 @@ export default function CumulativeTab({ onMeta, countries }: { onMeta: (m: Marke
   const { data, error } = useMarketView<MarketCumulative>('cumulative', { location }, onMeta);
   return (
     <MaCard
-      title="How fast does the year add up?"
+      title="How Fast Does The Year Add Up?"
       desc="Total capital raised since January 1 of each year, plotted month by month — so you can see how the current year is pacing against prior years."
     >
       <Controls>

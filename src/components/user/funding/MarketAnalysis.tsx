@@ -15,11 +15,11 @@ import { cardCls, emptyCls } from './ui';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
-  { key: 'timeseries', label: 'Time series' },
-  { key: 'location', label: 'By location' },
-  { key: 'growth', label: 'By growth' },
-  { key: 'cumulative', label: 'Cumulative race' },
-  { key: 'h2h', label: 'Head to head' },
+  { key: 'timeseries', label: 'Time Series' },
+  { key: 'location', label: 'By Location' },
+  { key: 'growth', label: 'By Growth' },
+  { key: 'cumulative', label: 'Cumulative Race' },
+  { key: 'h2h', label: 'Head To Head' },
   { key: 'investors', label: 'Investors' },
   { key: 'operating', label: 'Operating' },
 ] as const;
@@ -40,9 +40,9 @@ export default function MarketAnalysis() {
   const countries = meta?.countries ?? [];
 
   const kpis = [
-    { lbl: 'Capital in view', val: meta ? formatUsdMn(meta.kpis.capital) : '$0', sub: 'Last 12 months' },
+    { lbl: 'Capital In View', val: meta ? formatUsdMn(meta.kpis.capital) : '$0', sub: 'Last 12 months' },
     { lbl: 'Rounds', val: meta ? meta.kpis.rounds.toLocaleString() : '0', sub: 'Closed deals in this window' },
-    { lbl: 'Mean check', val: meta ? formatUsdMn(meta.kpis.meanCheck) : '$0', sub: 'Total raised ÷ round count' },
+    { lbl: 'Mean Check', val: meta ? formatUsdMn(meta.kpis.meanCheck) : '$0', sub: 'Total raised ÷ round count' },
   ];
 
   return (
@@ -53,7 +53,7 @@ export default function MarketAnalysis() {
           {kpis.map((k) => (
             <div key={k.lbl} className={`${cardCls} min-w-0 px-4 py-3.5 sm:p-[18px]`}>
               <div className="text-[12px] text-fi-ink-soft sm:text-[12.5px]">{k.lbl}</div>
-              <div className="mb-[3px] mt-1 truncate font-(family-name:--font-fi-space) text-[21px] font-bold leading-tight text-fi-ink sm:mt-1.5 sm:text-[24px] lg:text-[26px]">{k.val}</div>
+              <div className="mb-[3px] mt-1 truncate text-[21px] font-bold leading-tight text-fi-ink sm:mt-1.5 sm:text-[24px] lg:text-[26px]">{k.val}</div>
               <div className="text-[11px] text-fi-ink-faint">{k.sub}</div>
             </div>
           ))}
@@ -68,7 +68,7 @@ export default function MarketAnalysis() {
               role="tab"
               aria-selected={tab === t.key}
               onClick={() => setTab(t.key)}
-              className={`shrink-0 cursor-pointer whitespace-nowrap rounded-[7px] border-0 px-3 py-2 text-[12px] sm:px-4 sm:text-[12.5px] font-semibold font-(family-name:--font-db-inter) ${tab === t.key ? 'bg-fi-surface text-fi-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'bg-transparent text-fi-ink-soft'}`}
+              className={`shrink-0 cursor-pointer whitespace-nowrap rounded-[7px] border-0 px-3 py-2 text-[12px] sm:px-4 sm:text-[12.5px] font-semibold ${tab === t.key ? 'bg-fi-surface text-fi-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'bg-transparent text-fi-ink-soft'}`}
             >
               {t.label}
             </button>

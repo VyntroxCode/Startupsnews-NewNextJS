@@ -81,3 +81,7 @@ export const GRANTS_ROLES = ['admin'] as const;
 /** Funding Data (/admin/funding-data) — funding-round dataset shown on the reader dashboard's Funding page.
  * Financial Analyst is a standalone tool role scoped to this section; the super admin has full access. */
 export const FUNDING_ROLES = ['admin', 'financial_analyst'] as const;
+
+/** User Management (/admin/user-management) — settings for the reader panel, starting with the
+ * Funding sponsor cards. Super admin only: the cards carry outbound links shown to every reader. */
+export const USER_MANAGEMENT_ROLES = ['admin'] as const;

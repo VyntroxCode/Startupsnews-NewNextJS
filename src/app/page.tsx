@@ -12,6 +12,7 @@ import {
   getFeat1SectionPosts,
   getStartupEvents,
   getLatestNewsPosts,
+  getPostsByCategory,
   onlyPostsWithImage,
   getPostImage,
   getCategoryDisplayName,
@@ -27,6 +28,8 @@ import { MoreNewsSection } from "@/components/MoreNewsSection";
 import { StartupEventsSection } from "@/components/StartupEventsSection";
 import { StickySidebarContent } from "@/components/StickySidebarContent";
 import { EventsCarousel } from "@/components/EventsCarousel";
+import { LatestNewsRotator, type LatestNewsSlide } from "@/components/LatestNewsRotator";
+import { TrendingCard, TrendingCardText, TrendingHeadWord } from "@/components/TrendingSlideIn";
 import { getPostPath } from "@/lib/post-utils";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://startupnews.fyi";
@@ -83,10 +86,38 @@ export default async function HomePage() {
   const excludeIds = [main.id, sub[0].id, sub[1].id, ...trending.map((p) => p.id)];
 
   // Batch 2: more news (depends on excludeIds only)
-  const [moreNews, moreNewsSlugs] = await Promise.all([
+  // Latest News hero cards each rotate through more stories from their own category.
+  const heroCards = [main, sub[0], sub[1]];
+  const heroCategorySlugs = [...new Set(heroCards.map((p) => p.categorySlug))];
+
+  // Batch 2: more news (depends on excludeIds only) + the hero cards' category queues
+  const [moreNews, moreNewsSlugs, heroCategoryPosts] = await Promise.all([
     getMoreNewsPosts(excludeIds, 15),
     getMoreNewsSlugs(excludeIds),
+    // A failed queue must not take the homepage down — that card just stays on its one story.
+    Promise.all(heroCategorySlugs.map((slug) => getPostsByCategory(slug, 10).catch((): Post[] => []))),
   ]);
+
+  // One queue per card: the card's own story first, then up to 4 more from its category. `seen`
+  // spans all three so two cards in the same category never show the same story.
+  const seenInHero = new Set(heroCards.map((p) => p.id));
+  const latestNewsRotation: LatestNewsSlide[][] = heroCards.map((card) => {
+    const queue = [card];
+    for (const post of heroCategoryPosts[heroCategorySlugs.indexOf(card.categorySlug)]) {
+      if (queue.length >= 5) break;
+      if (seenInHero.has(post.id)) continue;
+      seenInHero.add(post.id);
+      queue.push(post);
+    }
+    return queue.map((post) => ({
+      id: post.id,
+      href: getPostPath(post),
+      title: post.title,
+      category: post.category,
+      timeAgo: post.timeAgo,
+      image: getPostImage(post),
+    }));
+  });
 
   const mobilePostsMap: Record<string, Post[]> = {
     "ai-deeptech": [aiDeeptechSection.featured, ...aiDeeptechSection.right, ...aiDeeptechSection.list].filter(
@@ -278,109 +309,24 @@ export default async function HomePage() {
                   <div className="mvp-feat1-pop-head">
                     <span className="mvp-feat1-pop-head">Latest News</span>
                   </div>
-                  <Link href={getPostPath(main)} rel="bookmark">
-                    <div className="mvp-feat1-feat-wrap left relative">
-                      <div className="mvp-feat1-feat-img left relative" style={{ position: "relative" }}>
-                        <PostImage
-                          src={getPostImage(main)}
-                          alt={main.title}
-                          fill
-                          className="mvp-reg-img"
-                          sizes="(max-width: 768px) 100vw, 560px"
-                          style={{ objectFit: "cover" }}
-                        />
-                        <PostImage
-                          src={getPostImage(main)}
-                          alt={main.title}
-                          className="mvp-mob-img"
-                          width={330}
-                          height={200}
-                          style={{ width: "100%", height: "auto", objectFit: "cover" }}
-                        />
-                      </div>
-                      <div className="mvp-feat1-feat-text left relative">
-                        <div className="mvp-cat-date-wrap left relative">
-                          <span className="mvp-cd-cat left relative">{main.category}</span>
-                          <span className="mvp-cd-date left relative">{main.timeAgo}</span>
-                        </div>
-                        <h2 className="mvp-stand-title post-heading-max-3-lines">{main.title}</h2>
-                        {/* <p>{main.excerpt}</p> */}
-                      </div>
-                    </div>
-                  </Link>
+                  <LatestNewsRotator variant="main" enterFrom="right" posts={latestNewsRotation[0]} />
                   <div className="mvp-feat1-sub-wrap left relative">
-                    <Link href={getPostPath(sub[0])} rel="bookmark">
-                      <div className="mvp-feat1-sub-cont left relative">
-                        <div className="mvp-feat1-sub-img left relative">
-                          <PostImage
-                            src={getPostImage(sub[0])}
-                            alt={sub[0].title}
-                            width={590}
-                            height={354}
-                            className="mvp-reg-img"
-                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
-                          />
-                          <PostImage
-                            src={getPostImage(sub[0])}
-                            alt={sub[0].title}
-                            className="mvp-mob-img"
-                            width={330}
-                            height={200}
-                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
-                          />
-                        </div>
-                        <div className="mvp-feat1-sub-text">
-                          <div className="mvp-cat-date-wrap left relative">
-                            <span className="mvp-cd-cat left relative">{sub[0].category}</span>
-                            <span className="mvp-cd-date left relative">{sub[0].timeAgo}</span>
-                          </div>
-                          <h2 className="post-heading-max-3-lines">{sub[0].title}</h2>
-                        </div>
-                      </div>
-                    </Link>
-                    <Link href={getPostPath(sub[1])} rel="bookmark">
-                      <div className="mvp-feat1-sub-cont left relative">
-                        <div className="mvp-feat1-sub-img left relative">
-                          <PostImage
-                            src={getPostImage(sub[1])}
-                            alt={sub[1].title}
-                            width={590}
-                            height={354}
-                            className="mvp-reg-img"
-                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
-                          />
-                          <PostImage
-                            src={getPostImage(sub[1])}
-                            alt={sub[1].title}
-                            className="mvp-mob-img"
-                            width={330}
-                            height={200}
-                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
-                          />
-                        </div>
-                        <div className="mvp-feat1-sub-text">
-                          <div className="mvp-cat-date-wrap left relative">
-                            <span className="mvp-cd-cat left relative">{sub[1].category}</span>
-                            <span className="mvp-cd-date left relative">{sub[1].timeAgo}</span>
-                          </div>
-                          <h2 className="post-heading-max-3-lines">{sub[1].title}</h2>
-                        </div>
-                      </div>
-                    </Link>
+                    <LatestNewsRotator variant="sub" enterFrom="left" posts={latestNewsRotation[1]} />
+                    <LatestNewsRotator variant="sub" enterFrom="right" posts={latestNewsRotation[2]} />
                   </div>
                 </div>
                 {/* Middle column: Trending */}
                 <div className="mvp-feat1-mid-wrap left relative">
                   <h3 className="mvp-feat1-pop-head">
-                    <span className="mvp-feat1-pop-head">Trending</span>
+                    <TrendingHeadWord>Trending</TrendingHeadWord>
                   </h3>
                   <div className="mvp-feat1-pop-wrap left relative">
-                    {trending.map((post) => {
+                    {trending.map((post, index) => {
                       const trendingImage = getPostImage(post);
 
                       return (
                       <Link key={post.id} href={getPostPath(post)} rel="bookmark">
-                        <div className="mvp-feat1-pop-cont left relative">
+                        <TrendingCard index={index}>
                           <div className="mvp-feat1-pop-img home-trending-pop-img left relative">
                             <Image
                               src={trendingImage}
@@ -408,14 +354,14 @@ export default async function HomePage() {
                               imageStyle={{ objectFit: "contain", objectPosition: "center" }}
                             />
                           </div>
-                          <div className="mvp-feat1-pop-text left relative">
+                          <TrendingCardText index={index}>
                             <div className="mvp-cat-date-wrap left relative">
                               <span className="mvp-cd-cat left relative">{post.category}</span>
                               <span className="mvp-cd-date left relative">{post.timeAgo}</span>
                             </div>
                             <h2 className="post-heading-max-3-lines">{post.title}</h2>
-                          </div>
-                        </div>
+                          </TrendingCardText>
+                        </TrendingCard>
                       </Link>
                       );
                     })}
@@ -425,7 +371,7 @@ export default async function HomePage() {
             </div>
             {/* Right column: Ad + Startup Events */}
             <div className="mvp-feat1-right-wrap left relative">
-<StartupEventsSection events={startupEvents} />
+<StartupEventsSection events={startupEvents} animated />
             </div>
           </div>
         </section>
@@ -507,7 +453,7 @@ export default async function HomePage() {
               </div>
               <div id="mvp-side-wrap" className="left relative">
                 <StickySidebarContent>
-                  <StartupEventsSection events={startupEvents} />
+                  <StartupEventsSection events={startupEvents} animated />
                 </StickySidebarContent>
               </div>
             </div>

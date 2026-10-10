@@ -1,17 +1,22 @@
 'use client';
 
+import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { AggRow, FundingForecast, SizeBandRow } from '@/modules/funding-deals/domain/types';
 import { formatUsdMn } from '@/modules/funding-deals/utils/format';
-import { PALETTE } from '../../ui';
+import { BAND_PALETTE, PALETTE } from '../../ui';
 import { TipRow, pct } from '../parts';
 
-const TICK = { fill: '#9C99A6', fontSize: 10.5 };
+const TICK = { fill: '#5A5763', fontSize: 11 };
 
-/** Recharts tooltip body in the same white card as the other charts. */
+/**
+ * Recharts tooltip body in the same white card as the other charts. Recharts puts its wrapper's
+ * top-left corner on the hovered point (TIP_PROPS: no offset, no flipping), and the card then lifts
+ * itself so it sits centred just above that point instead of beside the cursor.
+ */
 function TipCard({ title, rows }: { title: string; rows: { label: string; value: string }[] }) {
   return (
-    <div className="box-border min-w-[150px] rounded-lg border border-solid border-fi-line bg-fi-surface px-3 py-2 text-[12px] text-fi-ink shadow-[0_8px_24px_rgba(21,19,26,0.12)]">
+    <div className="box-border min-w-[150px] -translate-x-1/2 -translate-y-[calc(100%+12px)] rounded-lg border border-solid border-fi-line bg-fi-surface px-3 py-2 text-[12px] text-fi-ink shadow-[0_8px_24px_rgba(21,19,26,0.12)]">
       <div className="mb-1 font-semibold">{title}</div>
       {rows.map((r) => <TipRow key={r.label} label={r.label} value={r.value} />)}
     </div>
@@ -20,17 +25,29 @@ function TipCard({ title, rows }: { title: string; rows: { label: string; value:
 
 type TipArgs<T> = { active?: boolean; payload?: ReadonlyArray<{ payload?: T }> };
 
+const TIP_PROPS = { offset: 0, allowEscapeViewBox: { x: true, y: true }, isAnimationActive: false } as const;
+
+/** Opacity for one item: full when nothing (or it) is hovered, faded when another item is. */
+const dim = (active: number | null, i: number) => (active === null || active === i ? 1 : 0.3);
+
 /** Deals per round-size band (ROUND_BANDS): are rounds mostly small cheques or mega rounds? */
 export function SizeBandChart({ bands, reduced }: { bands: SizeBandRow[]; reduced: boolean }) {
   const totalDeals = bands.reduce((a, b) => a + b.count, 0) || 1;
   const data = bands.map((b) => ({ ...b, short: b.range }));
+  const [active, setActive] = useState<number | null>(null);
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -18 }}>
+      <BarChart
+        data={data}
+        margin={{ top: 8, right: 4, bottom: 0, left: -18 }}
+        onMouseMove={(s) => setActive(s.isTooltipActive && s.activeTooltipIndex != null ? Number(s.activeTooltipIndex) : null)}
+        onMouseLeave={() => setActive(null)}
+      >
         <CartesianGrid vertical={false} stroke="#F0EEF2" />
         <XAxis dataKey="short" tick={TICK} tickLine={false} axisLine={false} interval={0} />
         <YAxis tick={TICK} tickLine={false} axisLine={false} allowDecimals={false} />
         <Tooltip
+          {...TIP_PROPS}
           cursor={{ fill: '#FAF9FB' }}
           content={({ active, payload }: TipArgs<SizeBandRow>) => {
             const d = active ? payload?.[0]?.payload : undefined;
@@ -39,14 +56,16 @@ export function SizeBandChart({ bands, reduced }: { bands: SizeBandRow[]; reduce
                 title={`${d.label} (${d.range})`}
                 rows={[
                   { label: 'Deals', value: d.count.toLocaleString('en-IN') },
-                  { label: 'Share of deals', value: pct((d.count / totalDeals) * 100) },
+                  { label: 'Share Of Deals', value: pct((d.count / totalDeals) * 100) },
                   { label: 'Funding', value: formatUsdMn(d.total) },
                 ]}
               />
             ) : null;
           }}
         />
-        <Bar dataKey="count" fill="#15131A" radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={!reduced} />
+        <Bar dataKey="count" fill="#15131A" radius={[6, 6, 0, 0]} maxBarSize={52} isAnimationActive={!reduced}>
+          {data.map((b, i) => <Cell key={b.key} fill={BAND_PALETTE[i % BAND_PALETTE.length]} fillOpacity={dim(active, i)} className="transition-[fill-opacity] duration-150 motion-reduce:transition-none" />)}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
@@ -55,10 +74,12 @@ export function SizeBandChart({ bands, reduced }: { bands: SizeBandRow[]; reduce
 /** Capital by business model (B2B, B2C, SaaS…) as a donut. */
 export function ModelDonut({ rows, reduced }: { rows: AggRow[]; reduced: boolean }) {
   const total = rows.reduce((a, r) => a + r.total, 0) || 1;
+  const [active, setActive] = useState<number | null>(null);
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
         <Tooltip
+          {...TIP_PROPS}
           content={({ active, payload }: TipArgs<AggRow>) => {
             const d = active ? payload?.[0]?.payload : undefined;
             return d ? (
@@ -66,15 +87,17 @@ export function ModelDonut({ rows, reduced }: { rows: AggRow[]; reduced: boolean
                 title={d.key}
                 rows={[
                   { label: 'Funding', value: formatUsdMn(d.total) },
-                  { label: 'Share of capital', value: pct((d.total / total) * 100) },
+                  { label: 'Share Of Capital', value: pct((d.total / total) * 100) },
                   { label: 'Deals', value: d.count.toLocaleString('en-IN') },
                 ]}
               />
             ) : null;
           }}
         />
-        <Pie data={rows} dataKey="total" nameKey="key" innerRadius="62%" outerRadius="92%" paddingAngle={1.5} stroke="none" isAnimationActive={!reduced}>
-          {rows.map((r, i) => <Cell key={r.key} fill={PALETTE[(i + 2) % PALETTE.length]} />)}
+        <Pie data={rows} dataKey="total" nameKey="key" innerRadius="62%" outerRadius="92%" paddingAngle={1.5} stroke="none" isAnimationActive={!reduced} onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)}>
+          {rows.map((r, i) => (
+            <Cell key={r.key} fill={PALETTE[(i + 2) % PALETTE.length]} fillOpacity={dim(active, i)} stroke={active === i ? '#15131A' : 'none'} strokeWidth={1.5} className="transition-[fill-opacity] duration-150 motion-reduce:transition-none" />
+          ))}
         </Pie>
       </PieChart>
     </ResponsiveContainer>
@@ -94,6 +117,7 @@ export function ForecastLine({ forecast, reduced }: { forecast: FundingForecast;
         <XAxis dataKey="label" tick={TICK} tickLine={false} axisLine={false} minTickGap={24} />
         <YAxis tick={TICK} tickLine={false} axisLine={false} tickFormatter={(v: number) => formatUsdMn(v)} width={64} />
         <Tooltip
+          {...TIP_PROPS}
           content={({ active, payload }: TipArgs<{ label: string; actual: number | null; projected: number | null }>) => {
             const d = active ? payload?.[0]?.payload : undefined;
             if (!d) return null;

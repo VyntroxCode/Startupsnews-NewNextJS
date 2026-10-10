@@ -17,7 +17,7 @@ function pageList(cur: number, total: number): (number | '…')[] {
   return out;
 }
 
-const pageBtn = 'h-[30px] min-w-[30px] cursor-pointer rounded-[7px] border border-solid px-2 text-[12px] font-semibold font-(family-name:--font-db-inter) disabled:cursor-not-allowed disabled:opacity-40';
+const pageBtn = 'h-[30px] min-w-[30px] cursor-pointer rounded-[7px] border border-solid px-2 text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-40';
 
 interface DealsTableProps {
   deals: ReaderDeal[] | null;
@@ -45,7 +45,7 @@ export default function DealsTable({ deals, total, page, totalPages, onPage, onD
       <div className="overflow-x-auto">
         <table className="w-full min-w-[920px] border-collapse text-[12.5px]">
           <thead>
-            <tr>{['Date', 'Startup', 'Sector', 'Model', 'Amount', 'Stage', 'City', 'Country', 'Lead investor'].map((h) => <th key={h} className={thCls}>{h}</th>)}</tr>
+            <tr>{['Date', 'Startup', 'Sector', 'Model', 'Amount', 'Stage', 'City', 'Country', 'Lead Investor'].map((h) => <th key={h} className={thCls}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {deals && deals.length === 0 && (
@@ -53,7 +53,7 @@ export default function DealsTable({ deals, total, page, totalPages, onPage, onD
             )}
             {deals?.map((d) => (
               <tr key={d.id} className="hover:bg-fi-bg">
-                <td className={`${tdCls} whitespace-nowrap font-(family-name:--font-fi-plex)`}>{formatDealDate(d.date)}</td>
+                <td className={`${tdCls} whitespace-nowrap`}>{formatDealDate(d.date)}</td>
                 <td className={tdCls}>
                   {d.sourceUrl ? (
                     <a href={d.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 font-bold text-fi-ink no-underline visited:text-fi-ink hover:text-fi-primary">
@@ -63,11 +63,11 @@ export default function DealsTable({ deals, total, page, totalPages, onPage, onD
                 </td>
                 <td className={tdCls}>{d.sector || '—'}</td>
                 <td className={tdCls}>{d.businessModel || '—'}</td>
-                <td className={`${tdCls} whitespace-nowrap font-(family-name:--font-fi-plex) font-medium`}>{formatUsdMn(d.amount)}</td>
+                <td className={`${tdCls} whitespace-nowrap font-medium`}>{formatUsdMn(d.amount)}</td>
                 <td className={tdCls}>{d.roundStage ? <span className={pillCls}>{d.roundStage}</span> : '—'}</td>
                 <td className={tdCls}>{d.city || '—'}</td>
                 <td className={tdCls}>{d.country || '—'}</td>
-                <td className={tdCls}>{d.leadInvestor || '—'}</td>
+                <td className={`${tdCls} font-semibold text-fi-ink`}>{d.leadInvestor || '—'}</td>
               </tr>
             ))}
           </tbody>

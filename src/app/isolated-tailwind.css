@@ -126,9 +126,9 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   --color-ens-pink: #E4157C;
 
   /* Funding intelligence (/dashboard/funding/*) — the funding-platform preview's palette, copied
-     1:1 so the pages match the approved design. Fonts are NOT theme tokens: the next/font variables
-     (--font-fi-space, --font-fi-plex, --font-db-inter) are defined on layout divs, not :root, so a
-     token at :root would resolve empty. Components use font-(family-name:--font-fi-space) etc. */
+     1:1 so the pages match the approved design. The font is NOT a theme token: the next/font variable
+     (--font-fi-carlito) is defined on layout divs, not :root, so a token at :root would resolve
+     empty. The whole section is Calibri, set once by `fiFontCls` (components/user/funding/fonts.ts). */
   --color-fi-primary: #E01552;
   --color-fi-primary-dark: #A80F3E;
   --color-fi-primary-light: #FDEBF1;
@@ -155,6 +155,9 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   /* Market pulse ticker — the track holds two copies of the items and slides by half its width. */
   --animate-fi-ticker: fi-ticker 32s linear infinite;
   @keyframes fi-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  /* Top Sectors ranking: the highlighted sector's bar refills from the left (SectorSection.tsx). */
+  --animate-fi-bar-grow: fi-bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes fi-bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
   /* AI assistant "thinking" dots. */
   --animate-fi-dot: fi-dot 1s ease-in-out infinite;
   @keyframes fi-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }

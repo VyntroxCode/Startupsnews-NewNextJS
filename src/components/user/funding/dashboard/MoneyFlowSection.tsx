@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { MoveHorizontal } from 'lucide-react';
 import { formatUsdMn } from '@/modules/funding-deals/utils/format';
@@ -10,60 +11,97 @@ import type { DashboardModel, HeatGrid } from './selectors';
 
 const MoneySankey = dynamic(() => import('./charts/MoneySankey'), { ssr: false, loading: () => <ChartSkeleton height="100%" /> });
 
-/** Supporting (desktop): sector × stage grid. Colour = $, number = deals; the row/column follows the highlight. */
+/** Funding-lifecycle position of a round stage, so the grid's columns read left to right from earliest to latest. */
+function stageRank(stage: string): number {
+  const k = stage.toLowerCase().replace(/[\s_-]+/g, ' ').trim();
+  if (k === 'other') return 999;
+  if (k === 'unspecified') return 998;
+  if (k === 'angel') return 0;
+  if (k === 'pre seed') return 1;
+  if (k === 'seed') return 2;
+  const series = k.match(/^(pre )?series ([a-z])$/);
+  if (series) return 10 + (series[2].charCodeAt(0) - 97) * 2 - (series[1] ? 1 : 0);
+  if (k === 'bridge') return 80;
+  if (k === 'debt') return 81;
+  return 90;
+}
+
+const headBtn = 'box-border block w-full cursor-pointer rounded-md border border-solid px-2 py-2 text-[11.5px] font-bold leading-tight transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-fi-primary motion-reduce:transition-none';
+const headTone = { on: 'border-fi-ink bg-fi-ink text-white', off: 'border-fi-line bg-fi-bg text-fi-ink-faint', none: 'border-fi-line bg-fi-bg text-fi-ink' };
+const HEAT_SCALE = [0.08, 0.29, 0.5, 0.71, 0.92];
+
+/**
+ * Supporting (desktop): sector × stage grid. Colour = $, number = deals. Equal-width columns in
+ * lifecycle order; pointing at a cell lights its sector and stage names, and the row/column also
+ * follows the page-wide highlight.
+ */
 function HeatTable({ heat }: { heat: HeatGrid }) {
   const api = useHighlight();
+  const [hover, setHover] = useState<{ sector: string; stage: string } | null>(null);
+  const stages = useMemo(() => [...heat.stages].sort((x, y) => stageRank(x) - stageRank(y)), [heat.stages]);
+  const rowOn = (se: string) => hover?.sector === se || hlState(api.hl, 'sector', se) === 'on';
+  const colOn = (st: string) => hover?.stage === st || hlState(api.hl, 'stage', st) === 'on';
+  const active = !!hover || !!api.hl;
+  const tone = (on: boolean) => headTone[on ? 'on' : active ? 'off' : 'none'];
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-separate border-spacing-[3px] text-[11.5px]">
-        <caption className="sr-only">Deals and funding by sector (rows) and round stage (columns)</caption>
-        <thead>
-          <tr>
-            <th scope="col" className="sticky left-0 bg-fi-surface px-2 py-1.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-fi-ink-faint">Sector</th>
-            {heat.stages.map((st) => {
-              const state = hlState(api.hl, 'stage', st);
-              return (
-                <th key={st} scope="col" className="p-0 align-bottom">
-                  <button type="button" aria-pressed={state === 'on'} {...hlProps(api, 'stage', st)} className={`w-full cursor-pointer whitespace-nowrap rounded border-0 bg-transparent px-1.5 py-1.5 text-[10.5px] font-semibold font-(family-name:--font-db-inter) focus-visible:outline-2 focus-visible:outline-fi-primary ${state === 'on' ? 'text-fi-primary' : state === 'off' ? 'text-fi-ink-faint' : 'text-fi-ink-soft'}`}>
+    <div>
+      <div className="overflow-x-auto pb-1">
+        <table className="w-full table-fixed border-separate border-spacing-1 text-[12px]" style={{ minWidth: 150 + stages.length * 78 }} onMouseLeave={() => setHover(null)}>
+          <caption className="sr-only">Deals and funding by sector (rows) and round stage (columns)</caption>
+          <colgroup>
+            <col className="w-[150px]" />
+            {stages.map((st) => <col key={st} />)}
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" className="sticky left-0 z-[1] bg-fi-surface px-2 py-2 text-left align-middle text-[11px] font-semibold text-fi-ink-faint">Sector ↓ · Stage →</th>
+              {stages.map((st) => (
+                <th key={st} scope="col" className="p-0 align-middle">
+                  <button type="button" title={st} aria-pressed={hlState(api.hl, 'stage', st) === 'on'} {...hlProps(api, 'stage', st)} className={`${headBtn} truncate text-center ${tone(colOn(st))}`}>
                     {st}
                   </button>
                 </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {heat.sectors.map((se) => {
-            const rowState = hlState(api.hl, 'sector', se);
-            return (
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {heat.sectors.map((se) => (
               <tr key={se} data-reveal-item>
-                <th scope="row" className="sticky left-0 bg-fi-surface p-0 text-left">
-                  <button type="button" aria-pressed={rowState === 'on'} {...hlProps(api, 'sector', se)} className={`w-full cursor-pointer truncate rounded border-0 bg-transparent px-2 py-1.5 text-left text-[11.5px] font-semibold font-(family-name:--font-db-inter) focus-visible:outline-2 focus-visible:outline-fi-primary ${rowState === 'on' ? 'text-fi-primary' : rowState === 'off' ? 'text-fi-ink-faint' : 'text-fi-ink'}`}>
+                <th scope="row" className="sticky left-0 z-[1] bg-fi-surface p-0 text-left">
+                  <button type="button" title={se} aria-pressed={hlState(api.hl, 'sector', se) === 'on'} {...hlProps(api, 'sector', se)} className={`${headBtn} truncate text-left ${tone(rowOn(se))}`}>
                     {se}
                   </button>
                 </th>
-                {heat.stages.map((st) => {
+                {stages.map((st) => {
                   const c = heat.cell(se, st);
-                  const colState = hlState(api.hl, 'stage', st);
-                  const dim = rowState === 'off' || colState === 'off';
-                  const lit = rowState === 'on' || colState === 'on';
+                  const lit = rowOn(se) || colOn(st);
+                  const here = hover?.sector === se && hover.stage === st;
                   const a = c ? 0.08 + c.intensity * 0.84 : 0;
                   return (
                     <td
                       key={st}
                       title={c ? `${se} × ${st}: ${formatUsdMn(c.total)}, ${c.count} deals` : `${se} × ${st}: no deals`}
-                      className={`h-8 min-w-[44px] rounded text-center transition-opacity duration-200 motion-reduce:transition-none ${mono} ${dim ? 'opacity-30' : ''} ${lit ? 'outline-1 outline-fi-ink' : ''}`}
-                      style={{ backgroundColor: c ? `rgba(224, 21, 82, ${a.toFixed(3)})` : '#FAF9FB', color: a > 0.5 ? '#FFFFFF' : '#5A5763' }}
+                      onMouseEnter={() => setHover({ sector: se, stage: st })}
+                      className={`h-9 rounded-md text-center text-[12.5px] font-semibold transition-opacity duration-150 motion-reduce:transition-none ${mono} ${active && !lit ? 'opacity-35' : ''} ${here ? 'outline-2 -outline-offset-2 outline-fi-ink' : ''}`}
+                      style={{ backgroundColor: c ? `rgba(224, 21, 82, ${a.toFixed(3)})` : '#FAF9FB', color: !c ? '#9C99A6' : a > 0.5 ? '#FFFFFF' : '#15131A' }}
                     >
-                      {c ? c.count : <span aria-label="no deals">·</span>}
+                      {c ? c.count : <span aria-label="no deals">–</span>}
                     </td>
                   );
                 })}
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 flex items-center justify-end gap-2 text-[11px] text-fi-ink-faint" aria-hidden>
+        Less capital
+        <span className="flex gap-1">
+          {HEAT_SCALE.map((a) => <span key={a} className="h-3 w-6 rounded-sm" style={{ backgroundColor: `rgba(224, 21, 82, ${a})` }} />)}
+        </span>
+        More capital
+      </div>
     </div>
   );
 }
@@ -97,8 +135,8 @@ export default function MoneyFlowSection({ model, totalDeals }: { model: Dashboa
   return (
     <Section
       id="fi-flow"
-      eyebrow="Money flow"
-      title="From round stage to sector"
+      eyebrow="Money Flow"
+      title="From Round Stage To Sector"
       sub="Each band is real capital: one deal, one stage, one sector. Hover a band, stage or sector to trace it; the heatmap below follows."
     >
       <div className="box-border min-w-0 rounded-[16px] border border-solid border-fi-line bg-fi-surface px-3 py-4 shadow-fi sm:px-6 sm:py-6">
@@ -133,8 +171,8 @@ export default function MoneyFlowSection({ model, totalDeals }: { model: Dashboa
 
       {model && model.heat.sectors.length > 0 && (
         <div className={`${supportCard} mt-4`}>
-          <h3 className={supportTitle}>Sector × stage</h3>
-          <p className={supportSub}>{compact ? 'Each sector’s three biggest round stages ($ · deals).' : 'Number = deals; deeper pink = more capital. Hover a row or column to highlight it.'}</p>
+          <h3 className={supportTitle}>Sector × Stage</h3>
+          <p className={supportSub}>{compact ? 'Each sector’s three biggest round stages ($ · deals).' : 'Each box is the number of deals; deeper pink means more capital. Point at a box, a sector or a stage to highlight it.'}</p>
           <div className="mt-3">{compact ? <HeatList heat={model.heat} /> : <HeatTable heat={model.heat} />}</div>
         </div>
       )}

@@ -1,10 +1,10 @@
 /** Client-side path scoping for the Event Admin / Publisher Admin panels (mirrors the API guards). */
 
 // Only the super admin can manage other admin-panel accounts, or use the standalone Network
-// Manager (contacts CRM), HR tool, Sales tracker or Grants — matches HR_TOOL_ROLES/SALES_TRACKER_ROLES/GRANTS_ROLES
+// Manager (contacts CRM), HR tool, Sales tracker, Grants or User Management — matches HR_TOOL_ROLES/SALES_TRACKER_ROLES/GRANTS_ROLES/USER_MANAGEMENT_ROLES
 // in shared/middleware/roles.ts, which already gate their APIs to 'admin' only.
 // Funding Data is admin-only too, except for the Financial Analyst, who lists it explicitly below (FUNDING_ROLES).
-const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts', '/admin/hr-tool', '/admin/sales-tracker', '/admin/grants', '/admin/funding-data'];
+const ADMIN_ONLY_PATHS = ['/admin/users', '/admin/contacts', '/admin/hr-tool', '/admin/sales-tracker', '/admin/grants', '/admin/funding-data', '/admin/user-management'];
 
 export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   admin: 'all',

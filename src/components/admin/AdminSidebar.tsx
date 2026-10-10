@@ -21,6 +21,7 @@ import {
   LogOut,
   Mail,
   Ticket,
+  UserCog,
   UserPlus,
   Users,
   TrendingUp,
@@ -76,6 +77,8 @@ const menuItems: MenuItem[] = [
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BookOpen },
   { href: '/admin/inner-pages', label: 'Inner Pages', icon: Layers },
   { href: '/admin/registered-users', label: 'Registered Users', icon: UserPlus },
+  // Reader-panel settings; for now the Funding sponsor cards.
+  { href: '/admin/user-management', label: 'User Management', icon: UserCog },
   // IncubatX startup dossiers submitted on /incubatx/startup-details.
   { href: '/admin/grants', label: 'Grants', icon: Landmark },
   { href: '/admin/funding-data', label: 'Funding Data', icon: TrendingUp },

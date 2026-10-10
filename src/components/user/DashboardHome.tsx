@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { animate, motion, useReducedMotion } from 'motion/react';
 import type { Variants } from 'motion/react';
 import { EventByCountryCard } from '@/components/EventByCountryCard';
@@ -165,8 +165,24 @@ function riseVariants(reduced: boolean, distance = 18): Variants {
   };
 }
 
-function staggerVariants(reduced: boolean, stagger = 0.08): Variants {
-  return { hidden: {}, show: { transition: { staggerChildren: reduced ? 0 : stagger, delayChildren: reduced ? 0 : 0.03 } } };
+function staggerVariants(reduced: boolean, stagger = 0.08, delay = 0.03): Variants {
+  return { hidden: {}, show: { transition: { staggerChildren: reduced ? 0 : stagger, delayChildren: reduced ? 0 : delay } } };
+}
+
+/** Splits text into words that rise in one by one. Use inside a `staggerVariants` parent. */
+function Words({ text, className = '' }: { text: string; className?: string }) {
+  const reduced = useReducedMotion();
+  return (
+    <>
+      {text.split(' ').map((word, i) => (
+        <Fragment key={i}>
+          <motion.span variants={riseVariants(!!reduced, 10)} className={`inline-block ${className}`}>
+            {word}
+          </motion.span>{' '}
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
 /** Count-up hook: animates 0 → target on first mount, respects prefers-reduced-motion. */
@@ -628,12 +644,26 @@ export default function DashboardHome() {
               className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"
             >
               <div className="max-w-[46ch]">
-                <h2 className="m-0 text-[20px] font-extrabold leading-tight tracking-tight text-db-ink sm:text-[22px]">
-                  Join 15,000+ founders getting The Morning Pulse
-                </h2>
-                <p className="m-0 mt-2 text-[14px] leading-relaxed text-db-muted">
-                  One email, every morning: funding, launches and founder moves.
-                </p>
+                <motion.h2
+                  variants={staggerVariants(!!reduced, 0.05)}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, amount: 0.6 }}
+                  className="m-0 text-[20px] font-extrabold leading-tight tracking-tight text-db-ink sm:text-[22px]"
+                >
+                  <Words text="Join 15,000+ Founders Getting" />
+                  <Words text="The Morning Pulse Newsletter" className="text-db-pink" />
+                </motion.h2>
+                <motion.p
+                  variants={staggerVariants(!!reduced, 0.03, 0.45)}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, amount: 0.6 }}
+                  className="m-0 mt-2 text-[14px] leading-relaxed text-db-muted"
+                >
+                  <Words text="One Email, Every Morning: Funding, Launches And Founder Moves With" />
+                  <Words text="StartupNews.fyi" className="font-bold text-db-ink" />
+                </motion.p>
               </div>
               <div className="flex flex-col gap-3 shrink-0 sm:flex-row sm:items-center">
                 <input

@@ -12,7 +12,7 @@ import PageTopbar from './PageTopbar';
 export default function AllDealsPage() {
   const [filters, setFilters] = useState<ReaderFilters>(() => emptyFilters());
   const [applied, setApplied] = useState<ReaderFilters>(filters);
-  const [options, setOptions] = useState<FundingFilterOptions>({ sectors: [], stages: [], cities: [], countries: [] });
+  const [options, setOptions] = useState<FundingFilterOptions>({ sectors: [], stages: [], cities: [], countries: [], leadInvestors: [] });
   const [deals, setDeals] = useState<ReaderDeal[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -62,7 +62,7 @@ export default function AllDealsPage() {
           options={options}
           onChange={(p) => setFilters((f) => ({ ...f, ...p }))}
           onReset={() => setFilters(emptyFilters())}
-          fields={['search', 'sector', 'country', 'from', 'to']}
+          fields={['search', 'sector', 'stage', 'city', 'country', 'leadInvestor', 'from', 'to']}
         />
         {error && <p className="m-0 mt-4 rounded-[10px] border border-solid border-[#F5C2C9] bg-fi-red-light px-3 py-2.5 text-[12.5px] text-fi-red">{error}</p>}
         <DealsTable

@@ -16,13 +16,14 @@ so one file covers every weight in its range.
 | cairo-latin-var.woff2 | Cairo | 200–1000 | unused since 2026-10-08 (was `/expand-north-star`) |
 | montserrat-latin-var.woff2 | Montserrat | 100–900 | unused since 2026-10-08 (was `/expand-north-star`) |
 | schibsted-grotesk-latin-var.woff2 | Schibsted Grotesk | 400–900 | `src/app/dashboard/layout.tsx` |
-| space-grotesk-latin-var.woff2 | Space Grotesk | 300–700 | `src/app/(admin)/admin/partnership-tracker/page.tsx`, `src/app/dashboard/funding/layout.tsx` |
+| space-grotesk-latin-var.woff2 | Space Grotesk | 300–700 | `src/app/(admin)/admin/partnership-tracker/page.tsx` |
 | inter-latin-var.woff2 | Inter | 100–900 | `src/app/(admin)/admin/partnership-tracker/page.tsx`, `src/lib/lead-page-font.ts` (the six Sales Tracker lead pages) |
 | jetbrains-mono-latin-var.woff2 | JetBrains Mono | 100–800 | `src/app/(admin)/admin/partnership-tracker/page.tsx` |
 | fraunces-latin-var.woff2 | Fraunces (roman; opsz, SOFT, WONK axes) | 100–900 | `src/modules/content-studio/components/shell/fonts.ts` |
 | fraunces-italic-latin-var.woff2 | Fraunces (italic; opsz, SOFT, WONK axes) | 100–900 | `src/modules/content-studio/components/shell/fonts.ts` |
 | plus-jakarta-sans-latin-var.woff2 | Plus Jakarta Sans | 200–800 | `src/modules/content-studio/components/shell/fonts.ts` |
-| ibm-plex-mono-latin-{400,500,600}.woff2 | IBM Plex Mono (static — no variable file exists) | 400, 500, 600 | `src/app/dashboard/funding/layout.tsx` |
+| ibm-plex-mono-latin-{400,500,600}.woff2 | IBM Plex Mono (static — no variable file exists) | 400, 500, 600 | unused since 2026-10-09 (was the funding pages) |
+| carlito-latin-{400,700}.woff2 | Carlito (static; the open-source metric match for Calibri, which cannot be self-hosted) | 400, 700 | `src/components/user/funding/fonts.ts` (fallback behind the device's own Calibri on `/dashboard/funding/*`) |
 
 To add a font: download the Latin variable woff2 from
 `https://fonts.googleapis.com/css2?family=<Name>:wght@<min>..<max>` (Chrome

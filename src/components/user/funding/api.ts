@@ -42,5 +42,5 @@ export function thisYearRange(): { from: string; to: string } {
 
 /** Filter-bar defaults: this calendar year, everything else open. */
 export function emptyFilters(country = ''): ReaderFilters {
-  return { search: '', sector: '', stage: '', city: '', country, investor: '', ...thisYearRange() };
+  return { search: '', sector: '', stage: '', city: '', country, investor: '', leadInvestor: '', ...thisYearRange() };
 }

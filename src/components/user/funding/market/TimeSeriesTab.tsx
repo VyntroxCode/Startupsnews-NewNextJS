@@ -13,7 +13,7 @@ export default function TimeSeriesTab({ onMeta, countries }: { onMeta: (m: Marke
   const { data, error } = useMarketView<MarketTimeSeries>('timeseries', { location, granularity }, onMeta);
   return (
     <MaCard
-      title="When the capital landed"
+      title="When The Capital Landed"
       desc="Funding over time, stacked by round-size band. Startup capital (<$15M) covers pre-seed → Series A; breakout ($15–100M) is Series B → C; scaleup+ ($100M+) is the late-stage and growth rounds that drive the headlines."
     >
       <Controls>

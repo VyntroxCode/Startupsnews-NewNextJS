@@ -74,7 +74,7 @@ function emptyForm(state: ReturnType<typeof useHrTool>['state']): FormState {
     firstName: '', lastName: '', email: '', contact: '', designation: '', team: '', reportingManager: '',
     ctc: '', doj: todayStr(),
     employeeCode: nextEmployeeCode(state.employeeCredentials), avatarUrl: '',
-    password: '', confirmPassword: '', panelRole: '', linkedPanelAdminId: '',
+    password: '', confirmPassword: '', panelRole: '',
   };
 }
 
@@ -203,7 +203,7 @@ export default function HireEmployeeButton({ label, className, onHired }: { labe
       const credBody = {
         name: fullNameOf(preview), employeeCode: preview.employeeCode.trim(), designation: preview.designation,
         email: preview.email.trim() || null, avatarUrl: preview.avatarUrl || null, password: preview.password,
-        panelRole: preview.panelRole || null, linkedPanelAdminId: preview.linkedPanelAdminId || null,
+        panelRole: preview.panelRole || null,
       };
       const res = await fetch('/api/admin/hr-tool/employee-credentials', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(credBody) });
       const data = await res.json();

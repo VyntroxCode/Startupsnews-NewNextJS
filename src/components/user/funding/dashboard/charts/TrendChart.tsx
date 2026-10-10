@@ -5,7 +5,7 @@ import { AgCharts } from 'ag-charts-react';
 import type { AgCartesianChartOptions } from 'ag-charts-community';
 import type { TimeBucket } from '@/modules/funding-deals/domain/types';
 import { formatUsdMn } from '@/modules/funding-deals/utils/format';
-import { GRID_STROKE, agTheme, useAgFont } from './agSetup';
+import { AG_DIM_OTHERS, AG_TOOLTIP_POSITION, AG_WRAP, GRID_STROKE, PINK_DARK, agTheme, useAgFont } from './agSetup';
 
 /**
  * Funding trend: $ as a pink area (left axis) + deal count as quiet bars (right axis).
@@ -16,13 +16,18 @@ export default function TrendChart({ buckets, compact }: { buckets: TimeBucket[]
 
   const options = useMemo<AgCartesianChartOptions>(() => {
     const data = buckets.map((b) => ({ label: b.label, total: b.total, count: b.count }));
-    const tooltip = {
-      renderer: ({ datum }: { datum: (typeof data)[number] }) => ({
+    type Datum = (typeof data)[number];
+    // The tooltip is shared, so each series contributes its own rows — the bars carry Deals, the
+    // area carries Funding and Avg. Round (and Deals too on phones, where there are no bars).
+    const dealsRow = (d: Datum) => ({ label: 'Deals', value: d.count.toLocaleString('en-IN') });
+    const dealsTooltip = { renderer: ({ datum }: { datum: Datum }) => ({ heading: datum.label, data: [dealsRow(datum)] }) };
+    const fundingTooltip = {
+      renderer: ({ datum }: { datum: Datum }) => ({
         heading: datum.label,
         data: [
           { label: 'Funding', value: formatUsdMn(datum.total) },
-          { label: 'Deals', value: datum.count.toLocaleString('en-IN') },
-          { label: 'Avg. round', value: datum.count ? formatUsdMn(datum.total / datum.count) : '—' },
+          ...(compact ? [dealsRow(datum)] : []),
+          { label: 'Avg. Round', value: datum.count ? formatUsdMn(datum.total / datum.count) : '—' },
         ],
       }),
     };
@@ -32,7 +37,7 @@ export default function TrendChart({ buckets, compact }: { buckets: TimeBucket[]
       background: { fill: 'transparent' },
       padding: { top: 8, right: 4, bottom: 0, left: 0 },
       legend: { enabled: !compact, position: 'top', item: { marker: { shape: 'square', size: 9 } } },
-      tooltip: { mode: 'shared' },
+      tooltip: { mode: 'shared', position: AG_TOOLTIP_POSITION },
       series: [
         ...(compact
           ? []
@@ -45,7 +50,8 @@ export default function TrendChart({ buckets, compact }: { buckets: TimeBucket[]
               fill: '#F6D3DF',
               fillOpacity: 0.7,
               cornerRadius: 3,
-              tooltip,
+              highlight: { highlightedItem: { fill: '#E88BAA', fillOpacity: 1 }, unhighlightedItem: AG_DIM_OTHERS },
+              tooltip: dealsTooltip,
             }]),
         {
           type: 'area' as const,
@@ -58,7 +64,8 @@ export default function TrendChart({ buckets, compact }: { buckets: TimeBucket[]
           strokeWidth: 2.25,
           interpolation: { type: 'smooth' as const },
           marker: { enabled: buckets.length <= 20, size: 6, fill: '#FFFFFF', stroke: '#E01552', strokeWidth: 2 },
-          tooltip,
+          highlight: { highlightedItem: { fill: PINK_DARK, stroke: PINK_DARK }, unhighlightedItem: AG_DIM_OTHERS },
+          tooltip: fundingTooltip,
         },
       ],
       axes: {
@@ -85,7 +92,7 @@ export default function TrendChart({ buckets, compact }: { buckets: TimeBucket[]
   }, [buckets, compact, family]);
 
   return (
-    <div ref={ref} className="h-full w-full font-(family-name:--font-db-inter)">
+    <div ref={ref} className={AG_WRAP}>
       <AgCharts options={options} style={{ width: '100%', height: '100%' }} />
     </div>
   );

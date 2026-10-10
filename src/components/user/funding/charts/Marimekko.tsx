@@ -14,13 +14,14 @@ export default function Marimekko({ data, countries }: { data: MarketLocation['m
 
   return (
     <div className="w-full min-w-0 overflow-x-auto">
-      <div className="flex h-[340px] min-w-[600px] items-end gap-[3px]">
+      <div className="flex h-[340px] min-w-[600px] items-end gap-[3px] [&:has([data-seg]:hover)_[data-seg]:not(:hover)]:opacity-35">
         {data.map((band) => (
           <div key={band.key} className="relative flex h-full flex-col justify-end overflow-hidden rounded-t" style={{ width: width(band.total) }}>
             {band.byCountry.map((c) => (
               <div
                 key={c.country}
-                className="flex w-full items-center justify-center overflow-hidden text-[10px] font-semibold text-white"
+                data-seg
+                className="flex w-full items-center justify-center overflow-hidden text-[10px] font-semibold text-white transition-[opacity,filter] duration-150 hover:brightness-90 motion-reduce:transition-none"
                 style={{ height: `${Math.max(3, (c.total / band.total) * 100)}%`, background: colorOf.get(c.country) ?? '#9C99A6' }}
                 title={`${c.country}: ${formatUsdMn(c.total)}`}
               >

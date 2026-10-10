@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import ImageUpload from '@/components/admin/ImageUpload';
-import { getAuthHeaders } from '@/lib/admin-auth';
-import type { HrEmployeeCredential, LinkedPanelAdminSummary } from '@/modules/hr-credentials/domain/types';
+import type { HrEmployeeCredential } from '@/modules/hr-credentials/domain/types';
 import type { PanelAdminRole } from '@/modules/panel-admins/domain/types';
 
 export const PANEL_ROLE_LABEL: Record<PanelAdminRole, string> = { event_admin: 'Event Admin', publisher_admin: 'Publisher Admin', it_support: 'IT Support', financial_analyst: 'Financial Analyst' };
@@ -51,7 +50,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /** The credential-specific half of the hire/edit form — Employee ID, avatar, password,
- * panel-role linking. Shared by HireEmployeeButton (create) and EditCredentialModal (edit)
+ * admin-panel role. Shared by HireEmployeeButton (create) and EditCredentialModal (edit)
  * so this markup/validation/fetch logic lives in exactly one place. Name/designation/email
  * are NOT part of this component — those are shared with the offer letter and owned by
  * the parent form, per the "don't ask the same field twice" merge. */
@@ -61,7 +60,6 @@ export interface CredentialFormState {
   password: string;
   confirmPassword: string;
   panelRole: '' | PanelAdminRole;
-  linkedPanelAdminId: number | '';
 }
 
 /** The Employee ID field alone — a prefixed ("SNFYI-") numeric input when creating, read-only
@@ -104,12 +102,13 @@ export function EmployeeIdField({ form, onChange, isEdit }: {
 }
 
 export function CredentialFields({
-  form, onChange, isEdit, excludeCredentialId, showAvatar = true, hideId = false, idRowExtra, sideBySidePasswords = false,
+  form, onChange, isEdit, currentPanelRole = null, showAvatar = true, hideId = false, idRowExtra, sideBySidePasswords = false,
 }: {
   form: CredentialFormState;
   onChange: (patch: Partial<CredentialFormState>) => void;
   isEdit: boolean;
-  excludeCredentialId?: number;
+  /** The role this person holds right now (edit only) — picks the right hint under the role picker. */
+  currentPanelRole?: PanelAdminRole | null;
   /** Hide the photo upload — used by the Add Employee hire form, which doesn't collect one. */
   showAvatar?: boolean;
   /** Skip rendering the Employee ID field here — used when the caller places EmployeeIdField
@@ -122,30 +121,6 @@ export function CredentialFields({
   sideBySidePasswords?: boolean;
 }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [availableAdmins, setAvailableAdmins] = useState<LinkedPanelAdminSummary[]>([]);
-  const [loadingAdmins, setLoadingAdmins] = useState(false);
-
-  // Stale availableAdmins left over from a previous role selection is harmless if `role` is
-  // '' here — the section that renders it is itself gated on `form.panelRole` being truthy.
-  async function loadAvailableAdmins(signal: { cancelled: boolean }) {
-    const role = form.panelRole;
-    if (!role) return;
-    setLoadingAdmins(true);
-    const params = new URLSearchParams({ role });
-    if (excludeCredentialId) params.set('excludeCredentialId', String(excludeCredentialId));
-    const res = await fetch(`/api/admin/hr-tool/employee-credentials/available-panel-admins?${params}`, { headers: getAuthHeaders() });
-    const data = await res.json();
-    if (signal.cancelled) return;
-    if (data.success) setAvailableAdmins(data.data);
-    setLoadingAdmins(false);
-  }
-
-  useEffect(() => {
-    const signal = { cancelled: false };
-    loadAvailableAdmins(signal);
-    return () => { signal.cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.panelRole, excludeCredentialId]);
 
   function fillGeneratedPassword() {
     const pwd = generatePassword();
@@ -218,36 +193,25 @@ export function CredentialFields({
         </>
       )}
 
-      <div className="field-grid-2">
-        <div className="field">
-          <label className="field-label">Role (admin panel access){!isEdit && ' *'}</label>
-          <select value={form.panelRole} onChange={(e) => onChange({ panelRole: e.target.value as '' | PanelAdminRole, linkedPanelAdminId: '' })}>
-            <option value="">None — HR record only</option>
-            <option value="publisher_admin">Publisher Admin</option>
-            <option value="event_admin">Event Admin</option>
-          </select>
-        </div>
-
-        {form.panelRole && (
-          <div className="field">
-            <label className="field-label">Link to existing {PANEL_ROLE_LABEL[form.panelRole]} account{!isEdit && ' *'}</label>
-            <select value={form.linkedPanelAdminId} onChange={(e) => onChange({ linkedPanelAdminId: e.target.value ? Number(e.target.value) : '' })}>
-              <option value="">— Select —</option>
-              {availableAdmins.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.email}</option>)}
-            </select>
+      <div className="field">
+        <label className="field-label">Role (admin panel access)</label>
+        <select value={form.panelRole} onChange={(e) => onChange({ panelRole: e.target.value as '' | PanelAdminRole })}>
+          <option value="">None — HR record only</option>
+          <option value="publisher_admin">Publisher Admin</option>
+          <option value="event_admin">Event Admin</option>
+        </select>
+        {form.panelRole ? (
+          <div className="meta" style={{ marginTop: 6 }}>
+            {form.panelRole === currentPanelRole
+              ? `This person has ${PANEL_ROLE_LABEL[form.panelRole]} access and signs in with this Employee ID and password.`
+              : `This person gets their own ${PANEL_ROLE_LABEL[form.panelRole]} access — the full ${PANEL_ROLE_LABEL[form.panelRole]} panel — and signs in with this Employee ID and password. Nothing else to set up.`}
           </div>
-        )}
+        ) : currentPanelRole ? (
+          <div className="meta" style={{ marginTop: 6 }}>
+            Saving switches off this person&apos;s {PANEL_ROLE_LABEL[currentPanelRole]} access. Their past work stays, and choosing the role again switches it back on.
+          </div>
+        ) : null}
       </div>
-
-      {form.panelRole && (
-        <>
-          {loadingAdmins && <div className="meta">Loading accounts…</div>}
-          {!loadingAdmins && availableAdmins.length === 0 && (
-            <div className="notice">No available {PANEL_ROLE_LABEL[form.panelRole]} accounts — create one first under Admins → Panel Admins.</div>
-          )}
-          <div className="meta">Once linked, this person signs in with this Employee ID and password instead of their original email and password.</div>
-        </>
-      )}
     </>
   );
 }
@@ -262,6 +226,5 @@ export function validateCredentialFields(form: CredentialFormState, isEdit: bool
   if (!isEdit && !form.password) return 'Password is required';
   if (form.password && form.password.length < 8) return 'Password must be at least 8 characters';
   if (form.password && form.password !== form.confirmPassword) return 'Passwords do not match';
-  if (form.panelRole && !form.linkedPanelAdminId) return 'Select an existing account to link for this role';
   return null;
 }

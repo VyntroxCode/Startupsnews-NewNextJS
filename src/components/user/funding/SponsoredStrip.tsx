@@ -1,37 +1,56 @@
-import Link from 'next/link';
-import { Megaphone } from 'lucide-react';
+'use client';
 
-const SLOTS = [
-  { initial: 'A', color: 'bg-[#E91E8C]', title: 'Your brand here', sub: 'Reach founders and investors' },
-  { initial: 'B', color: 'bg-[#00B140]', title: 'Your brand here', sub: 'Sponsored slot — funding readers' },
-  { initial: 'C', color: 'bg-[#1E2A5E]', title: 'Your brand here', sub: 'Advertise with StartupNews.fyi' },
-];
+import { useEffect, useState } from 'react';
+import { Megaphone } from 'lucide-react';
+import type { ReaderSponsorCard } from '@/modules/funding-sponsor-cards/domain/types';
+import { fundingGet } from './api';
+
+// Icon tile colours for cards saved without an image, by position.
+const FALLBACK_COLORS = ['bg-[#E91E8C]', 'bg-[#00B140]', 'bg-[#1E2A5E]'];
 
 /**
- * Preview .sponsored-strip — three sponsor cards. Real ad slots need an ad network or direct deals,
- * so for now each card is an "advertise here" slot (no third-party brand names).
+ * Sponsor cards at the top of the Funding Dashboard. The cards (up to 3) are the ones switched on
+ * in Admin › User Management; each opens its own link in a new tab. With none switched on, or if
+ * they fail to load, the row is not rendered at all.
  */
 export default function SponsoredStrip() {
+  const [cards, setCards] = useState<ReaderSponsorCard[]>([]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fundingGet<{ data: ReaderSponsorCard[] }>('/api/funding/sponsor-cards', ctrl.signal)
+      .then((json) => setCards(Array.isArray(json.data) ? json.data : []))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+
+  if (cards.length === 0) return null;
+
   return (
-    <div>
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        {SLOTS.map((s, i) => (
-          <Link
-            key={i}
-            href="/advertise-with-us"
-            className="relative flex items-center gap-3 rounded-xl border border-solid border-fi-line bg-fi-surface px-3.5 py-3 text-fi-ink no-underline shadow-fi visited:text-fi-ink hover:border-fi-ink-faint"
-          >
-            <span className="absolute right-[9px] top-1.5 text-[8.5px] font-bold uppercase tracking-[0.04em] text-fi-ink-faint">Sponsored</span>
-            <span className={`flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[9px] text-[16px] font-bold text-white ${s.color}`}>
-              <Megaphone size={17} aria-hidden />
+    <div className="flex flex-col gap-3 lg:flex-row">
+      {cards.map((c, i) => (
+        <a
+          key={c.id}
+          href={c.linkUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="relative flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-solid border-fi-line bg-fi-surface px-3.5 py-3 text-fi-ink no-underline shadow-fi visited:text-fi-ink hover:border-fi-ink-faint"
+        >
+          <span className="absolute right-[9px] top-1.5 text-[9.5px] font-semibold tracking-[0.01em] text-fi-ink-faint">Sponsored</span>
+          {c.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.imageUrl} alt="" className="h-[46px] w-[46px] shrink-0 rounded-[10px] border border-solid border-fi-line bg-white object-contain" />
+          ) : (
+            <span className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[10px] text-white ${FALLBACK_COLORS[i % FALLBACK_COLORS.length]}`}>
+              <Megaphone size={20} aria-hidden />
             </span>
-            <span>
-              <span className="block text-[12.5px] font-bold">{s.title}</span>
-              <span className="mt-px block text-[11px] text-fi-ink-faint">{s.sub}</span>
-            </span>
-          </Link>
-        ))}
-      </div>
+          )}
+          <span className="min-w-0 pr-12">
+            <span className="block text-[12.5px] font-bold">{c.title}</span>
+            {c.subtitle && <span className="mt-px block text-[11px] text-fi-ink-faint">{c.subtitle}</span>}
+          </span>
+        </a>
+      ))}
     </div>
   );
 }

@@ -27,7 +27,6 @@ export default function EditCredentialModal({ credential, seed, existingCredenti
     employeeCode: credential?.employeeCode || nextEmployeeCode(existingCredentials),
     avatarUrl: credential?.avatarUrl || '',
     password: '', confirmPassword: '', panelRole: credential?.panelRole || '',
-    linkedPanelAdminId: credential?.linkedPanelAdmin?.id || '',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -64,11 +63,11 @@ export default function EditCredentialModal({ credential, seed, existingCredenti
     try {
       const url = isEdit ? `/api/admin/hr-tool/employee-credentials/${credential!.id}` : '/api/admin/hr-tool/employee-credentials';
       const body: Record<string, unknown> = isEdit
-        ? { avatarUrl: form.avatarUrl || null, panelRole: form.panelRole || null, linkedPanelAdminId: form.linkedPanelAdminId || null }
+        ? { avatarUrl: form.avatarUrl || null, panelRole: form.panelRole || null }
         : {
             name: seed!.name, employeeCode: form.employeeCode.trim(), designation: seed!.designation,
             email: seed!.email !== '—' ? seed!.email || null : null, avatarUrl: form.avatarUrl || null,
-            panelRole: form.panelRole || null, linkedPanelAdminId: form.linkedPanelAdminId || null,
+            panelRole: form.panelRole || null,
           };
       if (form.password) body.password = form.password;
 
@@ -95,7 +94,7 @@ export default function EditCredentialModal({ credential, seed, existingCredenti
       ]}
     >
       {error && <div className="notice" style={{ background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)' }}>{error}</div>}
-      <CredentialFields form={form} onChange={patch} isEdit={isEdit} excludeCredentialId={credential?.id} />
+      <CredentialFields form={form} onChange={patch} isEdit={isEdit} currentPanelRole={credential?.panelRole ?? null} />
     </ModalShell>
   );
 }

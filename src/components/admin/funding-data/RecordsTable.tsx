@@ -53,7 +53,7 @@ export default function RecordsTable({ refreshKey, onChanged }: { refreshKey: nu
   const [deals, setDeals] = useState<FundingDeal[] | null>(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [options, setOptions] = useState<FundingFilterOptions>({ sectors: [], stages: [], cities: [], countries: [] });
+  const [options, setOptions] = useState<FundingFilterOptions>({ sectors: [], stages: [], cities: [], countries: [], leadInvestors: [] });
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<FundingDeal | null>(null);
   const [exporting, setExporting] = useState(false);

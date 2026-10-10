@@ -97,6 +97,10 @@
 /* Funding Data (/admin/funding-data) — manual entry, Excel upload, records, upload history. */
 @source "./funding-data";
 @source "../../app/(admin)/admin/funding-data/page.tsx";
+
+/* User Management (/admin/user-management) — Funding sponsor cards editor. */
+@source "./user-management";
+@source "../../app/(admin)/admin/user-management/page.tsx";
 /* Sales Tracker (/admin/sales-tracker) — Leads overview card + save-confirm dialog content + the lead window's 4-column field grid (LEAD_FORM_GRID in constants.ts); the rest of the page is styled-jsx. */
 @source "./sales-tracker/LeadsOverview.tsx";
 @source "./sales-tracker/SaveConfirmDialog.tsx";

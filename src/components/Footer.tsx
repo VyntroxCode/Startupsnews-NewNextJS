@@ -75,7 +75,7 @@ export function Footer({ copyrightText }: { copyrightText: string }) {
               <li><Link href="/feature-your-startup">Feature your Startup</Link></li>
               <li><Link href="/submit-funding-round">Submit your Funding Round</Link></li>
               <li><Link href="/submit-press-release">Submit your press release</Link></li>
-              <li><Link href="#">Get Media Coverage</Link></li>
+              {/* <li><Link href="#">Get Media Coverage</Link></li> */}
             </ul>
           </div>
 
@@ -109,7 +109,7 @@ export function Footer({ copyrightText }: { copyrightText: string }) {
               <li><Link href="/advertise-with-us">Advertise with Us</Link></li>
               <li><Link href="/editorial-policy">Editorial Policy</Link></li>
               <li><Link href="/our-partners">Our Partners</Link></li>
-              <li><Link href="/careers">Careers</Link></li>
+              {/* <li><Link href="/careers">Careers</Link></li> */}
               <li><Link href="/contact-us">Contact Us</Link></li>
             </ul>
           </div>
