@@ -44,26 +44,51 @@ export class LeadFollowUpsRepository {
     nextFollowUpDate = '',
     changes: LeadChange[] = []
   ): Promise<void> {
+    await this.addEntry(source, leadId, ADMIN_FOLLOW_UP_CREDENTIAL_ID, authorName, status, note, nextFollowUpDate, changes);
+  }
+
+  /** One history entry written by a save of the lead itself: an admin's (`credentialId`
+   * ADMIN_FOLLOW_UP_CREDENTIAL_ID, see addAdminUpdate) or that of the employee who created the lead
+   * (their login id). Like addAdminUpdate it only records — the caller has already saved the lead. */
+  async addEntry(
+    source: LeadSource,
+    leadId: string,
+    credentialId: number,
+    authorName: string,
+    status: AssignmentStatus,
+    note: string,
+    nextFollowUpDate = '',
+    changes: LeadChange[] = []
+  ): Promise<void> {
     await query(
       'INSERT INTO sales_lead_followups (lead_source, lead_id, credential_id, author_name, status, note, next_follow_up_date, changes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [source, leadId, ADMIN_FOLLOW_UP_CREDENTIAL_ID, authorName, status, note, nextFollowUpDate || null, changes.length ? JSON.stringify(changes) : null]
+      [source, leadId, credentialId, authorName, status, note, nextFollowUpDate || null, changes.length ? JSON.stringify(changes) : null]
     );
   }
 
   /** Records `changes` an admin made to the lead as part of the save they are in the middle of.
    * The lead window saves the lead first and its assignment second, as two requests; so that one
    * Save reads as ONE history entry, these changes are added to the entry the same admin wrote on
-   * this lead in the last few seconds, if there is one — otherwise they get an entry of their own. */
-  async appendAdminChanges(source: LeadSource, leadId: string, authorName: string, status: AssignmentStatus, changes: LeadChange[]): Promise<void> {
+   * this lead in the last few seconds, if there is one — otherwise they get an entry of their own.
+   * `credentialId` is ADMIN_FOLLOW_UP_CREDENTIAL_ID for an admin, or the login id of the employee
+   * who created the lead when the save is theirs. */
+  async appendAdminChanges(
+    source: LeadSource,
+    leadId: string,
+    authorName: string,
+    status: AssignmentStatus,
+    changes: LeadChange[],
+    credentialId: number = ADMIN_FOLLOW_UP_CREDENTIAL_ID
+  ): Promise<void> {
     if (!changes.length) return;
     const recent = await queryOne<{ id: number; changes: string | null }>(
       `SELECT id, changes FROM sales_lead_followups
-        WHERE lead_source = ? AND lead_id = ? AND credential_id = ${ADMIN_FOLLOW_UP_CREDENTIAL_ID} AND author_name = ?
+        WHERE lead_source = ? AND lead_id = ? AND credential_id = ? AND author_name = ?
           AND created_at >= NOW() - INTERVAL 15 SECOND
         ORDER BY id DESC LIMIT 1`,
-      [source, leadId, authorName]
+      [source, leadId, credentialId, authorName]
     );
-    if (!recent) return this.addAdminUpdate(source, leadId, authorName, status, '', '', changes);
+    if (!recent) return this.addEntry(source, leadId, credentialId, authorName, status, '', '', changes);
     let existing: LeadChange[] = [];
     try { existing = recent.changes ? (JSON.parse(recent.changes) as LeadChange[]) : []; } catch { existing = []; }
     await query('UPDATE sales_lead_followups SET changes = ? WHERE id = ?', [JSON.stringify([...existing, ...changes]), recent.id]);
@@ -115,24 +140,25 @@ export class LeadFollowUpsRepository {
     );
   }
 
-  /** Admin replies this person hasn't seen, newest first — only on leads they are still assigned
-   * to, and only replies written since they were put on the lead. */
+  /** Admin replies this person hasn't seen, newest first — on leads they are still assigned to
+   * (only replies written since they were put on the lead) and on leads they created (every
+   * reply, assigned or not). */
   async findUnreadRepliesForEmployee(credentialId: number): Promise<UnreadLeadReplyEntity[]> {
     return ifReplyTables(() => query<UnreadLeadReplyEntity>(
       `SELECT r.id AS reply_id, r.lead_source, r.lead_id, r.author_name, r.created_at,
               COALESCE(l.name, e.name) AS lead_name
          FROM sales_lead_followup_replies r
-         JOIN sales_lead_assignments a
+         LEFT JOIN sales_lead_assignments a
            ON a.lead_source = r.lead_source AND a.lead_id = r.lead_id AND a.credential_id = ?
          LEFT JOIN sales_lead_reply_seen s
-           ON s.lead_source = r.lead_source AND s.lead_id = r.lead_id AND s.credential_id = a.credential_id
-         LEFT JOIN sales_leads l ON a.lead_source = 'lead' AND l.id = a.lead_id
-         LEFT JOIN ens_travel_enquiries e ON a.lead_source = 'ens' AND e.id = a.lead_id
+           ON s.lead_source = r.lead_source AND s.lead_id = r.lead_id AND s.credential_id = ?
+         LEFT JOIN sales_leads l ON r.lead_source = 'lead' AND l.id = r.lead_id
+         LEFT JOIN ens_travel_enquiries e ON r.lead_source = 'ens' AND e.id = r.lead_id
         WHERE r.credential_id = ${ADMIN_FOLLOW_UP_CREDENTIAL_ID}
           AND r.id > COALESCE(s.last_seen_reply_id, 0)
-          AND r.created_at >= a.assigned_at
+          AND ((a.credential_id IS NOT NULL AND r.created_at >= a.assigned_at) OR l.created_by_credential_id = ?)
         ORDER BY r.id DESC`,
-      [credentialId]
+      [credentialId, credentialId, credentialId]
     ), []);
   }
 
@@ -157,12 +183,36 @@ export class LeadFollowUpsRepository {
     );
   }
 
+  /** Whether this person added the lead from My Leads, with the lead's own next follow-up date —
+   * which is the creator's date on it (see `add`). null when they didn't (or the lead is an Expand
+   * North Star enquiry, which nobody creates by hand). The creator may open, follow up and edit the
+   * lead whether or not they are also assigned to it. */
+  async findCreatedLead(source: LeadSource, leadId: string, credentialId: number): Promise<{ next_follow_up_date: string | null; created_by_name: string | null } | null> {
+    if (source !== 'lead') return null;
+    return queryOne<{ next_follow_up_date: string | null; created_by_name: string | null }>(
+      'SELECT next_follow_up_date, created_by_name FROM sales_leads WHERE id = ? AND created_by_credential_id = ?',
+      [leadId, credentialId]
+    );
+  }
+
+  /** The name stored as the lead's creator ('' for a website lead, an older lead or an enquiry). */
+  async findCreatedByName(source: LeadSource, leadId: string): Promise<string> {
+    if (source !== 'lead') return '';
+    const row = await queryOne<{ created_by_name: string | null }>('SELECT created_by_name FROM sales_leads WHERE id = ?', [leadId]);
+    return row?.created_by_name || '';
+  }
+
   /** Saves the follow-up, sets the lead's shared status to the one picked and makes
    * `nextFollowUpDate` this person's own next follow-up date on the lead ('' clears it — the
    * follow-up closed the lead), in one transaction.
    * The row lock on the assignment stops a Sales Tracker save removing them mid-way; if they were
    * removed just before, nothing is written and false is returned. `created_at` is left to the
-   * database — the date is never taken from the request. */
+   * database — the date is never taken from the request.
+   *
+   * The employee who created the lead may log a follow-up without being assigned to it. Their own
+   * date on the lead is the lead's own column (sales_leads.next_follow_up_date — the one they set
+   * when adding the lead and edit in its window), so a date picked here is written there too. A
+   * follow-up that closes the lead leaves that column as it is, like an admin's save does. */
   async add(
     source: LeadSource,
     leadId: string,
@@ -180,7 +230,13 @@ export class LeadFollowUpsRepository {
         'SELECT 1 FROM sales_lead_assignments WHERE lead_source = ? AND lead_id = ? AND credential_id = ? FOR UPDATE',
         [source, leadId, credentialId]
       )) as unknown[];
-      if (!rows.length) {
+      const created = source === 'lead'
+        ? ((await connection.query(
+            'SELECT 1 FROM sales_leads WHERE id = ? AND created_by_credential_id = ? FOR UPDATE',
+            [leadId, credentialId]
+          )) as unknown[])
+        : [];
+      if (!rows.length && !created.length) {
         await connection.rollback();
         return false;
       }
@@ -195,6 +251,9 @@ export class LeadFollowUpsRepository {
       if (source === 'lead') {
         const label = ASSIGNMENT_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? SALES_LEAD_STATUS_LABELS[0];
         await connection.query('UPDATE sales_leads SET status = ? WHERE id = ?', [label, leadId]);
+        if (created.length && nextFollowUpDate) {
+          await connection.query('UPDATE sales_leads SET next_follow_up_date = ? WHERE id = ?', [nextFollowUpDate, leadId]);
+        }
       } else {
         // updated_at / updated_by on this table mean "last ADMIN edit" (shown as such in the Sales
         // Tracker), so an employee's status change leaves them alone.

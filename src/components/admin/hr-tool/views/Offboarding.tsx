@@ -11,7 +11,7 @@ import { addDays, initials, todayStr } from '../utils';
 import { getAuthHeaders } from '@/lib/admin-auth';
 import type { HrEmployee } from '../types';
 import {
-  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, DEDUCTIBLE_CATEGORIES, NOTICE_DAYS, RESIGNATION_REASONS, clearanceProgress, leftEarlyDays, systemLwd,
+  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, DEDUCTIBLE_CATEGORIES, NOTICE_DAYS, OFFBOARDING_EMAILS_ENABLED, RESIGNATION_REASONS, clearanceProgress, leftEarlyDays, systemLwd,
   type ClearanceCategory, type LwdChoice, type ClearanceProgress, type ClearanceStatus, type LeadHandoverTarget, type OffboardingCase,
   type OffboardingCaseDetail, type OffboardingClearanceItem, type OffboardingFnf, type OffboardingSettings, type OffboardingStatus,
 } from '@/modules/hr-offboarding/domain/types';
@@ -1028,7 +1028,7 @@ function LettersSection({ c, pendingItems, busy, run }: {
 
   async function issue(type: 'relieving' | 'experience', title: string, reissue: boolean) {
     setNotice(null);
-    const send = emailIt && !!c.personalEmail;
+    const send = OFFBOARDING_EMAILS_ENABLED && emailIt && !!c.personalEmail;
     const res = await run<OffboardingCase & { mail?: string }>({ action: 'letter-issue', letterType: type, send },
       `${reissue ? 'Re-issue' : 'Issue'} the ${title.toLowerCase()} for ${c.emp}${send ? ` and email it to ${c.personalEmail}` : ''}?${reissue ? ' The new version replaces the one they have.' : ''}`);
     if (res.ok && res.data.mail) setNotice(res.data.mail === 'sent' ? { ok: true, text: `${title} emailed to ${c.personalEmail}.` } : { ok: false, text: `${title} issued, but the email failed: ${res.data.mail}` });
@@ -1051,19 +1051,22 @@ function LettersSection({ c, pendingItems, busy, run }: {
               <div className="meta">
                 {!letter ? (why || 'Not issued yet')
                   : `Issued ${fmt(letter.issuedAt)} by ${letter.issuedBy}${letter.revision > 1 ? ` (version ${letter.revision})` : ''} · `
-                    + (letter.sentAt ? `emailed to ${letter.sentTo} on ${fmt(letter.sentAt)}` : letter.sendError ? '' : 'not emailed yet')}
+                    + (letter.sentAt ? `emailed to ${letter.sentTo} on ${fmt(letter.sentAt)}` : letter.sendError ? '' : OFFBOARDING_EMAILS_ENABLED ? 'not emailed yet' : 'download to share')}
                 {letter?.sendError && <span className="text-red-700">email failed: {letter.sendError}</span>}
               </div>
             </div>
             <button className="btn sm ghost" disabled={busy || c.status !== 'exited' && c.status !== 'completed'} title="See what the letter will say"
               onClick={() => openLetterPdf(c.id, type, 'preview', '')}>Preview</button>
             {letter && <button className="btn sm" disabled={busy} onClick={() => openLetterPdf(c.id, type, 'download', `${title.replace(/\s+/g, '-')}-${c.emp.replace(/[^\w]+/g, '-')}.pdf`)}>Download</button>}
-            {!locked && letter && <button className="btn sm" disabled={busy || !c.personalEmail} title={c.personalEmail ? '' : 'Add their personal email first'} onClick={() => send(type, title)}>{letter.sentAt ? 'Resend' : 'Email'}</button>}
+            {OFFBOARDING_EMAILS_ENABLED && !locked && letter && <button className="btn sm" disabled={busy || !c.personalEmail} title={c.personalEmail ? '' : 'Add their personal email first'} onClick={() => send(type, title)}>{letter.sentAt ? 'Resend' : 'Email'}</button>}
             {!locked && <button className={`btn sm${letter ? '' : ' primary'}`} disabled={busy || !!why} title={why || ''} onClick={() => issue(type, title, !!letter)}>{letter ? 'Re-issue' : 'Issue'}</button>}
           </div>
         );
       })}
-      {!locked && (
+      {!OFFBOARDING_EMAILS_ENABLED && !locked && (
+        <div className="meta mt-2">Letters are not emailed — download a letter and share it yourself.</div>
+      )}
+      {OFFBOARDING_EMAILS_ENABLED && !locked && (
         <label className="mt-2 flex items-center gap-2 text-[12.5px]">
           <input type="checkbox" className="w-auto" checked={emailIt} onChange={(e) => setEmailIt(e.target.checked)} disabled={!c.personalEmail} />
           {c.personalEmail ? `Email letters to ${c.personalEmail} when issuing` : 'No personal email on file — add one above to email letters'}

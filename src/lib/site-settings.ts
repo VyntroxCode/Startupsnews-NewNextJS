@@ -1,4 +1,5 @@
 import { SiteSettingsRepository } from '@/modules/site-settings/repository/site-settings.repository';
+import { DEFAULT_FREE_PAGES, NO_LOCK_VALUE, REPORTS_FREE_PAGES_KEY, parseFreePages, type FreePages } from '@/modules/reports/domain/lock';
 
 const repo = new SiteSettingsRepository();
 
@@ -37,4 +38,20 @@ export async function getFeatureStartupImages(): Promise<{ step1: string; step2:
     console.error('Error fetching feature-startup-images setting:', error);
     return { step1: '', step2: '' };
   }
+}
+
+/** Open pages per report section on the reader Reports page (null = no lock); the default on no row
+ * or DB error. */
+export async function getReportsFreePages(): Promise<FreePages> {
+  try {
+    const values = await repo.getMany([REPORTS_FREE_PAGES_KEY]);
+    return parseFreePages(values.get(REPORTS_FREE_PAGES_KEY));
+  } catch (error) {
+    console.error('Error fetching reports lock setting:', error);
+    return DEFAULT_FREE_PAGES;
+  }
+}
+
+export async function setReportsFreePages(freePages: FreePages): Promise<void> {
+  await repo.set(REPORTS_FREE_PAGES_KEY, freePages === null ? NO_LOCK_VALUE : String(freePages));
 }

@@ -196,7 +196,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
                                             {(post.sourceName || post.sourceAuthor || post.sourceLogoUrl) ? (
                                                 <>
-                                                    <div className="mvp-author-info-thumb left relative" style={{ width: 46, height: 46, borderRadius: "8px", overflow: "hidden", flexShrink: 0, backgroundColor: "#f0f0f0" }}>
+                                                    <div className="mvp-author-info-thumb left relative" style={{ width: 46, height: 46, borderRadius: "8px", overflow: "hidden", flexShrink: 0, backgroundColor: "var(--sn-bg-3, #f0f0f0)" }}>
                                                         {post.sourceLogoUrl ? (
                                                             <SourceLogoImg
                                                                 src={post.sourceLogoUrl}
@@ -206,7 +206,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                                 style={{ width: 46, height: 46, objectFit: "contain" }}
                                                             />
                                                         ) : (
-                                                            <span style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", color: "#888" }} aria-hidden>©</span>
+                                                            <span style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem", color: "var(--sn-ink-3, #888)" }} aria-hidden>©</span>
                                                         )}
                                                     </div>
                                                     <div className="mvp-author-info-text left relative">
@@ -217,7 +217,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                             </time>
                                                         </div>                                                        <div className="mvp-author-info-name left relative" itemProp="author" itemScope itemType="https://schema.org/Person">
                                                             {post.sourceName && (
-                                                                <span className="mvp-source-prefix" style={{ display: "block", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#666", marginBottom: "2px" }}>
+                                                                <span className="mvp-source-prefix" style={{ display: "block", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--sn-ink-2, #666)", marginBottom: "2px" }}>
                                                                     Via {post.sourceName}
                                                                 </span>
                                                             )}
@@ -307,36 +307,36 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                         {post.content && post.content.trim() ? (
                                                             <div 
                                                                 className="mvp-post-content-body" 
-                                                                style={{ fontSize: "1rem", lineHeight: 1.8, color: "#333" }}
+                                                                style={{ fontSize: "1rem", lineHeight: 1.8, color: "var(--sn-ink-soft, #333)" }}
                                                                 dangerouslySetInnerHTML={{ __html: processedContent }}
                                                             />
                                                         ) : toNewsBrief(post.excerpt) ? (
-                                                            <p className="mvp-post-brief" style={{ fontSize: "1.1rem", lineHeight: 1.6, color: "#333", textAlign: 'justify' }}>{toNewsBrief(post.excerpt)}</p>
+                                                            <p className="mvp-post-brief" style={{ fontSize: "1.1rem", lineHeight: 1.6, color: "var(--sn-ink-soft, #333)", textAlign: 'justify' }}>{toNewsBrief(post.excerpt)}</p>
                                                         ) : (
-                                                            <p className="mvp-content-unavailable" style={{ color: "#666" }}>Summary not available.</p>
+                                                            <p className="mvp-content-unavailable" style={{ color: "var(--sn-ink-2, #666)" }}>Summary not available.</p>
                                                         )}
                                                     </div>
 
                                                     <div id="mvp-content-bot" className="left">
-                                                        <div className="mvp-post-tags" style={{ borderBottom: "1px solid #eee", paddingBottom: "15px", marginBottom: "30px", textAlign: "left" }}>
-                                                            <span className="mvp-post-tags-header" style={{ fontWeight: 800, fontSize: "11px", textTransform: "uppercase", color: "#333" }}>Related Topics:</span>
-                                                            <span itemProp="keywords" style={{ color: "#999", fontSize: "11px", marginLeft: "10px", textTransform: "uppercase" }}>
+                                                        <div className="mvp-post-tags" style={{ borderBottom: "1px solid var(--sn-line-soft, #eee)", paddingBottom: "15px", marginBottom: "30px", textAlign: "left" }}>
+                                                            <span className="mvp-post-tags-header" style={{ fontWeight: 800, fontSize: "11px", textTransform: "uppercase", color: "var(--sn-ink-soft, #333)" }}>Related Topics:</span>
+                                                            <span itemProp="keywords" style={{ color: "var(--sn-ink-3, #999)", fontSize: "11px", marginLeft: "10px", textTransform: "uppercase" }}>
                                                                 {post.tags && post.tags.length > 0
                                                                     ? post.tags.map((tag, i) => (
-                                                                        <span key={tag}>{i > 0 ? " " : null}<Link href={`/${post.categorySlug}`} style={{ color: "#999" }}>#{tag}</Link></span>
+                                                                        <span key={tag}>{i > 0 ? " " : null}<Link href={`/${post.categorySlug}`} style={{ color: "var(--sn-ink-3, #999)" }}>#{tag}</Link></span>
                                                                     ))
-                                                                    : <Link href={`/${post.categorySlug}`} style={{ color: "#999" }}>#{post.category}</Link>}
+                                                                    : <Link href={`/${post.categorySlug}`} style={{ color: "var(--sn-ink-3, #999)" }}>#{post.category}</Link>}
                                                             </span>
                                                         </div>
 
                                                         {/* Disclaimer Section */}
                                                         <div id="mvp-disclaimer-wrap" className="left" style={{ borderTop: "2px solid #ea5455", paddingTop: "30px", marginTop: "30px", marginBottom: "30px" }}>
-                                                            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#333", marginBottom: "15px" }}>Disclaimer</h3>
-                                                            <p style={{ fontSize: "0.95rem", lineHeight: 1.8, color: "#555", fontStyle: "italic", marginBottom: "15px", textAlign: "justify" }}>
+                                                            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--sn-ink-soft, #333)", marginBottom: "15px" }}>Disclaimer</h3>
+                                                            <p style={{ fontSize: "0.95rem", lineHeight: 1.8, color: "var(--sn-ink-2, #555)", fontStyle: "italic", marginBottom: "15px", textAlign: "justify" }}>
                                                                 We strive to uphold the highest ethical standards in all of our reporting and coverage. We StartupNews.fyi want to be transparent with our readers about any potential conflicts of interest that may arise in our work. It's possible that some of the investors we feature may have connections to other businesses, including competitors or companies we write about. However, we want to assure our readers that this will not have any impact on the integrity or impartiality of our reporting. We are committed to delivering accurate, unbiased news and information to our audience, and we will continue to uphold our ethics and principles in all of our work. Thank you for your trust and support.
                                                             </p>
-                                                            {/* <p style={{ fontSize: "0.95rem", lineHeight: 1.8, color: "#555", marginBottom: "0" }}>
-                                                                Website Upgradation is going on for any glitch kindly connect at <Link href="mailto:office@startupnews.fyi" style={{ color: "#ea5455", textDecoration: "none", fontWeight: 600 }}>office@startupnews.fyi</Link>
+                                                            {/* <p style={{ fontSize: "0.95rem", lineHeight: 1.8, color: "var(--sn-ink-2, #555)", marginBottom: "0" }}>
+                                                                Website Upgradation is going on for any glitch kindly connect at <Link href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-red-ink, #ea5455)", textDecoration: "none", fontWeight: 600 }}>office@startupnews.fyi</Link>
                                                             </p> */}
                                                         </div>
 
@@ -344,7 +344,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                             {prev && prev.id !== post.id && (
                                                                 <div className="mvp-prev-post-wrap left relative">
                                                                     <Link href={getPostPath(prev)} rel="bookmark" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-                                                                        <span className="mvp-prev-arr left" aria-hidden="true" style={{ fontSize: "2rem", color: "#ccc", marginRight: "15px" }}><ChevronLeftIcon /></span>
+                                                                        <span className="mvp-prev-arr left" aria-hidden="true" style={{ fontSize: "2rem", color: "var(--sn-ink-4, #ccc)", marginRight: "15px" }}><ChevronLeftIcon /></span>
                                                                         <div className="mvp-prev-next-text left relative">
                                                                             <span className="mvp-prev-next-label left relative">Don&apos;t Miss</span>
                                                                             <p>{prev.title}</p>
@@ -359,7 +359,7 @@ export function FullArticle({ post, related = [], prev, next }: FullArticleProps
                                                                             <span className="mvp-prev-next-label left relative" style={{ textAlign: "right", width: "100%" }}>Up Next</span>
                                                                             <p>{next.title}</p>
                                                                         </div>
-                                                                        <span className="mvp-next-arr right" aria-hidden="true" style={{ fontSize: "2rem", color: "#ccc", marginLeft: "15px" }}><ChevronRightIcon /></span>
+                                                                        <span className="mvp-next-arr right" aria-hidden="true" style={{ fontSize: "2rem", color: "var(--sn-ink-4, #ccc)", marginLeft: "15px" }}><ChevronRightIcon /></span>
                                                                     </Link>
                                                                 </div>
                                                             )}

@@ -273,6 +273,17 @@ export class HrToolRepository {
     });
 
     const existing = await findAllRows<EmployeeRow>('hr_employees', 'created_at ASC');
+    // This is a whole-table replace, and every attendance/payroll/leave row hangs off the id. A
+    // list that carries a DIFFERENT id for a login that already has a record (a tab left open
+    // across the E-xxx -> Employee ID re-key) would swap the id back and detach all of it.
+    const existingIds = new Set(existing.map((r) => r.id));
+    const incomingIds = new Set(withManagers.map((e) => e.id));
+    const idByCredential = new Map(existing.filter((r) => r.credential_id != null).map((r) => [Number(r.credential_id), r.id]));
+    const stale = withManagers.find((e) => {
+      const current = e.credentialId != null ? idByCredential.get(Number(e.credentialId)) : undefined;
+      return current !== undefined && current !== e.id && !existingIds.has(e.id) && !incomingIds.has(current);
+    });
+    if (stale) throw new Error('The employee list on this page is out of date. Refresh the page and try again.');
     const previousName = new Map(existing.map((r) => [r.id, r.name]));
     const renames = withManagers
       .filter((e) => previousName.has(e.id) && previousName.get(e.id) !== e.name)

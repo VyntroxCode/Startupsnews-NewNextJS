@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { CATEGORIES_AUTHORS_MANAGE_ROLES } from '@/shared/middleware/roles';
 import { CategoriesService } from '@/modules/categories/service/categories.service';
 import { CategoriesRepository } from '@/modules/categories/repository/categories.repository';
@@ -21,7 +21,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAnyRole(request, CATEGORIES_AUTHORS_MANAGE_ROLES);
+  const auth = await requireContentAccess(request, CATEGORIES_AUTHORS_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -74,7 +74,7 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAnyRole(request, CATEGORIES_AUTHORS_MANAGE_ROLES);
+  const auth = await requireContentAccess(request, CATEGORIES_AUTHORS_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -128,7 +128,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAnyRole(request, CATEGORIES_AUTHORS_MANAGE_ROLES);
+  const auth = await requireContentAccess(request, CATEGORIES_AUTHORS_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

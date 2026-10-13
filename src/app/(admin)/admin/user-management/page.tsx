@@ -1,14 +1,18 @@
 'use client';
 
+import { Suspense } from 'react';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
-import FundingCardsPage from '@/components/admin/user-management/FundingCardsPage';
+import UserManagementPage from '@/components/admin/user-management/UserManagementPage';
 
-/** /admin/user-management — settings for the reader (user) panel; for now the Funding sponsor
- * cards (super admin only; see ADMIN_ONLY_PATHS). */
+/** /admin/user-management — settings for the reader (user) panel, split into Funding (sponsor
+ * cards) and Reports sections (super admin only; see ADMIN_ONLY_PATHS). */
 export default function AdminUserManagementPage() {
   return (
     <AdminErrorBoundary>
-      <FundingCardsPage />
+      {/* useSearchParams (opening ?section=) needs a Suspense boundary. */}
+      <Suspense fallback={null}>
+        <UserManagementPage />
+      </Suspense>
     </AdminErrorBoundary>
   );
 }

@@ -1,16 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, MessageSquare } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CalendarClock, MessageSquare, Plus } from 'lucide-react';
 import { PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS } from '@/components/admin/sales-tracker/constants';
+import LeadFormModal from '@/components/admin/sales-tracker/LeadFormModal';
+import type { LeadActivityApi } from '@/components/admin/sales-tracker/LeadActivityPanel';
+import SalesTrackerStyles from '@/components/admin/sales-tracker/SalesTrackerStyles';
+import { emptyLead } from '@/components/admin/sales-tracker/utils';
+import type { SalesLead } from '@/modules/sales-tracker/domain/types';
 import {
   ASSIGNMENT_STATUS_OPTIONS,
   assignmentStatusChipClass,
   assignmentStatusLabel,
   FINISHED_LEAD_STATUSES,
+  type AssignableEmployee,
   type AssignedLead,
+  type DepartmentOption,
+  type LeadAssignment,
+  type LeadAssignmentDraft,
 } from '@/modules/lead-assignments/domain/types';
-import type { LeadDetail } from '@/modules/lead-followups/domain/types';
+import { isEmployeeFollowUp, type LeadDetail } from '@/modules/lead-followups/domain/types';
 import { FOLLOW_UP_TAG, followUpDue, formatFollowUpDay, isFollowUpDue, localToday } from '@/modules/lead-followups/domain/follow-up-date';
 import { LEAD_REPLIES_SEEN_EVENT } from '../NewLeadReplyToast';
 import LeadDetailDrawer from './LeadDetailDrawer';
@@ -28,6 +37,12 @@ const STATUS_ROW: Record<string, { label: string; filter: string; text: string; 
   confirmed: { label: 'Confirmed leads', filter: 'Confirmed', text: 'text-emerald-700', dot: 'bg-emerald-500' },
   'not-interested': { label: 'Not interested leads', filter: 'Not Interested', text: 'text-red-700', dot: 'bg-red-500' },
 };
+
+/** The Lead Status dropdown's "My Leads" choice: only the leads the reader added themselves, in
+ * any status. Not a status — it sits in the same dropdown because that is where the reader narrows
+ * the table. */
+const MINE = 'mine';
+const MINE_LABEL = 'My Leads';
 
 /** Where a lead stands for the KPI cards:
  *  - finished:  the lead's status is Confirmed or Not Interested — counted in the total only;
@@ -63,7 +78,24 @@ function formatDay(value: string): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** My Leads: every Sales Tracker lead assigned to the logged-in employee.
+/** What the Add / Edit lead window offers (GET `${endpoint}/form-options`). */
+interface LeadFormOptions {
+  employees: AssignableEmployee[];
+  departments: DepartmentOption[];
+  promotedCities: Record<string, string[]>;
+}
+
+/** My Leads: every Sales Tracker lead assigned to the logged-in employee, plus every lead they
+ * added themselves.
+ *
+ * **Add New Lead** (top right) opens the same lead window the admin Sales Tracker uses
+ * (LeadFormModal): the employee fills in the lead and must assign it to at least one person —
+ * anyone, picked department first. The lead then shows in the admin's All leads with the employee
+ * as "Created by". A lead the reader created is tagged "Added by you" and stays in this list even
+ * when they are not one of the assigned people; its drawer has **Edit lead**, which reopens the
+ * same window (details, who is assigned, and the same Lead activity panel the admin sees, replies
+ * included). Every edit is written to the lead's history. Leads
+ * assigned to the reader by someone else stay read-only, and nobody can delete a lead from here.
  *
  * "Today's Follow up" comes first, full width: the reader's open leads whose OWN next follow-up
  * date (set with a follow-up in the lead window) is today or already past. It shows two numbers,
@@ -112,25 +144,99 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
   const [dueOnly, setDueOnly] = useState(false);
   const today = localToday();
   const [openKey, setOpenKey] = useState<string | null>(null);
+  // The Add / Edit lead window: the lead it is open on (a blank one for Add New Lead) and that
+  // lead's stored assignment. Its dropdown lists are fetched the first time it is opened.
+  const [editing, setEditing] = useState<{ lead: SalesLead; assignment?: LeadAssignment } | null>(null);
+  const [formOptions, setFormOptions] = useState<LeadFormOptions | null>(null);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('replies') === 'new') setRepliesOnly(true);
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(endpoint, { headers: getHeaders() });
-        const json = await res.json().catch(() => null);
-        if (!res.ok || !json?.success) throw new Error(json?.error || 'Failed to load your leads');
-        setUnlinked(json.linked === false);
-        setLeads(json.data || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load your leads');
-        setLeads([]);
-      }
-    })();
+  const loadLeads = useCallback(async () => {
+    try {
+      const res = await fetch(endpoint, { headers: getHeaders() });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'Failed to load your leads');
+      setUnlinked(json.linked === false);
+      setLeads(json.data || []);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load your leads');
+      setLeads((prev) => prev ?? []);
+    }
   }, [endpoint, getHeaders]);
+
+  useEffect(() => { void loadLeads(); }, [loadLeads]);
+
+  /** Opens the lead window on `target` (a blank lead for Add New Lead), loading its dropdown lists
+   * first if this is the first time. */
+  async function openForm(target: { lead: SalesLead; assignment?: LeadAssignment }) {
+    setFormError('');
+    if (!formOptions) {
+      try {
+        const res = await fetch(`${endpoint}/form-options`, { headers: getHeaders() });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success) throw new Error(json?.error || 'Failed to load the lead form');
+        setFormOptions(json.data);
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : 'Failed to load the lead form');
+        return;
+      }
+    }
+    setOpenKey(null);
+    setEditing(target);
+  }
+
+  /** Lead activity inside the lead window, through the reader's own lead endpoints: the history is
+   * part of the lead view (a LeadDetail holds everything the panel reads), and a reply is posted
+   * the same way the drawer posts one. */
+  const activityApi = useMemo<LeadActivityApi>(() => {
+    const call = async (url: string, fallback: string, init?: RequestInit) => {
+      const res = await fetch(url, { headers: { ...getHeaders(), 'Content-Type': 'application/json' }, ...init });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || fallback);
+      return json.data as LeadDetail;
+    };
+    const leadUrl = (source: string, leadId: string) => `${endpoint}/${source}/${encodeURIComponent(leadId)}`;
+    return {
+      getFollowUps: (source, leadId) => call(leadUrl(source, leadId), 'Failed to load follow-ups'),
+      addReply: (source, leadId, followUpId, message) =>
+        call(`${leadUrl(source, leadId)}/replies`, "Couldn't save the reply", { method: 'POST', body: JSON.stringify({ followUpId, message }) }),
+    };
+  }, [endpoint, getHeaders]);
+
+  /** The lead window's Save: adds the lead (POST) or saves the edit of one the reader created
+   * (PUT), assignment included, then hands the window the stored lead so it stays open on it —
+   * the same contract as the admin Sales Tracker's save. Throws with the message to show. */
+  async function saveLead(lead: SalesLead, assignmentDraft: LeadAssignmentDraft, note: string): Promise<SalesLead> {
+    const existingId = editing?.lead.id || '';
+    const body = JSON.stringify({
+      name: lead.name, company: lead.company, contact: lead.contact, email: lead.email,
+      country: lead.country, city: lead.city, source: lead.source, type: lead.type, otherType: lead.otherType,
+      status: lead.status, nextFollowUpDate: lead.nextFollowUpDate,
+      departments: assignmentDraft.departments, assignees: assignmentDraft.assignees, note,
+    });
+    const headers = { ...getHeaders(), 'Content-Type': 'application/json' };
+    const send = async (url: string, init?: RequestInit) => {
+      const res = await fetch(url, { headers, ...init });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || "Couldn't save the lead");
+      return json.data;
+    };
+    let detail: LeadDetail;
+    if (existingId) {
+      detail = await send(`${endpoint}/lead/${encodeURIComponent(existingId)}`, { method: 'PUT', body });
+    } else {
+      const created: { leadId: string } = await send(endpoint, { method: 'POST', body });
+      detail = await send(`${endpoint}/lead/${encodeURIComponent(created.leadId)}`);
+    }
+    if (!detail.editable) throw new Error('The lead was saved. Close this window and reopen the lead to see it.');
+    setEditing(detail.editable);
+    void loadLeads();
+    return detail.editable.lead;
+  }
 
   const cards = useMemo(() => {
     const list = leads || [];
@@ -166,6 +272,7 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
       if (repliesOnly) return l.unreadReplies > 0;
       if (dueOnly) return stageOf(l) !== 'finished' && isFollowUpDue(l.nextFollowUpDate, today);
       if (filter && pageKey(l) !== filter) return false;
+      if (statusFilter === MINE) return l.createdByMe;
       if (statusFilter) return l.status === statusFilter;
       return !filter || stageOf(l) !== 'finished';
     })
@@ -182,15 +289,15 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
     : dueOnly
     ? "Today's follow-ups"
     : statusFilter
-    ? `${filter ? filterLabel : 'All pages'} — ${STATUS_ROW[statusFilter].filter}`
-    : filter ? `${filterLabel} — pending & followed up` : 'All assigned leads';
+    ? `${filter ? filterLabel : 'All pages'} — ${statusFilter === MINE ? 'leads you added' : STATUS_ROW[statusFilter].filter}`
+    : filter ? `${filterLabel} — pending & followed up` : 'All my leads';
 
   /** A saved follow-up changes the lead's status, the reader's next follow-up date and the lead's
    * follow-up count/date — patch the
    * row so the table and cards agree with the drawer without a reload. */
   function employeeFollowUps(detail: LeadDetail) {
-    // An admin's status update sits in the same log but isn't an employee follow-up.
-    const own = detail.followUps.filter((f) => !f.byAdmin);
+    // An admin's status update and the record of an edit sit in the same log but aren't follow-ups.
+    const own = detail.followUps.filter(isEmployeeFollowUp);
     return { followUpCount: own.length, lastFollowUpAt: own[0]?.createdAt ?? '' };
   }
 
@@ -249,14 +356,31 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
     </span>
   );
 
+  /** On a lead the reader added themselves — the ones they can edit. */
+  const mineBadge = (l: AssignedLead) => l.createdByMe && (
+    <span className="inline-block shrink-0 whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Added by you</span>
+  );
+
   return (
     <div>
-      <div className="mb-4 md:mb-6">
-        <h2 className="m-0 text-2xl font-bold tracking-tight text-slate-900 md:text-[2rem]">My Leads</h2>
-        <p className="m-0 mt-1 text-sm text-slate-500 md:mt-2 md:text-base">
-          Leads the sales team has assigned to you, grouped by the page they came from.
-        </p>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 md:mb-6">
+        <div>
+          <h2 className="m-0 text-2xl font-bold tracking-tight text-slate-900 md:text-[2rem]">My Leads</h2>
+          <p className="m-0 mt-1 text-sm text-slate-500 md:mt-2 md:text-base">
+            Leads assigned to you and leads you added, grouped by the page they came from.
+          </p>
+        </div>
+        {!unlinked && (
+          <button
+            type="button"
+            onClick={() => void openForm({ lead: emptyLead() })}
+            className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            <Plus size={16} aria-hidden />Add New Lead
+          </button>
+        )}
       </div>
+      {formError && <p role="alert" className="m-0 mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{formError}</p>}
 
       {/* Today's Follow up: full width above the page cards. Red and blinking while any of the
           reader's own next follow-up dates is due; plain otherwise. */}
@@ -385,7 +509,7 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
                 ? 'Open a lead to read the new reply. It then leaves this list.'
                 : dueOnly
                 ? 'Your follow-up on these leads is due today or overdue. Log a follow-up with a new date to clear one.'
-                : 'Click a lead to see everything they submitted and add a follow-up.'}
+                : 'Click a lead to see its details and add a follow-up. Leads you added can also be edited.'}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -398,6 +522,7 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
               >
                 <option value="">All statuses</option>
                 {ASSIGNMENT_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{STATUS_ROW[o.value].filter}</option>)}
+                <option value={MINE}>{MINE_LABEL}</option>
               </select>
             </label>
             {(filter || statusFilter || repliesOnly || dueOnly) && (
@@ -427,8 +552,10 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
               : dueOnly
               ? 'No follow-ups are due today.'
               : statusFilter
-              ? `No ${STATUS_ROW[statusFilter].filter.toLowerCase()} leads${filter ? ` from ${filterLabel}` : ''}.`
-              : filter ? `No open ${filterLabel} leads — everything here is confirmed or marked not interested.` : 'No leads are assigned to you yet.'}
+              ? statusFilter === MINE
+                ? `You have not added any leads${filter ? ` under ${filterLabel}` : ''} yet. Use Add New Lead to add one.`
+                : `No ${STATUS_ROW[statusFilter].filter.toLowerCase()} leads${filter ? ` from ${filterLabel}` : ''}.`
+              : filter ? `No open ${filterLabel} leads — everything here is confirmed or marked not interested.` : 'No leads yet. Leads assigned to you show here, and you can add one with Add New Lead.'}
           </p>
         ) : (
           <>
@@ -454,6 +581,7 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
                           <span className="truncate font-semibold text-slate-900">{l.name || '—'}</span>
                           {dueTagPill(l)}
                           {newBadge(l)}
+                          {mineBadge(l)}
                         </div>
                         <div className="truncate text-xs text-slate-500">{l.company || 'No company given'}</div>
                       </div>
@@ -525,6 +653,7 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
                             <span className="max-w-[200px] truncate font-semibold text-slate-900" title={l.name}>{l.name || '—'}</span>
                             {dueTagPill(l)}
                             {newBadge(l)}
+                            {mineBadge(l)}
                           </div>
                           <div className="max-w-[200px] truncate text-xs text-slate-500" title={l.company}>{l.company || 'No company given'}</div>
                         </div>
@@ -555,8 +684,12 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
                       ) : <span className="text-slate-400">—</span>}
                     </td>
                     <td className="px-4 py-4">
-                      <div className="whitespace-nowrap text-slate-800">{formatDay(l.assignedAt)}</div>
-                      {l.assignedBy && <div className="whitespace-nowrap text-xs text-slate-400">by {l.assignedBy}</div>}
+                      {l.assigned ? (
+                        <>
+                          <div className="whitespace-nowrap text-slate-800">{formatDay(l.assignedAt)}</div>
+                          {l.assignedBy && <div className="whitespace-nowrap text-xs text-slate-400">by {l.assignedBy}</div>}
+                        </>
+                      ) : <span className="whitespace-nowrap text-xs text-slate-400">Not assigned to you</span>}
                     </td>
                     <td className="px-4 py-4">
                       {l.followUpCount ? (
@@ -597,7 +730,26 @@ export default function MyLeadsPage({ endpoint, getHeaders }: {
           onClose={() => setOpenKey(null)}
           onChanged={applyDetail}
           onSeen={() => markSeen(keyOf(openLead))}
+          onEdit={(editable) => void openForm(editable)}
         />
+      )}
+
+      {/* The Sales Tracker's own lead window, inside its page class so its styles apply here too. */}
+      {editing && formOptions && (
+        <div className="sales-tracker-page">
+          <LeadFormModal
+            lead={editing.lead}
+            employees={formOptions.employees}
+            departments={formOptions.departments}
+            assignment={editing.assignment}
+            promotedCities={formOptions.promotedCities}
+            onClose={() => setEditing(null)}
+            onSave={saveLead}
+            requireAssignee
+            activityApi={activityApi}
+          />
+          <SalesTrackerStyles />
+        </div>
       )}
     </div>
   );

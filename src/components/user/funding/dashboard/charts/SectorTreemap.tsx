@@ -18,10 +18,12 @@ interface TileProps {
 
 /**
  * Every sector as a tile sized by $ raised. The top sectors carry the shared sector colours; the
- * long tail is neutral so the eye goes to where the money is. Hover or tap a tile to light that
- * sector up across the ranking, Sankey and heatmap.
+ * long tail is neutral so the eye goes to where the money is. Hovering a tile lights that sector up
+ * across the line chart, Sankey and heatmap; clicking it selects the sector (`onSelect`), which the
+ * line chart beside it turns into a two-year view. The selected tile keeps a dark outline — hover
+ * highlight is cleared on mouse-leave, so selection is held by the section, not the highlight.
  */
-export default function SectorTreemap({ tiles }: { tiles: SectorTile[] }) {
+export default function SectorTreemap({ tiles, selected, onSelect }: { tiles: SectorTile[]; selected: string | null; onSelect: (sector: string) => void }) {
   const wrap = useRef<HTMLDivElement>(null);
   const api = useHighlight();
   const [tip, setTip] = useState<{ x: number; y: number; tile: SectorTile } | null>(null);
@@ -37,6 +39,7 @@ export default function SectorTreemap({ tiles }: { tiles: SectorTile[] }) {
     const t = byName.get(name);
     if (depth !== 1 || !t) return <g />;
     const state = hlState(api.hl, 'sector', name);
+    const picked = name === selected;
     const showName = width > 64 && height > 30;
     const showValue = width > 64 && height > 48;
     const light = t.colour === '#C9C5CF';
@@ -46,7 +49,7 @@ export default function SectorTreemap({ tiles }: { tiles: SectorTile[] }) {
         onMouseEnter={(e) => { api.set({ kind: 'sector', key: name }); place(e, t); }}
         onMouseMove={(e) => place(e, t)}
         onMouseLeave={() => { api.set(null); setTip(null); }}
-        onClick={() => api.toggle({ kind: 'sector', key: name })}
+        onClick={() => onSelect(name)}
       >
         <rect
           x={x + 1}
@@ -55,8 +58,8 @@ export default function SectorTreemap({ tiles }: { tiles: SectorTile[] }) {
           height={Math.max(0, height - 2)}
           rx={4}
           fill={t.colour}
-          fillOpacity={state === 'off' ? 0.25 : state === 'on' ? 1 : light ? 0.55 : 0.92}
-          stroke={state === 'on' ? '#15131A' : 'none'}
+          fillOpacity={state === 'on' || picked ? 1 : state === 'off' ? 0.25 : light ? 0.55 : 0.92}
+          stroke={state === 'on' || picked ? '#15131A' : 'none'}
           strokeWidth={2}
         />
         {showName && (

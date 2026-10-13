@@ -7,7 +7,7 @@ import { PageHeading } from "@/components/PageHeading";
  */
 export default function PrivacyPolicyPage() {
     return (
-        <div id="mvp-article-cont" className="left relative privacy-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}>
+        <div id="mvp-article-cont" className="left relative privacy-custom-page" style={{ width: "100%", background: "var(--sn-bg, #fff)", overflow: "hidden", minHeight: "100vh" }}>
 
             {/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
             <div className="mvp-main-box event-by-country-container">
@@ -20,7 +20,7 @@ export default function PrivacyPolicyPage() {
                 <article style={{
                     fontSize: "16px",
                     lineHeight: "1.8",
-                    color: "#333",
+                    color: "var(--sn-ink-soft, #333)",
                     fontFamily: "'NB International', sans-serif"
                 }}>
                     <p style={{ marginBottom: "25px" }}>
@@ -70,7 +70,7 @@ export default function PrivacyPolicyPage() {
                     <ul style={listStyle}>
                         <li>
                             <strong>Google</strong><br />
-                            <a href="https://policies.google.com/technologies/ads" style={{ color: "#ee1761", textDecoration: "underline" }}>https://policies.google.com/technologies/ads</a>
+                            <a href="https://policies.google.com/technologies/ads" style={{ color: "var(--sn-pink-ink, #ee1761)", textDecoration: "underline" }}>https://policies.google.com/technologies/ads</a>
                         </li>
                     </ul>
 
@@ -137,7 +137,7 @@ export default function PrivacyPolicyPage() {
 const sectionTitleStyle: React.CSSProperties = {
     fontSize: "24px",
     fontWeight: 800,
-    color: "#000",
+    color: "var(--sn-ink, #000)",
     marginTop: "50px",
     marginBottom: "20px",
     fontFamily: "Inter, sans-serif",

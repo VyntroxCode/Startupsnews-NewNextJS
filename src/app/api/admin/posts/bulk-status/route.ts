@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/shared/middleware/auth.middleware';
+import { requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { query, queryOne } from '@/shared/database/connection';
 import { getPostPath } from '@/lib/post-utils';
 import { isCloudflarePurgeConfigured, schedulePostPurge } from '@/lib/cloudflare-purge';
@@ -75,7 +75,7 @@ function buildWhere(body: BulkBody, params: Array<string | number>): string {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
+  const auth = await requireContentAccess(request, ['admin']);
   if (auth instanceof NextResponse) return auth;
 
   try {

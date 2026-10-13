@@ -4,7 +4,7 @@ import { PageHeading } from "@/components/PageHeading";
 
 export default function ReturnRefundPolicyPage() {
     return (
-        <div id="mvp-article-cont" className="left relative refund-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}>
+        <div id="mvp-article-cont" className="left relative refund-custom-page" style={{ width: "100%", background: "var(--sn-bg, #fff)", overflow: "hidden", minHeight: "100vh" }}>
 
             {/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
             <div className="mvp-main-box event-by-country-container">
@@ -14,9 +14,9 @@ export default function ReturnRefundPolicyPage() {
 
             <div className="kt-row-column-wrap" style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px 20px 80px" }}>
 
-                <p style={{ fontSize: "14px", color: "#666", textAlign: "center", marginBottom: "40px" }}>Last updated: May 3, 2025 &nbsp;|&nbsp; Effective: May 3, 2025</p>
+                <p style={{ fontSize: "14px", color: "var(--sn-ink-2, #666)", textAlign: "center", marginBottom: "40px" }}>Last updated: May 3, 2025 &nbsp;|&nbsp; Effective: May 3, 2025</p>
 
-                <article style={{ fontSize: "16px", lineHeight: "1.8", color: "#333", fontFamily: "'NB International', sans-serif" }}>
+                <article style={{ fontSize: "16px", lineHeight: "1.8", color: "var(--sn-ink-soft, #333)", fontFamily: "'NB International', sans-serif" }}>
 
                     {/* 1. Overview */}
                     <h2 style={sectionTitleStyle}>1. Overview</h2>
@@ -28,7 +28,7 @@ export default function ReturnRefundPolicyPage() {
                     </p>
                     <p style={{ marginBottom: "40px" }}>
                         <strong>Operated by:</strong> DOTFYI Media Ventures Private Limited, 1553-A-8 Gali No.2, West Rohtash Nagar, Shahdara, East Delhi, India 110032.<br />
-                        <strong>Contact:</strong> <a href="mailto:office@startupnews.fyi" style={{ color: "#ee1761" }}>office@startupnews.fyi</a>
+                        <strong>Contact:</strong> <a href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>office@startupnews.fyi</a>
                     </p>
 
                     {/* 2. Definitions */}
@@ -40,7 +40,7 @@ export default function ReturnRefundPolicyPage() {
                         <li><strong>Merchandise</strong> — branded or co-branded physical goods sold via the Website.</li>
                         <li><strong>D2C Partner Product</strong> — an early-access or sample product from a third-party consumer brand sold or distributed through the Website, akin to a crowdfunding pre-order.</li>
                         <li><strong>Order</strong> — a confirmed purchase transaction.</li>
-                        <li><strong>Service / Website</strong> — StartupNews.fyi, accessible at <a href="https://www.startupnews.fyi" style={{ color: "#ee1761" }}>https://www.startupnews.fyi</a>.</li>
+                        <li><strong>Service / Website</strong> — StartupNews.fyi, accessible at <a href="https://www.startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>https://www.startupnews.fyi</a>.</li>
                         <li><strong>Payment Gateway</strong> — Cashfree, Razorpay, Stripe, PayPal, or any other processor used at checkout.</li>
                     </ul>
 
@@ -55,7 +55,7 @@ export default function ReturnRefundPolicyPage() {
                         <li><strong>Less than 15 days before the event date</strong> — No refund. You may transfer your ticket to another attendee at no charge (see Section 3.3).</li>
                     </ul>
                     <p style={{ marginBottom: "25px" }}>
-                        To request a cancellation, email <a href="mailto:office@startupnews.fyi" style={{ color: "#ee1761" }}>office@startupnews.fyi</a> with subject line: <em>'TICKET CANCEL – [Order ID] – [Event Name]'</em>. Refunds are processed to the original payment method within 7–14 business days of approval.
+                        To request a cancellation, email <a href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>office@startupnews.fyi</a> with subject line: <em>'TICKET CANCEL – [Order ID] – [Event Name]'</em>. Refunds are processed to the original payment method within 7–14 business days of approval.
                     </p>
 
                     <h3 style={subSectionTitleStyle}>3.2 Event Cancellation or Rescheduling by Us</h3>
@@ -83,7 +83,7 @@ export default function ReturnRefundPolicyPage() {
 
                     <h3 style={subSectionTitleStyle}>4.1 Return Window</h3>
                     <p style={{ marginBottom: "25px" }}>
-                        You may return unused, unopened merchandise in its original packaging within 7 days of delivery (tracking timestamp). To initiate a return, email <a href="mailto:office@startupnews.fyi" style={{ color: "#ee1761" }}>office@startupnews.fyi</a> with subject <em>'RETURN – [Order ID]'</em> and include photos of the item and packaging.
+                        You may return unused, unopened merchandise in its original packaging within 7 days of delivery (tracking timestamp). To initiate a return, email <a href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>office@startupnews.fyi</a> with subject <em>'RETURN – [Order ID]'</em> and include photos of the item and packaging.
                     </p>
 
                     <h3 style={subSectionTitleStyle}>4.2 Eligible Returns</h3>
@@ -128,7 +128,7 @@ export default function ReturnRefundPolicyPage() {
 
                     <h3 style={subSectionTitleStyle}>5.2 Cancellation Before Dispatch</h3>
                     <p style={{ marginBottom: "25px" }}>
-                        You may cancel a D2C Partner Product order any time before the brand dispatches it. Contact us at <a href="mailto:office@startupnews.fyi" style={{ color: "#ee1761" }}>office@startupnews.fyi</a> with your Order ID. We will liaise with the partner and issue a full refund within 14 business days.
+                        You may cancel a D2C Partner Product order any time before the brand dispatches it. Contact us at <a href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>office@startupnews.fyi</a> with your Order ID. We will liaise with the partner and issue a full refund within 14 business days.
                     </p>
 
                     <h3 style={subSectionTitleStyle}>5.3 Returns After Delivery</h3>
@@ -150,7 +150,7 @@ export default function ReturnRefundPolicyPage() {
                         <li>Refunds are returned to the original payment instrument only. We cannot redirect refunds to a different card, bank account, or UPI ID.</li>
                         <li>Depending on your bank or card issuer, refund credit timelines may be 5–10 business days after we initiate the refund.</li>
                         <li>International transactions may be subject to currency conversion differences at the time of refund; we are not liable for exchange-rate fluctuations.</li>
-                        <li><strong>Chargebacks:</strong> If you initiate a chargeback with your bank without contacting us first, we reserve the right to suspend your account pending investigation. We encourage you to always contact us first at <a href="mailto:office@startupnews.fyi" style={{ color: "#ee1761" }}>office@startupnews.fyi</a> — most issues are resolved faster this way.</li>
+                        <li><strong>Chargebacks:</strong> If you initiate a chargeback with your bank without contacting us first, we reserve the right to suspend your account pending investigation. We encourage you to always contact us first at <a href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>office@startupnews.fyi</a> — most issues are resolved faster this way.</li>
                         <li>We do not store card details. All sensitive payment data is handled exclusively by our gateway partners.</li>
                     </ul>
 
@@ -206,13 +206,13 @@ export default function ReturnRefundPolicyPage() {
                     <h2 style={sectionTitleStyle}>10. How to Contact Us</h2>
                     <p style={{ marginBottom: "15px" }}>For all cancellation, refund, or return queries:</p>
                     <ul style={listStyle}>
-                        <li><strong>Email:</strong> <a href="mailto:office@startupnews.fyi" style={{ color: "#ee1761" }}>office@startupnews.fyi</a> (fastest — include Order ID in subject)</li>
-                        <li><strong>Website:</strong> <a href="https://www.startupnews.fyi" style={{ color: "#ee1761" }}>https://www.startupnews.fyi</a></li>
+                        <li><strong>Email:</strong> <a href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>office@startupnews.fyi</a> (fastest — include Order ID in subject)</li>
+                        <li><strong>Website:</strong> <a href="https://www.startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>https://www.startupnews.fyi</a></li>
                         <li><strong>Registered Address:</strong> DOTFYI Media Ventures Private Limited, 1553-A-8 Gali No.2, West Rohtash Nagar, Shahdara, East Delhi, India 110032.</li>
                     </ul>
                     <p style={{ marginBottom: "25px" }}>We aim to respond to all queries within 2 business days (Monday–Friday, IST).</p>
-                    <p style={{ marginBottom: "40px", fontStyle: "italic", color: "#666" }}>
-                        This Policy is subject to change. The version published at <a href="https://www.startupnews.fyi/return-refund-policy" style={{ color: "#ee1761" }}>https://www.startupnews.fyi/return-refund-policy</a> on the date of your purchase governs your transaction.
+                    <p style={{ marginBottom: "40px", fontStyle: "italic", color: "var(--sn-ink-2, #666)" }}>
+                        This Policy is subject to change. The version published at <a href="https://www.startupnews.fyi/return-refund-policy" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>https://www.startupnews.fyi/return-refund-policy</a> on the date of your purchase governs your transaction.
                     </p>
 
                 </article>
@@ -225,7 +225,7 @@ export default function ReturnRefundPolicyPage() {
 const sectionTitleStyle: React.CSSProperties = {
     fontSize: "24px",
     fontWeight: 800,
-    color: "#000",
+    color: "var(--sn-ink, #000)",
     marginTop: "50px",
     marginBottom: "20px",
     fontFamily: "Inter, sans-serif",
@@ -236,7 +236,7 @@ const sectionTitleStyle: React.CSSProperties = {
 const subSectionTitleStyle: React.CSSProperties = {
     fontSize: "18px",
     fontWeight: 700,
-    color: "#000",
+    color: "var(--sn-ink, #000)",
     marginTop: "30px",
     marginBottom: "12px",
     fontFamily: "Inter, sans-serif"

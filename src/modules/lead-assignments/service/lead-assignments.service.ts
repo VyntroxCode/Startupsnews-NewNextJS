@@ -1,4 +1,5 @@
 import { LeadFollowUpsRepository } from '@/modules/lead-followups/repository/lead-followups.repository';
+import { ADMIN_FOLLOW_UP_CREDENTIAL_ID } from '@/modules/lead-followups/domain/types';
 import { assignmentChanges } from '@/modules/lead-followups/service/lead-changes';
 import { LeadAssignmentsRepository } from '../repository/lead-assignments.repository';
 import {
@@ -119,8 +120,10 @@ export class LeadAssignmentsService {
    *
    * A change of departments or people is recorded in the lead's history as old list → new list,
    * under `by` (see LeadFollowUpsRepository.appendAdminChanges, which folds it into the entry the
-   * same Save has just written for the lead's other fields). If that fails the assignment stands. */
-  async setForLead(body: Record<string, unknown>, by: string): Promise<LeadAssignment> {
+   * same Save has just written for the lead's other fields). If that fails the assignment stands.
+   * `byCredentialId` is the login id of the employee making the change when it is the lead's
+   * creator saving from My Leads; an admin's save leaves it at ADMIN_FOLLOW_UP_CREDENTIAL_ID. */
+  async setForLead(body: Record<string, unknown>, by: string, byCredentialId: number = ADMIN_FOLLOW_UP_CREDENTIAL_ID): Promise<LeadAssignment> {
     const { source, leadId } = body;
     if (!isLeadSource(source)) throw new LeadAssignmentValidationError('Unknown lead source.');
     if (typeof leadId !== 'string' || !leadId.trim()) throw new LeadAssignmentValidationError('Lead id is required.');
@@ -175,7 +178,7 @@ export class LeadAssignmentsService {
         const followUps = new LeadFollowUpsRepository();
         const statusRaw = await followUps.findLeadStatusRaw(source, leadId);
         const status = source === 'lead' ? statusFromSalesLead(statusRaw) : statusFromEns(statusRaw);
-        await followUps.appendAdminChanges(source, leadId, by || 'Admin', status, changes);
+        await followUps.appendAdminChanges(source, leadId, by || 'Admin', status, changes, byCredentialId);
       } catch (error) {
         console.error('Could not log the assignment change on lead', source, leadId, error);
       }
@@ -225,8 +228,11 @@ export class LeadAssignmentsService {
         country: r.country || '',
         query: r.query_text || '',
         status: r.lead_source === 'ens' ? statusFromEns(r.status) : statusFromSalesLead(r.status),
-        assignedAt: String(r.assigned_at),
+        assignedAt: r.assigned_at ? String(r.assigned_at) : '',
         assignedBy: r.assigned_by || '',
+        assigned: Number(r.is_assigned) === 1,
+        createdByMe: Number(r.created_by_me) === 1,
+        createdByName: r.created_by_name || '',
         followUpCount: Number(r.followup_count) || 0,
         lastFollowUpAt: r.last_followup_at ? String(r.last_followup_at) : '',
         nextFollowUpDate: r.next_follow_up_date ? String(r.next_follow_up_date).slice(0, 10) : '',

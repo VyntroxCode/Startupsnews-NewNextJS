@@ -322,9 +322,9 @@ function OfferingsSection() {
 
 export default function AboutUsClient({ contentHtml }: { contentHtml: string }) {
 	return (
-		<div className="bg-white py-2">
+		<div className="bg-[color:var(--sn-bg,#fff)] py-2">
 			<div
-				className="max-w-[1200px] mx-auto mt-6 sm:mt-10 mb-2 sm:mb-4 bg-white text-au-ink"
+				className="max-w-[1200px] mx-auto mt-6 sm:mt-10 mb-2 sm:mb-4 bg-[color:var(--sn-bg,#fff)] text-au-ink"
 				style={{ fontFamily: SITE_FONT_FAMILY }}
 			>
 				<div className="page-intro-animate">

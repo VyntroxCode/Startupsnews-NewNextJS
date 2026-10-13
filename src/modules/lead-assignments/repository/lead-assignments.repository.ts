@@ -39,19 +39,31 @@ export interface AssignedLeadRow {
   country: string | null;
   query_text: string | null;
   status: string | null;
-  assigned_at: string;
+  /** NULL when the employee isn't assigned to the lead (they created it). */
+  assigned_at: string | null;
   assigned_by: string | null;
+  is_assigned: number;
+  created_by_me: number;
+  created_by_name: string | null;
   followup_count: number;
   last_followup_at: string | null;
   next_follow_up_date: string | null;
 }
 
-/** Follow-up count + latest date for the outer row's lead (alias `a`), from sales_lead_followups
- * (scripts/migrations/add-sales-lead-followups.sql). Only the employees' follow-ups: an admin's
- * status update (credential_id 0, ADMIN_FOLLOW_UP_CREDENTIAL_ID) is in the same table but must not
- * make a lead read as "followed up" in My Leads. */
-const FOLLOWUP_COLUMNS = `(SELECT COUNT(*) FROM sales_lead_followups f WHERE f.lead_source = a.lead_source AND f.lead_id = a.lead_id AND f.credential_id <> 0) AS followup_count,
-              (SELECT MAX(f.created_at) FROM sales_lead_followups f WHERE f.lead_source = a.lead_source AND f.lead_id = a.lead_id AND f.credential_id <> 0) AS last_followup_at`;
+/** What makes a sales_lead_followups row an employee's follow-up (alias `f`): written by an
+ * employee, with a message. An admin's status update or edit entry (credential_id 0,
+ * ADMIN_FOLLOW_UP_CREDENTIAL_ID) is in the same table, and so is the record of an edit made by the
+ * employee who created the lead (their id, empty note) — neither may make a lead read as "followed
+ * up". Same rule as isEmployeeFollowUp in lead-followups/domain/types.ts. */
+const IS_EMPLOYEE_FOLLOW_UP = "f.credential_id <> 0 AND f.note <> ''";
+
+/** Follow-up count + latest date for the outer row's lead, from sales_lead_followups
+ * (scripts/migrations/add-sales-lead-followups.sql). `source` / `id` are the SQL expressions that
+ * name that lead in the outer query. */
+function followUpColumns(source: string, id: string): string {
+  return `(SELECT COUNT(*) FROM sales_lead_followups f WHERE f.lead_source = ${source} AND f.lead_id = ${id} AND ${IS_EMPLOYEE_FOLLOW_UP}) AS followup_count,
+              (SELECT MAX(f.created_at) FROM sales_lead_followups f WHERE f.lead_source = ${source} AND f.lead_id = ${id} AND ${IS_EMPLOYEE_FOLLOW_UP}) AS last_followup_at`;
+}
 
 /** Tables: sales_lead_assignments + sales_lead_departments
  * (scripts/migrations/add-sales-lead-assignments.sql). Reads employee names, codes and teams from
@@ -227,37 +239,54 @@ export class LeadAssignmentsRepository {
     }
   }
 
-  /** Follow-ups per lead, for the admin Sales Tracker's Assigned cell. Only what the assignees
-   * logged: an admin's status update or edit entry (credential_id 0) is in the same table but is
-   * not a follow-up — the same rule as FOLLOWUP_COLUMNS. */
+  /** Follow-ups per lead, for the admin Sales Tracker's Assigned cell. Only what the employees
+   * logged — see IS_EMPLOYEE_FOLLOW_UP, the same rule as followUpColumns. */
   async countFollowUpsByLead(): Promise<{ lead_source: string; lead_id: string; n: number }[]> {
     return query<{ lead_source: string; lead_id: string; n: number }>(
-      'SELECT lead_source, lead_id, COUNT(*) AS n FROM sales_lead_followups WHERE credential_id <> 0 GROUP BY lead_source, lead_id'
+      `SELECT f.lead_source, f.lead_id, COUNT(*) AS n FROM sales_lead_followups f WHERE ${IS_EMPLOYEE_FOLLOW_UP} GROUP BY f.lead_source, f.lead_id`
     );
   }
 
-  /** Every lead assigned to this employee, from both sources, newest assignment first.
-   * `next_follow_up_date` is this employee's own date on the lead. `status` is
-   * the LEAD's shared status, raw (sales_leads label / ens code) — the service converts it. The inner
-   * joins drop an assignment whose lead has since been deleted. */
+  /** Every lead this employee is assigned to (from both sources) plus every lead they added from
+   * My Leads and are not assigned to, newest first (by assignment, or by creation for the latter).
+   * `next_follow_up_date` is this employee's own date on the lead: their assignment's, or — on a
+   * lead they created — the lead's own. `status` is the LEAD's shared status, raw (sales_leads
+   * label / ens code) — the service converts it. The inner joins drop an assignment whose lead has
+   * since been deleted. */
   async findForEmployee(credentialId: number): Promise<AssignedLeadRow[]> {
     return query<AssignedLeadRow>(
       `SELECT a.lead_source, a.lead_id, l.type AS page, l.lead_date, l.name, l.company, l.contact, l.email,
-              l.city, l.country, l.query_text, l.status, a.assigned_at, a.assigned_by, a.next_follow_up_date,
-              ${FOLLOWUP_COLUMNS}
+              l.city, l.country, l.query_text, l.status, a.assigned_at, a.assigned_by,
+              CASE WHEN l.created_by_credential_id = a.credential_id THEN l.next_follow_up_date ELSE a.next_follow_up_date END AS next_follow_up_date,
+              1 AS is_assigned, IF(l.created_by_credential_id = a.credential_id, 1, 0) AS created_by_me, l.created_by_name,
+              a.assigned_at AS sort_at,
+              ${followUpColumns('a.lead_source', 'a.lead_id')}
          FROM sales_lead_assignments a
          JOIN sales_leads l ON a.lead_source = 'lead' AND l.id = a.lead_id
         WHERE a.credential_id = ?
        UNION ALL
+       SELECT 'lead' AS lead_source, l.id AS lead_id, l.type AS page, l.lead_date, l.name, l.company, l.contact, l.email,
+              l.city, l.country, l.query_text, l.status, NULL AS assigned_at, NULL AS assigned_by,
+              l.next_follow_up_date,
+              0 AS is_assigned, 1 AS created_by_me, l.created_by_name,
+              l.created_at AS sort_at,
+              ${followUpColumns("'lead'", 'l.id')}
+         FROM sales_leads l
+        WHERE l.created_by_credential_id = ?
+          AND NOT EXISTS (SELECT 1 FROM sales_lead_assignments x
+                           WHERE x.lead_source = 'lead' AND x.lead_id = l.id AND x.credential_id = ?)
+       UNION ALL
        SELECT a.lead_source, a.lead_id, 'Expand North Star Enquiry' AS page, DATE(e.created_at) AS lead_date,
               e.name, NULL AS company, e.contact, e.email, e.city, e.country, e.requirement AS query_text,
               e.lead_status AS status, a.assigned_at, a.assigned_by, a.next_follow_up_date,
-              ${FOLLOWUP_COLUMNS}
+              1 AS is_assigned, 0 AS created_by_me, NULL AS created_by_name,
+              a.assigned_at AS sort_at,
+              ${followUpColumns('a.lead_source', 'a.lead_id')}
          FROM sales_lead_assignments a
          JOIN ens_travel_enquiries e ON a.lead_source = 'ens' AND e.id = a.lead_id
         WHERE a.credential_id = ?
-        ORDER BY assigned_at DESC`,
-      [credentialId, credentialId]
+        ORDER BY sort_at DESC`,
+      [credentialId, credentialId, credentialId, credentialId]
     );
   }
 }

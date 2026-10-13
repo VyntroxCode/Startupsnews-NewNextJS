@@ -51,18 +51,33 @@ function Group() {
  * The announcement strip at the very top of the home page: the 12th Indian Startup Delegation to
  * Dubai, running left to right, with a standing "Participate Now" button into /expand-north-star.
  *
- * The ground is the StartupNews logo red (#E72263), so the strip matches the logo sitting right
- * under it; the lime CTA and heavy uppercase come from the Expand North Star palette — see
- * expand-north-star.css.
+ * Two tones. `white` (the default, used by the funding masthead): white ground, black running
+ * text, the dot and sparkle in the StartupNews logo red (#E72263). `pink` (the home page): the
+ * logo red ground with white text, dot and sparkle. The heavy uppercase comes from the Expand
+ * North Star palette — see expand-north-star.css. The CTA is gold with a sweeping shine in both.
  *
  * The motion is pure CSS: the track holds two identical groups and slides from -50% (one whole
  * group left) to 0, so the seam is never visible. It pauses on hover and stands still under
  * reduced motion. Screen readers get the line once, from the visually hidden copy; the moving
  * copies are hidden from them. The button sits outside the moving track so it is always clickable.
+ *
+ * `className` is for the one other place the strip appears — the reader dashboard's funding
+ * section (UserDashboardLayout), where it sits in the flow instead of fixed to the screen top.
+ * delegation-strip.css is unlayered, so utilities that override it there need the `!` modifier.
  */
-export function DelegationStrip() {
+export function DelegationStrip({
+  className = "",
+  tone = "white",
+}: {
+  className?: string;
+  tone?: "white" | "pink";
+}) {
   return (
-    <div className="sn-ds" role="region" aria-label="Delegation announcement">
+    <div
+      className={`sn-ds ${tone === "pink" ? "sn-ds--pink" : ""} ${className}`.replace(/\s+/g, " ").trim()}
+      role="region"
+      aria-label="Delegation announcement"
+    >
       <p className="sn-ds-sr">
         12th Startup Delegation to Dubai, 7th – 12th December 2026.
       </p>

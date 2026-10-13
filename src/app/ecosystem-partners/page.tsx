@@ -98,12 +98,12 @@ const STATS = [
 
 export default function EcosystemPartnersPage() {
 	return (
-		<div className="bg-white text-[#1E293B]" style={{ fontFamily: SITE_FONT_FAMILY }}>
+		<div className="bg-[color:var(--sn-bg,#fff)] text-[color:var(--sn-ink,#1E293B)]" style={{ fontFamily: SITE_FONT_FAMILY }}>
 			{/* TOP BAR */}
-			<header className="sticky top-0 z-40 flex items-center justify-center px-4 sm:px-7 py-4 sm:py-5 bg-white/92 backdrop-blur-md border-b border-[#E6E9F0]">
+			<header className="sticky top-0 z-40 flex items-center justify-center px-4 sm:px-7 py-4 sm:py-5 bg-[color:var(--sn-glass-92,rgba(255,255,255,0.92))] backdrop-blur-md border-b border-[color:var(--sn-line-soft,#E6E9F0)]">
 				<ScrollToLink
 					targetId="partner-cta"
-					className="text-[22px] sm:text-[28px] font-bold text-[#1E293B] tracking-[-0.02em] whitespace-nowrap transition-colors hover:text-[#E91E63]"
+					className="text-[22px] sm:text-[28px] font-bold text-[color:var(--sn-ink,#1E293B)] tracking-[-0.02em] whitespace-nowrap transition-colors hover:text-[color:var(--sn-pink-ink,#E91E63)]"
 				>
 					Become a Partner
 				</ScrollToLink>
@@ -117,16 +117,16 @@ export default function EcosystemPartnersPage() {
 						"radial-gradient(ellipse 60% 90% at 15% 0%, rgba(233,30,99,0.07), transparent 60%), radial-gradient(ellipse 60% 90% at 85% 0%, rgba(102,126,234,0.08), transparent 60%)",
 				}}
 			>
-				<span className="inline-flex items-center gap-2 text-[18px] sm:text-[22px] font-bold tracking-[0.08em] uppercase text-[#E91E63] mb-[18px]">
+				<span className="inline-flex items-center gap-2 text-[18px] sm:text-[22px] font-bold tracking-[0.08em] uppercase text-[color:var(--sn-pink-ink,#E91E63)] mb-[18px]">
 					Ecosystem Partners
 				</span>
 				<h1
 					className={`text-[30px] sm:text-[40px] lg:text-[48px] leading-[1.08] tracking-[-0.03em] font-bold max-w-[820px] mx-auto mb-4`}
 				>
-					<span className="text-[#1E293B]">One newsroom,</span>{" "}
-					<span className="text-[#E91E63]">every startup ecosystem</span>
+					<span className="text-[color:var(--sn-ink,#1E293B)]">One newsroom,</span>{" "}
+					<span className="text-[color:var(--sn-pink-ink,#E91E63)]">every startup ecosystem</span>
 				</h1>
-				<p className="max-w-[600px] mx-auto text-[#475569] text-[16.5px] leading-[1.6]">
+				<p className="max-w-[600px] mx-auto text-[color:var(--sn-ink-2,#475569)] text-[16.5px] leading-[1.6]">
 					StartupNews.fyi covers founders, funding and innovation wherever it&apos;s happening — with no single
 					market at the centre. These are the organisations we stand alongside, market by market.
 				</p>
@@ -134,10 +134,10 @@ export default function EcosystemPartnersPage() {
 					{STATS.map((s) => (
 						<div
 							key={s.label}
-							className="bg-white border border-[#E6E9F0] rounded-xl px-[18px] sm:px-[26px] py-3.5 sm:py-4 min-w-[100px] sm:min-w-[130px] shadow-[0_6px_18px_rgba(30,41,59,0.06)]"
+							className="bg-[color:var(--sn-card,#fff)] border border-[color:var(--sn-line-soft,#E6E9F0)] rounded-xl px-[18px] sm:px-[26px] py-3.5 sm:py-4 min-w-[100px] sm:min-w-[130px] shadow-[0_6px_18px_rgba(30,41,59,0.06)]"
 						>
 							<b className={`block text-2xl font-bold`}>{s.value}</b>
-							<span className="text-[12.5px] text-[#64748B] font-semibold uppercase tracking-[0.04em]">
+							<span className="text-[12.5px] text-[color:var(--sn-ink-3,#64748B)] font-semibold uppercase tracking-[0.04em]">
 								{s.label}
 							</span>
 						</div>
@@ -151,18 +151,18 @@ export default function EcosystemPartnersPage() {
 					key={c.id}
 					id={c.id}
 					className={`px-4 sm:px-6 py-9 sm:py-[52px] max-w-[1180px] mx-auto scroll-mt-[120px] transition-all duration-700 ease-out motion-reduce:!transition-none motion-reduce:!opacity-100 motion-reduce:!translate-y-0 ${
-						idx % 2 === 1 ? "bg-[#F8F9FC]" : ""
+						idx % 2 === 1 ? "bg-[color:var(--sn-bg-2,#F8F9FC)]" : ""
 					}`}
 				>
 					<div className="flex items-center gap-4 flex-wrap mb-1.5">
-						<div className="w-11 h-11 sm:w-[52px] sm:h-[52px] rounded-full border-2 border-dashed border-[#E91E63] flex items-center justify-center text-xl sm:text-2xl -rotate-6 bg-white shrink-0">
+						<div className="w-11 h-11 sm:w-[52px] sm:h-[52px] rounded-full border-2 border-dashed border-[#E91E63] flex items-center justify-center text-xl sm:text-2xl -rotate-6 bg-[color:var(--sn-card,#fff)] shrink-0">
 							{c.flag}
 						</div>
 						<div>
 							<h2 className={`text-2xl font-bold tracking-[-0.01em] m-0`}>{c.name}</h2>
 						</div>
 					</div>
-					<p className="text-[#475569] text-[14.5px] leading-[1.6] max-w-[640px] mt-3.5 mb-[26px]">{c.blurb}</p>
+					<p className="text-[color:var(--sn-ink-2,#475569)] text-[14.5px] leading-[1.6] max-w-[640px] mt-3.5 mb-[26px]">{c.blurb}</p>
 					<LogoGrid count={c.logoCount} sectionId={c.id} />
 				</RevealSection>
 			))}
@@ -183,7 +183,7 @@ export default function EcosystemPartnersPage() {
 					</a>
 					<a
 						href="https://startupnews.fyi/advertise-with-us"
-						className="px-[26px] py-3 rounded-full font-semibold text-[14.5px] border-[1.5px] border-[#47536A] text-white transition-colors hover:border-white"
+						className="px-[26px] py-3 rounded-full font-semibold text-[14.5px] border-[1.5px] border-[#47536A] text-white transition-colors hover:border-[color:var(--sn-line-bg,#fff)]"
 					>
 						Advertise With Us
 					</a>

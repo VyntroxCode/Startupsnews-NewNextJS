@@ -1,6 +1,11 @@
 /** Longest "Tell us more" a public lead form accepts — one limit for every form and the server. */
 export const TELL_US_MORE_MAX_LENGTH = 2000;
 
+/** The channels a lead added by hand can be filed under ("Type of lead"). Page leads carry their
+ * page's own type instead (see components/admin/sales-tracker/constants.ts PAGE_LEAD_TYPES) and
+ * are never picked by hand. */
+export const MANUAL_LEAD_TYPES = ['Social Media', 'Events', 'PR-National', 'PR-International', 'Others'] as const;
+
 export interface SalesLead {
   id: string;
   date: string;
@@ -38,6 +43,13 @@ export interface SalesLead {
    * Funding Round, Press Release, Advertise With Us). Read-only in the lead window: the repository
    * writes it on insert only, so a later save can never change the visitor's words. */
   tellUsMore: string;
+  /** Who added the lead (see scripts/migrations/add-sales-lead-created-by.sql). Written by the
+   * server when the lead is inserted and never changed afterwards — whatever a request sends here
+   * is ignored. `createdByCredentialId` is the HR login of an employee who added it from My Leads
+   * (null for an admin's or a website lead); `createdByName` is the employee's or admin's name
+   * ('' for a website lead and for leads older than the column). */
+  createdByCredentialId?: number | null;
+  createdByName?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -70,6 +82,8 @@ export interface SalesLeadEntity {
   next_follow_up_date: string | null;
   last_connect_date: string | null;
   last_call_discussion: string | null;
+  created_by_credential_id: number | null;
+  created_by_name: string | null;
   created_at: string;
   updated_at: string;
 }

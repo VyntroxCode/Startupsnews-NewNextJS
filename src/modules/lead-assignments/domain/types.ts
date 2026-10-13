@@ -173,7 +173,7 @@ export function sameAssignmentDraft(a: LeadAssignmentDraft, b: LeadAssignmentDra
 }
 
 /** One lead on the employee's "My Leads" page: enough to know who it is, where it came from and how
- * to reach them. */
+ * to reach them. Listed because the reader is assigned to it, added it themselves, or both. */
 export interface AssignedLead {
   source: LeadSource;
   leadId: string;
@@ -192,12 +192,20 @@ export interface AssignedLead {
   /** What they asked for: the lead's query text, or an Expand North Star enquiry's requirement. */
   query: string;
   status: AssignmentStatus;
+  /** '' / '' when the reader is not one of the assigned people (see `createdByMe`). */
   assignedAt: string;
   assignedBy: string;
+  /** The reader is one of the people assigned to the lead. */
+  assigned: boolean;
+  /** The reader added this lead from My Leads — they can edit it, assigned or not. */
+  createdByMe: boolean;
+  /** Who added the lead: an employee's or admin's name; '' for a website lead or an older lead. */
+  createdByName: string;
   /** Follow-ups logged on this lead by anyone assigned to it, and when the latest was added. */
   followUpCount: number;
   lastFollowUpAt: string;
-  /** The reader's own next follow-up date on this lead (YYYY-MM-DD); '' until they set one. */
+  /** The reader's own next follow-up date on this lead (YYYY-MM-DD); '' until they set one. For a
+   * lead they created it is the lead's own date — the one in its edit window. */
   nextFollowUpDate: string;
   /** Admin replies on this lead the reader hasn't seen yet (cleared when they open the lead). */
   unreadReplies: number;

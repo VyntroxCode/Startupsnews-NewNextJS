@@ -1,5 +1,6 @@
 "use client";
 
+import { panelPath } from '@/lib/panel-path';
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -263,7 +264,7 @@ export function ReaderPane() {
       toast("Could not hand off to the post editor", "error");
       return;
     }
-    router.push(`/admin/posts/create?${POST_HANDOFF_QUERY}`);
+    router.push(panelPath(`/admin/posts/create?${POST_HANDOFF_QUERY}`));
   };
 
   return (

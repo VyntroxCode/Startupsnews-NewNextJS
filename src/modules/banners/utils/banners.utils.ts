@@ -15,6 +15,7 @@ export function entityToBanner(entity: BannerEntity): Banner {
     isActive: Boolean(entity.is_active === 1 || entity.is_active === true),
     startDate: entity.start_date || undefined,
     endDate: entity.end_date || undefined,
+    linkedEventEnded: Number(entity.linked_event_ended ?? 0) === 1,
   };
 }
 

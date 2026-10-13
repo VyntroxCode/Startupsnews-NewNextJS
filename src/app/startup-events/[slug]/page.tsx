@@ -119,14 +119,14 @@ export default async function StartupEventPage({
             <aside className="lg:sticky lg:top-28 lg:col-start-2 lg:row-span-2 lg:row-start-1">
               {/* box-border throughout: this page has no Tailwind Preflight, so without it padding is
                   added on top of w-full and the button spills out of the card. */}
-              <div className="box-border w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+              <div className="box-border w-full overflow-hidden rounded-xl border border-neutral-200 bg-[color:var(--sn-card,#fff)] shadow-sm">
                 <div className="box-border border-b border-neutral-100 px-6 pt-6 pb-5">
                   <h1 className="m-0 text-xl font-bold leading-snug text-neutral-900">{event.title}</h1>
                 </div>
                 <dl className="m-0 box-border flex flex-col gap-5 px-6 py-5">
                   {event.dateRange && (
                     <div className="flex items-start gap-3.5">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[#E62E69]">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[color:var(--sn-pink-ink,#E62E69)]">
                         <Calendar className="size-5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
@@ -139,7 +139,7 @@ export default async function StartupEventPage({
                       organiser gave no time, so "is there a label" is the whole test. */}
                   {event.timeRange && (
                     <div className="flex items-start gap-3.5">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[#E62E69]">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[color:var(--sn-pink-ink,#E62E69)]">
                         <Clock className="size-5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
@@ -150,7 +150,7 @@ export default async function StartupEventPage({
                   )}
                   {(event.venueAddress || event.location) && (
                     <div className="flex items-start gap-3.5">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[#E62E69]">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[color:var(--sn-pink-ink,#E62E69)]">
                         <MapPin className="size-5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
@@ -162,7 +162,7 @@ export default async function StartupEventPage({
                               href={event.googleLocationLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="mt-1 flex w-fit items-center gap-1 text-sm font-semibold text-[#E62E69] no-underline hover:underline"
+                              className="mt-1 flex w-fit items-center gap-1 text-sm font-semibold text-[color:var(--sn-pink-ink,#E62E69)] no-underline hover:underline"
                             >
                               View on map <ExternalLink className="size-3.5" aria-hidden="true" />
                             </a>
@@ -173,7 +173,7 @@ export default async function StartupEventPage({
                   )}
                   {event.organiser && (
                     <div className="flex items-start gap-3.5">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[#E62E69]">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[color:var(--sn-pink-ink,#E62E69)]">
                         <Building2 className="size-5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
@@ -184,7 +184,7 @@ export default async function StartupEventPage({
                   )}
                   {event.ticketPrice && (
                     <div className="flex items-start gap-3.5">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[#E62E69]">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#E62E69]/10 text-[color:var(--sn-pink-ink,#E62E69)]">
                         <Ticket className="size-5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">

@@ -29,7 +29,7 @@ export default function Error({
         fontFamily: 'system-ui, sans-serif',
       }}
     >
-      <h1 style={{ fontSize: '1.5rem', color: '#b91c1c', marginBottom: '1rem' }}>
+      <h1 style={{ fontSize: '1.5rem', color: 'var(--sn-red-ink, #b91c1c)', marginBottom: '1rem' }}>
         Internal Server Error
       </h1>
       {isDev && (
@@ -38,7 +38,7 @@ export default function Error({
             maxWidth: '100%',
             overflow: 'auto',
             padding: '1rem',
-            background: '#fef2f2',
+            background: 'var(--sn-bg-2, #fef2f2)',
             borderRadius: '8px',
             fontSize: '0.875rem',
             textAlign: 'left',
@@ -48,7 +48,7 @@ export default function Error({
           {message}
         </pre>
       )}
-      <p style={{ color: '#64748b', marginBottom: '1rem' }}>
+      <p style={{ color: 'var(--sn-ink-3, #64748B)', marginBottom: '1rem' }}>
         {isDev
           ? 'Check the terminal or browser console for the full error.'
           : 'Please try again later.'}

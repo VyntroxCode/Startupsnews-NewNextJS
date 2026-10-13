@@ -5,7 +5,8 @@
  * Plain data with no server imports: My Leads (employee panel + /admin/my-leads) and the admin
  * Sales Tracker's Follow-ups panel both import this file directly. */
 
-import type { Assignee, AssignmentStatus, LeadSource } from '@/modules/lead-assignments/domain/types';
+import type { Assignee, AssignmentStatus, LeadAssignment, LeadSource } from '@/modules/lead-assignments/domain/types';
+import type { SalesLead } from '@/modules/sales-tracker/domain/types';
 
 /** Longest follow-up message accepted. */
 export const FOLLOW_UP_NOTE_MAX_LENGTH = 2000;
@@ -34,6 +35,21 @@ export function adminEntryKind(entry: { note: string; changes: LeadChange[] }): 
   return entry.changes.length > 0 && !statusChanged && !entry.note ? 'edit' : 'admin-update';
 }
 
+/** Whether a history entry is a follow-up logged by an employee: written by one, with a message.
+ * An employee's entry with no message is only the record of an edit they made to a lead they
+ * created (its `changes`), and an admin's entry is never one. The SQL counts in lead-assignments
+ * (IS_EMPLOYEE_FOLLOW_UP in its repository) use the same rule: credential_id <> 0 AND note <> ''. */
+export function isEmployeeFollowUp(entry: { byAdmin: boolean; note: string }): boolean {
+  return !entry.byAdmin && !!entry.note;
+}
+
+/** What any history entry is, whoever wrote it: an employee's follow-up, an admin's status update,
+ * or a plain edit of the lead (by an admin, or by the employee who created it). */
+export function entryKind(entry: { byAdmin: boolean; note: string; changes: LeadChange[] }): 'follow-up' | 'admin-update' | 'edit' {
+  if (entry.byAdmin) return adminEntryKind(entry);
+  return isEmployeeFollowUp(entry) ? 'follow-up' : 'edit';
+}
+
 export interface LeadFollowUp {
   id: number;
   /** ADMIN_FOLLOW_UP_CREDENTIAL_ID for an admin's status update. */
@@ -47,9 +63,10 @@ export interface LeadFollowUp {
   /** The next follow-up date its author set with this entry (YYYY-MM-DD); '' when none was set —
    * an entry from before the date existed, or one that closed the lead. */
   nextFollowUpDate: string;
-  /** What the admin's save changed on the lead, old value → new value — detail fields, status,
-   * their next follow-up date, departments and assigned people. Empty for an employee follow-up
-   * and for entries from before edits were recorded. `note` may be '' when this is all the entry is. */
+  /** What the save changed on the lead, old value → new value — detail fields, status, the next
+   * follow-up date, departments and assigned people. Written by an admin's save, or by the save of
+   * the employee who created the lead. Empty for a follow-up logged from the lead drawer and for
+   * entries from before edits were recorded. `note` may be '' when this is all the entry is. */
   changes: LeadChange[];
   createdAt: string;
   /** True when the reader wrote it (My Leads shows "You"). Always false for the admin view. */
@@ -138,8 +155,19 @@ export interface LeadDetail {
   leadStatus: AssignmentStatus;
   /** The reader's own next follow-up date on this lead (YYYY-MM-DD); '' until they set one. */
   nextFollowUpDate: string;
+  /** '' / '' when the reader is not one of the assigned people (they created the lead). */
   assignedAt: string;
   assignedBy: string;
+  /** The reader is one of the assigned people. */
+  assigned: boolean;
+  /** The reader added this lead from My Leads. They may open it, follow up and edit it whether or
+   * not they are also assigned. */
+  createdByMe: boolean;
+  /** Who added the lead: an employee's or admin's name; '' for a website lead or an older lead. */
+  createdByName: string;
+  /** Only for the lead's creator: the lead row and its stored departments and people, which the
+   * edit window starts from. null for everyone else — they cannot edit the lead. */
+  editable: { lead: SalesLead; assignment: LeadAssignment } | null;
 }
 
 /** Follow-ups for the admin lead window: the people on the lead, plus the log. */

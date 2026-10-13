@@ -55,13 +55,13 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export default function EditorialPolicyClient() {
 	return (
-		<div style={{ width: "100%", background: "#fff" }}>
+		<div style={{ width: "100%", background: "var(--sn-bg, #fff)" }}>
 			<style>{`
         .ep-wrap { max-width: 1200px; margin: 0 auto; padding: 40px 20px 40px; }
         .ep-header { margin-bottom: 40px; text-align: center; }
-        .ep-section-title { font-size: 24px; font-weight: 800; color: #000; margin-top: 50px; margin-bottom: 20px; font-family: Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
+        .ep-section-title { font-size: 24px; font-weight: 800; color: var(--sn-ink, #000); margin-top: 50px; margin-bottom: 20px; font-family: Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
         .ep-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .ep-article { font-size: 16px; line-height: 1.8; color: #333; font-family: 'NB International', sans-serif; }
+        .ep-article { font-size: 16px; line-height: 1.8; color: var(--sn-ink-soft, #333); font-family: 'NB International', sans-serif; }
         @media (max-width: 768px) {
           .ep-wrap { padding: 20px 16px 28px; }
           .ep-header { margin-bottom: 24px; }
@@ -83,7 +83,7 @@ export default function EditorialPolicyClient() {
 
 			<div className="ep-wrap">
 				<Reveal as="header" className="ep-header" threshold={0.1}>
-					<p style={{ fontSize: "14px", color: "#666", margin: "0" }}>
+					<p style={{ fontSize: "14px", color: "var(--sn-ink-2, #666)", margin: "0" }}>
 						Applies to: All published content &nbsp;|&nbsp; Reviewed by: Editorial Board &nbsp;|&nbsp; Next review: February 2027
 					</p>
 				</Reveal>
@@ -94,7 +94,7 @@ export default function EditorialPolicyClient() {
 					<Reveal as="p" delay={90} style={{ marginBottom: "20px" }}>
 						StartupNews.fyi covers startups, tech, innovation, D2C, foodtech, and emerging business models with rigour, fairness, and transparency, serving readers across the USA, UK, Germany, UAE, and beyond.
 					</Reveal>
-					<Reveal as="p" delay={160} style={{ marginBottom: "40px", color: "#555" }}>
+					<Reveal as="p" delay={160} style={{ marginBottom: "40px", color: "var(--sn-ink-2, #555)" }}>
 						<strong>Coverage Areas:</strong> Startups &nbsp;·&nbsp; Technology &nbsp;·&nbsp; Innovation &nbsp;·&nbsp; D2C &nbsp;·&nbsp; Foodtech &nbsp;·&nbsp; Venture Capital &nbsp;·&nbsp; Fintech &nbsp;·&nbsp; Sustainability &nbsp;·&nbsp; AI &amp; Deep Tech &nbsp;·&nbsp; Creator Economy
 					</Reveal>
 
@@ -180,10 +180,10 @@ export default function EditorialPolicyClient() {
 					<SectionTitle>Contact &amp; Accountability</SectionTitle>
 					<Reveal as="p" delay={90} style={{ marginBottom: "25px" }}>
 						We believe accountability journalism begins at home. Readers, sources, and subjects of our coverage should have clear channels to reach us at. We aim to acknowledge all complaints within 48 hours and resolve them within 10 working days. Unresolved disputes may be escalated to an independent editorial ombudsperson appointed annually by our editorial board. Connect at{" "}
-						<a href="mailto:office@startupnews.fyi" style={{ color: "#ee1761" }}>office@startupnews.fyi</a>
+						<a href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>office@startupnews.fyi</a>
 					</Reveal>
 
-					<Reveal as="p" threshold={0.1} style={{ marginTop: "60px", paddingTop: "20px", borderTop: "1px solid #eee", fontSize: "14px", color: "#888" }}>
+					<Reveal as="p" threshold={0.1} style={{ marginTop: "60px", paddingTop: "20px", borderTop: "1px solid var(--sn-line-soft, #eee)", fontSize: "14px", color: "var(--sn-ink-3, #888)" }}>
 						© 2026 StartupNews.fyi · Last updated June 2026
 					</Reveal>
 

@@ -14,8 +14,7 @@ export const fiFont = localFont({
 });
 
 /**
- * Put on a wrapper to set the funding font for everything inside it. Shared by the funding layout
- * and the Market Pulse ticker, which renders in the dashboard masthead, outside that layout.
+ * Put on a wrapper to set the funding font for everything inside it.
  * - font-size-adjust: Calibri's letters are smaller than Inter's at the same px size; this keeps the
  *   small labels (11-12px) as readable as before.
  * - The [&_button] etc. rules: form controls do not inherit the font and this dashboard has no Preflight.

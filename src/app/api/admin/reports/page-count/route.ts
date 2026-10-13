@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { REPORTS_ROLES } from '@/shared/middleware/roles';
 import { ReportsRepository } from '@/modules/reports/repository/reports.repository';
 import { fetchPdfPageCount } from '@/modules/reports/utils/pdf-page-count';
@@ -7,7 +7,7 @@ import { fetchPdfPageCount } from '@/modules/reports/utils/pdf-page-count';
 const repo = new ReportsRepository();
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAnyRole(request, REPORTS_ROLES);
+  const auth = await requireContentAccess(request, REPORTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

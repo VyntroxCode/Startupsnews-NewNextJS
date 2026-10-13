@@ -23,7 +23,7 @@ export default function NotFound() {
       justifyContent: 'center',
       textAlign: 'center',
       padding: '80px 20px',
-      background: '#fff',
+      background: 'var(--sn-bg, #fff)',
     }}>
 
       <p style={{
@@ -40,11 +40,11 @@ export default function NotFound() {
 
       <div style={{ width: 48, height: 3, background: '#ee1761', margin: '0 auto 24px' }} />
 
-      <h1 style={{ fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 700, color: '#111', margin: '0 0 12px' }}>
+      <h1 style={{ fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 700, color: 'var(--sn-ink, #111)', margin: '0 0 12px' }}>
         Page not found
       </h1>
 
-      <p style={{ fontSize: '15px', color: '#777', maxWidth: 360, lineHeight: 1.7, margin: '0 0 32px' }}>
+      <p style={{ fontSize: '15px', color: 'var(--sn-ink-3, #777)', maxWidth: 360, lineHeight: 1.7, margin: '0 0 32px' }}>
         This page doesn&apos;t exist or may have been removed.
       </p>
 

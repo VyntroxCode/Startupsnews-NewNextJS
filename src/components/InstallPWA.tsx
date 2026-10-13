@@ -312,7 +312,7 @@ export default function InstallPWA() {
           border: `1px solid ${theme.line}`,
           borderTop: `3px solid ${theme.brand}`,
           borderRadius: 16,
-          boxShadow: "0 12px 36px rgba(17,17,17,0.16)",
+          boxShadow: "0 12px 36px var(--sn-shadow-16, rgba(17,17,17,0.16))",
           padding: "16px 18px",
           fontFamily: "inherit",
         }}

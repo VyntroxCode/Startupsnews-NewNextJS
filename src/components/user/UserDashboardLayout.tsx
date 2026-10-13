@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Building2, ChevronDown, ClipboardList, HandCoins, LogOut, TrendingUp, UserRound, X } from 'lucide-react';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import CompleteProfileWizard from './CompleteProfileWizard';
-import Ticker from './funding/Ticker';
+import { DelegationStrip } from '@/components/DelegationStrip';
 
 interface AuthUser {
   id: number;
@@ -48,7 +48,9 @@ const NAV_GROUPS = [
       // Funding-round data uploaded by the Financial Analyst in Admin › Funding Data.
       // Locked. To unlock: drop `locked: true` here and flip `FUNDING_LOCKED` in
       // `src/app/dashboard/funding/layout.tsx` (it guards direct URL visits).
-      { href: '/dashboard/funding', label: 'Funding', badge: '', locked: true, icon: <TrendingUp strokeWidth={2} /> },
+      // `children` are sub-items: the row gets an arrow button that shows / hides them under it
+      // (not shown while the row is locked).
+      { href: '/dashboard/funding', label: 'Funding', badge: '', locked: true, icon: <TrendingUp strokeWidth={2} />, children: [{ href: '/dashboard/funding/deals', label: 'All Deals' }] },
       // Locked — no real brand-story content exists yet (`/api/brand-stories` and
       // `/api/brand-story-sections` both come back empty). Shows a lock icon and doesn't
       // navigate; the route itself renders the same locked state in place (no redirect) as a
@@ -76,7 +78,8 @@ function clearSession() {
 
 export default function UserDashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  // Funding section only: the Market Pulse ticker rides in the masthead, beside the logo.
+  // Funding section only: the home page's delegation strip rides in the masthead, beside the logo.
+  // `static! z-auto!` take it out of its fixed, top-of-screen home-page position.
   const inFunding = pathname === '/dashboard/funding' || !!pathname?.startsWith('/dashboard/funding/');
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -95,6 +98,10 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
   });
   // Bottom user card (avatar + name + email + chevron) opens a small Profile / Logout menu.
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // Sub-items shown under a nav row, by row label. Unset = follow the route (open while the row's
+  // own page or one of its sub-pages is the current page). Clicking the row opens them, and
+  // clicking it again while on its page closes them; the arrow shows / hides them without navigating.
+  const [subOpen, setSubOpen] = useState<Record<string, boolean>>({});
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -196,6 +203,10 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
     );
   }
 
+  // /dashboard/pro (the Pro plan page) is a full-screen page: same login check as the rest of the
+  // dashboard, but no sidebar, masthead or profile wizard around it.
+  if (pathname === '/dashboard/pro') return <>{children}</>;
+
   const initials = user.name.charAt(0).toUpperCase();
   // Two-letter initials for the sidebar user card ("Yash Goswami" → "YG").
   const cardInitials = user.name.trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase() || initials;
@@ -258,6 +269,12 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
               const rowClass = `group relative flex items-center rounded-lg text-[20px] leading-[1.4] no-underline outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-db-pink/50 focus-visible:ring-offset-1 ${
                 active ? 'bg-db-pink/10 font-medium text-db-pink visited:text-db-pink' : 'font-normal text-db-ink visited:text-db-ink hover:bg-slate-50 hover:text-db-pink visited:hover:text-db-pink'
               }`;
+              // Rows with sub-items: when a sub-page is the current page, the pink block moves
+              // down to that sub-item and the row keeps only its pink text.
+              const subs = item.children;
+              const childActive = !!subs?.some((sub) => pathname?.startsWith(sub.href));
+              const open = subOpen[item.label] ?? !!active;
+              const parentOfActiveClass = 'group relative flex items-center rounded-lg text-[20px] font-medium leading-[1.4] text-db-pink no-underline outline-none transition-colors duration-200 visited:text-db-pink hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-db-pink/50 focus-visible:ring-offset-1';
               const iconSize = '[&>svg]:size-[26px]';
               const iconClass = `flex shrink-0 ${iconSize} ${active ? 'text-db-pink visited:text-db-pink' : 'text-db-ink visited:text-db-ink group-hover:text-db-pink visited:group-hover:text-db-pink'}`;
 
@@ -293,13 +310,18 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
               // expand a hover/click submenu of their own sections here; removed on request (the
               // sections it listed are still reachable, just from within the Reports page
               // itself, which already has its own section browser).
-              return (
+              const link = (
                 <Link
                   key={item.label}
                   href={item.href}
                   title={showCollapsed ? item.label : undefined}
-                  onClick={() => setMobileOpen(false)}
-                  className={`${rowClass} ${showCollapsed ? 'justify-center px-0 py-3' : 'gap-4 px-4 py-3'}`}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    // Coming from another page: show the sub-items. Already on this row's own
+                    // page: the click goes nowhere new, so it hides / shows them instead.
+                    if (subs) setSubOpen((cur) => ({ ...cur, [item.label]: pathname === item.href ? !open : true }));
+                  }}
+                  className={`${subs && childActive ? parentOfActiveClass : rowClass} ${showCollapsed ? 'justify-center px-0 py-3' : subs ? 'gap-4 py-3 pl-4 pr-12' : 'gap-4 px-4 py-3'}`}
                 >
                   <span className={iconClass}>{item.icon}</span>
                   {!showCollapsed && (
@@ -309,6 +331,52 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
                     </span>
                   )}
                 </Link>
+              );
+              if (!subs) return link;
+
+              // A row with sub-items (Funding › All Deals). Clicking the row opens its own page
+              // and shows the sub-items; the arrow is a separate button laid over the row's right
+              // end that shows / hides them without navigating. Hidden while the rail is icon-only.
+              const subId = `db-sub-${item.label.toLowerCase().replace(/\s+/g, '-')}`;
+              return (
+                <div key={item.label} className="flex flex-col gap-1">
+                  <div className="relative">
+                    {link}
+                    {!showCollapsed && (
+                      <button
+                        type="button"
+                        onClick={() => setSubOpen((cur) => ({ ...cur, [item.label]: !open }))}
+                        aria-expanded={open}
+                        aria-controls={subId}
+                        aria-label={`${open ? 'Hide' : 'Show'} ${item.label} pages`}
+                        className={`absolute right-2 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent outline-none transition-colors duration-200 hover:bg-db-pink/15 hover:text-db-pink focus-visible:ring-2 focus-visible:ring-db-pink/50 ${active ? 'text-db-pink' : 'text-db-muted'}`}
+                      >
+                        <ChevronDown strokeWidth={2} className={`size-5 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
+                      </button>
+                    )}
+                  </div>
+                  {!showCollapsed && open && (
+                    <ul id={subId} className="m-0 ml-[28px] flex list-none flex-col gap-1 border-0 border-l border-solid border-db-line p-0 pl-[14px]">
+                      {subs.map((sub) => {
+                        const subActive = !!pathname?.startsWith(sub.href);
+                        return (
+                          <li key={sub.href}>
+                            <Link
+                              href={sub.href}
+                              aria-current={subActive ? 'page' : undefined}
+                              onClick={() => setMobileOpen(false)}
+                              className={`block whitespace-nowrap rounded-lg px-4 py-2.5 text-[17px] leading-[1.4] no-underline outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-db-pink/50 focus-visible:ring-offset-1 ${
+                                subActive ? 'bg-db-pink/10 font-medium text-db-pink visited:text-db-pink' : 'font-normal text-db-ink visited:text-db-ink hover:bg-slate-50 hover:text-db-pink visited:hover:text-db-pink'
+                              }`}
+                            >
+                              {sub.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -455,8 +523,8 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
           </div>
 
           <main className="pt-[72px]">
-            {/* No logo row on phones (the top bar holds the menu button), so the ticker sits right under it. */}
-            {inFunding && <div className="bg-fi-bg px-3 pt-3"><Ticker /></div>}
+            {/* No logo row on phones (the top bar holds the menu button), so the strip sits right under it. */}
+            {inFunding && <div className="bg-fi-bg px-3 pt-3"><DelegationStrip className="static! z-auto! rounded-xl" /></div>}
             {children}
           </main>
         </>
@@ -472,7 +540,7 @@ export default function UserDashboardLayout({ children }: { children: React.Reac
             <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-md no-underline outline-none focus-visible:ring-2 focus-visible:ring-db-pink/50">
               <Image src="/logo.png" alt="StartupNews" width={172} height={60} className="h-10 w-auto object-contain" />
             </Link>
-            {inFunding && <Ticker className="ml-6 min-w-0 flex-1" />}
+            {inFunding && <DelegationStrip className="static! z-auto! ml-6! min-w-0 flex-1 rounded-xl" />}
           </div>
 
           <div className="flex min-h-screen pt-[72px]">

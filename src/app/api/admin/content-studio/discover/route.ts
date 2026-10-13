@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAnyRole } from "@/shared/middleware/auth.middleware";
+import { requireContentAccess } from "@/shared/middleware/content-access.middleware";
 import { CONTENT_STUDIO_ROLES } from "@/shared/middleware/roles";
 import { fetchFeedItems } from "@/modules/content-studio/lib/feeds/rss";
 import { COMMON_FEED_PATHS } from "@/modules/content-studio/lib/data/newsSources";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * caller caches the result on the source so it isn't re-discovered every fetch.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAnyRole(request, CONTENT_STUDIO_ROLES);
+  const auth = await requireContentAccess(request, CONTENT_STUDIO_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   let body: { host?: string };

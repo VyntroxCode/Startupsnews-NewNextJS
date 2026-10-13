@@ -44,6 +44,7 @@ interface Banner {
   isActive: boolean;
   startDate?: string;
   endDate?: string;
+  linkedEventEnded?: boolean;
 }
 
 export default function EventsManagementTabs() {
@@ -300,7 +301,7 @@ export default function EventsManagementTabs() {
     }
   }, [refetchBanners]);
 
-  const getScheduleStatus = useCallback((banner: Banner) => {
+  const getScheduleStatus = useCallback((banner: Banner): { label: string; bg: string; color: string; note?: string } => {
     if (!banner.isActive) {
       return { label: 'Inactive', bg: '#fed7d7', color: '#742a2a' };
     }
@@ -310,6 +311,11 @@ export default function EventsManagementTabs() {
     }
     if (banner.endDate && new Date(banner.endDate).getTime() < now) {
       return { label: 'Expired', bg: '#e2e8f0', color: '#4a5568' };
+    }
+    // Checked last so a banner's own dates still explain it first; this is the case where the
+    // banner would otherwise read "Live" but the site hides it because its event is over.
+    if (banner.linkedEventEnded) {
+      return { label: 'Event ended', bg: '#e2e8f0', color: '#4a5568', note: 'Hidden on site — linked event is over' };
     }
     return { label: 'Live', bg: '#c6f6d5', color: '#22543d' };
   }, []);
@@ -1238,6 +1244,11 @@ export default function EventsManagementTabs() {
                                   </span>
                                 );
                               })()}
+                              {getScheduleStatus(banner).note && (
+                                <div style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: '0.25rem' }}>
+                                  {getScheduleStatus(banner).note}
+                                </div>
+                              )}
                               {(banner.startDate || banner.endDate) && (
                                 <div style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: '0.25rem' }}>
                                   {banner.startDate ? new Date(banner.startDate).toLocaleString() : 'No start'}

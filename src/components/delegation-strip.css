@@ -3,8 +3,11 @@
 
    A single slim band at the top of the home page for the 12th Indian Startup Delegation to Dubai.
    Ground is the StartupNews logo red (#E72263, since 2026-10-08 — it was the Expand North Star
-   magenta gradient, which read as a different pink next to the logo right below it). The lime CTA
-   and heavy uppercase are still the Expand North Star ones (see expand-north-star.css).
+   magenta gradient, which read as a different pink next to the logo right below it). The heavy uppercase
+   is still the Expand North Star one (see expand-north-star.css). Since 2026-10-12 the running text
+   is black (#0A0A0B — it was white), the pink ground is gone (the strip is white, see `.sn-ds`
+   below, so the first lines of this note describe its history, not its colour) and the CTA is gold with dark text and a band
+   of light that sweeps across it; before that the CTA was the header avatar's pink, and lime before.
 
    Two structural facts drive the layout rules here:
    - Since 2026-09-19 the strip is FIXED at the very top of the screen, above the site header, and
@@ -41,7 +44,9 @@
   float: none;
   clear: both;
   overflow: hidden;
-  background: #E72263; /* the StartupNews logo red, sampled from public/logo.png */
+  /* White since 2026-10-12 (was the logo red #E72263). Solid, not transparent: on the home page the
+     strip is fixed over scrolling content. The logo red now lives in the dot and sparkle instead. */
+  background: #fff;
   font-family: "Garnett", Helvetica, Arial, sans-serif;
 }
 
@@ -146,7 +151,7 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
    anonymous item, which would pull "12" away from its "th" and split the line at every space. */
 .sn-ds .sn-ds-text {
   display: inline-block;
-  color: #fff;
+  color: #0A0A0B;
   font-size: 14.5px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -162,13 +167,13 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
 
 .sn-ds-dot {
   margin: 0 7px;
-  color: #C9F31D;
+  color: #E72263; /* was lime, which does not show on white */
   font-size: 14.5px;
   line-height: 1;
 }
 
 .sn-ds .sn-ds-date {
-  color: #FFE6F2;
+  color: #0A0A0B;
   font-weight: 700;
 }
 
@@ -176,8 +181,18 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
   width: 11px;
   height: 11px;
   flex: 0 0 auto;
-  color: #C9F31D;
+  color: #E72263;
 }
+
+/* Home page tone (`tone="pink"`, since 2026-10-13): the logo red ground with white text. The white
+   tone above stays the default and is what the funding masthead shows. The dot and sparkle turn
+   white too — at the logo red they would vanish into the ground. */
+.sn-ds.sn-ds--pink { background: #E72263; }
+.sn-ds.sn-ds--pink .sn-ds-text,
+.sn-ds.sn-ds--pink .sn-ds-date,
+.sn-ds.sn-ds--pink .sn-ds-dot,
+.sn-ds.sn-ds--pink .sn-ds-star { color: #fff; }
+.sn-ds.sn-ds--pink .sn-ds-cta:focus-visible { outline-color: #fff; }
 
 /* Outside the track, so it never slides away from under the pointer. */
 #mvp-site-main .sn-ds .sn-ds-cta,
@@ -188,8 +203,13 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
   height: 28px;
   padding: 0 16px;
   border-radius: 999px;
-  background: #C9F31D !important;
-  color: #0A0A0B !important;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  border: 1.5px solid #FFF3C4;
+  /* Polished gold: light at the top-left, a bright band through the middle, deeper at the bottom. */
+  background: linear-gradient(135deg, #F9E08A 0%, #EFC14A 30%, #FFF4C2 50%, #E5AC2B 72%, #C98A12 100%) !important;
+  color: #2E2003 !important;
   font-family: inherit;
   font-size: 11.5px;
   font-weight: 800;
@@ -198,19 +218,39 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
   text-transform: uppercase;
   text-decoration: none !important;
   white-space: nowrap;
-  box-shadow: 0 2px 10px -4px rgba(10, 10, 11, 0.6);
-  transition: background 0.2s ease, translate 0.2s ease;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: 0 2px 10px -4px rgba(10, 10, 11, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -2px 3px rgba(122, 78, 0, 0.35);
+  transition: filter 0.2s ease, translate 0.2s ease;
+}
+
+/* The shine: a slanted band of light crosses the button, then waits off its right edge. */
+.sn-ds .sn-ds-cta::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  transform: translateX(-160%) skewX(-20deg);
+  animation: sn-ds-cta-shine 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sn-ds-cta-shine {
+  0% { transform: translateX(-160%) skewX(-20deg); }
+  55%, 100% { transform: translateX(420%) skewX(-20deg); }
 }
 
 #mvp-site-main .sn-ds .sn-ds-cta:hover,
 .sn-ds .sn-ds-cta:hover {
-  background: #D8FF3F !important;
-  color: #0A0A0B !important;
+  filter: brightness(1.07) saturate(1.1);
+  color: #2E2003 !important;
   translate: 0 -1px;
 }
 
 .sn-ds .sn-ds-cta:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid #0A0A0B;
   outline-offset: 2px;
 }
 
@@ -242,4 +282,5 @@ body .sn-ds ~ .banner-carousel-container + #mvp-main-body-wrap {
 /* Motion the reader did not ask for: hold the line still, but keep it legible. */
 @media (prefers-reduced-motion: reduce) {
   .sn-ds-track { animation: none; transform: translate3d(0, 0, 0); }
+  .sn-ds .sn-ds-cta::after { animation: none; }
 }

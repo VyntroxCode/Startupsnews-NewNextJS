@@ -34,10 +34,10 @@ const serif = "[font-family:Georgia,'Times_New_Roman',serif]";
 // No Preflight on the isolated Tailwind sheet: every padded full-width control carries box-border,
 // and buttons/inputs reset their own border and font.
 const inputCls =
-	"box-border h-12 w-full rounded-xl border border-solid border-[#e3e3e8] bg-white px-4 text-[15px] text-[#111111] outline-none transition-colors placeholder:text-[#9ca3af] hover:border-[#cfcfd6] focus:border-[#E72262] focus:ring-4 focus:ring-[#E72262]/10 [font-family:inherit]";
+	"box-border h-12 w-full rounded-xl border border-solid border-[color:var(--sn-line,#e3e3e8)] bg-[color:var(--sn-card,#fff)] px-4 text-[15px] text-[color:var(--sn-ink,#111111)] outline-none transition-colors placeholder:text-[color:var(--sn-ink-4,#9ca3af)] hover:border-[color:var(--sn-line,#cfcfd6)] focus:border-[#E72262] focus:ring-4 focus:ring-[#E72262]/10 [font-family:inherit]";
 
 const googleButtonCls =
-	"box-border flex h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-solid border-[#e3e3e8] bg-white px-5 text-[15px] font-semibold text-[#111111] transition-colors hover:border-[#cfcfd6] hover:bg-[#f7f7f9] [font-family:inherit]";
+	"box-border flex h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-solid border-[color:var(--sn-line,#e3e3e8)] bg-[color:var(--sn-card,#fff)] px-5 text-[15px] font-semibold text-[color:var(--sn-ink,#111111)] transition-colors hover:border-[color:var(--sn-line,#cfcfd6)] hover:bg-[color:var(--sn-bg-2,#f7f7f9)] [font-family:inherit]";
 
 /**
  * /login — full-screen reader sign-in / sign-up. Opened from the slide-up popup's "Login / Sign up"
@@ -124,7 +124,7 @@ export default function LoginPage() {
 	return (
 		// Fixed full-viewport layer: the page is a bare route (no site header/footer), and this also
 		// keeps it clear of the legacy body-wrap padding and any floating site widgets.
-		<div className="fixed inset-0 z-[60] overflow-y-auto bg-[#f7f6f3] text-[#111111] antialiased">
+		<div className="fixed inset-0 z-[60] overflow-y-auto bg-[color:var(--sn-bg-2,#f7f6f3)] text-[color:var(--sn-ink,#111111)] antialiased">
 			{GOOGLE_CLIENT_ID && (
 				<Script
 					src={GOOGLE_GSI_SRC}
@@ -141,15 +141,15 @@ export default function LoginPage() {
 							<Image src="/logo.png" alt="StartupNews.fyi" width={300} height={60} className="h-11 w-auto sm:h-14" priority />
 						</Link>
 						{/* Headings carry explicit colours: legacy site CSS colours h1/h2. */}
-						<h1 className={`m-0 text-center ${serif} text-[38px] font-normal leading-[1.08] tracking-[-0.02em] text-[#111111] sm:text-[52px] xl:text-[60px]`}>
+						<h1 className={`m-0 text-center ${serif} text-[38px] font-normal leading-[1.08] tracking-[-0.02em] text-[color:var(--sn-ink,#111111)] sm:text-[52px] xl:text-[60px]`}>
 							Know what&apos;s next
 						</h1>
-						<p className={`m-0 mt-4 text-center ${serif} text-[17px] text-[#4b5563] sm:text-[19px]`}>
+						<p className={`m-0 mt-4 text-center ${serif} text-[17px] text-[color:var(--sn-ink-2,#4b5563)] sm:text-[19px]`}>
 							Startup news, funding and analysis, free for readers
 						</p>
 
-						<div className="mt-9 box-border w-full max-w-[460px] rounded-3xl border border-solid border-[#ececf0] bg-white p-5 shadow-[0_24px_60px_rgba(17,17,17,0.08)] sm:p-8">
-							<div className="flex gap-1 rounded-xl bg-[#f1f1f4] p-1" role="tablist">
+						<div className="mt-9 box-border w-full max-w-[460px] rounded-3xl border border-solid border-[color:var(--sn-line-soft,#ececf0)] bg-[color:var(--sn-card,#fff)] p-5 shadow-[0_24px_60px_rgba(17,17,17,0.08)] sm:p-8">
+							<div className="flex gap-1 rounded-xl bg-[color:var(--sn-bg-3,#f1f1f4)] p-1" role="tablist">
 								{(["register", "login"] as const).map((t) => (
 									<button
 										key={t}
@@ -157,7 +157,7 @@ export default function LoginPage() {
 										role="tab"
 										aria-selected={tab === t}
 										onClick={() => switchTab(t)}
-										className={`flex-1 cursor-pointer rounded-lg border-0 px-3 py-2.5 text-[14px] font-semibold transition-colors [font-family:inherit] ${tab === t ? "bg-white text-[#E72262] shadow-[0_2px_8px_rgba(17,17,17,0.08)]" : "bg-transparent text-[#6b7280] hover:text-[#111111]"}`}
+										className={`flex-1 cursor-pointer rounded-lg border-0 px-3 py-2.5 text-[14px] font-semibold transition-colors [font-family:inherit] ${tab === t ? "bg-[color:var(--sn-card,#fff)] text-[color:var(--sn-pink-ink,#E72262)] shadow-[0_2px_8px_rgba(17,17,17,0.08)]" : "bg-transparent text-[color:var(--sn-ink-2,#6b7280)] hover:text-[color:var(--sn-ink,#111111)]"}`}
 									>
 										{t === "register" ? "Sign up" : "Log in"}
 									</button>
@@ -174,7 +174,7 @@ export default function LoginPage() {
 								Continue with Google
 							</button>
 
-							<p className="m-0 my-4 text-center text-[12px] font-medium uppercase tracking-[0.1em] text-[#9ca3af]">or</p>
+							<p className="m-0 my-4 text-center text-[12px] font-medium uppercase tracking-[0.1em] text-[color:var(--sn-ink-4,#9ca3af)]">or</p>
 
 							<form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
 								{isRegister && (
@@ -184,11 +184,11 @@ export default function LoginPage() {
 								{isRegister && (
 									<div className="flex gap-2">
 										{/* Code box shows "IN +91 ▾"; a transparent native select on top opens the device's own list. */}
-										<div className="relative box-border flex h-12 w-[108px] shrink-0 items-center justify-between rounded-xl border border-solid border-[#e3e3e8] bg-white px-3 text-[14.5px] font-semibold text-[#111111] focus-within:border-[#E72262] focus-within:ring-4 focus-within:ring-[#E72262]/10">
+										<div className="relative box-border flex h-12 w-[108px] shrink-0 items-center justify-between rounded-xl border border-solid border-[color:var(--sn-line,#e3e3e8)] bg-[color:var(--sn-card,#fff)] px-3 text-[14.5px] font-semibold text-[color:var(--sn-ink,#111111)] focus-within:border-[#E72262] focus-within:ring-4 focus-within:ring-[#E72262]/10">
 											<span className="whitespace-nowrap">
 												{(DIAL_CODE_OPTIONS.find((c) => c.code === form.phoneCode)?.iso || "").toUpperCase()} {form.phoneCode}
 											</span>
-											<ChevronDown size={15} className="text-[#6b7280]" aria-hidden />
+											<ChevronDown size={15} className="text-[color:var(--sn-ink-2,#6b7280)]" aria-hidden />
 											<select
 												aria-label="Country code"
 												value={form.phoneCode}
@@ -231,14 +231,14 @@ export default function LoginPage() {
 										type="button"
 										aria-label={showPassword ? "Hide password" : "Show password"}
 										onClick={() => setShowPassword((v) => !v)}
-										className="absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer border-0 bg-transparent p-1.5 text-[#6b7280] hover:text-[#111111]"
+										className="absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer border-0 bg-transparent p-1.5 text-[color:var(--sn-ink-2,#6b7280)] hover:text-[color:var(--sn-ink,#111111)]"
 									>
 										{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
 									</button>
 								</div>
 
 								{error && (
-									<p role="alert" className="m-0 rounded-xl border border-solid border-[#fecdd3] bg-[#fff1f2] px-3.5 py-2.5 text-[13.5px] leading-snug text-[#be123c]">
+									<p role="alert" className="m-0 rounded-xl border border-solid border-[color:var(--sn-wash-line-red,#fecdd3)] bg-[color:var(--sn-bg-2,#fff1f2)] px-3.5 py-2.5 text-[13.5px] leading-snug text-[color:var(--sn-pink-ink,#be123c)]">
 										{error}
 									</p>
 								)}
@@ -255,17 +255,17 @@ export default function LoginPage() {
 								</button>
 							</form>
 
-							<p className="m-0 mt-5 text-center text-[13px] leading-relaxed text-[#6b7280]">
+							<p className="m-0 mt-5 text-center text-[13px] leading-relaxed text-[color:var(--sn-ink-2,#6b7280)]">
 								By continuing you agree to our{" "}
-								<a href="/terms-and-conditions" target="_blank" rel="noopener noreferrer" className="font-medium text-[#111111] underline visited:text-[#111111] hover:text-[#E72262]">Terms</a>{" "}
+								<a href="/terms-and-conditions" target="_blank" rel="noopener noreferrer" className="font-medium text-[color:var(--sn-ink,#111111)] underline visited:text-[color:var(--sn-ink,#111111)] hover:text-[color:var(--sn-pink-ink,#E72262)]">Terms</a>{" "}
 								and{" "}
-								<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-medium text-[#111111] underline visited:text-[#111111] hover:text-[#E72262]">Privacy Policy</a>.
+								<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-medium text-[color:var(--sn-ink,#111111)] underline visited:text-[color:var(--sn-ink,#111111)] hover:text-[color:var(--sn-pink-ink,#E72262)]">Privacy Policy</a>.
 							</p>
 						</div>
 
 						<Link
 							href="/"
-							className="mt-6 inline-flex items-center gap-2 text-[14px] font-medium text-[#374151] no-underline visited:text-[#374151] hover:text-[#E72262]"
+							className="mt-6 inline-flex items-center gap-2 text-[14px] font-medium text-[color:var(--sn-ink-soft,#374151)] no-underline visited:text-[color:var(--sn-ink-soft,#374151)] hover:text-[color:var(--sn-pink-ink,#E72262)]"
 						>
 							<ArrowLeft size={16} aria-hidden /> Back to homepage
 						</Link>
@@ -273,7 +273,7 @@ export default function LoginPage() {
 				</div>
 
 				{/* Right: media panel — desktop only */}
-				<div className="relative hidden min-h-[560px] overflow-hidden rounded-[28px] bg-white shadow-[0_24px_60px_rgba(17,17,17,0.06)] ring-1 ring-[#ececf0] lg:block">
+				<div className="relative hidden min-h-[560px] overflow-hidden rounded-[28px] bg-[color:var(--sn-card,#fff)] shadow-[0_24px_60px_rgba(17,17,17,0.06)] ring-1 ring-[color:var(--sn-line-soft,#ececf0)] lg:block">
 					<Image src={LOGIN_MEDIA_URL} alt="" fill unoptimized priority sizes="50vw" className="object-contain p-6 xl:p-10" />
 				</div>
 			</div>

@@ -4,8 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
+import { Lock } from 'lucide-react';
 import { getPublicToken } from '@/lib/public-auth';
 import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
+import ReportsPagination from '@/components/user/reports/ReportsPagination';
+import ProPlanModal from '@/components/user/reports/ProPlanModal';
+import ReportsMarquee from '@/components/user/reports/ReportsMarquee';
+import { REPORTS_PAGE_SIZE } from '@/modules/reports/domain/lock';
 
 /** Branded animated loader for the report-preview modal — covers both gaps that used to
  * render as a blank white box: the `react-pdf` chunk itself loading (no `loading` fallback
@@ -65,9 +70,10 @@ const Page = dynamic(() => import('react-pdf').then((m) => m.Page), { ssr: false
 // matters most for users far from the S3 bucket's region (high per-request latency).
 const PDF_LOAD_OPTIONS = { rangeChunkSize: 1024 * 1024 };
 
-// Cards are mounted a batch at a time as the user scrolls — a section can hold 100+ reports,
-// each with two <Image> layers, and mounting them all up front stalls the first paint.
-const CARD_BATCH = 12;
+// Reports per page (three rows of four on desktop). A section can hold 100+ reports, each with
+// two <Image> layers, so only one page of cards is ever mounted. Shared with the API, which counts
+// the Pro plan lock in the same pages.
+const PAGE_SIZE = REPORTS_PAGE_SIZE;
 
 const HIDDEN_TRANSFORMS = [
   'perspective(1200px) translate3d(-70px, 30px, -60px) scale(0.94)',
@@ -145,6 +151,8 @@ interface Report {
   mimeType: string | null;
   thumbnailUrl: string | null;
   sectionId: number | null;
+  /** Past the open pages of its section: shown greyed, no file link, cannot be opened. */
+  locked: boolean;
 }
 
 const REPORT_COLORS: { [key: string]: { color: string; bg: string; tagColor: string; tagBg: string } } = {
@@ -170,8 +178,14 @@ export default function ReportsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [brokenPreviewImages, setBrokenPreviewImages] = useState<Record<string, boolean>>({});
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [visibleCount, setVisibleCount] = useState(CARD_BATCH);
-  const gridSentinelObserver = useRef<IntersectionObserver | null>(null);
+  const [page, setPage] = useState(1);
+  const gridTopRef = useRef<HTMLDivElement>(null);
+  // Pro plan lock: pages of each section open to everyone (null = no lock), from /api/reports.
+  const [freePages, setFreePages] = useState<number | null>(null);
+  // The "Pro Plan Needed" dialog shows by itself on a locked page until closed there (`proDismissed`
+  // holds that page's key), and again whenever a locked card is clicked (`proAsked`).
+  const [proDismissed, setProDismissed] = useState<string | null>(null);
+  const [proAsked, setProAsked] = useState(false);
   const [previewImageLoaded, setPreviewImageLoaded] = useState(false);
   const [pdfNumPages, setPdfNumPages] = useState(0);
   const [pdfViewportWidth, setPdfViewportWidth] = useState(0);
@@ -194,22 +208,6 @@ export default function ReportsPage() {
     io.observe(node);
     pdfSentinelObserver.current = io;
   }, []);
-
-  const gridSentinelRef = useCallback((node: HTMLDivElement | null) => {
-    gridSentinelObserver.current?.disconnect();
-    gridSentinelObserver.current = null;
-    if (!node) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) setVisibleCount((c) => c + CARD_BATCH);
-      },
-      { rootMargin: '250px 0px' }
-    );
-    io.observe(node);
-    gridSentinelObserver.current = io;
-  }, []);
-
-  useEffect(() => () => gridSentinelObserver.current?.disconnect(), []);
 
   useEffect(() => {
     const sync = () => setIsMobile(window.innerWidth <= 768);
@@ -241,7 +239,7 @@ export default function ReportsPage() {
   }, [sectionFilter]);
 
   useEffect(() => {
-    setVisibleCount(CARD_BATCH);
+    setPage(1);
   }, [sectionFilter, search]);
 
   useEffect(() => {
@@ -271,6 +269,7 @@ export default function ReportsPage() {
 
         const reportsData = await reportsRes.json();
         if (!reportsData.success) return;
+        setFreePages(reportsData.lock?.freePages ?? null);
 
         if (sectionsRes?.ok) {
           const sd = await sectionsRes.json();
@@ -296,6 +295,7 @@ export default function ReportsPage() {
             mimeType: r.mime_type || null,
             thumbnailUrl: r.thumbnail_url || null,
             sectionId: r.section_id ? Number(r.section_id) : null,
+            locked: Boolean(r.locked),
           };
         }));
       } catch (e) {
@@ -324,6 +324,81 @@ export default function ReportsPage() {
     const q = search.trim().toLowerCase();
     return !q || r.title.toLowerCase().includes(q) || r.month.toLowerCase().includes(q) || r.shortMonth.toLowerCase().includes(q);
   });
+
+  // Clamped so a page that no longer exists (reports list changed) falls back to the last one.
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
+  const pageReports = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // Without a search the lock falls on whole pages, so a page is either all open or all locked.
+  // Search results mix the two, so there the dialog waits for a click on a locked card.
+  const pageKey = `${sectionFilter}:${currentPage}`;
+  const pageLocked = !search.trim() && pageReports.length > 0 && pageReports.every((r) => r.locked);
+  const showProModal = !loading && (proAsked || (pageLocked && proDismissed !== pageKey));
+  const closeProModal = () => {
+    setProAsked(false);
+    setProDismissed(pageKey);
+  };
+
+  const goToPage = (next: number) => {
+    setPage(next);
+    // Back to the top of the grid, clear of the sticky site header.
+    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const renderCard = (report: Report) => {
+    const hovered = hoveredCard === report.id;
+    const imagePreviewUrl = report.thumbnailUrl || (report.mimeType?.startsWith('image/') ? report.fileUrl : null);
+    const hasPreview = Boolean(imagePreviewUrl) && !brokenPreviewImages[report.id];
+
+    return (
+      <div
+        title={report.locked ? 'Pro plan needed' : undefined}
+        style={{ position: 'relative', filter: report.locked ? 'grayscale(1)' : 'none', opacity: report.locked ? 0.55 : 1, height: '100%', boxSizing: 'border-box', background: '#fff', borderRadius: 0, border: hovered ? '1px solid #d7dce5' : '1px solid #dfe5ee', boxShadow: hovered ? '0 18px 40px rgba(15,23,42,0.08)' : '0 10px 24px rgba(15,23,42,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column', transform: hovered ? 'translateY(-2px)' : 'none', transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease' }}
+        onMouseEnter={() => setHoveredCard(report.id)}
+        onMouseLeave={() => setHoveredCard(null)}
+      >
+        <button
+          type="button"
+          onClick={() => (report.locked ? setProAsked(true) : setSelectedReport(report))}
+          aria-label={report.locked ? `${report.title}, Pro plan needed` : undefined}
+          style={{ display: 'block', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
+        >
+          <div style={{ position: 'relative', width: '100%', aspectRatio: isMobile ? '4 / 3' : '16 / 9.5', background: hasPreview ? '#f9fafb' : `linear-gradient(135deg, ${report.bg}, #ffffff)`, overflow: 'hidden' }}>
+            {report.locked && (
+              <span style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: 'rgba(17,24,39,0.85)', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                <Lock size={12} aria-hidden /> Pro
+              </span>
+            )}
+            {hasPreview ? (
+              <>
+                <Image src={imagePreviewUrl!} alt="" fill sizes="360px" style={{ objectFit: 'cover', filter: 'blur(28px) saturate(1.5)', opacity: 0.6, transform: 'scale(1.2)' }} onError={() => markPreviewBroken(report.id)} />
+                <Image src={imagePreviewUrl!} alt={report.title} fill sizes="360px" style={{ objectFit: 'contain', zIndex: 1 }} onError={() => markPreviewBroken(report.id)} />
+              </>
+            ) : (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center' }}>
+                <div style={{ width: 64, height: 64, borderRadius: 20, background: `linear-gradient(135deg, ${report.color}, ${report.color}cc)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: `0 14px 28px ${report.color}30` }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Report Preview</span>
+              </div>
+            )}
+          </div>
+        </button>
+
+        <div style={{ padding: isMobile ? '14px 14px 16px' : '16px 18px 18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ margin: 0, fontSize: isMobile ? 20 : 21, fontWeight: 500, color: '#1f1f1f', lineHeight: 1.1, letterSpacing: '-0.04em' }}>{report.title}</h3>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18, paddingTop: 14, borderTop: '1px solid #e5e7eb', color: '#7a7a7a' }}>
+            <span style={{ fontSize: isMobile ? 16 : 17, fontWeight: 500 }}>{report.date}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  // Desktop only: the last row of a page that has more than one row slides right to left as a
+  // marquee; the rows above it stay in the grid. Phones keep the plain one-column list.
+  const marqueeCount = !isMobile && pageReports.length > 4 ? (pageReports.length % 4 || 4) : 0;
+  const gridReports = marqueeCount ? pageReports.slice(0, -marqueeCount) : pageReports;
+  const marqueeReports = marqueeCount ? pageReports.slice(-marqueeCount) : [];
 
   // ── No section selected ────────────────────────────────────────────────────
   if (!sectionFilter) {
@@ -391,57 +466,23 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
+        <div ref={gridTopRef} style={{ scrollMarginTop: 96 }} />
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, minmax(0, 1fr))', gap: isMobile ? 14 : 18 }}>
-          {filtered.slice(0, visibleCount).map((report, index) => {
-            const hovered = hoveredCard === report.id;
-            const imagePreviewUrl = report.thumbnailUrl || (report.mimeType?.startsWith('image/') ? report.fileUrl : null);
-            const hasPreview = Boolean(imagePreviewUrl) && !brokenPreviewImages[report.id];
-
-            return (
-              <RevealCard key={report.id} index={index} columns={isMobile ? 1 : 4}>
-              <div
-                style={{ height: '100%', boxSizing: 'border-box', background: '#fff', borderRadius: 0, border: hovered ? '1px solid #d7dce5' : '1px solid #dfe5ee', boxShadow: hovered ? '0 18px 40px rgba(15,23,42,0.08)' : '0 10px 24px rgba(15,23,42,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column', transform: hovered ? 'translateY(-2px)' : 'none', transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease' }}
-                onMouseEnter={() => setHoveredCard(report.id)}
-                onMouseLeave={() => setHoveredCard(null)}
-              >
-                <button
-                  type="button"
-                  onClick={() => setSelectedReport(report)}
-                  style={{ display: 'block', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
-                >
-                  <div style={{ position: 'relative', width: '100%', aspectRatio: isMobile ? '4 / 3' : '16 / 9.5', background: hasPreview ? '#f9fafb' : `linear-gradient(135deg, ${report.bg}, #ffffff)`, overflow: 'hidden' }}>
-                    {hasPreview ? (
-                      <>
-                        <Image src={imagePreviewUrl!} alt="" fill sizes="360px" style={{ objectFit: 'cover', filter: 'blur(28px) saturate(1.5)', opacity: 0.6, transform: 'scale(1.2)' }} onError={() => markPreviewBroken(report.id)} />
-                        <Image src={imagePreviewUrl!} alt={report.title} fill sizes="360px" style={{ objectFit: 'contain', zIndex: 1 }} onError={() => markPreviewBroken(report.id)} />
-                      </>
-                    ) : (
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20, textAlign: 'center' }}>
-                        <div style={{ width: 64, height: 64, borderRadius: 20, background: `linear-gradient(135deg, ${report.color}, ${report.color}cc)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: `0 14px 28px ${report.color}30` }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        </div>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Report Preview</span>
-                      </div>
-                    )}
-                  </div>
-                </button>
-
-                <div style={{ padding: isMobile ? '14px 14px 16px' : '16px 18px 18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <h3 style={{ margin: 0, fontSize: isMobile ? 20 : 21, fontWeight: 500, color: '#1f1f1f', lineHeight: 1.1, letterSpacing: '-0.04em' }}>{report.title}</h3>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18, paddingTop: 14, borderTop: '1px solid #e5e7eb', color: '#7a7a7a' }}>
-                    <span style={{ fontSize: isMobile ? 16 : 17, fontWeight: 500 }}>{report.date}</span>
-                  </div>
-                </div>
-              </div>
-              </RevealCard>
-            );
-          })}
+          {gridReports.map((report, index) => (
+            <RevealCard key={report.id} index={index} columns={isMobile ? 1 : 4}>
+              {renderCard(report)}
+            </RevealCard>
+          ))}
         </div>
-        {visibleCount < filtered.length && (
-          <div key={visibleCount} ref={gridSentinelRef} style={{ height: 1 }} />
+        {marqueeReports.length > 0 && (
+          // Keyed on the page so the marquee starts from its first card after a page change.
+          <ReportsMarquee key={pageKey} items={marqueeReports.map((r) => ({ key: r.id, node: renderCard(r) }))} />
         )}
+        <ReportsPagination page={currentPage} pageSize={PAGE_SIZE} total={filtered.length} lockedFromPage={freePages !== null && !search.trim() ? freePages + 1 : null} onPage={goToPage} />
         </>
       )}
+
+      {showProModal && <ProPlanModal freePages={freePages ?? 0} onClose={closeProModal} />}
 
       {/* Preview modal */}
       {selectedReport && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { PAGE_LEAD_LABELS } from '@/components/admin/sales-tracker/constants';
 import { formatSubmittedOn, whatsappLink } from '@/components/admin/sales-tracker/sponsorEventFormat';
@@ -10,7 +11,7 @@ import {
   assignmentStatusLabel,
   PICKABLE_ASSIGNMENT_STATUSES,
 } from '@/modules/lead-assignments/domain/types';
-import { adminEntryKind, FOLLOW_UP_NOTE_MAX_LENGTH, FOLLOW_UP_REPLY_MAX_LENGTH, type LeadDetail, type LeadDetailField } from '@/modules/lead-followups/domain/types';
+import { entryKind, FOLLOW_UP_NOTE_MAX_LENGTH, FOLLOW_UP_REPLY_MAX_LENGTH, type LeadDetail, type LeadDetailField } from '@/modules/lead-followups/domain/types';
 import { followUpDue, formatFollowUpDay, localToday, statusNeedsFollowUpDate } from '@/modules/lead-followups/domain/follow-up-date';
 
 /** A DB timestamp as "29 Sep 2026, 14:05"; a bare "YYYY-MM-DD" (a manual lead's creation date) as
@@ -88,10 +89,15 @@ function FieldValue({ field }: { field: LeadDetailField }) {
  * can't be in the past, and is not asked for when the status closes the lead. It is what puts the
  * lead in the reader's "Today's Follow up" on My Leads.
  *
+ * A lead the reader added themselves (`detail.editable`) also has an **Edit lead** button in the
+ * header: `onEdit` hands the lead and its assignment to MyLeadsPage, which opens the edit window.
+ * Every other lead stays read-only here. The reader may not be one of the assigned people on a
+ * lead they created; their follow-ups and replies work the same.
+ *
  * `endpoint` is the list endpoint (/api/employee/leads or /api/admin/my-leads); the lead lives at
  * `${endpoint}/${source}/${leadId}`. `onChanged` hands a saved follow-up's refreshed view back so
  * the list can update its row without a reload. */
-export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, onChanged, onSeen }: {
+export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, onChanged, onSeen, onEdit }: {
   lead: AssignedLead;
   endpoint: string;
   getHeaders: () => HeadersInit;
@@ -99,6 +105,8 @@ export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, 
   onChanged: (detail: LeadDetail) => void;
   /** The lead has loaded — which is what marks the admin's replies as seen by the reader. */
   onSeen: () => void;
+  /** "Edit lead" on a lead the reader created. */
+  onEdit: (editable: NonNullable<LeadDetail['editable']>) => void;
 }) {
   const url = `${endpoint}/${lead.source}/${encodeURIComponent(lead.leadId)}`;
   const [detail, setDetail] = useState<LeadDetail | null>(null);
@@ -221,8 +229,11 @@ export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, 
               </div>
               <h2 id="lead-drawer-title" className="m-0 mt-2 break-words text-xl font-bold text-slate-900">{name}</h2>
               <p className="m-0 mt-1 text-xs text-slate-500">
-                Created {when(sub?.submittedAt || lead.leadDate)} · Assigned to you {when(lead.assignedAt)}
-                {lead.assignedBy ? ` by ${lead.assignedBy}` : ''}
+                Created {when(sub?.submittedAt || lead.leadDate)}
+                {lead.createdByMe ? ' by you' : lead.createdByName ? ` by ${lead.createdByName}` : ''}
+                {lead.assigned
+                  ? ` · Assigned to you ${when(lead.assignedAt)}${lead.assignedBy ? ` by ${lead.assignedBy}` : ''}`
+                  : ' · Not assigned to you'}
               </p>
               {myDate && (
                 <p className={`m-0 mt-1 text-xs font-semibold ${myDue === 'today' || myDue === 'overdue' ? 'text-red-700' : 'text-slate-600'}`}>
@@ -249,6 +260,15 @@ export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, 
             {email && (
               <a href={`mailto:${email}`} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 no-underline hover:border-indigo-300 hover:text-indigo-700">Email</a>
             )}
+            {detail?.editable && (
+              <button
+                type="button"
+                onClick={() => onEdit(detail.editable!)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                <Pencil size={14} aria-hidden />Edit lead
+              </button>
+            )}
           </div>
         </div>
 
@@ -263,7 +283,9 @@ export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, 
                 <div className="mb-2 flex items-baseline justify-between gap-3">
                   <h3 className="m-0 text-sm font-bold uppercase tracking-wide text-slate-500">Submitted details</h3>
                   <span className="text-xs text-slate-400">
-                    {sub.origin === 'submission' ? `As filled on the ${pageLabel} page · view only` : 'From the Sales Tracker · view only'}
+                    {sub.origin === 'submission'
+                      ? `As filled on the ${pageLabel} page · view only`
+                      : detail.editable ? 'You added this lead · use Edit lead to change it' : 'From the Sales Tracker · view only'}
                   </span>
                 </div>
                 <div className="flex flex-col gap-3">
@@ -286,6 +308,7 @@ export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, 
               <section>
                 <h3 className="m-0 mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">Assigned team</h3>
                 <div className="flex flex-wrap gap-2">
+                  {detail.assignees.length === 0 && <span className="text-sm text-slate-500">Nobody is assigned to this lead right now.</span>}
                   {detail.assignees.map((a) => (
                     <span key={a.credentialId} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700">
                       {a.employeeName || 'Former employee'}
@@ -369,9 +392,9 @@ export default function LeadDetailDrawer({ lead, endpoint, getHeaders, onClose, 
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="text-sm font-semibold text-slate-900">
                             {f.mine ? 'You' : f.authorName || (f.byAdmin ? 'Admin' : 'Former employee')}
-                            {f.byAdmin && (adminEntryKind(f) === 'edit'
+                            {entryKind(f) === 'edit'
                               ? <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">Lead edited</span>
-                              : <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Admin update</span>)}
+                              : f.byAdmin && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Admin update</span>}
                             <span className="ml-2 text-xs font-normal text-slate-400">{when(f.createdAt)}</span>
                           </div>
                           <StatusChip status={f.status} />

@@ -174,7 +174,7 @@ export default function Directory() {
     const doj = new Date(c.createdAt).toISOString().slice(0, 10);
     const documents = state.orgStructure.requiredDocuments.map((name) => ({ name, status: 'not_uploaded', url: null, uploadedAt: null, remarks: null }));
     const newEmployee: HrEmployee = {
-      id: nextEmployeeId(state.employees), credentialId: c.id, name: c.name, email: c.email || '—', phone: null,
+      id: nextEmployeeId(state.employees, c.employeeCode), credentialId: c.id, name: c.name, email: c.email || '—', phone: null,
       designation: c.designation, team: state.teams[0]?.name || '', manager: null, managerId: null, status: 'active',
       doj, sysRole: 'Employee', ctc: 0,
       leaveBalance: initialLeaveBalance(state.rules),

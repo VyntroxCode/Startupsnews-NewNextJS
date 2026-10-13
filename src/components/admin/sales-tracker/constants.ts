@@ -5,8 +5,9 @@ import {
   SALES_LEAD_STATUS_LABELS,
   statusFromSalesLead,
 } from '@/modules/lead-assignments/domain/types';
+import { MANUAL_LEAD_TYPES } from '@/modules/sales-tracker/domain/types';
 
-export const TYPES = ['Social Media', 'Events', 'PR-National', 'PR-International', 'Others'] as const;
+export const TYPES = MANUAL_LEAD_TYPES;
 
 /** Leads mirrored in automatically from a public site form (see
  * modules/feature-startup-submissions/service/to-sales-lead.ts,
@@ -44,6 +45,19 @@ export const PAGE_LEAD_LABELS: Record<string, string> = {
   'Advertise Page Leads': 'Advertise With Us',
   [ENS_ENQUIRY_TYPE_LABEL]: 'Expand North Star',
 };
+/** "Source of lead" dropdown in the lead window (LeadFormModal), for admins and employees alike:
+ * the public pages that feed the Sales Tracker — spelled exactly as each page's mirror stores its
+ * source (see the modules' to-sales-lead.ts) — then the social platforms. The dropdown ends with
+ * SOURCE_OTHER, which opens a text box: the typed text is what gets stored, so sales_leads.source
+ * stays plain text and a source saved before the dropdown existed is kept as it is (it opens
+ * under "Others" with its text in the box). */
+export const LEAD_SOURCE_OPTIONS: readonly string[] = [
+  'Feature Your Startup', 'Submit Your Funding Round', 'Submit Your Press Release', 'Sponsor an Event',
+  'Advertise With Us', 'Expand North Star',
+  'WhatsApp', 'LinkedIn', 'Facebook', 'Instagram',
+];
+export const SOURCE_OTHER = 'Others';
+
 /** The four lead statuses, shared with the employee My Leads page — one list, defined in
  * lead-assignments/domain/types.ts (ASSIGNMENT_STATUS_OPTIONS). sales_leads.status stores these
  * labels. Before 2026-09-29 there were eight ("Query received" … "Successfully closed"); every lead

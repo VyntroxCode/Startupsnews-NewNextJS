@@ -51,6 +51,7 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
 @source "../components/user/newsletter";
 @source "./dashboard/funding";
 @source "../components/user/funding";
+@source "../components/user/reports";
 @source "./login/page.tsx";
 @source "../components/auth";
 @source "../components/EventsLocationBar.tsx";
@@ -112,18 +113,19 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
      keeps --font-db. --font-db-inter is set by src/app/dashboard/layout.tsx. */
   --font-db-nav: var(--font-db-inter), "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
-  /* Expand North Star — "Benefits of Joining the Delegation" (DelegationBenefits.tsx): the cream
-     founders card, the navy enablers card and the gold that highlights both. */
-  --color-ens-cream: #F5F0E7;
-  --color-ens-cream-line: #EADFCB;
-  --color-ens-navy: #0E1A33;
-  --color-ens-navy-2: #17294F;
-  --color-ens-gold: #C9963E;
-  --color-ens-gold-soft: #E0B866;
-  --color-ens-ink: #0F1626;
-  --color-ens-slate: #5A6070;
-  /* The page's own magenta (expand-north-star.css --ens-pink), for SectionNav. */
+  /* Expand North Star — DelegationBenefits.tsx and SectionNav.tsx, in the page's own palette
+     (expand-north-star.css --ens-pink / --ens-ink / --ens-lime): a blush founders card with magenta
+     accents, an ink enablers card with lime accents (same pairing as the Participation Fee cards). */
   --color-ens-pink: #E4157C;
+  --color-ens-pink-soft: #F25AA3;
+  --color-ens-blush: #FDF1F7;
+  --color-ens-blush-line: #F5CDE3;
+  --color-ens-noir: #0A0A0B;
+  --color-ens-noir-2: #26232C;
+  --color-ens-lime: #C9F31D;
+  --color-ens-lime-lift: #D8FF3F;
+  --color-ens-ink: #0A0A0B;
+  --color-ens-graphite: #505054;
 
   /* Funding intelligence (/dashboard/funding/*) — the funding-platform preview's palette, copied
      1:1 so the pages match the approved design. The font is NOT a theme token: the next/font variable
@@ -152,15 +154,38 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   --color-fi-red-light: #FCE9EB;
   --color-fi-violet: #5B4FE0;
   --shadow-fi: 0 1px 2px rgba(21, 19, 26, 0.04), 0 8px 24px rgba(21, 19, 26, 0.05);
-  /* Market pulse ticker — the track holds two copies of the items and slides by half its width. */
+  /* Running rows (ReportsMarquee) — the track holds two copies of the items and slides by half its width. */
   --animate-fi-ticker: fi-ticker 32s linear infinite;
   @keyframes fi-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  /* Top Sectors ranking: the highlighted sector's bar refills from the left (SectorSection.tsx). */
-  --animate-fi-bar-grow: fi-bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-  @keyframes fi-bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
   /* AI assistant "thinking" dots. */
   --animate-fi-dot: fi-dot 1s ease-in-out infinite;
   @keyframes fi-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+  /* "Get Pro Plan" bubble (ProPlanBubble.tsx): a light band sweeps across it, then rests off its
+     right edge until the next loop. */
+  --animate-fi-shine: fi-shine 2.8s ease-in-out infinite;
+  @keyframes fi-shine { 0% { transform: translateX(-150%) skewX(-20deg); } 55%, 100% { transform: translateX(450%) skewX(-20deg); } }
+  /* The rest of the bubble's motion. drift: the whole bubble wanders slowly round its spot and
+     returns. in: one pop on arrival. ring: an outline swells and fades. glow: the halo breathes.
+     spin: the sheen inside turns. crown: a small nod every few seconds. */
+  --animate-fi-bubble-drift: fi-bubble-drift 9s ease-in-out infinite;
+  @keyframes fi-bubble-drift {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-10px, -16px); }
+    45% { transform: translate(-22px, -6px); }
+    65% { transform: translate(-12px, 12px); }
+    85% { transform: translate(4px, 6px); }
+  }
+  /* `backwards`, not `both`: once the pop ends it must let go of `scale`, or hover:scale-110 never shows. */
+  --animate-fi-bubble-in: fi-bubble-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  @keyframes fi-bubble-in { from { opacity: 0; scale: 0.3; } to { opacity: 1; scale: 1; } }
+  --animate-fi-bubble-ring: fi-bubble-ring 3.2s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+  @keyframes fi-bubble-ring { 0% { transform: scale(1); opacity: 0.7; } 80%, 100% { transform: scale(1.75); opacity: 0; } }
+  --animate-fi-bubble-glow: fi-bubble-glow 4s ease-in-out infinite;
+  @keyframes fi-bubble-glow { 0%, 100% { opacity: 0.35; transform: scale(0.94); } 50% { opacity: 0.7; transform: scale(1.08); } }
+  --animate-fi-bubble-spin: fi-bubble-spin 7s linear infinite;
+  @keyframes fi-bubble-spin { to { transform: rotate(360deg); } }
+  --animate-fi-bubble-crown: fi-bubble-crown 4.5s ease-in-out infinite;
+  @keyframes fi-bubble-crown { 0%, 70%, 100% { transform: rotate(0) translateY(0); } 78% { transform: rotate(-12deg) translateY(-2px); } 86% { transform: rotate(10deg) translateY(-1px); } 93% { transform: rotate(-4deg) translateY(0); } }
 
   /* CompleteProfileWizard entrance motion — Tailwind ships no fade/slide-in keyframes, so the
      three the modal uses are declared here as animate-* tokens. */
@@ -178,4 +203,47 @@ classes in an otherwise non-Tailwind project (currently /about-us, /advertise-wi
   --animate-ec-marquee-rtl: ec-marquee-rtl 30s linear infinite;
   @keyframes ec-marquee-ltr { from { transform: translateX(-50%); } to { transform: translateX(0); } }
   @keyframes ec-marquee-rtl { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+}
+
+/* Dark theme (public site) — see "THEME" at the end of globals.css for how the --sn-* tokens
+   work. The page palettes above are plain :root variables, so pointing them at the shared tokens
+   re-themes every utility built on them (text-cr-ink, bg-adv-panel, border-au-line, …). Hex and
+   white/black utilities in these pages are written as `…-[color:var(--sn-token,#original)]` and
+   need nothing here. `data-theme` is never set on /dashboard, so the db-* and fi-* palettes are
+   untouched. */
+html[data-theme="dark"] {
+  --color-au-ink: var(--sn-ink);
+  --color-au-muted: var(--sn-ink-3);
+  --color-au-fade: var(--sn-ink-4);
+  --color-au-line: var(--sn-line);
+  --color-au-bg: var(--sn-bg);
+  --color-au-panel: var(--sn-card);
+  --color-au-pink-deep: var(--sn-pink-ink);
+
+  --color-adv-ink: var(--sn-ink);
+  --color-adv-muted: var(--sn-ink-2);
+  --color-adv-muted-2: var(--sn-ink-4);
+  --color-adv-line: var(--sn-line);
+  --color-adv-line-2: var(--sn-line-strong);
+  --color-adv-panel: var(--sn-card);
+
+  --color-cr-ink: var(--sn-ink);
+  --color-cr-muted: var(--sn-ink-2);
+  --color-cr-muted-2: var(--sn-ink-4);
+  --color-cr-line: var(--sn-line);
+  --color-cr-panel: var(--sn-card);
+
+  /* Expand North Star: the blush founders card becomes a deep rose panel. ens-noir (same hex as
+     ens-ink in light mode) is left alone — it is the "always dark" colour for text on lime. */
+  --color-ens-blush: #21131D;
+  --color-ens-blush-line: rgb(228 21 124 / 0.35);
+  --color-ens-ink: var(--sn-ink);
+  --color-ens-graphite: var(--sn-ink-2);
+
+  --color-neutral-900: var(--sn-ink);
+  --color-neutral-800: var(--sn-ink-soft);
+  --color-neutral-600: var(--sn-ink-2);
+  --color-neutral-500: var(--sn-ink-3);
+  --color-neutral-200: var(--sn-line-strong);
+  --color-neutral-100: var(--sn-line);
 }

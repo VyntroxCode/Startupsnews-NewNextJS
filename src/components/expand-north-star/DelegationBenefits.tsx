@@ -10,7 +10,7 @@ interface Benefit {
 
 interface Audience {
   key: string;
-  tone: "cream" | "navy";
+  tone: "blush" | "ink";
   eyebrow: string;
   title: string;
   intro: string;
@@ -24,7 +24,7 @@ interface Audience {
 const AUDIENCES: Audience[] = [
   {
     key: "founders",
-    tone: "cream",
+    tone: "blush",
     eyebrow: "For Startups and Founders",
     title: "Raise, Partner and Enter the UAE Market",
     intro: "Built for founders looking for global investors, cross-border partners and a Middle East growth plan.",
@@ -58,7 +58,7 @@ const AUDIENCES: Audience[] = [
   },
   {
     key: "enablers",
-    tone: "navy",
+    tone: "ink",
     eyebrow: "For Enablers",
     title: "Source Global Deals and Grow Your Portfolio",
     intro: "VCs, angel funds and angel networks, family offices, accelerators and incubators.",
@@ -95,25 +95,29 @@ const AUDIENCES: Audience[] = [
 
 /** Every class that differs between the two cards, so the markup below stays one template. */
 const TONE = {
-  cream: {
-    card: "border border-ens-cream-line bg-ens-cream text-ens-ink",
-    spot: "rgba(201, 150, 62, 0.16)",
+  blush: {
+    card: "border border-ens-blush-line bg-ens-blush text-ens-ink",
+    spot: "rgba(228, 21, 124, 0.1)",
+    eyebrow: "text-ens-pink",
+    rule: "from-ens-pink to-ens-pink-soft",
     title: "text-ens-ink",
-    intro: "text-ens-slate",
+    intro: "text-ens-graphite",
     itemTitle: "text-ens-ink",
-    itemBody: "text-ens-slate",
-    tickHover: "group-hover/item:bg-ens-gold/15",
-    cta: "bg-ens-ink text-white group-hover/cta:bg-ens-navy-2 group-hover/cta:shadow-[0_14px_30px_-12px_rgba(14,26,51,0.6)]",
+    itemBody: "text-ens-graphite",
+    tick: "bg-ens-pink/10 text-ens-pink group-hover/item:bg-ens-pink/20",
+    cta: "bg-ens-pink text-white group-hover/cta:bg-ens-noir group-hover/cta:shadow-[0_14px_30px_-12px_rgba(228,21,124,0.6)]",
   },
-  navy: {
-    card: "border border-white/5 bg-linear-to-br from-ens-navy to-ens-navy-2 text-white",
-    spot: "rgba(224, 184, 102, 0.14)",
+  ink: {
+    card: "border border-white/5 bg-linear-to-br from-ens-noir to-ens-noir-2 text-white",
+    spot: "rgba(201, 243, 29, 0.1)",
+    eyebrow: "text-ens-lime",
+    rule: "from-ens-lime to-ens-lime-lift",
     title: "text-white",
     intro: "text-white/70",
     itemTitle: "text-white",
     itemBody: "text-white/65",
-    tickHover: "group-hover/item:bg-ens-gold/20",
-    cta: "bg-ens-gold text-ens-navy group-hover/cta:bg-ens-gold-soft group-hover/cta:shadow-[0_14px_30px_-12px_rgba(201,150,62,0.75)]",
+    tick: "bg-ens-lime/10 text-ens-lime group-hover/item:bg-ens-lime/20",
+    cta: "bg-ens-lime text-ens-noir group-hover/cta:bg-ens-lime-lift group-hover/cta:shadow-[0_14px_30px_-12px_rgba(201,243,29,0.6)]",
   },
 } as const;
 
@@ -224,10 +228,10 @@ const sheenVariants: Variants = {
 
 /* ---- Pieces ------------------------------------------------------------------------------------ */
 
-function Tick({ hover }: { hover: string }) {
+function Tick({ tone }: { tone: string }) {
   return (
     <motion.span
-      className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-ens-gold/10 text-ens-gold transition-colors duration-300 ${hover}`}
+      className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full transition-colors duration-300 ${tone}`}
       aria-hidden="true"
       variants={tickRingVariants}
     >
@@ -259,9 +263,9 @@ function AudienceCard({ audience, index }: { audience: Audience; index: number }
     <motion.article
       aria-labelledby={`ens-benefits-${audience.key}`}
       className={`group/card relative flex flex-col overflow-hidden rounded-[28px] px-6 py-9 transition-[translate,box-shadow] duration-500 ease-out hover:-translate-y-1.5 sm:px-10 sm:py-12 lg:px-11 ${tone.card} ${
-        audience.tone === "navy"
-          ? "shadow-[0_30px_60px_-30px_rgba(14,26,51,0.65)] hover:shadow-[0_40px_80px_-30px_rgba(14,26,51,0.8)]"
-          : "shadow-[0_24px_50px_-34px_rgba(120,90,40,0.35)] hover:shadow-[0_34px_70px_-34px_rgba(120,90,40,0.5)]"
+        audience.tone === "ink"
+          ? "shadow-[0_30px_60px_-30px_rgba(10,10,11,0.65)] hover:shadow-[0_40px_80px_-30px_rgba(10,10,11,0.8)]"
+          : "shadow-[0_24px_50px_-34px_rgba(228,21,124,0.3)] hover:shadow-[0_34px_70px_-34px_rgba(228,21,124,0.42)]"
       }`}
       variants={cardVariants}
       custom={side}
@@ -284,12 +288,12 @@ function AudienceCard({ audience, index }: { audience: Audience; index: number }
         />
       )}
 
-      {audience.tone === "navy" && (
+      {audience.tone === "ink" && (
         <>
-          {/* A warm glow breathing in the top corner of the dark card. */}
+          {/* A magenta glow breathing in the top corner of the dark card. */}
           <motion.span
             aria-hidden="true"
-            className="pointer-events-none absolute -top-32 -right-24 size-80 rounded-full bg-ens-gold/20 blur-3xl"
+            className="pointer-events-none absolute -top-32 -right-24 size-80 rounded-full bg-ens-pink/25 blur-3xl"
             animate={reducedMotion ? undefined : { scale: [1, 1.15, 1], opacity: [0.55, 0.9, 0.55] }}
             transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -302,7 +306,7 @@ function AudienceCard({ audience, index }: { audience: Audience; index: number }
       )}
 
       <div className="relative flex flex-1 flex-col">
-        <motion.p className="m-0 text-[13px] font-bold tracking-[0.04em] text-ens-gold uppercase sm:text-sm" variants={eyebrowVariants}>
+        <motion.p className={`m-0 text-[13px] font-bold tracking-[0.04em] uppercase sm:text-sm ${tone.eyebrow}`} variants={eyebrowVariants}>
           {audience.eyebrow}
         </motion.p>
 
@@ -316,7 +320,7 @@ function AudienceCard({ audience, index }: { audience: Audience; index: number }
 
         <motion.span
           aria-hidden="true"
-          className="mt-4 block h-[3px] w-14 origin-left rounded-full bg-linear-to-r from-ens-gold to-ens-gold-soft"
+          className={`mt-4 block h-[3px] w-14 origin-left rounded-full bg-linear-to-r ${tone.rule}`}
           variants={{
             hidden: { scaleX: 0 },
             show: { scaleX: 1, transition: { duration: 0.7, ease: EASE } },
@@ -336,7 +340,7 @@ function AudienceCard({ audience, index }: { audience: Audience; index: number }
         >
           {audience.benefits.map((benefit) => (
             <motion.li key={benefit.title} className="group/item flex gap-3.5" variants={itemVariants}>
-              <Tick hover={tone.tickHover} />
+              <Tick tone={tone.tick} />
               <div className="transition-[translate] duration-300 ease-out group-hover/item:translate-x-1">
                 <motion.h4
                   className={`m-0 font-[family-name:inherit] text-[16px] leading-snug font-bold sm:text-[17px] ${tone.itemTitle}`}
@@ -354,7 +358,7 @@ function AudienceCard({ audience, index }: { audience: Audience; index: number }
 
         {audience.onRequest && (
           <motion.div
-            className="mt-9 rounded-2xl border border-dashed border-ens-gold/55 bg-white/[0.03] px-5 py-5 sm:px-6"
+            className="mt-9 rounded-2xl border border-dashed border-ens-lime/50 bg-white/[0.03] px-5 py-5 sm:px-6"
             variants={chipsVariants}
           >
             <p className="m-0 text-[14px] font-bold text-white sm:text-[15px]">Available on Request (Paid)</p>
@@ -362,7 +366,7 @@ function AudienceCard({ audience, index }: { audience: Audience; index: number }
               {audience.onRequest.map((chip) => (
                 <motion.li
                   key={chip}
-                  className="rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-[13px] font-semibold text-white transition-colors duration-300 hover:border-ens-gold/70 hover:bg-ens-gold/20"
+                  className="rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-[13px] font-semibold text-white transition-colors duration-300 hover:border-ens-lime/70 hover:bg-ens-lime/15"
                   variants={chipVariants}
                 >
                   {chip}
@@ -410,12 +414,12 @@ function AudienceCard({ audience, index }: { audience: Audience; index: number }
 }
 
 /** "Benefits of Joining the Delegation" — what founders and what enablers (VCs, angel networks,
- * family offices, accelerators) get from the Dubai delegation, as a cream card and a navy card side
+ * family offices, accelerators) get from the Dubai delegation, as a blush card and an ink card side
  * by side.
  *
- * The heading's words slide in from the left one after another and a gold rule draws out left to right. Each card rises from
- * its own side out of a light blur (the navy one a beat later, with a band of light crossing it and a
- * warm glow breathing in its corner); inside, the eyebrow letter-spacing settles, the title wipes in,
+ * The heading's words slide in from the left one after another and a magenta rule draws out left to right. Each card rises from
+ * its own side out of a light blur (the ink one a beat later, with a band of light crossing it and a
+ * magenta glow breathing in its corner); inside, the eyebrow letter-spacing settles, the title wipes in,
  * then the points (on the list's own scroll trigger) glide in from the left one by one, each tick
  * popping in and drawing its check before the point's title and text follow, and the paid add-on chips pop in. On a
  * fine pointer a soft light follows the cursor across the card, rows nudge right on hover, and the
@@ -430,7 +434,7 @@ export function DelegationBenefits() {
     <section
       id="ens-benefits"
       aria-labelledby="ens-benefits-title"
-      className="overflow-x-clip bg-linear-to-b from-white via-[#FBF8F2] to-white py-[calc(var(--ens-section-y)*1.6)]"
+      className="overflow-x-clip bg-linear-to-b from-[color:var(--sn-bg,#fff)] via-[color:var(--sn-bg-2,#FCF2F7)] to-[color:var(--sn-bg,#fff)] py-[calc(var(--ens-section-y)*1.6)]"
     >
       <div className="ens-wrap">
         <motion.h2
@@ -453,7 +457,7 @@ export function DelegationBenefits() {
         </motion.h2>
         <motion.span
           aria-hidden="true"
-          className="mx-auto mt-4 block h-1 w-24 origin-left rounded-full bg-linear-to-r from-ens-gold via-ens-gold-soft to-ens-gold sm:mt-6"
+          className="mx-auto mt-4 block h-1 w-24 origin-left rounded-full bg-linear-to-r from-ens-pink via-ens-pink-soft to-ens-pink sm:mt-6"
           {...(reducedMotion
             ? { initial: false, animate: { scaleX: 1 } }
             : {

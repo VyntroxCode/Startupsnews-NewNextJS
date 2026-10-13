@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, CalendarClock, ClipboardCheck, CornerDownRight, PencilLine, RefreshCw, Reply, Send } from 'lucide-react';
 import { ASSIGNMENT_STATUS_COLORS, assignmentStatusLabel, type LeadSource } from '@/modules/lead-assignments/domain/types';
-import { adminEntryKind, FOLLOW_UP_REPLY_MAX_LENGTH, type LeadChange, type LeadFollowUpReply, type LeadFollowUpsView } from '@/modules/lead-followups/domain/types';
+import { entryKind, FOLLOW_UP_REPLY_MAX_LENGTH, type LeadChange, type LeadFollowUpReply, type LeadFollowUpsView } from '@/modules/lead-followups/domain/types';
 import { formatFollowUpDay } from '@/modules/lead-followups/domain/follow-up-date';
 import { salesTrackerApi } from './api';
 import { formatSubmittedOn } from './sponsorEventFormat';
@@ -43,12 +43,22 @@ const KIND = {
  * reply in My Leads and gets it as a new reply. Replies are never edited or deleted.
  *
  * Fetched on open, after a reply, and whenever `refreshKey` changes (the window bumps it after a
- * save). */
-export default function LeadActivityPanel({ source, leadId, refreshKey = 0 }: {
+ * save).
+ *
+ * `api` is where the history is read and replies are sent. It defaults to the admin Sales Tracker
+ * API; My Leads passes its own (the employee's lead endpoints) so the same panel shows in the lead
+ * window an employee opens on a lead they created. */
+export interface LeadActivityApi {
+  getFollowUps: (source: LeadSource, leadId: string) => Promise<LeadFollowUpsView>;
+  addReply: (source: LeadSource, leadId: string, followUpId: number, message: string) => Promise<LeadFollowUpsView>;
+}
+
+export default function LeadActivityPanel({ source, leadId, refreshKey = 0, api = salesTrackerApi }: {
   source: LeadSource;
   /** Empty for a lead that isn't saved yet. */
   leadId: string;
   refreshKey?: number;
+  api?: LeadActivityApi;
 }) {
   const [view, setView] = useState<LeadFollowUpsView | null>(leadId ? null : { assignees: [], followUps: [] });
   const [error, setError] = useState('');
@@ -61,14 +71,16 @@ export default function LeadActivityPanel({ source, leadId, refreshKey = 0 }: {
   useEffect(() => {
     if (!leadId) return;
     let cancelled = false;
-    salesTrackerApi.getFollowUps(source, leadId)
+    api.getFollowUps(source, leadId)
       .then((v) => { if (!cancelled) { setView(v); setError(''); } })
       .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load'); });
     return () => { cancelled = true; };
+  // `api` is left out: a caller may build it inline, and a new object must not re-fetch the history.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, leadId, refreshKey]);
 
   const entries: ActivityEntry[] = (view?.followUps ?? []).map((f) => ({
-    kind: f.byAdmin ? adminEntryKind(f) : 'follow-up', changes: f.changes, id: f.id, at: f.createdAt,
+    kind: entryKind(f), changes: f.changes, id: f.id, at: f.createdAt,
     author: f.authorName || (f.byAdmin ? 'Admin' : 'Former employee'), text: f.note, status: f.status, nextFollowUpDate: f.nextFollowUpDate, replies: f.replies,
   }));
 
@@ -83,7 +95,7 @@ export default function LeadActivityPanel({ source, leadId, refreshKey = 0 }: {
     setSending(true);
     setReplyError('');
     try {
-      setView(await salesTrackerApi.addReply(source, leadId, followUpId, message));
+      setView(await api.addReply(source, leadId, followUpId, message));
       openReply(null);
     } catch (err) {
       setReplyError(err instanceof Error ? err.message : "Couldn't save the reply");

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { siteConfig } from "@/lib/config";
 import { useFlyMenu } from "@/components/FlyMenuContext";
+import { ThemeSegmented } from "@/components/ThemeSwitcher";
 
 const FONT_AWESOME_HREF = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css";
 
@@ -176,6 +177,11 @@ export function FlyMenu() {
             })}
           </ul>
         </nav>
+      </div>
+
+      <div className="sn-theme-row">
+        <span className="startupnews-fly-soc-head">APPEARANCE</span>
+        <ThemeSegmented />
       </div>
 
       <div id="mvp-fly-soc-wrap" className="startupnews-fly-soc">

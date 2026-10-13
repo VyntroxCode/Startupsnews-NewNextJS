@@ -768,7 +768,7 @@
 		   -moz-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		    -ms-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		     -o-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
-			box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
+			box-shadow: 0 1px 16px 0 var(--sn-shadow-30, rgba(0,0,0,0.3));
 		}
 		
 	.mvp-nav-top-wrap,
@@ -1465,7 +1465,7 @@
 		   -moz-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		    -ms-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		     -o-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
-			box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
+			box-shadow: 0 1px 16px 0 var(--sn-shadow-30, rgba(0,0,0,0.3));
 		}
 		
 	.mvp-nav-top-wrap,
@@ -1570,7 +1570,7 @@
 	.mvp-widget-feat2-side,
 	#mvp-side-wrap,
 	#mvp-home-widget-wrap .mvp-flex-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 20px 0 0;
 		padding-top: 20px;
 		width: 100%;
@@ -2136,7 +2136,7 @@
 		}
 		
 	.mvp-feat5-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 30px 0 0;
 		padding: 30px 0 0;
 		width: 100%;
@@ -2270,7 +2270,7 @@
 		   -moz-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		    -ms-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		     -o-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
-			box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
+			box-shadow: 0 1px 16px 0 var(--sn-shadow-30, rgba(0,0,0,0.3));
 		}
 		
 	.mvp-nav-top-wrap,
@@ -2371,7 +2371,7 @@
 	.mvp-widget-feat2-side,
 	#mvp-side-wrap,
 	#mvp-home-widget-wrap .mvp-flex-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 20px 0 0;
 		padding-top: 20px;
 		width: 100%;
@@ -3074,7 +3074,7 @@
 		}
 		
 	.mvp-feat5-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 30px 0 0;
 		padding: 30px 0 0;
 		width: 100%;
@@ -3270,7 +3270,7 @@
 		   -moz-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		    -ms-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		     -o-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
-			box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
+			box-shadow: 0 1px 16px 0 var(--sn-shadow-30, rgba(0,0,0,0.3));
 		}
 		
 	.mvp-nav-top-wrap,
@@ -3379,7 +3379,7 @@
 	.mvp-widget-feat2-side,
 	#mvp-side-wrap,
 	#mvp-home-widget-wrap .mvp-flex-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 20px 0 0;
 		padding-top: 20px;
 		width: 100%;
@@ -4145,7 +4145,7 @@
 		}
 		
 	.mvp-feat5-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 30px 0 0;
 		padding: 30px 0 0;
 		width: 100%;
@@ -4341,7 +4341,7 @@
 		   -moz-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		    -ms-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		     -o-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
-			box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
+			box-shadow: 0 1px 16px 0 var(--sn-shadow-30, rgba(0,0,0,0.3));
 		}
 		
 	.mvp-nav-top-wrap,
@@ -4452,7 +4452,7 @@
 	.mvp-widget-feat2-side,
 	#mvp-side-wrap,
 	#mvp-home-widget-wrap .mvp-flex-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 20px 0 0;
 		padding-top: 20px;
 		width: 100%;
@@ -5345,7 +5345,7 @@
 		}
 		
 	.mvp-feat5-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 30px 0 0;
 		padding: 30px 0 0;
 		width: 100%;
@@ -5570,7 +5570,7 @@
 		   -moz-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		    -ms-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
 		     -o-box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
-			box-shadow: 0 1px 16px 0 rgba(0,0,0,0.3);
+			box-shadow: 0 1px 16px 0 var(--sn-shadow-30, rgba(0,0,0,0.3));
 		}
 		
 	.mvp-nav-top-wrap,
@@ -5691,7 +5691,7 @@
 	.mvp-widget-feat2-side,
 	#mvp-side-wrap,
 	#mvp-home-widget-wrap .mvp-flex-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 20px 0 0;
 		padding-top: 20px;
 		width: 100%;
@@ -6431,7 +6431,7 @@
 		}
 		
 	#mvp-author-top-left img {
-		border: 5px solid #ddd;
+		border: 5px solid var(--sn-line, #ddd);
 		width: 120px;
 		}
 		
@@ -6452,7 +6452,7 @@
 		}
 		
 	.mvp-authors-list-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 30px 0 0 0;
 		padding-top: 30px;
 		width: 100%;
@@ -6724,7 +6724,7 @@
 		}
 		
 	.mvp-feat5-side-wrap {
-		border-top: 1px solid #ddd;
+		border-top: 1px solid var(--sn-line, #ddd);
 		margin: 20px 0 0;
 		padding: 20px 0 0;
 		width: 100%;

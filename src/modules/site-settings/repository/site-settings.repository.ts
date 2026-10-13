@@ -25,4 +25,15 @@ export class SiteSettingsRepository {
     );
     return new Map(rows.map((r) => [r.key, r.value]));
   }
+
+  /** Inserts or replaces the value for `key`. */
+  async set(key: string, value: string): Promise<void> {
+    await this.ensureTable();
+    await query(
+      `INSERT INTO site_settings (\`key\`, \`value\`)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE \`value\` = VALUES(\`value\`), updated_at = CURRENT_TIMESTAMP`,
+      [key, value]
+    );
+  }
 }

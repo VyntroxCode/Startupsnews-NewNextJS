@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { CATEGORIES_AUTHORS_MANAGE_ROLES, CATEGORIES_AUTHORS_VIEW_ROLES } from '@/shared/middleware/roles';
 import { UsersRepository } from '@/modules/users/repository/users.repository';
 import { UsersService } from '@/modules/users/service/users.service';
@@ -36,7 +36,7 @@ function mapAuthor(user: {
  * List author users only
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAnyRole(request, CATEGORIES_AUTHORS_VIEW_ROLES);
+  const auth = await requireContentAccess(request, CATEGORIES_AUTHORS_VIEW_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
  * Create a new author user
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAnyRole(request, CATEGORIES_AUTHORS_MANAGE_ROLES);
+  const auth = await requireContentAccess(request, CATEGORIES_AUTHORS_MANAGE_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

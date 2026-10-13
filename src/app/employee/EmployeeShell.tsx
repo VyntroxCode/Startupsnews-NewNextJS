@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { ComponentType } from 'react';
-import { Contact, ReceiptText } from 'lucide-react';
+import { BookOpen, ChartColumn, Contact, FileText, ReceiptText } from 'lucide-react';
 import { getEmployeeUser, clearEmployeeSession, getEmployeeAuthHeaders, setEmployeeSession, getEmployeeToken, type EmployeeUser } from '@/lib/employee-auth';
 import ProfileProgressStrip from '@/components/admin/ProfileProgressStrip';
 import PendingLeadsAlarm from '@/components/employee/PendingLeadsAlarm';
 import NewLeadReplyToast from '@/components/employee/NewLeadReplyToast';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { canEmployeeUseDirectory } from '@/modules/contacts/domain/directory-access';
+import { canEmployeeUseContent, isContentPortalPath } from '@/modules/hr-credentials/domain/content-access';
 // Scoped Tailwind utilities for the employee frame and its self-service widgets — see that file's header.
 import '@/components/admin/staff-panel-tailwind.css';
 
@@ -95,7 +96,10 @@ const DIRECTORY_HREF = '/employee/directory';
 
 // Written as a list so future employee-facing sections slot in the same way without
 // restructuring the sidebar.
-const NAV_ITEMS: { href: string; label: string; icon: ComponentType<{ size?: number; color?: string }> }[] = [
+// `content` marks the admin panel's Posts / Reports / Brand Stories screens, shown only to the
+// Employee IDs in CONTENT_EMPLOYEE_CODES. `alsoActive` lists sibling routes that keep the item lit.
+type NavItem = { href: string; label: string; icon: ComponentType<{ size?: number; color?: string }>; content?: boolean; alsoActive?: string[] };
+const NAV_ITEMS: NavItem[] = [
   { href: '/employee/attendance', label: 'Attendance', icon: AttendanceIcon },
   { href: '/employee/leads', label: 'My Leads', icon: LeadsIcon },
   { href: '/employee/leave', label: 'Leave', icon: LeaveIcon },
@@ -103,6 +107,10 @@ const NAV_ITEMS: { href: string; label: string; icon: ComponentType<{ size?: num
   { href: '/employee/documents', label: 'Documents', icon: DocumentsIcon },
   { href: '/employee/rules-policy', label: 'Admin Rules', icon: RulesPolicyIcon },
   { href: '/employee/it-tickets', label: 'IT Support', icon: TicketIcon },
+  // Industry, Authors and Content Studio are tabs of Posts, as in the admin panel.
+  { href: '/employee/posts', label: 'Posts', icon: FileText, content: true, alsoActive: ['/employee/categories', '/employee/authors', '/employee/content-studio'] },
+  { href: '/employee/reports', label: 'Reports', icon: ChartColumn, content: true },
+  { href: '/employee/brand-stories', label: 'Brand Stories', icon: BookOpen, content: true },
   // Contacts Directory (full access) — shown only to the Employee IDs in DIRECTORY_EMPLOYEE_CODES.
   { href: DIRECTORY_HREF, label: 'Directory', icon: Contact },
   { href: EXIT_HREF, label: 'My Exit', icon: ExitIcon },
@@ -143,11 +151,12 @@ function CloseIcon() {
 }
 
 const isActivePath = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
+const isItemActive = (pathname: string, item: NavItem) => [item.href, ...(item.alsoActive ?? [])].some((href) => isActivePath(pathname, href));
 
 /** The sidebar body — rendered once as the fixed desktop column and once inside the phone drawer. */
 function SidebarContent({ user, items, pathname, onLogout, onClose }: {
   user: EmployeeUser;
-  items: typeof NAV_ITEMS;
+  items: NavItem[];
   pathname: string;
   onLogout: () => void;
   onClose?: () => void;
@@ -178,7 +187,7 @@ function SidebarContent({ user, items, pathname, onLogout, onClose }: {
       <nav className="min-h-0 flex-1 overflow-y-auto">
         <div className="mb-2 px-3 text-[0.68rem] font-bold uppercase tracking-[0.06em] text-slate-400">Menu</div>
         {items.map((item) => {
-          const isActive = isActivePath(pathname, item.href);
+          const isActive = isItemActive(pathname, item);
           const Icon = item.icon;
           // visited: variants — style.css's `a:visited { color: #E62E69 }` outranks a plain text-* class
           // and turned every visited menu link pink.
@@ -285,11 +294,16 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
   // IT Support's board (five columns) and ticket table, and My Leads' KPI row and eight-column lead
   // table, and the Directory's contacts table, need more than the 1100px reading width the other
   // employee pages use, so those routes get the full content width.
-  const wideContent = pathname.startsWith('/employee/it-tickets') || pathname.startsWith('/employee/leads') || pathname.startsWith('/employee/exit') || pathname.startsWith(DIRECTORY_HREF);
+  const wideContent = pathname.startsWith('/employee/it-tickets') || pathname.startsWith('/employee/leads') || pathname.startsWith('/employee/exit') || pathname.startsWith(DIRECTORY_HREF) || isContentPortalPath(pathname);
+  // Content Studio is a fixed-viewport workstation with its own scrolling panes, so it sits flush (as in the admin panel).
+  const flushContent = pathname === '/employee/content-studio';
   const items = alumni
     ? ALUMNI_NAV_ITEMS
-    : NAV_ITEMS.filter((item) => item.href !== DIRECTORY_HREF || canEmployeeUseDirectory(user.employeeCode));
-  const currentLabel = items.find((item) => isActivePath(pathname, item.href))?.label || 'Employee';
+    : NAV_ITEMS.filter((item) =>
+        (item.href !== DIRECTORY_HREF || canEmployeeUseDirectory(user.employeeCode)) &&
+        (!item.content || canEmployeeUseContent(user.employeeCode))
+      );
+  const currentLabel = items.find((item) => isItemActive(pathname, item))?.label || 'Employee';
   const bottomTabs = alumni ? [] : NAV_ITEMS.filter((item) => BOTTOM_TABS.includes(item.href));
   const moreActive = !alumni && !bottomTabs.some((item) => isActivePath(pathname, item.href));
 
@@ -340,7 +354,7 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
       )}
 
       {/* min-w-0 lets a wide table scroll inside <main> instead of stretching the whole page. */}
-      <main className={`min-w-0 flex-1 px-4 pt-4 box-border md:px-10 md:pb-8 md:pt-8 ${bottomTabs.length ? 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]' : 'pb-8'} ${wideContent ? '' : 'md:max-w-[1100px]'}`}>
+      <main className={`min-w-0 flex-1 box-border ${flushContent ? 'md:pb-0' : 'px-4 pt-4 md:px-10 md:pb-8 md:pt-8'} ${bottomTabs.length ? 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]' : 'pb-8'} ${wideContent ? '' : 'md:max-w-[1100px]'}`}>
         {!alumni && <ProfileProgressStrip apiBase="/api/employee/documents" getHeaders={getEmployeeAuthHeaders} documentsHref="/employee/documents" />}
         {children}
       </main>

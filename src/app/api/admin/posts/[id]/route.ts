@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { getAuthUser, requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { getContentAuthUser, requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { CONTENT_ROLES, CONTENT_MANAGE_ROLES } from '@/shared/middleware/roles';
 import { PostsService } from '@/modules/posts/service/posts.service';
 import { PostsRepository } from '@/modules/posts/repository/posts.repository';
@@ -66,7 +66,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAnyRole(request, CONTENT_ROLES);
+  const auth = await requireContentAccess(request, CONTENT_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -187,7 +187,7 @@ async function handleUpdateRequest(
       body = parsed || {};
     }
 
-    const auth = await getAuthUser(request, formToken ?? undefined);
+    const auth = await getContentAuthUser(request, formToken ?? undefined);
     if (!auth) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. Please log in again.' },
@@ -407,7 +407,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAnyRole(request, [...CONTENT_MANAGE_ROLES, 'event_admin']);
+  const auth = await requireContentAccess(request, [...CONTENT_MANAGE_ROLES, 'event_admin']);
   if (auth instanceof NextResponse) return auth;
 
   try {

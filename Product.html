@@ -116,8 +116,8 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v173</span>
-    <span class="badge">Released 2026-10-09</span>
+    <span class="badge v">Version v191</span>
+    <span class="badge">Released 2026-10-13</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
     <span class="badge">Next.js 16 · React 19 · MariaDB</span>
@@ -217,7 +217,7 @@
       <tr><td>Press releases</td><td>A dedicated content stream, deliberately excluded from the Google News sitemap.</td><td><code>/press-release</code></td></tr>
       <tr><td>Reader accounts</td><td>Sign up with email and password, Google or LinkedIn, from one Login / Sign up page; complete a profile; manage newsletter preferences; delete your account.</td><td><code>/login</code>, <code>/dashboard</code></td></tr>
       <tr><td>Member dashboard</td><td>Home with events near you and a newsletter card, plus Reports, Brand Stories, Newsletter and Settings.</td><td><code>/dashboard/*</code></td></tr>
-      <tr><td>Funding (members)</td><td>Five pages of startup funding data: Dashboard, All Deals, Market Analysis, Search and AI Assistant, with a moving Market Pulse line and up to three sponsor cards.</td><td><code>/dashboard/funding/*</code></td></tr>
+      <tr><td>Funding (members)</td><td>Five pages of startup funding data: Dashboard, All Deals, Market Analysis, Search and AI Assistant, with the Dubai delegation announcement strip in the top bar and up to three sponsor cards.</td><td><code>/dashboard/funding/*</code></td></tr>
       <tr><td>Home page</td><td>Latest News cards that change by themselves every 5 seconds, a Trending column and a Startup Events timeline (v164).</td><td><code>/</code></td></tr>
       <tr><td>Lead-gen forms</td><td>Public forms: feature your startup, submit a funding round, submit a press release, list an event, sponsor an event, advertise, Expand North Star travel enquiry, and Contact Us. All but Contact Us arrive in the Sales Tracker as leads; Contact Us is emailed to the office.</td><td>See wireframe 4.3</td></tr>
       <tr><td>Newsletter</td><td>Opt-in, scheduled sends, one-click unsubscribe.</td><td><code>/unsubscribe</code></td></tr>
@@ -238,7 +238,7 @@
       <tr><td>Sales Tracker</td><td>Every lead from every public form in one place. The admin assigns a lead to departments and people, sees one Lead activity history (employee follow-ups, admin status updates, edits and reply threads), and has a Today's Follow up card with Today and Overdue counts.</td><td>admin only</td></tr>
       <tr><td>My Leads</td><td>Where the people a lead was given to read it, add follow-ups with a next follow-up date, and reply to the admin.</td><td>employees; event_admin, publisher_admin</td></tr>
       <tr><td>Funding Data</td><td>Add funding deals by hand or upload Excel / CSV, with a check of every row and an upload history that can be undone. Feeds the member Funding pages.</td><td>admin, financial_analyst</td></tr>
-      <tr><td>User Management</td><td>Where the admin writes the sponsor cards shown on the member Funding Dashboard (v166).</td><td>admin only</td></tr>
+      <tr><td>User Management</td><td>Where the admin writes the sponsor cards shown on the member Funding Dashboard (v166). Split into Funding and Reports sections (v174). Reports holds the Pro plan lock setting (v176).</td><td>admin only</td></tr>
       <tr><td>Registered Users</td><td>The list of readers who signed up, with search, filters and CSV export over all users.</td><td>admin</td></tr>
       <tr><td>Network Manager</td><td>Contacts CRM.</td><td>admin, event_admin</td></tr>
       <tr><td>Partnership Tracker (also called Events Tracker)</td><td>Event partnerships through their lifecycle, including whether each is live-listed on the public site and auto-expiry of past partnerships.</td><td>admin</td></tr>
@@ -967,6 +967,24 @@ flowchart LR
       <tr><td><strong>v171</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding: in <strong>Cities: Volume Vs. Cheque Size</strong> each of the top 8 cities now has its own colour, used for its bubble on the left and its bar on the right. Other cities are grey. Pointing at a city in the leaderboard picks out its bubble.</td></tr>
       <tr><td><strong>v172</strong></td><td>2026-10-09</td><td>Medium</td><td>Member dashboard, Funding: every page in the Funding section now uses one typeface, <strong>Calibri</strong>, for headings, numbers, tables, buttons and charts.</td></tr>
       <tr><td><strong>v173</strong></td><td>2026-10-09</td><td>Medium</td><td>HR Management, Directory: to give an employee <strong>Publisher Admin</strong> or <strong>Event Admin</strong> access, HR now only picks the role. The employee's panel account is made automatically. The "Link to existing account" box and its yellow "No available accounts" warning are removed.</td></tr>
+      <tr><td><strong>v174</strong></td><td>2026-10-10</td><td>Medium</td><td>Admin panel, <strong>User Management</strong>: the page is now split into two sections with a button for each, <strong>Funding</strong> and <strong>Reports</strong>. Funding holds the sponsor cards feature exactly as before. Reports is empty for now and will be filled in later.</td></tr>
+      <tr><td><strong>v175</strong></td><td>2026-10-10</td><td>Medium</td><td>Member dashboard, <strong>Reports</strong>: the list of reports is now split into <strong>pages of 12</strong>, with Previous, page numbers and Next under the cards. Before, more reports kept appearing as you scrolled down.</td></tr>
+      <tr><td><strong>v176</strong></td><td>2026-10-10</td><td>Major</td><td>Member dashboard, <strong>Reports</strong>: a <strong>Pro plan lock</strong>. Pages 1 and 2 of each report section stay open; from page 3 the cards are grey, cannot be opened, and a "Pro Plan Needed" message appears. The admin chooses where the lock starts in <strong>User Management &rarr; Reports</strong>.</td></tr>
+      <tr><td><strong>v177</strong></td><td>2026-10-10</td><td>Medium</td><td>Member dashboard, <strong>Reports</strong>: on every page the <strong>last row of report cards now slides from right to left</strong> by itself, in a smooth endless loop. It stops while the mouse is on it so a card can be clicked.</td></tr>
+      <tr><td><strong>v178</strong></td><td>2026-10-12</td><td>Medium</td><td>Top banners: a banner that links to an <strong>event which is over</strong> now <strong>comes down by itself</strong>, even when nobody gave it an end date. The admin Banners list marks such a banner "Event ended".</td></tr>
+      <tr><td><strong>v179</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard, Funding: a new <strong>Get Pro Plan</strong> button in the Funding tab row opens a new full-screen <strong>Pro Plan page</strong> showing what the plan includes, the price with GST, and a pay button. Online payment is not connected yet.</td></tr>
+      <tr><td><strong>v180</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard, <strong>Pro Plan page</strong>: redesigned to look premium. New hero with a Pro membership card, benefits sorted into three groups, a clearer payment card, a framed purchase card, and smoother animations. Same layout, same price, payment still not connected.</td></tr>
+      <tr><td><strong>v181</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard, Funding: the dark <strong>Market Pulse</strong> line of sample market figures is removed. In its place members see the same pink <strong>Dubai delegation strip</strong> that runs at the top of the home page, with its "Participate Now" button</td></tr>
+      <tr><td><strong>v182</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard, Funding, <strong>Capital By Sector</strong>: the "Top Sectors" list is replaced by a <strong>line chart</strong>. Clicking a sector tile shows that sector's last two years, this year against last year</td></tr>
+      <tr><td><strong>v183</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard side menu: <strong>Funding</strong> now has an arrow. Clicking it shows an <strong>All Deals</strong> sub-item that opens the All Deals page</td></tr>
+      <tr><td><strong>v184</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard, Funding, <strong>Investors And Companies</strong>: the Business Models ring is much larger and sits in its own second row beside a new chart, <strong>Average Round By Business Model</strong></td></tr>
+      <tr><td><strong>v191</strong></td><td>2026-10-13</td><td>Medium</td><td>HR Management, Offboarding: <strong>all exit emails are switched off</strong>. No email goes to the employee or to HR when someone resigns, when HR decides, or when the settlement is approved, and letters are no longer emailed. HR downloads letters and shares them. With v190, HR Management now sends no email at all.</td></tr>
+      <tr><td><strong>v190</strong></td><td>2026-10-13</td><td>Medium</td><td>HR Management: creating an employee <strong>no longer emails the offer letter</strong> to the new joiner. HR downloads the letter from the preview and shares it themselves. The button now reads <strong>Approve &amp; Create</strong>.</td></tr>
+      <tr><td><strong>v189</strong></td><td>2026-10-13</td><td>Medium</td><td>Public website: a new <strong>Dark mode</strong>. Visitors can choose <strong>Light</strong>, <strong>Dark</strong> or <strong>System</strong> from a button in the header (in the side menu on phones). Light mode looks as it did before. The admin, member and employee panels are not affected.</td></tr>
+      <tr><td><strong>v188</strong></td><td>2026-10-13</td><td>Major</td><td>Employee panel: employee <strong>SNFYI-0030</strong> now has <strong>Posts</strong>, <strong>Reports</strong> and <strong>Brand Stories</strong> in their own panel, with the same full access the super admin has in the admin panel. No other employee sees them.</td></tr>
+      <tr><td><strong>v187</strong></td><td>2026-10-13</td><td>Medium</td><td>Sales Tracker lead form (admin and employees): the <strong>Last call discussion</strong> field is removed, <strong>Source of lead</strong> is now a dropdown of pages and social platforms with an "Others" choice to type one, and the employee's My Leads table has a <strong>My Leads</strong> filter that shows only the leads they added</td></tr>
+      <tr><td><strong>v186</strong></td><td>2026-10-13</td><td>Major</td><td>Sales Tracker: employees, Event Admins and Publisher Admins can now <strong>add leads themselves</strong> from My Leads with an <strong>Add New Lead</strong> button, assign them to anyone, and edit the leads they added. The admin sees every such lead in All leads with a new <strong>Created By</strong> column and filter. Employees cannot delete leads</td></tr>
+      <tr><td><strong>v185</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard, Funding: the row of tabs at the top of every Funding page is removed. <strong>Get Pro Plan</strong> is now a round, slowly moving bubble button floating at the right of the screen</td></tr>
       <tr><td><strong>v130</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the <strong>Leads by page</strong> tiles (one per website page) are back, exactly as before, just below the new Leads overview.</td></tr>
       <tr><td><strong>v129</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: the old <strong>Summary</strong> and <strong>Leads by page</strong> boxes are replaced by one <strong>Leads overview</strong> that counts every lead — every website page, Expand North Star and leads added by the team — by type and by status, with charts. Click any number to see those leads.</td></tr>
       <tr><td><strong>v128</strong></td><td>2026-10-05</td><td>Medium</td><td>Sales Tracker: clicking any lead now opens it <strong>ready to edit</strong> — no more "Edit lead" button. Pressing <strong>Save changes</strong> shows a warning listing what you changed, and nothing is saved until you confirm.</td></tr>
@@ -4518,6 +4536,752 @@ PHONE                                   +--------------------+
   </div>
 </section>
 
+<section id="v191">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v191</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-13</span>
+    </div>
+    <p><strong>What changed.</strong> Every email that the Offboarding part of HR Management used to send is <strong>switched off for now</strong>. Resignations and exits work exactly as before on screen; the only difference is that nobody receives an email about them. Together with v190 (offer letter email off), HR Management now sends no email at all. The emails can be switched back on later with one setting.</p>
+    <table>
+      <thead><tr><th>Email that used to go out</th><th>Who received it</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Resignation received</td><td>HR inbox</td><td>Not sent. HR sees the resignation in Offboarding.</td></tr>
+        <tr><td>We have received your resignation</td><td>Employee</td><td>Not sent. The employee sees it on My Exit.</td></tr>
+        <tr><td>Update on your resignation (rejected)</td><td>Employee</td><td>Not sent. Shown on My Exit.</td></tr>
+        <tr><td>Your resignation has been accepted</td><td>Employee</td><td>Not sent. Shown on My Exit, with the last working day.</td></tr>
+        <tr><td>Update on your exit (left early)</td><td>Employee</td><td>Not sent.</td></tr>
+        <tr><td>Your Full &amp; Final settlement is ready</td><td>Employee</td><td>Not sent. The statement is on My Exit.</td></tr>
+        <tr><td>Relieving letter / Experience letter (PDF)</td><td>Employee</td><td>Not sent. HR downloads the letter and shares it.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>What changed on the HR screen?</td><td>In an exit's Letters area, the <strong>Email</strong> / <strong>Resend</strong> button and the "Email letters when issuing" tick box are gone. A short note says letters are not emailed.</td></tr>
+        <tr><td>Can HR still issue letters?</td><td>Yes. Preview, Issue, Re-issue and Download all work as before.</td></tr>
+        <tr><td>Can the employee still get their letter?</td><td>Yes, from HR, or by downloading it on their My Exit page while they still have access.</td></tr>
+        <tr><td>How does HR learn about a new resignation?</td><td>By opening Offboarding in HR Management. There is no email alert any more.</td></tr>
+        <tr><td>Is the personal email still asked for?</td><td>Yes, it is still saved, so emails can be switched back on later.</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">Offboarding — exit — Letters
+  Relieving Letter    Issued 12 Oct by HR · download to share   [Preview] [Download] [Re-issue]
+  Experience Letter   Not issued yet                             [Preview] [Issue]
+  Letters are not emailed — download a letter and share it yourself.</div>
+    <p><strong>Data flow.</strong> Employee resigns or HR acts on an exit &rarr; the exit record is updated and shown in Offboarding and on My Exit &rarr; <em>no email is sent</em>. HR issues a letter &rarr; the letter is saved &rarr; HR downloads the PDF and shares it.</p>
+  </div>
+</section>
+
+<section id="v190">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v190</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-13</span>
+    </div>
+    <p><strong>What changed.</strong> When HR creates a new employee in HR Management, the system <strong>no longer sends the offer letter email</strong> to the new joiner. Until now, approving the letter emailed it to them with the letter attached as a PDF. That email is switched off. Everything else about creating an employee is the same.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Does the new joiner get any email on hire?</td><td>No. Nothing is emailed to them when the employee is created.</td></tr>
+        <tr><td>Is the employee still created?</td><td>Yes. Their record, their Employee ID and their login are created exactly as before.</td></tr>
+        <tr><td>Is the letter still made?</td><td>Yes. HR still sees the letter preview, and it is still saved on the employee's record.</td></tr>
+        <tr><td>How does the new joiner get the letter?</td><td>HR presses <strong>Download Joining Letter</strong> on the preview and shares the PDF themselves.</td></tr>
+        <tr><td>How does the new joiner get their password?</td><td>The password is shown on the preview with a <strong>Copy password</strong> button, and it is printed in the standard letter. HR must pass it on, because no email carries it any more.</td></tr>
+        <tr><td>What changed on the screen?</td><td>The blue button reads <strong>Approve &amp; Create</strong> (it was Approve &amp; Send), and the note above the letter says no email is sent.</td></tr>
+        <tr><td>Are other HR emails affected?</td><td>No. Resignation and exit emails still go out as before.</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">Preview — Joining Letter
+  (i) Approving creates their login. No email is sent — download the letter to share it with them.
+  +----------------------------------------------+
+  |  Joining letter preview                      |
+  +----------------------------------------------+
+  Employee ID: SNFYI-0031 · Password: ****  [Copy password]
+            [Back to edit] [Download Joining Letter] [Approve &amp; Create]</div>
+    <p><strong>Data flow.</strong> HR fills the Create Employee form &rarr; previews the letter &rarr; presses Approve &amp; Create &rarr; the login and the employee record are saved &rarr; <em>no email is sent</em> &rarr; HR downloads the letter and shares it.</p>
+  </div>
+</section>
+
+<section id="v189">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v189</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-13</span>
+    </div>
+    <p><strong>What changed.</strong> The public website now has a <strong>Dark mode</strong>. A visitor can pick <strong>Light</strong>, <strong>Dark</strong> or <strong>System</strong>. Light mode is the site as it has always looked. Dark mode is a new midnight design of the same pages: the same content, layout and pictures, with dark backgrounds, soft white text and the brand pink as the accent.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Where is the switch?</td><td>On a computer: a round sun / moon button in the header, between the search box and the sign-in button. On a phone: open the side menu and use the <strong>Appearance</strong> row.</td></tr>
+        <tr><td>What does a first-time visitor see?</td><td>Light mode, as before. Dark mode starts only when the visitor chooses Dark or System.</td></tr>
+        <tr><td>What does System do?</td><td>It follows the visitor's phone or computer setting, and changes with it straight away.</td></tr>
+        <tr><td>Is the choice remembered?</td><td>Yes, on that browser. The next visit opens in the chosen mode with no white flash.</td></tr>
+        <tr><td>Which pages have Dark mode?</td><td>Every public page: home, category and article pages, search, events, funding tracker, press releases, the company pages, all the submission forms, sign-in, and the event landing pages.</td></tr>
+        <tr><td>Which pages do not?</td><td>The admin panel, the member dashboard and the employee panel. They always stay as they are.</td></tr>
+        <tr><td>Did Light mode change?</td><td>Only in the header: the new button is there, and on a computer the menu links sit slightly closer together to make room for it. Nothing else.</td></tr>
+        <tr><td>Do pictures change?</td><td>No. Photos, logos and banners keep their own colours. In Dark mode they get a thin outline and slightly rounded corners.</td></tr>
+        <tr><td>What about people who switch off animations?</td><td>The colour fade and the small icon animation are skipped. The mode still changes.</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">Computer header
+  [=] StartupNews   SECTORS  FUNDING TRACKER  EVENTS ...   [ Search... ] (moon) (sign in)
+                                                                          |
+                                                                  +---------------+
+                                                                  | Light         |
+                                                                  | Dark       ✓  |
+                                                                  | System        |
+                                                                  +---------------+
+Phone side menu
+  SECTORS                +
+  EVENTS                 +
+  ...
+  APPEARANCE
+  [  Light  |  Dark  |  System  ]
+  CONNECT WITH US</div>
+    <p><strong>Data flow.</strong> Visitor picks a mode &rarr; the choice is saved in that browser only (nothing is sent to the server) &rarr; the page changes colours in about a quarter of a second without reloading &rarr; on the next visit the saved choice is applied before the page is drawn.</p>
+  </div>
+</section>
+
+<section id="v188">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v188</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-13</span>
+    </div>
+    <p><strong>What changed.</strong> One employee, <strong>SNFYI-0030</strong>, now manages the site's content from their own employee panel. Three new items appear in their side menu: <strong>Posts</strong>, <strong>Reports</strong> and <strong>Brand Stories</strong>. These are the same screens the admin panel has, with the same full access as the super admin. Nobody else's employee panel changes.</p>
+    <table>
+      <thead><tr><th>Menu item</th><th>What the employee can do</th></tr></thead>
+      <tbody>
+        <tr><td>Posts</td><td>See all posts, create, edit, publish or unpublish, delete, change many posts at once, and download the list as CSV. Upload images.</td></tr>
+        <tr><td>Posts &rarr; Industry</td><td>Add, edit and delete categories.</td></tr>
+        <tr><td>Posts &rarr; Authors</td><td>Add, edit, switch off and delete authors.</td></tr>
+        <tr><td>Posts &rarr; Content Studio</td><td>Find news and trends and draft an article with AI, then send it to the new-post form.</td></tr>
+        <tr><td>Reports</td><td>Add, edit and delete reports (with the PDF and cover image), and add, rename, reorder and delete report sections.</td></tr>
+        <tr><td>Brand Stories</td><td>Add, edit and delete brand stories, and add, rename, reorder and delete their sections.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>How does the employee get in?</td><td>They log in as before with their Employee ID and password. The three items are simply there in the menu.</td></tr>
+        <tr><td>Who decides who has this access?</td><td>A short list of Employee IDs kept in the code. Today it holds one ID, SNFYI-0030. Adding or removing a person is a one-line change by the developer, and it takes effect when the site is updated.</td></tr>
+        <tr><td>What do other employees see?</td><td>No change. The items are hidden, and if they type the address they get "You do not have access to this section". The server also refuses their requests.</td></tr>
+        <tr><td>What is recorded?</td><td>Anything the employee creates or edits is saved with their work email as "created by" or "updated by".</td></tr>
+        <tr><td>What happens when the employee leaves?</td><td>After their last working day the access stops on its own, like the rest of their panel.</td></tr>
+        <tr><td>Does the employee get the rest of the admin panel?</td><td>No. Only these three sections. Everything else in the admin panel stays closed to them.</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">Employee panel menu (SNFYI-0030)        Posts screen
+  Attendance                            [ Posts ] [ Industry ] [ Authors ] [ Content Studio ]
+  My Leads                              [ Search...        ] [ + New Post ] [ Export CSV ]
+  Leave                                 Title            Status      Author     Actions
+  My Payslips                           ...              Published   ...        Edit  Delete
+  Documents
+  Admin Rules
+  IT Support
+  Posts            &lt;-- new
+  Reports          &lt;-- new
+  Brand Stories    &lt;-- new
+  My Exit</div>
+    <p><strong>Data flow.</strong> Employee logs in with Employee ID &rarr; opens Posts, Reports or Brand Stories in the employee panel &rarr; the screen sends each request with the employee's own login &rarr; the server checks the login is active and that the Employee ID is on the content list &rarr; the same admin content service reads or saves the data &rarr; the change shows on the public site as it would for an admin.</p>
+  </div>
+</section>
+
+<section id="v187">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v187</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-13</span>
+    </div>
+    <p><strong>What changed.</strong> Three changes to how leads are filled in and found. The lead form is the same one for the admin and for employees, so the first two apply to both.</p>
+    <table>
+      <thead><tr><th>Change</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Last call discussion</td><td>A separate text box in the lead form, next to the Conversation result box.</td><td>Removed from the form. Notes about a call go in <strong>Conversation result</strong>, which appears when the status is Follow Up or Confirmed and is saved into Lead activity. Text already saved in the old box is kept and still comes out in the exports.</td></tr>
+        <tr><td>Source of lead</td><td>A free text box.</td><td>A <strong>dropdown</strong>. Picking <strong>Others</strong> opens a box to type the source by hand.</td></tr>
+        <tr><td>My Leads filter (employees)</td><td>The Lead Status dropdown listed only the four statuses.</td><td>A fifth choice, <strong>My Leads</strong>, shows only the leads the employee added themselves, in any status.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Source of lead dropdown</th><th>Choices</th></tr></thead>
+      <tbody>
+        <tr><td>Website pages</td><td>Feature Your Startup, Submit Your Funding Round, Submit Your Press Release, Sponsor an Event, Advertise With Us, Expand North Star</td></tr>
+        <tr><td>Social platforms</td><td>WhatsApp, LinkedIn, Facebook, Instagram</td></tr>
+        <tr><td>Anything else</td><td>Others (write it): a "Specify source" box appears and what is typed is saved as the source.</td></tr>
+        <tr><td>Leads saved earlier</td><td>Their source is kept exactly as it was. If it is not one of the choices, the lead opens on Others with the old text in the box.</td></tr>
+        <tr><td>Leads from the website</td><td>Their source is still set by the page and locked.</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">Source of lead            Specify source          My Leads table
+[ Others (write it)  v ]  [ Trade fair stall   ]  Lead Status [ My Leads      v ]
+  Feature Your Startup                                         All statuses
+  ...                                                          Pending
+  WhatsApp                                                     Followed up
+  LinkedIn                                                     Confirmed
+  Facebook                                                     Not Interested
+  Instagram                                                    My Leads
+  Others (write it)</div>
+  </div>
+</section>
+
+<section id="v186">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v186</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-13</span>
+    </div>
+    <p><strong>What changed.</strong> Until now only the admin could add a lead to the Sales Tracker. Employees, Event Admins and Publisher Admins could only work on leads the admin gave them. Now each of them has an <strong>Add New Lead</strong> button on their My Leads page. They fill in the lead, assign it to anyone in the company, and it appears in the admin's All leads straight away, marked with who created it.</p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">My Leads                                         [ + Add New Lead ]
+Leads assigned to you and leads you added
++----------------------------------------------------------------+
+| Today's Follow up                              Today 2  Overdue 1 |
++----------------------------------------------------------------+
+| Lead                         Page             Assigned    Status |
+| Asha Rao  [Added by you]     Added manually   Not assigned Pending|
+| Vikram S                     Feature Startup  12 Oct       Follow |
++----------------------------------------------------------------+
+
+Click "Asha Rao"  --&gt;  lead panel  --&gt;  [ Edit lead ]  (only on leads you added)</div>
+    <table>
+      <thead><tr><th>Rule</th><th>How it works</th></tr></thead>
+      <tbody>
+        <tr><td>Who can add a lead</td><td>Every employee (employee portal, My Leads) and every Event Admin / Publisher Admin (admin panel, My Leads).</td></tr>
+        <tr><td>The form</td><td>The same form the admin uses: name, company, contact number, email, country, city, source, type of lead, status, next follow-up date, last call discussion, conversation result, departments and assigned people.</td></tr>
+        <tr><td>Assigning</td><td>Compulsory. At least one person must be picked before the lead can be saved. Pick a department first, then the person, exactly as the admin does. Any active employee in any department can be picked, including the creator.</td></tr>
+        <tr><td>Where the lead shows</td><td>In the admin's <strong>All leads</strong>, in the My Leads of every assigned person, and always in the creator's own My Leads with an "Added by you" tag, even when the creator is not one of the assigned people.</td></tr>
+        <tr><td>Editing</td><td>An employee can edit <strong>only the leads they added</strong>, through the Edit lead button in the lead panel. Leads given to them by the admin or by a colleague stay view-only, as before.</td></tr>
+        <tr><td>Changing who is assigned</td><td>The creator and the admin can add or remove people later. Other assigned people cannot.</td></tr>
+        <tr><td>Follow-ups and replies</td><td>The creator can log follow-ups and reply in the conversation on their lead even when they are not assigned to it.</td></tr>
+        <tr><td>Deleting</td><td>Employees <strong>cannot delete</strong> any lead. Only the admin can.</td></tr>
+        <tr><td>History</td><td>Every edit by the creator is written to the lead's history as old value → new value under their name, the same way the admin's edits are. The admin sees it in Lead activity; everyone on the lead sees it in the lead panel.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>What the admin sees in the Sales Tracker</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Created By column</td><td>New column in All leads: the employee's name, or the admin's name for a lead added in the Sales Tracker, or "Website form" for a lead that came from a public page.</td></tr>
+        <tr><td>Filter: created by</td><td>New filter listing everyone who has created a lead. "Not recorded" shows hand-added leads from before this change, which have no creator stored.</td></tr>
+        <tr><td>Inside the lead window</td><td>A locked "Created by" field.</td></tr>
+        <tr><td>Exports</td><td>CSV, Excel and PDF have a new "Created By" column.</td></tr>
+        <tr><td>Assigned column</td><td>Unchanged: it shows who the lead is assigned to, so the admin sees both the creator and the assigned people on each row.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Good to know</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Next follow-up date on an employee's lead</td><td>The date the creator sets in the form is the lead's own date. The admin sees and can change the same date. Other assigned people still keep their own separate dates.</td></tr>
+        <tr><td>Follow-up counts</td><td>An edit without a note does not count as a follow-up. A note written with an edit (Conversation result) does.</td></tr>
+        <tr><td>Before this goes live</td><td>One small database change must be run first (two new columns that store the creator). Without it the lead pages will not load.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="v185">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v185</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-12</span>
+    </div>
+    <p><strong>What changed.</strong> The row of tabs at the top of every Funding page (Dashboard, All Deals, Market Analysis, Search, AI Assistant, Get Pro Plan) is removed. <strong>Get Pro Plan</strong> is now a round <strong>bubble button</strong> that floats at the right side of the screen and moves slowly. Clicking it opens the Pro Plan page.</p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">+--------------------------------------------------------------+
+| [logo]  ( Dubai delegation strip ... )                       |
++--------------------------------------------------------------+
+| menu |  Funding page content starts here                     |
+|      |  (the row of tabs used to be at the top)              |
+|      |                                                       |
+|      |                                              .-----.  |
+|      |                       [Lifetime Access]  &lt;-- ( crown ) |
+|      |                        shown on hover       (Get Pro) |
+|      |                                              '-----'  |
+|      |                                                 [ ^ ] |
+|      |                                                 [ v ] |
++--------------------------------------------------------------+</div>
+    <table>
+      <thead><tr><th>Effect</th><th>What the member sees</th></tr></thead>
+      <tbody>
+        <tr><td>Slow movement</td><td>The bubble drifts gently around its place and comes back, all the time.</td></tr>
+        <tr><td>Arrival</td><td>It pops in once when the page opens.</td></tr>
+        <tr><td>Rings and glow</td><td>Two soft rings spread out from it and fade; a coloured glow behind it grows and shrinks.</td></tr>
+        <tr><td>Shine</td><td>A highlight turns slowly inside the bubble and a band of light crosses it. The crown nods every few seconds.</td></tr>
+        <tr><td>Mouse over it</td><td>It stops drifting so it is easy to click, grows a little, and a small "Lifetime Access" label slides out beside it.</td></tr>
+        <tr><td>Click</td><td>Opens the Pro Plan page.</td></tr>
+        <tr><td>Device set to "reduce motion"</td><td>The bubble is shown still, with no animation.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Funding page</th><th>How a member reaches it now</th></tr></thead>
+      <tbody>
+        <tr><td>Funding Dashboard</td><td>"Funding" in the side menu.</td></tr>
+        <tr><td>All Deals</td><td>"All Deals" under Funding in the side menu (v183).</td></tr>
+        <tr><td>Pro Plan</td><td>The bubble.</td></tr>
+        <tr><td>Market Analysis, Search, AI Assistant</td><td><strong>No link at present.</strong> These pages still exist and open by their web address, but nothing on screen leads to them since the row was removed. To be decided: add them under Funding in the side menu, or leave them hidden.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>What did not change.</strong> The Pro Plan page itself, and the content of every Funding page.</p>
+    <p><strong>Status.</strong> Written and checked for code errors. It has not yet been looked at in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v184">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v184</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-12</span>
+    </div>
+    <p><strong>What changed.</strong> On the Funding Dashboard, the <strong>Investors And Companies</strong> block is rearranged into two rows, the <strong>Business Models</strong> ring chart is made much larger, and a new chart is added beside it.</p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">Row 1
++--------------------------------------+  +------------------------+
+| Top Investors (table)                |  | Top Companies (list)   |
++--------------------------------------+  +------------------------+
+Row 2
++--------------------------------------+  +------------------------+
+| Average Round By Business Model  NEW |  | Business Models        |
+| SaaS        ==============  $41 Mn   |  |        ( ring )        |
+| B2B         ==========      $30 Mn   |  |      Total Capital     |
+| Marketplace ========        $24 Mn   |  | Marketplace  $2 Bn 21% |
+| B2C         ======          $18 Mn   |  | B2B        $1.8 Bn 19% |
++--------------------------------------+  +------------------------+</div>
+    <p>The amounts in the drawing are examples, not real figures.</p>
+    <table>
+      <thead><tr><th>Card</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Top Investors</td><td>Left, taking the full height of the block.</td><td>Row 1, left. Unchanged inside.</td></tr>
+        <tr><td>Top Companies</td><td>Right, above the small ring.</td><td>Row 1, right, on its own. Unchanged inside.</td></tr>
+        <tr><td>Business Models</td><td>A small ring squeezed under Top Companies, with only a % beside each name.</td><td>Row 2, right. A ring about twice the size, with the <strong>total capital</strong> written in the middle. The list under it shows the amount and the % for every model.</td></tr>
+        <tr><td>Average Round By Business Model</td><td>Did not exist.</td><td>Row 2, left. One bar per business model showing the <strong>average size of a round</strong>, biggest first. Each bar is labelled with the average and the number of deals.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Why this new chart?</td><td>The ring shows which model received the most money in total. The bars show which model gets the biggest cheques. A model can be small in total but large per round.</td></tr>
+        <tr><td>How is the average worked out?</td><td>Money raised by that model divided by its number of deals.</td></tr>
+        <tr><td>Do the colours match?</td><td>Yes. A business model has the same colour in the ring and in the bars.</td></tr>
+        <tr><td>What happens on pointing?</td><td>Pointing at a slice of the ring, or a name in its list, fades the other models on both cards. Pointing at a bar or slice shows a small box with the amount, the deals and the average.</td></tr>
+        <tr><td>What if there is no business-model data?</td><td>Row 2 is not shown, as before.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>What did not change.</strong> The numbers themselves. No new data is collected; the new chart uses figures the page already had.</p>
+    <p><strong>Status.</strong> Written and checked for code errors. It has not yet been looked at in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v183">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v183</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-12</span>
+    </div>
+    <p><strong>What changed.</strong> In the member dashboard's side menu, the <strong>Funding</strong> item now has a small arrow on its right. Clicking the arrow shows a sub-item, <strong>All Deals</strong>, under Funding. Clicking All Deals opens the All Deals page in the main area on the right.</p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">Arrow closed                 Arrow open
++------------------------+   +------------------------+
+| [] Reports             |   | [] Reports             |
+| /\ Funding          v  |   | /\ Funding          ^  |
+| [] Brand Stories   (L) |   |  |  All Deals          |
+| [] Handouts        (L) |   | [] Brand Stories   (L) |
++------------------------+   +------------------------+</div>
+    <table>
+      <thead><tr><th>The member clicks</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>The word "Funding"</td><td>Opens the Funding Dashboard, as before.</td></tr>
+        <tr><td>The arrow</td><td>Shows or hides the All Deals sub-item. The page on the right does not change.</td></tr>
+        <tr><td>All Deals</td><td>Opens the All Deals page. All Deals is then highlighted in pink.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Situation</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td>The member is already on the All Deals page</td><td>The sub-item is shown open without clicking the arrow.</td></tr>
+        <tr><td>The side menu is shrunk to icons (computer, mouse away)</td><td>The arrow and sub-item are hidden; they return when the menu opens again.</td></tr>
+        <tr><td>Phone</td><td>Same arrow and sub-item inside the slide-out menu. Choosing All Deals closes the menu.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>What did not change.</strong> The All Deals page itself, and the row of Funding tabs at the top of each Funding page (which also has All Deals). The other menu items.</p>
+    <p><strong>Status.</strong> Written and checked for code errors. It has not yet been looked at in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v182">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v182</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-12</span>
+    </div>
+    <p><strong>What changed.</strong> On the Funding Dashboard, in the <strong>Capital By Sector</strong> block, the "Top Sectors" list on the right is gone. In its place is a <strong>line chart</strong> that works together with the coloured sector tiles on the left.</p>
+    <table>
+      <thead><tr><th>What the member does</th><th>What the line chart shows</th></tr></thead>
+      <tbody>
+        <tr><td>Nothing (page just opened)</td><td>One line for each of the top 8 sectors, month by month for this year. Each line has the same colour as its tile. The names are listed under the chart.</td></tr>
+        <tr><td>Moves the mouse over a tile</td><td>That sector's line gets thicker and the others fade, so it is easy to find.</td></tr>
+        <tr><td>Clicks a tile, for example Cybersecurity</td><td>Only Cybersecurity, as <strong>two lines</strong>: this year (solid, in the tile's colour) and last year (grey, dashed), January to December. The tile gets a dark outline.</td></tr>
+        <tr><td>Clicks the same tile again, or picks "Top Sectors" in the small dropdown</td><td>Back to the top 8 sectors.</td></tr>
+        <tr><td>Points at a month on the chart</td><td>A small box with the amount for that month, for each line.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Shown above the chart when one sector is picked</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>This year's amount</td><td>Money raised by the sector from January up to the current month.</td></tr>
+        <tr><td>Last year's amount</td><td>Money raised in the <em>same months</em> last year, so the two are a fair comparison.</td></tr>
+        <tr><td>Green or red tag with a %</td><td>How much higher or lower this year is than the same months last year. It is hidden when the sector raised nothing last year.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Capital By Sector on a computer.</strong></p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">+----------------------------------------+  +------------------------------+
+| [Cybersecurity*] [EV      ] [DeepTech] |  | Cybersecurity   [ Sector v ] |
+|                  [Clean T.] [FinTech ] |  | 2026 against 2025            |
+| [ClimateTech   ] [PropTech] [Gaming  ] |  | 2026 Jan-Oct   2025 Jan-Oct  |
+| [TravelTech    ] [LegalT. ] [ ...    ] |  | $1.75 Bn       $1.20 Bn  +46%|
+| [Mobility      ]                       |  |   ___ this year  - - last yr |
+|   * = clicked tile, dark outline       |  |  /\__/\   _ - - _            |
+|                                        |  | Jan Feb Mar ... Oct Nov Dec  |
++----------------------------------------+  +------------------------------+</div>
+    <p>The amounts in the drawing are examples, not real figures.</p>
+    <table>
+      <thead><tr><th>Item</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Right-hand card</td><td>A ranked list of the top 8 sectors with bars, amounts and deal counts.</td><td>The line chart described above.</td></tr>
+        <tr><td>"Top 3 sectors hold N% of all capital"</td><td>Under the list's title.</td><td>Kept, under the chart's title.</td></tr>
+        <tr><td>Clicking a tile</td><td>Lit the sector up only while the mouse stayed on it.</td><td>Keeps the sector picked until the member changes it.</td></tr>
+        <tr><td>On a phone</td><td>The list sat above the tiles.</td><td>The line chart sits below the tiles, because the tiles drive it.</td></tr>
+        <tr><td>Without a mouse</td><td>The list rows could be reached by keyboard.</td><td>The dropdown in the card lists every sector and does the same as clicking a tile.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Where the numbers come from.</strong> The same funding deals as the rest of the page, for the country chosen at the top. The page now also reads last year's deals so it can draw the second line. This year's line stops at the current month; it does not fall to zero for months that have not happened yet.</p>
+    <p><strong>What did not change.</strong> The tiles, their colours and sizes. Every other block on the Funding Dashboard.</p>
+    <p><strong>Status.</strong> Written and checked for code errors. It has not yet been looked at in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v181">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v181</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-12</span>
+    </div>
+    <p><strong>What changed.</strong> In the member dashboard, the dark moving line of sample market figures (<strong>Market Pulse</strong>, v165) has been removed from the Funding pages. In the same place members now see the pink <strong>Dubai delegation strip</strong>, the same one that runs across the top of the home page.</p>
+    <table>
+      <thead><tr><th>Item</th><th>Before (v165)</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>What the strip says</td><td>Sample figures: NIFTY 50, SENSEX, NASDAQ, BTC and others, marked "Sample".</td><td>"12th Startup Delegation to Dubai &bull; 7th &ndash; 12th Dec 2026", running left to right.</td></tr>
+        <tr><td>Button</td><td>None.</td><td><strong>Participate Now</strong>, which opens the Expand North Star page.</td></tr>
+        <tr><td>Where it sits on a computer</td><td>In the top bar, beside the StartupNews logo.</td><td>Same place.</td></tr>
+        <tr><td>Where it sits on a phone</td><td>Right under the top bar, above the page.</td><td>Same place.</td></tr>
+        <tr><td>Which pages</td><td>Every Funding page.</td><td>Same. Other dashboard pages do not show it.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Funding pages, top bar on a computer.</strong></p>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5;overflow-x:auto">+--------------------------------------------------------------------------+
+| [StartupNews logo]  ( 12TH STARTUP DELEGATION TO DUBAI * 7TH - 12TH DEC  |
+|                       2026 * ... moving ...        [ PARTICIPATE NOW ] ) |
++--------------------------------------------------------------------------+
+| side menu | Dashboard | All Deals | Market Analysis | Search | AI | Pro  |
++--------------------------------------------------------------------------+</div>
+    <p><strong>What did not change.</strong> The strip on the home page looks and behaves exactly as before. The Funding pages, their numbers and the Get Pro Plan button are untouched. The strip still pauses when the mouse is over it and stands still for members whose device asks for less motion.</p>
+    <p><strong>Status.</strong> Written and checked for code errors. It has not yet been looked at in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v180">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v180</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-12</span>
+    </div>
+    <p><strong>What changed.</strong> The Pro Plan page (v179) was redesigned so it looks like a premium purchase page. The layout is the same as the wireframe; every block was redrawn.</p>
+    <table>
+      <thead><tr><th>Part of the page</th><th>Before (v179)</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Hero</td><td>A small coloured tile with bars.</td><td>A dark <strong>Pro membership card</strong> carrying the member's own name, with a small chart card and a tick card beside it. Bigger headline: "Unlock the full funding picture. Pay once, keep it for life." Three chips under it.</td></tr>
+        <tr><td>Benefits card</td><td>One long list of eight points.</td><td>The same eight points in three groups: <strong>Track the market</strong>, <strong>Explore every deal</strong>, <strong>Look ahead</strong>, in two columns, each group in its own colour.</td></tr>
+        <tr><td>Short text card</td><td>A black card about who the plan is for.</td><td>A light card: <strong>"Pay once. Keep it for life."</strong> It explains that Pro is not a subscription.</td></tr>
+        <tr><td>Payment details</td><td>Price, GST, total, three notes.</td><td>Same amounts, cleaner. The note promising a GST invoice was removed because that is not built yet.</td></tr>
+        <tr><td>Small cards</td><td>Small one-line cards.</td><td>Three taller cards with a large live number each: funding tracked, deals recorded, active sectors.</td></tr>
+        <tr><td>Purchase</td><td>One wide coloured button.</td><td>A framed <strong>purchase card</strong>: plan name, the price in large figures, "+ 18% GST, paid once", the total, and the Get Pro Plan button.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Movement</th><th>What the member sees</th></tr></thead>
+      <tbody>
+        <tr><td>On opening</td><td>The hero arrives first: the card scales in, the headline rises word by word, then the text and chips. The cards below follow in order.</td></tr>
+        <tr><td>On scrolling</td><td>Cards further down rise into place once, when they come into view. The soft background colours drift slightly.</td></tr>
+        <tr><td>With the mouse</td><td>The membership card leans towards the pointer. Cards lift a little, icons nudge, and one band of light crosses the pay button.</td></tr>
+        <tr><td>Reduced motion</td><td>Members whose device asks for less motion see the finished page with no movement.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>What did not change.</strong> The price is still the sample Rs 4,999 plus GST. Online payment is still not connected, so the button still says "Online payment is not open yet. You have not been charged." Nothing in Funding is locked.</p>
+    <p><strong>Status.</strong> Written and checked for code errors. It has not yet been looked at in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v179">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v179</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-12</span>
+    </div>
+    <p><strong>What changed.</strong> Members now see a <strong>Get Pro Plan</strong> button on the right side of the Funding tab row, on every Funding page. It has a crown, a "Lifetime access" tag and a band of light that sweeps across it. Clicking it opens a new full-screen <strong>Pro Plan page</strong> (no side menu), where the member can read what the plan includes and what it costs.</p>
+    <table>
+      <thead><tr><th>Part of the page</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>Top bar</td><td>Our logo and a "Back to Funding" button.</td></tr>
+        <tr><td>Hero</td><td>A picture on the left and the headline on the right: every funding deal, sector and investor for one payment, for life.</td></tr>
+        <tr><td>Everything in the Pro plan</td><td>Eight points, one for each part of the Funding section: live dashboard, funding over time, breakdowns, all deals with Excel download, Market Analysis, deal search, 12-month outlook, and the AI Assistant (marked "Coming soon").</td></tr>
+        <tr><td>Short text card</td><td>Who the plan is for: founders, investors and analysts.</td></tr>
+        <tr><td>Payment details</td><td>Plan price, GST at 18%, total to pay, and the name and email of the logged-in member it will be billed to.</td></tr>
+        <tr><td>Small cards</td><td>Three live numbers from the Funding dashboard: funding tracked this year, deals this year, active sectors.</td></tr>
+        <tr><td>Pay button</td><td>"Get Pro Plan" with the total amount.</td></tr>
+      </tbody>
+    </table>
+    <div class="wire" style="font-family:monospace;padding:10px;border:1px dashed #cbd5e1;border-radius:8px;white-space:pre;line-height:1.5">+--------------------------------------------------------------+
+| [Logo]                                    [ Back to Funding ] |
++--------------------------------------------------------------+
+| [Hero picture]   Every funding deal, sector and investor.    |
+|                  One payment, yours for life.                |
++-------------------------------+------------------------------+
+| Everything in the Pro plan    | Built for founders,          |
+|  - Live funding dashboard     | investors and analysts       |
+|  - Funding over time          +------------------------------+
+|  - Breakdowns                 | Payment details   [Lifetime] |
+|  - Every deal in one table    |  Pro plan         Rs 4,999.00|
+|  - Market Analysis            |  GST (18%)          Rs 899.82|
+|  - Deal search                |  Total payable    Rs 5,898.82|
+|  - 12-month outlook           |  Billed to: name, email      |
+|  - AI Assistant (soon)        |                              |
++-------------------------------+------------------------------+
+| [Funding] [Deals] [Sectors]   | [ Get Pro Plan  Rs 5,898.82 ]|
++-------------------------------+------------------------------+
+    </pre>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Can a member pay today?</td><td>No. The payment company has not been chosen yet. Pressing the pay button shows "Online payment is not open yet. You have not been charged."</td></tr>
+        <tr><td>Is the price final?</td><td>No. Rs 4,999 plus GST is a sample price until the real one is confirmed.</td></tr>
+        <tr><td>Is it monthly or yearly?</td><td>Neither. It is one payment for lifetime access.</td></tr>
+        <tr><td>Is anything in Funding locked now?</td><td>No. Every Funding page is still open to all members. What Pro will lock is decided later.</td></tr>
+        <tr><td>Is the hero picture final?</td><td>No. It is a drawn placeholder until a real image is supplied.</td></tr>
+        <tr><td>Does the page move?</td><td>Yes. Each block rises into place, the list appears point by point, the total counts up, and the buttons have a sweeping light. Members who have asked their device for less motion see it still.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Status.</strong> Written and checked for errors. It appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v178">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v178</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-12</span>
+    </div>
+    <p><strong>What changed.</strong> The banners at the top of the site now come down by themselves when the event they advertise is over. Before, a banner saved without an end date stayed up forever, so a finished event (the MENA CISO Summit, 30 Sep) was still being advertised on 12 Oct.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Which banners does this affect?</td><td>Only banners whose link goes to one of our own event pages. Banners that link anywhere else are untouched.</td></tr>
+        <tr><td>When is an event "over"?</td><td>The day after its last day, or as soon as it is marked completed or cancelled.</td></tr>
+        <tr><td>Do I still need to set an end date on a banner?</td><td>Not for this. An end date is still useful if the banner should come down <em>before</em> the event ends.</td></tr>
+        <tr><td>How do I know why a banner is not showing?</td><td>In Admin &rarr; Events &rarr; Banners its status reads <strong>Event ended</strong>, with the line "Hidden on site &mdash; linked event is over".</td></tr>
+        <tr><td>Is the banner deleted or switched off?</td><td>No. Nothing is changed on the banner itself; the site simply stops showing it.</td></tr>
+        <tr><td>What if the event's dates are corrected to a future date?</td><td>The banner comes back by itself within a few minutes.</td></tr>
+        <tr><td>Does the finished event's own page still open?</td><td>Yes. This change is only about banners.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Banner status in admin</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Live</td><td>Showing on the site now.</td></tr>
+        <tr><td>Scheduled</td><td>Its start date has not come yet.</td></tr>
+        <tr><td>Expired</td><td>Its own end date has passed.</td></tr>
+        <tr><td>Event ended (new)</td><td>Its dates would still allow it, but the event it links to is over, so it is hidden.</td></tr>
+        <tr><td>Inactive</td><td>Switched off by hand.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Status.</strong> Written, checked for errors, and the rule was tried against the real data: of 4 banners showing today, 2 link to finished events and will come down, 2 stay. It takes effect on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v177">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v177</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-10</span>
+    </div>
+    <p><strong>What changed.</strong> On the member <strong>Reports</strong> page, the last row of cards on each page now moves slowly from right to left by itself and never stops: when a card leaves on the left it comes back in on the right. The rows above it stay still.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Which row moves?</td><td>The last row of the page. On a full page of 12 that is the third row. On a page with 8 reports it is the second row.</td></tr>
+        <tr><td>Does it happen on every page?</td><td>Yes, on every page that has more than one row. A page with only one row (4 reports or fewer, for example a narrow search) stays still.</td></tr>
+        <tr><td>How do I click a moving card?</td><td>Put the mouse on the row and it stops. Move the mouse away and it carries on. Clicking a card works as before, including the "Pro Plan Needed" message on locked cards.</td></tr>
+        <tr><td>What if the last row has fewer than 4 cards?</td><td>Its cards are repeated so the moving row is always full, with no empty gap.</td></tr>
+        <tr><td>How fast is it?</td><td>Slow: a card takes about 9 seconds to move one card-width, so a full row of four takes about 36 seconds to go round.</td></tr>
+        <tr><td>On a phone?</td><td>No movement. Phones keep the plain list, one report under another.</td></tr>
+        <tr><td>For people who have asked their device to reduce motion?</td><td>The row stands still.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Dashboard &rarr; Reports, one page</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div></div>
+        <div class="wf-row"><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div></div>
+        <div class="wf-row"><div class="wf-box brand">&larr; Report</div><div class="wf-box brand">&larr; Report</div><div class="wf-box brand">&larr; Report</div><div class="wf-box brand">&larr; Report (moving row)</div></div>
+        <div class="wf-row"><div class="wf-box">Showing 1&ndash;12 of 32 reports &middot; Previous 1 2 3 Next</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v176">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v176</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-10</span>
+    </div>
+    <p><strong>What changed.</strong> Reports now have a <strong>Pro plan lock</strong>. The first pages of each report section are open to every member. After that, the report cards are still shown, but in grey with a small "Pro" tag, and they cannot be opened. A <strong>"Pro Plan Needed"</strong> message explains why. The admin decides where the lock starts.</p>
+    <h4>What a member sees</h4>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Which pages are open?</td><td>Pages 1 and 2 of each section (the newest 24 reports), unless the admin changes it.</td></tr>
+        <tr><td>What do locked pages look like?</td><td>All the report cards are there, in grey, each with a "Pro" tag. The locked page numbers in the bar under the cards carry a small lock.</td></tr>
+        <tr><td>When does the message appear?</td><td>When the member lands on a locked page, and again each time they click a grey card.</td></tr>
+        <tr><td>What does the message say?</td><td>"Pro Plan Needed", which pages are free, that the later reports are part of the Pro plan, and three points on what Pro gives.</td></tr>
+        <tr><td>How is it closed?</td><td>With the cross in the corner, by clicking outside the box, or with the Esc key. The grey cards stay on screen.</td></tr>
+        <tr><td>What does "Upgrade to Pro" do?</td><td>For now it only shows "Coming soon. The Pro plan is not open yet." There is no plan to buy yet.</td></tr>
+        <tr><td>Does searching get around the lock?</td><td>No. A locked report stays grey when it shows up in a search.</td></tr>
+        <tr><td>Can a locked report be opened another way?</td><td>No. The website does not send the file of a locked report to the member's browser at all.</td></tr>
+        <tr><td>Who is locked?</td><td>Every member, because there are no Pro members yet. Pro members will be unlocked when the plan is built.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Dashboard &rarr; Reports, page 3 (locked)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Report (grey) &middot; PRO</div><div class="wf-box">Report (grey) &middot; PRO</div><div class="wf-box">Report (grey) &middot; PRO</div><div class="wf-box">Report (grey) &middot; PRO</div></div>
+        <div class="wf-row"><div class="wf-box brand">Pro Plan Needed &nbsp;[&times;]<br>Pages 1 to 2 are free for every member. Reports from page 3 onwards are part of the Pro plan.<br>[ Upgrade to Pro ]</div></div>
+        <div class="wf-row"><div class="wf-box">Showing 25&ndash;32 of 32 reports</div><div class="wf-box">&lsaquo; Previous</div><div class="wf-box">1</div><div class="wf-box">2</div><div class="wf-box brand">&#128274; 3</div><div class="wf-box">Next &rsaquo;</div></div>
+      </div>
+    </div>
+    <h4>What the admin sets</h4>
+    <p>In the admin panel, <strong>User Management &rarr; Reports</strong> (empty until now) holds one setting, "Lock starts from". It applies to every report section.</p>
+    <table>
+      <thead><tr><th>Choice</th><th>Result for members</th></tr></thead>
+      <tbody>
+        <tr><td>No lock</td><td>Every page is open.</td></tr>
+        <tr><td>Page 1</td><td>Everything is locked. Members see the cards but cannot open any report.</td></tr>
+        <tr><td>Page 2</td><td>Page 1 is open (12 reports per section). Page 2 onwards is locked.</td></tr>
+        <tr><td>Page 3 (the starting choice)</td><td>Pages 1 and 2 are open (24 reports per section). Page 3 onwards is locked.</td></tr>
+        <tr><td>Page 4 to page 10</td><td>The same idea, with more open pages.</td></tr>
+      </tbody>
+    </table>
+    <p>The page shows, in plain words, what is open and what is locked for the choice picked, before it is saved. After Save, members see the change the next time they open Reports. Only the super admin can change it.</p>
+    <div class="wf">
+      <div class="wf-bar">Admin &rarr; User Management &rarr; Reports</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Funding</div><div class="wf-box brand">Reports (open)</div></div>
+        <div class="wf-row"><div class="wf-box">Lock starts from: [ Page 3 &#9662; ]</div><div class="wf-box">Open to readers: Pages 1 to 2 of each section<br>Locked (Pro plan): Page 3 onwards</div></div>
+        <div class="wf-row"><div class="wf-box brand">Save</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build. Until the admin saves a choice, the lock starts from page 3.</p>
+  </div>
+</section>
+
+<section id="v175">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v175</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-10</span>
+    </div>
+    <p><strong>What changed.</strong> On the member <strong>Reports</strong> page, the report cards are now shown one page at a time. A bar under the cards shows which reports are on screen and lets the member move between pages. Before this, the page kept adding more cards as the member scrolled down, with no way to tell how many were left or to jump ahead.</p>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>How many reports are on one page?</td><td>12, which is three rows of four on a computer.</td></tr>
+        <tr><td>What is in the bar under the cards?</td><td>On the left, a line such as "Showing 1&ndash;12 of 57 reports". On the right, a Previous button, the page numbers and a Next button. The page you are on is pink.</td></tr>
+        <tr><td>What if there are many pages?</td><td>The bar shows the first page, the last page and the pages near the one you are on, with "&hellip;" for the pages in between.</td></tr>
+        <tr><td>What happens when I change page?</td><td>The new cards appear and the screen moves back up to the first card.</td></tr>
+        <tr><td>What happens when I search or pick another section?</td><td>The list starts again from page 1, and the count in the bar follows the search.</td></tr>
+        <tr><td>What if a section has 12 reports or fewer?</td><td>The bar is not shown, because there is only one page.</td></tr>
+        <tr><td>On a phone?</td><td>The bar stacks: the "Showing" line on top, the buttons below. Previous and Next show as arrows only.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Dashboard &rarr; Reports</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div></div>
+        <div class="wf-row"><div class="wf-box">&hellip; three rows, 12 reports &hellip;</div></div>
+        <div class="wf-row"><div class="wf-box">Showing 1&ndash;12 of 57 reports</div><div class="wf-box">&lsaquo; Previous</div><div class="wf-box brand">1</div><div class="wf-box">2</div><div class="wf-box">3</div><div class="wf-box">&hellip;</div><div class="wf-box">5</div><div class="wf-box">Next &rsaquo;</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
+<section id="v174">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v174</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-10</span>
+    </div>
+    <p><strong>What changed.</strong> In the admin panel, <strong>User Management</strong> used to be one page that held only the Funding sponsor cards. It is now split into sections, one for each part of the member panel. Two buttons sit under the page title: <strong>Funding</strong> and <strong>Reports</strong>. Clicking a button shows that section below it.</p>
+    <table>
+      <thead><tr><th>Section</th><th>What is inside</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Funding</strong></td><td>The sponsor cards for the top of the Funding Dashboard: the three counters, the list of cards with the show/hide switch, edit and delete, and the add/edit form. Nothing about how the cards work has changed (still up to 5 cards, up to 3 showing).</td></tr>
+        <tr><td><strong>Reports</strong></td><td>Empty for now. It shows a short note, "Nothing to manage here yet". Settings for the members' Reports section will be added here later.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td>Which section opens first?</td><td>Funding, so the sponsor cards are on screen straight away, as before.</td></tr>
+        <tr><td>Does the page reload when I switch section?</td><td>No. Only the part below the buttons changes.</td></tr>
+        <tr><td>If I refresh on Reports, where do I land?</td><td>On Reports. The page address remembers the open section, so a refresh or a shared link opens the same one.</td></tr>
+        <tr><td>Where did the "Add card" button go?</td><td>It moved from the top of the page into the heading of the "Funding sponsor cards" box, next to the card count, because it belongs to the Funding section only.</td></tr>
+        <tr><td>Who can open this page?</td><td>The super admin only, the same as before.</td></tr>
+        <tr><td>Does anything change for members?</td><td>No. The Funding page shows the same cards.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin &rarr; User Management</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box brand">Funding (open)</div><div class="wf-box">Reports</div></div>
+        <div class="wf-row"><div class="wf-box">Cards created</div><div class="wf-box">Showing to readers</div><div class="wf-box">Hidden</div></div>
+        <div class="wf-row"><div class="wf-box">Funding sponsor cards &middot; card count &middot; + Add card &middot; list of cards (switch, edit, delete)</div></div>
+      </div>
+    </div>
+    <div class="wf">
+      <div class="wf-bar">Admin &rarr; User Management, Reports selected</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Funding</div><div class="wf-box brand">Reports (open)</div></div>
+        <div class="wf-row"><div class="wf-box">Nothing to manage here yet</div></div>
+      </div>
+    </div>
+    <p><strong>Status.</strong> Written and checked for errors. Not yet tried in a browser; it appears on the website after the next build.</p>
+  </div>
+</section>
+
 <section id="v173">
   <div class="ver">
     <div class="ver-head">
@@ -7557,7 +8321,7 @@ flowchart LR
 
   <hr>
   <p style="color:var(--muted);font-size:12.5px">
-    StartupNews.fyi · Product &amp; Architecture Book · v173 · 2026-10-09 · maintained by Jarvis alongside
+    StartupNews.fyi · Product &amp; Architecture Book · v178 · 2026-10-12 · maintained by Jarvis alongside
     <code>arch.md</code> and <code>agent.md</code>. Diagrams render with Mermaid; open this file in any browser.
   </p>
 </section>

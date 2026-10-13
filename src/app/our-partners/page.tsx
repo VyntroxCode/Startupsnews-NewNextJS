@@ -49,7 +49,7 @@ export default async function OurPartnersPage() {
         .partners-header h2 {
           font-size: 22px;
           font-weight: 800;
-          color: #111;
+          color: var(--sn-ink, #111);
           line-height: 1.3;
           margin: 0 0 16px;
           width: 90%;
@@ -57,7 +57,7 @@ export default async function OurPartnersPage() {
         .partners-header p {
           font-size: 15px;
           line-height: 1.75;
-          color: #444;
+          color: var(--sn-ink-soft, #444);
           width: 90%;
           margin: 0 0 12px;
         }
@@ -65,12 +65,12 @@ export default async function OurPartnersPage() {
         .partners-section-title {
           font-size: 24px;
           font-weight: 700;
-          color: #000;
+          color: var(--sn-ink, #000);
           letter-spacing: 1px;
         }
         .partners-empty {
           font-size: 14px;
-          color: #999;
+          color: var(--sn-ink-3, #999);
           font-style: italic;
         }
 

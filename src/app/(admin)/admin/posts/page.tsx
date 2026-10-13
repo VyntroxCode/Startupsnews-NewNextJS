@@ -1,5 +1,6 @@
 'use client';
 
+import { panelPath } from '@/lib/panel-path';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Calendar, CircleAlert, Download, ExternalLink, File, FileText, Plus, Rss, Sparkles, Star, X } from 'lucide-react';
@@ -487,7 +488,7 @@ export default function PostsPage() {
           {tab === 'posts' && (
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <Link
-                href="/admin/posts/create"
+                href={panelPath('/admin/posts/create')}
                 style={{
                   padding: '0.875rem 1.75rem',
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -547,7 +548,7 @@ export default function PostsPage() {
           )}
           {tab === 'industry' && (
             <Link
-              href="/admin/categories/create"
+              href={panelPath('/admin/categories/create')}
               style={{
                 padding: '0.875rem 1.75rem',
                 background: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
@@ -568,7 +569,7 @@ export default function PostsPage() {
           )}
           {tab === 'authors' && (
             <Link
-              href="/admin/authors/create"
+              href={panelPath('/admin/authors/create')}
               style={{
                 padding: '0.875rem 1.75rem',
                 background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
@@ -604,7 +605,7 @@ export default function PostsPage() {
           {/* Content Studio is a full-height app on its own route, so this tab navigates there
               rather than switching in place. */}
           {canStudio && (
-            <Link href="/admin/content-studio" style={{
+            <Link href={panelPath('/admin/content-studio')} style={{
               padding: '0.75rem 1.5rem', borderBottom: '2px solid transparent', marginBottom: '-2px',
               fontWeight: 500, color: '#64748b', fontSize: '0.9375rem', textDecoration: 'none',
               display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
@@ -1004,7 +1005,7 @@ export default function PostsPage() {
                   Get started by creating your first blog post
                 </p>
                 <Link
-                  href="/admin/posts/create"
+                  href={panelPath('/admin/posts/create')}
                   style={{
                     padding: '0.875rem 1.75rem',
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -1346,7 +1347,7 @@ export default function PostsPage() {
                                   View
                                 </a>
                                 <Link
-                                  href={`/admin/posts/edit/${post.id}`}
+                                  href={panelPath(`/admin/posts/edit/${post.id}`)}
                                   style={{
                                     padding: '0.35rem 0.8rem',
                                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -1463,7 +1464,7 @@ export default function PostsPage() {
                 <h3 style={{ color: '#0f172a', fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>No categories found</h3>
                 <p style={{ color: '#64748b', marginBottom: '1.5rem', fontSize: '0.9375rem' }}>Create the 15 canonical categories or add your first Industry.</p>
                 <Link
-                  href="/admin/categories/create"
+                  href={panelPath('/admin/categories/create')}
                   style={{
                     padding: '0.875rem 1.75rem',
                     background: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
@@ -1514,7 +1515,7 @@ export default function PostsPage() {
                             <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                                 <Link
-                                  href={`/admin/categories/edit/${cat.id}`}
+                                  href={panelPath(`/admin/categories/edit/${cat.id}`)}
                                   style={{
                                     padding: '0.5rem 1rem',
                                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -1706,7 +1707,7 @@ export default function PostsPage() {
                             <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                               <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
                                 <Link
-                                  href={`/admin/authors/edit/${author.id}`}
+                                  href={panelPath(`/admin/authors/edit/${author.id}`)}
                                   style={{
                                     padding: '0.45rem 0.85rem',
                                     background: '#0ea5e9',

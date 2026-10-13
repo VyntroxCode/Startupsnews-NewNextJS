@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { BRAND_STORIES_ROLES } from '@/shared/middleware/roles';
 import { BrandStoriesRepository } from '@/modules/brand-stories/repository/brand-stories.repository';
 
@@ -22,7 +22,7 @@ function normalizeBody(body: Record<string, unknown>) {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAnyRole(request, BRAND_STORIES_ROLES);
+  const auth = await requireContentAccess(request, BRAND_STORIES_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAnyRole(request, BRAND_STORIES_ROLES);
+  const auth = await requireContentAccess(request, BRAND_STORIES_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

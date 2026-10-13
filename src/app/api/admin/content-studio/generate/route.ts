@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAnyRole } from "@/shared/middleware/auth.middleware";
+import { requireContentAccess } from "@/shared/middleware/content-access.middleware";
 import { CONTENT_STUDIO_ROLES } from "@/shared/middleware/roles";
 import { runPipeline } from "@/modules/content-studio/lib/llm/pipeline";
 import type { GenerateRequest } from "@/modules/content-studio/types";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * leaves the server.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAnyRole(request, CONTENT_STUDIO_ROLES);
+  const auth = await requireContentAccess(request, CONTENT_STUDIO_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   let body: GenerateRequest;

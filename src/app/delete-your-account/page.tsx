@@ -7,7 +7,7 @@ export default function DeleteYourAccountPage() {
     <div
       id="mvp-article-cont"
       className="left relative delete-account-custom-page"
-      style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}
+      style={{ width: "100%", background: "var(--sn-bg, #fff)", overflow: "hidden", minHeight: "100vh" }}
     >
       <div className="kt-row-column-wrap" style={{ maxWidth: "800px", margin: "0 auto", padding: "80px 20px" }}>
         <header style={{ marginBottom: "60px", textAlign: "center" }}>
@@ -16,7 +16,7 @@ export default function DeleteYourAccountPage() {
             style={{
               fontSize: "42px",
               fontWeight: 900,
-              color: "#000",
+              color: "var(--sn-ink, #000)",
               textTransform: "uppercase",
               fontFamily: "Inter, sans-serif",
               lineHeight: 1.12,
@@ -26,7 +26,7 @@ export default function DeleteYourAccountPage() {
           >
             Delete Your Account
           </h1>
-          <p className="delete-account-subtitle" style={{ fontSize: "18px", color: "#444", lineHeight: "1.7", marginBottom: "20px" }}>
+          <p className="delete-account-subtitle" style={{ fontSize: "18px", color: "var(--sn-ink-soft, #444)", lineHeight: "1.7", marginBottom: "20px" }}>
             Are you sure you want to delete your account? This action cannot be undone.
           </p>
           <div style={{ width: "60px", height: "4px", background: "#ee1761", margin: "0 auto" }}></div>
@@ -36,7 +36,7 @@ export default function DeleteYourAccountPage() {
           style={{
             fontSize: "16px",
             lineHeight: "1.8",
-            color: "#333",
+            color: "var(--sn-ink-soft, #333)",
             fontFamily: "'NB International', sans-serif",
           }}
         >
@@ -56,7 +56,7 @@ export default function DeleteYourAccountPage() {
           <h2 style={sectionTitleStyle}>Contact support</h2>
           <p style={{ marginBottom: "10px" }}>Email us at:</p>
           <p style={{ marginBottom: "25px", fontWeight: 700 }}>
-            <a href="mailto:office@startupnews.fyi" style={{ color: "#ee1761" }}>
+            <a href="mailto:office@startupnews.fyi" style={{ color: "var(--sn-pink-ink, #ee1761)" }}>
               office@startupnews.fyi
             </a>
           </p>
@@ -97,7 +97,7 @@ export default function DeleteYourAccountPage() {
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: "24px",
   fontWeight: 800,
-  color: "#000",
+  color: "var(--sn-ink, #000)",
   marginTop: "32px",
   marginBottom: "14px",
   fontFamily: "Inter, sans-serif",

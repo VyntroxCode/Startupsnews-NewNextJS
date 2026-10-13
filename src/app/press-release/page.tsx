@@ -98,7 +98,7 @@ export default async function PressReleasePage() {
                   ))}
                 </ul>
                 {posts.length === 0 && (
-                  <p style={{ color: '#64748b', padding: '2rem 0' }}>No press releases found.</p>
+                  <p style={{ color: 'var(--sn-ink-3, #64748B)', padding: '2rem 0' }}>No press releases found.</p>
                 )}
                 <div className="mvp-inf-more-wrap left relative">
                   <Link href="/press-release" className="mvp-inf-more-but">

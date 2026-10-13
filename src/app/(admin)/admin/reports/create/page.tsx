@@ -1,5 +1,6 @@
 'use client';
 
+import { panelPath } from '@/lib/panel-path';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AlarmClock, ArrowLeft, CalendarDays, Plus } from 'lucide-react';
@@ -166,7 +167,7 @@ export default function AdminReportCreatePage() {
       }
 
       setSuccess(true);
-      router.push(adminReturnTo('admin:reports:returnTo', '/admin/reports'));
+      router.push(adminReturnTo('admin:reports:returnTo', panelPath('/admin/reports')));
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -240,7 +241,7 @@ export default function AdminReportCreatePage() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <Link href="/admin/reports" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1rem' }}>
+            <Link href={panelPath('/admin/reports')} style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1rem' }}>
               <ArrowLeft size={14} aria-hidden />Back to Reports
             </Link>
             <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>

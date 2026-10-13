@@ -26,11 +26,13 @@ import {
 } from '../domain/types';
 import { isIsoDay, statusNeedsFollowUpDate } from '../domain/follow-up-date';
 import { buildLeadSubmission } from './lead-details';
+import { SalesTrackerRepository } from '@/modules/sales-tracker/repository/sales-tracker.repository';
+import { entityToLead } from '@/modules/sales-tracker/utils/sales-tracker.utils';
 
 /** Bad input (→ 400). */
 export class LeadFollowUpValidationError extends Error {}
-/** The lead doesn't exist, or the caller isn't assigned to it (→ 404 — same answer for both, so an
- * employee can't probe for leads that aren't theirs). */
+/** The lead doesn't exist, or the caller is neither assigned to it nor its creator (→ 404 — same
+ * answer for both, so an employee can't probe for leads that aren't theirs). */
 export class LeadFollowUpNotFoundError extends Error {}
 
 /** Follow-up statuses from before the four shared statuses (2026-09-29), for rows that
@@ -117,30 +119,38 @@ function parseSource(value: unknown): LeadSource {
 }
 
 /** Follow-ups on Sales Tracker leads. Employees (and Event / Publisher Admins, through their linked
- * HR login) read and add them from My Leads, only on leads they are assigned to; the admin Sales
- * Tracker reads them. Nobody edits or deletes a follow-up, and nothing here changes the lead's own
- * details. */
+ * HR login) read and add them from My Leads, only on leads they are assigned to or added
+ * themselves; the admin Sales Tracker reads them. Nobody edits or deletes a follow-up, and nothing
+ * here changes the lead's own details (the creator's edits go through SalesTrackerService). */
 export class LeadFollowUpsService {
   private assignments = new LeadAssignmentsService(new LeadAssignmentsRepository());
 
   constructor(private repository: LeadFollowUpsRepository) {}
 
-  /** The read-only lead view for an assigned employee: what the visitor submitted, who else is on
-   * the lead and the whole follow-up log with its replies. Loading it is what counts as seeing
-   * the admin's replies: this response still marks them `unread`, the next one won't. */
+  /** The lead view for an employee who is assigned to the lead or created it: what the visitor
+   * submitted, who is on the lead and the whole follow-up log with its replies. Loading it is what
+   * counts as seeing the admin's replies: this response still marks them `unread`, the next one
+   * won't. The creator also gets `editable` — the lead row their edit window starts from, and their
+   * own next follow-up date is the lead's own (see LeadFollowUpsRepository.add). */
   async getDetailForEmployee(rawSource: unknown, leadId: string, credentialId: number): Promise<LeadDetail> {
     const source = parseSource(rawSource);
-    const assignment = await this.repository.findAssignment(source, leadId, credentialId);
-    if (!assignment) throw new LeadFollowUpNotFoundError('Lead not found.');
-    const [submission, team, followUps, replies, lastSeenId, statusRaw] = await Promise.all([
+    const [assignment, created] = await Promise.all([
+      this.repository.findAssignment(source, leadId, credentialId),
+      this.repository.findCreatedLead(source, leadId, credentialId),
+    ]);
+    if (!assignment && !created) throw new LeadFollowUpNotFoundError('Lead not found.');
+    const [submission, team, followUps, replies, lastSeenId, statusRaw, leadRow, createdByName] = await Promise.all([
       buildLeadSubmission(source, leadId),
       this.assignments.getForLead(source, leadId),
       this.repository.findForLead(source, leadId),
       this.repository.findRepliesForLead(source, leadId),
       this.repository.findLastSeenReplyId(source, leadId, credentialId),
       this.repository.findLeadStatusRaw(source, leadId),
+      created ? new SalesTrackerRepository().findLeadById(leadId) : null,
+      created ? created.created_by_name || '' : this.repository.findCreatedByName(source, leadId),
     ]);
     if (!submission || statusRaw === undefined) throw new LeadFollowUpNotFoundError('Lead not found.');
+    const ownDate = created ? created.next_follow_up_date : assignment?.next_follow_up_date;
     const newestReplyId = replies.length ? Number(replies[replies.length - 1].id) : 0;
     if (newestReplyId > lastSeenId) await this.repository.markRepliesSeen(source, leadId, credentialId, newestReplyId);
     const grouped = groupReplies(replies, credentialId, lastSeenId);
@@ -151,9 +161,13 @@ export class LeadFollowUpsService {
       assignees: team.assignees,
       followUps: followUps.map((f) => toFollowUp(f, credentialId, grouped)),
       leadStatus: source === 'lead' ? statusFromSalesLead(statusRaw) : statusFromEns(statusRaw),
-      nextFollowUpDate: assignment.next_follow_up_date ? String(assignment.next_follow_up_date).slice(0, 10) : '',
-      assignedAt: String(assignment.assigned_at),
-      assignedBy: assignment.assigned_by || '',
+      nextFollowUpDate: ownDate ? String(ownDate).slice(0, 10) : '',
+      assignedAt: assignment ? String(assignment.assigned_at) : '',
+      assignedBy: assignment?.assigned_by || '',
+      assigned: !!assignment,
+      createdByMe: !!created,
+      createdByName,
+      editable: created && leadRow ? { lead: entityToLead(leadRow), assignment: team } : null,
     };
   }
 
@@ -186,8 +200,8 @@ export class LeadFollowUpsService {
     return this.getDetailForEmployee(source, leadId, credential.id);
   }
 
-  /** A reply from someone assigned to the lead, under any entry of its history. Returns the
-   * refreshed lead view. */
+  /** A reply from someone assigned to the lead (or its creator), under any entry of its history.
+   * Returns the refreshed lead view. */
   async addReplyForEmployee(
     rawSource: unknown,
     leadId: string,
@@ -196,7 +210,11 @@ export class LeadFollowUpsService {
   ): Promise<LeadDetail> {
     const source = parseSource(rawSource);
     const { followUpId, message } = parseReply(body);
-    if (!(await this.repository.findAssignment(source, leadId, credential.id))) throw new LeadFollowUpNotFoundError('Lead not found.');
+    const [assignment, created] = await Promise.all([
+      this.repository.findAssignment(source, leadId, credential.id),
+      this.repository.findCreatedLead(source, leadId, credential.id),
+    ]);
+    if (!assignment && !created) throw new LeadFollowUpNotFoundError('Lead not found.');
     if (!(await this.repository.followUpBelongsToLead(followUpId, source, leadId))) {
       throw new LeadFollowUpValidationError('That entry is no longer on this lead. Reopen the lead and try again.');
     }

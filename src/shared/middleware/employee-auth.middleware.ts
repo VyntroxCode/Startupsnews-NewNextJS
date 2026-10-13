@@ -26,6 +26,9 @@ function getEmployeeTokenFromRequest(request: NextRequest): string | null {
  * token has no `role` claim and is never accepted there, and this guard never resolves
  * against `users`/`panel_admins`, only `hr_employee_credentials`.
  *
+ * Also the first step of requireContentAccess (content-access.middleware.ts), the single guard that
+ * lets allow-listed employees (CONTENT_EMPLOYEE_CODES) into the Posts / Reports / Brand Stories APIs.
+ *
  * Offboarding: once an employee's last working day has passed (see hr_offboarding), a `blocked`
  * login is refused everywhere and an `alumni` login only reaches routes that pass
  * `{ allowAlumni: true }` (the read-only "My Exit" endpoints) — every other route answers 403

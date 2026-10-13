@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/shared/middleware/auth.middleware';
+import { getContentAuthUser } from '@/shared/middleware/content-access.middleware';
 import {
     s3KeyForAdminUpload,
     getS3Bucket,
@@ -16,7 +16,7 @@ import { s3ClientConfig, s3CredentialsAvailable } from '@/shared/utils/s3-client
  * Returns: { success: true, data: { uploadUrl, fileUrl, key } }
  */
 export async function POST(request: NextRequest) {
-    let auth = await getAuthUser(request);
+    let auth = await getContentAuthUser(request);
 
     // Parse body early to check for _token fallback if auth failed (headers stripped)
     let body: Record<string, any> = {};

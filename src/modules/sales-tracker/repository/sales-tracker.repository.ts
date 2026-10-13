@@ -41,6 +41,8 @@ export class SalesTrackerRepository {
       lead.nextFollowUpDate || null,
       lead.lastConnectDate || null,
       lead.lastCallDiscussion || null,
+      lead.createdByCredentialId || null,
+      lead.createdByName || null,
     ];
     // lead_date is the ARRIVAL date: written once on insert and never overwritten by a later save
     // (COALESCE keeps the stored value; it's only filled in if a legacy row has none). What moves
@@ -48,10 +50,11 @@ export class SalesTrackerRepository {
     // when some column value actually changed, so saving an untouched lead leaves it alone.
     // tell_us_more is the visitor's own text: inserted with the lead and deliberately absent from
     // the UPDATE list, so no later save (admin edit included) can alter it.
+    // created_by_credential_id / created_by_name are the same: set with the insert, never updated.
     await query(
       `INSERT INTO sales_leads
-        (id, lead_date, name, company, contact, email, country, city, source, type, other_type, query_text, event_title, event_slug, event_date, event_time, external_url, poster_url, description, budget_range, campaign_goal, tell_us_more, assigned_to, status, next_follow_up_date, last_connect_date, last_call_discussion)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, lead_date, name, company, contact, email, country, city, source, type, other_type, query_text, event_title, event_slug, event_date, event_time, external_url, poster_url, description, budget_range, campaign_goal, tell_us_more, assigned_to, status, next_follow_up_date, last_connect_date, last_call_discussion, created_by_credential_id, created_by_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
         lead_date = COALESCE(lead_date, VALUES(lead_date)), name = VALUES(name), company = VALUES(company), contact = VALUES(contact),
         email = VALUES(email), country = VALUES(country), city = VALUES(city), source = VALUES(source),
@@ -68,6 +71,15 @@ export class SalesTrackerRepository {
     const saved = await this.findLeadById(lead.id);
     if (!saved) throw new Error('Lead saved but could not be reloaded');
     return saved;
+  }
+
+  /** Copies the lead's own next follow-up date onto one person's assignment row on it, if they
+   * have one ('' clears it). Used for the employee who created the lead, whose date is the lead's. */
+  async syncAssigneeFollowUpDate(leadId: string, credentialId: number, date: string): Promise<void> {
+    await query(
+      "UPDATE sales_lead_assignments SET next_follow_up_date = ? WHERE lead_source = 'lead' AND lead_id = ? AND credential_id = ?",
+      [date || null, leadId, credentialId]
+    );
   }
 
   /** Also drops the lead's people, departments, follow-ups and their replies

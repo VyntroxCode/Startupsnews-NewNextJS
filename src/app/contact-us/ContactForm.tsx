@@ -13,7 +13,7 @@ import { CONTACT_TOPICS } from "./topics";
 const FIELD_LABEL = "block text-[13px] font-semibold text-cr-ink mb-2";
 
 const FIELD_INPUT =
-	"block w-full box-border m-0 font-[inherit] text-[15px] leading-[1.4] px-4 py-3 border border-cr-line rounded-xl bg-white text-cr-ink placeholder:text-cr-muted-2 transition-colors focus:outline-none focus:border-cr-pink focus:ring-2 focus:ring-cr-pink/15";
+	"block w-full box-border m-0 font-[inherit] text-[15px] leading-[1.4] px-4 py-3 border border-cr-line rounded-xl bg-[color:var(--sn-card,#fff)] text-cr-ink placeholder:text-cr-muted-2 transition-colors focus:outline-none focus:border-cr-pink focus:ring-2 focus:ring-cr-pink/15";
 
 /** Tailwind skin for the shared `PhoneField` (country-code select + number), the same control
  * /feature-your-startup uses. Its markup carries plain class names (`.phone-row`,
@@ -23,14 +23,14 @@ const PHONE_FIELD = [
 	"[&_label]:block [&_label]:text-[13px] [&_label]:font-semibold [&_label]:text-cr-ink [&_label]:mb-2",
 	"[&_.phone-row]:flex [&_.phone-row]:gap-2.5",
 	"[&_.custom-select-wrap]:relative [&_.custom-select-wrap]:w-[calc(var(--phone-code-w,3.4em)+36px)] [&_.custom-select-wrap]:text-[15px] [&_.custom-select-wrap]:shrink-0",
-	"[&_.custom-select-btn]:flex [&_.custom-select-btn]:items-center [&_.custom-select-btn]:gap-1 [&_.custom-select-btn]:box-border [&_.custom-select-btn]:h-full [&_.custom-select-btn]:px-2.5 [&_.custom-select-btn]:border [&_.custom-select-btn]:border-solid [&_.custom-select-btn]:border-cr-line [&_.custom-select-btn]:rounded-xl [&_.custom-select-btn]:bg-white [&_.custom-select-btn]:cursor-text [&_.custom-select-btn]:transition-colors",
+	"[&_.custom-select-btn]:flex [&_.custom-select-btn]:items-center [&_.custom-select-btn]:gap-1 [&_.custom-select-btn]:box-border [&_.custom-select-btn]:h-full [&_.custom-select-btn]:px-2.5 [&_.custom-select-btn]:border [&_.custom-select-btn]:border-solid [&_.custom-select-btn]:border-cr-line [&_.custom-select-btn]:rounded-xl [&_.custom-select-btn]:bg-[color:var(--sn-card,#fff)] [&_.custom-select-btn]:cursor-text [&_.custom-select-btn]:transition-colors",
 	"[&_.custom-select-btn:focus-within]:border-cr-pink [&_.custom-select-btn:focus-within]:ring-2 [&_.custom-select-btn:focus-within]:ring-cr-pink/15",
 	"[&_.cs-input]:block [&_.cs-input]:w-full [&_.cs-input]:min-w-0 [&_.cs-input]:m-0 [&_.cs-input]:p-0 [&_.cs-input]:border-0 [&_.cs-input]:bg-transparent [&_.cs-input]:font-[inherit] [&_.cs-input]:text-[15px] [&_.cs-input]:leading-[1.4] [&_.cs-input]:text-cr-ink [&_.cs-input]:outline-none [&_.cs-input]:placeholder:text-cr-muted-2",
 	"[&_.caret]:shrink-0 [&_.caret]:text-[10px] [&_.caret]:text-cr-muted",
-	"[&_.custom-select-list]:hidden [&_.custom-select-list.open]:block [&_.custom-select-list]:absolute [&_.custom-select-list]:left-0 [&_.custom-select-list]:top-[calc(100%+6px)] [&_.custom-select-list]:z-30 [&_.custom-select-list]:box-border [&_.custom-select-list]:w-[260px] [&_.custom-select-list]:max-w-[80vw] [&_.custom-select-list]:max-h-60 [&_.custom-select-list]:overflow-y-auto [&_.custom-select-list]:m-0 [&_.custom-select-list]:p-1.5 [&_.custom-select-list]:list-none [&_.custom-select-list]:border [&_.custom-select-list]:border-solid [&_.custom-select-list]:border-cr-line [&_.custom-select-list]:rounded-xl [&_.custom-select-list]:bg-white [&_.custom-select-list]:shadow-lg",
+	"[&_.custom-select-list]:hidden [&_.custom-select-list.open]:block [&_.custom-select-list]:absolute [&_.custom-select-list]:left-0 [&_.custom-select-list]:top-[calc(100%+6px)] [&_.custom-select-list]:z-30 [&_.custom-select-list]:box-border [&_.custom-select-list]:w-[260px] [&_.custom-select-list]:max-w-[80vw] [&_.custom-select-list]:max-h-60 [&_.custom-select-list]:overflow-y-auto [&_.custom-select-list]:m-0 [&_.custom-select-list]:p-1.5 [&_.custom-select-list]:list-none [&_.custom-select-list]:border [&_.custom-select-list]:border-solid [&_.custom-select-list]:border-cr-line [&_.custom-select-list]:rounded-xl [&_.custom-select-list]:bg-[color:var(--sn-pop,#fff)] [&_.custom-select-list]:shadow-lg",
 	"[&_li]:m-0 [&_li]:px-3 [&_li]:py-2 [&_li]:rounded-lg [&_li]:list-none [&_li]:text-[14px] [&_li]:leading-[1.4] [&_li]:text-cr-ink [&_li]:cursor-pointer [&_li.active]:bg-cr-pink/10 [&_li.selected]:font-bold [&_li.selected]:text-cr-pink-deep [&_li.cs-empty]:italic [&_li.cs-empty]:text-cr-muted [&_li.cs-empty]:cursor-default",
 	"[&_.cs-detail]:ml-2 [&_.cs-detail]:font-normal [&_.cs-detail]:text-cr-muted",
-	"[&_input[type=tel]]:block [&_input[type=tel]]:flex-1 [&_input[type=tel]]:min-w-0 [&_input[type=tel]]:box-border [&_input[type=tel]]:m-0 [&_input[type=tel]]:font-[inherit] [&_input[type=tel]]:text-[15px] [&_input[type=tel]]:leading-[1.4] [&_input[type=tel]]:px-4 [&_input[type=tel]]:py-3 [&_input[type=tel]]:border [&_input[type=tel]]:border-solid [&_input[type=tel]]:border-cr-line [&_input[type=tel]]:rounded-xl [&_input[type=tel]]:bg-white [&_input[type=tel]]:text-cr-ink [&_input[type=tel]]:transition-colors [&_input[type=tel]]:placeholder:text-cr-muted-2 [&_input[type=tel]]:focus:outline-none [&_input[type=tel]]:focus:border-cr-pink [&_input[type=tel]]:focus:ring-2 [&_input[type=tel]]:focus:ring-cr-pink/15",
+	"[&_input[type=tel]]:block [&_input[type=tel]]:flex-1 [&_input[type=tel]]:min-w-0 [&_input[type=tel]]:box-border [&_input[type=tel]]:m-0 [&_input[type=tel]]:font-[inherit] [&_input[type=tel]]:text-[15px] [&_input[type=tel]]:leading-[1.4] [&_input[type=tel]]:px-4 [&_input[type=tel]]:py-3 [&_input[type=tel]]:border [&_input[type=tel]]:border-solid [&_input[type=tel]]:border-cr-line [&_input[type=tel]]:rounded-xl [&_input[type=tel]]:bg-[color:var(--sn-field,#fff)] [&_input[type=tel]]:text-cr-ink [&_input[type=tel]]:transition-colors [&_input[type=tel]]:placeholder:text-cr-muted-2 [&_input[type=tel]]:focus:outline-none [&_input[type=tel]]:focus:border-cr-pink [&_input[type=tel]]:focus:ring-2 [&_input[type=tel]]:focus:ring-cr-pink/15",
 	"[&_.has-error_input[type=tel]]:border-cr-pink [&_.has-error_.custom-select-btn]:border-cr-pink",
 	"[&_.field-error]:hidden [&_.field-error.visible]:block [&_.field-error]:mt-1.5 [&_.field-error]:text-[13px] [&_.field-error]:font-medium [&_.field-error]:text-cr-pink-deep",
 ].join(" ");
@@ -137,7 +137,7 @@ export function ContactForm() {
 				<button
 					type="button"
 					onClick={() => setSentTo(null)}
-					className="mt-2 font-[inherit] text-[14px] font-semibold px-6 py-3 rounded-full border border-cr-line bg-white text-cr-ink hover:border-cr-pink hover:text-cr-pink cursor-pointer transition-colors"
+					className="mt-2 font-[inherit] text-[14px] font-semibold px-6 py-3 rounded-full border border-cr-line bg-[color:var(--sn-card,#fff)] text-cr-ink hover:border-cr-pink hover:text-cr-pink cursor-pointer transition-colors"
 				>
 					Send another message
 				</button>

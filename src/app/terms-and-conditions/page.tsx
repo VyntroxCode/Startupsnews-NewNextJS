@@ -7,11 +7,11 @@ import { PageHeading } from "@/components/PageHeading";
  */
 export default function TermsPage() {
     return (
-        <div id="mvp-article-cont" className="left relative terms-custom-page" style={{ width: "100%", background: "#fff", overflow: "hidden", minHeight: "100vh" }}>
+        <div id="mvp-article-cont" className="left relative terms-custom-page" style={{ width: "100%", background: "var(--sn-bg, #fff)", overflow: "hidden", minHeight: "100vh" }}>
 
             <style>{`
                 .terms-wrap { max-width: 1200px; margin: 0 auto; padding: 20px 20px 80px; }
-                .terms-section-title { font-size: 24px; font-weight: 800; color: #000; margin-top: 50px; margin-bottom: 20px; font-family: Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
+                .terms-section-title { font-size: 24px; font-weight: 800; color: var(--sn-ink, #000); margin-top: 50px; margin-bottom: 20px; font-family: Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
                 @media (max-width: 768px) {
                     .terms-wrap { padding: 12px 16px 60px; }
                     .terms-section-title { font-size: 18px; margin-top: 36px; }
@@ -33,7 +33,7 @@ export default function TermsPage() {
                 <article style={{
                     fontSize: "16px",
                     lineHeight: "1.8",
-                    color: "#333",
+                    color: "var(--sn-ink-soft, #333)",
                     fontFamily: "'NB International', sans-serif"
                 }}>
                     <p style={{ marginBottom: "25px", fontWeight: 700 }}>Welcome to StartupNews.fyi!</p>

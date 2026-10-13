@@ -66,11 +66,11 @@ export function PostImage({
       };
 
   const placeholderStyle: React.CSSProperties = isFill
-    ? { position: "absolute", inset: 0, backgroundColor: "#e0e0e0" }
+    ? { position: "absolute", inset: 0, backgroundColor: "var(--sn-bg-3, #e0e0e0)" }
     : {
         width: "100%",
         height: "100%",
-        backgroundColor: "#e0e0e0",
+        backgroundColor: "var(--sn-bg-3, #e0e0e0)",
         minWidth: numericWidth ?? undefined,
         minHeight: numericHeight ?? undefined,
       };

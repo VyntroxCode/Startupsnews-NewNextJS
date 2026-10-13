@@ -1,5 +1,6 @@
 'use client';
 
+import { panelPath } from '@/lib/panel-path';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -373,7 +374,7 @@ export default function CreatePostPage() {
       }
 
       clearFormDraft(DRAFT_KEY);
-      router.push('/admin/posts');
+      router.push(panelPath('/admin/posts'));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred while creating the post';
       setError(message);
@@ -385,7 +386,7 @@ export default function CreatePostPage() {
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
         <Link
-          href="/admin/posts"
+          href={panelPath('/admin/posts')}
           style={{
             color: '#667eea',
             textDecoration: 'none',
@@ -771,7 +772,7 @@ export default function CreatePostPage() {
             {loading ? (isDraft ? 'Saving...' : 'Creating...') : (isDraft ? 'Save Draft' : 'Create Post')}
           </button>
           <Link
-            href="/admin/posts"
+            href={panelPath('/admin/posts')}
             style={{
               padding: '0.75rem 2rem', background: '#e2e8f0', color: '#4a5568',
               borderRadius: '4px', textDecoration: 'none', fontSize: '1rem', fontWeight: '500', display: 'inline-block',

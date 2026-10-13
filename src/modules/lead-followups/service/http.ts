@@ -8,7 +8,7 @@ export function followUpErrorResponse(error: unknown, fallback: string): NextRes
     return NextResponse.json({ success: false, error: error.message }, { status: 400 });
   }
   if (error instanceof LeadFollowUpNotFoundError) {
-    return NextResponse.json({ success: false, error: 'This lead is not assigned to you (or no longer exists).' }, { status: 404 });
+    return NextResponse.json({ success: false, error: 'This lead is not yours to open (or no longer exists).' }, { status: 404 });
   }
   console.error(`${fallback}:`, error);
   return NextResponse.json({ success: false, error: fallback }, { status: 500 });

@@ -71,7 +71,7 @@ function UnsubscribeContent() {
 
         .unsub-root {
           min-height: 100vh;
-          background: #fafafa;
+          background: var(--sn-bg-2, #fafafa);
           background-image:
             radial-gradient(circle at 20% 20%, rgba(238,23,97,0.06) 0%, transparent 50%),
             radial-gradient(circle at 80% 80%, rgba(238,23,97,0.04) 0%, transparent 50%);
@@ -85,12 +85,12 @@ function UnsubscribeContent() {
         }
 
         .unsub-card {
-          background: #ffffff;
+          background: var(--sn-card, #ffffff);
           border-radius: 24px;
-          border: 1px solid #f0f0f0;
+          border: 1px solid var(--sn-line-soft, #f0f0f0);
           box-shadow:
-            0 1px 2px rgba(0,0,0,0.04),
-            0 8px 32px rgba(0,0,0,0.07),
+            0 1px 2px var(--sn-shadow-04, rgba(0,0,0,0.04)),
+            0 8px 32px var(--sn-shadow-07, rgba(0,0,0,0.07)),
             0 24px 64px rgba(238,23,97,0.04);
           width: 100%;
           max-width: 480px;
@@ -98,8 +98,8 @@ function UnsubscribeContent() {
         }
 
         .unsub-card-top {
-          background: linear-gradient(135deg, #fff5f8 0%, #fff 60%);
-          border-bottom: 1px solid #fce7f3;
+          background: linear-gradient(135deg, var(--sn-bg-2, #fff5f8) 0%, var(--sn-bg, #fff) 60%);
+          border-bottom: 1px solid var(--sn-line-soft, #fce7f3);
           padding: 40px 40px 32px;
           text-align: center;
         }
@@ -115,8 +115,8 @@ function UnsubscribeContent() {
           width: 72px;
           height: 72px;
           border-radius: 20px;
-          background: linear-gradient(135deg, #fff0f5, #ffe4ee);
-          border: 1px solid #fecdd3;
+          background: linear-gradient(135deg, var(--sn-bg-2, #fff0f5), var(--sn-wash-pink, #ffe4ee));
+          border: 1px solid var(--sn-wash-line-red, #fecdd3);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -127,14 +127,14 @@ function UnsubscribeContent() {
         .unsub-title {
           font-size: 24px;
           font-weight: 800;
-          color: #111;
+          color: var(--sn-ink, #111);
           margin: 0 0 8px;
           letter-spacing: -0.3px;
         }
 
         .unsub-subtitle {
           font-size: 14px;
-          color: #6b7280;
+          color: var(--sn-ink-2, #6b7280);
           margin: 0;
           line-height: 1.6;
         }
@@ -147,7 +147,7 @@ function UnsubscribeContent() {
           display: block;
           font-size: 12px;
           font-weight: 700;
-          color: #374151;
+          color: var(--sn-ink-soft, #374151);
           text-transform: uppercase;
           letter-spacing: 0.6px;
           margin-bottom: 8px;
@@ -158,20 +158,20 @@ function UnsubscribeContent() {
           padding: 13px 16px;
           font-size: 15px;
           font-family: 'Inter', sans-serif;
-          color: #111;
-          background: #f9fafb;
-          border: 1.5px solid #e5e7eb;
+          color: var(--sn-ink, #111);
+          background: var(--sn-bg-2, #f9fafb);
+          border: 1.5px solid var(--sn-line, #e5e7eb);
           border-radius: 12px;
           outline: none;
           box-sizing: border-box;
           transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
         }
         .unsub-input:focus {
-          background: #fff;
+          background: var(--sn-field, #fff);
           border-color: #ee1761;
           box-shadow: 0 0 0 3px rgba(238,23,97,0.10);
         }
-        .unsub-input::placeholder { color: #9ca3af; }
+        .unsub-input::placeholder { color: var(--sn-ink-4, #9ca3af); }
         .unsub-input:disabled { opacity: 0.6; }
 
         .unsub-btn {
@@ -197,7 +197,7 @@ function UnsubscribeContent() {
         }
         .unsub-btn:active:not(:disabled) { transform: translateY(0); }
         .unsub-btn:disabled {
-          background: #d1d5db;
+          background: var(--sn-bg-4, #d1d5db);
           box-shadow: none;
           cursor: not-allowed;
         }
@@ -212,7 +212,7 @@ function UnsubscribeContent() {
         .unsub-spinner {
           width: 36px;
           height: 36px;
-          border: 3px solid #fce7f3;
+          border: 3px solid var(--sn-line-soft, #fce7f3);
           border-top: 3px solid #ee1761;
           border-radius: 50%;
           animation: unsub-spin 0.75s linear infinite;
@@ -242,28 +242,28 @@ function UnsubscribeContent() {
         .unsub-success-title {
           font-size: 20px;
           font-weight: 800;
-          color: #111;
+          color: var(--sn-ink, #111);
           margin: 0 0 8px;
         }
         .unsub-success-email {
           font-size: 14px;
           font-weight: 600;
-          color: #ee1761;
-          background: #fff5f8;
+          color: var(--sn-pink-ink, #ee1761);
+          background: var(--sn-bg-2, #fff5f8);
           display: inline-block;
           padding: 4px 14px;
           border-radius: 20px;
-          border: 1px solid #fecdd3;
+          border: 1px solid var(--sn-wash-line-red, #fecdd3);
           margin: 0 0 16px;
         }
         .unsub-success-note {
           font-size: 13.5px;
-          color: #6b7280;
+          color: var(--sn-ink-2, #6b7280);
           line-height: 1.65;
           margin: 0;
         }
         .unsub-success-note a {
-          color: #ee1761;
+          color: var(--sn-pink-ink, #ee1761);
           font-weight: 600;
           text-decoration: none;
         }
@@ -274,7 +274,7 @@ function UnsubscribeContent() {
           align-items: center;
           gap: 12px;
           margin: 24px 0;
-          color: #d1d5db;
+          color: var(--sn-ink-4, #d1d5db);
           font-size: 12px;
           font-weight: 600;
         }
@@ -283,11 +283,11 @@ function UnsubscribeContent() {
           content: '';
           flex: 1;
           height: 1px;
-          background: #f3f4f6;
+          background: var(--sn-bg-2, #f3f4f6);
         }
 
         .unsub-error-box {
-          background: #fff5f5;
+          background: var(--sn-bg-2, #fff5f5);
           border: 1px solid #fecaca;
           border-radius: 12px;
           padding: 14px 16px;
@@ -296,7 +296,7 @@ function UnsubscribeContent() {
           gap: 10px;
           margin-bottom: 20px;
           font-size: 13.5px;
-          color: #b91c1c;
+          color: var(--sn-red-ink, #b91c1c);
           line-height: 1.5;
         }
 
@@ -304,10 +304,10 @@ function UnsubscribeContent() {
           text-align: center;
           margin-top: 28px;
           font-size: 13px;
-          color: #9ca3af;
+          color: var(--sn-ink-4, #9ca3af);
         }
         .unsub-footer a {
-          color: #ee1761;
+          color: var(--sn-pink-ink, #ee1761);
           font-weight: 600;
           text-decoration: none;
         }
@@ -319,16 +319,16 @@ function UnsubscribeContent() {
           gap: 6px;
           margin-top: 20px;
           padding: 10px 20px;
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
+          background: var(--sn-bg-2, #f9fafb);
+          border: 1px solid var(--sn-line, #e5e7eb);
           border-radius: 10px;
           font-size: 13.5px;
           font-weight: 600;
-          color: #374151;
+          color: var(--sn-ink-soft, #374151);
           text-decoration: none;
           transition: background 0.15s;
         }
-        .unsub-back-home:hover { background: #f3f4f6; }
+        .unsub-back-home:hover { background: var(--sn-bg-2, #f3f4f6); }
 
         @media (max-width: 520px) {
           .unsub-card-top { padding: 32px 24px 26px; }
@@ -384,7 +384,7 @@ function UnsubscribeContent() {
             {isTokenFlow && status === "loading" && (
               <div className="unsub-spinner-wrap">
                 <div className="unsub-spinner" />
-                <span style={{ fontSize: 13.5, color: "#9ca3af" }}>Unsubscribing…</span>
+                <span style={{ fontSize: 13.5, color: "var(--sn-ink-4, #9ca3af)" }}>Unsubscribing…</span>
               </div>
             )}
 
@@ -444,7 +444,7 @@ function UnsubscribeContent() {
                 <button type="submit" disabled={status === "loading"} className="unsub-btn">
                   {status === "loading" ? (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                      <span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.4)", borderTop: "2px solid #fff", borderRadius: "50%", display: "inline-block", animation: "unsub-spin 0.75s linear infinite" }} />
+                      <span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.4)", borderTop: "2px solid var(--sn-line-bg, #fff)", borderRadius: "50%", display: "inline-block", animation: "unsub-spin 0.75s linear infinite" }} />
                       Processing…
                     </span>
                   ) : "Unsubscribe"}
@@ -461,7 +461,7 @@ function UnsubscribeContent() {
         </div>
 
         {/* Bottom branding */}
-        {/* <p style={{ marginTop: 24, fontSize: 12, color: "#c4c4c4", textAlign: "center" }}>
+        {/* <p style={{ marginTop: 24, fontSize: 12, color: "var(--sn-ink-4, #c4c4c4)", textAlign: "center" }}>
           &copy; {new Date().getFullYear()} DOTFYI Media Ventures Pvt. Ltd. &middot; New Delhi, India
         </p> */}
       </div>
@@ -472,7 +472,7 @@ function UnsubscribeContent() {
 export default function UnsubscribePage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif", color: "#9ca3af", fontSize: 14 }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif", color: "var(--sn-ink-4, #9ca3af)", fontSize: 14 }}>
         Loading…
       </div>
     }>

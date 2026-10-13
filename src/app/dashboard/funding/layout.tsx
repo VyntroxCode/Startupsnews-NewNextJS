@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
-import FundingSubNav from '@/components/user/funding/FundingSubNav';
+import ProPlanBubble from '@/components/user/funding/ProPlanBubble';
 import { fiFontCls } from '@/components/user/funding/fonts';
 
 /** Lock switch for the whole section, currently locked. When `true` this guard covers a direct URL
@@ -37,9 +37,9 @@ export default function FundingLayout({ children }: { children: React.ReactNode 
     <div className={`${fiFontCls} min-h-screen min-w-0 overflow-x-clip bg-fi-bg text-fi-ink antialiased`}>
       {/* box-border: this dashboard has no Preflight, so w-full + padding would overflow the screen. */}
       <div className="mx-auto box-border flex w-full min-w-0 max-w-[1500px] flex-col gap-4 px-3 py-4 sm:gap-5 sm:px-5 sm:py-6 lg:px-7">
-        <FundingSubNav />
         {children}
       </div>
+      <ProPlanBubble />
     </div>
   );
 }

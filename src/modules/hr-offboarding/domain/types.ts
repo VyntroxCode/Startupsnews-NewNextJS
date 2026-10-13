@@ -22,6 +22,11 @@ export type OffboardingAccessMode = 'alumni' | 'blocked';
  * Fixed by policy — not a setting. */
 export const NOTICE_DAYS = 30;
 
+/** Offboarding emails are switched off (2026-10-13): no resignation / decision / left-early / F&F
+ * notification goes out and issued letters are not emailed — HR downloads and shares them. Flip to
+ * `true` to bring every offboarding email (and the Email / Resend controls) back. */
+export const OFFBOARDING_EMAILS_ENABLED: boolean = false;
+
 /** Which date HR accepted a resignation with: the employee's requested date, the system date
  * (resignation day + NOTICE_DAYS), or a date HR picked. */
 export type LwdChoice = 'requested' | 'system' | 'custom';

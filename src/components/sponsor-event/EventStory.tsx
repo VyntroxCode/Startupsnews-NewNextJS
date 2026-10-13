@@ -167,10 +167,10 @@ function ConnectVisual() {
 /* ── Amplify ──────────────────────────────────────────────────────────────── */
 
 const SOCIAL = [
-  { key: "instagram", name: "Instagram", Icon: InstagramIcon, color: "#E1306C", to: { x: "-92%", y: "-118%", rotate: -9 } },
-  { key: "linkedin", name: "LinkedIn", Icon: LinkedInIcon, color: "#0A66C2", to: { x: "94%", y: "-96%", rotate: 8 } },
-  { key: "whatsapp", name: "Communities", Icon: WhatsAppIcon, color: "#25D366", to: { x: "-90%", y: "104%", rotate: 7 } },
-  { key: "newsletter", name: "Newsletter", Icon: MailIcon, color: "#0F1014", to: { x: "92%", y: "118%", rotate: -6 } },
+  { key: "instagram", name: "Instagram", Icon: InstagramIcon, color: "var(--sn-pink-ink, #E1306C)", to: { x: "-92%", y: "-118%", rotate: -9 } },
+  { key: "linkedin", name: "LinkedIn", Icon: LinkedInIcon, color: "var(--sn-blue-ink, #0A66C2)", to: { x: "94%", y: "-96%", rotate: 8 } },
+  { key: "whatsapp", name: "Communities", Icon: WhatsAppIcon, color: "var(--sn-green-ink, #25D366)", to: { x: "-90%", y: "104%", rotate: 7 } },
+  { key: "newsletter", name: "Newsletter", Icon: MailIcon, color: "var(--sn-ink, #0F1014)", to: { x: "92%", y: "118%", rotate: -6 } },
 ] as const;
 
 /** The event poster sits still while its social cards slide out from behind it. */

@@ -33,6 +33,7 @@
 @source "../../app/employee/layout.tsx";
 @source "../../app/employee/EmployeeShell.tsx";
 @source "../../app/employee/directory/page.tsx";
+@source "../../app/employee/(content)/layout.tsx";
 @source "../../app/employee/attendance/page.tsx";
 @source "../../app/employee/leave/page.tsx";
 @source "../../app/employee/payslips/page.tsx";

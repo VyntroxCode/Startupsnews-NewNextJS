@@ -11,12 +11,15 @@ import { PAGE_LEAD_FILTER_OPTIONS, PAGE_LEAD_LABELS, STATUSES, TYPES } from './c
 import { exportLeadsCsv, exportLeadsExcel, exportLeadsPdf } from './exports';
 import type { UnifiedLeadRow } from './types';
 import { assignmentKey } from './useSalesTrackerData';
-import { dueFollowUpsOf, followUpDatesOf, followUpTagOf, matchesType, statusLabelOf } from './utils';
+import { createdByLabel, dueFollowUpsOf, followUpDatesOf, followUpTagOf, matchesType, statusLabelOf } from './utils';
 
 const DASH = <span className="hint">—</span>;
 
 /** "Filter: assigned to" value for leads nobody is assigned to. */
 const UNASSIGNED = 'unassigned';
+
+/** "Filter: created by" value for hand-added leads from before the creator was recorded. */
+const CREATOR_NOT_RECORDED = 'not-recorded';
 
 /** The Assigned cell: up to two names, then "+N". */
 function assigneeSummary(a: LeadAssignment | undefined): { text: string; full: string } | null {
@@ -89,6 +92,8 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
   const [open, setOpen] = useState(false);
   const [filterAssigned, setFilterAssigned] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
+  // "Filter: created by": a creator's name as the column shows it, or CREATOR_NOT_RECORDED.
+  const [filterCreatedBy, setFilterCreatedBy] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [exportBusy, setExportBusy] = useState<'excel' | 'pdf' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -101,10 +106,17 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
     // The card may be collapsed and well below the overview, so open it and bring it into view.
     setFilterAssigned('');
     setFilterDepartment('');
+    setFilterCreatedBy('');
     setFilterSearch('');
     setOpen(true);
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [jumpToken]);
+
+  // Everyone who created at least one of the leads, A–Z, for "Filter: created by".
+  const creators = useMemo(
+    () => [...new Set(rows.map(createdByLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [rows]
+  );
 
   const filteredRows = useMemo(() => {
     const q = filterSearch.toLowerCase();
@@ -119,12 +131,13 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
         if (filterAssigned === UNASSIGNED ? people.length > 0 : !people.some((p) => String(p.credentialId) === filterAssigned)) return false;
       }
       if (filterDepartment && !(a?.departments ?? []).includes(filterDepartment)) return false;
+      if (filterCreatedBy && (filterCreatedBy === CREATOR_NOT_RECORDED ? createdByLabel(r) !== '' : createdByLabel(r) !== filterCreatedBy)) return false;
       if (q) {
         const hay = (
           r._source === 'lead'
             ? [r.name, r.company, r.email, r.contact, r.source, r.eventTitle, r.description]
             : [r.name, r.email, r.contact, participationLabel(r.participation), r.requirement, referredByLabel(r.referredBy), foundUsText(r.foundUs, r.foundUsDetail), r.conversationNote]
-        ).concat((a?.assignees ?? []).map((p) => p.employeeName), a?.departments ?? []).join(' ').toLowerCase();
+        ).concat((a?.assignees ?? []).map((p) => p.employeeName), a?.departments ?? [], createdByLabel(r)).join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -138,7 +151,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
       const db = b._source === 'lead' ? b.date : b.createdAt.slice(0, 10);
       return (db || '').localeCompare(da || '');
     });
-  }, [rows, assignments, filterType, filterPageType, filterStatus, followUpDueOnly, today, filterAssigned, filterDepartment, filterSearch]);
+  }, [rows, assignments, filterType, filterPageType, filterStatus, followUpDueOnly, today, filterAssigned, filterDepartment, filterCreatedBy, filterSearch]);
 
   // CSV / Excel / PDF export exactly the rows on screen — filteredRows, in the table's order, sales
   // leads and Expand North Star enquiries alike (see utils.leadExportRow for the shared columns).
@@ -168,7 +181,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
         )}
         <div className="hint" style={{ margin: '0 0 10px' }}>
           Every page&apos;s submissions in one table — Feature Your Startup, Funding Round, Press Release, Sponsor an Event, Advertise With Us
-          and Expand North Star. Click a lead to see all of its details; use Edit to change any of them.
+          and Expand North Star — plus the leads admins add here and employees add from My Leads (see Created By). Click a lead to see all of its details; use Edit to change any of them.
         </div>
         <div className="toolbar">
           <div className="field" style={{ maxWidth: 180 }}><label>Filter: type</label>
@@ -199,6 +212,13 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
               {departments.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
             </select>
           </div>
+          <div className="field" style={{ maxWidth: 180 }}><label>Filter: created by</label>
+            <select value={filterCreatedBy} onChange={(e) => setFilterCreatedBy(e.target.value)}>
+              <option value="">Anyone</option>
+              {creators.map((c) => <option key={c} value={c}>{c}</option>)}
+              <option value={CREATOR_NOT_RECORDED}>Not recorded</option>
+            </select>
+          </div>
           <div className="field" style={{ maxWidth: 200 }}><label>Search</label>
             <input type="text" placeholder="Name, company, email..." value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} />
           </div>
@@ -214,7 +234,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
             <thead>
               <tr>
                 <th>Date</th><th>Name</th><th>Company</th><th>Contact</th><th>Email</th>
-                <th>City</th><th>Source</th><th>Referred By</th><th>Assigned</th><th>Next Follow-up</th><th>Current Status</th>
+                <th>City</th><th>Source</th><th>Referred By</th><th>Assigned</th><th>Created By</th><th>Next Follow-up</th><th>Current Status</th>
                 <th></th>
               </tr>
             </thead>
@@ -249,6 +269,7 @@ export default function LeadsTable({ rows, employees, departments, assignments, 
                         </>
                       );
                     })()}</td>
+                    <td>{createdByLabel(r) || DASH}</td>
                     <td><NextFollowUpCell row={r} assignment={assignments[assignmentKey(r._source, r.id)]} today={today} /></td>
                     <td><StatusBadge value={statusLabelOf(r)} /></td>
                     <td>

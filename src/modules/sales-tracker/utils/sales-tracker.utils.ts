@@ -29,6 +29,8 @@ export function entityToLead(e: SalesLeadEntity): SalesLead {
     nextFollowUpDate: e.next_follow_up_date || '',
     lastConnectDate: e.last_connect_date || '',
     lastCallDiscussion: e.last_call_discussion || '',
+    createdByCredentialId: e.created_by_credential_id == null ? null : Number(e.created_by_credential_id),
+    createdByName: e.created_by_name || '',
     createdAt: e.created_at,
     updatedAt: e.updated_at,
   };

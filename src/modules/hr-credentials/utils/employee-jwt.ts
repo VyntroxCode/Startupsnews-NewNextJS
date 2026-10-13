@@ -7,7 +7,9 @@ import { requireJwtSecret } from '@/shared/config/jwt-secret';
  * the admin login page's Employee ID tab. Deliberately NOT the same shape as the admin
  * panel's JWTPayload ({ userId, email, role }) — no `role` field at all, so this token
  * can never be accepted by requireAnyRole/hasRole even if it ended up on that code path.
- * Verified only by requireEmployeeAuth, which nothing else in the app calls.
+ * Verified only by requireEmployeeAuth. The one admin-route guard that calls it is
+ * requireContentAccess / getContentAuthUser (shared/middleware/content-access.middleware.ts), which
+ * lets the Employee IDs in CONTENT_EMPLOYEE_CODES use the Posts, Reports and Brand Stories APIs.
  */
 export interface EmployeeJwtPayload {
   credentialId: number;

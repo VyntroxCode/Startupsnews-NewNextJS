@@ -3,7 +3,7 @@
  * Every breakdown carries both $ total (USD Mn, undisclosed counted as 0) and deal count.
  */
 
-import type { AggRow, FundingKpis, InvestorRow, SizeBandRow, StageSectorMatrix, TimeBucket } from '../domain/types';
+import type { AggRow, FundingKpis, InvestorRow, SectorTrend, SizeBandRow, StageSectorMatrix, TimeBucket } from '../domain/types';
 
 /** Bucket sizes: the pinned card uses week/month/year; Market Analysis also uses quarter. */
 export type Granularity = 'week' | 'month' | 'quarter' | 'year';
@@ -138,6 +138,32 @@ export function timeBuckets(rows: { date: string; amount: number | null }[], ran
   return [...map.values()]
     .map((b) => ({ ...b, total: Math.round(b.total * 10) / 10 }))
     .sort((a, b) => (a.key < b.key ? -1 : 1));
+}
+
+/**
+ * $ per sector per month for `year` and the year before it. `rows` must cover both years;
+ * `sectors` fixes which sectors come back and in what order (the caller passes its bySector keys).
+ */
+export function sectorYearTrend(rows: { date: string; sector: string; amount: number | null }[], sectors: string[], year: number, lastMonth: number): SectorTrend {
+  const map = new Map(sectors.map((s) => [s, { current: new Array<number>(12).fill(0), previous: new Array<number>(12).fill(0) }]));
+  for (const r of rows) {
+    if (!r.date) continue;
+    const e = map.get(r.sector || 'Unspecified');
+    if (!e) continue;
+    const [y, m] = r.date.split('-').map(Number);
+    if (y === year) e.current[m - 1] += r.amount ?? 0;
+    else if (y === year - 1) e.previous[m - 1] += r.amount ?? 0;
+  }
+  const round = (n: number) => Math.round(n * 10) / 10;
+  return {
+    year,
+    previousYear: year - 1,
+    lastMonth,
+    series: sectors.map((sector) => {
+      const e = map.get(sector)!;
+      return { sector, current: e.current.map((v, i) => (i < lastMonth ? round(v) : null)), previous: e.previous.map(round) };
+    }),
+  };
 }
 
 export function computeKpis(rows: AggDeal[]): FundingKpis {

@@ -1,6 +1,23 @@
 import { query, queryOne, getDbConnection } from '@/shared/database/connection';
 import { BannerEntity } from '../domain/types';
 
+/**
+ * True when a banner's link points at a website Event (`/startup-events/<slug>`, absolute or
+ * relative, with or without a trailing slash / query / hash) that is over: status completed or
+ * cancelled, or its last day has passed. Same "over" rule as
+ * EventsRepository.markPastEventsAsExpired (end date if set, else start date), checked on the
+ * date as well as the status because that status flip only runs when an admin opens the list.
+ * Banners that link anywhere else, or to a slug with no event row, are never matched.
+ * CHAR(63)/CHAR(35) are `?` and `#` — spelled out so the driver can't read `?` as a placeholder.
+ */
+const LINKED_EVENT_ENDED_SQL = `EXISTS (
+    SELECT 1 FROM events e
+    WHERE banners.link_url LIKE '%/startup-events/%'
+      AND e.slug = SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(
+            banners.link_url, '/startup-events/', -1), CHAR(63), 1), CHAR(35), 1), '/', 1)
+      AND (e.status IN ('completed', 'cancelled') OR COALESCE(e.event_end_date, e.event_date) < CURDATE())
+  )`;
+
 export class BannersRepository {
   async findAll(filters?: {
     isActive?: boolean;
@@ -8,7 +25,9 @@ export class BannersRepository {
     offset?: number;
     filterByDate?: boolean; // Only filter by date for frontend display
   }): Promise<BannerEntity[]> {
-    let sql = 'SELECT * FROM banners WHERE 1=1';
+    // linked_event_ended is returned on every read so the admin list can say why an active
+    // banner is not on the site; the public read below also filters on it.
+    let sql = `SELECT banners.*, ${LINKED_EVENT_ENDED_SQL} AS linked_event_ended FROM banners WHERE 1=1`;
     const params: (string | number | boolean)[] = [];
 
     if (filters?.isActive !== undefined) {
@@ -20,6 +39,8 @@ export class BannersRepository {
     if (filters?.filterByDate === true) {
       sql += ' AND (start_date IS NULL OR start_date <= NOW())';
       sql += ' AND (end_date IS NULL OR end_date >= NOW())';
+      // A banner for an event that is over comes down by itself, even when nobody set an end date.
+      sql += ` AND NOT ${LINKED_EVENT_ENDED_SQL}`;
     }
 
     sql += ' ORDER BY display_order ASC, created_at DESC';

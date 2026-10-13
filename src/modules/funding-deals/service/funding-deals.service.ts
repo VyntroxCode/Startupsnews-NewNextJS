@@ -9,7 +9,7 @@ import type {
   TrendRange,
 } from '../domain/types';
 import { FundingDealsRepository, isDuplicateKeyError, type FundingDealWrite } from '../repository/funding-deals.repository';
-import { computeKpis, investorAgg, sizeBandAgg, stageSectorMatrix, sumBy, timeBuckets, type Granularity } from '../utils/aggregate';
+import { computeKpis, investorAgg, sectorYearTrend, sizeBandAgg, stageSectorMatrix, sumBy, timeBuckets, type Granularity } from '../utils/aggregate';
 import { computeForecast, generateSignals } from '../utils/forecast';
 import {
   marketCumulative,
@@ -126,12 +126,19 @@ export async function getFundingOverview(
     ? { ...filters, from: shiftYear(filters.from, -1), to: shiftYear(filters.to, -1) }
     : null;
 
-  const [filtered, pinnedYear, pinnedAllYears, previous] = await Promise.all([
+  // Sector line chart: the same filters over two whole calendar years, ending where the filter
+  // window ends (today when it is open-ended).
+  const trendTo = filters.to || today;
+  const trendYear = Number(trendTo.slice(0, 4));
+
+  const [filtered, pinnedYear, pinnedAllYears, previous, twoYears] = await Promise.all([
     repo.findForAggregation(filters),
     repo.findForAggregation({ country: countryFilter, from: yearStart, to: today }),
     range === 'year' ? repo.findForAggregation({ country: countryFilter, to: today }) : Promise.resolve(null),
     previousFilters ? repo.findForAggregation(previousFilters) : Promise.resolve(null),
+    repo.findForAggregation({ ...filters, from: `${trendYear - 1}-01-01`, to: trendTo }),
   ]);
+  const bySector = sumBy(filtered, (r) => r.sector);
 
   const trend = range === 'year'
     ? timeBuckets(pinnedAllYears ?? [], 'year').slice(-5)
@@ -148,7 +155,8 @@ export async function getFundingOverview(
     },
     kpis: computeKpis(filtered),
     previousKpis: previous ? computeKpis(previous) : null,
-    bySector: sumBy(filtered, (r) => r.sector),
+    bySector,
+    sectorTrend: sectorYearTrend(twoYears, bySector.map((r) => r.key), trendYear, Number(trendTo.slice(5, 7))),
     byStage: sumBy(filtered, (r) => r.roundStage),
     byCity: sumBy(filtered, (r) => r.city),
     topInvestors: investorAgg(filtered).sort((a, b) => b.total - a.total || b.count - a.count).slice(0, 10),

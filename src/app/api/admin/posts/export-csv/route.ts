@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { CONTENT_ROLES } from '@/shared/middleware/roles';
 import { query } from '@/shared/database/connection';
 import { convertToCsv } from '@/shared/utils/csv-utils';
@@ -29,7 +29,7 @@ interface PostRow {
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication
-    const auth = await requireAnyRole(request, CONTENT_ROLES);
+    const auth = await requireContentAccess(request, CONTENT_ROLES);
     if (auth instanceof NextResponse) return auth;
 
     // Event Admin can only export Press Release posts.

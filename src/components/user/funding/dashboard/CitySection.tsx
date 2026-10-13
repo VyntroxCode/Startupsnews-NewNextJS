@@ -20,26 +20,29 @@ function Leaderboard({ rows, total, active, onActive }: { rows: AggRow[]; total:
   return (
     <ol className="m-0 mt-3 list-none p-0" onMouseLeave={() => onActive(null)}>
       {top.map((r, i) => (
-        <li
-          key={r.key}
-          data-reveal-item
-          onMouseEnter={() => onActive(r.key)}
-          className={`-mx-2 grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2.5 rounded-lg px-2 py-2 transition-[background-color,opacity] duration-150 motion-reduce:transition-none ${active === r.key ? 'bg-fi-bg' : active ? 'opacity-45' : ''}`}
-        >
-          <span className={`${mono} text-[11.5px] text-fi-ink-soft`}>{i + 1}</span>
-          <span className="min-w-0">
-            <span className="flex items-center gap-1.5">
-              <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${PALETTE_BG[i % PALETTE_BG.length]}`} />
-              <span className="truncate text-[13px] font-bold text-fi-ink">{r.key}</span>
+        // The reveal hook sits on the <li>, the hover fade on the row inside it. They must not share
+        // an element: GSAP animates the <li>'s opacity, and a CSS opacity transition on the same
+        // element makes GSAP read a mid-fade value as the resting one, leaving the row invisible.
+        <li key={r.key} data-reveal-item>
+          <div
+            onMouseEnter={() => onActive(r.key)}
+            className={`-mx-2 grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-x-2.5 rounded-lg px-2 py-2 transition-[background-color,opacity] duration-150 motion-reduce:transition-none ${active === r.key ? 'bg-fi-bg' : active ? 'opacity-45' : ''}`}
+          >
+            <span className={`${mono} text-[11.5px] text-fi-ink-soft`}>{i + 1}</span>
+            <span className="min-w-0">
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${PALETTE_BG[i % PALETTE_BG.length]}`} />
+                <span className="truncate text-[13px] font-bold text-fi-ink">{r.key}</span>
+              </span>
+              <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-fi-line">
+                <span data-bar className={`block h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none ${PALETTE_BG[i % PALETTE_BG.length]}`} style={{ width: `${Math.max(3, (r.total / max) * 100)}%` }} />
+              </span>
             </span>
-            <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-fi-line">
-              <span data-bar className={`block h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none ${PALETTE_BG[i % PALETTE_BG.length]}`} style={{ width: `${Math.max(3, (r.total / max) * 100)}%` }} />
+            <span className="text-right">
+              <span className={`${mono} block whitespace-nowrap text-[12.5px] font-semibold text-fi-ink`}>{formatUsdMn(r.total)}</span>
+              <span className="block whitespace-nowrap text-[11px] text-fi-ink-soft">{r.count} deals · {pct(total ? (r.total / total) * 100 : 0)}</span>
             </span>
-          </span>
-          <span className="text-right">
-            <span className={`${mono} block whitespace-nowrap text-[12.5px] font-semibold text-fi-ink`}>{formatUsdMn(r.total)}</span>
-            <span className="block whitespace-nowrap text-[11px] text-fi-ink-soft">{r.count} deals · {pct(total ? (r.total / total) * 100 : 0)}</span>
-          </span>
+          </div>
         </li>
       ))}
     </ol>

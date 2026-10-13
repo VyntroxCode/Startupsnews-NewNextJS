@@ -1,5 +1,6 @@
 'use client';
 
+import { panelPath } from '@/lib/panel-path';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -154,7 +155,7 @@ export default function CreateCategoryPage() {
                 return;
             }
 
-            router.push('/admin/posts?tab=industry');
+            router.push(panelPath('/admin/posts?tab=industry'));
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred while creating the industry');
             setLoading(false);
@@ -165,7 +166,7 @@ export default function CreateCategoryPage() {
         <div>
             <div style={{ marginBottom: '2.5rem' }}>
                 <Link
-                    href="/admin/posts?tab=industry"
+                    href={panelPath('/admin/posts?tab=industry')}
                     style={{ color: '#48bb78', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                 >
                     <ArrowLeft size={14} aria-hidden />Back to Industry
@@ -256,7 +257,7 @@ export default function CreateCategoryPage() {
                         style={{ padding: '0.75rem 2rem', background: loading || uploading ? '#a0aec0' : '#48bb78', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: '500', cursor: loading || uploading ? 'not-allowed' : 'pointer' }}>
                         {loading ? 'Creating...' : 'Create Industry'}
                     </button>
-                    <Link href="/admin/posts?tab=industry"
+                    <Link href={panelPath('/admin/posts?tab=industry')}
                         style={{ padding: '0.75rem 2rem', background: '#e2e8f0', color: '#4a5568', borderRadius: '4px', textDecoration: 'none', fontSize: '1rem', fontWeight: '500', display: 'inline-block' }}>
                         Cancel
                     </Link>

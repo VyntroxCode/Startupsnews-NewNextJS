@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { AggRow, FundingForecast, SizeBandRow } from '@/modules/funding-deals/domain/types';
 import { formatUsdMn } from '@/modules/funding-deals/utils/format';
-import { BAND_PALETTE, PALETTE } from '../../ui';
+import { BAND_PALETTE } from '../../ui';
 import { TipRow, pct } from '../parts';
 
 const TICK = { fill: '#5A5763', fontSize: 11 };
@@ -71,17 +71,20 @@ export function SizeBandChart({ bands, reduced }: { bands: SizeBandRow[]; reduce
   );
 }
 
-/** Capital by business model (B2B, B2C, SaaS…) as a donut. */
-export function ModelDonut({ rows, reduced }: { rows: AggRow[]; reduced: boolean }) {
+/**
+ * Capital by business model (B2B, B2C, SaaS…) as a donut. `colours` and `active` are shared with the
+ * average-round bars beside it: the same model has the same colour on both, and pointing at a model
+ * on either card (`onActive`) fades the others on both.
+ */
+export function ModelDonut({ rows, colours, active, onActive, reduced }: { rows: AggRow[]; colours: Map<string, string>; active: string | null; onActive: (model: string | null) => void; reduced: boolean }) {
   const total = rows.reduce((a, r) => a + r.total, 0) || 1;
-  const [active, setActive] = useState<number | null>(null);
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
         <Tooltip
           {...TIP_PROPS}
-          content={({ active, payload }: TipArgs<AggRow>) => {
-            const d = active ? payload?.[0]?.payload : undefined;
+          content={({ active: shown, payload }: TipArgs<AggRow>) => {
+            const d = shown ? payload?.[0]?.payload : undefined;
             return d ? (
               <TipCard
                 title={d.key}
@@ -94,9 +97,9 @@ export function ModelDonut({ rows, reduced }: { rows: AggRow[]; reduced: boolean
             ) : null;
           }}
         />
-        <Pie data={rows} dataKey="total" nameKey="key" innerRadius="62%" outerRadius="92%" paddingAngle={1.5} stroke="none" isAnimationActive={!reduced} onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)}>
-          {rows.map((r, i) => (
-            <Cell key={r.key} fill={PALETTE[(i + 2) % PALETTE.length]} fillOpacity={dim(active, i)} stroke={active === i ? '#15131A' : 'none'} strokeWidth={1.5} className="transition-[fill-opacity] duration-150 motion-reduce:transition-none" />
+        <Pie data={rows} dataKey="total" nameKey="key" innerRadius="64%" outerRadius="96%" paddingAngle={1.5} stroke="none" isAnimationActive={!reduced} onMouseEnter={(_, i) => onActive(rows[i]?.key ?? null)} onMouseLeave={() => onActive(null)}>
+          {rows.map((r) => (
+            <Cell key={r.key} fill={colours.get(r.key)} fillOpacity={active === null || active === r.key ? 1 : 0.3} stroke={active === r.key ? '#15131A' : 'none'} strokeWidth={1.5} className="transition-[fill-opacity] duration-150 motion-reduce:transition-none" />
           ))}
         </Pie>
       </PieChart>

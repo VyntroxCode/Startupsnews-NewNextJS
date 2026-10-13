@@ -14,6 +14,10 @@ interface SendOfferLetterBody {
   letterData?: OfferLetterData;
 }
 
+/** Offer letter emails are switched off (2026-10-13): nothing is mailed to a new hire. Flip to
+ * `true` — and restore the call in HireEmployeeButton — to bring the email back. */
+const OFFER_LETTER_EMAIL_ENABLED: boolean = false;
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isLetterData(v: unknown): v is OfferLetterData {
@@ -31,6 +35,10 @@ function isLetterData(v: unknown): v is OfferLetterData {
 export async function POST(request: NextRequest) {
   const auth = await requireAnyRole(request, HR_TOOL_ROLES);
   if (auth instanceof NextResponse) return auth;
+
+  if (!OFFER_LETTER_EMAIL_ENABLED) {
+    return NextResponse.json({ success: true, data: { sent: false, error: 'Offer letter emails are turned off.' } });
+  }
 
   try {
     const [body, errorResponse] = await parseJsonBody<SendOfferLetterBody>(request);

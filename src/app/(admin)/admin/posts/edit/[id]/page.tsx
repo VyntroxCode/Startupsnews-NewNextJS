@@ -1,5 +1,6 @@
 'use client';
 
+import { panelPath } from '@/lib/panel-path';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -429,7 +430,7 @@ export default function EditPostPage() {
       clearFormDraft(draftKey);
       // Use a small delay to let user see the form was saved before redirect
       setTimeout(() => {
-        router.push('/admin/posts');
+        router.push(panelPath('/admin/posts'));
       }, 1000);
     } catch (err) {
       console.error('Error saving post:', err);
@@ -450,7 +451,7 @@ export default function EditPostPage() {
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
         <Link
-          href="/admin/posts"
+          href={panelPath('/admin/posts')}
           style={{
             color: '#667eea',
             textDecoration: 'none',
@@ -961,7 +962,7 @@ export default function EditPostPage() {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
           <Link
-            href="/admin/posts"
+            href={panelPath('/admin/posts')}
             style={{
               padding: '0.75rem 2rem',
               background: '#e2e8f0',

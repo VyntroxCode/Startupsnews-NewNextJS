@@ -91,8 +91,9 @@ function CardPreview({ title, subtitle, imageUrl }: { title: string; subtitle: s
   );
 }
 
-/** /admin/user-management — the sponsor cards at the top of the reader Funding Dashboard.
- * Up to 5 cards can be kept here; up to 3 of them are switched on to show. */
+/** /admin/user-management › Funding section — the sponsor cards at the top of the reader Funding
+ * Dashboard. Up to 5 cards can be kept here; up to 3 of them are switched on to show.
+ * Page title and section tabs live in UserManagementPage. */
 export default function FundingCardsPage() {
   const [cards, setCards] = useState<SponsorCard[] | null>(null);
   const [error, setError] = useState('');
@@ -186,25 +187,7 @@ export default function FundingCardsPage() {
   const formCanShow = otherShowing < MAX_ACTIVE_SPONSOR_CARDS;
 
   return (
-    // No max-width: the admin shell's content area widens when the sidebar closes, and this page
-    // fills whatever it is given.
-    <div className="box-border flex w-full min-w-0 flex-col gap-5 pb-10">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <div className="min-w-0">
-          <h1 className="m-0 text-2xl font-bold leading-tight text-slate-900">User Management</h1>
-          <p className="m-0 mt-1 text-sm leading-relaxed text-slate-500">Settings for what readers see in the user panel.</p>
-        </div>
-        <button
-          type="button"
-          onClick={openNew}
-          disabled={!canAdd}
-          title={canAdd ? undefined : `You can have at most ${MAX_SPONSOR_CARDS} cards. Delete one to add another.`}
-          className={btnPrimary}
-        >
-          <Plus size={16} aria-hidden /> Add card
-        </button>
-      </div>
-
+    <div className="flex w-full min-w-0 flex-col gap-5">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile icon={LayoutGrid} label="Cards created" value={total} of={MAX_SPONSOR_CARDS} />
         <StatTile icon={Eye} label="Showing to readers" value={showing} of={MAX_ACTIVE_SPONSOR_CARDS} />
@@ -303,7 +286,18 @@ export default function FundingCardsPage() {
               Shown at the top of the Funding Dashboard. Keep up to {MAX_SPONSOR_CARDS} here and switch on up to {MAX_ACTIVE_SPONSOR_CARDS}. Hidden cards are not shown to readers.
             </p>
           </div>
-          {!!cards && <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{total} {total === 1 ? 'card' : 'cards'}</span>}
+          <div className="flex shrink-0 items-center gap-3">
+            {!!cards && <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{total} {total === 1 ? 'card' : 'cards'}</span>}
+            <button
+              type="button"
+              onClick={openNew}
+              disabled={!canAdd}
+              title={canAdd ? undefined : `You can have at most ${MAX_SPONSOR_CARDS} cards. Delete one to add another.`}
+              className={btnPrimary}
+            >
+              <Plus size={16} aria-hidden /> Add card
+            </button>
+          </div>
         </div>
         {!cards ? (
           <p className="m-0 px-5 py-12 text-center text-sm text-slate-500">Loading cards…</p>

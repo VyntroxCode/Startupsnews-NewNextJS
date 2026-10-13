@@ -1,5 +1,6 @@
 'use client';
 
+import { panelPath } from '@/lib/panel-path';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -91,7 +92,7 @@ export default function CreateAuthorPage() {
         setLoading(false);
         return;
       }
-      router.push('/admin/posts?tab=authors');
+      router.push(panelPath('/admin/posts?tab=authors'));
     } catch {
       setError('An error occurred while creating the author');
       setLoading(false);
@@ -101,7 +102,7 @@ export default function CreateAuthorPage() {
   return (
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
-        <Link href="/admin/posts?tab=authors" style={{ color: '#0ea5e9', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '2rem', fontSize: '0.875rem' }}>
+        <Link href={panelPath('/admin/posts?tab=authors')} style={{ color: '#0ea5e9', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '2rem', fontSize: '0.875rem' }}>
           <ArrowLeft size={14} aria-hidden />Back to Authors
         </Link>
         <h1 style={{ fontSize: '2.25rem', fontWeight: '700', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Add Author</h1>
@@ -191,7 +192,7 @@ export default function CreateAuthorPage() {
           >
             {loading ? 'Creating...' : 'Create Author'}
           </button>
-          <Link href="/admin/posts?tab=authors" style={{ padding: '0.75rem 1.5rem', borderRadius: 6, background: '#e2e8f0', color: '#334155', textDecoration: 'none', fontWeight: 600 }}>
+          <Link href={panelPath('/admin/posts?tab=authors')} style={{ padding: '0.75rem 1.5rem', borderRadius: 6, background: '#e2e8f0', color: '#334155', textDecoration: 'none', fontWeight: 600 }}>
             Cancel
           </Link>
         </div>

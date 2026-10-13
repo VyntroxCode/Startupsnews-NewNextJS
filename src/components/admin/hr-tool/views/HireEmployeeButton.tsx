@@ -183,7 +183,7 @@ export default function HireEmployeeButton({ label, className, onHired }: { labe
     const credError = validateCredentialFields(form, false);
     if (credError) { setError(credError); return; }
     // Catch a duplicate Employee ID right here — before the admin fills out the rest of the
-    // letter and reaches "Approve & Send", where this used to only surface server-side.
+    // letter and reaches "Approve & Create", where this used to only surface server-side.
     const code = form.employeeCode.trim();
     const existing = freshCredentials ?? state.employeeCredentials;
     if (existing.some((c) => c.employeeCode === code)) {
@@ -218,7 +218,7 @@ export default function HireEmployeeButton({ label, className, onHired }: { labe
         name, status: 'not_uploaded', url: null, uploadedAt: null, remarks: null,
       }));
       const newEmployee = {
-        id: nextEmployeeId(state.employees), credentialId: credential.id, name: fullNameOf(preview),
+        id: nextEmployeeId(state.employees, credential.employeeCode), credentialId: credential.id, name: fullNameOf(preview),
         email: preview.email.trim() || '—', phone: preview.contact.trim() || null, designation: preview.designation, team: preview.team, manager, managerId,
         status: 'active', doj: preview.doj, sysRole: 'Employee', ctc,
         leaveBalance: initialLeaveBalance(state.rules), documents,
@@ -233,37 +233,9 @@ export default function HireEmployeeButton({ label, className, onHired }: { labe
       // looks for, so it raced in and created a SECOND employee record for the same credential.
       upsertEmployeeCredentialInState(credential);
 
-      // The hire is saved either way; the email is sent after, and the audit log records what
-      // ACTUALLY happened — it used to log "emailed" after a placeholder send that sent nothing.
-      const emailAddr = preview.email.trim();
-      const who = `${fullNameOf(preview)} (${emailAddr})`;
-      if (emailAddr) {
-        let mailProblem: string | null = null;
-        try {
-          const mailRes = await fetch('/api/admin/hr-tool/onboarding/send-offer-letter', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-              to: emailAddr,
-              employeeName: fullNameOf(preview),
-              subject: `Your Offer of Employment — ${preview.designation}`,
-              textBody: offerMerged,
-              letterData: hasCustomTemplate() ? undefined : letterDataFor(preview),
-            }),
-          });
-          const mailData = await mailRes.json().catch(() => null);
-          if (!mailRes.ok || !mailData?.success) mailProblem = mailData?.error || 'the email request failed';
-          else if (!mailData.data?.sent) mailProblem = mailData.data?.error || 'the email could not be sent';
-        } catch {
-          mailProblem = 'the email request could not reach the server';
-        }
-        if (mailProblem) {
-          logRuleChange(`Offer letter NOT emailed to ${who} — ${mailProblem}`);
-          alert(`${fullNameOf(preview)} was created, but the offer letter email was not sent: ${mailProblem}\n\nYou can download the letter and send it yourself.`);
-        } else {
-          logRuleChange(`Offer letter emailed to ${who}`);
-        }
-      }
+      // No offer letter email goes out on hire (turned off 2026-10-13) — HR downloads the letter
+      // from the preview and shares it themselves. The audit log records the hire only.
+      logRuleChange(`Employee created: ${fullNameOf(preview)} (${credential.employeeCode}) — no offer letter email sent`);
 
       setPreview(null);
       onHired?.(newEmployee.id);
@@ -376,10 +348,10 @@ export default function HireEmployeeButton({ label, className, onHired }: { labe
         <ModalShell title="Preview — Joining Letter" onClose={() => setPreview(null)} maxWidth={720} actions={[
           { label: 'Back to edit', cls: 'btn', onClick: () => { setAddOpen(true); setPreview(null); }, },
           { label: downloading ? 'Preparing PDF…' : 'Download Joining Letter', cls: 'btn', onClick: downloadLetter },
-          { label: sending ? 'Creating…' : 'Approve & Send', cls: 'btn primary', onClick: approveAndSend },
+          { label: sending ? 'Creating…' : 'Approve & Create', cls: 'btn primary', onClick: approveAndSend },
         ]}>
           <div className="notice info">
-            Approving creates their login{preview.email.trim() ? ' and emails them this letter.' : '.'}
+            Approving creates their login. No email is sent — download the letter to share it with them.
           </div>
           {error && <div className="notice" style={{ background: 'var(--red-soft)', borderColor: '#FECACA', color: 'var(--red)' }}>{error}</div>}
           {hasCustomTemplate() ? (

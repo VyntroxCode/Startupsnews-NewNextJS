@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { applyTheme, getThemePreference, subscribeToTheme } from "@/lib/theme";
 import { FlyMenu } from "@/components/FlyMenu";
 import { FlyMenuProvider } from "@/components/FlyMenuContext";
 import { FlyMenuFade } from "@/components/FlyMenuFade";
@@ -38,6 +40,18 @@ export default function ConditionalLayout({
   const isDashboardRoute = pathname?.startsWith('/dashboard');
   const isEmployeeRoute = pathname?.startsWith('/employee');
 
+  // The dark theme is public-site only: re-check on every navigation so moving between the site
+  // and a panel (/admin, /dashboard, /employee) adds or removes `data-theme` on <html>.
+  useEffect(() => {
+    applyTheme(getThemePreference());
+  }, [pathname]);
+
+  // Follow changes that do not come from a click in this tab: the OS setting while the choice is
+  // "System", or the theme being changed in another tab. Lives here rather than in the header
+  // switcher because the bare routes (/login, /expand-north-star) have no header. It reads the
+  // saved preference directly — never React state, whose first (server) value is always "light".
+  useEffect(() => subscribeToTheme(() => applyTheme(getThemePreference(), true)), []);
+
   // For admin/dashboard/employee routes, render only the children (their layouts handle structure)
   if (isAdminRoute || isDashboardRoute || isEmployeeRoute) {
     return <>{children}</>;
@@ -63,7 +77,7 @@ export default function ConditionalLayout({
       <div id="mvp-site" className="left relative">
         <div id="mvp-site-wall" className="left relative">
           <div id="mvp-site-main" className="left relative">
-            {showDelegationStrip && <DelegationStrip />}
+            {showDelegationStrip && <DelegationStrip tone="pink" />}
             {!bareRoute && <Header />}
             {showBanner && <BannerCarouselClient initialBanners={banners} />}
             <div id="mvp-main-body-wrap" className={"left relative" + (bareRoute ? " is-bare-route" : "")}>

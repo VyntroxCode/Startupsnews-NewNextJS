@@ -56,7 +56,7 @@ export const revalidate = 300;
 export default async function AdvertisePage() {
 	const promotedCities = await getPromotedCityOptions();
 	return (
-		<div className={`bg-white text-adv-ink overflow-x-hidden ${leadPageFont.variable}`} style={{ fontFamily: LEAD_FONT_FAMILY }}>
+		<div className={`bg-[color:var(--sn-bg,#fff)] text-adv-ink overflow-x-hidden ${leadPageFont.variable}`} style={{ fontFamily: LEAD_FONT_FAMILY }}>
 			{/* Breadcrumb + page title — aligned to the site's standard 1200px nav width */}
 			<div className="mvp-main-box event-by-country-container">
 				<PageBreadcrumb current="Advertise With Us" />
@@ -82,7 +82,7 @@ export default async function AdvertisePage() {
 					</div>
 				</Reveal>
 				<Reveal direction="right" delay={120} className="relative flex flex-col gap-0.5 min-w-0">
-					<div className="absolute -top-[54px] right-[6%] w-[116px] h-[116px] rounded-full bg-[#ffe8e8] pointer-events-none" />
+					<div className="absolute -top-[54px] right-[6%] w-[116px] h-[116px] rounded-full bg-[color:var(--sn-bg-3,#ffe8e8)] pointer-events-none" />
 					<div className="absolute -bottom-10 right-[2%] w-[72px] h-[72px] rounded-full border-[10px] border-adv-ink pointer-events-none" />
 					<span className="relative text-[clamp(48px,8.2vw,100px)] font-black tracking-[-0.045em] leading-[0.94] text-adv-ink">
 						Make
@@ -204,14 +204,14 @@ export default async function AdvertisePage() {
 			</section>
 
 			{/* WHY CHOOSE STARTUPNEWS */}
-			<section className="px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-adv-ink text-white">
+			<section className="px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-[color:var(--sn-card,#0F1115)] text-white">
 				<Reveal direction="left">
 					<h2 className="text-white text-[34px] sm:text-[48px] lg:text-[62px] font-black tracking-[-0.035em] leading-[1.02] uppercase">
 						Why choose <span className="text-adv-red">StartupNews?</span>
 					</h2>
 				</Reveal>
 				<Reveal delay={120}>
-					<p className="mt-5 text-lg leading-[1.65] text-[#a8aeb6] max-w-[900px]">
+					<p className="mt-5 text-lg leading-[1.65] text-[color:var(--sn-ink-4,#a8aeb6)] max-w-[900px]">
 						India&apos;s most credible media powerhouse, offering unmatched reach, precision,
 						and performance. Experience the difference with our comprehensive media solutions
 						and expert guidance.
@@ -220,12 +220,12 @@ export default async function AdvertisePage() {
 				<div className="mt-12 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-5">
 					{WHY_CARDS.map((c, i) => (
 						<Reveal key={c.title} delay={150 + i * 100}>
-							<article className="border border-[#23272e] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0 h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1.5">
-								<span className="block text-[26px] sm:text-[30px] font-black tracking-[-0.04em] leading-none text-[#3d434c] whitespace-nowrap">
+							<article className="border border-[color:var(--sn-line,#23272e)] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0 h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1.5">
+								<span className="block text-[26px] sm:text-[30px] font-black tracking-[-0.04em] leading-none text-[color:var(--sn-ink-soft,#3d434c)] whitespace-nowrap">
 									{c.label}
 								</span>
 								<h3 className="text-white text-[22px] font-extrabold tracking-[-0.02em] leading-[1.35]">{c.title}</h3>
-								<p className="text-base leading-[1.6] text-[#a8aeb6]">{c.body}</p>
+								<p className="text-base leading-[1.6] text-[color:var(--sn-ink-4,#a8aeb6)]">{c.body}</p>
 							</article>
 						</Reveal>
 					))}

@@ -39,7 +39,7 @@ const CONTACT_CARDS = [
 ];
 
 const CARD =
-	"box-border flex items-center gap-4 rounded-[20px] border border-cr-line bg-white p-5 sm:p-6";
+	"box-border flex items-center gap-4 rounded-[20px] border border-cr-line bg-[color:var(--sn-card,#fff)] p-5 sm:p-6";
 const CARD_LABEL =
 	"text-[13px] font-semibold uppercase tracking-[0.08em] text-cr-muted m-0 mb-1.5";
 const ICON_BOX =
@@ -51,7 +51,7 @@ export default async function ContactUsPage() {
 	const contentHtml = await getInnerPageContent("contact-us");
 
 	return (
-		<div className="bg-white text-cr-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
+		<div className="bg-[color:var(--sn-bg,#fff)] text-cr-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
 			<div className="mvp-main-box event-by-country-container">
 				<PageBreadcrumb current="Contact Us" />
 			</div>
@@ -104,7 +104,7 @@ export default async function ContactUsPage() {
 					{/* Get in touch form */}
 					<section
 						id="get-in-touch"
-						className="min-w-0 rounded-[24px] border border-cr-line bg-white p-5 sm:p-8 lg:p-10 shadow-[0_20px_60px_-30px_rgba(20,19,26,0.25)]"
+						className="min-w-0 rounded-[24px] border border-cr-line bg-[color:var(--sn-card,#fff)] p-5 sm:p-8 lg:p-10 shadow-[0_20px_60px_-30px_rgba(20,19,26,0.25)]"
 					>
 						<span className="inline-block text-[12px] font-bold uppercase tracking-[0.12em] text-cr-pink mb-2">
 							Get in touch

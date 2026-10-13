@@ -29,7 +29,7 @@ function CountryItem({ country, duplicate }: { country: CountryCircle; duplicate
         tabIndex={duplicate ? -1 : undefined}
         className="group flex w-16 flex-col items-center gap-1.5 no-underline sm:w-20"
       >
-        <span className="relative flex size-12 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-xs font-semibold uppercase text-neutral-600 shadow-sm ring-1 ring-black/10 transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-2 group-hover:ring-[#E62E69] sm:size-14">
+        <span className="relative flex size-12 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-xs font-semibold uppercase text-neutral-600 shadow-sm ring-1 ring-[color:var(--sn-line-a10,rgba(0,0,0,0.1))] transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-2 group-hover:ring-[#E62E69] sm:size-14">
           {/* Initials sit under the flag and only show if the flag has no file in S3 yet. */}
           {country.iso || country.name.slice(0, 2)}
           {country.flagUrl && (
@@ -43,7 +43,7 @@ function CountryItem({ country, duplicate }: { country: CountryCircle; duplicate
             />
           )}
         </span>
-        <span className="text-center text-xs font-medium leading-tight text-neutral-800 sm:text-sm group-hover:text-[#E62E69]">
+        <span className="text-center text-xs font-medium leading-tight text-neutral-800 sm:text-sm group-hover:text-[color:var(--sn-pink-ink,#E62E69)]">
           {country.name}
         </span>
       </a>

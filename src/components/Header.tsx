@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { siteConfig } from "@/lib/config";
 import { FlyMenuButton } from "@/components/FlyMenuButton";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 interface AuthUser { id: number; name: string; email: string; }
 
@@ -254,6 +255,8 @@ export function Header() {
                     </button>
                   </form>
 
+                  <ThemeSwitcher />
+
                   {/* User avatar / login button */}
                   <div ref={userMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
                     {authUser ? (
@@ -288,15 +291,15 @@ export function Header() {
                         {userMenuOpen && (
                           <div style={{
                             position: 'absolute', top: 'calc(100% + 10px)', right: 0,
-                            background: '#fff', borderRadius: 8, padding: '2px',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.16)', border: '1px solid #e5e7eb',
+                            background: 'var(--sn-pop, #fff)', borderRadius: 8, padding: '2px',
+                            boxShadow: '0 8px 32px var(--sn-shadow-16, rgba(0,0,0,0.16))', border: '1px solid var(--sn-line, #e5e7eb)',
                             zIndex: 99999,
                           }}>
                             {/* Sign out */}
                             <button
                               onClick={handleLogout}
-                              style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '6px 10px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: '#dc2626', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', borderRadius: 6 }}
-                              onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '6px 10px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--sn-red-ink, #dc2626)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap', borderRadius: 6 }}
+                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--sn-wash-red, #fef2f2)')}
                               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                             >
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -312,12 +315,12 @@ export function Header() {
                         className="header-signin-btn"
                         style={{
                           width: 34, height: 34, borderRadius: '50%',
-                          background: '#f3f4f6', border: '2px solid #e5e7eb',
+                          background: 'var(--sn-bg-2, #f3f4f6)', border: '2px solid var(--sn-line, #e5e7eb)',
                           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: '#6b7280', flexShrink: 0,
+                          color: 'var(--sn-ink-2, #6b7280)', flexShrink: 0,
                         }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#ee1761'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#ee1761'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#f3f4f6'; (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#e5e7eb'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--sn-bg-2, #f3f4f6)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sn-ink-2, #6b7280)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sn-line, #e5e7eb)'; }}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                       </button>

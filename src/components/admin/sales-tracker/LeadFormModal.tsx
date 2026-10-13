@@ -14,12 +14,12 @@ import { type AssignableEmployee, assignmentToDraft, type DepartmentOption, type
 import { FOLLOW_UP_NOTE_MAX_LENGTH } from '@/modules/lead-followups/domain/types';
 import { localToday, statusNeedsFollowUpDate } from '@/modules/lead-followups/domain/follow-up-date';
 import LeadAssignmentFields from './LeadAssignmentFields';
-import LeadActivityPanel from './LeadActivityPanel';
+import LeadActivityPanel, { type LeadActivityApi } from './LeadActivityPanel';
 import SaveConfirmDialog from './SaveConfirmDialog';
-import { LEAD_FORM_GRID, PAGE_LEAD_LABELS, PAGE_LEAD_TYPES, STATUSES, TELL_US_MORE_LEAD_TYPES, TYPES } from './constants';
+import { LEAD_FORM_GRID, LEAD_SOURCE_OPTIONS, PAGE_LEAD_LABELS, PAGE_LEAD_TYPES, SOURCE_OTHER, STATUSES, TELL_US_MORE_LEAD_TYPES, TYPES } from './constants';
 import { whatsappLink } from './sponsorEventFormat';
 import type { SalesLead } from './types';
-import { splitPhone } from './utils';
+import { createdByLabel, splitPhone } from './utils';
 
 /** Field labels for the save warning, in form order. Contact/country/city are compared separately
  * (they live in `loc` until save). */
@@ -32,7 +32,6 @@ const FIELD_LABELS: Partial<Record<keyof SalesLead, string>> = {
   otherType: 'Specify type',
   status: 'Status',
   nextFollowUpDate: 'Next follow-up date',
-  lastCallDiscussion: 'Last call discussion',
   eventTitle: 'Event title',
   eventSlug: 'Event URL / slug',
   eventDate: 'Event date',
@@ -102,8 +101,12 @@ function toLocationFormData(lead: SalesLead): LeadFormData {
  * Saving does NOT close the window (same as EnsEnquiryDetailModal): it shows "Changes saved",
  * reloads its fields from the stored lead the parent hands back as `lead`, and re-reads Lead
  * activity so the entry the save just wrote is visible. A new lead becomes "Lead details" for the
- * lead just created. The window closes only on Close / Cancel / Escape / a click outside. */
-export default function LeadFormModal({ lead, employees, departments, assignment, promotedCities, onClose, onSave }: {
+ * lead just created. The window closes only on Close / Cancel / Escape / a click outside.
+ *
+ * My Leads mounts the same window for an employee adding a lead or editing one they created
+ * (MyLeadsPage), with `requireAssignee` (their lead must have somebody on it) and `activityApi`
+ * (Lead activity then reads and replies through the employee's own lead endpoints, not the admin API). */
+export default function LeadFormModal({ lead, employees, departments, assignment, promotedCities, onClose, onSave, requireAssignee = false, activityApi }: {
   lead: SalesLead;
   employees: AssignableEmployee[];
   departments: DepartmentOption[];
@@ -113,6 +116,10 @@ export default function LeadFormModal({ lead, employees, departments, assignment
   onClose: () => void;
   /** Saves the lead, then its assignment, and returns the stored lead. Throws with the message to show. */
   onSave: (lead: SalesLead, assignmentDraft: LeadAssignmentDraft, adminNote: string) => Promise<SalesLead>;
+  /** The lead can't be saved with nobody assigned. */
+  requireAssignee?: boolean;
+  /** Where Lead activity reads the history and sends replies; the admin Sales Tracker API when left out. */
+  activityApi?: LeadActivityApi;
 }) {
   const [draft, setDraft] = useState<SalesLead>(lead);
   const [assignmentDraft, setAssignmentDraft] = useState<LeadAssignmentDraft>(() => assignmentToDraft(assignment));
@@ -122,6 +129,9 @@ export default function LeadFormModal({ lead, employees, departments, assignment
   const [adminNote, setAdminNote] = useState('');
   const takesNote = (['follow-up', 'confirmed'] as string[]).includes(statusFromSalesLead(draft.status));
   const noteToSave = takesNote ? adminNote.trim() : '';
+  // "Source of lead" is on Others: the text box is shown and its text is the source. True from the
+  // start for a stored source that isn't one of the dropdown's options.
+  const [sourceOther, setSourceOther] = useState(() => !!lead.source && !LEAD_SOURCE_OPTIONS.includes(lead.source));
   const [loc, setLoc] = useState<LeadFormData>(() => toLocationFormData(lead));
   // PhoneField validates straight after a code change, in the same tick — before `loc` has
   // re-rendered. Validating against this ref (always the latest loc) avoids a stale error.
@@ -176,11 +186,10 @@ export default function LeadFormModal({ lead, employees, departments, assignment
   //  - Tell us more: the optional box the Feature / Funding Round / Press Release / Advertise forms
   //    end with. Shown read-only — it is the visitor's own wording, and the server never updates
   //    it (see SalesTrackerRepository.upsertLead). Staff notes go in Conversation result instead.
-  //  - Last call discussion: the hand-kept call note of a manually added lead. No page collects
-  //    it (a page lead's follow-ups are the employee ones in LeadActivityPanel), so on a page lead
-  //    it only shows if it already holds a value. (Next follow-up date is on every lead — see
-  //    needsFollowUpDate. "Last connect date" was removed from the window on 2026-10-08; its column
-  //    and stored values are kept, and a save passes the stored value through untouched.)
+  //  - Last call discussion: removed from the window on 2026-10-13 — Conversation result (logged in
+  //    Lead activity) is where call notes go. The column and stored text are kept and a save passes
+  //    them through untouched, like "Last connect date" (removed 2026-10-08). Next follow-up date
+  //    is on every lead — see needsFollowUpDate.
   //  - Source + Type of lead: set by the page itself — changing them would move the lead off that
   //    page's filter/KPI tile, so they're locked on an existing page lead.
   // Manually added leads keep everything editable (and, like other non-Sponsor leads, show no event section).
@@ -191,7 +200,6 @@ export default function LeadFormModal({ lead, employees, departments, assignment
   const show = {
     company: !isSponsor,
     tellUsMore: TELL_US_MORE_LEAD_TYPES.includes(lead.type) || !!lead.tellUsMore,
-    callLog: !isPageLead || !!lead.lastCallDiscussion,
   };
   const lock = {
     sourceType: isPageLead && !!lead.id,
@@ -225,6 +233,10 @@ export default function LeadFormModal({ lead, employees, departments, assignment
         : '';
       setFollowUpDateError(dateErr);
       if (dateErr) { setFormMsg({ kind: 'err', text: dateErr }); return; }
+    }
+    if (requireAssignee && assignmentDraft.assignees.length === 0) {
+      setFormMsg({ kind: 'err', text: 'Please assign this lead to at least one person: pick a department, then the person.' });
+      return;
     }
     setFormMsg(null);
     if (isNew) void handleSave();
@@ -284,6 +296,12 @@ export default function LeadFormModal({ lead, employees, departments, assignment
                 <input type="text" value={formatDateTime(draft.updatedAt)} disabled readOnly />
               </div>
             )}
+            {draft.id && (
+              <div className="field">
+                <label>Created by {lockNote('Set when the lead was created')}</label>
+                <input type="text" value={createdByLabel({ _source: 'lead', ...lead }) || '—'} disabled readOnly />
+              </div>
+            )}
             <div className="field"><label>Name <span style={{ color: 'var(--pink)' }}>*</span></label>
               <input type="text" className={nameInvalid ? 'invalid' : ''} placeholder="Lead's name" value={draft.name} onChange={(e) => { setDraft({ ...draft, name: e.target.value }); setNameInvalid(false); }} />
             </div>
@@ -322,7 +340,29 @@ export default function LeadFormModal({ lead, employees, departments, assignment
               onBlurCountry={() => {}}
               onBlurCity={() => {}}
             />
-            <div className="field"><label>Source of lead {lock.sourceType && lockNote(`Set by the ${pageLabel} page`)}</label><input type="text" placeholder="IG handle, WhatsApp, email link..." value={draft.source} disabled={lock.sourceType} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></div>
+            {/* A dropdown of the pages and platforms; "Others" opens a text box whose text is what
+                gets stored. A source typed before the dropdown existed opens under Others, unchanged. */}
+            <div className="field"><label htmlFor="lead-source">Source of lead {lock.sourceType && lockNote(`Set by the ${pageLabel} page`)}</label>
+              <select
+                id="lead-source"
+                value={sourceOther ? SOURCE_OTHER : draft.source}
+                disabled={lock.sourceType}
+                onChange={(e) => {
+                  const other = e.target.value === SOURCE_OTHER;
+                  setSourceOther(other);
+                  setDraft({ ...draft, source: other ? '' : e.target.value });
+                }}
+              >
+                <option value="">Select a source…</option>
+                {LEAD_SOURCE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                <option value={SOURCE_OTHER}>Others (write it)</option>
+              </select>
+            </div>
+            {sourceOther && (
+              <div className="field"><label htmlFor="lead-source-other">Specify source</label>
+                <input id="lead-source-other" type="text" placeholder="Where the lead came from" value={draft.source} disabled={lock.sourceType} onChange={(e) => setDraft({ ...draft, source: e.target.value })} />
+              </div>
+            )}
             <div className="field"><label>Type of lead {lock.sourceType && lockNote(`Set by the ${pageLabel} page`)}</label>
               <select value={draft.type} disabled={lock.sourceType} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
                 {/* A lead mirrored in from a public form (see PAGE_LEAD_TYPES) carries a type
@@ -365,9 +405,6 @@ export default function LeadFormModal({ lead, employees, departments, assignment
                   ? <div className="hint text-[var(--danger)]!" role="alert">{followUpDateError}</div>
                   : <div className="hint">Your own date. The lead shows in Today&apos;s Follow up on this day.</div>}
               </div>
-            )}
-            {show.callLog && (
-              <div className="field"><label>Last call discussion</label><input type="text" placeholder="Notes from last call..." value={draft.lastCallDiscussion} onChange={(e) => setDraft({ ...draft, lastCallDiscussion: e.target.value })} /></div>
             )}
             {isAdvertise && (
               <>
@@ -415,7 +452,7 @@ export default function LeadFormModal({ lead, employees, departments, assignment
             )}
           </div>
           {/* Last, after every field: the lead's whole follow-up history in one timeline. */}
-          <LeadActivityPanel source="lead" leadId={lead.id} refreshKey={activityVersion} />
+          <LeadActivityPanel source="lead" leadId={lead.id} refreshKey={activityVersion} api={activityApi} />
           {formMsg && <div className={`msg ${formMsg.kind}`} role={formMsg.kind === 'err' ? 'alert' : 'status'}>{formMsg.text}</div>}
         </div>
         <div className="modal-actions">

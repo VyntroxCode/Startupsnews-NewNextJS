@@ -1,6 +1,6 @@
 /* Partner logo marquee — the styles behind PartnerLogosMarquee.tsx and PartnerLogoTile.tsx.
 
-   Moved here from the inline <style> of src/app/our-partners/page.tsx (2026-09-17) so the
+   Moved here from the inline \3c style> of src/app/our-partners/page.tsx (2026-09-17) so the
    component carries its own layout wherever it is rendered: /our-partners and the Expand North
    Star page both use it. The rules themselves are unchanged. */
 
@@ -43,8 +43,8 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: #fff;
-  border: 1px solid #f0f0f0;
+  background: var(--sn-card, #fff);
+  border: 1px solid var(--sn-line-soft, #f0f0f0);
   border-radius: 8px;
   min-height: 130px;
 }

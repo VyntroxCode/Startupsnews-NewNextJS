@@ -85,7 +85,7 @@ export default function FundingDashboard() {
               ) : (
                 <>
                   <TrendSection buckets={overview?.pinned.trend ?? null} range={range} onRange={setRange} />
-                  <SectorSection rows={overview?.bySector ?? null} total={overview?.kpis.totalFunding ?? 0} model={model} />
+                  <SectorSection rows={overview?.bySector ?? null} trend={overview?.sectorTrend ?? null} model={model} />
                   <StageSection stages={overview?.byStage ?? null} bands={overview?.bySizeBand ?? null} />
                   <MoneyFlowSection model={model} totalDeals={overview?.kpis.totalDeals ?? 0} />
                   <CitySection rows={overview?.byCity ?? null} points={model?.cities ?? null} total={overview?.kpis.totalFunding ?? 0} />

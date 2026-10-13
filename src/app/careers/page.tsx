@@ -56,7 +56,7 @@ const STEPS = [
 
 export default function CareersPage() {
   return (
-    <div className="bg-white text-cr-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
+    <div className="bg-[color:var(--sn-bg,#fff)] text-cr-ink overflow-x-hidden" style={{ fontFamily: SITE_FONT_FAMILY }}>
       <div className="mvp-main-box event-by-country-container">
         <PageBreadcrumb current="Careers" />
       </div>
@@ -93,14 +93,14 @@ export default function CareersPage() {
         </section>
 
         {/* WHY WORK WITH US */}
-        <section className="px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-cr-ink text-white">
+        <section className="px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-[color:var(--sn-card,#14131A)] text-white">
           <Reveal direction="left">
             <h2 className="text-white text-[34px] sm:text-[48px] lg:text-[62px] font-black tracking-[-0.035em] leading-[1.02] uppercase">
               Why you&apos;ll <span className="text-cr-pink">like it here</span>
             </h2>
           </Reveal>
           <Reveal delay={120}>
-            <p className="mt-5 text-lg leading-[1.65] text-[#a8aeb6] max-w-[900px]">
+            <p className="mt-5 text-lg leading-[1.65] text-[color:var(--sn-ink-4,#a8aeb6)] max-w-[900px]">
               No layers of process, no waiting months to see your work matter. Just a small team
               moving quickly, with the reach to make that work count.
             </p>
@@ -108,12 +108,12 @@ export default function CareersPage() {
           <div className="mt-12 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-5">
             {VALUES.map((v, i) => (
               <Reveal key={v.title} delay={150 + i * 100}>
-                <article className="border border-[#2a262c] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0 h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1.5">
-                  <span className="block text-[26px] sm:text-[32px] lg:text-[38px] font-black tracking-[-0.04em] leading-none text-[#454049] break-words">
+                <article className="border border-[color:var(--sn-line,#2a262c)] rounded-[20px] p-[30px] flex flex-col gap-3.5 min-w-0 h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1.5">
+                  <span className="block text-[26px] sm:text-[32px] lg:text-[38px] font-black tracking-[-0.04em] leading-none text-[color:var(--sn-ink-soft,#454049)] break-words">
                     {v.label}
                   </span>
                   <h3 className="text-white text-[22px] font-extrabold tracking-[-0.02em] leading-[1.35]">{v.title}</h3>
-                  <p className="text-base leading-[1.6] text-[#a8aeb6]">{v.body}</p>
+                  <p className="text-base leading-[1.6] text-[color:var(--sn-ink-4,#a8aeb6)]">{v.body}</p>
                 </article>
               </Reveal>
             ))}
@@ -179,14 +179,14 @@ export default function CareersPage() {
         </section>
 
         {/* FINAL CTA */}
-        <section className="px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-cr-ink text-white text-center">
+        <section className="px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-16 bg-[color:var(--sn-card,#14131A)] text-white text-center">
           <Reveal>
             <h2 className="text-white text-[26px] sm:text-[36px] lg:text-[46px] font-black tracking-[-0.03em] leading-[1.1]">
               Still curious? <span className="text-cr-pink">Let&apos;s talk.</span>
             </h2>
           </Reveal>
           <Reveal delay={120}>
-            <p className="mt-5 text-base sm:text-lg leading-[1.65] text-[#a8aeb6] max-w-[560px] mx-auto">
+            <p className="mt-5 text-base sm:text-lg leading-[1.65] text-[color:var(--sn-ink-4,#a8aeb6)] max-w-[560px] mx-auto">
               Have questions before you apply, or want to know more about the team first? Reach out
               any time.
             </p>
@@ -194,7 +194,7 @@ export default function CareersPage() {
           <Reveal delay={200} className="flex flex-wrap justify-center gap-3.5 pt-8">
             <Link
               href="/contact-us"
-              className="border-[1.5px] border-white text-white text-[15px] font-bold px-8 py-[15px] rounded-full transition-colors hover:bg-white hover:text-cr-ink"
+              className="border-[1.5px] border-[color:var(--sn-line-bg,#fff)] text-white text-[15px] font-bold px-8 py-[15px] rounded-full transition-colors hover:bg-[color:var(--sn-card,#fff)] hover:text-cr-ink"
             >
               Contact Us
             </Link>

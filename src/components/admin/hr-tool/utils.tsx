@@ -128,7 +128,13 @@ export const STAGE_LABEL: Record<string, string> = {
   completed: 'Completed',
 };
 
-export function nextEmployeeId(employees: HrEmployee[]): string {
+/** The key (hr_employees.id) for a new Directory record: the person's own Employee ID, e.g.
+ * "SNFYI-0026", so there is one ID series rather than a hidden second one. A record created
+ * before any Employee ID is issued (CSV import, the legacy offer-sign flow) has no code to use and
+ * falls back to the old internal "E-<n>" key — as does a code longer than the 20-character column. */
+export function nextEmployeeId(employees: HrEmployee[], employeeCode?: string | null): string {
+  const code = (employeeCode || '').trim();
+  if (code && code.length <= 20 && !employees.some((e) => e.id === code)) return code;
   const nums = employees.map((e) => parseInt(String(e.id || '').replace(/^E-/, ''), 10)).filter((n) => !isNaN(n));
   const max = nums.length ? Math.max(...nums, 100) : 100;
   return 'E-' + (max + 1);
@@ -277,7 +283,8 @@ export interface OfferLetterData {
   employeeName: string;
   employeeCode: string;
   /** Their portal login password — included in the letter since, for now, this is the only
-   * place a new hire actually receives it (it is emailed to them as the offer letter — see api/admin/hr-tool/onboarding/send-offer-letter). */
+   * place a new hire actually receives it. The letter is no longer emailed (offer letter emails
+   * are off — see api/admin/hr-tool/onboarding/send-offer-letter); HR downloads and shares it. */
   password: string;
   designation: string;
   team: string;

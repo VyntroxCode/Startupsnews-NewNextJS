@@ -238,7 +238,7 @@ export function EventsByCountryList({
                     src={flags[country]}
                     alt=""
                     loading="lazy"
-                    className="size-8 shrink-0 rounded-full object-cover ring-1 ring-black/10 sm:size-10"
+                    className="size-8 shrink-0 rounded-full object-cover ring-1 ring-[color:var(--sn-line-a10,rgba(0,0,0,0.1))] sm:size-10"
                     onError={(e) => { e.currentTarget.hidden = true; }}
                   />
                 )}

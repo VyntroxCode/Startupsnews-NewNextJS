@@ -1,5 +1,6 @@
 'use client';
 
+import { panelPath } from '@/lib/panel-path';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { AlarmClock, ArrowLeft, CalendarDays, Save } from 'lucide-react';
@@ -231,7 +232,7 @@ export default function AdminReportEditPage() {
         throw new Error(data.error || 'Failed to update report');
       }
 
-      router.push(adminReturnTo('admin:reports:returnTo', '/admin/reports'));
+      router.push(adminReturnTo('admin:reports:returnTo', panelPath('/admin/reports')));
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -312,7 +313,7 @@ export default function AdminReportEditPage() {
             <div className="bg-red-100 text-red-800 px-4 py-3 rounded-lg mb-6 text-sm border border-red-200">
               <strong>Error:</strong> {error}
             </div>
-            <Link href="/admin/reports" className="text-indigo-600 hover:text-indigo-800 text-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Link href={panelPath('/admin/reports')} className="text-indigo-600 hover:text-indigo-800 text-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
               <ArrowLeft size={14} aria-hidden />Back to Reports
             </Link>
           </div>
@@ -323,7 +324,7 @@ export default function AdminReportEditPage() {
       <AdminErrorBoundary>
         <div className="admin-content-area p-6 text-center text-slate-500">
           Report not found.
-          <Link href="/admin/reports" className="text-indigo-600 hover:text-indigo-800 text-sm block mt-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+          <Link href={panelPath('/admin/reports')} className="text-indigo-600 hover:text-indigo-800 text-sm block mt-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
             <ArrowLeft size={14} aria-hidden />Back to Reports
           </Link>
         </div>
@@ -336,7 +337,7 @@ export default function AdminReportEditPage() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <Link href="/admin/reports" style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1rem' }}>
+            <Link href={panelPath('/admin/reports')} style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1rem' }}>
               <ArrowLeft size={14} aria-hidden />Back to Reports
             </Link>
             <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem', color: '#0f172a', letterSpacing: '-0.02em' ,marginBottom: '1rem'}}>

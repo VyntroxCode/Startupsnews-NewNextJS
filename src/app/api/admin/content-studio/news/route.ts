@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAnyRole } from "@/shared/middleware/auth.middleware";
+import { requireContentAccess } from "@/shared/middleware/content-access.middleware";
 import { CONTENT_STUDIO_ROLES } from "@/shared/middleware/roles";
 import { fetchFeedItems, type RssItem } from "@/modules/content-studio/lib/feeds/rss";
 import { fetchArticlePage, domainOf } from "@/modules/content-studio/lib/feeds/extract";
@@ -28,7 +28,7 @@ interface NewsRequest {
  * the original; only the transport changed (direct fetch, no CORS proxies).
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAnyRole(request, CONTENT_STUDIO_ROLES);
+  const auth = await requireContentAccess(request, CONTENT_STUDIO_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   let body: NewsRequest;

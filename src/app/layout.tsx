@@ -22,6 +22,7 @@ import { entityToBanner } from "@/modules/banners/utils/banners.utils";
 import type { Banner } from "@/modules/banners/domain/types";
 import { toCdnUrl } from "@/shared/utils/image-cdn";
 import { getFooterCopyrightText } from "@/lib/site-settings";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 const bannersRepository = new BannersRepository();
 const bannersService = new BannersService(bannersRepository);
 
@@ -236,8 +237,11 @@ export default async function RootLayout({
 }>) {
   const [banners, footerCopyright] = await Promise.all([getActiveBanners(), getFooterCopyrightText()]);
   return (
-    <html lang="en">
+    // suppressHydrationWarning: THEME_INIT_SCRIPT sets data-theme on <html> before React hydrates.
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Applies the saved Light / Dark / System choice before first paint (no white flash). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         {/*
           AdSense loader must be a real <script> in the server-rendered <head>:
           AdSense's site-verification crawler reads the raw HTML, so next/script's

@@ -15,13 +15,13 @@ const LINKEDIN_ICON =
 
 const modalTheme = {
 	brand: "#E72262",
-	brandSoft: "#fce4ec",
-	brandGlow: "#fce4ec",
-	ink: "#111111",
-	inkSoft: "#4b5563",
-	line: "rgba(17,17,17,0.1)",
-	panel: "#ffffff",
-	panelStrong: "#fff7fb",
+	brandSoft: "var(--sn-banner-soft, #fce4ec)",
+	brandGlow: "var(--sn-banner-soft, #fce4ec)",
+	ink: "var(--sn-ink, #111111)",
+	inkSoft: "var(--sn-ink-2, #4b5563)",
+	line: "var(--sn-line-a10, rgba(17,17,17,0.1))",
+	panel: "var(--sn-pop, #ffffff)",
+	panelStrong: "var(--sn-bg-3, #fff7fb)",
 };
 
 /* The popup's single "Login / Sign up" button. */
@@ -248,10 +248,10 @@ export default function AuthModal() {
 							display: "flex",
 							flexDirection: "column",
 							alignItems: "center",
-							background: "#fff",
+							background: "var(--sn-card, #fff)",
 							borderRadius: 28,
 							padding: "44px 52px 40px",
-							boxShadow: "0 32px 80px rgba(0,0,0,0.22)",
+							boxShadow: "0 32px 80px var(--sn-shadow-22, rgba(0,0,0,0.22))",
 							maxWidth: 400,
 							width: "calc(100vw - 48px)",
 							textAlign: "center",
@@ -278,7 +278,7 @@ export default function AuthModal() {
 								margin: "0 0 28px",
 								fontSize: 22,
 								fontWeight: 800,
-								color: "#E72262",
+								color: "var(--sn-pink-ink, #E72262)",
 								letterSpacing: "-0.01em",
 							}}
 						>
@@ -324,7 +324,7 @@ export default function AuthModal() {
 								margin: "0 0 6px",
 								fontSize: 13,
 								fontWeight: 600,
-								color: "#E72262",
+								color: "var(--sn-pink-ink, #E72262)",
 								letterSpacing: "0.1em",
 								textTransform: "uppercase",
 							}}
@@ -336,7 +336,7 @@ export default function AuthModal() {
 								margin: "0 0 8px",
 								fontSize: 24,
 								fontWeight: 800,
-								color: "#111",
+								color: "var(--sn-ink, #111)",
 								letterSpacing: "-0.02em",
 								lineHeight: 1.15,
 							}}
@@ -349,7 +349,7 @@ export default function AuthModal() {
 							style={{
 								margin: "0 0 28px",
 								fontSize: 14,
-								color: "#6b7280",
+								color: "var(--sn-ink-2, #6b7280)",
 								fontWeight: 400,
 								lineHeight: 1.5,
 							}}
@@ -365,13 +365,13 @@ export default function AuthModal() {
 								display: "inline-flex",
 								alignItems: "center",
 								gap: 8,
-								background: "#fff7fb",
+								background: "var(--sn-bg-2, #fff7fb)",
 								border: "1px solid rgba(231,34,98,0.15)",
 								borderRadius: 50,
 								padding: "7px 18px",
 								fontSize: 14,
 								fontWeight: 600,
-								color: "#E72262",
+								color: "var(--sn-pink-ink, #E72262)",
 							}}
 						>
 							<span
@@ -400,16 +400,16 @@ export default function AuthModal() {
 									padding: "12px 10px",
 									borderRadius: 12,
 									border: "1.5px solid rgba(231,34,98,0.25)",
-									background: "#fff",
-									color: "#E72262",
+									background: "var(--sn-card, #fff)",
+									color: "var(--sn-pink-ink, #E72262)",
 									fontWeight: 700,
 									fontSize: 13.5,
 									cursor: "pointer",
 									fontFamily: "inherit",
 									transition: "background 0.15s, border-color 0.15s",
 								}}
-								onMouseEnter={(e) => { e.currentTarget.style.background = "#fff7fb"; e.currentTarget.style.borderColor = "#E72262"; }}
-								onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "rgba(231,34,98,0.25)"; }}
+								onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sn-bg-2, #fff7fb)"; e.currentTarget.style.borderColor = "#E72262"; }}
+								onMouseLeave={(e) => { e.currentTarget.style.background = "var(--sn-card, #fff)"; e.currentTarget.style.borderColor = "rgba(231,34,98,0.25)"; }}
 							>
 								Continue to Reports
 							</button>
@@ -464,10 +464,10 @@ export default function AuthModal() {
 						ref={sheetRef}
 						onClick={(e) => e.stopPropagation()}
 						style={{
-							background: `linear-gradient(90deg, #f2b8cc 0%, ${modalTheme.brandSoft} 30%, ${modalTheme.panel} 50%, ${modalTheme.brandSoft} 72%, #f2b8cc 100%)`,
+							background: `linear-gradient(90deg, var(--sn-banner-edge, #f2b8cc) 0%, ${modalTheme.brandSoft} 30%, ${modalTheme.panel} 50%, ${modalTheme.brandSoft} 72%, var(--sn-banner-edge, #f2b8cc) 100%)`,
 							width: "100%",
 							maxWidth: isMobileBanner ? 1200 : "none",
-							boxShadow: "0 -4px 18px rgba(17,17,17,0.08)",
+							boxShadow: "0 -4px 18px var(--sn-shadow-08, rgba(17,17,17,0.08))",
 							overflow: "hidden",
 							position: "relative",
 							animation:
@@ -501,7 +501,7 @@ export default function AuthModal() {
 									left: 0,
 									width: 300,
 									backgroundImage:
-										"radial-gradient(rgba(0,0,0,0.85) 2px, transparent 2px)",
+										"radial-gradient(var(--sn-banner-dot, rgba(0,0,0,0.85)) 2px, transparent 2px)",
 									backgroundSize: "17px 17px",
 									backgroundPosition: "20px 20px",
 									WebkitMaskImage:
@@ -518,7 +518,7 @@ export default function AuthModal() {
 								position: "absolute",
 								inset: 0,
 								background:
-									"radial-gradient(120% 140% at 15% 0%, rgba(255,220,226,0.55) 0%, rgba(255,255,255,0) 55%)",
+									"radial-gradient(120% 140% at 15% 0%, var(--sn-banner-glow, rgba(255,220,226,0.55)) 0%, rgba(255,255,255,0) 55%)",
 								pointerEvents: "none",
 							}}
 						/>
@@ -533,7 +533,7 @@ export default function AuthModal() {
 								height: isMobileBanner ? 28 : 36,
 								borderRadius: "50%",
 								border: `1px solid ${modalTheme.line}`,
-								background: "rgba(255,255,255,0.92)",
+								background: "var(--sn-glass-92, rgba(255,255,255,0.92))",
 								cursor: "pointer",
 								display: "flex",
 								alignItems: "center",

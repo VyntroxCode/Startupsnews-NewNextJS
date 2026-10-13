@@ -91,7 +91,7 @@ function Dock({ active, reducedMotion }: { active: SectionId | null; reducedMoti
       animate="show"
       exit={reducedMotion ? undefined : "exit"}
     >
-      <div className="relative flex items-center gap-1 overflow-hidden rounded-full border border-white/10 bg-ens-navy/85 p-1.5 shadow-[0_18px_50px_-18px_rgba(14,26,51,0.75)] backdrop-blur-xl">
+      <div className="relative flex items-center gap-1 overflow-hidden rounded-full border border-white/10 bg-ens-noir/85 p-1.5 shadow-[0_18px_50px_-18px_rgba(10,10,11,0.75)] backdrop-blur-xl">
         {SECTIONS.map((section) => {
           const isActive = active === section.id;
           return (
@@ -127,7 +127,7 @@ function Dock({ active, reducedMotion }: { active: SectionId | null; reducedMoti
 
         <motion.div variants={dockItemVariants}>
           <Link href="/" className="group/dock block rounded-full no-underline">
-            <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[14px] font-bold whitespace-nowrap text-ens-navy transition-[background-color,translate] duration-300 group-hover/dock:-translate-y-px group-hover/dock:bg-ens-gold-soft">
+            <span className="flex items-center gap-2 rounded-full bg-[color:var(--sn-card,#fff)] px-4 py-2 text-[14px] font-bold whitespace-nowrap text-[color:var(--sn-ink,#0A0A0B)] transition-[background-color,translate] duration-300 group-hover/dock:-translate-y-px group-hover/dock:bg-ens-blush">
               <HomeIcon className="size-4 text-ens-pink" />
               Back to Home
             </span>
@@ -137,7 +137,7 @@ function Dock({ active, reducedMotion }: { active: SectionId | null; reducedMoti
         {/* Reading progress along the dock's bottom edge. */}
         <motion.span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-5 bottom-0 h-[2px] origin-left rounded-full bg-linear-to-r from-ens-pink to-ens-gold-soft"
+          className="pointer-events-none absolute inset-x-5 bottom-0 h-[2px] origin-left rounded-full bg-linear-to-r from-ens-pink to-ens-pink-soft"
           style={{ scaleX: progress }}
         />
       </div>
@@ -257,7 +257,7 @@ function Sidebar({
                 <>
                   <motion.div
                     aria-hidden="true"
-                    className="fixed inset-0 z-[60] bg-ens-navy/55 backdrop-blur-sm"
+                    className="fixed inset-0 z-[60] bg-ens-noir/55 backdrop-blur-sm"
                     onClick={close}
                     initial={reducedMotion ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -270,20 +270,20 @@ function Sidebar({
                     role="dialog"
                     aria-modal="true"
                     aria-label="Page sections"
-                    className="fixed inset-y-0 right-0 z-[70] flex w-[84vw] max-w-sm flex-col bg-white shadow-[-24px_0_60px_-20px_rgba(14,26,51,0.45)]"
+                    className="fixed inset-y-0 right-0 z-[70] flex w-[84vw] max-w-sm flex-col bg-[color:var(--sn-pop,#fff)] shadow-[-24px_0_60px_-20px_rgba(10,10,11,0.45)]"
                     initial={reducedMotion ? false : { x: "100%" }}
                     animate={{ x: 0 }}
                     exit={reducedMotion ? undefined : { x: "100%" }}
                     transition={{ type: "spring", stiffness: 320, damping: 36 }}
                   >
-                    <div className="flex items-center justify-between border-b border-ens-cream-line px-6 py-5">
+                    <div className="flex items-center justify-between border-b border-ens-blush-line px-6 py-5">
                       <p className="m-0 text-[22px] leading-none font-extrabold tracking-[-0.01em] text-ens-pink">Attend</p>
                       <button
                         ref={closeRef}
                         type="button"
                         aria-label="Close page sections"
                         onClick={close}
-                        className="flex size-10 cursor-pointer items-center justify-center rounded-full border-0 bg-ens-cream text-ens-ink transition-[background-color,rotate] duration-300 hover:rotate-90 hover:bg-ens-cream-line"
+                        className="flex size-10 cursor-pointer items-center justify-center rounded-full border-0 bg-ens-blush text-ens-ink transition-[background-color,rotate] duration-300 hover:rotate-90 hover:bg-ens-blush-line"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="size-5" aria-hidden="true">
                           <path d="M6 6l12 12M18 6 6 18" />
@@ -309,13 +309,13 @@ function Sidebar({
                             >
                               <span
                                 className={`flex items-center justify-between rounded-2xl px-4 py-4 text-[17px] font-bold transition-colors duration-300 ${
-                                  isActive ? "bg-ens-pink/10 text-ens-pink" : "text-ens-ink group-hover/side:bg-ens-cream"
+                                  isActive ? "bg-ens-pink/10 text-ens-pink" : "text-ens-ink group-hover/side:bg-ens-blush"
                                 }`}
                               >
                                 <span className="flex items-center gap-3">
                                   <span
                                     aria-hidden="true"
-                                    className={`size-2 rounded-full transition-colors duration-300 ${isActive ? "bg-ens-pink" : "bg-ens-cream-line"}`}
+                                    className={`size-2 rounded-full transition-colors duration-300 ${isActive ? "bg-ens-pink" : "bg-ens-blush-line"}`}
                                   />
                                   {section.label}
                                 </span>
@@ -339,14 +339,14 @@ function Sidebar({
                     </motion.ul>
 
                     <motion.div
-                      className="mt-auto border-t border-ens-cream-line p-4"
+                      className="mt-auto border-t border-ens-blush-line p-4"
                       initial={reducedMotion ? false : { opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: 0.45, ease: EASE }}
                     >
                       <Link href="/" className="block rounded-full no-underline">
-                        <span className="flex items-center justify-center gap-2 rounded-full bg-ens-navy px-5 py-3.5 text-[15px] font-bold text-white">
-                          <HomeIcon className="size-4 text-ens-gold-soft" />
+                        <span className="flex items-center justify-center gap-2 rounded-full bg-ens-noir px-5 py-3.5 text-[15px] font-bold text-white">
+                          <HomeIcon className="size-4 text-ens-pink-soft" />
                           Back to Home
                         </span>
                       </Link>

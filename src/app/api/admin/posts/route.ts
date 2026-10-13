@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser, requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { getContentAuthUser, requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { CONTENT_ROLES } from '@/shared/middleware/roles';
 import { query, queryOne } from '@/shared/database/connection';
 import { PostsService } from '@/modules/posts/service/posts.service';
@@ -62,7 +62,7 @@ const postsService = new PostsService(postsRepository, categoriesService);
  * Get all posts (admin view - includes drafts) with pagination
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAnyRole(request, CONTENT_ROLES);
+  const auth = await requireContentAccess(request, CONTENT_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
     body = parsed || {};
   }
 
-  const auth = await getAuthUser(request, formToken ?? undefined);
+  const auth = await getContentAuthUser(request, formToken ?? undefined);
   if (!auth) {
     return NextResponse.json(
       { success: false, error: 'Unauthorized. Please log in again.' },

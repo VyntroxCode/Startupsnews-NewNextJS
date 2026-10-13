@@ -138,6 +138,19 @@ export interface SizeBandRow extends AggRow {
   range: string;
 }
 
+/**
+ * Month-by-month $ per sector for two calendar years (the dashboard's sector line chart).
+ * `current` stops at `lastMonth` — later months are null, not zero, because they have not happened.
+ */
+export interface SectorTrend {
+  year: number;
+  previousYear: number;
+  /** 1–12: the last month of `year` the window reaches. */
+  lastMonth: number;
+  /** One entry per `bySector` row, same order. Each array has 12 values, Jan → Dec. */
+  series: { sector: string; current: (number | null)[]; previous: number[] }[];
+}
+
 export interface FundingOverview {
   pinned: {
     year: number;
@@ -152,6 +165,7 @@ export interface FundingOverview {
   previousKpis: FundingKpis | null;
   /** Every sector / stage / city, sorted by $ (largest first). */
   bySector: AggRow[];
+  sectorTrend: SectorTrend;
   byStage: AggRow[];
   byCity: AggRow[];
   topInvestors: InvestorRow[];

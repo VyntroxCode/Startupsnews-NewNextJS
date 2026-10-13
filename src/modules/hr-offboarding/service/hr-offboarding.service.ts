@@ -10,7 +10,7 @@ import { letterheadLogo } from '@/lib/letterhead-logo';
 import { HrOffboardingRepository, OpenCaseExistsError } from '../repository/hr-offboarding.repository';
 import { LETTER_TEMPLATE_NAME, LETTER_TITLE, buildLetterText, isLetterType, type LetterType } from '../utils/letters';
 import {
-  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, CLEARANCE_STATUSES, DEDUCTIBLE_CATEGORIES, FNF_LIMITS, NOTICE_DAYS, OFFBOARDING_LIMITS, fnfForEmployee,
+  CLEARANCE_CATEGORIES, CLEARANCE_CATEGORY_LABEL, CLEARANCE_STATUSES, DEDUCTIBLE_CATEGORIES, FNF_LIMITS, NOTICE_DAYS, OFFBOARDING_EMAILS_ENABLED, OFFBOARDING_LIMITS, fnfForEmployee,
   leftEarlyDays, lettersForEmployee, systemLwd, type LwdChoice, type OffboardingLetterRecord,
   OPEN_OFFBOARDING_STATUSES, RESIGNATION_REASONS, WORKABLE_OFFBOARDING_STATUSES,
   type ClearanceCategory, type ClearanceStatus, type MyExitView, type OffboardingAccessMode, type OffboardingCase,
@@ -673,7 +673,7 @@ export class HrOffboardingService {
     };
     await this.repository.updateCase(id, { letters: { ...(c.letters || {}), [type]: record } });
     await this.audit(actor, `${previous ? 'Re-issued' : 'Issued'} ${LETTER_TITLE[type]} for ${c.emp}`);
-    if (send === true) {
+    if (send === true && OFFBOARDING_EMAILS_ENABLED) {
       const sent = await this.sendLetter(id, type, actor);
       const fresh = (await this.repository.findById(id))!;
       return { ok: true, data: { ...fresh, mail: sent.ok ? 'sent' : sent.error } };
@@ -684,6 +684,7 @@ export class HrOffboardingService {
   /** Emails an issued letter (PDF attached) to the personal email. Failure is recorded on the letter
    * — it stays issued and HR can resend. One send per case+letter at a time (double clicks). */
   async sendLetter(id: number, type: unknown, actor: string): Promise<OffboardingResult<OffboardingCase & { mail?: string }>> {
+    if (!OFFBOARDING_EMAILS_ENABLED) return fail('Offboarding emails are turned off — download the letter and share it yourself.', 409);
     if (!isLetterType(type)) return fail('Unknown letter type.');
     const lockKey = `${id}:${type}`;
     if (HrOffboardingService.sending.has(lockKey)) return fail('This letter is already being sent.', 409);
@@ -789,6 +790,7 @@ export class HrOffboardingService {
 
   /** Fire-and-forget notification — never delays or fails the action; a failure lands in the audit log. */
   private notify(to: string | null | undefined, subject: string, paragraphs: string[]): void {
+    if (!OFFBOARDING_EMAILS_ENABLED) return;
     if (!to || !EMAIL_RE.test(to)) return;
     void sendHrMail({ to, subject, ...mailBody(paragraphs) }).then((r) => {
       if (!r.ok) void this.audit('System', `Email "${subject}" to ${to} failed: ${r.error}`);

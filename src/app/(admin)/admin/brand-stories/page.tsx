@@ -1,5 +1,6 @@
 'use client';
 
+import { panelPath } from '@/lib/panel-path';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { AlarmClock, LayoutGrid, Pencil, Plus, Trash, X } from 'lucide-react';
@@ -62,7 +63,7 @@ export default function AdminBrandStoriesPage() {
 
   // Create / edit pages send the admin back to this same section view after saving.
   useEffect(() => {
-    rememberAdminReturnTo('admin:brand-stories:returnTo', sectionFilter ? `/admin/brand-stories?section=${sectionFilter}` : '/admin/brand-stories');
+    rememberAdminReturnTo('admin:brand-stories:returnTo', panelPath(sectionFilter ? `/admin/brand-stories?section=${sectionFilter}` : '/admin/brand-stories'));
   }, [sectionFilter]);
 
   const [stories, setStories] = useState<BrandStoryWithMeta[]>([]);
@@ -284,7 +285,7 @@ export default function AdminBrandStoriesPage() {
           <>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.25rem' }}>
               <Link
-                href="/admin/brand-stories/create"
+                href={panelPath('/admin/brand-stories/create')}
                 style={{
                   background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
                   color: 'white',
@@ -402,7 +403,7 @@ export default function AdminBrandStoriesPage() {
                           <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                               <Link
-                                href={`/admin/brand-stories/edit/${story.id}`}
+                                href={panelPath(`/admin/brand-stories/edit/${story.id}`)}
                                 style={{
                                   padding: '0.5rem 1rem',
                                   background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',

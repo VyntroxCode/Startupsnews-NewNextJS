@@ -4,7 +4,7 @@ import { foundUsText, referredByLabel } from '@/modules/ens-travel-enquiries/dom
 import { COUNTRY_CODE_OPTIONS } from '@/components/ui/constants/phone';
 import type { LeadFormData } from '@/components/lead-forms/shared/types';
 import { isFollowUpDue, worstFollowUpDue } from '@/modules/lead-followups/domain/follow-up-date';
-import { ENS_ENQUIRY_TYPE_LABEL, isOpenStatusLabel } from './constants';
+import { ENS_ENQUIRY_TYPE_LABEL, isOpenStatusLabel, PAGE_LEAD_TYPES } from './constants';
 import type { SalesLead, UnifiedLeadRow } from './types';
 
 const KNOWN_CODES = COUNTRY_CODE_OPTIONS.map((c) => c.code).filter((c) => c !== 'other');
@@ -86,6 +86,19 @@ export function matchesType(row: UnifiedLeadRow, value: string): boolean {
   return row._source === 'ens' ? value === ENS_ENQUIRY_TYPE_LABEL : row.type === value;
 }
 
+/** What "Created by" reads for leads nobody added by hand: they came in from a public form. */
+export const CREATED_BY_WEBSITE = 'Website form';
+
+/** Who created the row, as the All leads "Created by" column, its filter, the lead window and the
+ * exports show it: the employee (added from My Leads) or admin (added in the Sales Tracker) by
+ * name; "Website form" for a page lead or an Expand North Star enquiry; '' for a hand-added lead
+ * from before the creator was recorded (2026-10-13). */
+export function createdByLabel(row: UnifiedLeadRow): string {
+  if (row._source === 'ens') return CREATED_BY_WEBSITE;
+  if (row.createdByName) return row.createdByName;
+  return (PAGE_LEAD_TYPES as readonly string[]).includes(row.type) ? CREATED_BY_WEBSITE : '';
+}
+
 /** One person's next follow-up date on a lead: the admin's (the lead's own column) or an assigned
  * employee's (their sales_lead_assignments row). */
 export interface FollowUpDateEntry { who: string; date: string; byAdmin: boolean }
@@ -135,7 +148,7 @@ export function leadExportRow(row: UnifiedLeadRow, assignment: LeadAssignment | 
       Date: row.createdAt.slice(0, 10), Name: row.name || '', Company: '', Contact: row.contact || '',
       Email: row.email || '', Country: row.country || '', City: row.city || '', Source: 'Expand North Star',
       Type: ENS_ENQUIRY_TYPE_LABEL, Query: row.requirement || '',
-      'Assigned To': people, Departments: departments,
+      'Assigned To': people, Departments: departments, 'Created By': createdByLabel(row),
       'Current Status': assignmentStatusLabel(statusFromEns(row.leadStatus)), 'Follow-ups': followUps,
       'Next Follow-up': row.nextFollowUpDate || '', 'Employee Follow-up Dates': employeeDates, 'Last Call Discussion': row.conversationNote || '',
       Participation: participationLabel(row.participation), 'Referred By': row.referredBy ? referredByLabel(row.referredBy) : '',
@@ -149,7 +162,7 @@ export function leadExportRow(row: UnifiedLeadRow, assignment: LeadAssignment | 
   return {
     Date: l.date || '', Name: l.name || '', Company: l.company || '', Contact: l.contact || '',
     Email: l.email || '', Country: l.country || '', City: l.city || '', Source: l.source || '', Type: typeLabel, Query: l.query || '',
-    'Assigned To': people, Departments: departments,
+    'Assigned To': people, Departments: departments, 'Created By': createdByLabel(row),
     'Current Status': l.status || '', 'Follow-ups': followUps, 'Next Follow-up': l.nextFollowUpDate || '',
     'Employee Follow-up Dates': employeeDates, 'Last Call Discussion': l.lastCallDiscussion || '',
     Participation: '', 'Referred By': '', 'How They Found Us': '',

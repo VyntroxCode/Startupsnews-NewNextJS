@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAnyRole } from "@/shared/middleware/auth.middleware";
+import { requireContentAccess } from "@/shared/middleware/content-access.middleware";
 import { CONTENT_STUDIO_ROLES } from "@/shared/middleware/roles";
 import { fetchArticlePage } from "@/modules/content-studio/lib/feeds/extract";
 
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  * chain (content-studio-v17.html:1103-1172).
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAnyRole(request, CONTENT_STUDIO_ROLES);
+  const auth = await requireContentAccess(request, CONTENT_STUDIO_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   let body: { url?: string };

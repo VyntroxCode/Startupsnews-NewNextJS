@@ -69,20 +69,20 @@ export function IncubatxDossierForm() {
         .incubatx-page {
           --accent: #e91e63;
           --accent-dark: #c2185b;
-          --accent-tint: #fce4ec;
-          --ink: #14151a;
-          --muted: #6b7280;
-          --line: #e5e7eb;
-          --panel: #ffffff;
-          --paper: #ffffff;
+          --accent-tint: var(--sn-bg-3, #fce4ec);
+          --ink: var(--sn-ink, #14151a);
+          --muted: var(--sn-ink-2, #6b7280);
+          --line: var(--sn-line, #e5e7eb);
+          --panel: var(--sn-bg, #ffffff);
+          --paper: var(--sn-bg, #ffffff);
           /* --paper is the page ground and is now white, so anything that needs a subtle
              fill INSIDE the white card (the upload dropzone) takes this instead — sharing
              --paper would have left it invisible against the card behind it. */
-          --tint: #f7f8fa;
+          --tint: var(--sn-bg-2, #f7f8fa);
           --amber: #f59e0b;
-          --amber-soft: #fef3c7;
+          --amber-soft: var(--sn-wash-amber, #fef3c7);
           --green: #16a34a;
-          --green-soft: #dcfce7;
+          --green-soft: var(--sn-wash-green, #dcfce7);
           --radius: 10px;
           font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
           color: var(--ink);
@@ -156,9 +156,9 @@ export function IncubatxDossierForm() {
         .incubatx-page .field input:focus, .incubatx-page .field textarea:focus { outline: none; border-color: var(--accent); }
         .incubatx-page .field.has-error input, .incubatx-page .field.has-error textarea { border-color: #dc2626; }
         .incubatx-page .field .opt { font-weight: 400; color: var(--muted); }
-        .incubatx-page .field-error { display: none; color: #dc2626; font-size: 12px; margin-top: 5px; }
+        .incubatx-page .field-error { display: none; color: var(--sn-red-ink, #dc2626); font-size: 12px; margin-top: 5px; }
         .incubatx-page .field-error.visible { display: block; }
-        .incubatx-page .error-text { color: #dc2626; font-size: 13px; margin-bottom: 14px; }
+        .incubatx-page .error-text { color: var(--sn-red-ink, #dc2626); font-size: 13px; margin-bottom: 14px; }
         .incubatx-page .ix-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .incubatx-page .ix-field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
         @media (max-width: 640px) { .incubatx-page .ix-field-row, .incubatx-page .ix-field-row-3 { grid-template-columns: 1fr; } }
@@ -172,7 +172,7 @@ export function IncubatxDossierForm() {
         }
         .incubatx-page .custom-select-btn.open { border-color: var(--accent); }
         .incubatx-page .custom-select-btn .cs-input { flex: 1; border: none; outline: none; font: inherit; padding: 0; background: transparent; min-width: 0; }
-        .incubatx-page .cs-placeholder { color: #9ca3af; }
+        .incubatx-page .cs-placeholder { color: var(--sn-ink-4, #9ca3af); }
         .incubatx-page .caret { font-size: 10px; color: var(--muted); flex-shrink: 0; }
         .incubatx-page .custom-select-list {
           display: none; position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0; max-height: 240px;
@@ -203,7 +203,7 @@ export function IncubatxDossierForm() {
           background: none; border: 1.5px solid var(--line); color: var(--muted); border-radius: 8px;
           height: 40px; width: 40px; cursor: pointer; font-size: 13px; flex-shrink: 0;
         }
-        .incubatx-page .sp-remove-btn:hover { border-color: #dc2626; color: #dc2626; }
+        .incubatx-page .sp-remove-btn:hover { border-color: #dc2626; color: var(--sn-red-ink, #dc2626); }
         .incubatx-page .add-link { align-self: flex-start; background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 0; }
         .incubatx-page .add-link:hover { text-decoration: underline; }
 
@@ -220,7 +220,7 @@ export function IncubatxDossierForm() {
         .incubatx-page .ix-segmented button.active { background: var(--accent); color: #fff; }
 
         /* Soft warnings — amber, never blocking */
-        .incubatx-page .ix-soft-warning { background: var(--amber-soft); color: #92400e; border-radius: 8px; padding: 9px 12px; font-size: 12.5px; margin-top: -6px; margin-bottom: 18px; }
+        .incubatx-page .ix-soft-warning { background: var(--amber-soft); color: var(--sn-amber-ink, #92400e); border-radius: 8px; padding: 9px 12px; font-size: 12.5px; margin-top: -6px; margin-bottom: 18px; }
 
         /* Documents checklist */
         .incubatx-page .ix-doc-checklist { display: flex; flex-direction: column; gap: 12px; }
@@ -241,14 +241,14 @@ export function IncubatxDossierForm() {
         .incubatx-page .ix-upload-progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12.5px; }
         .incubatx-page .ix-upload-progress-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .incubatx-page .ix-upload-progress-row button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; flex-shrink: 0; }
-        .incubatx-page .ix-upload-progress-row button:hover { color: #dc2626; }
+        .incubatx-page .ix-upload-progress-row button:hover { color: var(--sn-red-ink, #dc2626); }
         .incubatx-page .ix-upload-progress-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
         .incubatx-page .ix-upload-progress-bar div { height: 100%; background: var(--accent); transition: width .15s ease; }
         .incubatx-page .ix-doc-chip { display: flex; align-items: center; gap: 10px; background: var(--green-soft); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
         .incubatx-page .ix-doc-chip-name { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .incubatx-page .ix-doc-chip-size { color: var(--muted); font-size: 12px; }
         .incubatx-page .ix-doc-chip button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
-        .incubatx-page .ix-doc-chip button:hover { color: #dc2626; }
+        .incubatx-page .ix-doc-chip button:hover { color: var(--sn-red-ink, #dc2626); }
 
         /* Review */
         .incubatx-page .ix-review-section { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }

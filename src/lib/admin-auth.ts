@@ -2,6 +2,9 @@
  * Client-side admin authentication utilities
  */
 
+import { getEmployeeToken, getEmployeeUser } from '@/lib/employee-auth';
+import { canEmployeeUseContent, isContentPortalPath } from '@/modules/hr-credentials/domain/content-access';
+
 export interface AdminUser {
   id: number;
   email: string;
@@ -32,6 +35,21 @@ function deleteCookie(name: string): void {
   document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
+/**
+ * The employee portal mounts the admin Posts / Reports / Brand Stories screens for the Employee IDs
+ * in CONTENT_EMPLOYEE_CODES (/employee/posts, /employee/reports, …). On those routes the screens run
+ * on the employee's own session: their token goes out with every request, and they are shown as an
+ * 'admin' so every control renders. The API re-checks the allow-list (requireContentAccess). Checked
+ * before any admin session so a stale admin_token cookie in the same browser cannot get in the way.
+ */
+function getContentEmployeeSession(): { token: string; user: AdminUser } | null {
+  if (typeof window === 'undefined' || !isContentPortalPath(window.location.pathname)) return null;
+  const token = getEmployeeToken();
+  const employee = getEmployeeUser();
+  if (!token || !employee || !canEmployeeUseContent(employee.employeeCode)) return null;
+  return { token, user: { id: 0, email: employee.employeeCode, name: employee.name, role: 'admin' } };
+}
+
 export function setAdminSession(token: string, user: AdminUser): void {
   if (typeof window === 'undefined') return;
   sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
@@ -45,6 +63,8 @@ export function setAdminSession(token: string, user: AdminUser): void {
  */
 export function getAdminToken(): string | null {
   if (typeof window === 'undefined') return null;
+  const contentEmployee = getContentEmployeeSession();
+  if (contentEmployee) return contentEmployee.token;
   const sessionToken = sessionStorage.getItem(ADMIN_TOKEN_KEY);
   const cookieToken = getCookie(ADMIN_TOKEN_COOKIE);
 
@@ -60,6 +80,8 @@ export function getAdminToken(): string | null {
  */
 export function getAdminUser(): AdminUser | null {
   if (typeof window === 'undefined') return null;
+  const contentEmployee = getContentEmployeeSession();
+  if (contentEmployee) return contentEmployee.user;
   const userStr = sessionStorage.getItem(ADMIN_USER_KEY);
   if (!userStr) return null;
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAnyRole } from '@/shared/middleware/auth.middleware';
+import { requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { REPORTS_ROLES } from '@/shared/middleware/roles';
 import { ReportsRepository } from '@/modules/reports/repository/reports.repository';
 
@@ -22,7 +22,7 @@ function normalizeBody(body: Record<string, unknown>) {
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAnyRole(request, REPORTS_ROLES);
+  const auth = await requireContentAccess(request, REPORTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAnyRole(request, REPORTS_ROLES);
+  const auth = await requireContentAccess(request, REPORTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAnyRole(request, REPORTS_ROLES);
+  const auth = await requireContentAccess(request, REPORTS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
