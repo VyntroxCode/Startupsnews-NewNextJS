@@ -1,6 +1,6 @@
 /**
  * Stub for seed script compatibility.
- * Real content comes from DB (WordPress migration / admin). Export empty arrays so seed runs.
+ * Real content comes from the DB (admin). Export empty arrays so seed runs.
  */
 
 export const mockPosts: Array<{

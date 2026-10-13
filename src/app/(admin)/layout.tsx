@@ -6,6 +6,8 @@ import NewLeadReplyToast from '@/components/employee/NewLeadReplyToast';
 import { MY_LEADS_PANEL_ROLES } from '@/shared/middleware/roles';
 import {
   getAdminUser,
+  getAdminToken,
+  setAdminSession,
   getAuthHeaders,
   verifyToken,
   clearAdminSession,
@@ -73,8 +75,12 @@ export default function AdminLayout({
         return;
       }
 
+      // The user lives in sessionStorage (per tab), but the token also sits in the admin_token
+      // session cookie shared across tabs. A new tab, bookmark or pasted link has only the cookie,
+      // so verify that instead of bouncing an already signed-in admin back to the login page.
       const storedUser = getAdminUser();
-      if (!storedUser) {
+      const token = getAdminToken();
+      if (!storedUser && !token) {
         setLoading(false);
         router.replace('/admin/login');
         return;
@@ -103,6 +109,7 @@ export default function AdminLayout({
         return;
       }
 
+      if (!storedUser && token) setAdminSession(token, verifiedUser);
       setUser(verifiedUser);
       updateLastActivity();
       setLoading(false);

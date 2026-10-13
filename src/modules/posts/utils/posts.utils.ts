@@ -165,13 +165,13 @@ function resolvePostImageUrl(raw: string): string {
   s = unwrapPinterestMediaUrl(s);
   if (s.startsWith('s3://')) s = s3UriToHttps(s);
   const base = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_IMAGE_BASE_URL) || '';
-  const siteBase = (typeof process !== 'undefined' && (process.env?.WP_SITE_URL || process.env?.NEXT_PUBLIC_SITE_URL)) || '';
+  const siteBase = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SITE_URL) || '';
   let out: string;
   if (s.startsWith('http://') || s.startsWith('https://')) {
     out = extractSingleUrl(unwrapDoubleUrl(s, base));
   } else {
     const path = s.startsWith('/') ? s : '/' + s;
-    // Relative paths under /uploads/ go to S3; other relative paths (e.g. /wp-content/) use site URL so they load
+    // Relative paths under /uploads/ go to S3; other relative paths use the site URL so they load
     if (path.startsWith('/uploads/') || path.startsWith('/uploads')) {
       out = base ? base.replace(/\/$/, '') + path : s;
     } else if (siteBase) {

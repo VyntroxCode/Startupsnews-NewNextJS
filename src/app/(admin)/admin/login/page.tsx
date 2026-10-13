@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowRight, CircleAlert, Eye, EyeOff, LoaderCircle, Lock, Mail } from 'lucide-react';
@@ -18,6 +18,13 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Warm both post-login destinations while the user types, so the redirect after a successful
+  // POST doesn't have to wait on ~30 JS/CSS files through Cloudflare (which intermittently stalls).
+  useEffect(() => {
+    router.prefetch('/admin');
+    router.prefetch('/employee/attendance');
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

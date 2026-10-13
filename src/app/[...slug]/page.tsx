@@ -180,7 +180,7 @@ async function resolvePostByCategoryAndPath(categorySlug: string, postPath: stri
   }
 
   // Also try trailing-slash variants to tolerate legacy slugs that were
-  // stored with a trailing "/" (e.g. imported from WordPress permalinks).
+  // stored with a trailing "/".
   const candidates = new Set<string>();
   for (const c of base) {
     candidates.add(c);

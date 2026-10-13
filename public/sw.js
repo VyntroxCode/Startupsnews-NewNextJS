@@ -1,5 +1,7 @@
 // StartupNews.fyi service worker — conservative caching, never touches authenticated routes.
-const CACHE_VERSION = "v1";
+// v2: v1 cached 404s for build chunks and kept serving them (ChunkLoadError on /admin) — bumping
+// the version makes `activate` delete every v1 cache.
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `sn-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `sn-pages-${CACHE_VERSION}`;
 const ASSETS_CACHE = `sn-assets-${CACHE_VERSION}`;
@@ -59,8 +61,10 @@ self.addEventListener("message", (event) => {
 async function handleNavigation(request) {
   try {
     const response = await fetch(request);
-    const cache = await caches.open(PAGES_CACHE);
-    cache.put(request, response.clone());
+    if (response.ok) {
+      const cache = await caches.open(PAGES_CACHE);
+      cache.put(request, response.clone());
+    }
     return response;
   } catch {
     const cache = await caches.open(PAGES_CACHE);
@@ -73,9 +77,10 @@ async function handleNavigation(request) {
 async function handleStaticAsset(request) {
   const cache = await caches.open(STATIC_CACHE);
   const cached = await cache.match(request);
-  if (cached) return cached;
+  if (cached && cached.ok) return cached;
   const response = await fetch(request);
-  cache.put(request, response.clone());
+  // Only keep real hits: a 404 from a deploy window (or Cloudflare) would otherwise be served forever.
+  if (response.ok) cache.put(request, response.clone());
   return response;
 }
 
@@ -85,7 +90,7 @@ async function handleRevalidatingAsset(request) {
   const cached = await cache.match(request);
   const fetchPromise = fetch(request)
     .then((response) => {
-      cache.put(request, response.clone());
+      if (response.ok) cache.put(request, response.clone());
       return response;
     })
     .catch(() => cached);

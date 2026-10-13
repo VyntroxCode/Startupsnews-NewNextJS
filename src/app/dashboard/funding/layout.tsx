@@ -3,11 +3,11 @@ import { Lock } from 'lucide-react';
 import FundingSubNav from '@/components/user/funding/FundingSubNav';
 import { fiFontCls } from '@/components/user/funding/fonts';
 
-/** Lock switch for the whole section, currently open. When `true` this guard covers a direct URL
+/** Lock switch for the whole section, currently locked. When `true` this guard covers a direct URL
  * visit / bookmark to any /dashboard/funding/* page and the pages are not rendered (no API calls).
- * To lock again: flip this to `true` and add `locked: true` to the Funding entry in
+ * To unlock: flip this to `false` and drop `locked: true` from the Funding entry in
  * `UserDashboardLayout.tsx`'s `NAV_GROUPS`. */
-const FUNDING_LOCKED: boolean = false;
+const FUNDING_LOCKED: boolean = true;
 
 function FundingLockedState() {
   return (

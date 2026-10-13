@@ -1,6 +1,6 @@
 /**
  * Download image from URL and upload to S3. Returns public S3 URL.
- * Uses same env as sync-posts-from-wp-to-s3: AWS_*, S3_BUCKET, S3_IMAGE_BASE_URL, S3_UPLOAD_PREFIX.
+ * Env: AWS_*, S3_BUCKET, S3_IMAGE_BASE_URL, S3_UPLOAD_PREFIX.
  */
 
 import { S3Client, PutObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
