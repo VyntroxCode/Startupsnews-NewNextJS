@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
 import { isBareRoute } from "@/components/ConditionalLayout";
 import { takeQueuedWelcome, type AuthUser } from "@/components/auth/readerAuth";
+import WelcomeNewsletterPicker from "@/components/auth/WelcomeNewsletterPicker";
 
 const GOOGLE_ICON =
 	"https://techdocs.akamai.com/identity-cloud/img/social-login/identity-providers/iconfinder-new-google-favicon-682665.png";
@@ -45,7 +46,6 @@ const authButtonBase = (mobile: boolean): CSSProperties => ({
 
 export default function AuthModal() {
 	const pathname = usePathname();
-	const router = useRouter();
 	// Staff panels (admin + employee) and the member dashboard never get the reader login popup.
 	const isAdmin =
 		pathname?.startsWith("/admin") || pathname?.startsWith("/dashboard") || pathname?.startsWith("/employee");
@@ -228,219 +228,9 @@ export default function AuthModal() {
 	/* ─────────────── SINGLE RETURN ─────────────── */
 	return (
 		<>
-			{/* Welcome overlay — rendered independently of open/close state */}
+			{/* Welcome overlay — after sign-in, ask which newsletter topics the reader wants */}
 			{showWelcome && welcomeUser && (
-				<div
-					style={{
-						position: "fixed",
-						inset: 0,
-						zIndex: 10000,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						background: "rgba(10,10,20,0.55)",
-						backdropFilter: "blur(10px)",
-					}}
-				>
-					<div
-						style={{
-							animation: "welcomeCardIn 0.5s cubic-bezier(0.34,1.56,0.64,1)",
-							display: "flex",
-							flexDirection: "column",
-							alignItems: "center",
-							background: "var(--sn-card, #fff)",
-							borderRadius: 28,
-							padding: "44px 52px 40px",
-							boxShadow: "0 32px 80px var(--sn-shadow-22, rgba(0,0,0,0.22))",
-							maxWidth: 400,
-							width: "calc(100vw - 48px)",
-							textAlign: "center",
-							position: "relative",
-							overflow: "hidden",
-						}}
-					>
-						{/* Pink top glow bar */}
-						<div
-							style={{
-								position: "absolute",
-								top: 0,
-								left: 0,
-								right: 0,
-								height: 5,
-								background: "#E72262",
-								borderRadius: "28px 28px 0 0",
-							}}
-						/>
-
-						{/* Congratulations heading */}
-						<p
-							style={{
-								margin: "0 0 28px",
-								fontSize: 22,
-								fontWeight: 800,
-								color: "var(--sn-pink-ink, #E72262)",
-								letterSpacing: "-0.01em",
-							}}
-						>
-							Congratulations!!
-						</p>
-
-						{/* Avatar ring */}
-						<div style={{ position: "relative", marginBottom: 20 }}>
-							<div
-								style={{
-									width: 88,
-									height: 88,
-									borderRadius: "50%",
-									background: "#E72262",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									color: "#fff",
-									fontWeight: 800,
-									fontSize: 34,
-									boxShadow: "0 8px 32px rgba(231,34,98,0.35)",
-									animation:
-										"avatarPop 0.6s 0.15s cubic-bezier(0.34,1.56,0.64,1) both",
-								}}
-							>
-								{welcomeUser.name.charAt(0).toUpperCase()}
-							</div>
-							{/* Pulse ring */}
-							<div
-								style={{
-									position: "absolute",
-									inset: -6,
-									borderRadius: "50%",
-									border: "2.5px solid rgba(231,34,98,0.25)",
-									animation: "pulseRing 1.5s ease-out 0.3s infinite",
-								}}
-							/>
-						</div>
-
-						{/* Greeting */}
-						<p
-							style={{
-								margin: "0 0 6px",
-								fontSize: 13,
-								fontWeight: 600,
-								color: "var(--sn-pink-ink, #E72262)",
-								letterSpacing: "0.1em",
-								textTransform: "uppercase",
-							}}
-						>
-							You&apos;re in!
-						</p>
-						<p
-							style={{
-								margin: "0 0 8px",
-								fontSize: 24,
-								fontWeight: 800,
-								color: "var(--sn-ink, #111)",
-								letterSpacing: "-0.02em",
-								lineHeight: 1.15,
-							}}
-						>
-							Welcome to
-							<br />
-							StartupNews.fyi
-						</p>
-						<p
-							style={{
-								margin: "0 0 28px",
-								fontSize: 14,
-								color: "var(--sn-ink-2, #6b7280)",
-								fontWeight: 400,
-								lineHeight: 1.5,
-							}}
-						>
-							You now have access to startup news,
-							<br />
-							funding insights &amp; exclusive reports.
-						</p>
-
-						{/* Name badge */}
-						<div
-							style={{
-								display: "inline-flex",
-								alignItems: "center",
-								gap: 8,
-								background: "var(--sn-bg-2, #fff7fb)",
-								border: "1px solid rgba(231,34,98,0.15)",
-								borderRadius: 50,
-								padding: "7px 18px",
-								fontSize: 14,
-								fontWeight: 600,
-								color: "var(--sn-pink-ink, #E72262)",
-							}}
-						>
-							<span
-								style={{
-									width: 8,
-									height: 8,
-									borderRadius: "50%",
-									background: "#E72262",
-									display: "inline-block",
-									animation: "dotBlink 1.2s ease-in-out infinite",
-								}}
-							/>
-							{welcomeUser.name}
-						</div>
-
-						{/* Continue actions */}
-						<div style={{ display: "flex", gap: 10, width: "100%", marginTop: 28 }}>
-							<button
-								type="button"
-								onClick={() => {
-									setShowWelcome(false);
-									router.push("/dashboard/reports");
-								}}
-								style={{
-									flex: 1,
-									padding: "12px 10px",
-									borderRadius: 12,
-									border: "1.5px solid rgba(231,34,98,0.25)",
-									background: "var(--sn-card, #fff)",
-									color: "var(--sn-pink-ink, #E72262)",
-									fontWeight: 700,
-									fontSize: 13.5,
-									cursor: "pointer",
-									fontFamily: "inherit",
-									transition: "background 0.15s, border-color 0.15s",
-								}}
-								onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sn-bg-2, #fff7fb)"; e.currentTarget.style.borderColor = "#E72262"; }}
-								onMouseLeave={(e) => { e.currentTarget.style.background = "var(--sn-card, #fff)"; e.currentTarget.style.borderColor = "rgba(231,34,98,0.25)"; }}
-							>
-								Continue to Reports
-							</button>
-							<button
-								type="button"
-								onClick={() => {
-									setShowWelcome(false);
-									router.push("/news");
-								}}
-								style={{
-									flex: 1,
-									padding: "12px 10px",
-									borderRadius: 12,
-									border: "none",
-									background: "#E72262",
-									color: "#fff",
-									fontWeight: 700,
-									fontSize: 13.5,
-									cursor: "pointer",
-									fontFamily: "inherit",
-									boxShadow: "0 6px 16px rgba(231,34,98,0.3)",
-									transition: "transform 0.12s, box-shadow 0.12s",
-								}}
-								onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(231,34,98,0.4)"; }}
-								onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(231,34,98,0.3)"; }}
-							>
-								Continue to News
-							</button>
-						</div>
-					</div>
-				</div>
+				<WelcomeNewsletterPicker user={welcomeUser} onDone={() => setShowWelcome(false)} />
 			)}
 
 			{/* Bottom sheet */}
@@ -655,18 +445,6 @@ export default function AuthModal() {
         @keyframes welcomeCardIn {
           from { opacity: 0; transform: translateY(32px) scale(0.92); }
           to   { opacity: 1; transform: translateY(0)    scale(1);    }
-        }
-        @keyframes avatarPop {
-          from { opacity: 0; transform: scale(0.5); }
-          to   { opacity: 1; transform: scale(1);   }
-        }
-        @keyframes pulseRing {
-          0%   { transform: scale(1);    opacity: 0.7; }
-          100% { transform: scale(1.55); opacity: 0;   }
-        }
-        @keyframes dotBlink {
-          0%, 100% { opacity: 1; }
-          50%       { opacity: 0.3; }
         }
       `}</style>
 		</>
