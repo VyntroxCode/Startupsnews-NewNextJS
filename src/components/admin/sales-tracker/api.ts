@@ -1,6 +1,7 @@
 import { getAuthHeaders } from '@/lib/admin-auth';
 import type { AssignableEmployee, DepartmentOption, LeadAssignment, LeadAssignmentDraft, LeadSource } from '@/modules/lead-assignments/domain/types';
 import type { LeadFollowUpsView } from '@/modules/lead-followups/domain/types';
+import type { LeadImportRaw } from '@/modules/sales-tracker/utils/import-columns';
 import type { SalesLead } from './types';
 
 const API_BASE = '/api/admin/sales-tracker';
@@ -16,6 +17,16 @@ async function apiSaveLead(lead: SalesLead, adminNote = ''): Promise<SalesLead> 
   const res = await fetch(`${API_BASE}/leads`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(adminNote ? { ...lead, adminNote } : lead) });
   if (!res.ok) throw new Error('Failed to save lead');
   const json = await res.json();
+  return json.data;
+}
+/** The Import leads window's rows (only the ticked ones), checked again and stored by the server.
+ * Returns the leads it stored and the rows it refused, by spreadsheet row number. */
+async function apiImportLeads(body: {
+  fileName: string; rows: LeadImportRaw[]; rowNumbers: number[]; defaultType: string; defaultFollowUpDate: string;
+}): Promise<{ leads: SalesLead[]; invalid: { row: number; reason: string }[] }> {
+  const res = await fetch(`${API_BASE}/leads/import`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(body) });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) throw new Error(json?.error || 'Import failed. Try again.');
   return json.data;
 }
 async function apiDeleteLead(id: string): Promise<void> {
@@ -55,6 +66,7 @@ async function apiAddReply(source: LeadSource, leadId: string, followUpId: numbe
 export const salesTrackerApi = {
   getLeads: apiGetLeads,
   saveLead: apiSaveLead,
+  importLeads: apiImportLeads,
   deleteLead: apiDeleteLead,
   getAssignments: apiGetAssignments,
   assignLead: apiAssignLead,

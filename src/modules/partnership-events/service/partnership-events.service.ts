@@ -352,14 +352,18 @@ export class PartnershipEventsService {
       const adminEnabled = entity.banner_active === null || entity.banner_active === undefined
         ? true
         : Boolean(Number(entity.banner_active));
-      const isActive = adminEnabled && (!linked || (linked.status !== 'draft' && linked.status !== 'cancelled'));
+      // The record's own site_status/slug are what /startup-events/:slug serves; the linked legacy
+      // row is only a fallback (its slug can be a de-duplicated variant that 410s).
+      const siteStatus = entity.site_status || linked?.status;
+      const isActive = adminEnabled && siteStatus !== 'draft' && siteStatus !== 'cancelled';
+      const publicSlug = entity.slug || linked?.slug;
       // Whole-day window: live from midnight on the chosen day, and only retired once the
       // event's own last day is over (the carousel filters start_date <= NOW() <= end_date).
       const endSource = toYmd(entity.event_end_date) || toYmd(entity.event_start_date);
       const fields = {
         title: entity.event_name,
         imageUrl,
-        linkUrl: linked?.slug ? `/startup-events/${linked.slug}` : '',
+        linkUrl: publicSlug ? `/startup-events/${publicSlug}` : '',
         isActive,
         startDate: `${startDate} 00:00:00`,
         ...(endSource ? { endDate: `${endSource} 23:59:59` } : {}),

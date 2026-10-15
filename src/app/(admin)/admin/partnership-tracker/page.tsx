@@ -2051,11 +2051,15 @@ export default function PartnershipTrackerPage() {
                             <span className="pt-pill" style={{ color: statusColor, borderColor: statusColor, background: `${statusColor}1A` }}>{d.statusBucket}</span>
                           </td>
                           <td className="pt-col-view" onClick={(ev) => ev.stopPropagation()}>
-                            {e.linkedEvent ? (
-                              <a href={`/startup-events/${e.linkedEvent.slug}`} target="_blank" rel="noopener noreferrer" className="pt-view-btn">View</a>
-                            ) : (
-                              <span className="pt-muted" title="Not listed on the site yet">—</span>
-                            )}
+                            {/* The public page resolves the record's own slug (partnership_events.slug);
+                                the linked legacy events row can carry a different, de-duplicated slug
+                                (e.g. `-2`) that 410s. Drafts 410 too, so they get no link. */}
+                            {(() => {
+                              const viewSlug = e.slug || e.linkedEvent?.slug;
+                              if (!viewSlug) return <span className="pt-muted" title="Not listed on the site yet">—</span>;
+                              if (e.siteStatus === 'draft') return <span className="pt-muted" title="Draft — not live on the site">—</span>;
+                              return <a href={`/startup-events/${viewSlug}`} target="_blank" rel="noopener noreferrer" className="pt-view-btn">View</a>;
+                            })()}
                           </td>
                           <td className="pt-col-comment" title={e.comment}>{e.comment || <span className="pt-muted">—</span>}</td>
                         </tr>

@@ -12,7 +12,6 @@ import {
   getFeat1SectionPosts,
   getStartupEvents,
   getLatestNewsPosts,
-  getLatestNewsHeroPosts,
   onlyPostsWithImage,
   getPostImage,
   getCategoryDisplayName,
@@ -28,7 +27,6 @@ import { MoreNewsSection } from "@/components/MoreNewsSection";
 import { StartupEventsSection } from "@/components/StartupEventsSection";
 import { StickySidebarContent } from "@/components/StickySidebarContent";
 import { EventsCarousel } from "@/components/EventsCarousel";
-import { LatestNewsRotator, type LatestNewsSlide } from "@/components/LatestNewsRotator";
 import { TrendingCard, TrendingCardText, TrendingHeadWord } from "@/components/TrendingSlideIn";
 import { getPostPath } from "@/lib/post-utils";
 
@@ -52,9 +50,6 @@ export default async function HomePage() {
     "web3-blockchain",
     "fintech",
   ] as const;
-
-  // Latest News hero rotation: runs alongside batch 1. 14 = Trending's 5 newest + the 9 after them.
-  const heroPostsPromise = getLatestNewsHeroPosts(14);
 
   // Batch 1: parallel fetch all independent data (one round-trip to cache/DB)
   const batch1 = await Promise.all([
@@ -86,39 +81,13 @@ export default async function HomePage() {
   const categoryTitlesMap = batch1.slice(11, 18) as string[];
 
   const { main, sub } = feat1Result;
-
-  // Latest News hero cards follow post ids, highest first, starting after Trending (the 5 newest
-  // ids), three per card: the big card gets the next 3 ids, small card 1 the 3 after, small card 2
-  // the 3 after that. Ids that are not published, have no image or are press releases are skipped
-  // by the query. A card left empty (too few posts, or the query failed) falls back to its feat1 story.
-  const trendingIds = new Set(trending.map((p) => p.id));
-  const heroPosts = (await heroPostsPromise).filter((p) => !trendingIds.has(p.id)).slice(0, 9);
-  const heroFallback = [main, sub[0], sub[1]];
-  const heroQueues = heroFallback.map((fallback, i) => {
-    const queue = heroPosts.slice(i * 3, i * 3 + 3);
-    return queue.length > 0 ? queue : [fallback];
-  });
-
-  const excludeIds = [
-    ...new Set([main.id, sub[0].id, sub[1].id, ...heroQueues.flat().map((p) => p.id), ...trending.map((p) => p.id)]),
-  ];
+  const excludeIds = [main.id, sub[0].id, sub[1].id, ...trending.map((p) => p.id)];
 
   // Batch 2: more news (depends on excludeIds only)
   const [moreNews, moreNewsSlugs] = await Promise.all([
     getMoreNewsPosts(excludeIds, 15),
     getMoreNewsSlugs(excludeIds),
   ]);
-
-  const latestNewsRotation: LatestNewsSlide[][] = heroQueues.map((queue) => {
-    return queue.map((post) => ({
-      id: post.id,
-      href: getPostPath(post),
-      title: post.title,
-      category: post.category,
-      timeAgo: post.timeAgo,
-      image: getPostImage(post),
-    }));
-  });
 
   const mobilePostsMap: Record<string, Post[]> = {
     "ai-deeptech": [aiDeeptechSection.featured, ...aiDeeptechSection.right, ...aiDeeptechSection.list].filter(
@@ -310,10 +279,95 @@ export default async function HomePage() {
                   <div className="mvp-feat1-pop-head">
                     <span className="mvp-feat1-pop-head">Latest News</span>
                   </div>
-                  <LatestNewsRotator variant="main" enterFrom="right" posts={latestNewsRotation[0]} />
+                  <Link href={getPostPath(main)} rel="bookmark">
+                    <div className="mvp-feat1-feat-wrap left relative">
+                      <div className="mvp-feat1-feat-img left relative" style={{ position: "relative" }}>
+                        <PostImage
+                          src={getPostImage(main)}
+                          alt={main.title}
+                          fill
+                          className="mvp-reg-img"
+                          sizes="(max-width: 768px) 100vw, 560px"
+                          style={{ objectFit: "cover" }}
+                        />
+                        <PostImage
+                          src={getPostImage(main)}
+                          alt={main.title}
+                          className="mvp-mob-img"
+                          width={330}
+                          height={200}
+                          style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                        />
+                      </div>
+                      <div className="mvp-feat1-feat-text left relative">
+                        <div className="mvp-cat-date-wrap left relative">
+                          <span className="mvp-cd-cat left relative">{main.category}</span>
+                          <span className="mvp-cd-date left relative">{main.timeAgo}</span>
+                        </div>
+                        <h2 className="mvp-stand-title post-heading-max-3-lines">{main.title}</h2>
+                        {/* <p>{main.excerpt}</p> */}
+                      </div>
+                    </div>
+                  </Link>
                   <div className="mvp-feat1-sub-wrap left relative">
-                    <LatestNewsRotator variant="sub" enterFrom="left" posts={latestNewsRotation[1]} />
-                    <LatestNewsRotator variant="sub" enterFrom="right" posts={latestNewsRotation[2]} />
+                    <Link href={getPostPath(sub[0])} rel="bookmark">
+                      <div className="mvp-feat1-sub-cont left relative">
+                        <div className="mvp-feat1-sub-img left relative">
+                          <PostImage
+                            src={getPostImage(sub[0])}
+                            alt={sub[0].title}
+                            width={590}
+                            height={354}
+                            className="mvp-reg-img"
+                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                          />
+                          <PostImage
+                            src={getPostImage(sub[0])}
+                            alt={sub[0].title}
+                            className="mvp-mob-img"
+                            width={330}
+                            height={200}
+                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                          />
+                        </div>
+                        <div className="mvp-feat1-sub-text">
+                          <div className="mvp-cat-date-wrap left relative">
+                            <span className="mvp-cd-cat left relative">{sub[0].category}</span>
+                            <span className="mvp-cd-date left relative">{sub[0].timeAgo}</span>
+                          </div>
+                          <h2 className="post-heading-max-3-lines">{sub[0].title}</h2>
+                        </div>
+                      </div>
+                    </Link>
+                    <Link href={getPostPath(sub[1])} rel="bookmark">
+                      <div className="mvp-feat1-sub-cont left relative">
+                        <div className="mvp-feat1-sub-img left relative">
+                          <PostImage
+                            src={getPostImage(sub[1])}
+                            alt={sub[1].title}
+                            width={590}
+                            height={354}
+                            className="mvp-reg-img"
+                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                          />
+                          <PostImage
+                            src={getPostImage(sub[1])}
+                            alt={sub[1].title}
+                            className="mvp-mob-img"
+                            width={330}
+                            height={200}
+                            style={{ width: "100%", height: "auto", objectFit: "cover" }}
+                          />
+                        </div>
+                        <div className="mvp-feat1-sub-text">
+                          <div className="mvp-cat-date-wrap left relative">
+                            <span className="mvp-cd-cat left relative">{sub[1].category}</span>
+                            <span className="mvp-cd-date left relative">{sub[1].timeAgo}</span>
+                          </div>
+                          <h2 className="post-heading-max-3-lines">{sub[1].title}</h2>
+                        </div>
+                      </div>
+                    </Link>
                   </div>
                 </div>
                 {/* Middle column: Trending */}

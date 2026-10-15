@@ -65,6 +65,11 @@ export function useSalesTrackerData() {
     return saved;
   }
 
+  /** Leads the Import leads window just stored: added to the list as they are (new, unassigned). */
+  function addImportedLeads(imported: SalesLead[]): void {
+    if (imported.length) setLeads((prev) => [...prev, ...imported]);
+  }
+
   /** Sets a lead's (either source) departments and people to `draft`. Throws on failure so the
    * caller can show the message. */
   async function assignLead(source: LeadSource, leadId: string, draft: LeadAssignmentDraft): Promise<void> {
@@ -91,6 +96,6 @@ export function useSalesTrackerData() {
 
   return {
     ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
-    saveLead, deleteLead, assignLead, applyEnsEnquiryUpdate,
+    saveLead, deleteLead, assignLead, applyEnsEnquiryUpdate, addImportedLeads,
   };
 }

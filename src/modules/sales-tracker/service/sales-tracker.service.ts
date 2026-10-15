@@ -1,6 +1,7 @@
 import { SalesTrackerRepository } from '../repository/sales-tracker.repository';
 import { MANUAL_LEAD_TYPES, SalesLead } from '../domain/types';
 import { entityToLead } from '../utils/sales-tracker.utils';
+import { type LeadImportDefaults, type LeadImportRaw, parseLeadImportRow } from '../utils/import-columns';
 import { type AssignableEmployee, type DepartmentOption, SALES_LEAD_STATUS_LABELS, statusFromSalesLead } from '@/modules/lead-assignments/domain/types';
 import { LeadAssignmentsRepository } from '@/modules/lead-assignments/repository/lead-assignments.repository';
 import { LeadAssignmentsService } from '@/modules/lead-assignments/service/lead-assignments.service';
@@ -148,6 +149,49 @@ export class SalesTrackerService {
       }
     }
     return saved;
+  }
+
+  /** The admin's bulk import (Sales Tracker › Import leads). Every row is parsed again here with the
+   * same rules the window previewed (parseLeadImportRow), so a hand-made request can't store what
+   * the window would have refused. Good rows become new leads — never an update of an existing one —
+   * created by the admin and unassigned; each gets one history entry naming the file. Rows are
+   * stored one by one, so a failure part-way keeps the leads already stored and reports the rest.
+   * `rowNumbers[i]` is the spreadsheet row of `rows[i]`, used in the report. */
+  async importLeads(
+    rows: LeadImportRaw[],
+    rowNumbers: number[],
+    defaults: LeadImportDefaults,
+    fileName: string,
+    adminName: string
+  ): Promise<{ leads: SalesLead[]; invalid: { row: number; reason: string }[] }> {
+    const leads: SalesLead[] = [];
+    const invalid: { row: number; reason: string }[] = [];
+    const author = adminName || 'Admin';
+    const stamp = Date.now();
+    for (let i = 0; i < rows.length; i++) {
+      const row = rowNumbers[i] || i + 2;
+      const { fields, error } = parseLeadImportRow(rows[i], defaults);
+      if (error) { invalid.push({ row, reason: error }); continue; }
+      // The row index keeps ids unique within one import (they're all made in the same millisecond).
+      const id = `lead_${stamp}_${i}_${Math.random().toString(36).slice(2, 6)}`;
+      try {
+        const saved = await this.saveLead({ ...blankLead(id, fields.date), ...fields, createdByCredentialId: null, createdByName: author });
+        leads.push(saved);
+        const status = statusFromSalesLead(saved.status);
+        try {
+          await new LeadFollowUpsRepository().addAdminUpdate(
+            'lead', saved.id, author, status, `Imported from ${fileName}`,
+            statusNeedsFollowUpDate(status) ? saved.nextFollowUpDate : ''
+          );
+        } catch (logError) {
+          console.error('Could not log the import on sales lead', saved.id, logError);
+        }
+      } catch (saveError) {
+        console.error('Could not import sales lead row', row, saveError);
+        invalid.push({ row, reason: 'Could not be saved — try this row again' });
+      }
+    }
+    return { leads, invalid };
   }
 
   async deleteLead(id: string): Promise<void> {

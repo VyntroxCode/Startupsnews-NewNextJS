@@ -143,13 +143,6 @@ export class PostsService {
   }
 
   /**
-   * Newest posts by id, highest first (homepage Latest News hero rotation).
-   */
-  async getLatestPostsById(limit: number): Promise<PostEntity[]> {
-    return this.repository.findLatestById(limit);
-  }
-
-  /**
    * Get latest posts excluding given IDs (for "More News" after featured)
    */
   async getLatestPostsExcluding(limit: number, excludeIds: (number | string)[] = []): Promise<PostEntity[]> {

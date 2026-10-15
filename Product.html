@@ -116,7 +116,7 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v201</span>
+    <span class="badge v">Version v203</span>
     <span class="badge">Released 2026-10-14</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
@@ -982,6 +982,8 @@ flowchart LR
       <tr><td><strong>v199</strong></td><td>2026-10-14</td><td>Medium</td><td>Home page: <strong>Events</strong> is no longer a plain link in the top menu. Instead the home page has an animated <strong>circular "Explore Events" button</strong> with the line "The world meets here." Clicking anywhere on the circle opens the Events page.</td></tr>
       <tr><td><strong>v200</strong></td><td>2026-10-14</td><td>Medium</td><td>Home page: the circular <strong>Explore Events</strong> button from v199 is removed and <strong>EVENTS</strong> is back in the top menu, exactly as before v199.</td></tr>
       <tr><td><strong>v201</strong></td><td>2026-10-14</td><td>Medium</td><td>Top menu: <strong>EVENTS</strong> is now a rounded button with a small pink dot and arrow, and a pink-violet line of light that keeps travelling round its edge, so it stands out from the other menu words.</td></tr>
+      <tr><td><strong>v202</strong></td><td>2026-10-15</td><td>Medium</td><td>Sales Tracker: new <strong>Import leads</strong> button. Admins upload an Excel file and add many leads at once, after checking every row in a preview.</td></tr>
+      <tr><td><strong>v203</strong></td><td>2026-10-15</td><td>Medium</td><td>Homepage: <strong>Latest News</strong> no longer scrolls. It is back to 3 fixed cards (newest article big, 2nd and 3rd small), as before v164. <strong>Trending</strong> is back to how it was. The changes from v164, v196 and v197 are removed.</td></tr>
       <tr><td><strong>v197</strong></td><td>2026-10-14</td><td>Medium</td><td>Homepage: <strong>Trending</strong> now shows the 5 newest articles, and <strong>Latest News</strong> continues with the next 9, so the two sections never show the same story.</td></tr>
       <tr><td><strong>v196</strong></td><td>2026-10-14</td><td>Medium</td><td>Homepage, <strong>Latest News</strong> (desktop): the three rotating cards now follow article numbers, newest first, <strong>3 stories per card</strong>. The big card shows the 1st–3rd newest, small card 1 the 4th–6th, small card 2 the 7th–9th. Stories no longer come from each card's category.</td></tr>
       <tr><td><strong>v195</strong></td><td>2026-10-14</td><td>Medium</td><td>Member dashboard, <strong>Pro Plan page</strong>: calmer colours (white and grey with one deep indigo, pink kept only for the tiny "Pro" label) and the <strong>GST line removed</strong> from Payment Details. The page now shows just the plan and the Total Payable, which is unchanged.</td></tr>
@@ -4547,6 +4549,56 @@ PHONE                                   +--------------------+
   </div>
 </section>
 
+<section id="v202">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v202</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-15</span>
+    </div>
+    <p><strong>What changed.</strong> In the Sales Tracker, admins no longer have to add leads one at a time. A new <strong>Import leads</strong> button, next to <strong>+ Add new lead</strong>, takes an Excel file and turns each row into a new lead. Before anything is saved, the admin sees every row and can leave out any of them. Imported leads come in <strong>unassigned</strong>; they are given to team members afterwards, exactly like any other lead.</p>
+    <p><strong>The Excel file.</strong> The first row holds the column names; each row below is one lead. Column order doesn't matter. A ready-made template can be downloaded from the import window (it also has a "How to fill" sheet).</p>
+    <table>
+      <thead><tr><th>Column</th><th>Must be filled?</th><th>If left blank</th></tr></thead>
+      <tbody>
+        <tr><td>Date</td><td>Yes</td><td>Row is skipped</td></tr>
+        <tr><td>Name</td><td>Yes</td><td>Row is skipped</td></tr>
+        <tr><td>Company</td><td>Yes</td><td>Row is skipped</td></tr>
+        <tr><td>Phone</td><td>Yes</td><td>Row is skipped</td></tr>
+        <tr><td>Email</td><td>Yes</td><td>Row is skipped</td></tr>
+        <tr><td>Country</td><td>Yes</td><td>Row is skipped</td></tr>
+        <tr><td>City, Source, Query, Last call discussion</td><td>No</td><td>Left empty</td></tr>
+        <tr><td>Type of lead</td><td>No</td><td>The default type picked in the window. A type not in the list (e.g. "Cold call") is saved as <strong>Others</strong> with that text</td></tr>
+        <tr><td>Status</td><td>No</td><td>Pending</td></tr>
+        <tr><td>Next follow-up date</td><td>No</td><td>The default date picked in the window (tomorrow unless changed)</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Situation</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>A must-fill column is missing from the file</td><td>Nothing is imported; the window says which column to add</td></tr>
+        <tr><td>An optional column is missing</td><td>Import goes ahead; that column counts as blank. The window lists it</td></tr>
+        <tr><td>Extra columns we don't use</td><td>Ignored, and listed in the window</td></tr>
+        <tr><td>A row is identical in every column to a lead we already have (or to an earlier row)</td><td>Tagged <strong>Already exists</strong>; the admin can untick it</td></tr>
+        <tr><td>Same email or phone but other details differ</td><td>Imported as a normal new lead (the same person can come from different pages)</td></tr>
+        <tr><td>More than 1,000 rows</td><td>Refused; split the file</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Admin › Sales Tracker › Import leads</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>Import leads from Excel</strong> · [ Download template ]</div></div>
+        <div class="wf-row"><div class="wf-box">[ Click to upload or drag an Excel file here ]</div></div>
+        <div class="wf-row"><div class="wf-box">Type of lead when blank [ Social Media ▾ ]</div><div class="wf-box">Next follow-up date when blank [ 16-10-2026 ]</div></div>
+        <div class="wf-row"><div class="wf-box">● 12 ready · ● 2 will be skipped · ● 1 already exists</div></div>
+        <div class="wf-row"><div class="wf-box">☑ Row 2 · Rahul Sharma · Acme Tech · … · Ready<br>☐ Row 3 · … · Missing Email<br>☑ Row 4 · … · <strong>Already exists</strong></div></div>
+        <div class="wf-row"><div class="wf-box">[ Cancel ]  [ <strong>Import 13 leads</strong> ]</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> Excel file → read in the admin's browser → preview → the ticked rows go to the server, which checks every row again → new leads saved in the Sales Tracker (added by that admin, with "Imported from &lt;file&gt;" in each lead's history) → they show in All leads and the overview counts, unassigned.</p>
+  </div>
+</section>
+
 <section id="v201">
   <div class="ver">
     <div class="ver-head">
@@ -4650,6 +4702,32 @@ PHONE                                   +--------------------+
       </div>
     </div>
     <p><strong>Data flow.</strong> When a Publisher Admin opens the Posts page, the panel checks their role and shows all four tabs. Saving an industry or an author goes to the same place as the main admin's changes; the server now accepts it from a Publisher Admin as well. Nothing in the database had to change.</p>
+  </div>
+</section>
+
+<section id="v203">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v203</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-15</span>
+    </div>
+    <p><strong>What changed.</strong> The homepage <strong>Latest News</strong> section no longer scrolls. It is back to how it was before v164: three fixed cards that stay put. The rotating cards added in v164, and the changes tried in v196 and v197, are all removed. <strong>Trending</strong> is also back to how it was.</p>
+    <table>
+      <thead><tr><th>Section</th><th>How it works again</th></tr></thead>
+      <tbody>
+        <tr><td>Latest News, big card</td><td>The newest article, fixed (no rotation)</td></tr>
+        <tr><td>Latest News, 2 small cards</td><td>The 2nd and 3rd newest articles, fixed</td></tr>
+        <tr><td>Trending</td><td>The next 5 recent articles, skipping the 3 shown in Latest News</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi (desktop)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Trending: 5 recent</div><div class="wf-box"><strong>Latest News</strong>: newest (big) · 2nd · 3rd, fixed</div><div class="wf-box">Startup Events</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> The homepage takes the 3 newest published articles that have a picture and shows them as the Latest News cards. Trending shows the next 5. Both refresh every 5 minutes, and straight away when an article is published. The small slide-in effect on the Trending and Startup Events lists is unchanged.</p>
   </div>
 </section>
 

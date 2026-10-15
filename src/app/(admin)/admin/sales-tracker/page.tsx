@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { FileUp } from 'lucide-react';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
+import BulkImportModal from '@/components/admin/sales-tracker/BulkImportModal';
 import LeadFormModal from '@/components/admin/sales-tracker/LeadFormModal';
 import LeadsTable from '@/components/admin/sales-tracker/LeadsTable';
 import SalesTrackerStyles from '@/components/admin/sales-tracker/SalesTrackerStyles';
@@ -17,9 +19,11 @@ import { assignmentToDraft, type LeadAssignmentDraft, sameAssignmentDraft } from
 export default function SalesTrackerPage() {
   const {
     ensEnquiries, rows, employees, departments, assignments, promotedCities, loaded,
-    saveLead, deleteLead, assignLead, applyEnsEnquiryUpdate,
+    saveLead, deleteLead, assignLead, applyEnsEnquiryUpdate, addImportedLeads,
   } = useSalesTrackerData();
   const [activeLead, setActiveLead] = useState<SalesLead | null>(null);
+  // Sales Tracker › Import leads (bulk add from an Excel file).
+  const [importOpen, setImportOpen] = useState(false);
   // Both lead windows open straight into edit mode; saving an existing lead asks for confirmation.
   const [activeEnsId, setActiveEnsId] = useState<string | null>(null);
   // All leads' "Filter: type" / "Filter: page leads" / "Filter: status", lifted here so a click in
@@ -90,7 +94,12 @@ export default function SalesTrackerPage() {
             <h1>Sales Tracker</h1>
             <div className="sub">Shared across your team · saved automatically{!loaded ? ' · loading…' : ''}</div>
           </div>
-          <button type="button" className="primary" onClick={() => setActiveLead(emptyLead())}>+ Add new lead</button>
+          <div className="flex flex-wrap gap-2.5">
+            <button type="button" onClick={() => setImportOpen(true)}>
+              <span className="inline-flex items-center gap-1.5"><FileUp size={16} aria-hidden /> Import leads</span>
+            </button>
+            <button type="button" className="primary" onClick={() => setActiveLead(emptyLead())}>+ Add new lead</button>
+          </div>
         </div>
 
         <LeadsOverview
@@ -124,6 +133,14 @@ export default function SalesTrackerPage() {
             departments={departments}
             assignment={activeLead.id ? assignments[assignmentKey('lead', activeLead.id)] : undefined}
             promotedCities={promotedCities} onClose={() => setActiveLead(null)} onSave={handleSave} />
+        )}
+
+        {importOpen && (
+          <BulkImportModal
+            existingLeads={rows.flatMap((r) => (r._source === 'lead' ? [r] : []))}
+            onImported={addImportedLeads}
+            onClose={() => setImportOpen(false)}
+          />
         )}
 
         {activeEnsEnquiry && (

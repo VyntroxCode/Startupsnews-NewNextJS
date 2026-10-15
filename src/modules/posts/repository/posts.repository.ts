@@ -523,19 +523,6 @@ export class PostsRepository {
   }
 
   /**
-   * Newest posts by id alone, ignoring publish date (homepage Latest News hero rotation).
-   */
-  async findLatestById(limit: number): Promise<PostEntity[]> {
-    return query<PostEntity>(
-      `SELECT * FROM posts
-       WHERE status = 'published'${HAS_BODY_AND_IMAGE}${EXCLUDE_PRESS_RELEASE}
-       ORDER BY id DESC
-       LIMIT ?`,
-      [limit]
-    );
-  }
-
-  /**
    * Find latest published posts without requiring S3 thumbnail (for Latest News listing).
    * entityToPost will still derive image from content when featured_image_url is empty,
    * so onlyPostsWithImage can include posts that have image only in content.

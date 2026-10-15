@@ -602,6 +602,97 @@ button.mvp-fly-but-wrap.mvp-fly-open span:nth-child(3) {
   font-size: 0.9rem;
 }
 
+/* Navbar fit: the six menu links + search/theme/avatar do not fit at full size, and with nowrap
+   the last link (REPORTS) slid under the search box. Sizing keys off the navbar box's own width
+   (container query), not the viewport: the box is capped at 1200px, so zooming out to 90% / 80%
+   widens the viewport but not the box, and viewport breakpoints would switch off while the links
+   still overflow. Below 1024px the menu is hidden, so the tiers are desktop-only. */
+#mvp-main-nav-bot-cont > .mvp-main-box {
+  container: sn-nav / inline-size;
+}
+
+@media (min-width: 1024px) {
+  /* Menu takes all the room between the logo and the search bar; links spread evenly across it
+     (first link beside the logo, REPORTS beside the search) instead of bunching on the left.
+     The column-gap below stays as the minimum spacing. */
+  .startupnews-nav-inner .startupnews-menu {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .startupnews-nav-inner .startupnews-menu > ul {
+    justify-content: space-between;
+  }
+
+  @container sn-nav (max-width: 1240px) {
+    .startupnews-nav-inner {
+      gap: 12px;
+    }
+
+    .startupnews-nav-left {
+      gap: 14px;
+    }
+
+    .startupnews-logo {
+      height: 32px;
+    }
+
+    .startupnews-nav-inner .startupnews-menu ul {
+      column-gap: 8px;
+    }
+
+    .startupnews-nav-inner .startupnews-menu > ul > li > a {
+      padding-left: 7px;
+      padding-right: 7px;
+    }
+
+    .startupnews-menu ul li a,
+    .startupnews-menu-item-no-click {
+      font-size: 0.74rem;
+      letter-spacing: 0.02em;
+    }
+
+    .startupnews-search-input {
+      width: 128px;
+      min-width: 0;
+      padding: 0 8px 0 16px;
+    }
+
+    .startupnews-search-btn {
+      width: 24px;
+    }
+  }
+
+  @container sn-nav (max-width: 1110px) {
+    .startupnews-nav-left {
+      gap: 10px;
+    }
+
+    .startupnews-logo {
+      height: 28px;
+    }
+
+    .startupnews-nav-inner .startupnews-menu ul {
+      column-gap: 6px;
+    }
+
+    .startupnews-nav-inner .startupnews-menu > ul > li > a {
+      padding-left: 5px;
+      padding-right: 5px;
+    }
+
+    .startupnews-menu ul li a,
+    .startupnews-menu-item-no-click {
+      font-size: 0.7rem;
+      letter-spacing: 0.01em;
+    }
+
+    .startupnews-search-input {
+      width: 104px;
+    }
+  }
+}
+
 /* Ad above Startup Events: small light grey label, centered */
 .mvp-feat1-right-wrap .mvp-feat1-list-ad .mvp-ad-label {
   display: block;
