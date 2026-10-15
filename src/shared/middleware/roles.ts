@@ -11,11 +11,12 @@ export const CONTENT_ROLES = ['admin', 'editor', 'author', 'publisher_admin', 'e
 /** Delete/bulk-mutate content, and manage categories/authors. */
 export const CONTENT_MANAGE_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 
-/** View categories/authors — Publisher Admin no longer manages these directly. Event Admin needs read access to resolve the Press Release category. */
+/** View categories/authors. Event Admin needs read access to resolve the Press Release category. */
 export const CATEGORIES_AUTHORS_VIEW_ROLES = ['admin', 'editor', 'author', 'publisher_admin','event_admin'] as const;
 
-/** Create/edit/delete categories/authors. */
-export const CATEGORIES_AUTHORS_MANAGE_ROLES = ['admin', 'editor'] as const;
+/** Create/edit/delete categories (Industry tab) and authors. Publisher Admin gets the same rights as
+ * the super admin here (2026-10-14), so the Posts page shows them Industry and Authors too. */
+export const CATEGORIES_AUTHORS_MANAGE_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 
 /** HTML Tools — Event Admin/Publisher Admin only see tools explicitly shared with them. */
 export const TOOLS_VIEW_ROLES = ['admin', 'editor', 'event_admin', 'publisher_admin'] as const;

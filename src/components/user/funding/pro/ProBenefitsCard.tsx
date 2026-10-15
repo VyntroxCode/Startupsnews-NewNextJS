@@ -1,6 +1,5 @@
 import { Activity, BarChart3, ClipboardList, Compass, LineChart, PieChart, Rocket, Search, Sparkles, Telescope, TrendingUp } from 'lucide-react';
-import { tagCls } from '../ui';
-import { proCard, proEyebrow, proIconTile, proPad, proTitle } from './ui';
+import { proCard, proEyebrow, proIconTile, proPad, proSoonCls, proTitle } from './ui';
 
 /**
  * What the plan covers: the screens of the Funding section, grouped by what a reader does there.
@@ -11,10 +10,10 @@ const GROUPS = [
   {
     label: 'Track The Market',
     icon: Activity,
-    badge: 'bg-fi-primary text-white',
-    line: 'from-fi-primary/50',
-    tile: 'bg-fi-primary-light text-fi-primary',
-    hover: 'group-hover:text-fi-primary',
+    badge: 'bg-(--pro-primary) text-white',
+    line: 'from-(--pro-primary)/40',
+    tile: 'bg-(--pro-primary-soft) text-(--pro-primary)',
+    hover: 'group-hover:text-(--pro-primary)',
     items: [
       { icon: BarChart3, title: 'Live Funding Dashboard', text: 'Total funding, deals, average round, leading sector and most active investor this year.' },
       { icon: TrendingUp, title: 'Funding Over Time', text: 'Week-on-week, month-on-month and year-on-year trends.' },
@@ -24,10 +23,10 @@ const GROUPS = [
   {
     label: 'Explore Every Deal',
     icon: Compass,
-    badge: 'bg-fi-ai text-white',
-    line: 'from-fi-ai/50',
-    tile: 'bg-fi-ai-light text-fi-ai',
-    hover: 'group-hover:text-fi-ai',
+    badge: 'bg-(--pro-teal) text-white',
+    line: 'from-(--pro-teal)/40',
+    tile: 'bg-(--pro-teal-soft) text-(--pro-teal)',
+    hover: 'group-hover:text-(--pro-teal)',
     items: [
       { icon: ClipboardList, title: 'All Deals In One Table', text: 'Filter by sector, stage, city or investor and download as Excel.' },
       { icon: Search, title: 'Deal Search', text: 'Find any startup, investor or round in seconds.' },
@@ -37,10 +36,10 @@ const GROUPS = [
   {
     label: 'Look Ahead',
     icon: Rocket,
-    badge: 'bg-fi-gold text-white',
-    line: 'from-fi-gold/60',
-    tile: 'bg-fi-gold-light text-fi-gold-ink',
-    hover: 'group-hover:text-fi-gold-ink',
+    badge: 'bg-(--pro-amber) text-white',
+    line: 'from-(--pro-amber)/40',
+    tile: 'bg-(--pro-amber-soft) text-(--pro-amber)',
+    hover: 'group-hover:text-(--pro-amber)',
     items: [
       { icon: Telescope, title: '12-Month Outlook', text: 'A forward look at where funding is likely heading.' },
       { icon: Sparkles, title: 'AI Assistant', text: 'Ask funding questions in plain English.', soon: true },
@@ -61,16 +60,16 @@ function Rise({ children }: { children: React.ReactNode }) {
 export default function ProBenefitsCard() {
   return (
     <section aria-labelledby="pro-benefits-h" data-pro="block" data-pro-delay="0.5" className={`${proCard} ${proPad} relative overflow-hidden`}>
-      <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-fi-primary to-fi-ai" />
+      <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-(--pro-primary) to-(--pro-primary)/20" />
       <div className={proEyebrow}><Rise>What You Get</Rise></div>
       <h2 id="pro-benefits-h" className={`${proTitle} mt-1`}><Rise>Everything In The Pro Plan</Rise></h2>
-      <p data-pro="item" className="m-0 mt-1.5 max-w-[56ch] text-[14px] leading-relaxed text-fi-ink-soft">
+      <p data-pro="item" className="m-0 mt-1.5 max-w-[56ch] text-[14px] leading-relaxed text-(--pro-body)">
         One plan, the whole Funding section. Here is what is inside.
       </p>
 
       {GROUPS.map(({ label, icon: GroupIcon, badge, line, tile, hover, items }) => (
         <div key={label} className="mt-6">
-          <h3 className="m-0 flex items-center gap-2.5 text-[16px] font-bold leading-tight tracking-[-0.01em] text-fi-ink sm:text-[17px]">
+          <h3 className="m-0 flex items-center gap-2.5 text-[16px] font-bold leading-tight tracking-[-0.01em] text-(--pro-heading) sm:text-[17px]">
             <span aria-hidden data-pro="pop" className={`flex size-7 shrink-0 items-center justify-center rounded-[9px] ${badge}`}><GroupIcon size={15} /></span>
             <Rise>{label}</Rise>
             {/* Rule beside the heading; it draws out from the text when the card appears. */}
@@ -78,16 +77,16 @@ export default function ProBenefitsCard() {
           </h3>
           <ul className="m-0 mt-2.5 grid list-none gap-x-3 gap-y-1 p-0 sm:grid-cols-2">
             {items.map(({ icon: Icon, title, text, soon }) => (
-              <li key={title} data-pro="item" className="group flex items-start gap-3 rounded-[12px] p-2.5 transition-colors duration-200 hover:bg-fi-bg">
+              <li key={title} data-pro="item" className="group flex items-start gap-3 rounded-[12px] p-2.5 transition-colors duration-200 hover:bg-(--pro-bg)">
                 <span aria-hidden className={`${proIconTile} ${tile} transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-105`}>
                   <Icon size={18} />
                 </span>
                 <span className="min-w-0">
-                  <span className={`flex flex-wrap items-center gap-2 text-[14.5px] font-bold leading-snug text-fi-ink transition-colors duration-200 ${hover}`}>
+                  <span className={`flex flex-wrap items-center gap-2 text-[14.5px] font-bold leading-snug text-(--pro-heading) transition-colors duration-200 ${hover}`}>
                     {title}
-                    {soon && <span className={tagCls}>Coming Soon</span>}
+                    {soon && <span className={proSoonCls}>Coming Soon</span>}
                   </span>
-                  <span className="mt-0.5 block text-[13px] leading-relaxed text-fi-ink-soft">{text}</span>
+                  <span className="mt-0.5 block text-[13px] leading-relaxed text-(--pro-body)">{text}</span>
                 </span>
               </li>
             ))}

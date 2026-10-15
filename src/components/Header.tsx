@@ -6,6 +6,7 @@ import Image from "next/image";
 import { siteConfig } from "@/lib/config";
 import { FlyMenuButton } from "@/components/FlyMenuButton";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { NavEventsCta } from "@/components/NavEventsCta";
 
 interface AuthUser { id: number; name: string; email: string; }
 
@@ -199,6 +200,8 @@ export function Header() {
                                       <a href={item.href} target="_blank" rel="noopener noreferrer">
                                         {linkContent}
                                       </a>
+                                    ) : "cta" in item && item.cta ? (
+                                      <NavEventsCta href={item.href} label={item.label} />
                                     ) : "requiresAuth" in item && item.requiresAuth ? (
                                       <Link href={item.href} onClick={handleProtectedClick}>{linkContent}</Link>
                                     ) : (

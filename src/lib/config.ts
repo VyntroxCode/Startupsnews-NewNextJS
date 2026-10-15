@@ -20,7 +20,8 @@ export const siteConfig = {
       ]
     },
     { label: "FUNDING TRACKER", href: "/funding-tracker" },
-    { label: "EVENTS", href: "/events" },
+    // `cta: true` → rendered by NavEventsCta (pill with an animated border line) instead of a plain link.
+    { label: "EVENTS", href: "/events", cta: true },
     { label: "AI SPOTLIGHT ", href: "/ai-deeptech" },
     { label: "PRESS RELEASE", href: "/press-release" },
     { label: "REPORTS", href: "/", requiresAuth: true },

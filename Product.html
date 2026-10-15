@@ -116,8 +116,8 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v191</span>
-    <span class="badge">Released 2026-10-13</span>
+    <span class="badge v">Version v201</span>
+    <span class="badge">Released 2026-10-14</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
     <span class="badge">Next.js 16 · React 19 · MariaDB</span>
@@ -978,6 +978,17 @@ flowchart LR
       <tr><td><strong>v182</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard, Funding, <strong>Capital By Sector</strong>: the "Top Sectors" list is replaced by a <strong>line chart</strong>. Clicking a sector tile shows that sector's last two years, this year against last year</td></tr>
       <tr><td><strong>v183</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard side menu: <strong>Funding</strong> now has an arrow. Clicking it shows an <strong>All Deals</strong> sub-item that opens the All Deals page</td></tr>
       <tr><td><strong>v184</strong></td><td>2026-10-12</td><td>Medium</td><td>Member dashboard, Funding, <strong>Investors And Companies</strong>: the Business Models ring is much larger and sits in its own second row beside a new chart, <strong>Average Round By Business Model</strong></td></tr>
+      <tr><td><strong>v198</strong></td><td>2026-10-14</td><td>Major</td><td>Admin panel: staff given <strong>Publisher Admin</strong> access from HR now see every tab on the Posts page (<strong>Posts, Industry, Authors, Content Studio</strong>) and can add, edit and delete industries and authors, just like the main admin.</td></tr>
+      <tr><td><strong>v199</strong></td><td>2026-10-14</td><td>Medium</td><td>Home page: <strong>Events</strong> is no longer a plain link in the top menu. Instead the home page has an animated <strong>circular "Explore Events" button</strong> with the line "The world meets here." Clicking anywhere on the circle opens the Events page.</td></tr>
+      <tr><td><strong>v200</strong></td><td>2026-10-14</td><td>Medium</td><td>Home page: the circular <strong>Explore Events</strong> button from v199 is removed and <strong>EVENTS</strong> is back in the top menu, exactly as before v199.</td></tr>
+      <tr><td><strong>v201</strong></td><td>2026-10-14</td><td>Medium</td><td>Top menu: <strong>EVENTS</strong> is now a rounded button with a small pink dot and arrow, and a pink-violet line of light that keeps travelling round its edge, so it stands out from the other menu words.</td></tr>
+      <tr><td><strong>v197</strong></td><td>2026-10-14</td><td>Medium</td><td>Homepage: <strong>Trending</strong> now shows the 5 newest articles, and <strong>Latest News</strong> continues with the next 9, so the two sections never show the same story.</td></tr>
+      <tr><td><strong>v196</strong></td><td>2026-10-14</td><td>Medium</td><td>Homepage, <strong>Latest News</strong> (desktop): the three rotating cards now follow article numbers, newest first, <strong>3 stories per card</strong>. The big card shows the 1st–3rd newest, small card 1 the 4th–6th, small card 2 the 7th–9th. Stories no longer come from each card's category.</td></tr>
+      <tr><td><strong>v195</strong></td><td>2026-10-14</td><td>Medium</td><td>Member dashboard, <strong>Pro Plan page</strong>: calmer colours (white and grey with one deep indigo, pink kept only for the tiny "Pro" label) and the <strong>GST line removed</strong> from Payment Details. The page now shows just the plan and the Total Payable, which is unchanged.</td></tr>
+      <tr><td><strong>v195</strong></td><td>2026-10-14</td><td>Medium</td><td>Funding: clicking <strong>any chart</strong> on the Funding pages now opens a <strong>"Go Deeper With Pro"</strong> popup with a Get Pro Plan button. The floating Get Pro Plan bubble also stops drifting around and stays in one place.</td></tr>
+      <tr><td><strong>v194</strong></td><td>2026-10-14</td><td>Medium</td><td>Funding dashboard: the <strong>Cities: Volume Vs. Cheque Size</strong> section (city bubble chart + City Leaderboard) is <strong>hidden for now</strong> until there are enough city records. The code is kept, so it can be switched back on.</td></tr>
+      <tr><td><strong>v193</strong></td><td>2026-10-14</td><td>Medium</td><td>Sign-in: the "Congratulations / Welcome to StartupNews.fyi" card shown after login now <strong>asks which newsletter topics the reader wants</strong> (up to 3), with Save topics and Skip for now.</td></tr>
+      <tr><td><strong>v192</strong></td><td>2026-10-14</td><td>Medium</td><td>Member dashboard: the <strong>Funding</strong> section is <strong>open again</strong>. The side-menu item navigates (with its All Deals arrow) and the funding pages show instead of the "Funding is locked" message.</td></tr>
       <tr><td><strong>v191</strong></td><td>2026-10-13</td><td>Medium</td><td>HR Management, Offboarding: <strong>all exit emails are switched off</strong>. No email goes to the employee or to HR when someone resigns, when HR decides, or when the settlement is approved, and letters are no longer emailed. HR downloads letters and shares them. With v190, HR Management now sends no email at all.</td></tr>
       <tr><td><strong>v190</strong></td><td>2026-10-13</td><td>Medium</td><td>HR Management: creating an employee <strong>no longer emails the offer letter</strong> to the new joiner. HR downloads the letter from the preview and shares it themselves. The button now reads <strong>Approve &amp; Create</strong>.</td></tr>
       <tr><td><strong>v189</strong></td><td>2026-10-13</td><td>Medium</td><td>Public website: a new <strong>Dark mode</strong>. Visitors can choose <strong>Light</strong>, <strong>Dark</strong> or <strong>System</strong> from a button in the header (in the side menu on phones). Light mode looks as it did before. The admin, member and employee panels are not affected.</td></tr>
@@ -4533,6 +4544,333 @@ PHONE                                   +--------------------+
         <div class="wf-row"><div class="wf-box">12-month outlook · Signals</div></div>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="v201">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v201</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> In the top menu on computers, <strong>EVENTS</strong> no longer looks like the other words. It is a small rounded button with a pink dot in front and an arrow after it. A thin pink-to-violet line of light keeps running round the button's edge, about once every three seconds.</p>
+    <table>
+      <thead><tr><th>Item</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Look</td><td>Plain word, like the other menu items</td><td>Rounded button: ● EVENTS ↗</td></tr>
+        <tr><td>Movement</td><td>None</td><td>A line of light circles the edge; stops for visitors who ask their device for less motion</td></tr>
+        <tr><td>On hover</td><td>Word turns pink</td><td>Button fills light pink, word turns pink, arrow nudges up-right</td></tr>
+        <tr><td>Where it goes</td><td>Events page</td><td>Events page (unchanged)</td></tr>
+        <tr><td>Phones / side menu (☰)</td><td>Plain Events link</td><td>Unchanged</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi (top menu, computer)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">SECTORS ▾</div><div class="wf-box">FUNDING TRACKER</div><div class="wf-box"><strong>( ● EVENTS ↗ )</strong> with a moving line round the edge</div><div class="wf-box">AI SPOTLIGHT</div><div class="wf-box">PRESS RELEASE</div><div class="wf-box">REPORTS</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> None: this only changes how the menu item looks.</p>
+  </div>
+</section>
+
+<section id="v200">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v200</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> The v199 change is undone. The round "Explore Events" button and its "The world meets here." headline are gone from the home page, and <strong>EVENTS</strong> is a normal link in the top menu again.</p>
+    <table>
+      <thead><tr><th>Where</th><th>In v199</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Top menu</td><td>No EVENTS link</td><td>EVENTS link back</td></tr>
+        <tr><td>Home page</td><td>Circular Events button</td><td>Removed (same as before v199)</td></tr>
+        <tr><td>Footer, side menu, Events page</td><td>Unchanged</td><td>Unchanged</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Data flow.</strong> None: this only changes what is shown.</p>
+  </div>
+</section>
+
+<section id="v199">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v199</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> Events used to be one more word in the top menu. It is now its own feature on the home page: a round, slowly turning button that says <em>Discover global events · Startup community</em> around its edge, with an arrow in the middle. Next to it: <strong>"The world meets here."</strong> and a one-line description.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Top menu (desktop)</td><td>EVENTS link</td><td>Removed</td></tr>
+        <tr><td>Home page, computer / tablet</td><td>No Events feature</td><td>Circle button on the right, headline on the left, just below the Latest News / Trending area</td></tr>
+        <tr><td>Home page, phone</td><td>Events carousel only</td><td>Headline, then the circle button, just above the Events carousel</td></tr>
+        <tr><td>Footer and the side menu (☰)</td><td>Events link</td><td>Unchanged, still there</td></tr>
+        <tr><td>Events page itself</td><td>/events</td><td>Unchanged</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi (home page)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Latest News · Trending · Startup Events</div></div>
+        <div class="wf-row"><div class="wf-box"><strong>THE WORLD MEETS HERE.</strong><br>Discover startup conferences, founder meetups, and global industry events.<br>Explore Events ↗</div><div class="wf-box">( ◯ ring with curved text · arrow ↗ · EXPLORE EVENTS )</div></div>
+        <div class="wf-row"><div class="wf-box">Category sections…</div></div>
+      </div>
+    </div>
+    <p><strong>How it moves.</strong> It fades up gently when you scroll to it. The outer ring turns slowly. Hovering grows the middle a little, nudges the arrow, and adds a soft pink glow. Visitors who have asked their device for less motion see a still version. It follows the light / dark setting, and works with the keyboard (Tab, then Enter).</p>
+    <p><strong>Data flow.</strong> No data involved: the button simply opens the existing Events page.</p>
+  </div>
+</section>
+
+<section id="v198">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v198</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> When HR gives an employee <strong>Publisher Admin</strong> access, that person logs in to the admin panel. Until now their Posts page showed only the <strong>Posts</strong> tab. Now they see the same tabs as the main admin, with the same rights in each one.</p>
+    <table>
+      <thead><tr><th>Tab on the Posts page</th><th>Publisher Admin before</th><th>Publisher Admin now</th><th>Event Admin</th></tr></thead>
+      <tbody>
+        <tr><td>Posts</td><td>Yes</td><td>Yes</td><td>Yes (Press Release only, unchanged)</td></tr>
+        <tr><td>Industry</td><td>Hidden</td><td><strong>Yes</strong>: add, edit, delete</td><td>Hidden (unchanged)</td></tr>
+        <tr><td>Authors</td><td>Hidden</td><td><strong>Yes</strong>: add, edit, delete</td><td>Hidden (unchanged)</td></tr>
+        <tr><td>Content Studio</td><td>Yes</td><td>Yes</td><td>Hidden (unchanged)</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/admin/posts (Publisher Admin)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>Posts</strong></div><div class="wf-box"><strong>Industry</strong></div><div class="wf-box"><strong>Authors</strong></div><div class="wf-box"><strong>Content Studio</strong></div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> When a Publisher Admin opens the Posts page, the panel checks their role and shows all four tabs. Saving an industry or an author goes to the same place as the main admin's changes; the server now accepts it from a Publisher Admin as well. Nothing in the database had to change.</p>
+  </div>
+</section>
+
+<section id="v197">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v197</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> After v196, <strong>Trending</strong> and <strong>Latest News</strong> on the desktop homepage showed the same stories, because both took them from the newest articles. Now the two sections divide the newest articles between them: Trending takes the 5 newest, and Latest News carries on from where Trending stops. No story appears in both, and no new article goes missing.</p>
+    <table>
+      <thead><tr><th>Section</th><th>Before</th><th>Now</th><th>Example article numbers</th></tr></thead>
+      <tbody>
+        <tr><td>Trending</td><td>4th to 8th newest (skipped the 3 newest)</td><td><strong>1st to 5th newest</strong></td><td>23, 22, 21, 20, 19</td></tr>
+        <tr><td>Latest News, big card</td><td>1st to 3rd newest</td><td>6th to 8th newest</td><td>18 → 17 → 16</td></tr>
+        <tr><td>Latest News, small card 1</td><td>4th to 6th newest</td><td>9th to 11th newest</td><td>15 → 14 → 13</td></tr>
+        <tr><td>Latest News, small card 2</td><td>7th to 9th newest</td><td>12th to 14th newest</td><td>12 → 11 → 10</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi (desktop)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>Trending</strong>: 5 newest</div><div class="wf-box"><strong>Latest News</strong>: next 9 (3 per card, rotating)</div><div class="wf-box">Startup Events</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> The homepage gets the 14 newest published articles that have a picture, sorted by article number. Trending shows the first 5, and Latest News takes the next 9 that aren't already in Trending. Both lists are kept for 5 minutes and refresh straight away when an article is published. Trending in the article-page sidebar uses the same list, so it also shows the 5 newest.</p>
+  </div>
+</section>
+
+<section id="v196">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v196</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> On the desktop homepage, the three <strong>Latest News</strong> cards rotate a new story in every 5 seconds. Each card used to show up to 5 stories picked from its own category. Now every article's number (its ID) decides the order: the newest article first, then the next newest, counting down. Each card shows <strong>3 stories</strong>, so 9 different stories in total, with no repeats. Articles that aren't on the site (drafts, deleted posts, press releases or posts without a picture) are skipped, so a card never goes blank. The mobile homepage is unchanged.</p>
+    <table>
+      <thead><tr><th>Card</th><th>Stories it rotates through</th><th>Example article numbers</th></tr></thead>
+      <tbody>
+        <tr><td>Big card</td><td>1st, 2nd, 3rd newest</td><td>055 → 054 → 053 → back to 055</td></tr>
+        <tr><td>Small card 1</td><td>4th, 5th, 6th newest</td><td>052 → 051 → 050 → back to 052</td></tr>
+        <tr><td>Small card 2</td><td>7th, 8th, 9th newest</td><td>049 → 048 → 047 → back to 049</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Question</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>How many stories per card</td><td>Up to 5</td><td>Up to 3</td></tr>
+        <tr><td>Which stories</td><td>The newest article, then more from the same category</td><td>Newest article numbers, counting down</td></tr>
+        <tr><td>How often it changes</td><td>Every 5 seconds</td><td>Every 5 seconds (unchanged)</td></tr>
+        <tr><td>No new news this morning</td><td>Shows the latest available</td><td>Shows the latest available (unchanged)</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi (desktop)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>Latest News</strong> big card: 1st → 2nd → 3rd newest</div></div>
+        <div class="wf-row"><div class="wf-box">Small card 1: 4th → 5th → 6th</div><div class="wf-box">Small card 2: 7th → 8th → 9th</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> The homepage asks the database for the 9 newest published articles with a picture, sorted by article number, and splits them into three groups of 3. The list is kept for 5 minutes and refreshed straight away when an article is published or edited. These 9 stories are left out of the More News list further down, so they don't appear twice.</p>
+  </div>
+</section>
+
+<section id="v195">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v195</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> The <strong>Pro Plan page</strong> (opened from "Get Pro Plan" in Funding) was pink almost everywhere and felt loud. It now uses calm, neutral colours: a light grey page, white cards, dark text and one deep indigo for the button and highlights. The brand pink appears only on the small "StartupNews.fyi Pro" label. The Payment Details card no longer shows a GST line; it shows the plan and the total. The total and what will be charged are exactly the same as before. No words on the page changed apart from the GST line.</p>
+    <table>
+      <thead><tr><th>Part of the page</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Page background</td><td>Pink-to-lavender tint and pink glows</td><td>Light grey, with a barely visible grid</td></tr>
+        <tr><td>Top banner</td><td>Pink gradient; pink PRO card</td><td>White fading to a very light indigo; navy-to-indigo PRO card</td></tr>
+        <tr><td>"Pay Once, Keep It For Life."</td><td>Pink</td><td>Deep indigo</td></tr>
+        <tr><td>What You Get groups</td><td>Pink, purple, gold</td><td>Indigo, teal, soft amber</td></tr>
+        <tr><td>Total Payable box</td><td>Pink-to-purple</td><td>Deep indigo with white text</td></tr>
+        <tr><td>Get Pro Plan button</td><td>Pink-to-purple with a pink glow</td><td>Solid indigo, slightly darker on hover</td></tr>
+        <tr><td>Inside Funding strip</td><td>Black with pink and purple glows</td><td>Navy, with outlined chips</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Payment Details line</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Pro Plan, Lifetime Access</td><td>₹4,999.00</td><td>Shown as the plan name, no separate amount</td></tr>
+        <tr><td>GST (18%), Added On Top</td><td>₹899.82</td><td>Removed</td></tr>
+        <tr><td>Total Payable</td><td>₹5,898.82</td><td>₹5,898.82 (unchanged)</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/dashboard/pro</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Logo · [Back To Funding]</div></div>
+        <div class="wf-row"><div class="wf-box">PRO card (navy) · <em>Pro</em> label · Unlock The Full Funding Picture. <strong>Pay Once, Keep It For Life.</strong></div></div>
+        <div class="wf-row"><div class="wf-box">What You Get (indigo · teal · amber groups)</div><div class="wf-box">Payment Details: <strong>Total Payable ₹5,898.82</strong> · ▬▬▬ Pro Plan, Lifetime Access · How It Works · Billed To · [Get Pro Plan]</div></div>
+        <div class="wf-row"><div class="wf-box">Inside Funding (navy strip, sliding chips)</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> Unchanged. The page reads the plan total from one place in the code and shows it. Online payment is still not open, so pressing Get Pro Plan only shows "Online payment is not open yet. You have not been charged."</p>
+  </div>
+</section>
+
+<section id="v195">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v195</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> The Funding pages now invite readers to buy the Pro Plan whenever they show interest in a chart. Clicking or tapping <strong>any chart</strong> (on the Funding dashboard or Market Analysis) opens a popup that explains what Pro adds and links to the Pro Plan page. The chart still reacts to the click underneath, so nothing the reader was doing is lost. Separately, the round <strong>Get Pro Plan</strong> bubble in the bottom-right corner no longer floats around; it stays still so it is easy to click.</p>
+    <table>
+      <thead><tr><th>Part of the popup</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>Top</td><td>Crown badge · "Pro Plan · Lifetime Access" · heading "Go Deeper With Pro" · one line: get the deals, search and analysis behind every chart</td></tr>
+        <tr><td>Benefits</td><td>All deals in one table (filter and download as Excel) · deal search · Market Analysis (eight views of the last 12 months) · 12-Month Outlook</td></tr>
+        <tr><td>Main button</td><td><strong>Get Pro Plan →</strong> opens the Pro Plan page</td></tr>
+        <tr><td>Ways to close</td><td>"Maybe Later", the ✕ button, clicking outside the box, or the Esc key</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/dashboard/funding (after clicking a chart)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">👑 PRO PLAN · LIFETIME ACCESS — Go Deeper With Pro</div></div>
+        <div class="wf-row"><div class="wf-box">✓ All deals table · ✓ Deal search · ✓ Market Analysis · ✓ 12-Month Outlook</div></div>
+        <div class="wf-row"><div class="wf-box"><strong>Get Pro Plan →</strong></div></div>
+        <div class="wf-row"><div class="wf-box">Maybe Later</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> Reader clicks a chart &rarr; popup opens (no data is loaded or saved) &rarr; Get Pro Plan takes them to the Pro Plan page, or they close it and carry on.</p>
+  </div>
+</section>
+
+<section id="v194">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v194</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> On the member Funding dashboard, the <strong>"Where Funding Concentrates · Cities: Volume Vs. Cheque Size"</strong> section is no longer shown. There are not enough city records yet for the chart to be meaningful. Nothing was deleted: the section is switched off in the code and will be switched back on once more city data is uploaded.</p>
+    <table>
+      <thead><tr><th>Part</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>City bubble chart (deals vs. average round, bubble = capital)</td><td>Shown after the Money Flow section</td><td>Hidden</td></tr>
+        <tr><td>City Leaderboard (top 8 cities by capital)</td><td>Shown next to the bubble chart</td><td>Hidden</td></tr>
+        <tr><td>Other Funding sections and data</td><td>—</td><td>Unchanged; the Investors section now follows Money Flow directly</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/dashboard/funding</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Trend · Sectors · Stages</div></div>
+        <div class="wf-row"><div class="wf-box">Money Flow</div></div>
+        <div class="wf-row"><div class="wf-box"><s>Cities: Volume Vs. Cheque Size</s> (hidden)</div></div>
+        <div class="wf-row"><div class="wf-box">Investors · Outlook</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> Unchanged. The dashboard still receives city figures from the server; it simply does not draw them for now.</p>
+  </div>
+</section>
+
+<section id="v193">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v193</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> After a reader logs in or signs up, the homepage used to show a "Congratulations!! You're in! Welcome to StartupNews.fyi" card with two buttons (Continue to Reports, Continue to News). That card now asks the reader to <strong>choose their newsletter topics</strong> straight away, so new readers set up their daily briefing without hunting for the setting in their dashboard.</p>
+    <table>
+      <thead><tr><th>Part of the card</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Heading</td><td>Congratulations!! · big initial avatar · "Welcome to StartupNews.fyi" · name badge</td><td>Mail icon · "Welcome, {first name}!" · "What should your newsletter cover?" · "Pick up to 3 topics for your daily briefing."</td></tr>
+        <tr><td>Middle</td><td>Nothing to choose</td><td>Every news category as a tappable chip (Press Release is not offered). Up to 3 can be picked; once 3 are picked the rest fade out. Topics the reader already chose before are pre-selected.</td></tr>
+        <tr><td>Buttons</td><td>Continue to Reports · Continue to News</td><td><strong>Skip for now</strong> (closes the card, nothing saved) · <strong>Save topics</strong> (saves and closes)</td></tr>
+        <tr><td>Where the choice goes</td><td>—</td><td>The same newsletter preference as Dashboard › Newsletter, so the reader can change it there any time.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi (just after login)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">✉ Welcome, Aditya! — What should your newsletter cover?</div></div>
+        <div class="wf-row"><div class="wf-box">[✓ AI] [✓ Funding] [Fintech] [EV] [SaaS] …</div></div>
+        <div class="wf-row"><div class="wf-box">2 of 3 selected</div></div>
+        <div class="wf-row"><div class="wf-box">Skip for now</div><div class="wf-box"><strong>Save topics</strong></div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> Reader logs in &rarr; homepage opens the card &rarr; the card loads the list of categories &rarr; reader picks 1–3 &rarr; Save stores them on the reader's account (the newsletter sender uses them for the daily briefing) &rarr; card closes.</p>
+  </div>
+</section>
+
+<section id="v192">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v192</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-14</span>
+    </div>
+    <p><strong>What changed.</strong> The <strong>Funding</strong> section of the member dashboard had been locked again by an update on 2026-10-13. It is now <strong>open</strong>. Nothing new was built: the same funding pages and data are visible again. Brand Stories, Handouts, Incubators and Grants stay locked.</p>
+    <table>
+      <thead><tr><th>Where</th><th>Before (locked)</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Dashboard side menu</td><td>"Funding" showed a lock icon and did nothing when clicked.</td><td>"Funding" is a normal menu item. Clicking it opens the funding dashboard; its arrow shows or hides <strong>All Deals</strong>.</td></tr>
+        <tr><td>Direct link or bookmark (any /dashboard/funding page)</td><td>A "Funding is locked" message with a Back to Dashboard button.</td><td>The page itself, with its charts, deals and the Get Pro Plan button.</td></tr>
+        <tr><td>Admin › Funding Data</td><td>Unchanged.</td><td>Unchanged. The Financial Analyst still uploads and manages the deals shown here.</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/dashboard/funding</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Menu: Reports · <strong>Funding ▾</strong> (open) · All Deals · 🔒 Brand Stories</div></div>
+        <div class="wf-row"><div class="wf-box">Funding overview</div></div>
+        <div class="wf-row"><div class="wf-box">Key numbers</div><div class="wf-box">Charts</div><div class="wf-box">Deals</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> Reader opens Funding &rarr; the funding pages load the deals the Financial Analyst uploaded &rarr; charts and deal lists are shown. The section can be locked again with one setting if needed.</p>
   </div>
 </section>
 

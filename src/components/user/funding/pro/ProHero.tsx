@@ -31,11 +31,11 @@ export default function ProHero({ memberName }: { memberName: string }) {
     <section
       aria-labelledby="pro-hero-h"
       data-pro="hero"
-      className="relative box-border grid items-center gap-6 overflow-hidden rounded-[20px] border border-solid border-fi-primary-soft bg-linear-to-br from-fi-surface via-fi-primary-light to-fi-ai-light px-5 py-7 shadow-fi sm:px-8 sm:py-9 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)] md:gap-10"
+      className="relative box-border grid items-center gap-6 overflow-hidden rounded-[20px] border border-solid border-(--pro-line) bg-linear-to-br from-(--pro-surface) to-(--pro-tint) px-5 py-7 shadow-(--pro-shadow) sm:px-8 sm:py-9 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)] md:gap-10"
     >
       {/* Decorative rings, behind everything. */}
-      <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full border border-solid border-fi-primary/10" />
-      <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-44 rounded-full border border-solid border-fi-ai/10" />
+      <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full border border-solid border-(--pro-primary)/10" />
+      <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-44 rounded-full border border-solid border-(--pro-line)" />
 
       {/* Artwork */}
       <div aria-hidden data-pro="stage" className="relative mx-auto h-[196px] w-full max-w-[320px] [perspective:900px] sm:h-[224px] md:max-w-none">
@@ -43,7 +43,7 @@ export default function ProHero({ memberName }: { memberName: string }) {
           <div className="-rotate-3">
             <div
               data-pro="tilt"
-              className="relative box-border flex h-[150px] w-[240px] flex-col justify-between overflow-hidden rounded-[18px] bg-linear-to-br from-fi-ink via-[#3B1030] to-fi-primary-dark p-4 text-white shadow-[0_24px_48px_rgba(168,15,62,0.32)] sm:h-[164px] sm:w-[264px]"
+              className="relative box-border flex h-[150px] w-[240px] flex-col justify-between overflow-hidden rounded-[18px] bg-linear-to-br from-(--pro-navy) via-(--pro-deep) to-(--pro-deep-2) p-4 text-white shadow-[0_24px_48px_rgba(15,23,42,0.24)] sm:h-[164px] sm:w-[264px]"
             >
               <span className="pointer-events-none absolute -right-12 -top-16 size-44 rounded-full bg-white/10" />
               <span className="relative flex items-center justify-between">
@@ -63,40 +63,40 @@ export default function ProHero({ memberName }: { memberName: string }) {
         </div>
 
         <div data-pro="float" className="absolute right-0 top-0 sm:right-1">
-          <div data-pro="drift" className="box-border w-[112px] rounded-[12px] border border-solid border-fi-line bg-fi-surface p-2.5 shadow-fi">
-            <span className="block text-[10px] font-bold text-fi-ink-faint">Funding Over Time</span>
+          <div data-pro="drift" className="box-border w-[112px] rounded-[12px] border border-solid border-(--pro-line) bg-(--pro-surface) p-2.5 shadow-(--pro-shadow)">
+            <span className="block text-[10px] font-bold text-(--pro-muted)">Funding Over Time</span>
             <span className="mt-1.5 flex h-9 items-end gap-1.5">
               {BARS.map((h) => (
-                <span key={h} data-pro="bar" className={`flex-1 rounded-t-[3px] bg-linear-to-t from-fi-primary to-fi-ai ${h}`} />
+                <span key={h} data-pro="bar" className={`flex-1 rounded-t-[3px] bg-linear-to-t from-(--pro-primary) to-(--pro-primary)/55 ${h}`} />
               ))}
             </span>
           </div>
         </div>
         <div data-pro="float" className="absolute bottom-0 left-0 sm:left-1">
-          <div data-pro="drift" className="flex items-center gap-2 rounded-[12px] border border-solid border-fi-line bg-fi-surface px-2.5 py-2 shadow-fi">
+          <div data-pro="drift" className="flex items-center gap-2 rounded-[12px] border border-solid border-(--pro-line) bg-(--pro-surface) px-2.5 py-2 shadow-(--pro-shadow)">
             <span className="flex size-6 items-center justify-center rounded-full bg-fi-green-light text-fi-green"><Check size={14} strokeWidth={3} /></span>
-            <span className="text-[11.5px] font-bold text-fi-ink">Every Deal, One Place</span>
+            <span className="text-[11.5px] font-bold text-(--pro-heading)">Every Deal, One Place</span>
           </div>
         </div>
       </div>
 
       {/* Text */}
       <div className="relative min-w-0">
-        <span data-pro="hero-text" className="inline-flex items-center gap-1.5 rounded-full border border-solid border-fi-primary-soft bg-fi-surface px-3 py-1 text-[12px] font-bold tracking-[0.02em] text-fi-primary">
+        <span data-pro="hero-text" className="inline-flex items-center gap-1.5 rounded-full border border-solid border-(--pro-line) bg-(--pro-surface) px-3 py-1 text-[12px] font-bold tracking-[0.02em] text-(--pro-brand)">
           <Crown size={13} aria-hidden /> StartupNews.fyi Pro
         </span>
-        <h1 id="pro-hero-h" className="m-0 mt-3 text-[30px] font-bold leading-[1.08] tracking-[-0.02em] text-fi-ink sm:text-[40px] lg:text-[44px]">
+        <h1 id="pro-hero-h" className="m-0 mt-3 text-[30px] font-bold leading-[1.08] tracking-[-0.02em] text-(--pro-heading) sm:text-[40px] lg:text-[44px]">
           {HEADING.map((w) => <span key={w}><Word>{w}</Word>{' '}</span>)}
           <br className="hidden sm:block" />
-          {HEADING_ACCENT.map((w) => <span key={w}><Word className="text-fi-primary">{w}</Word>{' '}</span>)}
+          {HEADING_ACCENT.map((w) => <span key={w}><Word className="text-(--pro-primary)">{w}</Word>{' '}</span>)}
         </h1>
-        <p data-pro="hero-text" className="m-0 mt-3 max-w-[58ch] text-[15px] leading-relaxed text-fi-ink-soft sm:text-[16px]">
+        <p data-pro="hero-text" className="m-0 mt-3 max-w-[58ch] text-[15px] leading-relaxed text-(--pro-body) sm:text-[16px]">
           Pro covers the whole Funding section of StartupNews.fyi: live numbers, every deal, market analysis and a 12-month outlook.
         </p>
         <ul className="m-0 mt-5 flex list-none flex-wrap gap-2 p-0">
           {CHIPS.map(({ icon: Icon, label }) => (
-            <li key={label} data-pro="chip" className="inline-flex items-center gap-1.5 rounded-full border border-solid border-fi-line bg-fi-surface px-3 py-1.5 text-[12.5px] font-semibold text-fi-ink">
-              <Icon size={14} aria-hidden className="text-fi-primary" /> {label}
+            <li key={label} data-pro="chip" className="inline-flex items-center gap-1.5 rounded-full border border-solid border-(--pro-line) bg-(--pro-surface) px-3 py-1.5 text-[12.5px] font-semibold text-(--pro-heading)">
+              <Icon size={14} aria-hidden className="text-(--pro-primary)" /> {label}
             </li>
           ))}
         </ul>

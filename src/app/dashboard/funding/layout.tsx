@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
+import ProChartPrompt from '@/components/user/funding/ProChartPrompt';
 import ProPlanBubble from '@/components/user/funding/ProPlanBubble';
 import { fiFontCls } from '@/components/user/funding/fonts';
 
-/** Lock switch for the whole section, currently locked. When `true` this guard covers a direct URL
+/** Lock switch for the whole section, currently open. When `true` this guard covers a direct URL
  * visit / bookmark to any /dashboard/funding/* page and the pages are not rendered (no API calls).
- * To unlock: flip this to `false` and drop `locked: true` from the Funding entry in
+ * To lock again: flip this to `true` and add `locked: true` back to the Funding entry in
  * `UserDashboardLayout.tsx`'s `NAV_GROUPS`. */
-const FUNDING_LOCKED: boolean = true;
+const FUNDING_LOCKED: boolean = false;
 
 function FundingLockedState() {
   return (
@@ -33,13 +34,17 @@ function FundingLockedState() {
 export default function FundingLayout({ children }: { children: React.ReactNode }) {
   if (FUNDING_LOCKED) return <FundingLockedState />;
   // One typeface for the whole section: Calibri (see components/user/funding/fonts.ts).
+  // Recharts 3 makes the chart svg and its shapes focusable, so a click drew the browser's black
+  // focus ring around the chart / plot area. The recharts-* selectors hide it on every chart here.
   return (
-    <div className={`${fiFontCls} min-h-screen min-w-0 overflow-x-clip bg-fi-bg text-fi-ink antialiased`}>
+    <div className={`${fiFontCls} min-h-screen min-w-0 overflow-x-clip bg-fi-bg text-fi-ink antialiased [&_.recharts-wrapper]:outline-none [&_.recharts-wrapper_*]:outline-none`}>
       {/* box-border: this dashboard has no Preflight, so w-full + padding would overflow the screen. */}
       <div className="mx-auto box-border flex w-full min-w-0 max-w-[1500px] flex-col gap-4 px-3 py-4 sm:gap-5 sm:px-5 sm:py-6 lg:px-7">
         {children}
       </div>
       <ProPlanBubble />
+      {/* Clicking any chart on these pages opens the "Get Pro Plan" popup. */}
+      <ProChartPrompt />
     </div>
   );
 }

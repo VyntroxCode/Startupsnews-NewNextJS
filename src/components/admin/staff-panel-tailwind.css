@@ -110,6 +110,10 @@
 @source "./sales-tracker/EnsEnquiryDetailModal.tsx";
 @source "./sales-tracker/LeadActivityPanel.tsx";
 
+/* Posts (/admin/posts/create, /admin/posts/edit/[id]) — sectioned field grid (PostFormLayout). */
+@source "./posts";
+@source "../../app/(admin)/admin/posts"; /* whole folder: `[id]` would read as a glob class */
+
 /* Content Studio theme — the pink palette ported 1:1 from the standalone app. Every token is
    namespaced `cs-` (bg-cs-surface, text-cs-ink, font-cs-sans…) so it cannot change what an
    existing utility such as `font-sans` means on the other staff panels sharing this sheet. */

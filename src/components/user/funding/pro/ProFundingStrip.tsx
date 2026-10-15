@@ -41,10 +41,10 @@ export default function ProFundingStrip({ sectors }: { sectors: string[] }) {
     <section
       aria-labelledby="pro-strip-h"
       data-pro="block"
-      className="group relative box-border flex min-w-0 flex-col gap-5 overflow-hidden rounded-[20px] bg-fi-ink px-5 py-6 text-white shadow-[0_18px_44px_rgba(21,19,26,0.18)] sm:px-7 md:flex-row md:items-center md:gap-8 lg:col-span-2"
+      className="group relative box-border flex min-w-0 flex-col gap-5 overflow-hidden rounded-[20px] bg-linear-to-br from-(--pro-navy) to-(--pro-navy-2) px-5 py-6 text-white shadow-[0_18px_44px_rgba(15,23,42,0.16)] sm:px-7 md:flex-row md:items-center md:gap-8 lg:col-span-2"
     >
-      <span aria-hidden className="pointer-events-none absolute -left-16 -top-24 size-64 rounded-full bg-fi-primary/45 blur-3xl" />
-      <span aria-hidden className="pointer-events-none absolute -bottom-28 right-1/4 size-64 rounded-full bg-fi-ai/40 blur-3xl" />
+      <span aria-hidden className="pointer-events-none absolute -left-16 -top-24 size-64 rounded-full bg-(--pro-primary)/25 blur-3xl" />
+      <span aria-hidden className="pointer-events-none absolute -bottom-28 right-1/4 size-64 rounded-full bg-(--pro-navy-2)/60 blur-3xl" />
 
       <div className="relative min-w-0 md:w-[44%] md:shrink-0">
         <span data-pro="item" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11.5px] font-bold tracking-[0.04em] text-white">
@@ -61,7 +61,7 @@ export default function ProFundingStrip({ sectors }: { sectors: string[] }) {
       {/* Decorative: the same names are reachable inside the Funding section. */}
       <div aria-hidden data-pro="item" className="relative flex min-w-0 flex-1 flex-col gap-2.5 [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
         <ChipRow items={sectors.length ? sectors : DATA_POINTS} direction="rtl" chipCls="border-white/15 bg-white/10 text-white" />
-        <ChipRow items={STAGES} direction="ltr" chipCls="border-fi-primary/40 bg-fi-primary/15 text-white/90" />
+        <ChipRow items={STAGES} direction="ltr" chipCls="border-white/20 bg-transparent text-white/85" />
       </div>
     </section>
   );

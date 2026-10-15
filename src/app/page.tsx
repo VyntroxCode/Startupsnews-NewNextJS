@@ -12,7 +12,7 @@ import {
   getFeat1SectionPosts,
   getStartupEvents,
   getLatestNewsPosts,
-  getPostsByCategory,
+  getLatestNewsHeroPosts,
   onlyPostsWithImage,
   getPostImage,
   getCategoryDisplayName,
@@ -53,6 +53,9 @@ export default async function HomePage() {
     "fintech",
   ] as const;
 
+  // Latest News hero rotation: runs alongside batch 1. 14 = Trending's 5 newest + the 9 after them.
+  const heroPostsPromise = getLatestNewsHeroPosts(14);
+
   // Batch 1: parallel fetch all independent data (one round-trip to cache/DB)
   const batch1 = await Promise.all([
     getFeat1LeftPosts(),
@@ -83,32 +86,30 @@ export default async function HomePage() {
   const categoryTitlesMap = batch1.slice(11, 18) as string[];
 
   const { main, sub } = feat1Result;
-  const excludeIds = [main.id, sub[0].id, sub[1].id, ...trending.map((p) => p.id)];
+
+  // Latest News hero cards follow post ids, highest first, starting after Trending (the 5 newest
+  // ids), three per card: the big card gets the next 3 ids, small card 1 the 3 after, small card 2
+  // the 3 after that. Ids that are not published, have no image or are press releases are skipped
+  // by the query. A card left empty (too few posts, or the query failed) falls back to its feat1 story.
+  const trendingIds = new Set(trending.map((p) => p.id));
+  const heroPosts = (await heroPostsPromise).filter((p) => !trendingIds.has(p.id)).slice(0, 9);
+  const heroFallback = [main, sub[0], sub[1]];
+  const heroQueues = heroFallback.map((fallback, i) => {
+    const queue = heroPosts.slice(i * 3, i * 3 + 3);
+    return queue.length > 0 ? queue : [fallback];
+  });
+
+  const excludeIds = [
+    ...new Set([main.id, sub[0].id, sub[1].id, ...heroQueues.flat().map((p) => p.id), ...trending.map((p) => p.id)]),
+  ];
 
   // Batch 2: more news (depends on excludeIds only)
-  // Latest News hero cards each rotate through more stories from their own category.
-  const heroCards = [main, sub[0], sub[1]];
-  const heroCategorySlugs = [...new Set(heroCards.map((p) => p.categorySlug))];
-
-  // Batch 2: more news (depends on excludeIds only) + the hero cards' category queues
-  const [moreNews, moreNewsSlugs, heroCategoryPosts] = await Promise.all([
+  const [moreNews, moreNewsSlugs] = await Promise.all([
     getMoreNewsPosts(excludeIds, 15),
     getMoreNewsSlugs(excludeIds),
-    // A failed queue must not take the homepage down — that card just stays on its one story.
-    Promise.all(heroCategorySlugs.map((slug) => getPostsByCategory(slug, 10).catch((): Post[] => []))),
   ]);
 
-  // One queue per card: the card's own story first, then up to 4 more from its category. `seen`
-  // spans all three so two cards in the same category never show the same story.
-  const seenInHero = new Set(heroCards.map((p) => p.id));
-  const latestNewsRotation: LatestNewsSlide[][] = heroCards.map((card) => {
-    const queue = [card];
-    for (const post of heroCategoryPosts[heroCategorySlugs.indexOf(card.categorySlug)]) {
-      if (queue.length >= 5) break;
-      if (seenInHero.has(post.id)) continue;
-      seenInHero.add(post.id);
-      queue.push(post);
-    }
+  const latestNewsRotation: LatestNewsSlide[][] = heroQueues.map((queue) => {
     return queue.map((post) => ({
       id: post.id,
       href: getPostPath(post),

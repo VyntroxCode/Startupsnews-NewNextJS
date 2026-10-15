@@ -316,9 +316,9 @@ export async function getTrendingPosts(): Promise<Post[]> {
   if (cached) return cached;
 
   try {
-    const featured = await postsService.getFeaturedPosts(3);
-    const excludeIds = featured.map((p) => p.id.toString());
-    const entities = await postsService.getTrendingPosts(10, excludeIds);
+    // The 5 newest posts by id. The homepage Latest News rotation starts after these
+    // (see getLatestNewsHeroPosts in app/page.tsx).
+    const entities = await postsService.getLatestPostsById(10);
     const posts = toListPosts(
       onlyPostsWithImage(await entitiesToPosts(entities)).slice(0, 5),
     );
@@ -376,6 +376,26 @@ export async function getLatestNewsPosts(limit = 25): Promise<Post[]> {
     return posts;
   } catch (error) {
     console.error("Error fetching latest news for listing:", error);
+    return [];
+  }
+}
+
+/** Newest posts by id, highest first, image required — the homepage Latest News hero rotation. */
+export async function getLatestNewsHeroPosts(limit = 9): Promise<Post[]> {
+  const cacheKey = `posts:all:latest-by-id:limit:${limit}`;
+  const cached = await getCache<Post[]>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    // Over-fetch: posts whose only image is in the body can still fail the image check.
+    const entities = await postsService.getLatestPostsById(limit * 2);
+    const posts = toListPosts(
+      onlyPostsWithImage(await entitiesToPosts(entities)).slice(0, limit),
+    );
+    await setCache(cacheKey, posts, 300); // 5 min
+    return posts;
+  } catch (error) {
+    console.error("Error fetching latest news hero posts:", error);
     return [];
   }
 }

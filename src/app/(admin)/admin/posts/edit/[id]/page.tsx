@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft, CircleCheck, CircleX, X } from 'lucide-react';
 import { getAuthHeaders, getAdminToken, withAdminToken, getAdminUser } from '@/lib/admin-auth';
 import RichTextEditor from '@/components/admin/RichTextEditor';
+import { PostFormSection, PostField, POST_INPUT, POST_HINT } from '@/components/admin/posts/PostFormLayout';
 import { normalizeRssHtmlForEditor } from '@/shared/utils/editor-html';
 import { clearFormDraft, loadFormDraft, useFormDraftAutosave } from '@/lib/formDraftStorage';
 
@@ -521,303 +522,181 @@ export default function EditPostPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{
-        background: 'white',
-        padding: '2rem',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Title{isDraft ? '' : ' *'}
-          </label>
-          <input
-            type="text"
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+      <form onSubmit={handleSubmit} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 md:p-8">
+        <PostFormSection
+          title="Post details"
+          description="Headline, URL and where the post is filed."
+          action={
+            <label className="box-border inline-flex cursor-pointer items-center gap-2 rounded-lg border border-solid border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300">
+              <input
+                type="checkbox"
+                checked={formData.featured}
+                onChange={(e) => setFormData((prev) => ({ ...prev, featured: e.target.checked }))}
+                className="size-4 accent-indigo-500"
+              />
+              Featured Post
+            </label>
+          }
+        >
+          <PostField label="Title" required={!isDraft} span={2}>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required={!isDraft}
+              placeholder="Article headline"
+              className={POST_INPUT}
+            />
+          </PostField>
+          <PostField label="Slug" required={!isDraft}>
+            <input
+              type="text"
+              value={formData.slug}
+              onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
+              required={!isDraft}
+              placeholder="auto-generated-from-title"
+              className={`${POST_INPUT} ${formData.slug.length > 75 ? 'border-rose-500! text-rose-600!' : ''}`}
+            />
+            {formData.slug.length > 75 && (
+              <p className="mt-1 text-xs text-rose-600">{formData.slug.length}/75 characters — slug is too long</p>
+            )}
+          </PostField>
+
+          <PostField label="Category" required={!isDraft}>
+            <select
+              value={formData.categoryId}
+              onChange={(e) => setFormData((prev) => ({ ...prev, categoryId: e.target.value }))}
+              required={!isDraft}
+              disabled={isEventAdmin}
+              className={POST_INPUT}
+            >
+              <option value="">Select a category</option>
+              {(isEventAdmin ? categories.filter((c) => c.slug === 'press-release') : categories).map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+            {isEventAdmin && <p className={POST_HINT}>Event Admin accounts can only manage Press Release posts.</p>}
+          </PostField>
+          <PostField label="Author" required={!isDraft}>
+            <select
+              value={formData.authorId}
+              onChange={(e) => setFormData((prev) => ({ ...prev, authorId: e.target.value }))}
+              required={!isDraft}
+              className={POST_INPUT}
+            >
+              <option value="">Select an author</option>
+              {authors.map((author) => (
+                <option key={author.id} value={author.id}>{author.name}</option>
+              ))}
+            </select>
+          </PostField>
+          <PostField label="Format">
+            <select
+              value={formData.format}
+              onChange={(e) => setFormData((prev) => ({ ...prev, format: e.target.value as 'standard' | 'video' | 'gallery' }))}
+              className={POST_INPUT}
+            >
+              <option value="standard">Standard</option>
+              <option value="video">Video</option>
+              <option value="gallery">Gallery</option>
+            </select>
+          </PostField>
+        </PostFormSection>
+
+        <PostFormSection title="Summary & SEO" cols={2} description="What readers and search engines see before opening the post.">
+          <PostField label="Excerpt" required={!isDraft}>
+            <textarea
+              value={formData.excerpt}
+              onChange={(e) => setFormData((prev) => ({ ...prev, excerpt: e.target.value }))}
+              required={!isDraft}
+              rows={4}
+              placeholder="Short summary shown on listing cards"
+              className={`${POST_INPUT} resize-y font-[inherit]`}
+            />
+          </PostField>
+          <PostField label="Meta Description (SEO)">
+            <textarea
+              value={formData.metaDescription}
+              onChange={(e) => setFormData((prev) => ({ ...prev, metaDescription: e.target.value }))}
+              rows={4}
+              maxLength={160}
+              placeholder="Recommended: 140-160 characters"
+              className={`${POST_INPUT} resize-y font-[inherit]`}
+            />
+            <p className={POST_HINT}>{formData.metaDescription.length}/160 characters</p>
+          </PostField>
+          <PostField label="Robots (SEO Indexing)">
+            <select
+              value={formData.robots}
+              onChange={(e) => setFormData((prev) => ({ ...prev, robots: e.target.value }))}
+              className={POST_INPUT}
+            >
+              <option value="index,nofollow">index, nofollow (index, don&apos;t follow links)</option>
+              <option value="index,follow">index, follow (crawl &amp; index)</option>
+              <option value="noindex,follow">noindex, follow (don&apos;t index, follow links)</option>
+              <option value="noindex,nofollow">noindex, nofollow (block completely)</option>
+            </select>
+          </PostField>
+          <PostField label="Content Links">
+            <select
+              value={formData.contentFollow}
+              onChange={(e) => setFormData((prev) => ({ ...prev, contentFollow: e.target.value }))}
+              className={POST_INPUT}
+            >
+              <option value="nofollow">nofollow — external links in content won&apos;t pass authority</option>
+              <option value="dofollow">dofollow — external links in content pass authority</option>
+            </select>
+          </PostField>
+        </PostFormSection>
+
+        <PostFormSection title="Content">
+          <PostField
+            label="Article body"
             required={!isDraft}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Slug{isDraft ? '' : ' *'}
-          </label>
-          <input
-            type="text"
-            value={formData.slug}
-            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-            required={!isDraft}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: `1px solid ${formData.slug.length > 75 ? '#e53e3e' : '#e2e8f0'}`,
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-              color: formData.slug.length > 75 ? '#e53e3e' : 'inherit',
-            }}
-          />
-          {formData.slug.length > 75 && (
-            <span style={{ fontSize: '0.75rem', color: '#e53e3e', marginTop: '0.25rem', display: 'block' }}>
-              {formData.slug.length}/75 characters — slug is too long
-            </span>
-          )}
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Category{isDraft ? '' : ' *'}
-          </label>
-          <select
-            value={formData.categoryId}
-            onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-            required={!isDraft}
-            disabled={isEventAdmin}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-              background: isEventAdmin ? '#f1f5f9' : undefined,
-              cursor: isEventAdmin ? 'not-allowed' : undefined,
-            }}
-          >
-            <option value="">Select a category</option>
-            {(isEventAdmin ? categories.filter((c) => c.slug === 'press-release') : categories).map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-          {isEventAdmin && (
-            <span style={{ fontSize: '0.8rem', color: '#718096', marginTop: '0.35rem', display: 'block' }}>
-              Event Admin accounts can only manage Press Release posts.
-            </span>
-          )}
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Author{isDraft ? '' : ' *'}
-          </label>
-          <select
-            value={formData.authorId}
-            onChange={(e) => setFormData({ ...formData, authorId: e.target.value })}
-            required={!isDraft}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-            }}
-          >
-            <option value="">Select an author</option>
-            {authors.map((author) => (
-              <option key={author.id} value={author.id}>{author.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Excerpt{isDraft ? '' : ' *'}
-          </label>
-          <textarea
-            value={formData.excerpt}
-            onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-            required={!isDraft}
-            rows={3}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Meta Description (SEO)
-          </label>
-          <textarea
-            value={formData.metaDescription}
-            onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
-            rows={3}
-            maxLength={160}
-            placeholder="Recommended: 140-160 characters"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-            }}
-          />
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b' }}>
-            {formData.metaDescription.length}/160 characters
-          </p>
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Robots (SEO Indexing)
-          </label>
-          <select
-            value={formData.robots}
-            onChange={(e) => setFormData({ ...formData, robots: e.target.value })}
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
-          >
-            <option value="index,nofollow">index, nofollow (index, don&apos;t follow links)</option>
-            <option value="index,follow">index, follow (crawl &amp; index)</option>
-            <option value="noindex,follow">noindex, follow (don&apos;t index, follow links)</option>
-            <option value="noindex,nofollow">noindex, nofollow (block completely)</option>
-          </select>
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Content Links
-          </label>
-          <select
-            value={formData.contentFollow}
-            onChange={(e) => setFormData({ ...formData, contentFollow: e.target.value })}
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
-          >
-            <option value="nofollow">nofollow — external links in content won&apos;t pass authority</option>
-            <option value="dofollow">dofollow — external links in content pass authority</option>
-          </select>
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Content{isDraft ? '' : ' *'} {(() => {
+            span="full"
+            extra={(() => {
               const plainText = formData.content.replace(/<[^>]*>/g, '').trim();
               const tooShort = plainText.length < 10;
-              const color = tooShort ? '#e53e3e' : '#22543d';
               return (
-                <span style={{ color, fontSize: '0.875em', fontWeight: 'normal', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span className={`inline-flex items-center gap-1 text-[13px] font-normal ${tooShort ? 'text-rose-600' : 'text-emerald-700'}`}>
                   ({tooShort ? <CircleX size={13} aria-hidden /> : <CircleCheck size={13} aria-hidden />}{tooShort ? 'Too short' : 'Valid'} - {plainText.length} characters)
                 </span>
               );
             })()}
-          </label>
-          <RichTextEditor
-            value={formData.content}
-            onChange={(content) => setFormData({ ...formData, content })}
-            placeholder="Write your news article content..."
-            minHeight={280}
-          />
-        </div>
+          >
+            <RichTextEditor
+              value={formData.content}
+              onChange={(content) => setFormData((prev) => ({ ...prev, content }))}
+              placeholder="Write your news article content..."
+              minHeight={280}
+            />
+          </PostField>
+        </PostFormSection>
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Featured Image
-          </label>
-          {(featuredImagePreview || formData.featuredImageUrl) && (
-            <div style={{ marginBottom: '1rem', position: 'relative', display: 'inline-block' }}>
-              <img
-                src={featuredImagePreview || formData.featuredImageUrl}
-                alt="Preview"
-                style={{ maxWidth: 300, maxHeight: 200, borderRadius: 4, border: '1px solid #e2e8f0' }}
-                onError={() => setFeaturedImagePreview(null)}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setFeaturedImageFile(null);
-                  setFeaturedImagePreview(null);
-                  setFormData((p) => ({ ...p, featuredImageUrl: '', featuredImageSmallUrl: '' }));
-                }}
-                style={{
-                  position: 'absolute', top: '0.5rem', right: '0.5rem',
-                  background: '#e53e3e', color: 'white', border: 'none', borderRadius: '50%',
-                  width: 24, height: 24, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <X size={14} strokeWidth={2.5} aria-hidden />
-              </button>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <label style={{
-              padding: '0.75rem 1.5rem', background: '#667eea', color: 'white', borderRadius: 4,
-              cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, display: 'inline-block', textAlign: 'center',
-            }}>
-              {featuredImageFile ? featuredImageFile.name : 'Choose image (uploaded with post)'}
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    if (file.size > 5 * 1024 * 1024) {
-                      setError('Image must be under 5MB');
-                      return;
+        <PostFormSection title="Featured image">
+          <PostField label="Image" span={2}>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <label className="inline-flex max-w-full shrink-0 cursor-pointer items-center justify-center truncate rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-600">
+                {featuredImageFile ? featuredImageFile.name : 'Choose image (uploaded with post)'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        setError('Image must be under 5MB');
+                        return;
+                      }
+                      setFeaturedImageFile(file);
+                      setFeaturedImagePreview(URL.createObjectURL(file));
+                      setFormData((p) => ({ ...p, featuredImageUrl: '', featuredImageSmallUrl: '' }));
+                      setError('');
                     }
-                    setFeaturedImageFile(file);
-                    setFeaturedImagePreview(URL.createObjectURL(file));
-                    setFormData((p) => ({ ...p, featuredImageUrl: '', featuredImageSmallUrl: '' }));
-                    setError('');
-                  }
-                }}
-              />
-            </label>
-            <div style={{ flex: 1, minWidth: 200 }}>
+                  }}
+                />
+              </label>
               <input
                 type="url"
                 value={formData.featuredImageUrl}
@@ -831,152 +710,89 @@ export default function EditPostPage() {
                   setFeaturedImagePreview(null);
                 }}
                 placeholder="Or enter image URL"
-                style={{
-                  width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: '1rem', boxSizing: 'border-box',
-                }}
+                className={`${POST_INPUT} min-w-0 flex-1`}
               />
             </div>
-          </div>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b' }}>
-            Choose a file to upload with the post (same as RSS: image is uploaded to S3 when you save). Or paste an image URL.
-          </p>
-          <label style={{ display: 'block', marginTop: '1rem', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-            Source
-          </label>
-          <input
-            type="text"
-            value={formData.imageCredit ?? ''}
-            onChange={(e) => setFormData((p) => ({ ...p, imageCredit: e.target.value }))}
-            maxLength={255}
-            placeholder="e.g. Reuters, Unsplash / John Doe"
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: 4, fontSize: '1rem', boxSizing: 'border-box' }}
-          />
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b' }}>
-            Shown below the featured image (right corner) on the article page. Leave empty to hide.
-          </p>
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Format
-          </label>
-          <select
-            value={formData.format}
-            onChange={(e) => setFormData({ ...formData, format: e.target.value as 'standard' | 'video' | 'gallery' })}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-            }}
-          >
-            <option value="standard">Standard</option>
-            <option value="video">Video</option>
-            <option value="gallery">Gallery</option>
-          </select>
-        </div>
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontWeight: '500',
-            color: '#4a5568',
-          }}>
-            Status
-          </label>
-          <select
-            value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value as 'draft' | 'published' | 'scheduled' | 'archived' })}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              boxSizing: 'border-box',
-            }}
-          >
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="archived">Archived</option>
-          </select>
-        </div>
-
-        {formData.status === 'scheduled' && (
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#4a5568' }}>
-              Scheduled Date &amp; Time *
-            </label>
+            <p className={POST_HINT}>Choose a file to upload with the post (uploaded to S3 when you save), or paste an image URL.</p>
+          </PostField>
+          <PostField label="Source">
             <input
-              type="datetime-local"
-              value={formData.scheduledAt}
-              onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-              required
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
+              type="text"
+              value={formData.imageCredit ?? ''}
+              onChange={(e) => setFormData((prev) => ({ ...prev, imageCredit: e.target.value }))}
+              maxLength={255}
+              placeholder="e.g. Reuters, Unsplash / John Doe"
+              className={POST_INPUT}
             />
+            <p className={POST_HINT}>Shown under the image on the article page. Leave empty to hide.</p>
+          </PostField>
+          {(featuredImagePreview || formData.featuredImageUrl) && (
+            <div className="col-span-full">
+              <div className="relative inline-block">
+                <img
+                  src={featuredImagePreview || formData.featuredImageUrl}
+                  alt="Preview"
+                  className="max-h-[200px] max-w-[300px] rounded-lg border border-slate-200"
+                  onError={() => setFeaturedImagePreview(null)}
+                />
+                <button
+                  type="button"
+                  aria-label="Remove image"
+                  onClick={() => {
+                    setFeaturedImageFile(null);
+                    setFeaturedImagePreview(null);
+                    setFormData((p) => ({ ...p, featuredImageUrl: '', featuredImageSmallUrl: '' }));
+                  }}
+                  className="absolute top-2 right-2 flex size-6 cursor-pointer items-center justify-center rounded-full border-0 bg-rose-500 text-white"
+                >
+                  <X size={14} strokeWidth={2.5} aria-hidden />
+                </button>
+              </div>
+            </div>
+          )}
+        </PostFormSection>
+
+        <PostFormSection title="Publishing">
+          <PostField label="Status">
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as 'draft' | 'published' | 'scheduled' | 'archived' }))}
+              className={POST_INPUT}
+            >
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="archived">Archived</option>
+            </select>
+          </PostField>
+          {formData.status === 'scheduled' && (
+            <PostField label="Scheduled Date & Time" required>
+              <input
+                type="datetime-local"
+                value={formData.scheduledAt}
+                onChange={(e) => setFormData((prev) => ({ ...prev, scheduledAt: e.target.value }))}
+                required
+                className={POST_INPUT}
+              />
+            </PostField>
+          )}
+          {/* Save / Cancel sit in the Status row, right-aligned (third column on desktop). */}
+          <div className="flex flex-wrap gap-3 self-end md:col-span-2 md:justify-end lg:col-span-1 lg:col-start-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="box-border cursor-pointer rounded-lg border-0 bg-indigo-500 px-8 py-2.5 text-base font-medium text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <Link
+              href={panelPath('/admin/posts')}
+              className="box-border inline-block rounded-lg bg-slate-200 px-8 py-2.5 text-base font-medium text-slate-600! no-underline hover:bg-slate-300"
+            >
+              Cancel
+            </Link>
           </div>
-        )}
-
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-          }}>
-            <input
-              type="checkbox"
-              checked={formData.featured}
-              onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-              style={{ marginRight: '0.5rem' }}
-            />
-            <span style={{ fontWeight: '500', color: '#4a5568' }}>
-              Featured Post
-            </span>
-          </label>
-        </div>
-
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
-            type="submit"
-            disabled={saving}
-            style={{
-              padding: '0.75rem 2rem',
-              background: saving ? '#a0aec0' : '#667eea',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              fontWeight: '500',
-              cursor: saving ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-          <Link
-            href={panelPath('/admin/posts')}
-            style={{
-              padding: '0.75rem 2rem',
-              background: '#e2e8f0',
-              color: '#4a5568',
-              borderRadius: '4px',
-              textDecoration: 'none',
-              fontSize: '1rem',
-              fontWeight: '500',
-              display: 'inline-block',
-            }}
-          >
-            Cancel
-          </Link>
-        </div>
+        </PostFormSection>
       </form>
     </div>
   );

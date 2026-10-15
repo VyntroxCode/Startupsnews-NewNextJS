@@ -13,7 +13,7 @@ export default function Marimekko({ data, countries }: { data: MarketLocation['m
   const width = (total: number) => `${Math.max(6, (total / grand) * 100)}%`;
 
   return (
-    <div className="w-full min-w-0 overflow-x-auto">
+    <div data-pro-chart className="w-full min-w-0 overflow-x-auto">
       <div className="flex h-[340px] min-w-[600px] items-end gap-[3px] [&:has([data-seg]:hover)_[data-seg]:not(:hover)]:opacity-35">
         {data.map((band) => (
           <div key={band.key} className="relative flex h-full flex-col justify-end overflow-hidden rounded-t" style={{ width: width(band.total) }}>

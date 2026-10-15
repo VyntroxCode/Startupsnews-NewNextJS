@@ -6,8 +6,7 @@ import { Crown } from 'lucide-react';
  * Fixed to the right edge, above the site's scroll-to-top / scroll-to-bottom buttons.
  *
  * Layers, outside in (animations are the fi-bubble-* tokens in isolated-tailwind.css):
- *   wrapper  drifts slowly around its spot; the drift pauses under the pointer so the bubble
- *            holds still to be clicked.
+ *   wrapper  stays put at its fixed spot (no drift), so one click always lands on the bubble.
  *   link     pops in once, grows a little on hover, dips on press.
  *   rings    two outlines that swell and fade, half a cycle apart.
  *   glow     a blurred copy of the gradient that breathes behind the bubble.
@@ -17,7 +16,7 @@ import { Crown } from 'lucide-react';
  */
 export default function ProPlanBubble() {
   return (
-    <div className="group/bubble fixed bottom-[156px] right-3 z-[100] animate-fi-bubble-drift hover:[animation-play-state:paused] focus-within:[animation-play-state:paused] motion-reduce:animate-none sm:right-6">
+    <div className="group/bubble fixed bottom-[156px] right-3 z-[100] sm:right-6">
       <Link
         href="/dashboard/pro"
         aria-label="Get Pro Plan, lifetime access"

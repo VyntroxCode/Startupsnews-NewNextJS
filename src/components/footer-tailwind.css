@@ -1,0 +1,20 @@
+/* Scoped Tailwind for the site footer (src/components/Footer.tsx) — the only file it scans.
+   Imported by Footer.tsx itself, so it loads on every route that renders the footer.
+
+   Why the `ft:` prefix: this project has no global Tailwind, and the footer shares a page with
+   other scoped sheets (isolated-tailwind.css on the marketing routes). Two unprefixed sheets on
+   one page break each other's responsive variants (a later plain `.flex` beats an earlier
+   `md:hidden`; see staff-panel-tailwind.css). With the prefix every class here is `ft:*`, so it
+   cannot collide with another sheet or with the legacy theme's own `.left` / `.relative` classes.
+
+   Same setup as the other scoped sheets: theme + utilities only (no Preflight), unlayered so
+   utilities beat the legacy bare-element reset, `source(none)` + one @source line. Class names in
+   Footer.tsx must be literal strings. style.css's `a, a:visited` rule (0,1,1) sets link colour and
+   transition, so link colour / transition utilities in Footer.tsx carry the `!` modifier.
+
+   Old-browser notes (as in staff-panel-tailwind.css): motion uses arbitrary `transform` values
+   rather than the `translate-*` / `scale-*` utilities (the `translate` / `scale` properties are
+   Chrome 104+), and colours are hex / rgb() arbitrary values rather than oklch palette tokens. */
+@import "tailwindcss/theme.css" prefix(ft) source(none);
+@import "tailwindcss/utilities.css" source(none);
+@source "./Footer.tsx";

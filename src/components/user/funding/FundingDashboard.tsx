@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { ArrowRight, RotateCw } from 'lucide-react';
 import type { FundingOverview, TrendRange } from '@/modules/funding-deals/domain/types';
 import { emptyFilters, fundingGet, toQuery } from './api';
-import CitySection from './dashboard/CitySection';
+// Hidden until there are enough city records; uncomment this and the <CitySection /> below together.
+// import CitySection from './dashboard/CitySection';
 import { HighlightProvider } from './dashboard/highlight';
 import InvestorSection from './dashboard/InvestorSection';
 import MoneyFlowSection from './dashboard/MoneyFlowSection';
@@ -88,7 +89,8 @@ export default function FundingDashboard() {
                   <SectorSection rows={overview?.bySector ?? null} trend={overview?.sectorTrend ?? null} model={model} />
                   <StageSection stages={overview?.byStage ?? null} bands={overview?.bySizeBand ?? null} />
                   <MoneyFlowSection model={model} totalDeals={overview?.kpis.totalDeals ?? 0} />
-                  <CitySection rows={overview?.byCity ?? null} points={model?.cities ?? null} total={overview?.kpis.totalFunding ?? 0} />
+                  {/* "Cities: Volume Vs. Cheque Size" (bubble chart + City Leaderboard) hidden for now; restore with the import above.
+                  <CitySection rows={overview?.byCity ?? null} points={model?.cities ?? null} total={overview?.kpis.totalFunding ?? 0} /> */}
                   <InvestorSection
                     investors={overview?.topInvestors ?? null}
                     companies={overview?.topCompanies ?? null}

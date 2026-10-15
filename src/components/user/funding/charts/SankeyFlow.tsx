@@ -65,7 +65,7 @@ export default function SankeyFlow({ overview }: { overview: MarketOverview }) {
     });
 
   return (
-    <div className="w-full min-w-0 overflow-x-auto">
+    <div data-pro-chart className="w-full min-w-0 overflow-x-auto">
       <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} className="block min-w-[640px] max-w-full [&:has(path:hover)>path:not(:hover)]:opacity-[0.07]" role="img" aria-label="Capital flow from funding stage to sector">
         {paths}
         {stages.map((s) => {

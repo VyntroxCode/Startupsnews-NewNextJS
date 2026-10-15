@@ -13,7 +13,7 @@ import ProFundingStrip from './ProFundingStrip';
 import ProHero from './ProHero';
 import { ProBillingCard } from './ProSideCards';
 import { useProPlanMotion } from './motion';
-import { proFocus } from './ui';
+import { proFocus, proTokens } from './ui';
 
 /**
  * /dashboard/pro — the Pro plan page. Layout: hero on top; below it a two-column grid with the
@@ -23,7 +23,7 @@ import { proFocus } from './ui';
  */
 export default function ProPlanPage() {
   const scope = useRef<HTMLDivElement>(null);
-  const { price, gst, total } = proPlanAmounts();
+  const { total } = proPlanAmounts();
   // Read once on first render: the dashboard layout only mounts this page in the browser, after login.
   const [account] = useState<{ name: string; email: string } | null>(() => {
     try {
@@ -50,11 +50,11 @@ export default function ProPlanPage() {
   }, []);
 
   return (
-    <div ref={scope} className={`${fiFontCls} relative min-h-screen min-w-0 overflow-x-clip bg-fi-bg text-fi-ink antialiased`}>
+    <div ref={scope} className={`${fiFontCls} ${proTokens} relative min-h-screen min-w-0 overflow-x-clip bg-(--pro-bg) text-(--pro-heading) antialiased`}>
       {/* Background: a faint grid that fades out down the page, and two still glows. */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[640px] bg-[linear-gradient(to_right,rgba(21,19,26,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(21,19,26,0.045)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
-      <div aria-hidden data-pro="glow" className="pointer-events-none absolute -left-32 -top-32 size-[420px] rounded-full bg-fi-primary/12 blur-3xl" />
-      <div aria-hidden data-pro="glow" className="pointer-events-none absolute -right-32 top-52 size-[460px] rounded-full bg-fi-ai/12 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[640px] bg-[linear-gradient(to_right,rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.04)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
+      <div aria-hidden data-pro="glow" className="pointer-events-none absolute -left-32 -top-32 size-[420px] rounded-full bg-(--pro-primary)/6 blur-3xl" />
+      <div aria-hidden data-pro="glow" className="pointer-events-none absolute -right-32 top-52 size-[460px] rounded-full bg-(--pro-muted)/6 blur-3xl" />
 
       {/* box-border: this dashboard has no Preflight, so w-full + padding would overflow the screen. */}
       <div className="relative mx-auto box-border flex w-full min-w-0 max-w-[1200px] flex-col gap-4 px-4 pb-10 pt-4 sm:gap-5 sm:px-6 sm:pb-14 sm:pt-6 lg:px-8">
@@ -64,7 +64,7 @@ export default function ProPlanPage() {
           </Link>
           <Link
             href="/dashboard/funding"
-            className={`group inline-flex items-center gap-1.5 whitespace-nowrap rounded-[12px] border border-solid border-fi-line bg-fi-surface px-3.5 py-2 text-[13px] font-semibold text-fi-ink no-underline shadow-fi transition-colors duration-200 visited:text-fi-ink hover:border-fi-ink-faint ${proFocus}`}
+            className={`group inline-flex items-center gap-1.5 whitespace-nowrap rounded-[12px] border border-solid border-(--pro-line) bg-(--pro-surface) px-3.5 py-2 text-[13px] font-semibold text-(--pro-heading) no-underline shadow-(--pro-shadow) transition-colors duration-200 visited:text-(--pro-heading) hover:border-(--pro-muted)/60 hover:bg-(--pro-bg) active:bg-(--pro-neutral-soft) ${proFocus}`}
           >
             <ArrowLeft size={15} aria-hidden className="transition-transform duration-300 group-hover:-translate-x-0.5" /> Back To Funding
           </Link>
@@ -74,7 +74,7 @@ export default function ProPlanPage() {
 
         <div className="grid gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           <ProBenefitsCard />
-          <ProBillingCard price={price} gst={gst} total={total} account={account} />
+          <ProBillingCard total={total} account={account} />
           <ProFundingStrip sectors={sectors} />
         </div>
       </div>
