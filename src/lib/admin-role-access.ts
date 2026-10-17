@@ -12,9 +12,9 @@ export const ROLE_ALLOWED_PATHS: Record<string, string[] | 'all'> = {
   author: 'all',
   // Event Admin's post access is scoped server-side to the Press Release category only (see posts API routes).
   // '/admin/contacts' (Directory) — Event Admin has full access, same as the super admin (CONTACTS_ROLES).
-  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/partnership-tracker', '/admin/banners', '/admin/tools', '/admin/posts', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit', '/admin/contacts'],
+  event_admin: ['/admin', '/admin/events', '/admin/event-regions', '/admin/partnership-tracker', '/admin/banners', '/admin/posts', '/admin/attendance', '/admin/leave', '/admin/my-payslips', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit', '/admin/contacts'],
   // '/admin/categories' + '/admin/authors' back the Industry and Authors tabs on Posts (CATEGORIES_AUTHORS_MANAGE_ROLES).
-  publisher_admin: ['/admin', '/admin/posts', '/admin/categories', '/admin/authors', '/admin/content-studio','/admin/tools', '/admin/reports', '/admin/brand-stories', '/admin/inner-pages', '/admin/attendance', '/admin/leave', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit'],
+  publisher_admin: ['/admin', '/admin/posts', '/admin/categories', '/admin/authors', '/admin/content-studio', '/admin/reports', '/admin/brand-stories', '/admin/attendance', '/admin/leave', '/admin/my-payslips', '/admin/rules-policy', '/admin/documents', '/admin/it-tickets', '/admin/my-leads', '/admin/my-exit'],
   // IT Support is a standalone tool role, like Event Admin/Publisher Admin — scoped to the IT Tickets queue only.
   it_support: ['/admin', '/admin/it-tickets'],
   // Financial Analyst is a standalone tool role — the funding dataset (Funding Data) plus the IT helpdesk.

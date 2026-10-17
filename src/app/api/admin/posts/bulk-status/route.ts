@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { BULK_POST_STATUS_ROLES } from '@/shared/middleware/roles';
 import { requireContentAccess } from '@/shared/middleware/content-access.middleware';
 import { query, queryOne } from '@/shared/database/connection';
 import { getPostPath } from '@/lib/post-utils';
@@ -75,7 +76,7 @@ function buildWhere(body: BulkBody, params: Array<string | number>): string {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireContentAccess(request, ['admin']);
+  const auth = await requireContentAccess(request, BULK_POST_STATUS_ROLES);
   if (auth instanceof NextResponse) return auth;
 
   try {

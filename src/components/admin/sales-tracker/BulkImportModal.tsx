@@ -8,7 +8,6 @@ import { SALES_LEAD_STATUS_LABELS } from '@/modules/lead-assignments/domain/type
 import { localToday } from '@/modules/lead-followups/domain/follow-up-date';
 import {
   LEAD_IMPORT_COLUMNS,
-  LEAD_IMPORT_REQUIRED,
   MAX_LEAD_IMPORT_ROWS,
   findLeadHeaderRow,
   leadImportFingerprint,
@@ -48,6 +47,11 @@ function downloadTemplate() {
   const sheet = XLSX.utils.aoa_to_sheet([header, LEAD_IMPORT_COLUMNS.map((c) => c.example)]);
   sheet['!cols'] = header.map((h) => ({ wch: Math.max(16, h.length + 4) }));
   const blankRule: Record<string, string> = {
+    date: 'The day the sheet is uploaded',
+    name: 'Left empty (each row needs at least a Name, Company, Phone or Email)',
+    company: 'Left empty (each row needs at least a Name, Company, Phone or Email)',
+    contact: 'Left empty (each row needs at least a Name, Company, Phone or Email)',
+    email: 'Left empty (each row needs at least a Name, Company, Phone or Email)',
     status: 'Pending',
     type: 'The default type picked in the Import leads window',
     nextFollowUpDate: 'The default date picked in the Import leads window (Pending / Follow Up only)',
@@ -60,15 +64,16 @@ function downloadTemplate() {
     status: SALES_LEAD_STATUS_LABELS.join(' / '),
   };
   const guide = XLSX.utils.aoa_to_sheet([
-    ['Column', 'Required?', 'What to put in it', 'If left blank'],
+    ['Column', 'What to put in it', 'If left blank'],
     ...LEAD_IMPORT_COLUMNS.map((c) => [
       c.header,
-      c.required ? 'Yes' : 'No',
       allowed[c.key] ?? `Text, e.g. ${c.example}`,
-      c.required ? 'Row is skipped' : blankRule[c.key] ?? 'Left empty',
+      blankRule[c.key] ?? 'Left empty',
     ]),
+    [],
+    ['Every column is optional. A row with no Name, Company, Phone and Email is skipped.'],
   ]);
-  guide['!cols'] = [{ wch: 22 }, { wch: 10 }, { wch: 60 }, { wch: 60 }];
+  guide['!cols'] = [{ wch: 22 }, { wch: 60 }, { wch: 60 }];
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, sheet, 'Leads');
   XLSX.utils.book_append_sheet(book, guide, 'How to fill');
@@ -92,11 +97,6 @@ async function parseFile(file: File): Promise<ParsedFile> {
 
     const headerRow = aoa[headerIdx];
     const keys = mapLeadHeaders(headerRow);
-    const missingRequired = LEAD_IMPORT_REQUIRED.filter((c) => !keys.includes(c.key)).map((c) => c.header);
-    if (missingRequired.length) {
-      const list = missingRequired.map((h) => `'${h}'`).join(', ');
-      throw new Error(`Your file has no ${list} ${missingRequired.length === 1 ? 'column' : 'columns'}. Add ${missingRequired.length === 1 ? 'it' : 'them'} and upload again.`);
-    }
 
     const rows: LeadImportRaw[] = [];
     const rowNumbers: number[] = [];
@@ -117,7 +117,7 @@ async function parseFile(file: File): Promise<ParsedFile> {
       sheetName,
       rows,
       rowNumbers,
-      missingOptional: LEAD_IMPORT_COLUMNS.filter((c) => !c.required && !keys.includes(c.key)).map((c) => c.header),
+      missingOptional: LEAD_IMPORT_COLUMNS.filter((c) => !keys.includes(c.key)).map((c) => c.header),
       ignoredHeaders: headerRow.filter((h, i) => !keys[i] && String(h ?? '').trim()).map((h) => String(h).trim()),
     };
   }
@@ -147,6 +147,9 @@ export default function BulkImportModal({ existingLeads, onImported, onClose }: 
   const [importError, setImportError] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
 
+  /** The upload day: what a row with a blank Date is stored with (the server uses its own clock). */
+  const [uploadDay] = useState(localToday);
+
   const existingFingerprints = useMemo(() => new Set(existingLeads.map(leadImportFingerprint)), [existingLeads]);
 
   // Re-parsed when a default changes, so the preview always shows what will be stored.
@@ -154,13 +157,13 @@ export default function BulkImportModal({ existingLeads, onImported, onClose }: 
     if (!file) return [];
     const seen = new Set<string>();
     return file.rows.map((raw, i) => {
-      const { fields, error } = parseLeadImportRow(raw, { type: defaultType, nextFollowUpDate: defaultFollowUpDate });
+      const { fields, error } = parseLeadImportRow(raw, { date: uploadDay, type: defaultType, nextFollowUpDate: defaultFollowUpDate });
       const print = leadImportFingerprint(fields);
       const duplicate = error ? null : existingFingerprints.has(print) ? 'Already exists' : seen.has(print) ? 'Repeated in this file' : null;
       seen.add(print);
       return { row: file.rowNumbers[i], raw, fields, error, duplicate };
     });
-  }, [file, defaultType, defaultFollowUpDate, existingFingerprints]);
+  }, [file, uploadDay, defaultType, defaultFollowUpDate, existingFingerprints]);
 
   const selected = preview.filter((p) => !p.error && !unticked.has(p.row));
   const errorCount = preview.filter((p) => p.error).length;
@@ -248,11 +251,11 @@ export default function BulkImportModal({ existingLeads, onImported, onClose }: 
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 text-[13px] text-slate-600">
-                  <p className="m-0 mb-2">Columns the file can have (<b className="font-semibold text-slate-800">*</b> = must be filled):</p>
+                  <p className="m-0 mb-2">Columns the file can have — all optional. Each row needs at least a Name, Company, Phone or Email; a blank Date gets today&apos;s date.</p>
                   <div className="flex flex-wrap gap-1.5">
                     {LEAD_IMPORT_COLUMNS.map((c) => (
-                      <span key={c.key} className={`rounded-md border border-solid px-2 py-0.5 text-[11.5px] ${c.required ? 'border-pink-200 bg-pink-50 font-semibold text-pink-700' : 'border-slate-200 bg-white text-slate-600'}`}>
-                        {c.header}{c.required ? ' *' : ''}
+                      <span key={c.key} className="rounded-md border border-solid border-slate-200 bg-white px-2 py-0.5 text-[11.5px] text-slate-600">
+                        {c.header}
                       </span>
                     ))}
                   </div>
@@ -289,7 +292,7 @@ export default function BulkImportModal({ existingLeads, onImported, onClose }: 
                   </div>
                   {(file.missingOptional.length > 0 || file.ignoredHeaders.length > 0) && (
                     <div className="flex flex-col gap-1 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                      {file.missingOptional.length > 0 && <span>Not in your file (left blank): {file.missingOptional.join(', ')}</span>}
+                      {file.missingOptional.length > 0 && <span>Not in your file (left blank{file.missingOptional.includes('Date') ? '; Date = today' : ''}): {file.missingOptional.join(', ')}</span>}
                       {file.ignoredHeaders.length > 0 && <span>Ignored columns: {file.ignoredHeaders.join(', ')}</span>}
                     </div>
                   )}
@@ -314,11 +317,12 @@ export default function BulkImportModal({ existingLeads, onImported, onClose }: 
                   </div>
 
                   <div className="max-h-[420px] overflow-auto rounded-lg border border-solid border-slate-200">
-                    <table className="w-full min-w-[1080px] border-collapse text-[13px]">
+                    <table className="w-full min-w-[1180px] border-collapse text-[13px]">
                       <thead>
                         <tr>
                           <th className="w-10"><span className="sr-only">Import</span></th>
                           <th>Row</th>
+                          <th>Date</th>
                           <th>Name</th>
                           <th>Company</th>
                           <th>Phone</th>
@@ -345,6 +349,7 @@ export default function BulkImportModal({ existingLeads, onImported, onClose }: 
                               />
                             </td>
                             <td className="text-slate-400">{p.row}</td>
+                            <td className="whitespace-nowrap">{p.fields.date || '—'}</td>
                             <td className="font-semibold">{p.fields.name || '—'}</td>
                             <td>{p.fields.company || '—'}</td>
                             <td className="whitespace-nowrap">{p.fields.contact || '—'}</td>

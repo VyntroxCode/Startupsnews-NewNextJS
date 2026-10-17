@@ -263,7 +263,7 @@ export default function AdminDashboard() {
     : isItSupport
     ? [
         {
-          title: 'Open IT Tickets',
+          title: 'Open IT Support Tickets',
           value: stats?.itTicketsOpen || 0,
           href: '/admin/it-tickets',
           gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',

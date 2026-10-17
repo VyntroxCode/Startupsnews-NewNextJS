@@ -7,9 +7,11 @@ import { getAdminUser, getAuthHeaders } from '@/lib/admin-auth';
 import { isPathAllowed } from '@/lib/admin-role-access';
 import {
   BookOpen,
+  Briefcase,
   CalendarDays,
   CalendarPlus,
   ChartColumn,
+  ChevronDown,
   ClipboardList,
   Clock,
   Contact,
@@ -20,6 +22,7 @@ import {
   Layers,
   LogOut,
   Mail,
+  ReceiptText,
   Ticket,
   UserCog,
   UserPlus,
@@ -43,7 +46,7 @@ interface ToolItem {
 }
 
 
-interface MenuItem {
+export interface MenuItem {
   href: string;
   label: string;
   icon: LucideIcon;
@@ -54,7 +57,20 @@ interface MenuItem {
   alsoActive?: string[];
 }
 
-const menuItems: MenuItem[] = [
+/** A collapsible heading with its own links underneath; hidden when none of its children are visible to the role. */
+export interface MenuGroup {
+  group: string;
+  icon: LucideIcon;
+  children: MenuItem[];
+}
+
+export type MenuEntry = MenuItem | MenuGroup;
+
+export const isGroup = (entry: MenuEntry): entry is MenuGroup => 'group' in entry;
+export const isItemActive = (pathname: string, item: MenuItem) =>
+  [item.href, ...(item.alsoActive ?? [])].some((href) => pathname === href || pathname.startsWith(href + '/'));
+
+const menuItems: MenuEntry[] = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   // Content Studio lives under Posts now — reached from the "Content Studio" tab on /admin/posts.
   { href: '/admin/posts', label: 'Posts', icon: FileText, alsoActive: ['/admin/content-studio'] },
@@ -64,14 +80,22 @@ const menuItems: MenuItem[] = [
   { href: '/admin/partnership-tracker', label: 'Events Tracker', icon: CalendarDays },
   { href: '/admin/newsletter', label: 'Newsletter', icon: Mail },
   { href: '/admin/sales-tracker', label: 'Sales Tracker', icon: ChartColumn },
-  { href: '/admin/it-tickets', label: 'IT Tickets', icon: Ticket },
+  { href: '/admin/it-tickets', label: 'IT Support', icon: Ticket },
   { href: '/admin/hr-tool', label: 'HR Management', icon: UserPlus },
-  { href: '/admin/my-leads', label: 'My Leads', icon: UserPlus, roles: ['event_admin', 'publisher_admin'] },
-  { href: '/admin/attendance', label: 'Attendance', icon: Clock, roles: ['event_admin', 'publisher_admin'] },
-  { href: '/admin/leave', label: 'Leave', icon: CalendarPlus, roles: ['event_admin', 'publisher_admin'] },
-  { href: '/admin/documents', label: 'Documents', icon: Files, roles: ['event_admin', 'publisher_admin'] },
-  { href: '/admin/rules-policy', label: 'Admin Rules', icon: ClipboardList, roles: ['event_admin', 'publisher_admin'] },
-  { href: '/admin/my-exit', label: 'Resignation', icon: LogOut, roles: ['event_admin', 'publisher_admin'] },
+  // The staff's own HR self-service, grouped the same way as in the employee portal's sidebar.
+  {
+    group: 'HRMS',
+    icon: Briefcase,
+    children: [
+      { href: '/admin/my-leads', label: 'My Leads', icon: UserPlus, roles: ['event_admin', 'publisher_admin'] },
+      { href: '/admin/attendance', label: 'Attendance', icon: Clock, roles: ['event_admin', 'publisher_admin'] },
+      { href: '/admin/leave', label: 'Leave', icon: CalendarPlus, roles: ['event_admin', 'publisher_admin'] },
+      { href: '/admin/my-payslips', label: 'My Payslips', icon: ReceiptText, roles: ['event_admin', 'publisher_admin'] },
+      { href: '/admin/documents', label: 'Documents', icon: Files, roles: ['event_admin', 'publisher_admin'] },
+      { href: '/admin/rules-policy', label: 'Admin Rules', icon: ClipboardList, roles: ['event_admin', 'publisher_admin'] },
+      { href: '/admin/my-exit', label: 'My Exit', icon: LogOut, roles: ['event_admin', 'publisher_admin'] },
+    ],
+  },
   { href: '/admin/tools', label: 'Tools', icon: Wrench },
   { href: '/admin/reports', label: 'Reports', icon: ChartColumn },
   { href: '/admin/brand-stories', label: 'Brand Stories', icon: BookOpen },
@@ -86,14 +110,27 @@ const menuItems: MenuItem[] = [
   { href: '/admin/users', label: 'Users', icon: Users },
 ];
 
+/** The menu as one role sees it: items it may open, groups trimmed to their visible children (and
+ * dropped when empty). Shared by the desktop rail and the phone drawer (AdminMobileNav). */
+export function getVisibleMenu(role: string): MenuEntry[] {
+  const canSee = (item: MenuItem) => isPathAllowed(role, item.href) && (!item.roles || item.roles.includes(role));
+  return menuItems
+    .map((entry) => (isGroup(entry) ? { ...entry, children: entry.children.filter(canSee) } : entry))
+    .filter((entry) => (isGroup(entry) ? entry.children.length > 0 : canSee(entry)));
+}
+
 export default function AdminSidebar({ isOpen, onHoverChange }: AdminSidebarProps) {
   const pathname = usePathname();
   const headerHeight = 60;
   const [tools, setTools] = useState<ToolItem[]>([]);
   const role = getAdminUser()?.role || '';
-  const visibleMenuItems = menuItems.filter((item) => isPathAllowed(role, item.href) && (!item.roles || item.roles.includes(role)));
+  const visibleMenuItems = getVisibleMenu(role);
+  // A group the user hasn't toggled stays open while one of its pages is the current one.
+  const [groupToggles, setGroupToggles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    // Roles without the Tools page (Event / Publisher Admin, …) don't need its sub-item list.
+    if (!isPathAllowed(getAdminUser()?.role || '', '/admin/tools')) return;
     const loadTools = async () => {
       try {
         const res = await fetch('/api/admin/tools', { headers: getAuthHeaders() });
@@ -108,8 +145,9 @@ export default function AdminSidebar({ isOpen, onHoverChange }: AdminSidebarProp
   }, []);
 
   return (
+    // Desktop (md+) only — phones get AdminMobileNav's drawer + bottom tab bar instead.
     <aside
-      className="admin-sidebar-scroll"
+      className="admin-sidebar-scroll hidden md:block"
       onMouseEnter={() => onHoverChange?.(true)}
       onMouseLeave={() => onHoverChange?.(false)}
       // Keyboard parity with hover: React maps onFocus/onBlur to focusin/focusout so they fire
@@ -134,8 +172,118 @@ export default function AdminSidebar({ isOpen, onHoverChange }: AdminSidebarProp
       }}
     >
       <nav style={{ padding: '0 0.5rem 1.5rem' }}>
-        {visibleMenuItems.map((item) => {
-          const isActive = [item.href, ...(item.alsoActive ?? [])].some((href) => pathname === href || pathname.startsWith(href + '/'));
+        {visibleMenuItems.map((entry) => {
+          if (isGroup(entry)) {
+            const groupActive = entry.children.some((child) => isItemActive(pathname, child));
+            const expanded = groupToggles[entry.group] ?? groupActive;
+            // Collapsed: lit like an active item so the current page's section is still visible.
+            const headerLit = groupActive && !(expanded && isOpen);
+            const GroupIcon = entry.icon;
+            return (
+              <div key={entry.group}>
+                <button
+                  type="button"
+                  onClick={() => setGroupToggles((prev) => ({ ...prev, [entry.group]: !expanded }))}
+                  aria-expanded={expanded}
+                  title={!isOpen ? entry.group : undefined}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: isOpen ? 'flex-start' : 'center',
+                    gap: isOpen ? '0.875rem' : '0',
+                    width: '100%',
+                    padding: isOpen ? '0.875rem 1.25rem' : '0.875rem 0',
+                    marginBottom: '0.25rem',
+                    color: headerLit ? '#6366f1' : '#475569',
+                    background: headerLit
+                      ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%)'
+                      : 'transparent',
+                    border: 'none',
+                    borderLeft: headerLit ? '3px solid #6366f1' : '3px solid transparent',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    fontWeight: headerLit ? '600' : '500',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!headerLit) {
+                      e.currentTarget.style.background = '#f1f5f9';
+                      e.currentTarget.style.color = '#334155';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!headerLit) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#475569';
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '24px', height: '24px' }}>
+                    <GroupIcon size={20} color={headerLit ? '#6366f1' : 'currentColor'} aria-hidden />
+                  </div>
+                  {isOpen && (
+                    <>
+                      <span style={{ fontSize: '0.9375rem', flex: 1, textAlign: 'left' }}>{entry.group}</span>
+                      <ChevronDown size={16} aria-hidden style={{ transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }} />
+                    </>
+                  )}
+                </button>
+
+                {isOpen && expanded && (
+                  <div style={{ paddingLeft: '1.5rem', marginBottom: '0.5rem' }}>
+                    {entry.children.map((child) => {
+                      const childActive = isItemActive(pathname, child);
+                      const ChildIcon = child.icon;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.625rem',
+                            padding: '0.55rem 0.75rem',
+                            marginBottom: '0.1rem',
+                            color: childActive ? '#6366f1' : '#64748b',
+                            background: childActive ? 'rgba(99,102,241,0.08)' : 'transparent',
+                            textDecoration: 'none',
+                            borderRadius: '7px',
+                            borderLeft: childActive ? '2px solid #6366f1' : '2px solid #e2e8f0',
+                            fontSize: '0.875rem',
+                            fontWeight: childActive ? 600 : 500,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!childActive) {
+                              e.currentTarget.style.background = '#f1f5f9';
+                              e.currentTarget.style.color = '#334155';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!childActive) {
+                              e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.color = '#64748b';
+                            }
+                          }}
+                        >
+                          <ChildIcon size={16} color={childActive ? '#6366f1' : 'currentColor'} aria-hidden />
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          const item = entry;
+          const isActive = isItemActive(pathname, item);
           const isToolsItem = item.href === '/admin/tools';
           const IconComponent = item.icon;
           return (

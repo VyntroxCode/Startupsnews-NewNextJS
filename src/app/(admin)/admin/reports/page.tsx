@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { AlarmClock, LayoutGrid, Pencil, Plus, Trash, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
+import { getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import { rememberAdminReturnTo } from '@/lib/admin-return-to';
 import type { ReportEntity } from '@/modules/reports/domain/types';
@@ -213,11 +213,10 @@ export default function AdminReportsPage() {
     ? reports.filter((r) => r.section_id === sectionFilter)
     : reports;
 
-  const isPublisherAdmin = (getAdminUser()?.role || '') === 'publisher_admin';
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: 'reports', label: 'Reports', count: reports.length },
-    ...(isPublisherAdmin ? [] : [{ id: 'sections' as Tab, label: 'Title Sections', count: sections.length }]),
+    { id: 'sections' as Tab, label: 'Title Sections', count: sections.length },
   ];
 
   return (
@@ -337,7 +336,7 @@ export default function AdminReportsPage() {
             ) : (
               <div style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                  <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'separate', borderSpacing: 0 }}>
                     <thead>
                       <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
                         {['#', 'Thumbnail', 'Title', 'Section', 'File Info', 'Status', 'Published At', ''].map((h) => (
@@ -449,7 +448,7 @@ export default function AdminReportsPage() {
         {/* ══════════════════════════════════════
             TAB: TITLE SECTIONS
         ══════════════════════════════════════ */}
-        {activeTab === 'sections' && !isPublisherAdmin && (
+        {activeTab === 'sections' && (
           <div style={{ maxWidth: 720 }}>
             <div style={{ marginBottom: '1.5rem' }}>
               <h3 style={{ margin: '0 0 4px', fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>Title Sections</h3>

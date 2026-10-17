@@ -116,8 +116,8 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v203</span>
-    <span class="badge">Released 2026-10-14</span>
+    <span class="badge v">Version v208</span>
+    <span class="badge">Released 2026-10-16</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
     <span class="badge">Next.js 16 · React 19 · MariaDB</span>
@@ -984,6 +984,11 @@ flowchart LR
       <tr><td><strong>v201</strong></td><td>2026-10-14</td><td>Medium</td><td>Top menu: <strong>EVENTS</strong> is now a rounded button with a small pink dot and arrow, and a pink-violet line of light that keeps travelling round its edge, so it stands out from the other menu words.</td></tr>
       <tr><td><strong>v202</strong></td><td>2026-10-15</td><td>Medium</td><td>Sales Tracker: new <strong>Import leads</strong> button. Admins upload an Excel file and add many leads at once, after checking every row in a preview.</td></tr>
       <tr><td><strong>v203</strong></td><td>2026-10-15</td><td>Medium</td><td>Homepage: <strong>Latest News</strong> no longer scrolls. It is back to 3 fixed cards (newest article big, 2nd and 3rd small), as before v164. <strong>Trending</strong> is back to how it was. The changes from v164, v196 and v197 are removed.</td></tr>
+      <tr><td><strong>v204</strong></td><td>2026-10-16</td><td>Medium</td><td>Staff sidebars (Employee panel, Event Admin, Publisher Admin): the personal HR pages now sit together under one <strong>HRMS</strong> menu that opens and closes. "Resignation" is now called <strong>My Exit</strong> everywhere.</td></tr>
+      <tr><td><strong>v205</strong></td><td>2026-10-16</td><td>Medium</td><td>Employee SNFYI-0030 gets a <strong>Dashboard</strong> (same as Publisher Admin's). Publisher Admin loses <strong>Inner Pages</strong>. Event Admin and Publisher Admin get <strong>My Payslips</strong> under HRMS.</td></tr>
+      <tr><td><strong>v206</strong></td><td>2026-10-16</td><td>Major</td><td>SNFYI-0030 is a regular employee again; its extra content rights (Title Sections, bulk post status) go to <strong>Publisher Admin</strong>. The IT page is called <strong>IT Support</strong> in every panel.</td></tr>
+      <tr><td><strong>v207</strong></td><td>2026-10-16</td><td>Medium</td><td>Every employee gets a <strong>Dashboard</strong> (mark today's attendance + attendance, leave and leads numbers). The admin panel for Event Admin and Publisher Admin now <strong>works on phones</strong>: menu drawer, bottom tab bar, and pages that fit the screen.</td></tr>
+      <tr><td><strong>v208</strong></td><td>2026-10-16</td><td>Medium</td><td>Sales Tracker <strong>Import leads</strong>: no column is required any more (a row just needs a Name, Phone or Email). A blank Date takes the day the sheet is uploaded; a Date in the sheet is kept.</td></tr>
       <tr><td><strong>v197</strong></td><td>2026-10-14</td><td>Medium</td><td>Homepage: <strong>Trending</strong> now shows the 5 newest articles, and <strong>Latest News</strong> continues with the next 9, so the two sections never show the same story.</td></tr>
       <tr><td><strong>v196</strong></td><td>2026-10-14</td><td>Medium</td><td>Homepage, <strong>Latest News</strong> (desktop): the three rotating cards now follow article numbers, newest first, <strong>3 stories per card</strong>. The big card shows the 1st–3rd newest, small card 1 the 4th–6th, small card 2 the 7th–9th. Stories no longer come from each card's category.</td></tr>
       <tr><td><strong>v195</strong></td><td>2026-10-14</td><td>Medium</td><td>Member dashboard, <strong>Pro Plan page</strong>: calmer colours (white and grey with one deep indigo, pink kept only for the tiny "Pro" label) and the <strong>GST line removed</strong> from Payment Details. The page now shows just the plan and the Total Payable, which is unchanged.</td></tr>
@@ -4702,6 +4707,155 @@ PHONE                                   +--------------------+
       </div>
     </div>
     <p><strong>Data flow.</strong> When a Publisher Admin opens the Posts page, the panel checks their role and shows all four tabs. Saving an industry or an author goes to the same place as the main admin's changes; the server now accepts it from a Publisher Admin as well. Nothing in the database had to change.</p>
+  </div>
+</section>
+
+<section id="v208">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v208</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-16</span>
+    </div>
+    <p><strong>What changed.</strong> Uploading a leads sheet in Sales Tracker is less strict. Sheets missing some columns, or with empty cells, now go through instead of being refused.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Required columns</td><td>Date, Name, Company, Phone, Email and Country had to be in the sheet, or the whole file was refused</td><td>No column is required. Missing columns are simply left blank</td></tr>
+        <tr><td>Empty cells</td><td>A row with any of those six empty was skipped</td><td>A row is skipped only if Name, Phone and Email are all empty (so no blank leads get created)</td></tr>
+        <tr><td>Date</td><td>Had to be filled in every row</td><td>If the row has a date, that date is used. If not, the lead gets the day the sheet was uploaded</td></tr>
+        <tr><td>Wrong date</td><td>Row skipped</td><td>Still skipped, with the reason shown, so a typo never gets quietly replaced by today</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Import leads — preview</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Columns (all optional): Date · Name · Company · Phone · Email · …</div></div>
+        <div class="wf-row"><div class="wf-box">Row</div><div class="wf-box"><strong>Date</strong> (sheet date or today)</div><div class="wf-box">Name</div><div class="wf-box">Company</div><div class="wf-box">Check</div></div>
+      </div>
+    </div>
+    <p><strong>Unchanged.</strong> The template download, duplicate tagging, type / status / follow-up defaults, and leads still arrive unassigned.</p>
+  </div>
+</section>
+
+<section id="v207">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v207</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-16</span>
+    </div>
+    <p><strong>What changed.</strong> Two things. Employees now open on a Dashboard where they can mark today's attendance and see their key numbers at a glance. And the admin panel used by Event Admin and Publisher Admin now works properly on a phone.</p>
+    <h4>Employee Dashboard</h4>
+    <table>
+      <thead><tr><th>Part</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>Today</td><td>Clock, today's punch-in and punch-out times, and the Punch In / Punch Out buttons (shown first on a phone)</td></tr>
+        <tr><td>Attendance</td><td>This pay cycle so far: days present, absent, half days, short leaves, days on leave</td></tr>
+        <tr><td>Leave</td><td>Days left for each leave type, and how many leave requests are waiting for approval</td></tr>
+        <tr><td>My Leads</td><td>Leads not contacted yet, follow-ups due today, overdue follow-ups, open leads, confirmed leads, new replies from admin</td></tr>
+      </tbody>
+    </table>
+    <p>Employees land here after logging in. On a phone the bottom bar is now Dashboard · My Leads · Leave · More.</p>
+    <div class="wf">
+      <div class="wf-bar">Employee Dashboard (phone)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>Today</strong> · clock · Punch In / Punch Out</div></div>
+        <div class="wf-row"><div class="wf-box">Present</div><div class="wf-box">Absent</div><div class="wf-box">Half days</div></div>
+        <div class="wf-row"><div class="wf-box">Casual leave left</div><div class="wf-box">Pending requests</div></div>
+        <div class="wf-row"><div class="wf-box">Not contacted</div><div class="wf-box">Due today</div><div class="wf-box">Overdue</div></div>
+      </div>
+    </div>
+    <h4>Admin panel on phones</h4>
+    <table>
+      <thead><tr><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>A strip of icons stuck to the left edge, taking space from every page</td><td>A menu button at the top opens the full menu (HRMS included) as a slide-in panel</td></tr>
+        <tr><td>No quick way between pages</td><td>Bottom bar: Event Admin — Dashboard · Events Tracker · Attendance · More; Publisher Admin — Dashboard · Posts · Attendance · More</td></tr>
+        <tr><td>Tables squeezed until titles showed one word per line, right-hand columns cut off</td><td>Tables keep readable columns and scroll sideways inside their box (Posts, Industry, Authors, Reports, Brand Stories, Events Tracker, Directory)</td></tr>
+        <tr><td>Filters and page buttons running off the screen</td><td>They wrap onto the next line (Posts, IT Support, Directory, Events Tracker)</td></tr>
+        <tr><td>Content Studio unusable on a phone</td><td>A short note says to open it on a laptop or desktop</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Unchanged.</strong> The desktop layout. Every page address and permission.</p>
+  </div>
+</section>
+
+<section id="v206">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v206</span>
+      <span class="pill major">Major</span>
+      <span class="d">2026-10-16</span>
+    </div>
+    <p><strong>What changed.</strong> Content work now belongs to the Publisher Admin role, not to one employee. Employee SNFYI-0030 goes back to being a regular employee, and everything 0030 could do on the content screens is now part of Publisher Admin. The IT help page also gets one name everywhere.</p>
+    <table>
+      <thead><tr><th>Who</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Employee SNFYI-0030</td><td>Dashboard, Posts, Reports, Brand Stories in the employee panel</td><td>Same menu as every employee: HRMS and IT Support</td></tr>
+        <tr><td>Publisher Admin — Reports, Brand Stories</td><td>No "Title Sections" tab</td><td><strong>Title Sections</strong> tab: add, edit and remove the section headings</td></tr>
+        <tr><td>Publisher Admin — Posts</td><td>One post at a time</td><td><strong>Bulk change</strong>: tick posts (or pick "all published / draft / archived") and publish, draft or archive them in one go</td></tr>
+        <tr><td>Everyone</td><td>"IT Tickets" in the admin panel, "IT Support" for employees</td><td><strong>IT Support</strong> in every panel</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Side menus now.</strong> Employees (including SNFYI-0030): HRMS, IT Support. Publisher Admin: Dashboard, Posts, IT Support, HRMS, Reports, Brand Stories. Event Admin: Dashboard, Posts, Events Tracker, IT Support, HRMS, Directory.</p>
+    <p><strong>Kept for later.</strong> The way of giving one employee the content screens is still built in; it is just switched off. Turning it on for someone again is a one-line change.</p>
+  </div>
+</section>
+
+<section id="v205">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v205</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-16</span>
+    </div>
+    <p><strong>What changed.</strong> Three changes to bring employee SNFYI-0030 and the Publisher Admin closer together, and to give every staff member their payslips.</p>
+    <table>
+      <thead><tr><th>Who</th><th>Change</th><th>What they see</th></tr></thead>
+      <tbody>
+        <tr><td>Employee SNFYI-0030</td><td>New <strong>Dashboard</strong>, first in the side menu and the first page after login</td><td>Three number cards (Posts, Industry, Authors) that open those screens, and today's attendance with Punch In / Punch Out</td></tr>
+        <tr><td>Publisher Admin</td><td><strong>Inner Pages</strong> removed</td><td>No longer in the menu; the page and its partner-logo editing are closed to them (only the super admin and editors keep it)</td></tr>
+        <tr><td>Event Admin and Publisher Admin</td><td>New <strong>My Payslips</strong> inside HRMS</td><td>The same list employees have: one line per month HR has finalised, with net pay and a Download PDF button</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Employee panel — SNFYI-0030 Dashboard</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>Posts</strong><br>count</div><div class="wf-box"><strong>Industry</strong><br>count</div><div class="wf-box"><strong>Authors</strong><br>count</div></div>
+        <div class="wf-row"><div class="wf-box">Today: clock · In / Out · Punch In / Punch Out</div></div>
+      </div>
+    </div>
+    <p><strong>Side menus now.</strong> SNFYI-0030: Dashboard, HRMS, IT Support, Posts, Reports, Brand Stories. Publisher Admin: Dashboard, Posts, IT Tickets, HRMS, Reports, Brand Stories. Event Admin: Dashboard, Posts, Events Tracker, IT Tickets, HRMS, Directory. HRMS holds My Leads, Attendance, Leave, My Payslips, Documents, Admin Rules and My Exit in all three.</p>
+    <p><strong>Data flow.</strong> A Publisher or Event Admin's login is linked to their HR record; My Payslips looks that record up and lists only the months HR has frozen. If the login isn't linked to an HR record yet, the page shows "No payslips yet".</p>
+  </div>
+</section>
+
+<section id="v204">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v204</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-16</span>
+    </div>
+    <p><strong>What changed.</strong> In the Employee panel, Event Admin and Publisher Admin, the side menu used to list every HR page on its own, mixed in with work pages. They are now grouped under one menu called <strong>HRMS</strong>. Clicking HRMS opens it and shows the HR pages underneath; clicking again closes it. It opens by itself when you are on one of those pages. The exit page had two names (Event/Publisher Admin called it "Resignation", employees "My Exit"); it is now <strong>My Exit</strong> in all three.</p>
+    <table>
+      <thead><tr><th>Panel</th><th>Inside HRMS</th><th>Still on its own</th></tr></thead>
+      <tbody>
+        <tr><td>Employee panel</td><td>My Leads, Attendance, Leave, My Payslips, Documents, Admin Rules, My Exit</td><td>IT Support; Posts, Reports, Brand Stories, Directory (only for the people who have them)</td></tr>
+        <tr><td>Event Admin</td><td>My Leads, Attendance, Leave, Documents, Admin Rules, My Exit</td><td>Dashboard, Posts, Events Tracker, IT Tickets, Tools, Directory</td></tr>
+        <tr><td>Publisher Admin</td><td>My Leads, Attendance, Leave, Documents, Admin Rules, My Exit</td><td>Dashboard, Posts, IT Tickets, Tools, Reports, Brand Stories, Inner Pages</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Side menu (Event Admin)</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box">Dashboard</div><div class="wf-box">Posts</div><div class="wf-box">Events Tracker</div><div class="wf-box">IT Tickets</div></div>
+        <div class="wf-row"><div class="wf-box"><strong>HRMS &#9662;</strong> My Leads · Attendance · Leave · Documents · Admin Rules · My Exit</div></div>
+        <div class="wf-row"><div class="wf-box">Tools</div><div class="wf-box">Directory</div></div>
+      </div>
+    </div>
+    <p><strong>Unchanged.</strong> Page addresses, who can open what, and the phone bottom bar for employees (Attendance, My Leads, Leave, More). Employees past their last working day still see only My Exit.</p>
   </div>
 </section>
 

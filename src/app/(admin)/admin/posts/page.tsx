@@ -7,6 +7,7 @@ import { Calendar, CircleAlert, Download, ExternalLink, File, FileText, Plus, Rs
 import { useSearchParams } from 'next/navigation';
 import { getAdminUser, getAuthHeaders } from '@/lib/admin-auth';
 import { isPathAllowed } from '@/lib/admin-role-access';
+import { BULK_POST_STATUS_ROLES } from '@/shared/middleware/roles';
 import { useAdminData } from '@/hooks/useAdminData';
 import Pagination from '@/components/admin/Pagination';
 import SearchBar from '@/components/admin/SearchBar';
@@ -102,7 +103,8 @@ export default function PostsPage() {
   const [bulkScope, setBulkScope] = useState<BulkScope>('selected');
   const [targetHttpCode, setTargetHttpCode] = useState<TargetHttpCode>('410');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const isAdmin = getAdminUser()?.role === 'admin';
+  // Bulk status change (tick boxes + Apply bar): super admin and Publisher Admin (BULK_POST_STATUS_ROLES).
+  const canBulkStatus = (BULK_POST_STATUS_ROLES as readonly string[]).includes(getAdminUser()?.role || '');
   const isEventAdmin = getAdminUser()?.role === 'event_admin';
 
   const {
@@ -591,10 +593,11 @@ export default function PostsPage() {
         </div>
 
         {/* ── Tabs ── */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e2e8f0', marginBottom: '2rem' }}>
+        {/* Scrolls sideways on phones rather than cutting off the last tab. */}
+        <div className="mb-6 md:mb-8" style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e2e8f0', overflowX: 'auto', whiteSpace: 'nowrap' }}>
           {tabs.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
-              padding: '0.75rem 1.5rem', background: 'none', border: 'none',
+            <button key={t.id} onClick={() => setTab(t.id)} className="shrink-0 px-4 md:px-6" style={{
+              paddingTop: '0.75rem', paddingBottom: '0.75rem', background: 'none', border: 'none',
               borderBottom: tab === t.id ? '2px solid #6366f1' : '2px solid transparent',
               marginBottom: '-2px', fontWeight: tab === t.id ? 700 : 500,
               color: tab === t.id ? '#6366f1' : '#64748b', cursor: 'pointer', fontSize: '0.9375rem',
@@ -605,8 +608,8 @@ export default function PostsPage() {
           {/* Content Studio is a full-height app on its own route, so this tab navigates there
               rather than switching in place. */}
           {canStudio && (
-            <Link href={panelPath('/admin/content-studio')} style={{
-              padding: '0.75rem 1.5rem', borderBottom: '2px solid transparent', marginBottom: '-2px',
+            <Link href={panelPath('/admin/content-studio')} className="shrink-0 px-4 md:px-6" style={{
+              paddingTop: '0.75rem', paddingBottom: '0.75rem', borderBottom: '2px solid transparent', marginBottom: '-2px',
               fontWeight: 500, color: '#64748b', fontSize: '0.9375rem', textDecoration: 'none',
               display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
             }}>
@@ -857,7 +860,7 @@ export default function PostsPage() {
               </div>
             </div>
 
-            {isAdmin && (
+            {canBulkStatus && (
               <div style={{
                 display: 'flex',
                 gap: '0.75rem',
@@ -1043,8 +1046,11 @@ export default function PostsPage() {
                   border: '1px solid rgba(0, 0, 0, 0.04)',
                 }}>
                   <div style={{ overflowX: 'auto' }}>
+                    {/* minWidth: on a phone the table scrolls sideways with readable columns instead of
+                        squeezing the title to a word per line and clipping the right-hand columns. */}
                     <table style={{
                       width: '100%',
+                      minWidth: '880px',
                       borderCollapse: 'separate',
                       borderSpacing: 0,
                     }}>
@@ -1052,7 +1058,7 @@ export default function PostsPage() {
                         <tr style={{
                           background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
                         }}>
-                          {isAdmin && (
+                          {canBulkStatus && (
                             <th style={{
                               padding: '1.25rem 0.75rem',
                               textAlign: 'center',
@@ -1194,7 +1200,7 @@ export default function PostsPage() {
                               e.currentTarget.style.background = 'transparent';
                             }}
                           >
-                            {isAdmin && (
+                            {canBulkStatus && (
                               <td style={{ padding: '1.25rem 0.75rem', textAlign: 'center' }}>
                                 <input
                                   type="checkbox"
@@ -1491,7 +1497,7 @@ export default function PostsPage() {
                   border: '1px solid rgba(0, 0, 0, 0.04)',
                 }}>
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <table style={{ width: '100%', minWidth: '640px', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
                           <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Name</th>
@@ -1621,7 +1627,7 @@ export default function PostsPage() {
                   }}
                 >
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <table style={{ width: '100%', minWidth: '640px', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
                           <th style={{ padding: '1.25rem 1.5rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>Photo</th>

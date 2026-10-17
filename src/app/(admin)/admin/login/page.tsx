@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
   // POST doesn't have to wait on ~30 JS/CSS files through Cloudflare (which intermittently stalls).
   useEffect(() => {
     router.prefetch('/admin');
-    router.prefetch('/employee/attendance');
+    router.prefetch('/employee/dashboard');
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,8 +56,9 @@ export default function AdminLoginPage() {
 
       if (data.data?.accountType === 'employee') {
         setEmployeeSession(data.data.token, data.data.user);
-        // Past their last working day, an employee only has the read-only My Exit page.
-        router.push(data.data.user?.alumni ? '/employee/exit' : '/employee/attendance');
+        // Past their last working day, an employee only has the read-only My Exit page; everyone
+        // else starts on their dashboard (today's punch card + KPIs).
+        router.push(data.data.user?.alumni ? '/employee/exit' : '/employee/dashboard');
         return;
       }
 

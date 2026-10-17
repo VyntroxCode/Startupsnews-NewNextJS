@@ -11,6 +11,9 @@ export const CONTENT_ROLES = ['admin', 'editor', 'author', 'publisher_admin', 'e
 /** Delete/bulk-mutate content, and manage categories/authors. */
 export const CONTENT_MANAGE_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 
+/** Posts bulk status change (publish / draft / archive many at once). Publisher Admin since 2026-10-16. */
+export const BULK_POST_STATUS_ROLES = ['admin', 'publisher_admin'] as const;
+
 /** View categories/authors. Event Admin needs read access to resolve the Press Release category. */
 export const CATEGORIES_AUTHORS_VIEW_ROLES = ['admin', 'editor', 'author', 'publisher_admin','event_admin'] as const;
 
@@ -27,8 +30,8 @@ export const REPORTS_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 /** Brand Stories + Brand Story Sections — given to Publisher Admin alongside content management. */
 export const BRAND_STORIES_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
 
-/** Inner Pages (partner logos + editable content for standalone pages like Our Partners) — given to Publisher Admin alongside content management. */
-export const INNER_PAGES_ROLES = ['admin', 'editor', 'publisher_admin'] as const;
+/** Inner Pages (partner logos + editable content for standalone pages like Our Partners). Publisher Admin lost it on 2026-10-16. */
+export const INNER_PAGES_ROLES = ['admin', 'editor'] as const;
 
 /** Every admin-panel role — dashboard/stats and other cross-cutting read-only surfaces. */
 export const ALL_ADMIN_ROLES = ['admin', 'editor', 'author', 'event_admin', 'publisher_admin', 'it_support', 'financial_analyst'] as const;
@@ -48,6 +51,9 @@ export const MY_LEADS_PANEL_ROLES = ['event_admin', 'publisher_admin'] as const;
 /** Publisher/Event Admins resign from the admin panel (`/admin/my-exit`) while employed. After their
  * last working day the panel account is switched off and they use the employee portal's My Exit. */
 export const MY_EXIT_PANEL_ROLES = ['event_admin', 'publisher_admin'] as const;
+
+/** Publisher/Event Admins download their own frozen payslips from the admin panel (`/admin/my-payslips`). */
+export const MY_PAYSLIPS_PANEL_ROLES = ['event_admin', 'publisher_admin'] as const;
 
 /** HR Tool — super admin only, standalone tool (has its own internal role system for HR Head/Manager/Employee). */
 export const HR_TOOL_ROLES = ['admin'] as const;

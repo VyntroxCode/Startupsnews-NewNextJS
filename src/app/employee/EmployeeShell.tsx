@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { ComponentType } from 'react';
-import { BookOpen, ChartColumn, Contact, FileText, ReceiptText } from 'lucide-react';
+import { BookOpen, Briefcase, ChartColumn, ChevronDown, Contact, FileText, LayoutDashboard, ReceiptText } from 'lucide-react';
 import { getEmployeeUser, clearEmployeeSession, getEmployeeAuthHeaders, setEmployeeSession, getEmployeeToken, type EmployeeUser } from '@/lib/employee-auth';
 import ProfileProgressStrip from '@/components/admin/ProfileProgressStrip';
 import PendingLeadsAlarm from '@/components/employee/PendingLeadsAlarm';
@@ -98,14 +98,30 @@ const DIRECTORY_HREF = '/employee/directory';
 // restructuring the sidebar.
 // `content` marks the admin panel's Posts / Reports / Brand Stories screens, shown only to the
 // Employee IDs in CONTENT_EMPLOYEE_CODES. `alsoActive` lists sibling routes that keep the item lit.
+// A `group` entry is a collapsible heading (HRMS) with its own links underneath, as in the admin sidebar.
 type NavItem = { href: string; label: string; icon: ComponentType<{ size?: number; color?: string }>; content?: boolean; alsoActive?: string[] };
-const NAV_ITEMS: NavItem[] = [
-  { href: '/employee/attendance', label: 'Attendance', icon: AttendanceIcon },
-  { href: '/employee/leads', label: 'My Leads', icon: LeadsIcon },
-  { href: '/employee/leave', label: 'Leave', icon: LeaveIcon },
-  { href: '/employee/payslips', label: 'My Payslips', icon: ReceiptText },
-  { href: '/employee/documents', label: 'Documents', icon: DocumentsIcon },
-  { href: '/employee/rules-policy', label: 'Admin Rules', icon: RulesPolicyIcon },
+type NavGroup = { group: string; icon: ComponentType<{ size?: number; color?: string }>; children: NavItem[] };
+type NavEntry = NavItem | NavGroup;
+const isGroup = (entry: NavEntry): entry is NavGroup => 'group' in entry;
+const flattenNav = (entries: NavEntry[]): NavItem[] => entries.flatMap((entry) => (isGroup(entry) ? entry.children : [entry]));
+
+const EXIT_ITEM: NavItem = { href: EXIT_HREF, label: 'My Exit', icon: ExitIcon };
+const NAV_ITEMS: NavEntry[] = [
+  // Every employee's landing page: today's punch card + attendance / leave / leads KPIs.
+  { href: '/employee/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  {
+    group: 'HRMS',
+    icon: Briefcase,
+    children: [
+      { href: '/employee/leads', label: 'My Leads', icon: LeadsIcon },
+      { href: '/employee/attendance', label: 'Attendance', icon: AttendanceIcon },
+      { href: '/employee/leave', label: 'Leave', icon: LeaveIcon },
+      { href: '/employee/payslips', label: 'My Payslips', icon: ReceiptText },
+      { href: '/employee/documents', label: 'Documents', icon: DocumentsIcon },
+      { href: '/employee/rules-policy', label: 'Admin Rules', icon: RulesPolicyIcon },
+      EXIT_ITEM,
+    ],
+  },
   { href: '/employee/it-tickets', label: 'IT Support', icon: TicketIcon },
   // Industry, Authors and Content Studio are tabs of Posts, as in the admin panel.
   { href: '/employee/posts', label: 'Posts', icon: FileText, content: true, alsoActive: ['/employee/categories', '/employee/authors', '/employee/content-studio'] },
@@ -113,13 +129,13 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/employee/brand-stories', label: 'Brand Stories', icon: BookOpen, content: true },
   // Contacts Directory (full access) — shown only to the Employee IDs in DIRECTORY_EMPLOYEE_CODES.
   { href: DIRECTORY_HREF, label: 'Directory', icon: Contact },
-  { href: EXIT_HREF, label: 'My Exit', icon: ExitIcon },
 ];
 /** Past the last working day (offboarding "alumni"), the login is read-only: My Exit is all that's left. */
-const ALUMNI_NAV_ITEMS = NAV_ITEMS.filter((item) => item.href === EXIT_HREF);
+const ALUMNI_NAV_ITEMS: NavEntry[] = [EXIT_ITEM];
 
-/** Bottom tab bar on phones: the three pages employees open daily, plus "More" for the drawer. */
-const BOTTOM_TABS = ['/employee/attendance', '/employee/leave', '/employee/leads'];
+/** Bottom tab bar on phones: the three pages employees open daily (in this order), plus "More" for the drawer.
+ * Dashboard carries today's punch card, so Attendance itself lives in the drawer. */
+const BOTTOM_TABS = ['/employee/dashboard', '/employee/leads', '/employee/leave'];
 
 function MenuIcon() {
   return (
@@ -156,11 +172,34 @@ const isItemActive = (pathname: string, item: NavItem) => [item.href, ...(item.a
 /** The sidebar body — rendered once as the fixed desktop column and once inside the phone drawer. */
 function SidebarContent({ user, items, pathname, onLogout, onClose }: {
   user: EmployeeUser;
-  items: NavItem[];
+  items: NavEntry[];
   pathname: string;
   onLogout: () => void;
   onClose?: () => void;
 }) {
+  // A group the user hasn't toggled stays open while one of its pages is the current one.
+  const [groupToggles, setGroupToggles] = useState<Record<string, boolean>>({});
+  // visited: variants — style.css's `a:visited { color: #E62E69 }` outranks a plain text-* class
+  // and turned every visited menu link pink.
+  const renderLink = (item: NavItem, nested = false) => {
+    const isActive = isItemActive(pathname, item);
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={`mb-1 box-border flex min-h-11 items-center gap-3 rounded-lg border-l-[3px] px-3.5 py-2.5 no-underline ${nested ? 'text-[0.875rem]' : 'text-[0.9rem]'} ${
+          isActive
+            ? 'border-indigo-500 bg-indigo-500/10 font-semibold text-indigo-600 visited:text-indigo-600'
+            : 'border-transparent font-medium text-slate-700 visited:text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+        }`}
+      >
+        <Icon size={nested ? 18 : 20} color={isActive ? '#4f46e5' : '#64748b'} />
+        {item.label}
+      </Link>
+    );
+  };
+
   return (
     <>
       <div className="mb-5 flex items-center gap-3 border-b border-slate-200/70 px-2 pb-5 pt-1">
@@ -186,24 +225,35 @@ function SidebarContent({ user, items, pathname, onLogout, onClose }: {
       {/* min-h-0 + overflow: a long menu scrolls between the pinned profile header and Logout. */}
       <nav className="min-h-0 flex-1 overflow-y-auto">
         <div className="mb-2 px-3 text-[0.68rem] font-bold uppercase tracking-[0.06em] text-slate-400">Menu</div>
-        {items.map((item) => {
-          const isActive = isItemActive(pathname, item);
-          const Icon = item.icon;
-          // visited: variants — style.css's `a:visited { color: #E62E69 }` outranks a plain text-* class
-          // and turned every visited menu link pink.
+        {items.map((entry) => {
+          if (!isGroup(entry)) return renderLink(entry);
+          const groupActive = entry.children.some((child) => isItemActive(pathname, child));
+          const expanded = groupToggles[entry.group] ?? groupActive;
+          // Collapsed: lit like an active item so the current page's section is still visible.
+          const headerLit = groupActive && !expanded;
+          const GroupIcon = entry.icon;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`mb-1 box-border flex min-h-11 items-center gap-3 rounded-lg border-l-[3px] px-3.5 py-2.5 text-[0.9rem] no-underline ${
-                isActive
-                  ? 'border-indigo-500 bg-indigo-500/10 font-semibold text-indigo-600 visited:text-indigo-600'
-                  : 'border-transparent font-medium text-slate-700 visited:text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <Icon color={isActive ? '#4f46e5' : '#64748b'} />
-              {item.label}
-            </Link>
+            <div key={entry.group}>
+              <button
+                type="button"
+                onClick={() => setGroupToggles((prev) => ({ ...prev, [entry.group]: !expanded }))}
+                aria-expanded={expanded}
+                className={`mb-1 box-border flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border-0 border-l-[3px] border-solid px-3.5 py-2.5 text-left text-[0.9rem] ${
+                  headerLit
+                    ? 'border-indigo-500 bg-indigo-500/10 font-semibold text-indigo-600'
+                    : 'border-transparent bg-transparent font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <GroupIcon size={20} color={headerLit ? '#4f46e5' : '#64748b'} />
+                <span className="flex-1">{entry.group}</span>
+                <ChevronDown size={16} color="#94a3b8" className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+              </button>
+              {expanded && (
+                <div className="mb-2 ml-4 border-0 border-l border-solid border-slate-200 pl-2">
+                  {entry.children.map((child) => renderLink(child, true))}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
@@ -297,14 +347,17 @@ export default function EmployeeShell({ children }: { children: React.ReactNode 
   const wideContent = pathname.startsWith('/employee/it-tickets') || pathname.startsWith('/employee/leads') || pathname.startsWith('/employee/exit') || pathname.startsWith(DIRECTORY_HREF) || isContentPortalPath(pathname);
   // Content Studio is a fixed-viewport workstation with its own scrolling panes, so it sits flush (as in the admin panel).
   const flushContent = pathname === '/employee/content-studio';
+  const canSee = (item: NavItem) =>
+    (item.href !== DIRECTORY_HREF || canEmployeeUseDirectory(user.employeeCode)) &&
+    (!item.content || canEmployeeUseContent(user.employeeCode));
   const items = alumni
     ? ALUMNI_NAV_ITEMS
-    : NAV_ITEMS.filter((item) =>
-        (item.href !== DIRECTORY_HREF || canEmployeeUseDirectory(user.employeeCode)) &&
-        (!item.content || canEmployeeUseContent(user.employeeCode))
-      );
-  const currentLabel = items.find((item) => isItemActive(pathname, item))?.label || 'Employee';
-  const bottomTabs = alumni ? [] : NAV_ITEMS.filter((item) => BOTTOM_TABS.includes(item.href));
+    : NAV_ITEMS
+        .map((entry) => (isGroup(entry) ? { ...entry, children: entry.children.filter(canSee) } : entry))
+        .filter((entry) => (isGroup(entry) ? entry.children.length > 0 : canSee(entry)));
+  const currentLabel = flattenNav(items).find((item) => isItemActive(pathname, item))?.label || 'Employee';
+  const allLinks = flattenNav(NAV_ITEMS);
+  const bottomTabs = alumni ? [] : BOTTOM_TABS.flatMap((href) => allLinks.filter((item) => item.href === href));
   const moreActive = !alumni && !bottomTabs.some((item) => isActivePath(pathname, item.href));
 
   return (

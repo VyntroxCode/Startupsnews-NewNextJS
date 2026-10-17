@@ -1414,6 +1414,14 @@ function ContactsStyles() {
         .col-tags, .col-email, .col-phone { display: none; }
         .admin-grid { grid-template-columns: 1fr; }
       }
+      /* Phones: full-width search, filters two to a row, toast above the admin bottom tab bar. */
+      @media (max-width: 767px) {
+        .toolbar { padding: 10px; }
+        .search-wrap { flex: 1 1 100%; max-width: none; min-width: 0; }
+        .toolbar select { flex: 1 1 calc(50% - 5px); min-width: 0; max-width: 100%; }
+        .bulk-bar, .bulk-group { flex-wrap: wrap; }
+        .toast { left: 16px; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); }
+      }
     `}</style>
   );
 }

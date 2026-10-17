@@ -178,7 +178,7 @@ export default function Offboarding() {
       {data && tab === 'settings' && <SettingsPanel settings={data.settings} onSaved={(s) => setData({ ...data, settings: s })} />}
 
       <div className="footnote">
-        Employees resign from their portal&apos;s My Exit page (Publisher/Event Admins from Resignation in the admin panel). After the
+        Employees and Publisher/Event Admins resign from My Exit under HRMS in their sidebar. After the
         last working day their login only opens My Exit, or nothing at all if access is set to Blocked.
       </div>
 

@@ -38,7 +38,7 @@ export default function ItTicketsPage({ config = ADMIN_TICKETS_CONFIG, title, su
   );
 }
 
-function ItTicketsPageInner({ title = 'IT Tickets', subtitle }: Omit<ItTicketsPageProps, 'config'>) {
+function ItTicketsPageInner({ title = 'IT Support', subtitle }: Omit<ItTicketsPageProps, 'config'>) {
   const client = useTicketsClient();
   const api = useTicketsApi();
   const {

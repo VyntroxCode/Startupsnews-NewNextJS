@@ -32,11 +32,18 @@
 /* Employee frame + self-service widgets (Attendance / Leave / KYC Documents / profile strip) */
 @source "../../app/employee/layout.tsx";
 @source "../../app/employee/EmployeeShell.tsx";
+@source "../../app/(admin)/layout.tsx";
+@source "./AdminHeader.tsx";
+@source "./AdminMobileNav.tsx";
+@source "./AdminSidebar.tsx";
 @source "../../app/employee/directory/page.tsx";
 @source "../../app/employee/(content)/layout.tsx";
+@source "../../app/employee/dashboard/page.tsx";
 @source "../../app/employee/attendance/page.tsx";
 @source "../../app/employee/leave/page.tsx";
 @source "../../app/employee/payslips/page.tsx";
+@source "./PayslipsWidget.tsx";
+@source "../../app/(admin)/admin/my-payslips/page.tsx";
 @source "../../app/employee/documents/page.tsx";
 @source "./AttendanceWidget.tsx";
 @source "./AttendanceCycleSummary.tsx";

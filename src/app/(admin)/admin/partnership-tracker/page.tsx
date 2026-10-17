@@ -2815,6 +2815,8 @@ export default function PartnershipTrackerPage() {
 
         .pt-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
         .pt-page-info { margin-right: auto; }
+        /* Phones: page info on its own line, the four buttons wrap under it instead of pushing it off the left edge. */
+        @media (max-width: 767px) { .pt-pagination { flex-wrap: wrap; justify-content: flex-start; gap: 8px; } .pt-page-info { flex: 1 1 100%; } }
         .pt-pagination button { height: 30px; padding: 0 12px; border-radius: 7px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
         .pt-pagination button:disabled { opacity: .4; cursor: default; }
 

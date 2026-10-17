@@ -19,6 +19,7 @@ import {
 import { isPathAllowed, defaultPathForRole } from '@/lib/admin-role-access';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
+import AdminMobileNav, { hasBottomTabs } from '@/components/admin/AdminMobileNav';
 import { clearAllAdminApiCache } from '@/hooks/useAdminData';
 // The self-service widgets (Attendance / Leave / KYC Documents / profile strip) are Tailwind-styled
 // and also render inside this shell (/admin, /admin/attendance, /admin/leave, /admin/documents).
@@ -60,6 +61,9 @@ export default function AdminLayout({
   const [sidebarPinned, setSidebarPinned] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const sidebarOpen = sidebarPinned || sidebarHovered;
+  // Phone drawer (below md): remembers the path it was opened on, so any navigation closes it.
+  const [drawerPath, setDrawerPath] = useState<string | null>(null);
+  const drawerOpen = drawerPath === pathname;
   const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The fetch patch below is installed once, so it reads the live pathname through this ref.
@@ -290,6 +294,13 @@ export default function AdminLayout({
     setSidebarPinned((pinned) => !pinned);
   };
 
+  const handleLogout = () => {
+    if (confirm('Are you sure you want to logout?')) {
+      clearAdminSession();
+      router.push('/admin/login');
+    }
+  };
+
   // Show loading state
  if (loading) {
     return (
@@ -319,50 +330,51 @@ export default function AdminLayout({
 
   // Header height constant (must match AdminSidebar)
   const headerHeight = 60;
-  // Follows the sidebar's ACTUAL width, hover included — not just the pin. Keying this to the pin
-  // alone let a hover-opened sidebar float over the page, which read as the content being cut off:
-  // the sidebar is position:fixed, so the 190px it gains on hover simply covered the page title,
-  // the tab bar and the table's first column. The content moves with it instead.
-  const sidebarWidth = sidebarOpen ? 260 : 70;
+  // Desktop (md+): follows the sidebar's ACTUAL width, hover included — not just the pin. Keying this
+  // to the pin alone let a hover-opened sidebar float over the page, which read as the content being
+  // cut off: the sidebar is position:fixed, so the 190px it gains on hover simply covered the page
+  // title, the tab bar and the table's first column. The content moves with it instead.
+  // Phones: no rail (AdminMobileNav's drawer + bottom tab bar instead), so no left margin.
+  const sidebarMargin = sidebarOpen ? 'md:ml-[260px]' : 'md:ml-[70px]';
   // HR Management renders its own full-bleed app shell (sidebar, header, rounded card) —
-  // the standard 2rem content padding left a visible gap around it instead of the widget
+  // the standard content padding left a visible gap around it instead of the widget
   // sitting flush against the real admin header/sidebar.
   // Content Studio is a fixed-viewport workstation with its own scrolling panes, so it sits flush too.
-  const contentPadding = pathname === '/admin/hr-tool' || pathname === '/admin/content-studio' ? '0' : '2rem';
+  const flush = pathname === '/admin/hr-tool' || pathname === '/admin/content-studio';
+  // Phones: room under the page for the fixed bottom tab bar (+ the home-indicator safe area).
+  const tabBarRoom = user && hasBottomTabs(user.role) ? 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0' : '';
 
   // Admin pages with layout
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#f7fafc',
-      }}
-    >
+    <div className="min-h-screen bg-[#f7fafc]">
       {/* Fixed Header */}
       <AdminHeader
         user={user}
         sidebarOpen={sidebarPinned}
         onToggleSidebar={toggleSidebar}
+        onOpenDrawer={() => setDrawerPath(pathname)}
+        onLogout={handleLogout}
       />
 
-      {/* Fixed Sidebar - positioned below header */}
+      {/* Fixed Sidebar - positioned below header (desktop only) */}
       <AdminSidebar isOpen={sidebarOpen} onHoverChange={setSidebarHovered} />
 
-      {/* Main Content Area - accounts for fixed header and sidebar */}
+      {/* Phones: menu drawer + bottom tab bar */}
+      <AdminMobileNav
+        user={user}
+        open={drawerOpen}
+        onOpen={() => setDrawerPath(pathname)}
+        onClose={() => setDrawerPath(null)}
+        onLogout={handleLogout}
+      />
+
+      {/* Main Content Area - accounts for fixed header and sidebar. min-w-0 lets a wide table
+          scroll inside the page instead of stretching it past the phone's width. */}
       <div
-        style={{
-          marginTop: `${headerHeight}px`,
-          marginLeft: `${sidebarWidth}px`,
-          transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          minHeight: `calc(100vh - ${headerHeight}px)`,
-        }}
+        className={`min-w-0 transition-[margin-left] duration-300 ${sidebarMargin} ${tabBarRoom}`}
+        style={{ marginTop: `${headerHeight}px`, minHeight: `calc(100vh - ${headerHeight}px)` }}
       >
-        <main
-          key={contentRefreshKey}
-          style={{
-            padding: contentPadding,
-          }}
-        >
+        <main key={contentRefreshKey} className={`min-w-0 ${flush ? 'p-0' : 'p-4 md:p-8'}`}>
           {children}
         </main>
       </div>

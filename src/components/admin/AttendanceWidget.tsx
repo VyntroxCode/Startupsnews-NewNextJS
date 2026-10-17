@@ -95,6 +95,8 @@ interface AttendanceWidgetProps {
   apiBase?: string;
   /** Auth header provider — defaults to the admin panel's session. */
   getHeaders?: () => HeadersInit;
+  /** Only the Today punch card (no day details, no pay-cycle calendar) — the employee dashboard's punch tile. */
+  todayOnly?: boolean;
 }
 
 /** Attendance card — resolves the caller's HR identity and writes into the same
@@ -106,7 +108,7 @@ interface AttendanceWidgetProps {
  * punch-in landed against the admin-configured shift start + grace period. Reused as-is
  * by both the Publisher/Event Admin dashboard (default props) and the plain employee dashboard
  * (apiBase="/api/employee/attendance", getHeaders=getEmployeeAuthHeaders). */
-export default function AttendanceWidget({ apiBase = '/api/admin/attendance', getHeaders = getAuthHeaders }: AttendanceWidgetProps) {
+export default function AttendanceWidget({ apiBase = '/api/admin/attendance', getHeaders = getAuthHeaders, todayOnly = false }: AttendanceWidgetProps) {
   const today = localTodayStr();
   const [data, setData] = useState<AttendanceMeData | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => today.slice(0, 7));
@@ -450,7 +452,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
   );
 
   return (
-    <div className="mt-4 flex flex-col gap-4 md:mt-6 md:gap-6">
+    <div className={todayOnly ? 'flex flex-col' : 'mt-4 flex flex-col gap-4 md:mt-6 md:gap-6'}>
       {/* Today — punch card */}
       <section id="attendance-today" className={cardClass}>
         <div className="flex items-start justify-between gap-3">
@@ -550,7 +552,7 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
       </section>
 
       {/* Selected-day details (any day other than today, picked from the calendar) */}
-      {!isSelectedToday && (
+      {!todayOnly && !isSelectedToday && (
         <section id="attendance-selected-day" className={cardClass}>
           <div className="flex items-center justify-between gap-2">
             <h3 className="m-0 text-[0.9375rem] font-semibold text-slate-700">{formatDateLong(selectedDate)}</h3>
@@ -593,10 +595,12 @@ export default function AttendanceWidget({ apiBase = '/api/admin/attendance', ge
       )}
 
       {/* Pay cycle (26th → 25th) — tiles + day-by-day calendar from the same day ledger payroll pays by, laid out like HR's */}
+      {!todayOnly && (
       <section className={cardClass}>
         <AttendanceCycleSummary apiBase={apiBase} getHeaders={getHeaders} refreshKey={data} today={today} selectedDate={selectedDate}
           onSelectDate={pickCycleDay} onDays={(days, shortLeaveQuota) => setLedger({ days: new Map(days.map((d) => [d.date, d])), shortLeaveQuota })} />
       </section>
+      )}
     </div>
   );
 }

@@ -101,9 +101,11 @@ export default function Pagination({
         )}
       </div>
 
+      {/* flexWrap: on a phone the page buttons wrap instead of running off the screen. */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: '0.5rem',
       }}>
         <button

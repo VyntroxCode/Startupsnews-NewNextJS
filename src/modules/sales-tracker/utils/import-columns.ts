@@ -4,8 +4,11 @@
  * every row again before anything is stored. Pure TS (no server imports) so the browser can use it.
  *
  * Rules agreed for the import (2026-10-15):
- * - Date, Name, Company, Phone, Email and Country are required. A file without one of those
- *   columns is refused as a whole; a row with one of them empty is skipped and reported.
+ * - No column is required (changed 2026-10-16; Date, Name, Company, Phone, Email and Country used
+ *   to be). A row still needs at least one of Name, Company, Phone or Email, so it can't become an empty lead
+ *   (Company alone is enough — the person working the lead fills in the rest by hand).
+ * - Date blank (or no Date column) → the day the sheet is uploaded. A Date the sheet does give is
+ *   kept; one that can't be read skips the row rather than being silently replaced.
  * - Type of lead outside MANUAL_LEAD_TYPES is stored as Others with the sheet's text as otherType;
  *   a blank one gets the window's default type.
  * - Status blank → Pending; an open lead (Pending / Follow Up) without a Next follow-up date gets
@@ -27,7 +30,6 @@ export interface LeadImportColumn {
   key: LeadImportKey;
   /** Header used in the template. */
   header: string;
-  required?: boolean;
   /** Lower-cased, punctuation-stripped header spellings accepted on upload (see normalizeHeader). */
   aliases: string[];
   /** Longest value the column takes. */
@@ -36,12 +38,12 @@ export interface LeadImportColumn {
 }
 
 export const LEAD_IMPORT_COLUMNS: LeadImportColumn[] = [
-  { key: 'date', header: 'Date', required: true, aliases: ['date', 'lead date', 'created date', 'created on'], max: 10, example: '2026-10-15' },
-  { key: 'name', header: 'Name', required: true, aliases: ['name', 'full name', 'contact name', 'person name', 'lead name'], max: 255, example: 'Rahul Sharma' },
-  { key: 'company', header: 'Company', required: true, aliases: ['company', 'company name', 'startup', 'startup name', 'organisation', 'organization', 'brand'], max: 255, example: 'Acme Tech' },
-  { key: 'contact', header: 'Phone', required: true, aliases: ['phone', 'phone number', 'contact', 'contact number', 'mobile', 'mobile number', 'whatsapp', 'whatsapp number'], max: 50, example: '+91 9876543210' },
-  { key: 'email', header: 'Email', required: true, aliases: ['email', 'email id', 'email address', 'e mail', 'mail'], max: 255, example: 'rahul@acme.com' },
-  { key: 'country', header: 'Country', required: true, aliases: ['country'], max: 255, example: 'India' },
+  { key: 'date', header: 'Date', aliases: ['date', 'lead date', 'created date', 'created on'], max: 10, example: '2026-10-15' },
+  { key: 'name', header: 'Name', aliases: ['name', 'full name', 'contact name', 'person name', 'lead name'], max: 255, example: 'Rahul Sharma' },
+  { key: 'company', header: 'Company', aliases: ['company', 'company name', 'startup', 'startup name', 'organisation', 'organization', 'brand'], max: 255, example: 'Acme Tech' },
+  { key: 'contact', header: 'Phone', aliases: ['phone', 'phone number', 'contact', 'contact number', 'mobile', 'mobile number', 'whatsapp', 'whatsapp number'], max: 50, example: '+91 9876543210' },
+  { key: 'email', header: 'Email', aliases: ['email', 'email id', 'email address', 'e mail', 'mail'], max: 255, example: 'rahul@acme.com' },
+  { key: 'country', header: 'Country', aliases: ['country'], max: 255, example: 'India' },
   { key: 'city', header: 'City', aliases: ['city', 'location'], max: 255, example: 'Bengaluru' },
   { key: 'source', header: 'Source', aliases: ['source', 'lead source', 'source of lead', 'channel'], max: 255, example: 'LinkedIn' },
   { key: 'type', header: 'Type of lead', aliases: ['type of lead', 'lead type', 'type'], max: 255, example: 'Social Media' },
@@ -51,7 +53,8 @@ export const LEAD_IMPORT_COLUMNS: LeadImportColumn[] = [
   { key: 'lastCallDiscussion', header: 'Last call discussion', aliases: ['last call discussion', 'call discussion', 'discussion', 'notes', 'remarks', 'comments'], max: 5000, example: 'Asked for pricing, call back Monday' },
 ];
 
-export const LEAD_IMPORT_REQUIRED = LEAD_IMPORT_COLUMNS.filter((c) => c.required);
+/** A row needs at least one of these filled to be imported. */
+export const LEAD_IMPORT_IDENTITY: LeadImportKey[] = ['name', 'company', 'contact', 'email'];
 
 /** Most rows one import may carry. */
 export const MAX_LEAD_IMPORT_ROWS = 1000;
@@ -66,6 +69,8 @@ export type ImportedLeadFields = Pick<SalesLead,
 
 /** The window's batch defaults for the cells a row may leave empty. */
 export interface LeadImportDefaults {
+  /** The upload day (YYYY-MM-DD), used when the row's Date is blank. */
+  date: string;
   type: string;
   nextFollowUpDate: string;
 }
@@ -106,13 +111,13 @@ export function parseLeadImportRow(raw: LeadImportRaw, defaults: LeadImportDefau
   const text = Object.fromEntries(LEAD_IMPORT_COLUMNS.map((c) => [c.key, cellText(raw[c.key])])) as Record<LeadImportKey, string>;
   const problems: string[] = [];
 
-  const missing = LEAD_IMPORT_REQUIRED.filter((c) => !text[c.key]).map((c) => c.header);
-  if (missing.length) problems.push(`Missing ${missing.join(', ')}`);
+  if (!LEAD_IMPORT_IDENTITY.some((key) => text[key])) problems.push('Needs at least a Name, Company, Phone or Email');
   const tooLong = LEAD_IMPORT_COLUMNS.filter((c) => c.key !== 'date' && c.key !== 'nextFollowUpDate' && text[c.key].length > c.max);
   if (tooLong.length) problems.push(`Too long: ${tooLong.map((c) => c.header).join(', ')}`);
 
-  const date = text.date ? normalizeDate(raw.date) ?? '' : '';
+  const date = text.date ? normalizeDate(raw.date) ?? '' : defaults.date;
   if (text.date && !date) problems.push('Date is not a date we can read (use YYYY-MM-DD)');
+  else if (!date) problems.push('No date (upload day missing)');
   if (text.email && !EMAIL.test(text.email)) problems.push('Email is not a valid email address');
 
   const status = text.status ? SALES_LEAD_STATUS_LABELS.find((s) => s.toLowerCase() === text.status.toLowerCase()) : SALES_LEAD_STATUS_LABELS[0];

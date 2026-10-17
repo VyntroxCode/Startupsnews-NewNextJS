@@ -67,18 +67,22 @@ export default function FilterBar({ filters, onFiltersChange, view, onViewChange
           />
         </label>
 
-        <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[132px] sm:flex-none`} aria-label="Filter by status" value={filters.status || ''} onChange={(e) => set('status', e.target.value as TicketFilters['status'])}>
-          <option value="">All statuses</option>
-          {STATUS_COLUMNS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-        </select>
-        <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[132px] sm:flex-none`} aria-label="Filter by priority" value={filters.priority || ''} onChange={(e) => set('priority', e.target.value as TicketFilters['priority'])}>
-          <option value="">All priorities</option>
-          {PRIORITIES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-        </select>
-        <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[140px] sm:flex-none`} aria-label="Filter by type" value={filters.type || ''} onChange={(e) => set('type', e.target.value as TicketFilters['type'])}>
-          <option value="">All types</option>
-          {TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
-        </select>
+        {/* Phones: the three filters get a row of their own (they were squeezed to bare arrows next to
+            the count and view switch); sm and up they sit inline as before. */}
+        <div className="flex w-full gap-2 sm:contents">
+          <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[132px] sm:flex-none`} aria-label="Filter by status" value={filters.status || ''} onChange={(e) => set('status', e.target.value as TicketFilters['status'])}>
+            <option value="">All statuses</option>
+            {STATUS_COLUMNS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+          <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[132px] sm:flex-none`} aria-label="Filter by priority" value={filters.priority || ''} onChange={(e) => set('priority', e.target.value as TicketFilters['priority'])}>
+            <option value="">All priorities</option>
+            {PRIORITIES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+          </select>
+          <select className={`${COMPACT_INPUT} min-w-0 flex-1 sm:w-[140px] sm:flex-none`} aria-label="Filter by type" value={filters.type || ''} onChange={(e) => set('type', e.target.value as TicketFilters['type'])}>
+            <option value="">All types</option>
+            {TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+          </select>
+        </div>
 
         {hasFilters && (
           <button type="button" className={`${LINK} px-1`} onClick={() => { setSearch(''); onFiltersChange({}); }} data-testid="clear-filters">
@@ -86,7 +90,7 @@ export default function FilterBar({ filters, onFiltersChange, view, onViewChange
           </button>
         )}
 
-        <div className="ml-auto flex shrink-0 items-center gap-3">
+        <div className="flex w-full shrink-0 items-center justify-between gap-3 sm:ml-auto sm:w-auto sm:justify-start">
           <span className="whitespace-nowrap text-[12.5px] font-medium text-slate-500" data-testid="ticket-count">
             {loaded ? `${count} ticket${count === 1 ? '' : 's'}` : 'Loading…'}
           </span>

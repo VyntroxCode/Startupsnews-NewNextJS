@@ -1,16 +1,19 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { clearAdminSession, AdminUser } from '@/lib/admin-auth';
-import { Menu, X } from 'lucide-react';
+import { AdminUser } from '@/lib/admin-auth';
+import { LogOut, Menu, X } from 'lucide-react';
 
 interface AdminHeaderProps {
   user: AdminUser | null;
   sidebarOpen: boolean;
+  /** Desktop (md+): pins / unpins the sidebar rail. */
   onToggleSidebar: () => void;
+  /** Phones: opens the menu drawer (AdminMobileNav). */
+  onOpenDrawer: () => void;
+  onLogout: () => void;
 }
 
-const ROLE_LABELS: Record<string, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   admin: 'Administrator',
   editor: 'Editor',
   author: 'Author',
@@ -20,121 +23,38 @@ const ROLE_LABELS: Record<string, string> = {
   financial_analyst: 'Financial Analyst',
 };
 
-export default function AdminHeader({ user, sidebarOpen, onToggleSidebar }: AdminHeaderProps) {
-  const router = useRouter();
-
-  const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      clearAdminSession();
-      router.push('/admin/login');
-    }
-  };
+/** Fixed 60px top bar (height must match AdminSidebar / the layout's headerHeight). Styled through
+ * staff-panel-tailwind.css. */
+export default function AdminHeader({ user, sidebarOpen, onToggleSidebar, onOpenDrawer, onLogout }: AdminHeaderProps) {
+  const menuButton = 'size-10 cursor-pointer items-center justify-center rounded-lg border border-solid border-black/10 bg-transparent transition hover:border-indigo-400/30 hover:bg-slate-100';
 
   return (
-    <header
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-        padding: '1rem 2rem',
-        borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        zIndex: 1000,
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-        backdropFilter: 'blur(10px)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-        <button
-          onClick={onToggleSidebar}
-          style={{
-            padding: '0.625rem',
-            background: 'transparent',
-            border: '1px solid rgba(0, 0, 0, 0.08)',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '40px',
-            height: '40px',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#f1f5f9';
-            e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.3)';
-            e.currentTarget.style.transform = 'scale(1.05)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-        >
-          {sidebarOpen ? (
-            <X size={20} strokeWidth={2.5} color="#475569" aria-hidden />
-          ) : (
-            <Menu size={20} strokeWidth={2.5} color="#475569" aria-hidden />
-          )}
+    <header className="fixed top-0 right-0 left-0 z-[1000] box-border flex h-[60px] items-center justify-between gap-3 border-0 border-b border-solid border-black/5 bg-linear-to-br from-white to-[#f8f9fa] px-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] backdrop-blur-[10px] md:px-8">
+      <div className="flex min-w-0 items-center gap-3 md:gap-5">
+        <button type="button" onClick={onOpenDrawer} aria-label="Open menu" className={`flex md:hidden ${menuButton}`}>
+          <Menu size={20} strokeWidth={2.5} color="#475569" aria-hidden />
         </button>
-        <div>
-          <h1
-            style={{
-              fontSize: '1.125rem',
-              fontWeight: '600',
-              margin: 0,
-              color: '#0f172a',
-              letterSpacing: '-0.01em',
-            }}
-          >
+        <button type="button" onClick={onToggleSidebar} aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'} className={`hidden md:flex ${menuButton}`}>
+          {sidebarOpen ? <X size={20} strokeWidth={2.5} color="#475569" aria-hidden /> : <Menu size={20} strokeWidth={2.5} color="#475569" aria-hidden />}
+        </button>
+        <div className="min-w-0">
+          <h1 className="m-0 truncate text-base font-semibold tracking-tight text-slate-900 md:text-lg">
             Welcome back, {user?.name || user?.email?.split('@')[0] || 'Admin'}
           </h1>
-          <p
-            style={{
-              fontSize: '0.75rem',
-              color: '#64748b',
-              margin: '0.125rem 0 0 0',
-              fontWeight: '400',
-            }}
-          >
+          <p className="m-0 mt-0.5 truncate text-xs text-slate-500">
             {(user?.role && ROLE_LABELS[user.role]) || user?.role || 'Administrator'}
           </p>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: '0.625rem 1.25rem',
-            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            fontWeight: '500',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 4px 8px rgba(239, 68, 68, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 2px 4px rgba(239, 68, 68, 0.2)';
-          }}
-        >
-          Logout
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onLogout}
+        aria-label="Logout"
+        className="flex size-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border-0 bg-linear-to-br from-red-500 to-red-600 text-sm font-medium text-white shadow-[0_2px_4px_rgba(239,68,68,0.2)] transition hover:-translate-y-px hover:from-red-600 hover:to-red-700 md:h-auto md:w-auto md:px-5 md:py-2.5"
+      >
+        <LogOut size={16} aria-hidden className="md:hidden" />
+        <span className="hidden md:inline">Logout</span>
+      </button>
     </header>
   );
 }

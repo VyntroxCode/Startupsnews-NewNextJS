@@ -244,7 +244,7 @@ export default function AdminReportCreatePage() {
             <Link href={panelPath('/admin/reports')} style={{ color: '#6366f1', textDecoration: 'none', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1rem' }}>
               <ArrowLeft size={14} aria-hidden />Back to Reports
             </Link>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: '700', margin: '0 0 0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>
+            <h2 style={{ fontSize: '2.25rem', lineHeight: 1.2, fontWeight: '700', margin: '0 0 0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>
               Add New Report
             </h2>
             <p style={{ color: '#64748b', fontSize: '1rem', margin: 0 }}>

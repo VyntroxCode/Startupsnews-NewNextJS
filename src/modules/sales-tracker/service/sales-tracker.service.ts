@@ -160,7 +160,7 @@ export class SalesTrackerService {
   async importLeads(
     rows: LeadImportRaw[],
     rowNumbers: number[],
-    defaults: LeadImportDefaults,
+    batch: Omit<LeadImportDefaults, 'date'>,
     fileName: string,
     adminName: string
   ): Promise<{ leads: SalesLead[]; invalid: { row: number; reason: string }[] }> {
@@ -168,6 +168,8 @@ export class SalesTrackerService {
     const invalid: { row: number; reason: string }[] = [];
     const author = adminName || 'Admin';
     const stamp = Date.now();
+    // A row with no Date gets the upload day on the Indian clock (the server's, not the browser's).
+    const defaults: LeadImportDefaults = { ...batch, date: new Date(stamp + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10) };
     for (let i = 0; i < rows.length; i++) {
       const row = rowNumbers[i] || i + 2;
       const { fields, error } = parseLeadImportRow(rows[i], defaults);
