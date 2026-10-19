@@ -274,7 +274,7 @@ function ItTicketsPageInner({ title = 'IT Support', subtitle }: Omit<ItTicketsPa
         />
 
         {canReport && showReports && (
-          <TicketReports tickets={tickets} loaded={loaded} filterSummary={filterSummary} />
+          <TicketReports tickets={tickets} loaded={loaded} filterSummary={filterSummary} onOpenTicket={openTicket} suspended={!!activeTicket} />
         )}
 
         {view === 'board' ? (

@@ -23,7 +23,7 @@ export interface ReportBreakdown {
 }
 
 export interface ReportKpi {
-  id: string;
+  id: KpiId;
   label: string;
   value: number;
   hint?: string;
@@ -202,6 +202,103 @@ export function buildTicketReport(tickets: ItTicket[], now: Date = new Date()): 
   ];
 
   return { total, kpis, breakdowns, workload };
+}
+
+export type KpiId = 'total' | 'open' | 'blocked' | 'overdue' | 'unassigned' | 'done' | 'employee' | 'age' | 'resolve';
+
+export interface KpiDrillRow {
+  ticket: ItTicket;
+  /** Days open (age), days to resolve (resolve), or days past due (overdue); null elsewhere. */
+  days: number | null;
+}
+
+export interface KpiDrillDown {
+  /** One line telling the reader what the list contains. */
+  description: string;
+  /** Header of the per-KPI measure column, e.g. "Age". Null when the KPI has none. */
+  measureLabel: string | null;
+  rows: KpiDrillRow[];
+}
+
+/**
+ * The tickets behind one KPI tile — same predicates as buildTicketReport, so the list length always
+ * equals the number on the tile (for the two "days" tiles, the list is the tickets the average was
+ * taken over). Rows come back pre-sorted with the most actionable ticket first.
+ */
+export function kpiDrillDown(id: KpiId, tickets: ItTicket[], now: Date = new Date()): KpiDrillDown {
+  const today = todayIso();
+  const plain = (list: ItTicket[]): KpiDrillRow[] => list.map((ticket) => ({ ticket, days: null }));
+  const newestFirst = (a: KpiDrillRow, b: KpiDrillRow) => b.ticket.createdAt.localeCompare(a.ticket.createdAt);
+  const byDaysDesc = (a: KpiDrillRow, b: KpiDrillRow) => (b.days ?? -1) - (a.days ?? -1);
+
+  switch (id) {
+    case 'total':
+      return { description: 'Every ticket matching the current filters.', measureLabel: null, rows: plain(tickets).sort(newestFirst) };
+    case 'open':
+      return {
+        description: 'Tickets still in To Do, In Progress or Blocked — oldest first.',
+        measureLabel: 'Age',
+        rows: tickets.filter((t) => !isDone(t))
+          .map((ticket) => ({ ticket, days: daysBetween(parseDbDate(ticket.createdAt), now) }))
+          .sort(byDaysDesc),
+      };
+    case 'blocked':
+      return {
+        description: 'Tickets in Blocked — they need an Admin to move them on.',
+        measureLabel: 'Age',
+        rows: tickets.filter((t) => t.status === 'blocked')
+          .map((ticket) => ({ ticket, days: daysBetween(parseDbDate(ticket.createdAt), now) }))
+          .sort(byDaysDesc),
+      };
+    case 'overdue':
+      return {
+        description: 'Open tickets whose due date has passed — most overdue first.',
+        measureLabel: 'Days late',
+        rows: tickets.filter((t) => dueHealth(t, today) === 'overdue')
+          .map((ticket) => ({ ticket, days: daysBetween(parseDbDate(ticket.dueDate?.slice(0, 10)), parseDbDate(today)) }))
+          .sort(byDaysDesc),
+      };
+    case 'unassigned':
+      return {
+        description: 'Open tickets nobody has picked up yet — oldest first.',
+        measureLabel: 'Age',
+        rows: tickets.filter((t) => !isDone(t) && t.assigneeId == null)
+          .map((ticket) => ({ ticket, days: daysBetween(parseDbDate(ticket.createdAt), now) }))
+          .sort(byDaysDesc),
+      };
+    case 'done':
+      return {
+        description: 'Tickets marked Resolved or Closed — slowest to resolve first.',
+        measureLabel: 'Resolved in',
+        rows: tickets.filter(isDone)
+          .map((ticket) => ({ ticket, days: daysBetween(parseDbDate(ticket.createdAt), parseDbDate(ticket.resolvedAt)) }))
+          .sort(byDaysDesc),
+      };
+    case 'employee':
+      return {
+        description: 'Tickets raised from the employee portal.',
+        measureLabel: null,
+        rows: plain(tickets.filter((t) => t.reporterRole === 'employee')).sort(newestFirst),
+      };
+    case 'age':
+      return {
+        description: 'The open tickets this average is taken over — oldest first.',
+        measureLabel: 'Age',
+        rows: tickets.filter((t) => !isDone(t))
+          .map((ticket) => ({ ticket, days: daysBetween(parseDbDate(ticket.createdAt), now) }))
+          .filter((r) => r.days !== null)
+          .sort(byDaysDesc),
+      };
+    case 'resolve':
+      return {
+        description: 'The resolved/closed tickets this average is taken over — slowest first.',
+        measureLabel: 'Resolved in',
+        rows: tickets.filter((t) => isDone(t) && t.resolvedAt)
+          .map((ticket) => ({ ticket, days: daysBetween(parseDbDate(ticket.createdAt), parseDbDate(ticket.resolvedAt)) }))
+          .filter((r) => r.days !== null)
+          .sort(byDaysDesc),
+      };
+  }
 }
 
 /** Plain-language description of the active filters, e.g. "Status: Blocked · Search "vpn"". */

@@ -4,6 +4,7 @@
  */
 
 import type { AggRow, FundingKpis, InvestorRow, SectorTrend, SizeBandRow, StageSectorMatrix, TimeBucket } from '../domain/types';
+import { formatBandRange } from './format';
 
 /** Bucket sizes: the pinned card uses week/month/year; Market Analysis also uses quarter. */
 export type Granularity = 'week' | 'month' | 'quarter' | 'year';
@@ -83,7 +84,7 @@ export function stageSectorMatrix(rows: AggDeal[], topStages = 8, topSectors = 8
 
 /** Deals per round-size band (all five bands, in size order; undisclosed amounts are left out). */
 export function sizeBandAgg(rows: { amount: number | null }[]): SizeBandRow[] {
-  const out: SizeBandRow[] = ROUND_BANDS.map((b) => ({ key: b.key, label: b.label, range: b.range, total: 0, count: 0 }));
+  const out: SizeBandRow[] = ROUND_BANDS.map((b) => ({ key: b.key, label: b.label, range: formatBandRange(b.min, b.max), total: 0, count: 0 }));
   for (const r of rows) {
     const band = bandFor(r.amount);
     if (!band) continue;
@@ -182,13 +183,14 @@ export function computeKpis(rows: AggDeal[]): FundingKpis {
   };
 }
 
-/** Round-size bands by actual $ amount (Dealroom-style), as in the preview's Market Analysis. */
+/** Round-size bands by actual $ amount (Dealroom-style), as in the preview's Market Analysis.
+ * Bounds are USD Mn; the "$15–100M" / "$1.5–10 Cr" label comes from `formatBandRange`. */
 export const ROUND_BANDS = [
-  { key: 'startup', label: 'Startup capital', range: '$0–15M', min: 0, max: 15 },
-  { key: 'breakout', label: 'Breakout capital', range: '$15–100M', min: 15, max: 100 },
-  { key: 'scaleup', label: 'Scaleup capital', range: '$100–250M', min: 100, max: 250 },
-  { key: 'mega', label: 'Mega capital', range: '$250M–1B', min: 250, max: 1000 },
-  { key: 'giga', label: 'Giga capital', range: '$1B+', min: 1000, max: Infinity },
+  { key: 'startup', label: 'Startup capital', min: 0, max: 15 },
+  { key: 'breakout', label: 'Breakout capital', min: 15, max: 100 },
+  { key: 'scaleup', label: 'Scaleup capital', min: 100, max: 250 },
+  { key: 'mega', label: 'Mega capital', min: 250, max: 1000 },
+  { key: 'giga', label: 'Giga capital', min: 1000, max: Infinity },
 ] as const;
 
 export type RoundBand = (typeof ROUND_BANDS)[number];

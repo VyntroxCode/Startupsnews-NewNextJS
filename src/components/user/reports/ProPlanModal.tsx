@@ -15,8 +15,8 @@ const PERKS = [
   'Get each new report as soon as it is published',
 ];
 
-/** "Pro Plan Needed" dialog on /dashboard/reports: shown on a locked page and when a locked
- * report card is clicked. There is no plan to buy yet, so the upgrade button only says so. */
+/** "Pro Plan Needed" dialog on /dashboard/reports: shown when a locked report card is clicked
+ * (never while REPORTS_LOCK_ENABLED is off). There is no plan to buy yet, so the upgrade button only says so. */
 export default function ProPlanModal({ freePages, onClose }: ProPlanModalProps) {
   const [asked, setAsked] = useState(false);
 

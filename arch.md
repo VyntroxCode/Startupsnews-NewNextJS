@@ -1465,7 +1465,12 @@ role `'employee'` carry an "Employee" tag.
 **Reports + Excel export (admin panel, managers only).** `buildTicketReport(tickets)` in
 `src/components/admin/it-tickets/reports.ts` is the single source of the numbers: 9 headline KPIs, six
 breakdowns (status, priority, issue type, assignee by (id, role) — top 8 + Others + Unassigned — where it
-was raised, due-date health) and an assignee × status workload matrix. It feeds both the on-page
+was raised, due-date health) and an assignee × status workload matrix. KPI tiles are buttons: each opens
+`KpiDrillDownModal.tsx`, whose rows come from `kpiDrillDown(id, tickets)` in the same file (same predicates
+as the KPI, so list length = tile value; pre-sorted most actionable first, with a per-KPI "days" measure —
+Age / Days late / Resolved in). The modal is client-only (no fetch), filters by status chip + search, and a
+row calls the page's `openTicket`; while the issue view is open `TicketReports` gets `suspended` and hides the
+drill-down, so closing the ticket returns to the list. `buildTicketReport` feeds both the on-page
 `TicketReports.tsx` panel (plain-SVG donut charts, shown by default, hide state in sessionStorage) and the
 export. `GET /api/admin/it-tickets/export` (`IT_TICKETS_MANAGE_ROLES`; filters parsed by the shared
 `parseTicketFilters` in `_shared/route-helpers.ts`, identical to the list route) returns the filtered tickets
@@ -2113,8 +2118,20 @@ flowchart TB
   only `total` + `account`. `src/modules/pro-plan/domain/plan.ts` still computes price, GST and total
   and is unchanged; no gateway or order API exists yet, so nothing is charged.
 - **Amounts are stored once, in USD millions** (`amount_usd_mn`, NULL = undisclosed), parsed at write
-  time by `parseAmountToUsdMn`; `amount_raw` keeps what was typed. A bare number is read as millions
-  unless it is ≥ 10,000 (then whole dollars). Rupees convert at `INR_PER_USD` (83) — changing it does
+  time by `parseAmountToUsdMn`; `amount_raw` keeps what was typed. A bare number (and a numeric Excel
+  cell) is whole US dollars (`93000000` → 93) since 2026-10-18; the admin form accepts digits only and
+  re-opens older text like "$93 Mn" as its dollar figure. Unit words (Mn/Cr/…) still parse for old rows.
+- **Number system** (since 2026-10-18): `site_settings.funding_number_system` = `indian` | `international`
+  (default). Read via `getFundingNumberSystem()` (service, 30 s in-process cache), saved by
+  `PUT /api/admin/funding-deals/settings` (FUNDING_ROLES). `utils/format.ts` holds a module-level
+  current system: `formatUsdMn` writes `$9.3 Cr`/`$50 L` or `$93 Mn`/`$1.25 Bn`; `formatBandRange`
+  writes band labels (ROUND_BANDS no longer carry a `range` string). Set by
+  `getFundingOverview`/`getMarketView` on the server (outlook sentences, band labels), by
+  `NumberSystemSync` in `app/dashboard/funding/layout.tsx` (async, `connection()`, so per request) for
+  the reader pages, by `FundingDataPage` for the admin, and passed explicitly for the admin dashboard
+  card (`/api/admin/stats` → `fundingNumberSystem`). Admin `DealForm` takes number + unit
+  (`AMOUNT_UNITS`: Crore/Lakh or Billion/Million) and submits the whole-dollar figure as `amountRaw`.
+  Storage (`amount_usd_mn`) and the Excel export's `Amount (USD Mn)` column are unchanged. Rupees convert at `INR_PER_USD` (83) — changing it does
   not re-price stored rows.
 - **Dedupe**: `dedupe_key = date|lower(startup)|lower(stage)` (punctuation-folded), `UNIQUE`. Imports
   use `INSERT IGNORE` (duplicates counted as skipped, never overwritten); manual create/edit return 409.
@@ -2219,7 +2236,15 @@ flowchart TB
   are active; title at most 5 words, sub title at most 15, link and image must be http(s) URLs.
   The image field reuses `ImageUpload` (presigned S3 PUT) and also accepts a pasted URL.
 
-- **Reader Reports Pro plan lock (since 2026-10-10, #421).** `src/modules/reports/domain/lock.ts` is the
+- **Reader Reports Pro plan lock (since 2026-10-10, #421) — DISABLED since 2026-10-17 (#492).**
+  `REPORTS_LOCK_ENABLED = false` in `lock.ts` is the master switch: `GET /api/reports` skips
+  `getReportsFreePages()` and passes `null` (every report `locked: false`, `lock.freePages: null`),
+  `UserManagementPage` filters the Reports tab out (`?section=reports` falls back to Funding), and both
+  `/api/admin/user-management/reports-lock` handlers answer 403 after the role check. The stored
+  `reports_free_pages` row is untouched. The reader page has no pagination any more (one grid of the
+  whole section), so before re-enabling, the lock must be re-thought (it is counted in 12-report pages);
+  the page still greys `locked` cards and opens `ProPlanModal` on their click, but no longer auto-opens
+  it per page. Original design, for reference: `src/modules/reports/domain/lock.ts` is the
   single source: `REPORTS_PAGE_SIZE` 12 (imported by the reader page as its page size), `FreePages`
   (`number | null`; `null` = no lock, `0` = locked from page 1), `DEFAULT_FREE_PAGES` 2,
   `MAX_LOCK_START_PAGE` 10, `parseFreePages`, `validateFreePages`, `applyReportsLock`. The value lives in
@@ -2235,7 +2260,7 @@ flowchart TB
   (`grayscale(1)`, opacity 0.55, "Pro" chip) and its click opens `components/user/reports/ProPlanModal.tsx`
   instead of the preview; the modal also shows by itself when every card on the current page is locked
   and there is no search text, until dismissed for that `section:page` key (derived state, no effect).
-  `ReportsPagination` takes `lockedFromPage` and puts a lock icon on those page numbers. The lock applies
+  `ReportsPagination` (deleted in #492) took `lockedFromPage` and put a lock icon on those page numbers. The lock applies
   to every reader: there is no Pro flag on a user yet, and "Upgrade to Pro" only shows a "Coming soon" line.
   **Invariants:** the page size used to page the grid and the one used by `applyReportsLock` must be the
   same constant, and the page's sort order must stay the API's order, or the grey cards stop lining up
@@ -2312,7 +2337,7 @@ created, inside `after()` from `next/server` so it runs once the response is sen
 |---|---|---|
 | Page | Next ISR (`revalidate = 60` on hot pages) | Build writes into `NEXT_BUILD_DIR`, swapped atomically by `deploy.sh` so ISR writes can't clobber a half-swapped build |
 | Data | Redis via `getCache`/`setCache` | Fails soft to no-cache |
-| Proxy | In-process `Map` in `proxy.ts`, 1h TTL + in-flight de-dupe | Robots/410 status per post slug |
+| Proxy | In-process `Map` in `proxy.ts`, 1h TTL for 200s, 30s TTL for 410s (a scheduled/draft post must not stay "Gone" after it goes live — nothing purges this map), + in-flight de-dupe | Robots/410 status per post slug |
 | Images | CloudFront + `next/image` (`qualities: [60, 90]`) | 90 = hero/LCP, 60 = carousel thumbs |
 
 ### 7.3 Background work
@@ -3340,3 +3365,14 @@ Every change to this system appends a row here. `Impact` drives what else gets u
 | 489 | 2026-10-16 | medium | Sales Tracker import: all columns optional, Date falls back to upload day (`src/modules/sales-tracker/utils/import-columns.ts`, `src/modules/sales-tracker/service/sales-tracker.service.ts`, `src/components/admin/sales-tracker/BulkImportModal.tsx`) | `required` flag + `LEAD_IMPORT_REQUIRED` removed; file-level missing-column refusal removed; row error only when name, contact and email are all blank; `LeadImportDefaults` gains `date`; `importLeads` takes `Omit<LeadImportDefaults,'date'>` and sets date to the IST day (client value not trusted); preview gains Date column; template guide drops 'Required?' | v208 |
 | 490 | 2026-10-16 | minor | Sales Tracker import: a row with only a Company is imported (`src/modules/sales-tracker/utils/import-columns.ts`, `src/components/admin/sales-tracker/BulkImportModal.tsx`) | `company` added to `LEAD_IMPORT_IDENTITY`; skip message, window hint and template guide now say Name, Company, Phone or Email | — |
 | 491 | 2026-10-16 | minor | Navbar EVENTS animation removed (§7.5, §9 #5; `src/lib/config.ts`, `src/components/Header.tsx`; deleted `src/components/NavEventsCta.tsx`, `src/components/nav-events-cta-tailwind.css`) | `cta: true` dropped from the EVENTS menu item and the `"cta" in item` branch + import removed from Header, so Events renders like every other menu link; the `nv:`-prefixed sheet no longer exists | — |
+| 492 | 2026-10-17 | medium | Reader Reports: pagination + marquee removed, Pro plan lock disabled (§6.14 lock note; `src/app/dashboard/reports/page.tsx`, `src/modules/reports/domain/lock.ts`, `src/app/api/reports/route.ts`, `src/app/api/admin/user-management/reports-lock/route.ts`, `src/components/admin/user-management/UserManagementPage.tsx`, `src/components/user/reports/ProPlanModal.tsx` comment; **deleted** `src/components/user/reports/ReportsPagination.tsx`, `ReportsMarquee.tsx`) | Reverts #420 and #422 on the reader side: `page`/`PAGE_SIZE`/`goToPage`/`gridTopRef`, the marquee split and the per-page auto Pro modal (`proDismissed`, `pageKey`) removed; `filtered` renders straight into the 4-column grid inside `RevealCard` (scroll-in animation, hover lift and `ReportLoader` kept). All cards mount at once; thumbnails rely on next/image lazy loading. New `REPORTS_LOCK_ENABLED = false` turns the #421 lock off: API returns no locks, admin tab hidden, admin API 403. tsc clean; eslint on the page unchanged at the same 3 pre-existing errors. Not built. | v209 |
+| 493 | 2026-10-17 | medium | Admin — IT Support Reports: clickable KPI tiles (§6.8 reports note; new `src/components/admin/it-tickets/KpiDrillDownModal.tsx`; edited `reports.ts`, `TicketReports.tsx`, `ItTicketsPage.tsx`) | `ReportKpi.id` typed as new `KpiId`; new `kpiDrillDown(id, tickets)` returns `{description, measureLabel, rows[{ticket, days}]}` using the same predicates as `buildTicketReport` (overdue days from the date part of `dueDate`). Tiles are `<button>`s (hover lift, ↗ icon, focus ring, disabled until loaded) opening an xl `Modal`: header with count + description + filter summary, status chips (when >1 status) + search, table (type, key, summary + reporter/Employee tag, assignee, priority, read-only status, measure or Created, due, →), empty states, footer count. Row click/Enter → `openTicket`; `suspended={!!activeTicket}` hides the drill-down while the issue view is open. No API change. tsc + eslint clean; not built. | v210 |
+| 494 | 2026-10-17 | minor | Documentation — repo split plan (new `docs/repo-split-prompt.md`) | Agent prompt describing a proposed split into `snfyi-backend` / `snfyi-web` / `snfyi-dashboard` / `snfyi-admin` + `@snfyi/shared`. **Planning only — the running system is unchanged**; §1–§8 still describe the monolith. If the split is carried out it is a major change and must rewrite §1–§3, §5, §7.1, §7.2, §8 | — |
+| 495 | 2026-10-17 | minor | Documentation — repo split plan (`docs/repo-split-prompt.md`) | Shared package removed from the plan: frontends hold copied types/pure utils in `src/lib/from-backend/` and their own `src/lib/api-client.ts`; backend is the source of truth. Planning only — running system unchanged | — |
+| 496 | 2026-10-17 | minor | Documentation — repo split plan (`docs/repo-split-prompt.md`) | Plan rewritten: single domain with nginx path routing (not subdomains), Hono backend with a Next-compat shim, exact per-app list of server-code imports, revalidate over loopback `/_internal/revalidate`, cross-app full-page links, `sw.js` scope, SSE/nginx buffering. Planning only — running system unchanged | — |
+| 497 | 2026-10-17 | minor | Documentation — repo split plan (`docs/repo-split-prompt.md`) | Plan now moves `zox_db` to Amazon RDS for MariaDB 10.11 (prod + separate dev), SQL unchanged, TLS via planned `DB_SSL_CA`, D1 stays only for the sign-up copy. Planning only — running system unchanged (still the local `zox-mariadb` container) | — |
+| 498 | 2026-10-17 | minor | Documentation — repo split plan (`docs/repo-split-prompt.md`) | Backend framework in the plan changed from Hono to Express 5, with a Request/Response adapter so the 246 Next handler bodies port unchanged. Planning only — running system unchanged | — |
+| 499 | 2026-10-17 | minor | Proxy — post 410 cache (`src/proxy.ts`) | `getPostMeta()` now caches a 410 answer for 30 s (`ROBOTS_GONE_TTL_MS`) instead of 1 h; 200s keep 1 h. Fixes just-published scheduled posts showing "410 Gone" for up to an hour when the URL was opened while still scheduled (the in-process map isn't purged on publish; Cloudflare is). Post scheduler cron stays `*/5`. §7 cache table updated | — |
+| 500 | 2026-10-18 | minor | Funding Data — round size entry (`utils/parse-amount.ts`, `DealForm.tsx`, `columns.ts`) | Round size is now entered as a plain USD figure: bare numbers and numeric Excel cells are whole dollars (was: millions below 10,000); admin input strips non-digits, label "Round size (USD)", template example `93000000`. Unit text still parses for older rows | — |
+| 501 | 2026-10-18 | minor | Funding Data — round size entry (`DealForm.tsx`) | Indian / International toggle next to "Round size (USD)": groups the typed digits as 9,30,00,000 or 93,000,000 and shows words (9.3 crore / 93 million). Display only — `amountRaw` stays plain digits, so saving/parsing is unchanged. Choice kept per browser in `localStorage` (`fd-number-system`, default International) | — |
+| 502 | 2026-10-18 | medium | Funding Data — number system (`utils/format.ts`, service, `api/admin/funding-deals/settings`, `dashboard/funding/layout.tsx`, `DealForm.tsx`, `FundingDataPage.tsx`) | Admin-saved Indian (Lakh/Crore) vs International (Million/Billion) setting in `site_settings`; all admin + reader Funding amounts, band labels, chart ticks and outlook text follow it; round size entered as number + unit. Replaces #501's per-browser comma toggle. Reader funding layout is now dynamic per request | v211 |

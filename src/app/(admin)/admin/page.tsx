@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Calendar, CircleAlert, DollarSign, FileText, LayoutDashboard, Tags, Ticket, TrendingUp, Upload, Users } from 'lucide-react';
-import { formatUsdMn } from '@/modules/funding-deals/utils/format';
+import { formatUsdMn, type NumberSystem } from '@/modules/funding-deals/utils/format';
 import { getAdminUser, getAuthHeaders, withAdminToken } from '@/lib/admin-auth';
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary';
 import AttendanceWidget from '@/components/admin/AttendanceWidget';
@@ -28,6 +28,8 @@ interface DashboardStats {
   /** USD millions across disclosed deals. */
   fundingCapital: number;
   fundingLastUploadAt: string | null;
+  /** Admin's Funding Data choice: Lakh/Crore or Million/Billion. */
+  fundingNumberSystem?: NumberSystem;
 }
 
 export default function AdminDashboard() {
@@ -247,7 +249,7 @@ export default function AdminDashboard() {
         },
         {
           title: 'Capital Tracked',
-          value: formatUsdMn(stats?.fundingCapital || 0),
+          value: formatUsdMn(stats?.fundingCapital || 0, stats?.fundingNumberSystem),
           href: '/admin/funding-data?tab=records',
           gradient: 'linear-gradient(135deg, #D98E2B 0%, #B5711A 100%)',
           icon: DollarSign,

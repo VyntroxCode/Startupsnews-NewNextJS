@@ -116,7 +116,7 @@
   screen looks like, and how the pieces fit together underneath. Written so a new joiner, a designer or
   a stakeholder can read it end-to-end without opening the code.</p>
   <div class="badges">
-    <span class="badge v">Version v208</span>
+    <span class="badge v">Version v211</span>
     <span class="badge">Released 2026-10-16</span>
     <span class="badge live">Dev: dev.startupgpt.fyi</span>
     <span class="badge">Repo: zox-nextjs</span>
@@ -989,6 +989,9 @@ flowchart LR
       <tr><td><strong>v206</strong></td><td>2026-10-16</td><td>Major</td><td>SNFYI-0030 is a regular employee again; its extra content rights (Title Sections, bulk post status) go to <strong>Publisher Admin</strong>. The IT page is called <strong>IT Support</strong> in every panel.</td></tr>
       <tr><td><strong>v207</strong></td><td>2026-10-16</td><td>Medium</td><td>Every employee gets a <strong>Dashboard</strong> (mark today's attendance + attendance, leave and leads numbers). The admin panel for Event Admin and Publisher Admin now <strong>works on phones</strong>: menu drawer, bottom tab bar, and pages that fit the screen.</td></tr>
       <tr><td><strong>v208</strong></td><td>2026-10-16</td><td>Medium</td><td>Sales Tracker <strong>Import leads</strong>: no column is required any more (a row just needs a Name, Phone or Email). A blank Date takes the day the sheet is uploaded; a Date in the sheet is kept.</td></tr>
+      <tr><td><strong>v209</strong></td><td>2026-10-17</td><td>Medium</td><td>Reader <strong>Reports</strong> page: page numbers and the sliding last row removed, every report of a section now shows in one grid. The <strong>Pro plan lock</strong> is switched off: nothing is greyed or locked, and its setting is hidden from Admin › User Management.</td></tr>
+      <tr><td><strong>v210</strong></td><td>2026-10-17</td><td>Medium</td><td>Admin › <strong>IT Support</strong> › Reports: every number tile can now be clicked. It opens a list of exactly the tickets behind that number, which can be searched, narrowed by status and opened.</td></tr>
+      <tr><td><strong>v211</strong></td><td>2026-10-18</td><td>Medium</td><td>Admin › <strong>Funding Data</strong>: new <strong>Number system</strong> switch — Indian (Lakh / Crore) or International (Million / Billion). Round size is typed as a number plus a unit, and every amount on the admin and member Funding pages follows the choice.</td></tr>
       <tr><td><strong>v197</strong></td><td>2026-10-14</td><td>Medium</td><td>Homepage: <strong>Trending</strong> now shows the 5 newest articles, and <strong>Latest News</strong> continues with the next 9, so the two sections never show the same story.</td></tr>
       <tr><td><strong>v196</strong></td><td>2026-10-14</td><td>Medium</td><td>Homepage, <strong>Latest News</strong> (desktop): the three rotating cards now follow article numbers, newest first, <strong>3 stories per card</strong>. The big card shows the 1st–3rd newest, small card 1 the 4th–6th, small card 2 the 7th–9th. Stories no longer come from each card's category.</td></tr>
       <tr><td><strong>v195</strong></td><td>2026-10-14</td><td>Medium</td><td>Member dashboard, <strong>Pro Plan page</strong>: calmer colours (white and grey with one deep indigo, pink kept only for the tiny "Pro" label) and the <strong>GST line removed</strong> from Payment Details. The page now shows just the plan and the Total Payable, which is unchanged.</td></tr>
@@ -4707,6 +4710,98 @@ PHONE                                   +--------------------+
       </div>
     </div>
     <p><strong>Data flow.</strong> When a Publisher Admin opens the Posts page, the panel checks their role and shows all four tabs. Saving an industry or an author goes to the same place as the main admin's changes; the server now accepts it from a Publisher Admin as well. Nothing in the database had to change.</p>
+  </div>
+</section>
+
+<section id="v211">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v211</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-18</span>
+    </div>
+    <p><strong>What changed.</strong> The Funding Data admin page has a new <strong>Number system</strong> switch at the top. The admin picks once, and the choice is saved for everyone. It decides how money is written on the admin Funding Data page and on the members' Funding pages (dashboard, market analysis, search, all deals, charts). All amounts are still in US dollars; only the way they are written changes.</p>
+    <table>
+      <thead><tr><th>Setting</th><th>Admin types round size as</th><th>Amounts are shown as</th><th>Round-size groups</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Indian</strong></td><td>9.3 + <em>Crore</em>, or 50 + <em>Lakh</em></td><td>$9.3 Cr · $50 L · $1,200 Cr</td><td>$0–1.5 Cr, $1.5–10 Cr, $10–25 Cr, $25–100 Cr, $100 Cr+</td></tr>
+        <tr><td><strong>International</strong> (default)</td><td>93 + <em>Million</em>, or 1.2 + <em>Billion</em></td><td>$93 Mn · $500K · $1.25 Bn</td><td>$0–15M, $15–100M, $100–250M, $250M–1B, $1B+</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">startupnews.fyi/admin/funding-data</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>Funding Data</strong> · 1,240 deals</div><div class="wf-box">Number system: [ <strong>Indian</strong> Lakh / Crore ] [ International Million / Billion ]</div></div>
+        <div class="wf-row"><div class="wf-box">Round size (USD): [ 9.3 ] [ Crore ▾ ] — Saved as $9.3 Cr</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> The choice is stored once in the site settings. Every deal is still saved as the same dollar amount, so switching back and forth never changes the data. When a page opens, the server reads the setting and the page writes every amount, chart label and outlook sentence in that style. The Excel upload is unchanged: a plain number in the Round Size column is the full dollar figure.</p>
+  </div>
+</section>
+
+<section id="v210">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v210</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-17</span>
+    </div>
+    <p><strong>What changed.</strong> In the admin panel's IT Support page, the Reports numbers (Total tickets, Still open, Blocked, Overdue and so on) used to be just numbers. Now each one is a button. Clicking it opens a window listing the exact tickets that make up that number.</p>
+    <table>
+      <thead><tr><th>Tile</th><th>What the list shows</th><th>Extra column</th></tr></thead>
+      <tbody>
+        <tr><td>Total tickets</td><td>Every ticket matching the page filters, newest first</td><td>Created</td></tr>
+        <tr><td>Still open</td><td>To Do, In Progress and Blocked tickets, oldest first</td><td>Age</td></tr>
+        <tr><td>Blocked</td><td>Tickets stuck in Blocked</td><td>Age</td></tr>
+        <tr><td>Overdue</td><td>Open tickets past their due date, most late first</td><td>Days late (red)</td></tr>
+        <tr><td>Unassigned &amp; open</td><td>Open tickets nobody has picked up</td><td>Age</td></tr>
+        <tr><td>Resolved / closed</td><td>Finished tickets, slowest first</td><td>Resolved in</td></tr>
+        <tr><td>From employees</td><td>Tickets raised from the employee portal</td><td>Created</td></tr>
+        <tr><td>Avg age of open tickets</td><td>The open tickets the average was worked out from</td><td>Age</td></tr>
+        <tr><td>Avg time to resolve</td><td>The finished tickets the average was worked out from</td><td>Resolved in</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">IT Support — clicking "Overdue"</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>2</strong> Overdue · open tickets whose due date has passed</div><div class="wf-box">×</div></div>
+        <div class="wf-row"><div class="wf-box">All 2 · To Do 1 · In Progress 1</div><div class="wf-box">Search key, title or person</div></div>
+        <div class="wf-row"><div class="wf-box">IT-14 · VPN not connecting · Aditya · High · To Do · 5 days late →</div></div>
+        <div class="wf-row"><div class="wf-box">IT-9 · Laptop charger · Unassigned · Medium · In Progress · 2 days late →</div></div>
+        <div class="wf-row"><div class="wf-box">Showing 2 of 2 · Click a row to open the ticket</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> Nothing new is fetched. The list is built in the browser from the tickets already loaded on the page, using the same rules that produce the number, so the list and the number always match. Clicking a row opens the normal ticket window; closing it brings the list back.</p>
+  </div>
+</section>
+
+<section id="v209">
+  <div class="ver">
+    <div class="ver-head">
+      <span class="n">v209</span>
+      <span class="pill medium">Medium</span>
+      <span class="d">2026-10-17</span>
+    </div>
+    <p><strong>What changed.</strong> The Reports page in the reader dashboard is simpler. All reports of a section sit in one grid you scroll through, and every report can be opened.</p>
+    <table>
+      <thead><tr><th>Part</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>Page numbers</td><td>12 reports per page, with Previous / Next and page numbers at the bottom</td><td>Gone. Every report of the section is on one page</td></tr>
+        <tr><td>Sliding last row</td><td>On a computer, the last row of each page slid right to left</td><td>Gone. That row is a normal row of the grid</td></tr>
+        <tr><td>Card animations</td><td>Cards fly in as you scroll, lift on hover; spinner while a report opens</td><td>Kept as they were</td></tr>
+        <tr><td>Pro plan lock</td><td>Older reports greyed out with a "Pro" tag and a "Pro Plan Needed" message</td><td>Switched off. Nothing is greyed, every report opens</td></tr>
+        <tr><td>Admin › User Management</td><td>Two tabs: Funding and Reports (where the lock was set)</td><td>Only Funding. The Reports tab is hidden; its saved choice is kept for later</td></tr>
+      </tbody>
+    </table>
+    <div class="wf">
+      <div class="wf-bar">Reports — one section</div>
+      <div class="wf-body">
+        <div class="wf-row"><div class="wf-box"><strong>Section title</strong> · n reports</div><div class="wf-box">Search by name or month</div></div>
+        <div class="wf-row"><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div></div>
+        <div class="wf-row"><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">Report</div><div class="wf-box">… keeps going, no page numbers</div></div>
+      </div>
+    </div>
+    <p><strong>Data flow.</strong> The page still asks the server for the list once. The server now marks every report as open, so the browser just shows them all and opens any one that is clicked.</p>
   </div>
 </section>
 

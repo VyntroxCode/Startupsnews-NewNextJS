@@ -50,7 +50,7 @@ export function computeForecast(rows: AggDeal[]): FundingForecast {
     result.forecastLabels.push(next.label);
     result.forecastValues.push(round1(Math.max(0, slope * (monthly.length - 1 + i) + intercept)));
   }
-  result.method = `Straight-line trend fitted across ${monthly.length} months of the filtered data (slope ${slope >= 0 ? '+' : ''}${slope.toFixed(1)} $Mn/month), projected 12 months ahead.`;
+  result.method = `Straight-line trend fitted across ${monthly.length} months of the filtered data (slope ${slope >= 0 ? '+' : '−'}${formatUsdMn(Math.abs(slope))}/month), projected 12 months ahead.`;
   return result;
 }
 

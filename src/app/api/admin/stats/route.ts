@@ -10,7 +10,7 @@ import { PanelAdminsRepository } from '@/modules/panel-admins/repository/panel-a
 import { PartnershipEventsRepository } from '@/modules/partnership-events/repository/partnership-events.repository';
 import { entityToPartnershipEvent, countActivePartnershipEvents } from '@/modules/partnership-events/utils/partnership-events.utils';
 import { ItTicketsRepository } from '@/modules/it-tickets/repository/it-tickets.repository';
-import { getFundingSummary } from '@/modules/funding-deals/service/funding-deals.service';
+import { getFundingNumberSystem, getFundingSummary } from '@/modules/funding-deals/service/funding-deals.service';
 
 export const maxDuration = 30;
 
@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
       partnershipEventEntities,
       itTicketsOpen,
       funding,
+      fundingNumberSystem,
     ] = await Promise.all([
       postsRepository.count({}),
       eventsRepository.count({}),
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest) {
         console.error('[admin/stats] funding summary unavailable:', err instanceof Error ? err.message : err);
         return { deals: 0, capital: 0, lastUploadAt: null };
       }),
+      getFundingNumberSystem(),
     ]);
 
     const realUsers = allUsers.filter((u) => !u.email.toLowerCase().endsWith(SYNTHETIC_AUTHOR_EMAIL_SUFFIX));
@@ -94,6 +96,7 @@ export async function GET(request: NextRequest) {
         fundingDeals: funding.deals,
         fundingCapital: funding.capital,
         fundingLastUploadAt: funding.lastUploadAt,
+        fundingNumberSystem,
       },
     });
   } catch (error) {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import type { FundingDealInput } from '@/modules/funding-deals/domain/types';
 import { parseAmountToUsdMn } from '@/modules/funding-deals/utils/parse-amount';
-import { formatUsdMn } from '@/modules/funding-deals/utils/format';
+import { AMOUNT_UNITS, formatUsdMn, getNumberSystem, type NumberSystem } from '@/modules/funding-deals/utils/format';
 import { btnPrimary, btnSecondary, inputCls, labelCls } from './ui';
 
 export const EMPTY_DEAL: Required<FundingDealInput> = {
@@ -24,6 +24,16 @@ export const EMPTY_DEAL: Required<FundingDealInput> = {
 const STAGE_SUGGESTIONS = ['Pre-Seed', 'Seed', 'Pre-Series A', 'Series A', 'Series B', 'Series C', 'Series D', 'Series E+', 'Growth', 'Debt', 'Bridge', 'Undisclosed'];
 const MODEL_SUGGESTIONS = ['B2B', 'B2C', 'B2B2C', 'D2C', 'Marketplace'];
 
+/** Stored whole-dollar figure → number + unit in the saved number system (93000000 → 9.3 Crore / 93 Million). */
+function splitAmount(amountRaw: string, system: NumberSystem): { num: string; unit: string } {
+  const units = AMOUNT_UNITS[system];
+  const usdMn = amountRaw ? parseAmountToUsdMn(amountRaw) : null;
+  if (usdMn === null) return { num: '', unit: units[0].key };
+  const dollars = usdMn * 1e6;
+  const unit = units.find((u) => dollars >= u.dollars) ?? units[units.length - 1];
+  return { num: String(Number((dollars / unit.dollars).toFixed(4))), unit: unit.key };
+}
+
 interface DealFormProps {
   initial?: Required<FundingDealInput>;
   submitLabel: string;
@@ -38,11 +48,16 @@ export default function DealForm({ initial = EMPTY_DEAL, submitLabel, onSubmit, 
   const [values, setValues] = useState<Required<FundingDealInput>>(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Round size is typed as a number + unit (Lakh/Crore or Million/Billion, per the saved number
+  // system) and sent as the whole-dollar figure, which the server reads as US dollars.
+  const system = getNumberSystem();
+  const units = AMOUNT_UNITS[system];
+  const [amount, setAmount] = useState(() => splitAmount(initial.amountRaw, system));
+  const unitDollars = (units.find((u) => u.key === amount.unit) ?? units[0]).dollars;
+  const amountDollars = amount.num ? Math.round(Number(amount.num) * unitDollars) : 0;
 
   const set = (key: keyof FundingDealInput) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setValues((v) => ({ ...v, [key]: e.target.value }));
-
-  const parsed = values.amountRaw ? parseAmountToUsdMn(values.amountRaw) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,10 +67,13 @@ export default function DealForm({ initial = EMPTY_DEAL, submitLabel, onSubmit, 
     }
     setSaving(true);
     setError(null);
-    const err = await onSubmit(values);
+    const err = await onSubmit({ ...values, amountRaw: amountDollars > 0 ? String(amountDollars) : '' });
     setSaving(false);
     if (err) setError(err);
-    else if (resetOnSuccess) setValues({ ...EMPTY_DEAL, country: values.country });
+    else if (resetOnSuccess) {
+      setValues({ ...EMPTY_DEAL, country: values.country });
+      setAmount((a) => ({ ...a, num: '' }));
+    }
   };
 
   return (
@@ -84,10 +102,33 @@ export default function DealForm({ initial = EMPTY_DEAL, submitLabel, onSubmit, 
           <datalist id="fd-stage-list">{STAGE_SUGGESTIONS.map((s) => <option key={s} value={s} />)}</datalist>
         </div>
         <div>
-          <label className={labelCls} htmlFor="fd-amount">Round size</label>
-          <input id="fd-amount" type="text" maxLength={100} placeholder="e.g. $93 Mn, ₹50 Cr, Undisclosed" className={inputCls} value={values.amountRaw} onChange={set('amountRaw')} />
+          <label className={labelCls} htmlFor="fd-amount">Round size (USD)</label>
+          <div className="flex gap-2">
+            <input
+              id="fd-amount"
+              type="text"
+              inputMode="decimal"
+              maxLength={12}
+              placeholder={system === 'indian' ? 'e.g. 9.3' : 'e.g. 93'}
+              className={inputCls}
+              value={amount.num}
+              onChange={(e) => {
+                // Digits and one decimal point only.
+                const [whole, ...rest] = e.target.value.replace(/[^\d.]/g, '').split('.');
+                setAmount((a) => ({ ...a, num: rest.length ? `${whole}.${rest.join('')}` : whole }));
+              }}
+            />
+            <select
+              aria-label="Round size unit"
+              className={`${inputCls} !w-auto shrink-0`}
+              value={amount.unit}
+              onChange={(e) => setAmount((a) => ({ ...a, unit: e.target.value }))}
+            >
+              {units.map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
+            </select>
+          </div>
           <p className="m-0 mt-1 text-[11px] text-slate-500">
-            {values.amountRaw ? (parsed === null ? 'Saved as undisclosed' : `Saved as ${formatUsdMn(parsed)}`) : 'Leave blank if undisclosed'}
+            {amountDollars > 0 ? `Saved as ${formatUsdMn(amountDollars / 1e6)}` : 'Leave blank if undisclosed'}
           </p>
         </div>
         <div>

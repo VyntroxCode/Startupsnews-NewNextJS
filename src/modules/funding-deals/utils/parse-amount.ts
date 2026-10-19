@@ -3,16 +3,13 @@
  * is stored in one unit. Returns null for "Undisclosed", blanks and anything without a number.
  *
  *   "$93 Mn" → 93      "$1.2bn" → 1200     "$500K" → 0.5     "USD 12 million" → 12
- *   "₹50 Cr" → 6.024   "INR 80 Lakh" → 0.096 (at INR_PER_USD)  "93" → 93 (bare numbers are USD Mn)
- *   "$2,500,000" → 2.5 (a bare number ≥ 10,000 is whole dollars)
+ *   "₹50 Cr" → 6.024   "INR 80 Lakh" → 0.096 (at INR_PER_USD)
+ *   "93000000" → 93    (a bare number — the admin's figures-only entry — is whole US dollars)
  */
 
 /** One rupee rate for every INR amount. Change here only — amounts are converted at write time,
  * so rows already stored keep the rate they were saved with. */
 export const INR_PER_USD = 83;
-
-/** A unit-less number at or above this is whole currency units, not millions. */
-const BARE_WHOLE_UNITS_FROM = 10_000;
 
 /** Multiplier to whole currency units for the word right after the number. */
 const UNIT_MULTIPLIER: Record<string, number> = {
@@ -25,7 +22,7 @@ const UNIT_MULTIPLIER: Record<string, number> = {
 
 export function parseAmountToUsdMn(raw: unknown): number | null {
   if (raw === null || raw === undefined) return null;
-  if (typeof raw === 'number') return Number.isFinite(raw) && raw > 0 ? round3(raw) : null;
+  if (typeof raw === 'number') return Number.isFinite(raw) && raw > 0 ? round3(raw / 1e6) : null;
 
   const text = String(raw).trim().toLowerCase();
   if (!text || /undisclosed|unknown|n\/a|^na$|^-+$/.test(text)) return null;
@@ -45,10 +42,8 @@ export function parseAmountToUsdMn(raw: unknown): number | null {
     return round3(rupees / INR_PER_USD / 1e6);
   }
 
-  // USD (default). A bare number is read as millions ("93"), unless it is clearly written out in
-  // whole dollars ("$2,500,000") — no real round is 10,000 million dollars.
-  if (multiplier) return round3((value * multiplier) / 1e6);
-  return round3(value >= BARE_WHOLE_UNITS_FROM ? value / 1e6 : value);
+  // USD (default). A bare number is whole dollars; unit words are still honoured for older rows.
+  return round3((value * (multiplier ?? 1)) / 1e6);
 }
 
 function round3(n: number): number {

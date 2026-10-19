@@ -16,6 +16,7 @@ import type {
   MarketTimeSeries,
 } from '../domain/types';
 import { ROUND_BANDS, bandFor, bucketOf, sumBy, timeBuckets, type AggDeal, type Granularity } from './aggregate';
+import { formatBandRange } from './format';
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -92,7 +93,7 @@ export function marketTimeSeries(rows: AggDeal[], location: string, granularity:
   const scoped = location && location !== 'all' ? rows.filter((r) => r.country === location) : rows;
   const buckets = timeBuckets(scoped, granularity).slice(-24);
   const index = new Map(buckets.map((b, i) => [b.key, i]));
-  const bands = ROUND_BANDS.map((b) => ({ key: b.key, label: b.label, range: b.range, values: buckets.map(() => 0) }));
+  const bands = ROUND_BANDS.map((b) => ({ key: b.key, label: b.label, range: formatBandRange(b.min, b.max), values: buckets.map(() => 0) }));
 
   for (const r of scoped) {
     const band = bandFor(r.amount);
@@ -117,7 +118,7 @@ export function marketLocation(rows: AggDeal[], metric: 'amount' | 'count'): Mar
     const byCountry = sumBy(inBand, (r) => r.country)
       .filter((c) => c.total > 0)
       .map((c) => ({ country: c.key, total: c.total }));
-    return { key: band.key, label: band.label, range: band.range, total: round1(sumAmount(inBand)), byCountry };
+    return { key: band.key, label: band.label, range: formatBandRange(band.min, band.max), total: round1(sumAmount(inBand)), byCountry };
   }).filter((b) => b.total > 0);
   return { countries, marimekko };
 }

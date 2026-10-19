@@ -7,10 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { getPublicToken } from '@/lib/public-auth';
 import type { ReportSectionEntity } from '@/modules/reports/domain/section-types';
-import ReportsPagination from '@/components/user/reports/ReportsPagination';
 import ProPlanModal from '@/components/user/reports/ProPlanModal';
-import ReportsMarquee from '@/components/user/reports/ReportsMarquee';
-import { REPORTS_PAGE_SIZE } from '@/modules/reports/domain/lock';
 
 /** Branded animated loader for the report-preview modal — covers both gaps that used to
  * render as a blank white box: the `react-pdf` chunk itself loading (no `loading` fallback
@@ -69,11 +66,6 @@ const Page = dynamic(() => import('react-pdf').then((m) => m.Page), { ssr: false
 // A bigger chunk size means fewer round trips to fetch the byte ranges pdf.js needs, which
 // matters most for users far from the S3 bucket's region (high per-request latency).
 const PDF_LOAD_OPTIONS = { rangeChunkSize: 1024 * 1024 };
-
-// Reports per page (three rows of four on desktop). A section can hold 100+ reports, each with
-// two <Image> layers, so only one page of cards is ever mounted. Shared with the API, which counts
-// the Pro plan lock in the same pages.
-const PAGE_SIZE = REPORTS_PAGE_SIZE;
 
 const HIDDEN_TRANSFORMS = [
   'perspective(1200px) translate3d(-70px, 30px, -60px) scale(0.94)',
@@ -178,13 +170,9 @@ export default function ReportsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [brokenPreviewImages, setBrokenPreviewImages] = useState<Record<string, boolean>>({});
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [page, setPage] = useState(1);
-  const gridTopRef = useRef<HTMLDivElement>(null);
-  // Pro plan lock: pages of each section open to everyone (null = no lock), from /api/reports.
+  // Pro plan lock (currently switched off server-side, see REPORTS_LOCK_ENABLED): open pages per
+  // section, null = no lock. The "Pro Plan Needed" dialog shows when a locked card is clicked.
   const [freePages, setFreePages] = useState<number | null>(null);
-  // The "Pro Plan Needed" dialog shows by itself on a locked page until closed there (`proDismissed`
-  // holds that page's key), and again whenever a locked card is clicked (`proAsked`).
-  const [proDismissed, setProDismissed] = useState<string | null>(null);
   const [proAsked, setProAsked] = useState(false);
   const [previewImageLoaded, setPreviewImageLoaded] = useState(false);
   const [pdfNumPages, setPdfNumPages] = useState(0);
@@ -237,10 +225,6 @@ export default function ReportsPage() {
     setSelectedReport(null);
     setSearch('');
   }, [sectionFilter]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [sectionFilter, search]);
 
   useEffect(() => {
     if (!selectedReport) return;
@@ -325,25 +309,8 @@ export default function ReportsPage() {
     return !q || r.title.toLowerCase().includes(q) || r.month.toLowerCase().includes(q) || r.shortMonth.toLowerCase().includes(q);
   });
 
-  // Clamped so a page that no longer exists (reports list changed) falls back to the last one.
-  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
-  const pageReports = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  // Without a search the lock falls on whole pages, so a page is either all open or all locked.
-  // Search results mix the two, so there the dialog waits for a click on a locked card.
-  const pageKey = `${sectionFilter}:${currentPage}`;
-  const pageLocked = !search.trim() && pageReports.length > 0 && pageReports.every((r) => r.locked);
-  const showProModal = !loading && (proAsked || (pageLocked && proDismissed !== pageKey));
-  const closeProModal = () => {
-    setProAsked(false);
-    setProDismissed(pageKey);
-  };
-
-  const goToPage = (next: number) => {
-    setPage(next);
-    // Back to the top of the grid, clear of the sticky site header.
-    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  const showProModal = !loading && proAsked;
+  const closeProModal = () => setProAsked(false);
 
   const renderCard = (report: Report) => {
     const hovered = hoveredCard === report.id;
@@ -394,11 +361,6 @@ export default function ReportsPage() {
       </div>
     );
   };
-  // Desktop only: the last row of a page that has more than one row slides right to left as a
-  // marquee; the rows above it stay in the grid. Phones keep the plain one-column list.
-  const marqueeCount = !isMobile && pageReports.length > 4 ? (pageReports.length % 4 || 4) : 0;
-  const gridReports = marqueeCount ? pageReports.slice(0, -marqueeCount) : pageReports;
-  const marqueeReports = marqueeCount ? pageReports.slice(-marqueeCount) : [];
 
   // ── No section selected ────────────────────────────────────────────────────
   if (!sectionFilter) {
@@ -465,21 +427,15 @@ export default function ReportsPage() {
           <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>Try adjusting your search.</p>
         </div>
       ) : (
-        <>
-        <div ref={gridTopRef} style={{ scrollMarginTop: 96 }} />
+        // Every report of the section in one grid; each card fades/flies in as it scrolls into
+        // view (RevealCard), and next/image lazy-loads the thumbnails below the fold.
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, minmax(0, 1fr))', gap: isMobile ? 14 : 18 }}>
-          {gridReports.map((report, index) => (
+          {filtered.map((report, index) => (
             <RevealCard key={report.id} index={index} columns={isMobile ? 1 : 4}>
               {renderCard(report)}
             </RevealCard>
           ))}
         </div>
-        {marqueeReports.length > 0 && (
-          // Keyed on the page so the marquee starts from its first card after a page change.
-          <ReportsMarquee key={pageKey} items={marqueeReports.map((r) => ({ key: r.id, node: renderCard(r) }))} />
-        )}
-        <ReportsPagination page={currentPage} pageSize={PAGE_SIZE} total={filtered.length} lockedFromPage={freePages !== null && !search.trim() ? freePages + 1 : null} onPage={goToPage} />
-        </>
       )}
 
       {showProModal && <ProPlanModal freePages={freePages ?? 0} onClose={closeProModal} />}

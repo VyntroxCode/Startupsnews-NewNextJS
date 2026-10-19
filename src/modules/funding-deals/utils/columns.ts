@@ -24,7 +24,7 @@ export const FUNDING_COLUMNS: FundingColumn[] = [
   { key: 'sector', header: 'Sector', aliases: ['sector', 'industry', 'vertical', 'category'], example: 'Clean Tech' },
   { key: 'businessModel', header: 'Business Model', aliases: ['business model', 'model', 'b2b b2c'], example: 'B2C' },
   { key: 'roundStage', header: 'Round Stage', aliases: ['round stage', 'stage', 'round', 'round type', 'funding stage', 'series'], example: 'Series C' },
-  { key: 'amountRaw', header: 'Round Size', aliases: ['round size', 'amount', 'amount raised', 'funding amount', 'amount usd', 'amount in usd', 'size', 'funding', 'raised'], example: '$93 Mn' },
+  { key: 'amountRaw', header: 'Round Size', aliases: ['round size', 'amount', 'amount raised', 'funding amount', 'amount usd', 'amount in usd', 'size', 'funding', 'raised'], example: '93000000' },
   { key: 'city', header: 'City', aliases: ['city', 'hq city', 'location', 'headquarters', 'hq'], example: 'Bengaluru' },
   { key: 'country', header: 'Country', aliases: ['country', 'hq country', 'nation'], example: 'India' },
   { key: 'leadInvestor', header: 'Lead Investor', aliases: ['lead investor', 'lead', 'lead investors', 'led by'], example: 'GEF Capital' },

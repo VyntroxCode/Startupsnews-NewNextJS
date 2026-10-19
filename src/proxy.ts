@@ -14,10 +14,12 @@ function toInternalOrigin(origin: string): string {
 }
 
 // Lightweight in-process cache for robots + httpStatus.
-// Posts almost never flip between published/410 after the first hour, so a
-// long TTL is safe and keeps most requests off the extra network round-trip.
+// A live post rarely flips back to 410, so 200s keep a long TTL. A 410 is kept
+// only briefly: scheduled/draft posts go live later, and a long-cached 410 kept
+// a just-published post showing "Gone" for up to an hour (nothing purges this map).
 const robotsCache = new Map<string, { robots: string; httpStatus: number; expiresAt: number }>();
 const ROBOTS_TTL_MS = 60 * 60 * 1000;
+const ROBOTS_GONE_TTL_MS = 30 * 1000;
 // De-dupe concurrent lookups for the same slug (e.g. a traffic spike on one
 // article) so they share a single in-flight fetch instead of each firing one.
 const inFlight = new Map<string, Promise<{ robots: string; httpStatus: number }>>();
@@ -41,7 +43,11 @@ async function getPostMeta(categorySlug: string, postSlug: string, origin: strin
       const data = await res.json() as { robots?: string; httpStatus?: number };
       const robots = data?.robots || 'index,follow';
       const httpStatus = data?.httpStatus || 200;
-      robotsCache.set(cacheKey, { robots, httpStatus, expiresAt: now + ROBOTS_TTL_MS });
+      robotsCache.set(cacheKey, {
+        robots,
+        httpStatus,
+        expiresAt: now + (httpStatus === 410 ? ROBOTS_GONE_TTL_MS : ROBOTS_TTL_MS),
+      });
       return { robots, httpStatus };
     } catch {
       return { robots: 'index,follow', httpStatus: 200 };

@@ -6,6 +6,12 @@
  * API must use the same number. */
 export const REPORTS_PAGE_SIZE = 12;
 
+/** Master switch for the whole feature. Off since the reader Reports page dropped pagination (it
+ * now lists every report of a section in one grid), which the page-based lock depends on. While off:
+ * /api/reports locks nothing, the Reports tab is hidden in Admin › User Management, and the admin
+ * reports-lock API answers 403. The stored setting is left untouched for when this is turned back on. */
+export const REPORTS_LOCK_ENABLED = false;
+
 /** Highest "lock starts from page" the admin can pick. */
 export const MAX_LOCK_START_PAGE = 10;
 

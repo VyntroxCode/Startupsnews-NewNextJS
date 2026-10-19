@@ -1,14 +1,20 @@
 'use client';
 
-import { useMemo } from 'react';
-import { buildTicketReport, type ReportBreakdown } from './reports';
-import { CARD } from './ui';
+import { useMemo, useState } from 'react';
+import { ArrowUpRight } from 'lucide-react';
+import KpiDrillDownModal from './KpiDrillDownModal';
+import { buildTicketReport, type KpiId, type ReportBreakdown } from './reports';
+import { CARD, FOCUS_RING } from './ui';
 import type { ItTicket } from './types';
 
 interface TicketReportsProps {
   tickets: ItTicket[];
   loaded: boolean;
   filterSummary: string;
+  /** Row click in a KPI drill-down — opens the normal issue view. */
+  onOpenTicket: (ticket: ItTicket) => void;
+  /** True while the issue view is open; the drill-down hides so only one dialog shows at a time. */
+  suspended: boolean;
 }
 
 const SIZE = 132;
@@ -81,8 +87,10 @@ function PieChart({ breakdown }: { breakdown: ReportBreakdown }) {
 
 /** Reports panel on /admin/it-tickets: headline numbers + six pie charts for the tickets matching the
  * current filters. Same numbers as the Excel export's Summary sheet (both use buildTicketReport). */
-export default function TicketReports({ tickets, loaded, filterSummary }: TicketReportsProps) {
+export default function TicketReports({ tickets, loaded, filterSummary, onOpenTicket, suspended }: TicketReportsProps) {
   const report = useMemo(() => buildTicketReport(tickets), [tickets]);
+  const [drillId, setDrillId] = useState<KpiId | null>(null);
+  const drillKpi = drillId ? report.kpis.find((k) => k.id === drillId) ?? null : null;
 
   return (
     <section className="mb-[18px]" data-testid="ticket-reports" aria-label="Ticket reports">
@@ -95,16 +103,37 @@ export default function TicketReports({ tickets, loaded, filterSummary }: Ticket
 
       <div className="mb-3 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
         {report.kpis.map((k) => (
-          <div key={k.id} className="min-w-0 rounded-[10px] border border-slate-200 border-l-[3px] border-l-[#6366F1] bg-white px-4 py-3" data-testid={`kpi-${k.id}`}>
+          <button
+            key={k.id}
+            type="button"
+            onClick={() => setDrillId(k.id)}
+            disabled={!loaded}
+            aria-haspopup="dialog"
+            aria-label={`${k.label}: ${k.value}${k.hint === 'days' ? ' days' : ''}. View tickets`}
+            className={`group relative min-w-0 cursor-pointer rounded-[10px] border border-slate-200 border-l-[3px] border-l-[#6366F1] bg-white px-4 py-3 text-left transition-[box-shadow,transform,border-color] hover:-translate-y-px hover:border-[#C7D2FE] hover:border-l-[#4F46E5] hover:shadow-md disabled:cursor-default disabled:hover:translate-y-0 disabled:hover:shadow-none ${FOCUS_RING}`}
+            data-testid={`kpi-${k.id}`}
+          >
+            <ArrowUpRight size={14} className="absolute right-2.5 top-2.5 text-slate-300 transition-colors group-hover:text-[#6366F1]" aria-hidden />
             <div className="text-[22px] font-bold leading-tight tabular-nums text-slate-900">
               {k.value}
               {k.hint === 'days' && <span className="ml-1 text-[12px] font-semibold text-slate-500">days</span>}
             </div>
             {/* Wraps to a second line rather than truncating ("Avg age of open tickets" at narrow tiles). */}
             <div className="mt-0.5 text-[12px] font-semibold leading-snug text-slate-600" title={k.hint && k.hint !== 'days' ? k.hint : k.label}>{k.label}</div>
-          </div>
+          </button>
         ))}
       </div>
+
+      {/* Hidden (not unmounted) while the issue view is open, so closing a ticket returns to the list. */}
+      {drillKpi && !suspended && (
+        <KpiDrillDownModal
+          kpi={drillKpi}
+          tickets={tickets}
+          filterSummary={filterSummary}
+          onOpenTicket={onOpenTicket}
+          onClose={() => setDrillId(null)}
+        />
+      )}
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3">
         {report.breakdowns.map((b) => <PieChart key={b.id} breakdown={b} />)}

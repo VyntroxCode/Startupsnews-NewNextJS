@@ -22,8 +22,39 @@ import {
 } from '../utils/market';
 import { buildDedupeKey, normalizeDealInput, validateDealInput, type FundingColumnKey } from '../utils/columns';
 import { parseAmountToUsdMn } from '../utils/parse-amount';
+import { isNumberSystem, setNumberSystem, type NumberSystem } from '../utils/format';
+import { SiteSettingsRepository } from '@/modules/site-settings/repository/site-settings.repository';
 
 export const MAX_IMPORT_ROWS = 20000;
+
+/** Admin's choice of Indian (Lakh/Crore) or International (Million/Billion) amounts, in site_settings. */
+const NUMBER_SYSTEM_KEY = 'funding_number_system';
+const NUMBER_SYSTEM_TTL_MS = 30_000;
+const settingsRepo = new SiteSettingsRepository();
+let numberSystemCache: { value: NumberSystem; at: number } | null = null;
+
+export async function getFundingNumberSystem(): Promise<NumberSystem> {
+  if (numberSystemCache && Date.now() - numberSystemCache.at < NUMBER_SYSTEM_TTL_MS) return numberSystemCache.value;
+  try {
+    const saved = (await settingsRepo.getMany([NUMBER_SYSTEM_KEY])).get(NUMBER_SYSTEM_KEY);
+    const value: NumberSystem = isNumberSystem(saved) ? saved : 'international';
+    numberSystemCache = { value, at: Date.now() };
+    return value;
+  } catch (err) {
+    console.error('[funding number system]', err);
+    return numberSystemCache?.value ?? 'international';
+  }
+}
+
+export async function saveFundingNumberSystem(system: NumberSystem): Promise<void> {
+  await settingsRepo.set(NUMBER_SYSTEM_KEY, system);
+  numberSystemCache = { value: system, at: Date.now() };
+}
+
+/** Server-side text (band labels, outlook sentences) is written in the saved number system. */
+async function applySavedNumberSystem(): Promise<void> {
+  setNumberSystem(await getFundingNumberSystem());
+}
 
 const repo = new FundingDealsRepository();
 
@@ -116,6 +147,7 @@ export async function getFundingOverview(
   pinnedCountry: string,
   range: TrendRange,
 ): Promise<FundingOverview> {
+  await applySavedNumberSystem();
   const today = todayIso();
   const year = Number(today.slice(0, 4));
   const yearStart = `${year}-01-01`;
@@ -179,6 +211,7 @@ export async function getMarketView(
   view: MarketView,
   params: URLSearchParams,
 ): Promise<{ meta: MarketMeta; data: unknown }> {
+  await applySavedNumberSystem();
   const rows = await repo.findForAggregation({});
   const today = new Date(); // process TZ is Asia/Kolkata
   const meta = marketMeta(rows, today);

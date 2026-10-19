@@ -5,13 +5,18 @@ import { useSearchParams } from 'next/navigation';
 import { FileBarChart, TrendingUp } from 'lucide-react';
 import FundingCardsPage from './FundingCardsPage';
 import ReportsLockPanel from './ReportsLockPanel';
+import { REPORTS_LOCK_ENABLED } from '@/modules/reports/domain/lock';
 
-const SECTIONS = [
+const ALL_SECTIONS = [
   { key: 'funding', label: 'Funding', icon: TrendingUp },
   { key: 'reports', label: 'Reports', icon: FileBarChart },
 ] as const;
 
-type Section = (typeof SECTIONS)[number]['key'];
+type Section = (typeof ALL_SECTIONS)[number]['key'];
+
+// Reports (the Pro plan lock) is hidden while the lock is switched off; `?section=reports` then
+// falls back to Funding.
+const SECTIONS = ALL_SECTIONS.filter((s) => s.key !== 'reports' || REPORTS_LOCK_ENABLED);
 
 /**
  * /admin/user-management — settings for the reader (user) panel, one section per reader area.
@@ -57,7 +62,7 @@ export default function UserManagementPage() {
 
       {section === 'funding' && <FundingCardsPage />}
 
-      {section === 'reports' && <ReportsLockPanel />}
+      {section === 'reports' && REPORTS_LOCK_ENABLED && <ReportsLockPanel />}
     </div>
   );
 }
